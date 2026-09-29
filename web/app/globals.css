@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0B1220;
+  color: #e6ecf5;
+}
+
+.card {
+  @apply bg-navy-800 border border-navy-700 rounded-xl p-4;
+}
+
+.btn-primary {
+  @apply bg-lime-400 text-navy-950 font-semibold rounded-lg px-4 py-2 hover:bg-lime-500 transition disabled:opacity-50;
+}
+
+.btn-secondary {
+  @apply bg-navy-700 text-white rounded-lg px-4 py-2 hover:bg-navy-600 transition disabled:opacity-50;
+}
+
+.input {
+  @apply bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-white w-full outline-none focus:border-lime-400;
+}

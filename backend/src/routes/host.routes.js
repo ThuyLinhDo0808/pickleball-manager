@@ -1,46 +1,53 @@
 const express = require('express');
-const { supabaseAdmin } = require('../config/supabase');
-const { requireAuth } = require('../middleware/auth');
+const { supabase } = require('../supabase');
 const { dbError } = require('../utils/respond');
+const { getUsage } = require('../middleware/checkCapacity');
 
 const router = express.Router();
-router.use(requireAuth);
+const ALLOW_SELF_SERVE = process.env.ALLOW_TIER_SELF_SERVE === 'true';
+const TIERS = ['free', 'basic', 'standard', 'pro'];
 
-// Current host profile + plan + live capacity usage — the app calls this
-// once after login to drive the "X / Y used" banner in both workspaces.
 router.get('/me', async (req, res) => {
-  const [{ data: user, error: userErr }, { data: usage, error: usageErr }] = await Promise.all([
-    supabaseAdmin.from('users').select('*').eq('id', req.user.id).maybeSingle(),
-    supabaseAdmin.from('v_host_capacity_usage').select('*').eq('host_id', req.user.id).maybeSingle(),
-  ]);
-  if (userErr) return dbError(res, userErr);
-  if (usageErr) return dbError(res, usageErr);
-
-  res.json({
-    user,
-    subscription: usage || { tier: 'free', max_capacity: 30, current_usage: 0 },
-  });
+  const { data: user, error: uErr } = await supabase.from('users').select('*').eq('id', req.hostId).single();
+  if (uErr) return dbError(res, uErr);
+  const usage = await getUsage(req.hostId).catch(() => null);
+  res.json({ ...user, usage });
 });
 
-// Simple tier change endpoint. In production this would only be called
-// from a verified payment webhook (Stripe/RevenueCat/etc.), never directly
-// from the client — wire that up before launch.
-router.post('/subscription', async (req, res) => {
-  if (process.env.ALLOW_TIER_SELF_SERVE === 'false') {
-    return res.status(403).json({ error: 'SELF_SERVE_DISABLED', message: 'Plan changes are handled through billing, not from the app.' });
+router.get('/subscription', async (req, res) => {
+  const { data, error } = await supabase.from('host_subscriptions').select('*').eq('host_id', req.hostId).single();
+  if (error) return dbError(res, error);
+  const usage = await getUsage(req.hostId).catch(() => null);
+  res.json({ ...data, usage });
+});
+
+router.patch('/subscription', async (req, res) => {
+  if (!ALLOW_SELF_SERVE) {
+    return res.status(403).json({ error: 'Plan changes are handled outside self-serve. Contact support.' });
   }
   const { tier } = req.body;
-  if (!['free', 'basic', 'standard', 'pro'].includes(tier)) {
-    return res.status(400).json({ error: 'tier must be one of free, basic, standard, pro.' });
-  }
-
-  const { data, error } = await supabaseAdmin
+  if (!TIERS.includes(tier)) return res.status(400).json({ error: `tier must be one of ${TIERS.join(', ')}` });
+  const { data, error } = await supabase
     .from('host_subscriptions')
-    .upsert({ host_id: req.user.id, tier }, { onConflict: 'host_id' })
+    .update({ tier })
+    .eq('host_id', req.hostId)
     .select()
     .single();
   if (error) return dbError(res, error);
-  res.json({ subscription: data });
+  res.json(data);
+});
+
+router.post('/feedback', async (req, res) => {
+  const { message, contact } = req.body;
+  if (!message) return res.status(400).json({ error: 'message is required.' });
+  const { data, error } = await supabase
+    .from('feedback')
+    .insert({ host_id: req.hostId, message, contact: contact || null })
+    .select()
+    .single();
+  if (error) return dbError(res, error);
+  // Optional: wire up an email provider (e.g. Resend) here to notify the developer.
+  res.status(201).json(data);
 });
 
 module.exports = router;

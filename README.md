@@ -1,33 +1,39 @@
-# pickleball-manager
+# Pickleball Ecosystem
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+Single-Administrator (Host) pickleball club + event management system.
 
-## Built with v0
+- **database/schema.sql** — full Supabase/Postgres schema. Run once in the
+  Supabase SQL Editor (it's idempotent — safe to re-run).
+- **backend/** — Express API, deployable to Render, shared by all frontends.
+- **web/** — Next.js Host Web App, deployable to Vercel.
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
-
-[Continue working on v0 →](https://v0.app/chat/projects/prj_uZsDaPGC4W8u5k4aN7lVnYd2aKrf)
-
-## Getting Started
-
-First, run the development server:
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+# 1. Database
+# Paste database/schema.sql into your Supabase project's SQL Editor and run it.
+
+# 2. Backend
+cd backend
+npm install
+cp .env.example .env   # fill in SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+npm run dev            # http://localhost:4000
+
+# 3. Web app
+cd ../web
+npm install
+cp .env.local.example .env.local   # fill in Supabase anon key + API URL
+npm run dev            # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+See `web/README.md` for Vercel deploy steps and `backend/render.yaml` for Render.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scope note
 
-## Learn More
-
-To learn more, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+This is a from-scratch rebuild of the core system (schema, shared API, and a
+working Host Web App covering Club Manager + Xé Vé). The larger backlog from
+our planning conversation — Player Web Portal, Tournament Bracket, Analytics
+Dashboard/charts, SCD Type 2 history, itemized ball-inventory tracking, and
+referee/coordinator role UI — is designed for in the schema (forward-compat
+tables: `event_scorers`, `event_role`) but not yet built. Tell me which piece
+to build next.

@@ -1,540 +1,563 @@
--- =====================================================================
--- PICKLEBALL ECOSYSTEM — SUPABASE / POSTGRESQL SCHEMA
--- Two workspaces (Club Manager / Xé Vé Manager) on one shared backend.
--- Run this whole file in the Supabase SQL Editor (Project > SQL Editor).
--- =====================================================================
+-- ============================================================================
+-- Pickleball Ecosystem — Full Database Schema (Supabase / PostgreSQL)
+-- Single-Administrator architecture: one Host owns and edits everything.
+-- Safe to re-run: uses `create ... if not exists` / `drop policy if exists`.
+-- Run this whole file once in the Supabase SQL Editor, top to bottom.
+-- ============================================================================
 
--- ---------------------------------------------------------------------
--- 0. EXTENSIONS
--- ---------------------------------------------------------------------
-create extension if not exists "uuid-ossp";
-create extension if not exists "pgcrypto";
+create extension if not exists pgcrypto;
 
--- ---------------------------------------------------------------------
--- 1. ENUM TYPES
--- ---------------------------------------------------------------------
+-- ----------------------------------------------------------------------------
+-- ENUMS
+-- ----------------------------------------------------------------------------
 do $$ begin
-  create type subscription_tier as enum ('free', 'basic', 'standard', 'pro');
+  create type subscription_tier as enum ('free','basic','standard','pro');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type member_type as enum ('fixed', 'guest');
+  create type member_type as enum ('fixed','guest');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type member_status as enum ('active', 'inactive', 'removed');
+  create type member_tier as enum ('vip','standard');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type event_status as enum ('draft', 'open', 'closed', 'completed', 'cancelled');
+  create type match_type as enum ('singles','doubles','mixed');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type participant_status as enum ('registered', 'waitlist', 'checked_in', 'no_show', 'cancelled');
+  create type event_status as enum ('draft','open','closed','completed','cancelled');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type match_type as enum ('singles', 'doubles', 'mixed');
+  create type participant_status as enum ('registered','waitlisted','checked_in','no_show','cancelled');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type transaction_type as enum ('income', 'expense');
+  create type transaction_type as enum ('income','expense');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type transaction_source as enum (
-    'membership_fee', 'court_cost', 'ball_cost', 'event_fee',
-    'event_expense', 'adjustment', 'other'
-  );
+  create type transaction_owner as enum ('club','event');
 exception when duplicate_object then null; end $$;
 
--- ---------------------------------------------------------------------
--- 2. USERS  (mirrors auth.users; every Host and every registered Player)
--- ---------------------------------------------------------------------
+do $$ begin
+  create type plan_period as enum ('month','quarter','year');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type payment_status as enum ('pending','paid','overdue');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type event_role as enum ('referee','coordinator');
+exception when duplicate_object then null; end $$;
+
+-- ----------------------------------------------------------------------------
+-- USERS / HOST SUBSCRIPTIONS  (one row per authenticated Host)
+-- ----------------------------------------------------------------------------
 create table if not exists public.users (
-  id            uuid primary key references auth.users(id) on delete cascade,
-  email         text unique,
-  phone         text,
-  full_name     text not null,
-  avatar_url    text,
-  dupr_rating   numeric(3,2),               -- global reference rating, optional
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  full_name text,
+  created_at timestamptz not null default now()
 );
 
--- ---------------------------------------------------------------------
--- 3. HOST SUBSCRIPTIONS  (tier -> capacity ceiling, shared across BOTH workspaces)
--- ---------------------------------------------------------------------
 create table if not exists public.host_subscriptions (
-  id                uuid primary key default gen_random_uuid(),
-  host_id           uuid not null references public.users(id) on delete cascade,
-  tier              subscription_tier not null default 'free',
-  max_capacity      integer not null default 30,
-  current_period_start timestamptz not null default now(),
-  current_period_end   timestamptz,
-  is_active         boolean not null default true,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now(),
-  unique (host_id)
+  host_id uuid primary key references public.users(id) on delete cascade,
+  tier subscription_tier not null default 'free',
+  capacity_limit int not null default 30,
+  updated_at timestamptz not null default now()
 );
 
--- Keep max_capacity in lockstep with tier unless explicitly overridden.
-create or replace function public.fn_set_default_capacity()
-returns trigger language plpgsql as $$
+create or replace function public.tier_capacity(t subscription_tier) returns int
+language sql immutable as $$
+  select case t
+    when 'free' then 30
+    when 'basic' then 100
+    when 'standard' then 300
+    when 'pro' then 1000
+  end;
+$$;
+
+create or replace function public.sync_capacity_limit() returns trigger
+language plpgsql as $$
 begin
-  if tg_op = 'INSERT' or new.tier is distinct from old.tier then
-    new.max_capacity := case new.tier
-      when 'free'     then 30
-      when 'basic'    then 100
-      when 'standard' then 300
-      when 'pro'      then 1000
-    end;
-  end if;
-  new.updated_at := now();
+  new.capacity_limit := public.tier_capacity(new.tier);
   return new;
-end $$;
+end; $$;
 
-drop trigger if exists trg_host_subscriptions_capacity on public.host_subscriptions;
-create trigger trg_host_subscriptions_capacity
-  before insert or update on public.host_subscriptions
-  for each row execute function public.fn_set_default_capacity();
+drop trigger if exists trg_sync_capacity on public.host_subscriptions;
+create trigger trg_sync_capacity before insert or update of tier
+  on public.host_subscriptions for each row execute function public.sync_capacity_limit();
 
--- ---------------------------------------------------------------------
--- 4. WORKSPACE 1 — CLUBS
--- ---------------------------------------------------------------------
+-- Bootstrap: auto-create users/host_subscriptions row for every new auth user
+create or replace function public.handle_new_auth_user() returns trigger
+language plpgsql security definer as $$
+begin
+  insert into public.users (id, email) values (new.id, new.email)
+    on conflict (id) do nothing;
+  insert into public.host_subscriptions (host_id) values (new.id)
+    on conflict (host_id) do nothing;
+  return new;
+end; $$;
+
+drop trigger if exists trg_new_auth_user on auth.users;
+create trigger trg_new_auth_user after insert on auth.users
+  for each row execute function public.handle_new_auth_user();
+
+-- Backfill for accounts that existed before this schema ran
+insert into public.users (id, email)
+  select id, email from auth.users
+  on conflict (id) do nothing;
+insert into public.host_subscriptions (host_id)
+  select id from auth.users
+  on conflict (host_id) do nothing;
+
+-- ----------------------------------------------------------------------------
+-- CLUBS / CLUB MEMBERS
+-- ----------------------------------------------------------------------------
 create table if not exists public.clubs (
-  id            uuid primary key default gen_random_uuid(),
-  host_id       uuid not null references public.users(id) on delete cascade,
-  name          text not null,
-  description   text,
-  monthly_fee_default numeric(12,2) not null default 0,
-  is_active     boolean not null default true,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  name text not null,
+  description text,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.club_members (
-  id            uuid primary key default gen_random_uuid(),
-  club_id       uuid not null references public.clubs(id) on delete cascade,
-  user_id       uuid references public.users(id) on delete set null, -- null = offline/manual entry
-  display_name  text not null,       -- host-entered name, always present even without a user_id
-  phone         text,
-  dupr_level    numeric(3,2),
-  member_type   member_type not null default 'fixed',
-  status        member_status not null default 'active',
-  joined_at     timestamptz not null default now(),
-  removed_at    timestamptz,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  full_name text not null,
+  phone text,
+  dupr_level numeric(3,2),
+  member_type member_type not null default 'fixed',
+  tier member_tier,
+  is_active boolean not null default true,
+  notes text,
+  created_at timestamptz not null default now()
 );
 
-create index if not exists idx_club_members_club on public.club_members(club_id) where status = 'active';
+alter table public.club_members add column if not exists tier member_tier;
+alter table public.club_members add column if not exists notes text;
 
--- ---------------------------------------------------------------------
--- 5. WORKSPACE 2 — EVENTS (Kèo)
--- ---------------------------------------------------------------------
+do $$ begin
+  alter table public.club_members
+    add constraint chk_tier_only_fixed
+    check (tier is null or member_type = 'fixed');
+exception when duplicate_object then null; end $$;
+
+-- ----------------------------------------------------------------------------
+-- MEMBERSHIP PLANS / REGISTRATIONS (subscription-style billing for members)
+-- ----------------------------------------------------------------------------
+create table if not exists public.membership_plans (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  name text not null,
+  period plan_period not null,
+  price numeric(12,0) not null,
+  sessions_included int not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.memberships (
+  id uuid primary key default gen_random_uuid(),
+  club_member_id uuid not null references public.club_members(id) on delete cascade,
+  plan_id uuid not null references public.membership_plans(id) on delete restrict,
+  period_label text not null, -- e.g. "2026-08" or "Q3-2026" or "2026"
+  starts_on date not null,
+  ends_on date not null,
+  status payment_status not null default 'pending',
+  amount numeric(12,0) not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.membership_sessions (
+  id uuid primary key default gen_random_uuid(),
+  membership_id uuid not null references public.memberships(id) on delete cascade,
+  event_id uuid,
+  used_on timestamptz not null default now()
+);
+
+create or replace view public.v_membership_status as
+select
+  m.id as membership_id,
+  m.club_member_id,
+  m.plan_id,
+  m.period_label,
+  m.starts_on,
+  m.ends_on,
+  m.status,
+  m.amount,
+  p.sessions_included,
+  coalesce(s.used_count, 0) as sessions_used,
+  greatest(p.sessions_included - coalesce(s.used_count, 0), 0) as sessions_remaining
+from public.memberships m
+join public.membership_plans p on p.id = m.plan_id
+left join (
+  select membership_id, count(*) as used_count
+  from public.membership_sessions
+  group by membership_id
+) s on s.membership_id = m.id;
+
+-- ----------------------------------------------------------------------------
+-- EVENTS (Xé Vé) / PARTICIPANTS
+-- ----------------------------------------------------------------------------
 create table if not exists public.events (
-  id                uuid primary key default gen_random_uuid(),
-  host_id           uuid not null references public.users(id) on delete cascade,
-  club_id           uuid references public.clubs(id) on delete set null,   -- optional: which club holds this event
-  title             text not null,
-  event_date        date not null,
-  start_time        time not null,
-  end_time          time,
-  location          text,
-  num_courts        integer not null default 1,
-  max_slots         integer not null,
-  required_level    numeric(3,2),          -- minimum DUPR/level to join, optional
-  fee_amount        numeric(12,2) not null default 0,
-  status            event_status not null default 'draft',
-  court_cost        numeric(12,2) not null default 0,
-  ball_cost         numeric(12,2) not null default 0,
-  notes             text,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  club_id uuid references public.clubs(id) on delete set null,
+  title text not null,
+  event_date date not null,
+  start_time time,
+  end_time time,
+  location text,
+  courts int not null default 1,
+  slots int not null default 16,
+  level_min numeric(3,2),
+  level_max numeric(3,2),
+  fee_amount numeric(12,0) not null default 0,
+  status event_status not null default 'draft',
+  registration_deadline timestamptz,
+  public_token uuid not null default gen_random_uuid(),
+  allow_public_registration boolean not null default false,
+  created_at timestamptz not null default now()
 );
+
+alter table public.events add column if not exists club_id uuid references public.clubs(id) on delete set null;
+alter table public.events add column if not exists registration_deadline timestamptz;
+alter table public.events add column if not exists public_token uuid not null default gen_random_uuid();
+alter table public.events add column if not exists allow_public_registration boolean not null default false;
 
 create table if not exists public.event_participants (
-  id                uuid primary key default gen_random_uuid(),
-  event_id          uuid not null references public.events(id) on delete cascade,
-  user_id           uuid references public.users(id) on delete set null,
-  display_name      text not null,
-  phone             text,
-  dupr_level        numeric(3,2),          -- snapshot of the player's level at registration
-  source_club_member_id uuid references public.club_members(id) on delete set null, -- set when imported from a club
-  status            participant_status not null default 'registered',
-  fee_paid          boolean not null default false,
-  fee_amount        numeric(12,2),         -- overrides events.fee_amount if set
-  registered_at     timestamptz not null default now(),
-  checked_in_at     timestamptz,
-  waitlisted_at     timestamptz,
-  no_show_at        timestamptz,
-  cancelled_at      timestamptz,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  full_name text not null,
+  phone text,
+  dupr_level numeric(3,2),
+  source_club_member_id uuid references public.club_members(id) on delete set null,
+  status participant_status not null default 'registered',
+  fee_amount numeric(12,0),
+  fee_paid boolean not null default false,
+  joined_at timestamptz not null default now(),
+  checked_in_at timestamptz,
+  no_show_at timestamptz,
+  cancelled_at timestamptz
 );
 
-create index if not exists idx_event_participants_event on public.event_participants(event_id);
-create index if not exists idx_event_participants_active
-  on public.event_participants(event_id)
-  where status in ('registered', 'waitlist', 'checked_in');
-
--- ---- Upgrades for databases created with an earlier version of this script ----
--- (CREATE TABLE IF NOT EXISTS skips existing tables, so new columns are added here.)
-alter table public.events add column if not exists club_id uuid references public.clubs(id) on delete set null;
 alter table public.event_participants add column if not exists dupr_level numeric(3,2);
 alter table public.event_participants add column if not exists source_club_member_id uuid references public.club_members(id) on delete set null;
-create index if not exists idx_events_club on public.events(club_id);
-create index if not exists idx_events_host_date on public.events(host_id, event_date);
-create index if not exists idx_event_participants_source on public.event_participants(source_club_member_id);
 
--- Reliability score is derived, not stored redundantly: expose via a view (section 8).
+-- Event-scoped roles (referee / coordinator) — limited access, no finance view
+create table if not exists public.event_scorers (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  full_name text not null,
+  role event_role not null,
+  access_code text not null default encode(gen_random_bytes(4), 'hex'),
+  created_at timestamptz not null default now()
+);
 
--- ---------------------------------------------------------------------
--- 6. MATCHES  (belongs to EITHER a club OR an event, never both/neither)
--- ---------------------------------------------------------------------
+create or replace view public.v_event_summary as
+select
+  e.*,
+  c.name as club_name,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status in ('registered','checked_in')) as main_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count
+from public.events e
+left join public.clubs c on c.id = e.club_id;
+
+-- ----------------------------------------------------------------------------
+-- MATCHES / MATCH PLAYERS (polymorphic: belongs to a club OR an event)
+-- ----------------------------------------------------------------------------
 create table if not exists public.matches (
-  id              uuid primary key default gen_random_uuid(),
-  club_id         uuid references public.clubs(id) on delete cascade,
-  event_id        uuid references public.events(id) on delete cascade,
-  match_type      match_type not null default 'doubles',
-  team1_score     integer not null default 0,
-  team2_score     integer not null default 0,
-  winner_team     smallint check (winner_team in (1, 2)),
-  played_at       timestamptz not null default now(),
-  recorded_by     uuid references public.users(id),
-  created_at      timestamptz not null default now(),
-  constraint chk_match_owner check (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid references public.clubs(id) on delete cascade,
+  event_id uuid references public.events(id) on delete cascade,
+  match_type match_type not null default 'doubles',
+  played_at timestamptz not null default now(),
+  team1_score int not null default 0,
+  team2_score int not null default 0,
+  video_url text,
+  created_at timestamptz not null default now(),
+  constraint chk_matches_one_parent check (
     (club_id is not null and event_id is null) or
     (club_id is null and event_id is not null)
   )
 );
 
-create index if not exists idx_matches_club on public.matches(club_id);
-create index if not exists idx_matches_event on public.matches(event_id);
+alter table public.matches add column if not exists video_url text;
 
--- Players within a match. A player row points to EITHER a club_member OR an
--- event_participant, matching whichever context the parent match belongs to.
 create table if not exists public.match_players (
-  id                  uuid primary key default gen_random_uuid(),
-  match_id            uuid not null references public.matches(id) on delete cascade,
-  club_member_id      uuid references public.club_members(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  match_id uuid not null references public.matches(id) on delete cascade,
+  team int not null check (team in (1,2)),
+  club_member_id uuid references public.club_members(id) on delete cascade,
   event_participant_id uuid references public.event_participants(id) on delete cascade,
-  team                smallint not null check (team in (1, 2)),
-  constraint chk_match_player_ref check (
+  constraint chk_players_one_parent check (
     (club_member_id is not null and event_participant_id is null) or
     (club_member_id is null and event_participant_id is not null)
   )
 );
 
-create index if not exists idx_match_players_match on public.match_players(match_id);
-create index if not exists idx_match_players_club_member on public.match_players(club_member_id);
-create index if not exists idx_match_players_event_participant on public.match_players(event_participant_id);
-
--- ---------------------------------------------------------------------
--- 7. TRANSACTIONS  (unified, append-only ledger for BOTH club funds and event P&L)
---    Corrections are made by voiding + inserting a new row, never by UPDATE
---    of amount/type — this preserves a full audit trail.
--- ---------------------------------------------------------------------
+-- ----------------------------------------------------------------------------
+-- TRANSACTIONS (append-only ledger; polymorphic club/event owner)
+-- ----------------------------------------------------------------------------
 create table if not exists public.transactions (
-  id              uuid primary key default gen_random_uuid(),
-  club_id         uuid references public.clubs(id) on delete cascade,
-  event_id        uuid references public.events(id) on delete cascade,
-  type            transaction_type not null,
-  source          transaction_source not null default 'other',
-  amount          numeric(12,2) not null check (amount >= 0),
-  description     text,
-  related_member_id      uuid references public.club_members(id) on delete set null,
-  related_participant_id uuid references public.event_participants(id) on delete set null,
-  created_by      uuid not null references public.users(id),
-  is_voided       boolean not null default false,
-  voided_at       timestamptz,
-  void_reason     text,
-  replaced_by     uuid references public.transactions(id),
-  created_at      timestamptz not null default now(),
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  owner_type transaction_owner not null,
+  club_id uuid references public.clubs(id) on delete cascade,
+  event_id uuid references public.events(id) on delete cascade,
+  type transaction_type not null,
+  category text,
+  amount numeric(12,0) not null check (amount >= 0),
+  note text,
+  occurred_on date not null default current_date,
+  is_voided boolean not null default false,
+  voided_at timestamptz,
+  void_reason text,
+  replaced_by uuid references public.transactions(id),
+  created_at timestamptz not null default now(),
   constraint chk_txn_owner check (
-    (club_id is not null and event_id is null) or
-    (club_id is null and event_id is not null)
+    (owner_type = 'club' and club_id is not null and event_id is null) or
+    (owner_type = 'event' and event_id is not null and club_id is null)
   )
 );
 
-create index if not exists idx_transactions_club on public.transactions(club_id) where is_voided = false;
-create index if not exists idx_transactions_event on public.transactions(event_id) where is_voided = false;
-
--- Prevent hard deletes/edits of financial history at the DB level.
-create or replace function public.fn_block_transaction_mutation()
-returns trigger language plpgsql as $$
+create or replace function public.block_txn_mutation() returns trigger
+language plpgsql as $$
 begin
-  if tg_op = 'DELETE' then
-    raise exception 'Transactions are append-only; void the row instead of deleting it.';
-  end if;
-  if tg_op = 'UPDATE' then
-    if old.amount is distinct from new.amount
-       or old.type is distinct from new.type
-       or old.club_id is distinct from new.club_id
-       or old.event_id is distinct from new.event_id then
-      raise exception 'Transactions are append-only; amount/type/owner cannot be edited. Void and insert a new row.';
-    end if;
+  if (old.amount, old.type, old.owner_type, old.club_id, old.event_id)
+     is distinct from (new.amount, new.type, new.owner_type, new.club_id, new.event_id) then
+    raise exception 'transactions are append-only: amount/type/owner cannot be changed, void instead';
   end if;
   return new;
-end $$;
+end; $$;
 
-drop trigger if exists trg_transactions_no_delete on public.transactions;
-create trigger trg_transactions_no_delete
-  before delete on public.transactions
-  for each row execute function public.fn_block_transaction_mutation();
+drop trigger if exists trg_block_txn_mutation on public.transactions;
+create trigger trg_block_txn_mutation before update on public.transactions
+  for each row execute function public.block_txn_mutation();
 
-drop trigger if exists trg_transactions_no_amend on public.transactions;
-create trigger trg_transactions_no_amend
-  before update on public.transactions
-  for each row execute function public.fn_block_transaction_mutation();
+-- ----------------------------------------------------------------------------
+-- FEEDBACK (emailed to developer)
+-- ----------------------------------------------------------------------------
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid references public.users(id) on delete set null,
+  message text not null,
+  contact text,
+  created_at timestamptz not null default now()
+);
 
--- =====================================================================
--- 8. VIEWS — capacity usage, rankings, reliability, event P&L
--- =====================================================================
+-- ----------------------------------------------------------------------------
+-- VIEWS
+-- ----------------------------------------------------------------------------
 
--- 8.1 Current capacity usage per host (drives the tier limit check).
+-- Capacity usage: fixed club members + upcoming/active event participants only
 create or replace view public.v_host_capacity_usage as
 select
-  h.id as host_id,
-  hs.tier,
-  hs.max_capacity,
-  coalesce(cm.member_count, 0) + coalesce(ep.participant_count, 0) as current_usage
-from public.users h
-join public.host_subscriptions hs on hs.host_id = h.id
+  h.host_id,
+  h.tier,
+  h.capacity_limit,
+  coalesce(cm.member_count, 0) + coalesce(ep.participant_count, 0) as used,
+  h.capacity_limit - (coalesce(cm.member_count, 0) + coalesce(ep.participant_count, 0)) as remaining
+from public.host_subscriptions h
 left join (
-  select c.host_id, count(*) as member_count
-  from public.club_members cm
-  join public.clubs c on c.id = cm.club_id
-  where cm.status = 'active'
+  select c.host_id, count(m.id) as member_count
+  from public.clubs c
+  join public.club_members m on m.club_id = c.id and m.is_active = true
   group by c.host_id
-) cm on cm.host_id = h.id
+) cm on cm.host_id = h.host_id
 left join (
-  select e.host_id, count(*) as participant_count
-  from public.event_participants ep
-  join public.events e on e.id = ep.event_id
-  where ep.status in ('registered', 'waitlist', 'checked_in')
-    and e.status in ('draft', 'open', 'closed')     -- completed/cancelled events free their seats
-    and e.event_date >= current_date - 1            -- stale, forgotten events expire too
+  select e.host_id, count(p.id) as participant_count
+  from public.events e
+  join public.event_participants p on p.event_id = e.id
+    and p.status in ('registered','waitlisted','checked_in')
+  where e.status in ('draft','open','closed')
+    and e.event_date >= current_date - 1
   group by e.host_id
-) ep on ep.host_id = h.id;
+) ep on ep.host_id = h.host_id;
 
--- 8.2 Club ranking (all-time): wins, losses, win rate per club member.
 create or replace view public.v_club_rankings_all_time as
 select
-  mp.club_member_id,
+  cm.id as club_member_id,
   cm.club_id,
-  cm.display_name,
-  count(*) filter (where mp.team = m.winner_team) as wins,
-  count(*) filter (where mp.team <> m.winner_team) as losses,
+  cm.full_name,
+  count(*) filter (where mp.team = case when m.team1_score > m.team2_score then 1
+                                          when m.team2_score > m.team1_score then 2 else 0 end) as wins,
   count(*) as matches_played,
-  round(
-    100.0 * count(*) filter (where mp.team = m.winner_team) / nullif(count(*), 0), 1
-  ) as win_rate_pct
-from public.match_players mp
+  sum(case when mp.team = 1 then m.team1_score else m.team2_score end) as points_scored,
+  sum(case when mp.team = 1 then m.team2_score else m.team1_score end) as points_lost
+from public.club_members cm
+join public.match_players mp on mp.club_member_id = cm.id
 join public.matches m on m.id = mp.match_id
-join public.club_members cm on cm.id = mp.club_member_id
-where m.winner_team is not null
-group by mp.club_member_id, cm.club_id, cm.display_name;
+group by cm.id, cm.club_id, cm.full_name;
 
--- 8.3 Club ranking (monthly): same, scoped to current calendar month.
 create or replace view public.v_club_rankings_monthly as
 select
-  mp.club_member_id,
+  cm.id as club_member_id,
   cm.club_id,
-  cm.display_name,
+  cm.full_name,
   date_trunc('month', m.played_at) as month,
-  count(*) filter (where mp.team = m.winner_team) as wins,
-  count(*) filter (where mp.team <> m.winner_team) as losses,
+  count(*) filter (where mp.team = case when m.team1_score > m.team2_score then 1
+                                          when m.team2_score > m.team1_score then 2 else 0 end) as wins,
   count(*) as matches_played,
-  round(
-    100.0 * count(*) filter (where mp.team = m.winner_team) / nullif(count(*), 0), 1
-  ) as win_rate_pct
-from public.match_players mp
+  sum(case when mp.team = 1 then m.team1_score else m.team2_score end) as points_scored,
+  sum(case when mp.team = 1 then m.team2_score else m.team1_score end) as points_lost
+from public.club_members cm
+join public.match_players mp on mp.club_member_id = cm.id
 join public.matches m on m.id = mp.match_id
-join public.club_members cm on cm.id = mp.club_member_id
-where m.winner_team is not null
-group by mp.club_member_id, cm.club_id, cm.display_name, date_trunc('month', m.played_at);
+group by cm.id, cm.club_id, cm.full_name, date_trunc('month', m.played_at);
 
--- 8.4 Club fund balance (income - expense, ignoring voided rows).
 create or replace view public.v_club_fund_balance as
 select
   club_id,
-  sum(case when type = 'income' then amount else -amount end) as balance,
-  sum(case when type = 'income' then amount else 0 end) as total_income,
-  sum(case when type = 'expense' then amount else 0 end) as total_expense
+  sum(case when type = 'income' then amount else -amount end) as balance
 from public.transactions
-where club_id is not null and is_voided = false
+where owner_type = 'club' and is_voided = false
 group by club_id;
 
--- 8.5 Event profit/loss per event.
 create or replace view public.v_event_finance as
 select
-  e.id as event_id,
-  e.host_id,
-  e.title,
-  e.court_cost + e.ball_cost as fixed_costs,
-  coalesce(t.total_income, 0) as fees_collected,
-  coalesce(t.total_expense, 0) as other_expenses,
-  coalesce(t.total_income, 0) - coalesce(t.total_expense, 0) - (e.court_cost + e.ball_cost) as profit_loss,
-  (select count(*) from public.event_participants ep where ep.event_id = e.id and ep.status <> 'cancelled') as total_registered,
-  (select count(*) from public.event_participants ep where ep.event_id = e.id and ep.fee_paid = true) as fees_paid_count,
-  (select count(*) from public.event_participants ep where ep.event_id = e.id and ep.status in ('registered','checked_in') and ep.fee_paid = false) as fees_uncollected_count
-from public.events e
-left join (
-  select event_id,
-    sum(case when type = 'income' then amount else 0 end) as total_income,
-    sum(case when type = 'expense' then amount else 0 end) as total_expense
-  from public.transactions
-  where event_id is not null and is_voided = false
-  group by event_id
-) t on t.event_id = e.id;
+  event_id,
+  sum(case when type = 'income' then amount else 0 end) as income,
+  sum(case when type = 'expense' then amount else 0 end) as expense,
+  sum(case when type = 'income' then amount else -amount end) as net
+from public.transactions
+where owner_type = 'event' and is_voided = false
+group by event_id;
 
--- 8.5b Event summary: the event row + club name + live head-counts (schedule & lists).
-drop view if exists public.v_event_summary;
-create view public.v_event_summary as
-select
-  e.*,
-  c.name as club_name,
-  (select count(*) from public.event_participants ep
-     where ep.event_id = e.id and ep.status in ('registered', 'checked_in', 'no_show')) as main_count,
-  (select count(*) from public.event_participants ep
-     where ep.event_id = e.id and ep.status = 'waitlist') as waitlist_count,
-  (select count(*) from public.event_participants ep
-     where ep.event_id = e.id and ep.status = 'checked_in') as checked_in_count
-from public.events e
-left join public.clubs c on c.id = e.club_id;
-
--- 8.6 Player reliability score across all past events (per host's player pool),
---     matched by phone number when no user_id is present (manual entries).
 create or replace view public.v_player_reliability as
 select
-  e.host_id,
-  coalesce(ep.user_id::text, ep.phone, lower(ep.display_name)) as player_key,
-  max(ep.display_name) as display_name,
-  count(*) as events_registered,
-  count(*) filter (where ep.status = 'no_show') as no_shows,
-  count(*) filter (where ep.status = 'checked_in') as check_ins,
+  source_club_member_id as club_member_id,
+  count(*) as total_registrations,
+  count(*) filter (where status = 'no_show') as no_shows,
+  count(*) filter (where status = 'checked_in') as attended,
   round(
-    100.0 * count(*) filter (where ep.status = 'checked_in')
-      / nullif(count(*) filter (where ep.status in ('checked_in', 'no_show')), 0), 1
-  ) as reliability_pct
-from public.event_participants ep
-join public.events e on e.id = ep.event_id
-group by e.host_id, coalesce(ep.user_id::text, ep.phone, lower(ep.display_name));
+    100.0 * count(*) filter (where status = 'checked_in') /
+    nullif(count(*) filter (where status in ('checked_in','no_show')), 0)
+  , 1) as reliability_pct
+from public.event_participants
+where source_club_member_id is not null
+group by source_club_member_id;
 
--- =====================================================================
--- 9. ROW LEVEL SECURITY — a Host only ever sees/writes their own data.
--- =====================================================================
+-- ----------------------------------------------------------------------------
+-- ROW LEVEL SECURITY (Host can only see/edit their own data)
+-- ----------------------------------------------------------------------------
 alter table public.users enable row level security;
 alter table public.host_subscriptions enable row level security;
 alter table public.clubs enable row level security;
 alter table public.club_members enable row level security;
+alter table public.membership_plans enable row level security;
+alter table public.memberships enable row level security;
+alter table public.membership_sessions enable row level security;
 alter table public.events enable row level security;
 alter table public.event_participants enable row level security;
+alter table public.event_scorers enable row level security;
 alter table public.matches enable row level security;
 alter table public.match_players enable row level security;
 alter table public.transactions enable row level security;
+alter table public.feedback enable row level security;
 
-drop policy if exists "users_self" on public.users;
-create policy "users_self" on public.users
-  for select using (auth.uid() = id);
-drop policy if exists "users_self_update" on public.users;
-create policy "users_self_update" on public.users
-  for update using (auth.uid() = id);
+drop policy if exists p_users_self on public.users;
+create policy p_users_self on public.users for all
+  using (id = auth.uid()) with check (id = auth.uid());
 
-drop policy if exists "host_subscriptions_own" on public.host_subscriptions;
-create policy "host_subscriptions_own" on public.host_subscriptions
-  for all using (auth.uid() = host_id);
+drop policy if exists p_sub_self on public.host_subscriptions;
+create policy p_sub_self on public.host_subscriptions for all
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
 
-drop policy if exists "clubs_own" on public.clubs;
-create policy "clubs_own" on public.clubs
-  for all using (auth.uid() = host_id);
+drop policy if exists p_clubs_owner on public.clubs;
+create policy p_clubs_owner on public.clubs for all
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
 
-drop policy if exists "club_members_via_club" on public.club_members;
-create policy "club_members_via_club" on public.club_members
-  for all using (
-    exists (select 1 from public.clubs c where c.id = club_members.club_id and c.host_id = auth.uid())
-  );
+drop policy if exists p_members_owner on public.club_members;
+create policy p_members_owner on public.club_members for all
+  using (exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()))
+  with check (exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()));
 
-drop policy if exists "events_own" on public.events;
-create policy "events_own" on public.events
-  for all using (auth.uid() = host_id);
+drop policy if exists p_plans_owner on public.membership_plans;
+create policy p_plans_owner on public.membership_plans for all
+  using (exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()))
+  with check (exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()));
 
-drop policy if exists "event_participants_via_event" on public.event_participants;
-create policy "event_participants_via_event" on public.event_participants
-  for all using (
-    exists (select 1 from public.events e where e.id = event_participants.event_id and e.host_id = auth.uid())
-  );
+drop policy if exists p_memberships_owner on public.memberships;
+create policy p_memberships_owner on public.memberships for all
+  using (exists (
+    select 1 from public.club_members cm join public.clubs c on c.id = cm.club_id
+    where cm.id = club_member_id and c.host_id = auth.uid()))
+  with check (exists (
+    select 1 from public.club_members cm join public.clubs c on c.id = cm.club_id
+    where cm.id = club_member_id and c.host_id = auth.uid()));
 
-drop policy if exists "matches_via_owner" on public.matches;
-create policy "matches_via_owner" on public.matches
-  for all using (
-    (club_id is not null and exists (select 1 from public.clubs c where c.id = matches.club_id and c.host_id = auth.uid()))
+drop policy if exists p_msessions_owner on public.membership_sessions;
+create policy p_msessions_owner on public.membership_sessions for all
+  using (exists (
+    select 1 from public.memberships m
+    join public.club_members cm on cm.id = m.club_member_id
+    join public.clubs c on c.id = cm.club_id
+    where m.id = membership_id and c.host_id = auth.uid()))
+  with check (exists (
+    select 1 from public.memberships m
+    join public.club_members cm on cm.id = m.club_member_id
+    join public.clubs c on c.id = cm.club_id
+    where m.id = membership_id and c.host_id = auth.uid()));
+
+drop policy if exists p_events_owner on public.events;
+create policy p_events_owner on public.events for all
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
+
+drop policy if exists p_participants_owner on public.event_participants;
+create policy p_participants_owner on public.event_participants for all
+  using (exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()))
+  with check (exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()));
+
+drop policy if exists p_scorers_owner on public.event_scorers;
+create policy p_scorers_owner on public.event_scorers for all
+  using (exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()))
+  with check (exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()));
+
+drop policy if exists p_matches_owner on public.matches;
+create policy p_matches_owner on public.matches for all
+  using (
+    (club_id is not null and exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()))
     or
-    (event_id is not null and exists (select 1 from public.events e where e.id = matches.event_id and e.host_id = auth.uid()))
-  );
-
-drop policy if exists "match_players_via_match" on public.match_players;
-create policy "match_players_via_match" on public.match_players
-  for all using (
-    exists (
-      select 1 from public.matches m
-      where m.id = match_players.match_id
-      and (
-        (m.club_id is not null and exists (select 1 from public.clubs c where c.id = m.club_id and c.host_id = auth.uid()))
-        or
-        (m.event_id is not null and exists (select 1 from public.events e where e.id = m.event_id and e.host_id = auth.uid()))
-      )
-    )
-  );
-
-drop policy if exists "transactions_via_owner" on public.transactions;
-create policy "transactions_via_owner" on public.transactions
-  for all using (
-    (club_id is not null and exists (select 1 from public.clubs c where c.id = transactions.club_id and c.host_id = auth.uid()))
+    (event_id is not null and exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()))
+  )
+  with check (
+    (club_id is not null and exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()))
     or
-    (event_id is not null and exists (select 1 from public.events e where e.id = transactions.event_id and e.host_id = auth.uid()))
+    (event_id is not null and exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()))
   );
 
--- =====================================================================
--- 10. NEW-USER BOOTSTRAP — auto-create a users row + Free subscription
---     the moment someone signs up via Supabase Auth.
--- =====================================================================
-create or replace function public.fn_handle_new_auth_user()
-returns trigger language plpgsql security definer as $$
-begin
-  insert into public.users (id, email, full_name)
-  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)));
+drop policy if exists p_match_players_owner on public.match_players;
+create policy p_match_players_owner on public.match_players for all
+  using (exists (
+    select 1 from public.matches m where m.id = match_id and (
+      (m.club_id is not null and exists (select 1 from public.clubs c where c.id = m.club_id and c.host_id = auth.uid()))
+      or
+      (m.event_id is not null and exists (select 1 from public.events e where e.id = m.event_id and e.host_id = auth.uid()))
+    )))
+  with check (exists (
+    select 1 from public.matches m where m.id = match_id and (
+      (m.club_id is not null and exists (select 1 from public.clubs c where c.id = m.club_id and c.host_id = auth.uid()))
+      or
+      (m.event_id is not null and exists (select 1 from public.events e where e.id = m.event_id and e.host_id = auth.uid()))
+    )));
 
-  insert into public.host_subscriptions (host_id, tier)
-  values (new.id, 'free');
+drop policy if exists p_txn_owner on public.transactions;
+create policy p_txn_owner on public.transactions for all
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
 
-  return new;
-end $$;
+drop policy if exists p_feedback_owner on public.feedback;
+create policy p_feedback_owner on public.feedback for all
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
 
-drop trigger if exists trg_on_auth_user_created on auth.users;
-create trigger trg_on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.fn_handle_new_auth_user();
-
-
--- =====================================================================
--- 11. BACKFILL — accounts that signed up BEFORE this script was run
---     (the signup trigger only fires for new users). Safe to re-run.
--- =====================================================================
-insert into public.users (id, email, full_name)
-select au.id, au.email, coalesce(au.raw_user_meta_data->>'full_name', split_part(au.email, '@', 1))
-from auth.users au
-on conflict (id) do nothing;
-
-insert into public.host_subscriptions (host_id, tier)
-select u.id, 'free' from public.users u
-on conflict (host_id) do nothing;
-
--- Ask the API layer to pick up the new tables immediately.
+-- ----------------------------------------------------------------------------
+select 1; -- done
 notify pgrst, 'reload schema';
-
--- =====================================================================
--- END OF SCHEMA
--- =====================================================================

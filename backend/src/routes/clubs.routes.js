@@ -1,171 +1,288 @@
 const express = require('express');
-const { supabaseAdmin } = require('../config/supabase');
-const { requireAuth } = require('../middleware/auth');
-const { checkCapacity, getUsage, limitBody } = require('../middleware/checkCapacity');
+const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
+const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 
 const router = express.Router();
-router.use(requireAuth);
+const TIERS = ['vip', 'standard'];
 
-// Every route with :clubId first proves the club belongs to the caller.
-// This closes the hole where knowing another host's club UUID was enough.
+// ---- ownership guard for :clubId ------------------------------------------
 router.param('clubId', async (req, res, next, clubId) => {
-  if (!isUuid(clubId)) return res.status(400).json({ error: 'Invalid club id.' });
-  const { data, error } = await supabaseAdmin
-    .from('clubs').select('*').eq('id', clubId).eq('host_id', req.user.id).maybeSingle();
+  if (!isUuid(clubId)) return notFound(res, 'Club');
+  const { data, error } = await supabase
+    .from('clubs')
+    .select('*')
+    .eq('id', clubId)
+    .eq('host_id', req.hostId)
+    .maybeSingle();
   if (error) return dbError(res, error);
   if (!data) return notFound(res, 'Club');
   req.club = data;
   next();
 });
 
-const MEMBER_TYPES = ['fixed', 'guest'];
-const MEMBER_STATUSES = ['active', 'inactive', 'removed'];
-
-function validDupr(v) {
-  if (v === null || v === undefined || v === '') return true;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0 && n <= 9.99;
-}
-
-// ---- Clubs ---------------------------------------------------------------
-
-// List the host's clubs with live counts: active members and upcoming events.
-// The app passes its own local date as ?today=YYYY-MM-DD so "upcoming" respects the host's timezone.
-router.get('/', async (req, res) => {
-  const { data: clubs, error } = await supabaseAdmin
-    .from('clubs').select('*').eq('host_id', req.user.id).order('created_at', { ascending: false });
+// ---- ownership guard for :memberId (must belong to req.club) --------------
+router.param('memberId', async (req, res, next, memberId) => {
+  if (!isUuid(memberId)) return notFound(res, 'Member');
+  const { data, error } = await supabase
+    .from('club_members')
+    .select('*')
+    .eq('id', memberId)
+    .eq('club_id', req.club.id)
+    .maybeSingle();
   if (error) return dbError(res, error);
-  if (!clubs.length) return res.json({ clubs: [] });
+  if (!data) return notFound(res, 'Member');
+  req.member = data;
+  next();
+});
 
-  const today = /^\d{4}-\d{2}-\d{2}$/.test(req.query.today || '') ? req.query.today : new Date().toISOString().slice(0, 10);
-  const ids = clubs.map((c) => c.id);
-
-  const [members, events] = await Promise.all([
-    supabaseAdmin.from('club_members').select('club_id').in('club_id', ids).eq('status', 'active'),
-    supabaseAdmin.from('events').select('club_id').in('club_id', ids).gte('event_date', today).in('status', ['draft', 'open', 'closed']),
-  ]);
-  if (members.error) return dbError(res, members.error);
-  if (events.error) return dbError(res, events.error);
-
-  const tally = (rows) => rows.reduce((acc, r) => { acc[r.club_id] = (acc[r.club_id] || 0) + 1; return acc; }, {});
-  const memberCounts = tally(members.data);
-  const eventCounts = tally(events.data);
-
-  res.json({
-    clubs: clubs.map((c) => ({ ...c, member_count: memberCounts[c.id] || 0, upcoming_events: eventCounts[c.id] || 0 })),
-  });
+// ---- Clubs CRUD -------------------------------------------------------------
+router.get('/', async (req, res) => {
+  const { data, error } = await supabase
+    .from('clubs')
+    .select('*')
+    .eq('host_id', req.hostId)
+    .order('created_at', { ascending: false });
+  if (error) return dbError(res, error);
+  res.json(data);
 });
 
 router.post('/', async (req, res) => {
-  const name = (req.body.name || '').trim();
+  const { name, description } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required.' });
-  const fee = req.body.monthly_fee_default === undefined ? 0 : Number(req.body.monthly_fee_default);
-  if (!Number.isFinite(fee) || fee < 0) return res.status(400).json({ error: 'monthly_fee_default must be 0 or more.' });
-
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('clubs')
-    .insert({ host_id: req.user.id, name, description: req.body.description || null, monthly_fee_default: fee })
-    .select().single();
+    .insert({ host_id: req.hostId, name, description: description || null })
+    .select()
+    .single();
   if (error) return dbError(res, error);
-  res.status(201).json({ club: data });
+  res.status(201).json(data);
 });
 
-router.get('/:clubId', (req, res) => res.json({ club: req.club }));
+router.get('/:clubId', (req, res) => res.json(req.club));
 
 router.patch('/:clubId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'description', 'monthly_fee_default', 'is_active']);
-  if (fields.name !== undefined && !String(fields.name).trim()) return res.status(400).json({ error: 'name cannot be empty.' });
-  const { data, error } = await supabaseAdmin
-    .from('clubs').update({ ...fields, updated_at: new Date().toISOString() })
-    .eq('id', req.club.id).select().single();
+  const fields = pick(req.body, ['name', 'description']);
+  const { data, error } = await supabase
+    .from('clubs')
+    .update(fields)
+    .eq('id', req.club.id)
+    .select()
+    .single();
   if (error) return dbError(res, error);
-  res.json({ club: data });
+  res.json(data);
 });
 
-// ---- Members ---------------------------------------------------------------
+router.delete('/:clubId', async (req, res) => {
+  const { error } = await supabase.from('clubs').delete().eq('id', req.club.id);
+  if (error) return dbError(res, error);
+  res.status(204).end();
+});
 
+// ---- Members CRUD -------------------------------------------------------------
 router.get('/:clubId/members', async (req, res) => {
-  const { data, error } = await supabaseAdmin
-    .from('club_members').select('*').eq('club_id', req.club.id).order('display_name', { ascending: true });
+  const { data, error } = await supabase
+    .from('club_members')
+    .select('*')
+    .eq('club_id', req.club.id)
+    .order('full_name', { ascending: true });
   if (error) return dbError(res, error);
-  res.json({ members: data });
+  res.json(data);
 });
 
-router.post('/:clubId/members', checkCapacity, async (req, res) => {
-  const display_name = (req.body.display_name || '').trim();
-  if (!display_name) return res.status(400).json({ error: 'display_name is required.' });
-  if (!validDupr(req.body.dupr_level)) return res.status(400).json({ error: 'dupr_level must be between 0 and 9.99.' });
-  const member_type = req.body.member_type || 'fixed';
-  if (!MEMBER_TYPES.includes(member_type)) return res.status(400).json({ error: 'member_type must be fixed or guest.' });
+router.post('/:clubId/members', checkCapacity(), async (req, res) => {
+  const { full_name, phone, dupr_level, member_type } = req.body;
+  if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
 
-  const { data, error } = await supabaseAdmin
+  let tier = req.body.tier || null;
+  if (tier && !TIERS.includes(tier)) {
+    return res.status(400).json({ error: 'tier must be vip or standard.' });
+  }
+  const nextType = member_type === 'guest' ? 'guest' : 'fixed';
+  if (tier && nextType !== 'fixed') tier = null; // guests are never tiered
+
+  const { data, error } = await supabase
     .from('club_members')
     .insert({
       club_id: req.club.id,
-      display_name,
-      phone: req.body.phone || null,
-      dupr_level: req.body.dupr_level === '' ? null : req.body.dupr_level ?? null,
-      member_type,
+      full_name,
+      phone: phone || null,
+      dupr_level: dupr_level ?? null,
+      member_type: nextType,
+      tier,
+      notes: req.body.notes || null,
     })
-    .select().single();
+    .select()
+    .single();
   if (error) return dbError(res, error);
-  res.status(201).json({ member: data, capacity: req.capacity });
+  res.status(201).json(data);
+});
+
+// Bulk import (used by "Import from Club" on the event side, or CSV-style add)
+router.post('/:clubId/members/bulk', async (req, res) => {
+  const rows = Array.isArray(req.body.members) ? req.body.members : [];
+  if (!rows.length) return res.status(400).json({ error: 'members[] is required.' });
+
+  const { willExceed, allowed, usage } = await limitBody(req.hostId, rows.length);
+  if (willExceed) {
+    return res.status(403).json({
+      error: `Only ${allowed} more people fit on the ${usage.tier} plan (${usage.used}/${usage.capacity_limit} used).`,
+      usage,
+    });
+  }
+
+  const payload = rows.map((r) => ({
+    club_id: req.club.id,
+    full_name: r.full_name,
+    phone: r.phone || null,
+    dupr_level: r.dupr_level ?? null,
+    member_type: r.member_type === 'guest' ? 'guest' : 'fixed',
+    tier: TIERS.includes(r.tier) ? r.tier : null,
+    notes: r.notes || null,
+  }));
+  const { data, error } = await supabase.from('club_members').insert(payload).select();
+  if (error) return dbError(res, error);
+  res.status(201).json(data);
 });
 
 router.patch('/:clubId/members/:memberId', async (req, res) => {
-  if (!isUuid(req.params.memberId)) return res.status(400).json({ error: 'Invalid member id.' });
+  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes']);
 
-  const { data: existing, error: findErr } = await supabaseAdmin
-    .from('club_members').select('*').eq('id', req.params.memberId).eq('club_id', req.club.id).maybeSingle();
-  if (findErr) return dbError(res, findErr);
-  if (!existing) return notFound(res, 'Member');
-
-  const fields = pick(req.body, ['display_name', 'phone', 'dupr_level', 'member_type', 'status']);
-  if (fields.display_name !== undefined && !String(fields.display_name).trim()) return res.status(400).json({ error: 'display_name cannot be empty.' });
-  if (!validDupr(fields.dupr_level)) return res.status(400).json({ error: 'dupr_level must be between 0 and 9.99.' });
-  if (fields.member_type !== undefined && !MEMBER_TYPES.includes(fields.member_type)) return res.status(400).json({ error: 'member_type must be fixed or guest.' });
-  if (fields.status !== undefined && !MEMBER_STATUSES.includes(fields.status)) return res.status(400).json({ error: 'Invalid status.' });
-
-  if (fields.status !== undefined) {
-    // Bringing someone back to 'active' takes a seat, so it is capacity-checked too.
-    if (fields.status === 'active' && existing.status !== 'active') {
-      const usage = await getUsage(req.user.id);
-      if (usage.current_usage >= usage.max_capacity) return res.status(403).json(limitBody(usage));
-    }
-    fields.removed_at = fields.status === 'removed' ? new Date().toISOString() : null;
+  if (fields.tier && !TIERS.includes(fields.tier)) {
+    return res.status(400).json({ error: 'tier must be vip or standard.' });
   }
+  const effectiveType = fields.member_type || req.member.member_type;
+  if (fields.tier && effectiveType !== 'fixed') {
+    return res.status(400).json({ error: 'tier can only be set on fixed members.' });
+  }
+  if (fields.member_type === 'guest') fields.tier = null; // clear tier if downgraded to guest
 
-  const { data, error } = await supabaseAdmin
-    .from('club_members').update({ ...fields, updated_at: new Date().toISOString() })
-    .eq('id', existing.id).select().single();
+  const { data, error } = await supabase
+    .from('club_members')
+    .update(fields)
+    .eq('id', req.member.id)
+    .select()
+    .single();
   if (error) return dbError(res, error);
-  res.json({ member: data });
+  res.json(data);
 });
 
-// ---- Rankings & fund -------------------------------------------------------
-
-router.get('/:clubId/rankings/all-time', async (req, res) => {
-  const { data, error } = await supabaseAdmin
-    .from('v_club_rankings_all_time').select('*').eq('club_id', req.club.id)
-    .order('wins', { ascending: false }).order('win_rate_pct', { ascending: false });
+router.delete('/:clubId/members/:memberId', async (req, res) => {
+  const { error } = await supabase.from('club_members').delete().eq('id', req.member.id);
   if (error) return dbError(res, error);
-  res.json({ rankings: data });
+  res.status(204).end();
 });
 
-router.get('/:clubId/rankings/monthly', async (req, res) => {
-  const { data, error } = await supabaseAdmin
-    .from('v_club_rankings_monthly').select('*').eq('club_id', req.club.id)
-    .order('month', { ascending: false }).order('wins', { ascending: false });
+// ---- Membership plans / registrations -----------------------------------
+router.get('/:clubId/plans', async (req, res) => {
+  const { data, error } = await supabase
+    .from('membership_plans')
+    .select('*')
+    .eq('club_id', req.club.id)
+    .order('created_at', { ascending: true });
   if (error) return dbError(res, error);
-  res.json({ rankings: data });
+  res.json(data);
 });
 
-router.get('/:clubId/fund-balance', async (req, res) => {
-  const { data, error } = await supabaseAdmin
-    .from('v_club_fund_balance').select('*').eq('club_id', req.club.id).maybeSingle();
+router.post('/:clubId/plans', async (req, res) => {
+  const { name, period, price, sessions_included } = req.body;
+  if (!name || !period || price == null) {
+    return res.status(400).json({ error: 'name, period, and price are required.' });
+  }
+  if (!['month', 'quarter', 'year'].includes(period)) {
+    return res.status(400).json({ error: 'period must be month, quarter, or year.' });
+  }
+  const { data, error } = await supabase
+    .from('membership_plans')
+    .insert({ club_id: req.club.id, name, period, price, sessions_included: sessions_included || 0 })
+    .select()
+    .single();
   if (error) return dbError(res, error);
-  res.json({ balance: data || { club_id: req.club.id, balance: 0, total_income: 0, total_expense: 0 } });
+  res.status(201).json(data);
+});
+
+router.post('/:clubId/members/:memberId/memberships', async (req, res) => {
+  const { plan_id, period_label, starts_on, ends_on, amount, status } = req.body;
+  if (!plan_id || !period_label || !starts_on || !ends_on || amount == null) {
+    return res.status(400).json({ error: 'plan_id, period_label, starts_on, ends_on, amount are required.' });
+  }
+  const { data, error } = await supabase
+    .from('memberships')
+    .insert({
+      club_member_id: req.member.id,
+      plan_id,
+      period_label,
+      starts_on,
+      ends_on,
+      amount,
+      status: status && ['pending', 'paid', 'overdue'].includes(status) ? status : 'pending',
+    })
+    .select()
+    .single();
+  if (error) return dbError(res, error);
+  res.status(201).json(data);
+});
+
+router.get('/:clubId/members/:memberId/memberships', async (req, res) => {
+  const { data, error } = await supabase
+    .from('v_membership_status')
+    .select('*')
+    .eq('club_member_id', req.member.id)
+    .order('starts_on', { ascending: false });
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
+router.patch('/:clubId/memberships/:membershipId', async (req, res) => {
+  if (!isUuid(req.params.membershipId)) return notFound(res, 'Membership');
+  const fields = pick(req.body, ['status', 'period_label', 'starts_on', 'ends_on', 'amount']);
+  const { data, error } = await supabase
+    .from('memberships')
+    .update(fields)
+    .eq('id', req.params.membershipId)
+    .select()
+    .single();
+  if (error) return dbError(res, error);
+  if (!data) return notFound(res, 'Membership');
+  res.json(data);
+});
+
+// ---- Rankings / fund ------------------------------------------------------
+router.get('/:clubId/rankings', async (req, res) => {
+  const view = req.query.period === 'monthly' ? 'v_club_rankings_monthly' : 'v_club_rankings_all_time';
+  const { data, error } = await supabase.from(view).select('*').eq('club_id', req.club.id);
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
+router.get('/:clubId/fund', async (req, res) => {
+  const { data: balanceRow, error: balErr } = await supabase
+    .from('v_club_fund_balance')
+    .select('*')
+    .eq('club_id', req.club.id)
+    .maybeSingle();
+  if (balErr) return dbError(res, balErr);
+
+  const { data: txns, error: txnErr } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('owner_type', 'club')
+    .eq('club_id', req.club.id)
+    .order('occurred_on', { ascending: false });
+  if (txnErr) return dbError(res, txnErr);
+
+  res.json({ balance: balanceRow?.balance || 0, transactions: txns });
+});
+
+// ---- Club events (schedule list scoped to a club) -------------------------
+router.get('/:clubId/events', async (req, res) => {
+  const { data, error } = await supabase
+    .from('v_event_summary')
+    .select('*')
+    .eq('club_id', req.club.id)
+    .order('event_date', { ascending: true });
+  if (error) return dbError(res, error);
+  res.json(data);
 });
 
 module.exports = router;
