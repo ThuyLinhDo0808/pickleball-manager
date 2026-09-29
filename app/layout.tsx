@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'Pickleball Manager',
+  description: 'Nền tảng quản lý câu lạc bộ, lịch chơi, thành viên và giải đấu pickleball.',
   generator: 'v0.app',
   icons: {
     icon: [
