@@ -20,9 +20,11 @@ export default function EventDetailPage() {
     [eventId]
   );
   const { data: finance, reload: reloadFinance } = useLoad(() => api.get(`/api/events/${eventId}/finance`), [eventId]);
+  // Import from the club the event belongs to, falling back to the selected club.
+  const importClubId = event?.club_id || club?.id;
   const { data: clubMembers } = useLoad(
-    () => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])),
-    [club?.id]
+    () => (importClubId ? api.get(`/api/clubs/${importClubId}/members`) : Promise.resolve([])),
+    [importClubId]
   );
 
   const [form, setForm] = useState({ full_name: '', phone: '' });
@@ -86,12 +88,12 @@ export default function EventDetailPage() {
 
   return (
     <AppShell>
-      <div className="flex justify-between items-start mb-4">
-        <div>
+      <div className="flex justify-between items-start gap-3 mb-4">
+        <div className="min-w-0">
           <h1 className="text-white text-2xl font-bold">{event.title}</h1>
           <p className="text-gray-400 text-sm">{event.event_date} {event.start_time || ''} · {event.location || '—'}</p>
         </div>
-        <button className="btn-secondary" onClick={onExport}>{t('common.exportExcel')}</button>
+        <button className="btn-secondary shrink-0 text-sm" onClick={onExport}>{t('common.exportExcel')}</button>
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -108,8 +110,8 @@ export default function EventDetailPage() {
 
       {tab === 'participants' && (
         <>
-          <div className="flex gap-3 mb-4">
-            <form onSubmit={addParticipant} className="card flex-1 flex gap-2 items-end">
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <form onSubmit={addParticipant} className="card flex-1 flex flex-col sm:flex-row gap-2 sm:items-end">
               <div className="flex-1">
                 <label className="text-xs text-gray-400">{t('common.name')}</label>
                 <input className="input" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
@@ -151,7 +153,7 @@ export default function EventDetailPage() {
 
       {tab === 'finance' && (
         <>
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-4">
             <div className="card"><span className="text-gray-400 text-xs">{t('finance.income')}</span><div className="text-lime-400 text-xl font-bold">{(finance?.income || 0).toLocaleString('vi-VN')} ₫</div></div>
             <div className="card"><span className="text-gray-400 text-xs">{t('finance.expense')}</span><div className="text-red-400 text-xl font-bold">{(finance?.expense || 0).toLocaleString('vi-VN')} ₫</div></div>
             <div className="card"><span className="text-gray-400 text-xs">{t('finance.net')}</span><div className="text-white text-xl font-bold">{(finance?.net || 0).toLocaleString('vi-VN')} ₫</div></div>
@@ -169,7 +171,8 @@ export default function EventDetailPage() {
           </form>
 
           <div className="card">
-            <table className="w-full text-sm">
+            <div className="table-wrap">
+              <table className="w-full text-sm">
               <thead>
                 <tr className="text-gray-400 text-left border-b border-navy-700">
                   <th className="py-2">Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th>
@@ -186,7 +189,8 @@ export default function EventDetailPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         </>
       )}
@@ -199,7 +203,8 @@ function ParticipantTable({ title, rows, t, onAction, onFee }) {
     <div className="card mb-4">
       <h3 className="text-white font-semibold mb-2">{title} ({rows.length})</h3>
       {rows.length === 0 && <p className="text-gray-400 text-sm">—</p>}
-      <table className="w-full text-sm">
+      <div className="table-wrap">
+        <table className="w-full text-sm">
         <tbody>
           {rows.map((p) => (
             <tr key={p.id} className="border-b border-navy-800">
@@ -220,7 +225,8 @@ function ParticipantTable({ title, rows, t, onAction, onFee }) {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

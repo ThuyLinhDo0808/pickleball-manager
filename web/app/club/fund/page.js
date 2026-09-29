@@ -42,7 +42,7 @@ export default function FundPage() {
 
       <div className="card mb-6">
         <span className="text-gray-400 text-sm">{t('finance.balance')}</span>
-        <div className="text-lime-400 text-3xl font-bold">{(data?.balance || 0).toLocaleString('vi-VN')} ₫</div>
+        <div className="text-lime-400 text-2xl md:text-3xl font-bold break-words">{(data?.balance || 0).toLocaleString('vi-VN')} ₫</div>
       </div>
 
       <form onSubmit={addTxn} className="card mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -58,7 +58,8 @@ export default function FundPage() {
 
       <div className="card">
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
-        <table className="w-full text-sm">
+        <div className="table-wrap">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-left border-b border-navy-700">
               <th className="py-2">Date</th>
@@ -79,7 +80,8 @@ export default function FundPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </AppShell>
   );
