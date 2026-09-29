@@ -67,3 +67,13 @@ body {
     font-size: 16px;
   }
 }
+
+/* Spreadsheet-style table: horizontal + vertical cell borders. */
+.grid-table {
+  @apply border-collapse border border-navy-600;
+}
+
+.grid-table th,
+.grid-table td {
+  @apply border border-navy-600 px-3 py-2;
+}

@@ -141,6 +141,18 @@ create table if not exists public.club_members (
 
 alter table public.club_members add column if not exists tier member_tier;
 alter table public.club_members add column if not exists notes text;
+alter table public.club_members add column if not exists gender text;
+alter table public.club_members add column if not exists birth_year int;
+
+do $$ begin
+  alter table public.club_members
+    add constraint chk_member_gender check (gender is null or gender in ('male','female'));
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table public.club_members
+    add constraint chk_member_birth_year check (birth_year is null or birth_year between 1900 and 2100);
+exception when duplicate_object then null; end $$;
 
 do $$ begin
   alter table public.club_members

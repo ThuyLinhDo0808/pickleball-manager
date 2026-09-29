@@ -57,9 +57,9 @@ export function exportEventFinance(event, participants, transactions) {
 export function exportClubBackup(club, members, events, rankings) {
   const wb = XLSX.utils.book_new();
 
-  const mRows = [['Full name', 'Phone', 'Level', 'Type', 'Tier', 'Active', 'Notes']];
-  members.forEach((m) =>
-    mRows.push([m.full_name, m.phone || '', m.dupr_level ?? '', m.member_type, m.tier || '', m.is_active ? 'Yes' : 'No', m.notes || ''])
+  const mRows = [['#', 'Full name', 'Gender', 'Birth year', 'Level', 'Type', 'Tier', 'Phone', 'Active']];
+  members.forEach((m, i) =>
+    mRows.push([i + 1, m.full_name, m.gender || '', m.birth_year ?? '', m.dupr_level ?? '', m.member_type, m.tier || '', m.phone || '', m.is_active ? 'Yes' : 'No'])
   );
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mRows), 'Members');
 

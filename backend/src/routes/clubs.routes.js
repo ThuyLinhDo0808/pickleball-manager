@@ -5,6 +5,16 @@ const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 
 const router = express.Router();
 const TIERS = ['vip', 'standard'];
+const GENDERS = ['male', 'female'];
+
+function cleanGender(v) {
+  return GENDERS.includes(v) ? v : null;
+}
+
+function cleanBirthYear(v) {
+  const n = Number(v);
+  return v !== '' && v != null && Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null;
+}
 
 // ---- ownership guard for :clubId ------------------------------------------
 router.param('clubId', async (req, res, next, clubId) => {
@@ -110,6 +120,8 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
       dupr_level: dupr_level ?? null,
       member_type: nextType,
       tier,
+      gender: cleanGender(req.body.gender),
+      birth_year: cleanBirthYear(req.body.birth_year),
       notes: req.body.notes || null,
     })
     .select()
@@ -138,6 +150,8 @@ router.post('/:clubId/members/bulk', async (req, res) => {
     dupr_level: r.dupr_level ?? null,
     member_type: r.member_type === 'guest' ? 'guest' : 'fixed',
     tier: TIERS.includes(r.tier) ? r.tier : null,
+    gender: cleanGender(r.gender),
+    birth_year: cleanBirthYear(r.birth_year),
     notes: r.notes || null,
   }));
   const { data, error } = await supabase.from('club_members').insert(payload).select();
@@ -146,7 +160,9 @@ router.post('/:clubId/members/bulk', async (req, res) => {
 });
 
 router.patch('/:clubId/members/:memberId', async (req, res) => {
-  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes']);
+  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year']);
+  if ('gender' in fields) fields.gender = cleanGender(fields.gender);
+  if ('birth_year' in fields) fields.birth_year = cleanBirthYear(fields.birth_year);
 
   if (fields.tier && !TIERS.includes(fields.tier)) {
     return res.status(400).json({ error: 'tier must be vip or standard.' });
