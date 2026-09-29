@@ -21,7 +21,8 @@ export default function RankingsPage() {
       <div className="card">
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
         {!loading && sorted.length === 0 && <p className="text-gray-400 text-sm">—</p>}
-        <table className="w-full text-sm">
+        <div className="table-wrap">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-left border-b border-navy-700">
               <th className="py-2">#</th>
@@ -46,7 +47,8 @@ export default function RankingsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </AppShell>
   );

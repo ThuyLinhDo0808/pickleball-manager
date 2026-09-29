@@ -12,7 +12,10 @@ const emptyForm = { title: '', event_date: '', start_time: '', location: '', cou
 export default function EventsPage() {
   const { t } = useI18n();
   const { club } = useDefaultClub();
-  const { data: events, loading, reload } = useLoad(() => api.get('/api/events'), []);
+  const { data: events, loading, reload } = useLoad(
+    () => (club ? api.get(`/api/clubs/${club.id}/events`) : Promise.resolve([])),
+    [club?.id]
+  );
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -80,7 +83,7 @@ export default function EventsPage() {
           <input className="input" type="datetime-local" value={form.registration_deadline} onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })} />
         </div>
         <div className="md:col-span-3 flex items-center gap-3">
-          <button className="btn-primary" disabled={busy}>{t('events.addEvent')}</button>
+          <button className="btn-primary w-full md:w-auto" disabled={busy || !club}>{t('events.addEvent')}</button>
           {error && <span className="text-red-400 text-sm">{error}</span>}
         </div>
       </form>
@@ -90,7 +93,7 @@ export default function EventsPage() {
         {!loading && sorted.length === 0 && <p className="text-gray-400 text-sm">—</p>}
         {sorted.map((e) => (
           <Link key={e.id} href={`/events/${e.id}`} className="card hover:border-lime-400 transition">
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-white font-semibold">{e.title}</span>
               <span className="text-gray-400 text-xs uppercase">{e.status}</span>
             </div>

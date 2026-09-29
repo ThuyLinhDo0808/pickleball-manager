@@ -82,8 +82,8 @@ export default function MembersPage() {
           <label className="text-xs text-gray-400">{t('common.notes')}</label>
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
-        <div className="md:col-span-3 flex items-center gap-3">
-          <button className="btn-primary" disabled={busy || !club}>{t('members.addMember')}</button>
+        <div className="md:col-span-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <button className="btn-primary w-full sm:w-auto" disabled={busy || !club}>{t('members.addMember')}</button>
           {error && <span className="text-red-400 text-sm">{error}</span>}
         </div>
       </form>
@@ -91,7 +91,8 @@ export default function MembersPage() {
       <div className="card">
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
         {!loading && (members || []).length === 0 && <p className="text-gray-400 text-sm">—</p>}
-        <table className="w-full text-sm">
+        <div className="table-wrap">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-left border-b border-navy-700">
               <th className="py-2">{t('common.name')}</th>
@@ -120,7 +121,8 @@ export default function MembersPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </AppShell>
   );

@@ -22,3 +22,48 @@ body {
 .input {
   @apply bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-white w-full outline-none focus:border-lime-400;
 }
+
+/* ---- Mobile helpers ------------------------------------------------------ */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pb-safe-4 {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* Leaves room for the fixed bottom tab bar on phones. */
+.pb-tabbar {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .pb-tabbar {
+    padding-bottom: 1.5rem;
+  }
+}
+
+/* Wide tables scroll sideways inside their card instead of stretching the page. */
+.table-wrap {
+  @apply -mx-4 px-4 overflow-x-auto;
+}
+
+.table-wrap table {
+  min-width: 36rem;
+}
+
+.table-wrap th,
+.table-wrap td {
+  @apply pr-3 whitespace-nowrap;
+}
+
+/* iOS zooms into inputs smaller than 16px; keep them at 16px on phones. */
+@media (max-width: 767px) {
+  .input {
+    font-size: 16px;
+  }
+}

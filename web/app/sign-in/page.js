@@ -34,7 +34,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-950">
+    <div className="min-h-screen flex items-center justify-center bg-navy-950 px-4">
       <form onSubmit={onSubmit} className="card w-full max-w-sm">
         <h1 className="text-lime-400 font-bold text-xl mb-1">{t('appName')}</h1>
         <p className="text-gray-400 text-sm mb-4">{mode === 'signIn' ? t('auth.signIn') : t('auth.signUp')}</p>
