@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
-import { useWorkspace, WORKSPACES, WORKSPACE_HOME } from '@/context/WorkspaceContext';
+import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 
 const ICONS = {
@@ -23,6 +23,8 @@ const ICONS = {
   plans: 'M4 5h16v14H4zM4 9h16M8 13h4',
   matches: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 9h.01M12 7h.01M16 9h.01M9 13h.01M15 13h.01M12 16h.01',
   ticket: 'M4 7h16v3a2 2 0 000 4v3H4v-3a2 2 0 000-4zM12 7v10',
+  whistle: 'M3 11a5 5 0 1010 0 5 5 0 00-10 0zM8 6V4h13v4l-8 3',
+  key: 'M15 7a4 4 0 11-3.9 5H3v3h3v-2h2v2h3',
 };
 
 // Each workspace has its own menu. `tab: true` items go in the phone's bottom bar;
@@ -37,18 +39,25 @@ const NAV_BY_WORKSPACE = {
     { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
     { href: '/club/plans', key: 'nav.plans', icon: 'plans' },
     { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
+    { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
     { href: '/account', key: 'nav.account', icon: 'account' },
   ],
   xeve: [
     { href: '/events', key: 'nav.kevents', icon: 'ticket', tab: true },
+    { href: '/staff-access', key: 'nav.staffAccess', icon: 'key', tab: true },
     { href: '/account', key: 'nav.account', icon: 'account', tab: true },
   ],
+  // Referees / coordinators: only their assigned events. No finance, no members.
+  staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle', tab: true }],
 };
+
+const WORKSPACE_ICON = { club: 'clubs', xeve: 'ticket', staff: 'whistle' };
+const WORKSPACE_ABBR = { club: 'CLB', xeve: 'XV', staff: 'TT' };
 
 const COLLAPSE_KEY = 'pickleball_nav_collapsed';
 
 // Pages that work without a club; everything else prompts to create one first.
-const NO_CLUB_OK = ['/clubs', '/account'];
+const NO_CLUB_OK = ['/clubs', '/account', '/staff-access'];
 
 function Icon({ name, className = 'w-5 h-5' }) {
   return (
@@ -80,7 +89,7 @@ function ClubSwitcher({ className = '' }) {
 
 function WorkspaceSwitch({ compact = false }) {
   const { t } = useI18n();
-  const { workspace, setWorkspace } = useWorkspace();
+  const { workspace, setWorkspace, workspaces } = useWorkspace();
   const router = useRouter();
   function go(ws) {
     if (ws === workspace) return;
@@ -88,26 +97,31 @@ function WorkspaceSwitch({ compact = false }) {
     router.push(WORKSPACE_HOME[ws]);
   }
   if (compact) {
-    const other = workspace === 'club' ? 'xeve' : 'club';
+    const other = workspaces[(workspaces.indexOf(workspace) + 1) % workspaces.length];
     return (
       <button
         onClick={() => go(other)}
         title={`${t('nav.workspace')}: ${t(`workspace.${workspace}`)}`}
         className="h-10 flex items-center justify-center rounded-lg text-[10px] font-bold text-lime-400 bg-navy-800 hover:bg-navy-700"
       >
-        {workspace === 'club' ? 'CLB' : 'XV'}
+        {WORKSPACE_ABBR[workspace]}
       </button>
     );
   }
   return (
-    <div role="tablist" aria-label={t('nav.workspace')} className="grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-xs font-semibold">
-      {WORKSPACES.map((ws) => (
+    <div
+      role="tablist"
+      aria-label={t('nav.workspace')}
+      className="grid bg-navy-950 rounded-lg p-1 text-xs font-semibold"
+      style={{ gridTemplateColumns: `repeat(${workspaces.length}, minmax(0, 1fr))` }}
+    >
+      {workspaces.map((ws) => (
         <button
           key={ws}
           role="tab"
           aria-selected={workspace === ws}
           onClick={() => go(ws)}
-          className={`rounded-md py-1.5 transition ${workspace === ws ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}
+          className={`rounded-md py-1.5 px-1 whitespace-nowrap transition ${workspace === ws ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}
         >
           {t(`workspace.${ws}Short`)}
         </button>
@@ -118,7 +132,7 @@ function WorkspaceSwitch({ compact = false }) {
 
 function WorkspacePicker() {
   const { t } = useI18n();
-  const { setWorkspace } = useWorkspace();
+  const { setWorkspace, workspaces } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname() || '';
   function pick(ws) {
@@ -129,10 +143,10 @@ function WorkspacePicker() {
     <div className="max-w-2xl mx-auto mt-4">
       <h1 className="text-white text-2xl font-bold mb-1">{t('workspace.choose')}</h1>
       <p className="text-gray-400 text-sm mb-5">{t('workspace.chooseHint')}</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {WORKSPACES.map((ws) => (
+      <div className={`grid grid-cols-1 gap-4 ${workspaces.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+        {workspaces.map((ws) => (
           <button key={ws} onClick={() => pick(ws)} className="card text-left hover:border-lime-400 transition p-5">
-            <Icon name={ws === 'club' ? 'clubs' : 'ticket'} className="w-8 h-8 text-lime-400 mb-3" />
+            <Icon name={WORKSPACE_ICON[ws]} className="w-8 h-8 text-lime-400 mb-3" />
             <div className="text-white text-lg font-bold">{t(`workspace.${ws}`)}</div>
             <p className="text-gray-400 text-sm mt-1">{t(`workspace.${ws}Desc`)}</p>
           </button>
@@ -156,7 +170,7 @@ export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
   const { t } = useI18n();
   const { clubs, loading: clubsLoading } = useClubs();
-  const { workspace, ready: wsReady } = useWorkspace();
+  const { workspace, ready: wsReady, workspaces } = useWorkspace();
   const pathname = usePathname() || '';
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -270,7 +284,7 @@ export default function AppShell({ children }) {
             )}
           </div>
           {workspace && (
-            <div className="w-32 shrink-0">
+            <div className={`shrink-0 ${workspaces.length === 3 ? 'w-52' : 'w-32'}`}>
               <WorkspaceSwitch />
             </div>
           )}

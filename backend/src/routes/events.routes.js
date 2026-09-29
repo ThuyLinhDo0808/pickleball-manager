@@ -3,7 +3,8 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
-const { normalizePhone, findClubMemberByPhone, consumeSession, releaseSession } = require('../services/memberships');
+const { normalizePhone, findClubMemberByPhone, releaseSession } = require('../services/memberships');
+const { ATTENDANCE_ACTIONS, setAttendance } = require('../services/attendance');
 
 const router = express.Router();
 const MAIN_LIST = ['registered', 'checked_in'];
@@ -318,13 +319,15 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
   const prior = req.participant;
   const patch = {};
 
-  if (action === 'check-in') {
-    patch.status = 'checked_in';
-    patch.checked_in_at = nowIso();
-  } else if (action === 'no-show') {
-    patch.status = 'no_show';
-    patch.no_show_at = nowIso();
-  } else if (action === 'cancel') {
+  if (ATTENDANCE_ACTIONS.includes(action)) {
+    try {
+      return res.json(await setAttendance(req.event, prior, action));
+    } catch (err) {
+      return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+    }
+  }
+
+  if (action === 'cancel') {
     patch.status = 'cancelled';
     patch.cancelled_at = nowIso();
   } else if (action === 'promote') {
@@ -345,16 +348,10 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     .single();
   if (error) return dbError(res, error);
 
-  // Club members with a paid pass: check-in uses one session; undoing it gives it back.
-  let pass = null;
-  const memberId = prior.source_club_member_id;
-  if (memberId && req.event.club_id) {
+  // Cancelling a checked-in club member gives their pass session back.
+  if (action === 'cancel' && prior.status === 'checked_in' && prior.source_club_member_id && req.event.club_id) {
     try {
-      if (action === 'check-in' && prior.status !== 'checked_in') {
-        pass = await consumeSession(memberId, req.event.event_date, req.event.id);
-      } else if (['no-show', 'cancel'].includes(action) && prior.status === 'checked_in') {
-        await releaseSession(memberId, req.event.id);
-      }
+      await releaseSession(prior.source_club_member_id, req.event.id);
     } catch (err) {
       return dbError(res, err);
     }
@@ -411,14 +408,7 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     }
   }
 
-  res.json({
-    ...updated,
-    pass: pass && {
-      period_label: pass.period_label,
-      unlimited: pass.sessions_included === 0,
-      sessions_remaining: pass.sessions_remaining,
-    },
-  });
+  res.json(updated);
 });
 
 // ---- Match scorers (referee/coordinator role) ------------------------------

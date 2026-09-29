@@ -9,7 +9,7 @@ function playerName(mp) {
   return mp.club_members?.full_name || mp.event_participants?.full_name || '?';
 }
 
-function EditMatch({ match, onSaved, onCancel }) {
+function EditMatch({ match, basePath, onSaved, onCancel }) {
   const { t } = useI18n();
   const [form, setForm] = useState({ team1_score: match.team1_score, team2_score: match.team2_score, video_url: match.video_url || '' });
   const [busy, setBusy] = useState(false);
@@ -20,7 +20,7 @@ function EditMatch({ match, onSaved, onCancel }) {
     setBusy(true);
     setError('');
     try {
-      await api.patch(`/api/matches/${match.id}`, {
+      await api.patch(`${basePath}/${match.id}`, {
         team1_score: Number(form.team1_score || 0),
         team2_score: Number(form.team2_score || 0),
         video_url: form.video_url.trim() || null,
@@ -64,7 +64,8 @@ function EditMatch({ match, onSaved, onCancel }) {
   );
 }
 
-export default function MatchList({ matches, onChanged }) {
+// basePath: where edits go ('/api/matches' for hosts, the staff API for referees).
+export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true }) {
   const { t, lang } = useI18n();
   const [video, setVideo] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -72,7 +73,7 @@ export default function MatchList({ matches, onChanged }) {
   async function remove(m) {
     if (!window.confirm(t('matches.deleteConfirm'))) return;
     try {
-      await api.del(`/api/matches/${m.id}`);
+      await api.del(`${basePath}/${m.id}`);
       onChanged();
     } catch (err) {
       window.alert(err.message);
@@ -117,7 +118,9 @@ export default function MatchList({ matches, onChanged }) {
                   </button>
                 )}
                 <button className="text-gray-300" onClick={() => setEditing(m)}>{t('matches.edit')}</button>
-                <button className="text-red-400/80 ml-auto" onClick={() => remove(m)}>{t('common.delete')}</button>
+                {allowDelete && (
+                  <button className="text-red-400/80 ml-auto" onClick={() => remove(m)}>{t('common.delete')}</button>
+                )}
               </div>
             </div>
           );
@@ -147,6 +150,7 @@ export default function MatchList({ matches, onChanged }) {
         {editing && (
           <EditMatch
             match={editing}
+            basePath={basePath}
             onCancel={() => setEditing(null)}
             onSaved={() => {
               setEditing(null);

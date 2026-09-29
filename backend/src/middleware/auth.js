@@ -26,6 +26,8 @@ async function requireAuth(req, res, next) {
     await ensureHostRows(data.user.id, data.user.email);
     req.hostId = data.user.id;
     req.hostEmail = data.user.email;
+    // Staff access is granted by email, so only trust an email Supabase has confirmed.
+    req.emailVerified = !!data.user.email_confirmed_at;
     next();
   } catch (err) {
     console.error(err);

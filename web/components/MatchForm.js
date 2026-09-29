@@ -12,8 +12,8 @@ function nowLocalInput() {
 }
 
 // players: [{ id, name, gender }]; idField: 'club_member_id' | 'event_participant_id';
-// parent: { club_id } or { event_id }.
-export default function MatchForm({ players, idField, parent, onSaved, onCancel }) {
+// parent: { club_id } or { event_id }. `endpoint` lets staff post to their own API.
+export default function MatchForm({ players, idField, parent, onSaved, onCancel, endpoint = '/api/matches' }) {
   const { t } = useI18n();
   const [type, setType] = useState('doubles');
   const [slots, setSlots] = useState({ 1: ['', ''], 2: ['', ''] });
@@ -36,7 +36,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel 
     setBusy(true);
     setError('');
     try {
-      const saved = await api.post('/api/matches', {
+      const saved = await api.post(endpoint, {
         ...parent,
         match_type: type,
         team1_score: Number(score[1] || 0),
