@@ -435,6 +435,26 @@ router.get('/:clubId/stats', async (req, res) => {
       })
     ).filter((m) => inRange(localDate(m.played_at)));
 
+    // Matches recorded inside this club's sessions (by the Host or staff) count too:
+    // their players are event participants, linked back to club members.
+    const sessionMatches = (
+      await fetchAll(() => {
+        let q = supabase
+          .from('matches')
+          .select('id, played_at, team1_score, team2_score, events!inner(club_id), match_players(team, event_participants(source_club_member_id))')
+          .eq('events.club_id', req.club.id)
+          .order('id');
+        if (bounds) q = q.gte('played_at', `${shiftDay(bounds.from, -1)}T00:00:00Z`).lte('played_at', `${shiftDay(bounds.to, 1)}T23:59:59Z`);
+        return q;
+      })
+    )
+      .filter((m) => inRange(localDate(m.played_at)))
+      .map((m) => ({
+        ...m,
+        match_players: m.match_players.map((p) => ({ team: p.team, club_member_id: p.event_participants?.source_club_member_id })),
+      }));
+    matches.push(...sessionMatches);
+
     const checkIns = await fetchAll(() => {
       let q = supabase
         .from('event_participants')

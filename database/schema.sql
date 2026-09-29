@@ -282,6 +282,27 @@ create table if not exists public.event_scorers (
 
 -- Dropped first: `e.*` expands at creation, so new events columns would
 -- otherwise shift this view's columns and make CREATE OR REPLACE fail.
+-- Staff access: the Host lets another account (by email) act as referee
+-- (scores only) or coordinator (check-in + scores) — never finances.
+-- Scope: one event, every event of one club, or (both null) all the Host's events.
+create table if not exists public.staff_grants (
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  email text not null check (email = lower(trim(email)) and email like '%_@_%'),
+  full_name text,
+  role event_role not null,
+  club_id uuid references public.clubs(id) on delete cascade,
+  event_id uuid references public.events(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint chk_staff_scope check (club_id is null or event_id is null)
+);
+create unique index if not exists ux_staff_grants_scope on public.staff_grants (
+  host_id, email,
+  coalesce(club_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  coalesce(event_id, '00000000-0000-0000-0000-000000000000'::uuid)
+);
+create index if not exists ix_staff_grants_email on public.staff_grants (email);
+
 drop view if exists public.v_event_summary;
 create view public.v_event_summary as
 select
@@ -489,6 +510,7 @@ alter table public.matches enable row level security;
 alter table public.match_players enable row level security;
 alter table public.transactions enable row level security;
 alter table public.feedback enable row level security;
+alter table public.staff_grants enable row level security;
 
 drop policy if exists p_users_self on public.users;
 create policy p_users_self on public.users for all
@@ -496,6 +518,10 @@ create policy p_users_self on public.users for all
 
 drop policy if exists p_sub_self on public.host_subscriptions;
 create policy p_sub_self on public.host_subscriptions for all
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
+
+drop policy if exists p_staff_owner on public.staff_grants;
+create policy p_staff_owner on public.staff_grants for all
   using (host_id = auth.uid()) with check (host_id = auth.uid());
 
 drop policy if exists p_clubs_owner on public.clubs;
