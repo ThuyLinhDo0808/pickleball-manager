@@ -21,6 +21,7 @@ const ICONS = {
   expand: 'M13 17l5-5-5-5M6 17l5-5-5-5',
   signOut: 'M15 12H3M11 8l4 4-4 4M15 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4',
   plans: 'M4 5h16v14H4zM4 9h16M8 13h4',
+  matches: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 9h.01M12 7h.01M16 9h.01M9 13h.01M15 13h.01M12 16h.01',
   ticket: 'M4 7h16v3a2 2 0 000 4v3H4v-3a2 2 0 000-4zM12 7v10',
 };
 
@@ -32,8 +33,9 @@ const NAV_BY_WORKSPACE = {
     { href: '/club/members', key: 'nav.members', icon: 'members', tab: true },
     { href: '/events', key: 'nav.schedule', icon: 'schedule', tab: true },
     { href: '/club/fund', key: 'nav.fund', icon: 'fund', tab: true },
-    { href: '/club/plans', key: 'nav.plans', icon: 'plans' },
+    { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
     { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+    { href: '/club/plans', key: 'nav.plans', icon: 'plans' },
     { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
     { href: '/account', key: 'nav.account', icon: 'account' },
   ],

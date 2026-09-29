@@ -3,6 +3,14 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
+const {
+  PERIODS: PERIODS_STATS,
+  DEFAULT_MIN_MATCHES,
+  localDate,
+  periodBounds,
+  aggregate,
+  awards,
+} = require('../services/stats');
 
 const router = express.Router();
 const TIERS = ['vip', 'standard'];
@@ -381,6 +389,84 @@ router.delete('/:clubId/memberships/:membershipId/sessions/last', async (req, re
   const { error: delErr } = await supabase.from('membership_sessions').delete().eq('id', last.id);
   if (delErr) return dbError(res, delErr);
   res.status(204).end();
+});
+
+// ---- Stats: rankings + awards for a day / month / quarter / year / all time --
+// Supabase caps a response at 1000 rows, so page through.
+async function fetchAll(build) {
+  const size = 1000;
+  const out = [];
+  for (let from = 0; ; from += size) {
+    const { data, error } = await build().range(from, from + size - 1);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < size) return out;
+  }
+}
+
+function shiftDay(ymd, days) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+router.get('/:clubId/stats', async (req, res) => {
+  const period = PERIODS_STATS.includes(req.query.period) ? req.query.period : 'month';
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : todayYmd();
+  const minMatches = Math.min(Math.max(parseInt(req.query.min_matches, 10) || DEFAULT_MIN_MATCHES, 1), 50);
+  const bounds = periodBounds(period, date);
+  const inRange = (ymd) => !bounds || (ymd >= bounds.from && ymd <= bounds.to);
+
+  try {
+    const members = await fetchAll(() =>
+      supabase.from('club_members').select('id, full_name, gender').eq('club_id', req.club.id).order('id')
+    );
+
+    // Pad the UTC window by a day each side, then filter exactly on the local date.
+    const matches = (
+      await fetchAll(() => {
+        let q = supabase
+          .from('matches')
+          .select('id, played_at, team1_score, team2_score, match_players(team, club_member_id)')
+          .eq('club_id', req.club.id)
+          .order('id');
+        if (bounds) q = q.gte('played_at', `${shiftDay(bounds.from, -1)}T00:00:00Z`).lte('played_at', `${shiftDay(bounds.to, 1)}T23:59:59Z`);
+        return q;
+      })
+    ).filter((m) => inRange(localDate(m.played_at)));
+
+    const checkIns = await fetchAll(() => {
+      let q = supabase
+        .from('event_participants')
+        .select('source_club_member_id, event_id, events!inner(club_id, event_date)')
+        .eq('status', 'checked_in')
+        .not('source_club_member_id', 'is', null)
+        .eq('events.club_id', req.club.id)
+        .order('id');
+      if (bounds) q = q.gte('events.event_date', bounds.from).lte('events.event_date', bounds.to);
+      return q;
+    });
+    const attendance = {};
+    const seen = new Set();
+    for (const c of checkIns) {
+      const key = `${c.source_club_member_id}:${c.event_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      attendance[c.source_club_member_id] = (attendance[c.source_club_member_id] || 0) + 1;
+    }
+
+    const rankings = aggregate(matches, members);
+    res.json({
+      period,
+      date,
+      range: bounds,
+      match_count: matches.length,
+      rankings,
+      awards: awards(rankings, attendance, members, minMatches),
+    });
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 // ---- Rankings / fund ------------------------------------------------------
