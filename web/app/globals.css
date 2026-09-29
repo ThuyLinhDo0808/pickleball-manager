@@ -77,3 +77,11 @@ body {
 .grid-table td {
   @apply border border-navy-600 px-3 py-2;
 }
+
+/* Tighter cells for small tables (e.g. tournament group standings on phones). */
+@media (max-width: 639px) {
+  .grid-table.compact-cells th,
+  .grid-table.compact-cells td {
+    @apply px-2;
+  }
+}
