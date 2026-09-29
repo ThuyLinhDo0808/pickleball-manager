@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
+import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
@@ -39,13 +40,27 @@ export default function PublicEventPage() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
   const [result, setResult] = useState(null);
+  const { user } = useAuth();
+
+  // Signed-in players: prefill from their profile; the sign-up then shows in their history.
+  useEffect(() => {
+    if (!user) return;
+    api
+      .get('/api/player/me')
+      .then((me) => {
+        const p = me.profile;
+        if (p) setForm((f) => ({ full_name: f.full_name || p.full_name, phone: f.phone || p.phone || '', dupr_level: f.dupr_level || (p.dupr_level ?? '') }));
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   async function register(e) {
     e.preventDefault();
     setBusy(true);
     setFormError('');
     try {
-      const res = await api.publicPost(`/api/events/public/${token}/register`, {
+      const send = user ? api.post : api.publicPost; // token attached when signed in
+      const res = await send(`/api/events/public/${token}/register`, {
         full_name: form.full_name.trim(),
         phone: form.phone.trim(),
         dupr_level: form.dupr_level === '' ? null : Number(form.dupr_level),

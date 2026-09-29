@@ -154,6 +154,13 @@ function WorkspacePicker() {
           </button>
         ))}
       </div>
+      <Link href="/p" className="card mt-4 flex items-center justify-between gap-3 hover:border-lime-400 transition">
+        <span>
+          <span className="text-white font-semibold block">{t('workspace.player')}</span>
+          <span className="text-gray-400 text-sm">{t('workspace.playerDesc')}</span>
+        </span>
+        <span className="text-lime-400 text-xl">→</span>
+      </Link>
     </div>
   );
 }

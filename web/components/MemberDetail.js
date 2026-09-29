@@ -152,6 +152,23 @@ export default function MemberDetail({ club, member, onClose, onChanged }) {
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
 
+        {member.account_email && (
+          <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">
+            <span className="min-w-0 truncate">
+              <span className="text-gray-400">{t('payments.linked')}: </span>
+              <span className="text-white">{member.account_email}</span>
+            </span>
+            <button
+              type="button"
+              className="text-red-400 text-xs shrink-0"
+              disabled={busy}
+              onClick={() => window.confirm(t('payments.unlinkConfirm', { email: member.account_email })) && patchMember({ unlink_account: true })}
+            >
+              {t('payments.unlink')}
+            </button>
+          </div>
+        )}
+
         <section>
           <h3 className="text-white font-semibold text-sm mb-2">{t('flags.title')}</h3>
           <div className="flex flex-wrap gap-2 mb-3">

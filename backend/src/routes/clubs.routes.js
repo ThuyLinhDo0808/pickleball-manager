@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
@@ -116,7 +117,15 @@ router.post('/', async (req, res) => {
 router.get('/:clubId', (req, res) => res.json(req.club));
 
 router.patch('/:clubId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'description']);
+  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder']);
+  for (const k of ['join_note', 'bank_code', 'bank_account', 'bank_holder']) {
+    if (k in fields) fields[k] = String(fields[k] ?? '').trim() || null;
+  }
+  if (fields.bank_code) fields.bank_code = fields.bank_code.toUpperCase();
+  if (fields.bank_account && !/^[0-9A-Za-z]{4,30}$/.test(fields.bank_account)) {
+    return res.status(400).json({ error: 'bank_account should be 4-30 letters/digits, no spaces.' });
+  }
+  if ('allow_join' in fields) fields.allow_join = !!fields.allow_join;
   const { data, error } = await supabase
     .from('clubs')
     .update(fields)
@@ -137,7 +146,7 @@ router.delete('/:clubId', async (req, res) => {
 router.get('/:clubId/members', async (req, res) => {
   const { data, error } = await supabase
     .from('club_members')
-    .select('*')
+    .select('*, users(email)')
     .eq('club_id', req.club.id)
     .order('full_name', { ascending: true });
   if (error) return dbError(res, error);
@@ -149,7 +158,9 @@ router.get('/:clubId/members', async (req, res) => {
     : { data: [] };
   if (pErr) return dbError(res, pErr);
   const today = todayYmd();
-  res.json(data.map((m) => ({ ...m, ...summarize(passes.filter((p) => p.club_member_id === m.id), today) })));
+  res.json(
+    data.map(({ users, ...m }) => ({ ...m, account_email: users?.email || null, ...summarize(passes.filter((p) => p.club_member_id === m.id), today) }))
+  );
 });
 
 router.post('/:clubId/members', checkCapacity(), async (req, res) => {
@@ -225,6 +236,7 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
     return res.status(400).json({ error: 'tier can only be set on fixed members.' });
   }
   if (fields.member_type === 'guest') fields.tier = null; // clear tier if downgraded to guest
+  if (req.body.unlink_account === true) fields.user_id = null; // detach the player's login
 
   const { data, error } = await supabase
     .from('club_members')
@@ -484,6 +496,69 @@ router.get('/:clubId/stats', async (req, res) => {
       rankings,
       awards: awards(rankings, attendance, members, minMatches),
     });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// ---- Player self-service: join link + payments to confirm -------------------
+router.post('/:clubId/join-token/rotate', async (req, res) => {
+  const { data, error } = await supabase
+    .from('clubs')
+    .update({ join_token: crypto.randomUUID() })
+    .eq('id', req.club.id)
+    .select()
+    .single();
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
+// Memberships players requested themselves and haven't been marked paid, grouped by transfer note.
+router.get('/:clubId/pending-payments', async (req, res) => {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('id, payment_ref, period_label, amount, status, created_at, club_members!inner(id, full_name, phone, club_id), membership_plans(name)')
+    .eq('club_members.club_id', req.club.id)
+    .eq('requested_by_player', true)
+    .neq('status', 'paid')
+    .order('created_at', { ascending: false });
+  if (error) return dbError(res, error);
+  const groups = new Map();
+  for (const m of data) {
+    const g = groups.get(m.payment_ref) || {
+      ref: m.payment_ref,
+      member_id: m.club_members.id,
+      full_name: m.club_members.full_name,
+      phone: m.club_members.phone,
+      plan_name: m.membership_plans?.name || null,
+      periods: [],
+      total: 0,
+      created_at: m.created_at,
+    };
+    g.periods.push(m.period_label);
+    g.total += Number(m.amount);
+    groups.set(m.payment_ref, g);
+  }
+  res.json([...groups.values()]);
+});
+
+// "I received the transfer": mark every period in the request paid (writes club-fund income).
+router.post('/:clubId/pending-payments/:ref/confirm', async (req, res) => {
+  const { data: rows, error } = await supabase
+    .from('memberships')
+    .select('*, club_members!inner(club_id, full_name)')
+    .eq('payment_ref', req.params.ref)
+    .eq('club_members.club_id', req.club.id);
+  if (error) return dbError(res, error);
+  if (!rows.length) return notFound(res, 'Payment');
+  try {
+    for (const { club_members: owner, ...m } of rows) {
+      if (m.status === 'paid') continue;
+      const { data: updated, error: uErr } = await supabase.from('memberships').update({ status: 'paid' }).eq('id', m.id).select().single();
+      if (uErr) throw uErr;
+      await syncMembershipTxn({ membership: updated, hostId: req.hostId, clubId: req.club.id, memberName: owner.full_name });
+    }
+    res.json({ ok: true, confirmed: rows.length });
   } catch (err) {
     dbError(res, err);
   }

@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useClubs } from '@/context/ClubContext';
 import Link from 'next/link';
+import PendingPayments from '@/components/PendingPayments';
 
 export default function DashboardPage() {
   const { t } = useI18n();
@@ -43,6 +44,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <PendingPayments club={club} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card">

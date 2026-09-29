@@ -2,7 +2,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { normalizePhone, findClubMemberByPhone, releaseSession } = require('../services/memberships');
 const { ATTENDANCE_ACTIONS, setAttendance } = require('../services/attendance');
 
@@ -53,7 +53,7 @@ router.get('/public/:publicToken', async (req, res) => {
   });
 });
 
-router.post('/public/:publicToken/register', async (req, res) => {
+router.post('/public/:publicToken/register', optionalAuth, async (req, res) => {
   if (!isUuid(req.params.publicToken)) return notFound(res, 'Event');
   const { data: event, error: eErr } = await supabase
     .from('events')
@@ -103,6 +103,7 @@ router.post('/public/:publicToken/register', async (req, res) => {
       dupr_level,
       status,
       source_club_member_id: await findClubMemberByPhone(event.club_id, phone),
+      user_id: req.userId || null, // signed-in player: shows up in their history
     })
     .select('full_name, status')
     .single();
