@@ -16,6 +16,9 @@ const ICONS = {
   clubs: 'M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7z',
   account: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
+  collapse: 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
+  expand: 'M13 17l5-5-5-5M6 17l5-5-5-5',
+  signOut: 'M15 12H3M11 8l4 4-4 4M15 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4',
 };
 
 const NAV = [
@@ -30,6 +33,8 @@ const NAV = [
 
 // Bottom tab bar on phones: the most-used pages; the rest live under "More".
 const TABS = ['/dashboard', '/club/members', '/events', '/club/fund'];
+
+const COLLAPSE_KEY = 'pickleball_nav_collapsed';
 
 // Pages that work without a club; everything else prompts to create one first.
 const NO_CLUB_OK = ['/clubs', '/account'];
@@ -79,6 +84,26 @@ export default function AppShell({ children }) {
   const pathname = usePathname() || '';
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((c) => {
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !c;
+    });
+  }
 
   useEffect(() => {
     if (!loading && !user) router.replace('/sign-in');
@@ -97,28 +122,58 @@ export default function AppShell({ children }) {
   return (
     <div className="min-h-screen md:flex">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 shrink-0 bg-navy-900 border-r border-navy-700 p-4 flex-col gap-1 sticky top-0 h-screen overflow-y-auto">
-        <div className="text-lime-400 font-bold text-lg mb-3 px-2">{t('appName')}</div>
-        <div className="mb-3 px-1">
-          <ClubSwitcher />
+      <aside
+        className={`hidden md:flex shrink-0 bg-navy-900 border-r border-navy-700 flex-col gap-1 sticky top-0 h-screen overflow-y-auto transition-[width] duration-200 ${
+          collapsed ? 'w-16 p-2' : 'w-64 p-4'
+        }`}
+      >
+        <div className={`flex items-center mb-3 ${collapsed ? 'justify-center' : 'justify-between pl-2'}`}>
+          {!collapsed && <span className="text-lime-400 font-bold text-lg truncate">{t('appName')}</span>}
+          <button
+            onClick={toggleCollapsed}
+            aria-label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
+            title={t(collapsed ? 'nav.expand' : 'nav.collapse')}
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 hover:bg-navy-800 hover:text-lime-400"
+          >
+            <Icon name={collapsed ? 'expand' : 'collapse'} />
+          </button>
         </div>
+        {!collapsed && (
+          <div className="mb-3 px-1">
+            <ClubSwitcher />
+          </div>
+        )}
         {NAV.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            title={collapsed ? t(item.key) : undefined}
+            className={`flex items-center gap-3 rounded-lg text-sm ${collapsed ? 'justify-center h-10' : 'px-3 py-2'} ${
               isActive(item.href) ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:bg-navy-800'
             }`}
           >
-            <Icon name={item.icon} className="w-4 h-4" />
-            {t(item.key)}
+            <Icon name={item.icon} className={collapsed ? 'w-5 h-5' : 'w-4 h-4'} />
+            {!collapsed && t(item.key)}
           </Link>
         ))}
         <div className="mt-auto flex flex-col gap-2 pt-4">
-          <LangSelect />
-          <button onClick={() => signOut()} className="btn-secondary text-sm">
-            {t('nav.signOut')}
-          </button>
+          {collapsed ? (
+            <button
+              onClick={() => signOut()}
+              title={t('nav.signOut')}
+              aria-label={t('nav.signOut')}
+              className="h-10 flex items-center justify-center rounded-lg text-gray-300 hover:bg-navy-800"
+            >
+              <Icon name="signOut" />
+            </button>
+          ) : (
+            <>
+              <LangSelect />
+              <button onClick={() => signOut()} className="btn-secondary text-sm">
+                {t('nav.signOut')}
+              </button>
+            </>
+          )}
         </div>
       </aside>
 
