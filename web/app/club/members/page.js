@@ -2,12 +2,26 @@
 import { useState } from 'react';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
+import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
 const emptyForm = { full_name: '', gender: '', birth_year: '', dupr_level: '', member_type: 'fixed', tier: '', phone: '' };
+
+function SessionsCell({ m, t }) {
+  if (m.membership_state === 'active') {
+    return m.sessions_unlimited ? (
+      <span className="text-lime-400">∞</span>
+    ) : (
+      <span className={`font-semibold ${m.sessions_remaining > 0 ? 'text-lime-400' : 'text-red-400'}`}>{m.sessions_remaining}</span>
+    );
+  }
+  if (m.membership_state === 'unpaid') return <span className="text-yellow-400 text-xs">{t('membership.pending')}</span>;
+  if (m.membership_state === 'expired') return <span className="text-gray-500 text-xs">{t('membership.state_expired')}</span>;
+  return <span className="text-gray-600">—</span>;
+}
 
 export default function MembersPage() {
   const { t } = useI18n();
@@ -21,8 +35,10 @@ export default function MembersPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState([]);
+  const [detailId, setDetailId] = useState(null);
 
   const rows = members || [];
+  const detailMember = rows.find((m) => m.id === detailId) || null;
   const allSelected = rows.length > 0 && selected.length === rows.length;
 
   function closeAdd() {
@@ -103,7 +119,9 @@ export default function MembersPage() {
         {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t('members.empty')}</p>}
         {!loading && rows.length > 0 && (
           <>
-            <p className="text-gray-500 text-xs mb-2">{t('members.selectHint')}</p>
+            <p className="text-gray-500 text-xs mb-2">
+              {t('members.selectHint')} {t('members.openHint')}
+            </p>
             <div className="table-wrap">
               <table className="w-full text-sm grid-table">
                 <thead>
@@ -123,6 +141,7 @@ export default function MembersPage() {
                     <th>{t('common.level')}</th>
                     <th>{t('members.type')}</th>
                     <th>{t('members.tier')}</th>
+                    <th className="text-center">{t('members.sessionsLeft')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -136,12 +155,35 @@ export default function MembersPage() {
                         <input type="checkbox" checked={selected.includes(m.id)} onChange={() => toggle(m.id)} onClick={(e) => e.stopPropagation()} />
                       </td>
                       <td className="text-center text-gray-400">{i + 1}</td>
-                      <td className="text-white">{m.full_name}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="text-white hover:text-lime-400 underline decoration-navy-600 underline-offset-4 text-left"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailId(m.id);
+                          }}
+                        >
+                          {m.full_name}
+                        </button>
+                        {m.flags?.length > 0 && (
+                          <span className="inline-flex gap-1 ml-2 align-middle">
+                            {m.flags.map((f) => (
+                              <span key={f} title={t(`flags.${f}`)} className={`text-[10px] leading-4 rounded border px-1 ${FLAG_STYLE[f]}`}>
+                                {t(`flags.${f}`)}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </td>
                       <td className="text-gray-300">{m.gender ? t(`members.${m.gender}`) : '—'}</td>
                       <td className="text-gray-300">{m.birth_year ?? '—'}</td>
                       <td className="text-gray-300">{m.dupr_level ?? '—'}</td>
                       <td className="text-gray-300">{m.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</td>
                       <td className="text-gray-300">{m.tier ? t(`members.${m.tier}`) : '—'}</td>
+                      <td className="text-center">
+                        <SessionsCell m={m} t={t} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -150,6 +192,8 @@ export default function MembersPage() {
           </>
         )}
       </div>
+
+      <MemberDetail club={club} member={detailMember} onClose={() => setDetailId(null)} onChanged={reload} />
 
       <Modal open={showAdd} title={t('members.newMember')} onClose={closeAdd}>
         <form onSubmit={addMember} className="grid grid-cols-2 gap-3">

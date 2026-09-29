@@ -31,6 +31,7 @@ export default function EventDetailPage() {
   const [form, setForm] = useState({ full_name: '', phone: '' });
   const [showImport, setShowImport] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [flash, setFlash] = useState('');
   const [txnForm, setTxnForm] = useState({ type: 'expense', category: '', amount: '', note: '' });
 
   async function addParticipant(e) {
@@ -42,7 +43,17 @@ export default function EventDetailPage() {
   }
 
   async function doAction(p, action) {
-    await api.post(`/api/events/${eventId}/participants/${p.id}/${action}`, {});
+    const res = await api.post(`/api/events/${eventId}/participants/${p.id}/${action}`, {});
+    if (action === 'check-in' && p.source_club_member_id && event?.club_id) {
+      const pass = res?.pass;
+      setFlash(
+        !pass
+          ? t('events.noPass', { name: p.full_name })
+          : pass.unlimited
+            ? t('events.passUnlimited', { name: p.full_name, period: pass.period_label })
+            : t('events.passLeft', { name: p.full_name, period: pass.period_label, n: pass.sessions_remaining })
+      );
+    }
     reloadParticipants();
     reloadEvent();
     reloadFinance();
@@ -149,6 +160,12 @@ export default function EventDetailPage() {
             </div>
           )}
 
+          {flash && (
+            <div className="card mb-4 border-lime-400/50 text-lime-300 text-sm flex items-center justify-between gap-3">
+              <span>{flash}</span>
+              <button className="text-gray-400 text-lg leading-none" aria-label="Close" onClick={() => setFlash('')}>×</button>
+            </div>
+          )}
           <ParticipantTable title={t('events.mainList')} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
           <ParticipantTable title={t('events.waitlist')} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />
         </>
@@ -211,7 +228,12 @@ function ParticipantTable({ title, rows, t, onAction, onFee }) {
         <tbody>
           {rows.map((p) => (
             <tr key={p.id} className="border-b border-navy-800">
-              <td className="py-2 text-white">{p.full_name}</td>
+              <td className="py-2 text-white">
+                {p.full_name}
+                {p.source_club_member_id && (
+                  <span className="ml-2 text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">{t('events.member')}</span>
+                )}
+              </td>
               <td className="text-gray-400 text-xs uppercase">{p.status}</td>
               <td>
                 <button className="text-xs text-gray-300 mr-2" onClick={() => onFee(p)}>

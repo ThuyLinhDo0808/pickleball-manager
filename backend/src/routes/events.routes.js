@@ -3,6 +3,7 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
+const { normalizePhone, findClubMemberByPhone, consumeSession, releaseSession } = require('../services/memberships');
 
 const router = express.Router();
 const MAIN_LIST = ['registered', 'checked_in'];
@@ -19,10 +20,6 @@ const PUBLIC_EVENT_FIELDS = [
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
 ];
-
-function normalizePhone(phone) {
-  return String(phone || '').replace(/\D/g, '');
-}
 
 router.get('/public/:publicToken', async (req, res) => {
   if (!isUuid(req.params.publicToken)) return notFound(res, 'Event');
@@ -98,7 +95,14 @@ router.post('/public/:publicToken/register', async (req, res) => {
 
   const { data, error } = await supabase
     .from('event_participants')
-    .insert({ event_id: event.id, full_name, phone, dupr_level, status })
+    .insert({
+      event_id: event.id,
+      full_name,
+      phone,
+      dupr_level,
+      status,
+      source_club_member_id: await findClubMemberByPhone(event.club_id, phone),
+    })
     .select('full_name, status')
     .single();
   if (error) return dbError(res, error);
@@ -148,32 +152,56 @@ function assertRegistrationOpen(event) {
 }
 
 // ---- Events CRUD (schedule) -------------------------------------------------
+async function ownsClub(hostId, clubId) {
+  if (!clubId) return true; // standalone (Xé Vé) event
+  if (!isUuid(clubId)) return false;
+  const { data } = await supabase.from('clubs').select('id').eq('id', clubId).eq('host_id', hostId).maybeSingle();
+  return !!data;
+}
+
+function addDays(ymd, days) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
 router.get('/', async (req, res) => {
-  const { data, error } = await supabase
-    .from('v_event_summary')
-    .select('*')
-    .eq('host_id', req.hostId)
-    .order('event_date', { ascending: true });
+  let query = supabase.from('v_event_summary').select('*').eq('host_id', req.hostId);
+  if (req.query.scope === 'standalone') query = query.is('club_id', null);
+  const { data, error } = await query.order('event_date', { ascending: true });
   if (error) return dbError(res, error);
   res.json(data);
 });
 
+// `repeat_weeks` (1-26) creates the same session every week — the club's recurring schedule.
 router.post('/', async (req, res) => {
   const { title, event_date } = req.body;
-  if (!title || !event_date) return res.status(400).json({ error: 'title and event_date are required.' });
+  if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(event_date || '')) {
+    return res.status(400).json({ error: 'title and event_date are required.' });
+  }
 
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice',
   ]);
-  const { data, error } = await supabase
-    .from('events')
-    .insert({ host_id: req.hostId, title, event_date, ...fields })
-    .select()
-    .single();
+  if (!(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
+
+  const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
+  const rows = Array.from({ length: weeks }, (_, i) => ({
+    host_id: req.hostId,
+    title,
+    ...fields,
+    event_date: addDays(event_date, 7 * i),
+    registration_deadline: fields.registration_deadline
+      ? new Date(new Date(fields.registration_deadline).getTime() + i * 7 * 86400000).toISOString()
+      : null,
+  }));
+  const { data, error } = await supabase.from('events').insert(rows).select();
   if (error) return dbError(res, error);
-  res.status(201).json(data);
+  data.sort((a, b) => a.event_date.localeCompare(b.event_date));
+  res.status(201).json({ ...data[0], created_count: data.length });
 });
 
 router.get('/:eventId', (req, res) => res.json(req.event));
@@ -184,6 +212,7 @@ router.patch('/:eventId', async (req, res) => {
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice',
   ]);
+  if ('club_id' in fields && !(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
   const { data, error } = await supabase
     .from('events')
     .update(fields)
@@ -231,6 +260,7 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
       dupr_level: dupr_level ?? null,
       fee_amount: fee_amount ?? null,
       status,
+      source_club_member_id: await findClubMemberByPhone(req.event.club_id, phone),
     })
     .select()
     .single();
@@ -315,6 +345,21 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     .single();
   if (error) return dbError(res, error);
 
+  // Club members with a paid pass: check-in uses one session; undoing it gives it back.
+  let pass = null;
+  const memberId = prior.source_club_member_id;
+  if (memberId && req.event.club_id) {
+    try {
+      if (action === 'check-in' && prior.status !== 'checked_in') {
+        pass = await consumeSession(memberId, req.event.event_date, req.event.id);
+      } else if (['no-show', 'cancel'].includes(action) && prior.status === 'checked_in') {
+        await releaseSession(memberId, req.event.id);
+      }
+    } catch (err) {
+      return dbError(res, err);
+    }
+  }
+
   // Cancelling someone who held a main-list slot frees it up -> auto-promote next waitlisted
   if (action === 'cancel') {
     const freedAPlace = MAIN_LIST.includes(prior.status);
@@ -366,7 +411,14 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     }
   }
 
-  res.json(updated);
+  res.json({
+    ...updated,
+    pass: pass && {
+      period_label: pass.period_label,
+      unlimited: pass.sessions_included === 0,
+      sessions_remaining: pass.sessions_remaining,
+    },
+  });
 });
 
 // ---- Match scorers (referee/coordinator role) ------------------------------
