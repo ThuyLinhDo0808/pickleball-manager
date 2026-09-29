@@ -35,4 +35,22 @@ async function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth, ensureHostRows };
+// For public routes: attach the user if a valid token is sent, otherwise carry on anonymously.
+async function optionalAuth(req, res, next) {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (token) {
+      const { data } = await supabase.auth.getUser(token);
+      if (data?.user) {
+        await ensureHostRows(data.user.id, data.user.email);
+        req.userId = data.user.id;
+      }
+    }
+  } catch {
+    /* anonymous */
+  }
+  next();
+}
+
+module.exports = { requireAuth, optionalAuth, ensureHostRows };

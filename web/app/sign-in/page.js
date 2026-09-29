@@ -4,6 +4,12 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 
+// Only same-site paths, so ?next= can't bounce people to another website.
+function nextPath() {
+  const next = new URLSearchParams(window.location.search).get('next') || '';
+  return next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+}
+
 export default function SignInPage() {
   const { user, loading, signIn, signUp } = useAuth();
   const { t } = useI18n();
@@ -13,9 +19,10 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState('');
 
   useEffect(() => {
-    if (!loading && user) router.replace('/dashboard');
+    if (!loading && user) router.replace(nextPath());
   }, [loading, user, router]);
 
   async function onSubmit(e) {
@@ -23,9 +30,13 @@ export default function SignInPage() {
     setError('');
     setBusy(true);
     try {
-      const { error: authErr } = mode === 'signIn' ? await signIn(email, password) : await signUp(email, password);
+      const { data, error: authErr } = mode === 'signIn' ? await signIn(email, password) : await signUp(email, password);
       if (authErr) throw authErr;
-      router.replace('/dashboard');
+      if (mode === 'signUp' && !data?.session) {
+        setInfo(t('auth.checkEmail'));
+        return;
+      }
+      router.replace(nextPath());
     } catch (err) {
       setError(err.message || t('common.error'));
     } finally {
@@ -39,6 +50,7 @@ export default function SignInPage() {
         <h1 className="text-lime-400 font-bold text-xl mb-1">{t('appName')}</h1>
         <p className="text-gray-400 text-sm mb-4">{mode === 'signIn' ? t('auth.signIn') : t('auth.signUp')}</p>
 
+        {info && <div className="bg-lime-400/10 border border-lime-400/40 text-lime-200 text-sm rounded-lg p-2 mb-3">{info}</div>}
         {error && <div className="bg-red-900/40 border border-red-700 text-red-200 text-sm rounded-lg p-2 mb-3">{error}</div>}
 
         <label className="text-xs text-gray-400 mb-1 block">{t('auth.email')}</label>

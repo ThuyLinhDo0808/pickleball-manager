@@ -33,6 +33,7 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
 export const api = {
   get: (path) => request(path),
   post: (path, body) => request(path, { method: 'POST', body }),
+  put: (path, body) => request(path, { method: 'PUT', body }),
   patch: (path, body) => request(path, { method: 'PATCH', body }),
   del: (path) => request(path, { method: 'DELETE' }),
   publicGet: (path) => request(path, { isPublic: true }),

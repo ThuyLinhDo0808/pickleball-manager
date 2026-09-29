@@ -126,6 +126,15 @@ create table if not exists public.clubs (
   created_at timestamptz not null default now()
 );
 
+-- Player self-service: a join link per club + where players send membership payments.
+alter table public.clubs add column if not exists join_token uuid not null default gen_random_uuid();
+alter table public.clubs add column if not exists allow_join boolean not null default false;
+alter table public.clubs add column if not exists join_note text;
+alter table public.clubs add column if not exists bank_code text;      -- e.g. VCB, TCB, MB (VietQR bank id)
+alter table public.clubs add column if not exists bank_account text;
+alter table public.clubs add column if not exists bank_holder text;
+create unique index if not exists ux_clubs_join_token on public.clubs (join_token);
+
 create table if not exists public.club_members (
   id uuid primary key default gen_random_uuid(),
   club_id uuid not null references public.clubs(id) on delete cascade,
@@ -145,6 +154,10 @@ alter table public.club_members add column if not exists gender text;
 alter table public.club_members add column if not exists birth_year int;
 -- Internal reminders only the Host sees: 'unpaid', 'late', 'attitude'.
 alter table public.club_members add column if not exists flags text[] not null default '{}';
+-- The player's own login, when they joined through the portal (Host can unlink).
+alter table public.club_members add column if not exists user_id uuid references public.users(id) on delete set null;
+create index if not exists ix_club_members_user on public.club_members (user_id);
+create unique index if not exists ux_club_members_club_user on public.club_members (club_id, user_id) where user_id is not null;
 
 do $$ begin
   alter table public.club_members
@@ -187,6 +200,10 @@ create table if not exists public.memberships (
   amount numeric(12,0) not null,
   created_at timestamptz not null default now()
 );
+
+-- Set when the player signs up themselves; payment_ref is the bank-transfer note to match on.
+alter table public.memberships add column if not exists requested_by_player boolean not null default false;
+alter table public.memberships add column if not exists payment_ref text;
 
 create table if not exists public.membership_sessions (
   id uuid primary key default gen_random_uuid(),
@@ -269,6 +286,8 @@ create table if not exists public.event_participants (
 
 alter table public.event_participants add column if not exists dupr_level numeric(3,2);
 alter table public.event_participants add column if not exists source_club_member_id uuid references public.club_members(id) on delete set null;
+-- Signed-in players registering via the public link (drives their history).
+alter table public.event_participants add column if not exists user_id uuid references public.users(id) on delete set null;
 
 -- Event-scoped roles (referee / coordinator) — limited access, no finance view
 create table if not exists public.event_scorers (
@@ -346,6 +365,20 @@ create table if not exists public.match_players (
     (club_member_id is not null and event_participant_id is null) or
     (club_member_id is null and event_participant_id is not null)
   )
+);
+
+-- ----------------------------------------------------------------------------
+-- PLAYER PROFILES (player portal accounts)
+-- ----------------------------------------------------------------------------
+create table if not exists public.player_profiles (
+  user_id uuid primary key references public.users(id) on delete cascade,
+  full_name text not null,
+  phone text,
+  dupr_level numeric(3,2) check (dupr_level is null or dupr_level between 1 and 8),
+  gender text check (gender is null or gender in ('male','female')),
+  birth_year int check (birth_year is null or birth_year between 1900 and 2100),
+  avatar text check (avatar is null or length(avatar) <= 150000), -- small data: URL
+  updated_at timestamptz not null default now()
 );
 
 -- ----------------------------------------------------------------------------
@@ -554,6 +587,7 @@ alter table public.match_players enable row level security;
 alter table public.transactions enable row level security;
 alter table public.feedback enable row level security;
 alter table public.staff_grants enable row level security;
+alter table public.player_profiles enable row level security;
 alter table public.tournaments enable row level security;
 alter table public.tournament_teams enable row level security;
 alter table public.tournament_matches enable row level security;
@@ -565,6 +599,10 @@ create policy p_users_self on public.users for all
 drop policy if exists p_sub_self on public.host_subscriptions;
 create policy p_sub_self on public.host_subscriptions for all
   using (host_id = auth.uid()) with check (host_id = auth.uid());
+
+drop policy if exists p_profile_self on public.player_profiles;
+create policy p_profile_self on public.player_profiles for all
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 drop policy if exists p_tournaments_owner on public.tournaments;
 create policy p_tournaments_owner on public.tournaments for all

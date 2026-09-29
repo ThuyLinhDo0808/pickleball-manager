@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import CreateClubForm from '@/components/CreateClubForm';
+import ClubPaymentSettings from '@/components/ClubPaymentSettings';
+import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 
@@ -13,6 +15,7 @@ export default function ClubsPage() {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [error, setError] = useState('');
+  const [settingsId, setSettingsId] = useState(null);
 
   function startRename(c) {
     setEditingId(c.id);
@@ -92,6 +95,9 @@ export default function ClubsPage() {
                           {t('clubs.switchTo')}
                         </button>
                       )}
+                      <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => setSettingsId(c.id)}>
+                        {t('payments.settings')}
+                      </button>
                       <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => startRename(c)}>
                         {t('clubs.rename')}
                       </button>
@@ -106,6 +112,11 @@ export default function ClubsPage() {
           })}
         </div>
       </div>
+      <Modal open={!!settingsId} title={t('payments.settings')} onClose={() => setSettingsId(null)}>
+        {settingsId && clubs.find((c) => c.id === settingsId) && (
+          <ClubPaymentSettings club={clubs.find((c) => c.id === settingsId)} onDone={() => setSettingsId(null)} />
+        )}
+      </Modal>
     </AppShell>
   );
 }
