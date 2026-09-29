@@ -349,6 +349,49 @@ create table if not exists public.match_players (
 );
 
 -- ----------------------------------------------------------------------------
+-- TOURNAMENTS (internal club tournaments: round-robin groups -> knockout)
+-- ----------------------------------------------------------------------------
+create table if not exists public.tournaments (
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  name text not null,
+  format match_type not null default 'doubles',
+  group_count int not null default 0 check (group_count between 0 and 16), -- 0 = straight knockout
+  advance_per_group int not null default 2 check (advance_per_group between 1 and 8),
+  status text not null default 'groups' check (status in ('groups','knockout','completed')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.tournament_teams (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  name text not null,
+  player1_id uuid references public.club_members(id) on delete set null,
+  player2_id uuid references public.club_members(id) on delete set null,
+  strength numeric(4,2),
+  seed int,
+  group_no int
+);
+
+create table if not exists public.tournament_matches (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  stage text not null check (stage in ('group','knockout')),
+  group_no int,
+  round int not null,
+  slot int not null default 0,
+  team1_id uuid references public.tournament_teams(id) on delete cascade,
+  team2_id uuid references public.tournament_teams(id) on delete cascade,
+  team1_score int check (team1_score between 0 and 99),
+  team2_score int check (team2_score between 0 and 99),
+  winner_id uuid references public.tournament_teams(id) on delete set null,
+  is_bye boolean not null default false,
+  played_at timestamptz
+);
+create index if not exists ix_tmatches_tournament on public.tournament_matches (tournament_id);
+
+-- ----------------------------------------------------------------------------
 -- TRANSACTIONS (append-only ledger; polymorphic club/event owner)
 -- ----------------------------------------------------------------------------
 create table if not exists public.transactions (
@@ -511,6 +554,9 @@ alter table public.match_players enable row level security;
 alter table public.transactions enable row level security;
 alter table public.feedback enable row level security;
 alter table public.staff_grants enable row level security;
+alter table public.tournaments enable row level security;
+alter table public.tournament_teams enable row level security;
+alter table public.tournament_matches enable row level security;
 
 drop policy if exists p_users_self on public.users;
 create policy p_users_self on public.users for all
@@ -519,6 +565,18 @@ create policy p_users_self on public.users for all
 drop policy if exists p_sub_self on public.host_subscriptions;
 create policy p_sub_self on public.host_subscriptions for all
   using (host_id = auth.uid()) with check (host_id = auth.uid());
+
+drop policy if exists p_tournaments_owner on public.tournaments;
+create policy p_tournaments_owner on public.tournaments for all
+  using (host_id = auth.uid()) with check (host_id = auth.uid());
+drop policy if exists p_tteams_owner on public.tournament_teams;
+create policy p_tteams_owner on public.tournament_teams for all
+  using (exists (select 1 from public.tournaments t where t.id = tournament_id and t.host_id = auth.uid()))
+  with check (exists (select 1 from public.tournaments t where t.id = tournament_id and t.host_id = auth.uid()));
+drop policy if exists p_tmatches_owner on public.tournament_matches;
+create policy p_tmatches_owner on public.tournament_matches for all
+  using (exists (select 1 from public.tournaments t where t.id = tournament_id and t.host_id = auth.uid()))
+  with check (exists (select 1 from public.tournaments t where t.id = tournament_id and t.host_id = auth.uid()));
 
 drop policy if exists p_staff_owner on public.staff_grants;
 create policy p_staff_owner on public.staff_grants for all

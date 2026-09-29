@@ -9,6 +9,7 @@ const matchesRoutes = require('./routes/matches.routes');
 const transactionsRoutes = require('./routes/transactions.routes');
 const hostRoutes = require('./routes/host.routes');
 const { staffGrantsRoutes, staffRoutes } = require('./routes/staff.routes');
+const tournamentsRoutes = require('./routes/tournaments.routes');
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
@@ -26,6 +27,7 @@ app.use('/api/transactions', requireAuth, transactionsRoutes);
 app.use('/api/host', requireAuth, hostRoutes);
 app.use('/api/staff-grants', requireAuth, staffGrantsRoutes);
 app.use('/api/staff', requireAuth, staffRoutes);
+app.use('/api/tournaments', requireAuth, tournamentsRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));
 app.use((err, req, res, next) => {

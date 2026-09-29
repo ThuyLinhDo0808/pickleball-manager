@@ -25,6 +25,7 @@ const ICONS = {
   ticket: 'M4 7h16v3a2 2 0 000 4v3H4v-3a2 2 0 000-4zM12 7v10',
   whistle: 'M3 11a5 5 0 1010 0 5 5 0 00-10 0zM8 6V4h13v4l-8 3',
   key: 'M15 7a4 4 0 11-3.9 5H3v3h3v-2h2v2h3',
+  trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3',
 };
 
 // Each workspace has its own menu. `tab: true` items go in the phone's bottom bar;
@@ -37,6 +38,7 @@ const NAV_BY_WORKSPACE = {
     { href: '/club/fund', key: 'nav.fund', icon: 'fund', tab: true },
     { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
     { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+    { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy' },
     { href: '/club/plans', key: 'nav.plans', icon: 'plans' },
     { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
     { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
