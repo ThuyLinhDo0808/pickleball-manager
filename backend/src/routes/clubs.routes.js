@@ -2,10 +2,14 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
+const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
 
 const router = express.Router();
 const TIERS = ['vip', 'standard'];
 const GENDERS = ['male', 'female'];
+const FLAGS = ['unpaid', 'late', 'attitude'];
+const PERIODS = ['month', 'quarter', 'year'];
+const PAY_STATUSES = ['pending', 'paid', 'overdue'];
 
 function cleanGender(v) {
   return GENDERS.includes(v) ? v : null;
@@ -43,6 +47,38 @@ router.param('memberId', async (req, res, next, memberId) => {
   if (error) return dbError(res, error);
   if (!data) return notFound(res, 'Member');
   req.member = data;
+  next();
+});
+
+// ---- ownership guard for :planId (must belong to req.club) ----------------
+router.param('planId', async (req, res, next, planId) => {
+  if (!isUuid(planId)) return notFound(res, 'Plan');
+  const { data, error } = await supabase
+    .from('membership_plans')
+    .select('*')
+    .eq('id', planId)
+    .eq('club_id', req.club.id)
+    .maybeSingle();
+  if (error) return dbError(res, error);
+  if (!data) return notFound(res, 'Plan');
+  req.plan = data;
+  next();
+});
+
+// ---- ownership guard for :membershipId (its member must be in req.club) ---
+router.param('membershipId', async (req, res, next, membershipId) => {
+  if (!isUuid(membershipId)) return notFound(res, 'Membership');
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('*, club_members!inner(club_id, full_name)')
+    .eq('id', membershipId)
+    .eq('club_members.club_id', req.club.id)
+    .maybeSingle();
+  if (error) return dbError(res, error);
+  if (!data) return notFound(res, 'Membership');
+  const { club_members: owner, ...membership } = data;
+  req.membership = membership;
+  req.membershipOwnerName = owner.full_name;
   next();
 });
 
@@ -97,7 +133,15 @@ router.get('/:clubId/members', async (req, res) => {
     .eq('club_id', req.club.id)
     .order('full_name', { ascending: true });
   if (error) return dbError(res, error);
-  res.json(data);
+
+  // Attach pass status (sessions left, debt) so the table needs one request.
+  const ids = data.map((m) => m.id);
+  const { data: passes, error: pErr } = ids.length
+    ? await supabase.from('v_membership_status').select('*').in('club_member_id', ids)
+    : { data: [] };
+  if (pErr) return dbError(res, pErr);
+  const today = todayYmd();
+  res.json(data.map((m) => ({ ...m, ...summarize(passes.filter((p) => p.club_member_id === m.id), today) })));
 });
 
 router.post('/:clubId/members', checkCapacity(), async (req, res) => {
@@ -160,7 +204,8 @@ router.post('/:clubId/members/bulk', async (req, res) => {
 });
 
 router.patch('/:clubId/members/:memberId', async (req, res) => {
-  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year']);
+  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags']);
+  if ('flags' in fields) fields.flags = (Array.isArray(fields.flags) ? fields.flags : []).filter((f) => FLAGS.includes(f));
   if ('gender' in fields) fields.gender = cleanGender(fields.gender);
   if ('birth_year' in fields) fields.birth_year = cleanBirthYear(fields.birth_year);
 
@@ -205,38 +250,65 @@ router.post('/:clubId/plans', async (req, res) => {
   if (!name || !period || price == null) {
     return res.status(400).json({ error: 'name, period, and price are required.' });
   }
-  if (!['month', 'quarter', 'year'].includes(period)) {
+  if (!PERIODS.includes(period)) {
     return res.status(400).json({ error: 'period must be month, quarter, or year.' });
+  }
+  if (!(Number(price) >= 0) || !(Number(sessions_included || 0) >= 0)) {
+    return res.status(400).json({ error: 'price and sessions_included must be >= 0.' });
   }
   const { data, error } = await supabase
     .from('membership_plans')
-    .insert({ club_id: req.club.id, name, period, price, sessions_included: sessions_included || 0 })
+    .insert({ club_id: req.club.id, name, period, price: Number(price), sessions_included: Number(sessions_included || 0) })
     .select()
     .single();
   if (error) return dbError(res, error);
   res.status(201).json(data);
 });
 
-router.post('/:clubId/members/:memberId/memberships', async (req, res) => {
-  const { plan_id, period_label, starts_on, ends_on, amount, status } = req.body;
-  if (!plan_id || !period_label || !starts_on || !ends_on || amount == null) {
-    return res.status(400).json({ error: 'plan_id, period_label, starts_on, ends_on, amount are required.' });
-  }
-  const { data, error } = await supabase
-    .from('memberships')
-    .insert({
-      club_member_id: req.member.id,
-      plan_id,
-      period_label,
-      starts_on,
-      ends_on,
-      amount,
-      status: status && ['pending', 'paid', 'overdue'].includes(status) ? status : 'pending',
-    })
-    .select()
-    .single();
+router.patch('/:clubId/plans/:planId', async (req, res) => {
+  const fields = pick(req.body, ['name', 'price', 'sessions_included', 'is_active']);
+  const { data, error } = await supabase.from('membership_plans').update(fields).eq('id', req.plan.id).select().single();
   if (error) return dbError(res, error);
-  res.status(201).json(data);
+  res.json(data);
+});
+
+// Register a member for `count` consecutive periods of a plan, starting at `start_month` (YYYY-MM).
+// e.g. monthly plan, start 2026-08, count 3 -> Aug, Sep, Oct.
+router.post('/:clubId/members/:memberId/memberships', async (req, res) => {
+  const { plan_id, start_month, status } = req.body;
+  const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
+  if (!isUuid(plan_id) || !/^\d{4}-\d{2}$/.test(start_month || '')) {
+    return res.status(400).json({ error: 'plan_id and start_month (YYYY-MM) are required.' });
+  }
+  const { data: plan, error: planErr } = await supabase
+    .from('membership_plans')
+    .select('*')
+    .eq('id', plan_id)
+    .eq('club_id', req.club.id)
+    .maybeSingle();
+  if (planErr) return dbError(res, planErr);
+  if (!plan) return notFound(res, 'Plan');
+
+  const amount = req.body.amount != null && req.body.amount !== '' ? Number(req.body.amount) : Number(plan.price);
+  const rows = Array.from({ length: count }, (_, i) => ({
+    club_member_id: req.member.id,
+    plan_id: plan.id,
+    ...periodRange(plan.period, start_month, i),
+    amount,
+    status: PAY_STATUSES.includes(status) ? status : 'pending',
+  }));
+  const { data, error } = await supabase.from('memberships').insert(rows).select();
+  if (error) return dbError(res, error);
+
+  try {
+    const synced = [];
+    for (const m of data) {
+      synced.push(await syncMembershipTxn({ membership: m, hostId: req.hostId, clubId: req.club.id, memberName: req.member.full_name }));
+    }
+    res.status(201).json(synced);
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 router.get('/:clubId/members/:memberId/memberships', async (req, res) => {
@@ -250,17 +322,65 @@ router.get('/:clubId/members/:memberId/memberships', async (req, res) => {
 });
 
 router.patch('/:clubId/memberships/:membershipId', async (req, res) => {
-  if (!isUuid(req.params.membershipId)) return notFound(res, 'Membership');
   const fields = pick(req.body, ['status', 'period_label', 'starts_on', 'ends_on', 'amount']);
+  if (fields.status && !PAY_STATUSES.includes(fields.status)) {
+    return res.status(400).json({ error: 'status must be pending, paid, or overdue.' });
+  }
+  // A paid membership's amount is already in the fund ledger; unpay it first to change the amount.
+  const staysPaid = (fields.status || req.membership.status) === 'paid' && req.membership.transaction_id;
+  if ('amount' in fields && staysPaid && Number(fields.amount) !== Number(req.membership.amount)) {
+    return res.status(400).json({ error: 'Mark the membership unpaid before changing its amount.' });
+  }
   const { data, error } = await supabase
     .from('memberships')
     .update(fields)
-    .eq('id', req.params.membershipId)
+    .eq('id', req.membership.id)
     .select()
     .single();
   if (error) return dbError(res, error);
-  if (!data) return notFound(res, 'Membership');
-  res.json(data);
+  try {
+    res.json(await syncMembershipTxn({ membership: data, hostId: req.hostId, clubId: req.club.id, memberName: req.membershipOwnerName }));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+router.delete('/:clubId/memberships/:membershipId', async (req, res) => {
+  try {
+    await syncMembershipTxn({
+      membership: { ...req.membership, status: 'pending' }, // voids the fund income, if any
+      hostId: req.hostId,
+      clubId: req.club.id,
+      memberName: req.membershipOwnerName,
+    });
+  } catch (err) {
+    return dbError(res, err);
+  }
+  const { error } = await supabase.from('memberships').delete().eq('id', req.membership.id);
+  if (error) return dbError(res, error);
+  res.status(204).end();
+});
+
+// Manual session adjustments (a session played outside a tracked event, or a correction).
+router.post('/:clubId/memberships/:membershipId/sessions', async (req, res) => {
+  const { error } = await supabase.from('membership_sessions').insert({ membership_id: req.membership.id, event_id: null });
+  if (error) return dbError(res, error);
+  res.status(201).json({ ok: true });
+});
+
+router.delete('/:clubId/memberships/:membershipId/sessions/last', async (req, res) => {
+  const { data: last, error } = await supabase
+    .from('membership_sessions')
+    .select('id')
+    .eq('membership_id', req.membership.id)
+    .order('used_on', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return dbError(res, error);
+  if (!last) return res.status(400).json({ error: 'No sessions to undo.' });
+  const { error: delErr } = await supabase.from('membership_sessions').delete().eq('id', last.id);
+  if (delErr) return dbError(res, delErr);
+  res.status(204).end();
 });
 
 // ---- Rankings / fund ------------------------------------------------------

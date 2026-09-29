@@ -2,6 +2,7 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { I18nProvider } from '@/context/I18nContext';
 import { ClubProvider } from '@/context/ClubContext';
+import { WorkspaceProvider } from '@/context/WorkspaceContext';
 
 export const metadata = {
   title: 'Pickleball Manager',
@@ -22,7 +23,9 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           <I18nProvider>
-            <ClubProvider>{children}</ClubProvider>
+            <ClubProvider>
+              <WorkspaceProvider>{children}</WorkspaceProvider>
+            </ClubProvider>
           </I18nProvider>
         </AuthProvider>
       </body>

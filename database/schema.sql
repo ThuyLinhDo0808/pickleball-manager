@@ -143,6 +143,8 @@ alter table public.club_members add column if not exists tier member_tier;
 alter table public.club_members add column if not exists notes text;
 alter table public.club_members add column if not exists gender text;
 alter table public.club_members add column if not exists birth_year int;
+-- Internal reminders only the Host sees: 'unpaid', 'late', 'attitude'.
+alter table public.club_members add column if not exists flags text[] not null default '{}';
 
 do $$ begin
   alter table public.club_members
@@ -192,6 +194,10 @@ create table if not exists public.membership_sessions (
   event_id uuid,
   used_on timestamptz not null default now()
 );
+
+-- One session per membership per event (check-in is idempotent).
+create unique index if not exists ux_membership_sessions_event
+  on public.membership_sessions (membership_id, event_id) where event_id is not null;
 
 create or replace view public.v_membership_status as
 select
@@ -359,6 +365,9 @@ end; $$;
 drop trigger if exists trg_block_txn_mutation on public.transactions;
 create trigger trg_block_txn_mutation before update on public.transactions
   for each row execute function public.block_txn_mutation();
+
+-- Club-fund income written when a membership is marked paid (voided if unpaid again).
+alter table public.memberships add column if not exists transaction_id uuid references public.transactions(id) on delete set null;
 
 -- ----------------------------------------------------------------------------
 -- FEEDBACK (emailed to developer)

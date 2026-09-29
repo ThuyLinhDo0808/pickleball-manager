@@ -7,20 +7,27 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const emptyForm = {
   title: '', event_date: '', start_time: '', location: '', courts: 2, slots: 16, fee_amount: 0,
   registration_deadline: '', level_min: '', level_max: '', notice: '', allow_public_registration: true,
+  repeat_weeks: 1,
 };
 
 export default function EventsPage() {
   const { t } = useI18n();
   const { club } = useDefaultClub();
   const router = useRouter();
-  const { data: events, loading, reload } = useLoad(
-    () => (club ? api.get(`/api/clubs/${club.id}/events`) : Promise.resolve([])),
-    [club?.id]
-  );
+  const { workspace } = useWorkspace();
+  // Club workspace: the selected club's schedule. Xé Vé: standalone events not tied to a club.
+  const isClub = workspace === 'club';
+  const { data: events, loading, reload } = useLoad(() => {
+    if (!workspace) return Promise.resolve([]);
+    if (!isClub) return api.get('/api/events?scope=standalone');
+    return club ? api.get(`/api/clubs/${club.id}/events`) : Promise.resolve([]);
+  }, [workspace, club?.id]);
+  const [info, setInfo] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -29,10 +36,12 @@ export default function EventsPage() {
     e.preventDefault();
     setBusy(true);
     setError('');
+    setInfo('');
     try {
       const created = await api.post('/api/events', {
         ...form,
-        club_id: club?.id || null,
+        club_id: isClub ? club?.id || null : null,
+        repeat_weeks: isClub ? Number(form.repeat_weeks || 1) : 1,
         courts: Number(form.courts),
         slots: Number(form.slots),
         fee_amount: Number(form.fee_amount || 0),
@@ -42,8 +51,14 @@ export default function EventsPage() {
         registration_deadline: form.registration_deadline ? new Date(form.registration_deadline).toISOString() : null,
         status: 'open',
       });
-      // Go straight to the event so the Host can copy the sign-up link.
-      router.push(`/events/${created.id}`);
+      if (created.created_count > 1) {
+        setForm(emptyForm);
+        setInfo(t('events.createdMany', { n: created.created_count }));
+        reload();
+      } else {
+        // Go straight to the event so the Host can copy the sign-up link.
+        router.push(`/events/${created.id}`);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -55,7 +70,7 @@ export default function EventsPage() {
 
   return (
     <AppShell>
-      <h1 className="text-white text-2xl font-bold mb-4">{t('nav.schedule')}</h1>
+      <h1 className="text-white text-2xl font-bold mb-4">{isClub ? t('nav.schedule') : t('nav.kevents')}</h1>
 
       <form onSubmit={createEvent} className="card mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
@@ -102,13 +117,21 @@ export default function EventsPage() {
           <label className="text-xs text-gray-400">{t('events.notice')}</label>
           <textarea className="input" rows={2} placeholder={t('events.noticeHint')} value={form.notice} onChange={(e) => setForm({ ...form, notice: e.target.value })} />
         </div>
+        {isClub && (
+          <div>
+            <label className="text-xs text-gray-400">{t('events.repeatWeeks')}</label>
+            <input className="input" type="number" inputMode="numeric" min="1" max="26" value={form.repeat_weeks} onChange={(e) => setForm({ ...form, repeat_weeks: e.target.value })} />
+            <p className="text-gray-500 text-xs mt-1">{t('events.repeatHint')}</p>
+          </div>
+        )}
         <label className="md:col-span-3 flex items-center gap-2 text-sm text-gray-200">
           <input type="checkbox" checked={form.allow_public_registration} onChange={(e) => setForm({ ...form, allow_public_registration: e.target.checked })} />
           {t('events.allowPublic')}
         </label>
         <div className="md:col-span-3 flex flex-col sm:flex-row sm:items-center gap-3">
-          <button className="btn-primary w-full md:w-auto" disabled={busy || !club}>{t('events.addEvent')}</button>
+          <button className="btn-primary w-full md:w-auto" disabled={busy || (isClub && !club)}>{t('events.addEvent')}</button>
           {error && <span className="text-red-400 text-sm">{error}</span>}
+          {info && <span className="text-lime-400 text-sm">{info}</span>}
         </div>
       </form>
 

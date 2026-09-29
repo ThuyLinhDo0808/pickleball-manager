@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
+import { useWorkspace, WORKSPACES, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 
 const ICONS = {
@@ -19,20 +20,28 @@ const ICONS = {
   collapse: 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
   expand: 'M13 17l5-5-5-5M6 17l5-5-5-5',
   signOut: 'M15 12H3M11 8l4 4-4 4M15 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4',
+  plans: 'M4 5h16v14H4zM4 9h16M8 13h4',
+  ticket: 'M4 7h16v3a2 2 0 000 4v3H4v-3a2 2 0 000-4zM12 7v10',
 };
 
-const NAV = [
-  { href: '/dashboard', key: 'nav.dashboard', icon: 'dashboard' },
-  { href: '/club/members', key: 'nav.members', icon: 'members' },
-  { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
-  { href: '/club/fund', key: 'nav.fund', icon: 'fund' },
-  { href: '/events', key: 'nav.schedule', icon: 'schedule' },
-  { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
-  { href: '/account', key: 'nav.account', icon: 'account' },
-];
-
-// Bottom tab bar on phones: the most-used pages; the rest live under "More".
-const TABS = ['/dashboard', '/club/members', '/events', '/club/fund'];
+// Each workspace has its own menu. `tab: true` items go in the phone's bottom bar;
+// the rest live under "More".
+const NAV_BY_WORKSPACE = {
+  club: [
+    { href: '/dashboard', key: 'nav.dashboard', icon: 'dashboard', tab: true },
+    { href: '/club/members', key: 'nav.members', icon: 'members', tab: true },
+    { href: '/events', key: 'nav.schedule', icon: 'schedule', tab: true },
+    { href: '/club/fund', key: 'nav.fund', icon: 'fund', tab: true },
+    { href: '/club/plans', key: 'nav.plans', icon: 'plans' },
+    { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+    { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
+    { href: '/account', key: 'nav.account', icon: 'account' },
+  ],
+  xeve: [
+    { href: '/events', key: 'nav.kevents', icon: 'ticket', tab: true },
+    { href: '/account', key: 'nav.account', icon: 'account', tab: true },
+  ],
+};
 
 const COLLAPSE_KEY = 'pickleball_nav_collapsed';
 
@@ -67,6 +76,70 @@ function ClubSwitcher({ className = '' }) {
   );
 }
 
+function WorkspaceSwitch({ compact = false }) {
+  const { t } = useI18n();
+  const { workspace, setWorkspace } = useWorkspace();
+  const router = useRouter();
+  function go(ws) {
+    if (ws === workspace) return;
+    setWorkspace(ws);
+    router.push(WORKSPACE_HOME[ws]);
+  }
+  if (compact) {
+    const other = workspace === 'club' ? 'xeve' : 'club';
+    return (
+      <button
+        onClick={() => go(other)}
+        title={`${t('nav.workspace')}: ${t(`workspace.${workspace}`)}`}
+        className="h-10 flex items-center justify-center rounded-lg text-[10px] font-bold text-lime-400 bg-navy-800 hover:bg-navy-700"
+      >
+        {workspace === 'club' ? 'CLB' : 'XV'}
+      </button>
+    );
+  }
+  return (
+    <div role="tablist" aria-label={t('nav.workspace')} className="grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-xs font-semibold">
+      {WORKSPACES.map((ws) => (
+        <button
+          key={ws}
+          role="tab"
+          aria-selected={workspace === ws}
+          onClick={() => go(ws)}
+          className={`rounded-md py-1.5 transition ${workspace === ws ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}
+        >
+          {t(`workspace.${ws}Short`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function WorkspacePicker() {
+  const { t } = useI18n();
+  const { setWorkspace } = useWorkspace();
+  const router = useRouter();
+  const pathname = usePathname() || '';
+  function pick(ws) {
+    setWorkspace(ws);
+    if (pathname === '/dashboard' || pathname === '/') router.push(WORKSPACE_HOME[ws]);
+  }
+  return (
+    <div className="max-w-2xl mx-auto mt-4">
+      <h1 className="text-white text-2xl font-bold mb-1">{t('workspace.choose')}</h1>
+      <p className="text-gray-400 text-sm mb-5">{t('workspace.chooseHint')}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {WORKSPACES.map((ws) => (
+          <button key={ws} onClick={() => pick(ws)} className="card text-left hover:border-lime-400 transition p-5">
+            <Icon name={ws === 'club' ? 'clubs' : 'ticket'} className="w-8 h-8 text-lime-400 mb-3" />
+            <div className="text-white text-lg font-bold">{t(`workspace.${ws}`)}</div>
+            <p className="text-gray-400 text-sm mt-1">{t(`workspace.${ws}Desc`)}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function LangSelect() {
   const { lang, setLang, t } = useI18n();
   return (
@@ -81,6 +154,7 @@ export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
   const { t } = useI18n();
   const { clubs, loading: clubsLoading } = useClubs();
+  const { workspace, ready: wsReady } = useWorkspace();
   const pathname = usePathname() || '';
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -115,8 +189,10 @@ export default function AppShell({ children }) {
   if (!user) return null;
 
   const isActive = (href) => pathname === href || pathname.startsWith(`${href}/`);
-  const needsClub = !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some(isActive);
-  const moreItems = NAV.filter((n) => !TABS.includes(n.href));
+  const NAV = NAV_BY_WORKSPACE[workspace] || [];
+  const tabs = NAV.filter((n) => n.tab);
+  const moreItems = NAV.filter((n) => !n.tab);
+  const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some(isActive);
   const moreActive = moreItems.some((n) => isActive(n.href));
 
   return (
@@ -138,9 +214,10 @@ export default function AppShell({ children }) {
             <Icon name={collapsed ? 'expand' : 'collapse'} />
           </button>
         </div>
-        {!collapsed && (
-          <div className="mb-3 px-1">
-            <ClubSwitcher />
+        {workspace && (
+          <div className="mb-3 px-1 flex flex-col gap-2">
+            <WorkspaceSwitch compact={collapsed} />
+            {!collapsed && workspace === 'club' && <ClubSwitcher />}
           </div>
         )}
         {NAV.map((item) => (
@@ -182,17 +259,26 @@ export default function AppShell({ children }) {
         <div className="flex items-center gap-3 px-4 h-14">
           <span className="text-lime-400 font-bold shrink-0">PB</span>
           <div className="flex-1 min-w-0">
-            {clubs.length > 0 ? (
+            {workspace === 'club' && clubs.length > 0 ? (
               <ClubSwitcher className="py-1.5" />
             ) : (
-              <span className="text-white text-sm font-semibold">{t('appName')}</span>
+              <span className="text-white text-sm font-semibold truncate block">
+                {workspace ? t(`workspace.${workspace}`) : t('appName')}
+              </span>
             )}
           </div>
+          {workspace && (
+            <div className="w-32 shrink-0">
+              <WorkspaceSwitch />
+            </div>
+          )}
         </div>
       </header>
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
-        {needsClub ? (
+        {!wsReady ? null : !workspace ? (
+          <WorkspacePicker />
+        ) : needsClub ? (
           <div className="max-w-md mx-auto card mt-4">
             <h1 className="text-white text-xl font-bold mb-1">{t('clubs.createFirst')}</h1>
             <p className="text-gray-400 text-sm mb-4">{t('clubs.createFirstHint')}</p>
@@ -233,9 +319,9 @@ export default function AppShell({ children }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900/95 backdrop-blur border-t border-navy-700 pb-safe">
-        <div className="grid grid-cols-5">
-          {TABS.map((href) => {
-            const item = NAV.find((n) => n.href === href);
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0, 1fr))` }}>
+          {tabs.map((item) => {
+            const href = item.href;
             return (
               <Link
                 key={href}
