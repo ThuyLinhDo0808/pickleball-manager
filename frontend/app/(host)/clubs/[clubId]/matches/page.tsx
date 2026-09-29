@@ -15,8 +15,8 @@ export default function MatchesPage({ params }: { params: Promise<{ clubId: stri
   const { t } = useI18n();
   const { data, error, loading, reload } = useLoad(async () => {
     const [m, mt] = await Promise.all([
-      api.get(`/api/clubs/${clubId}/members`),
-      api.get(`/api/matches?club_id=${clubId}`),
+      api.get(`/clubs/${clubId}/members`),
+      api.get(`/matches?club_id=${clubId}`),
     ]);
     return { members: m.members, matches: mt.matches };
   }, [clubId]);
@@ -63,7 +63,7 @@ export default function MatchesPage({ params }: { params: Promise<{ clubId: stri
 
     try {
       setSaving(true);
-      await api.post('/api/matches', {
+      await api.post('/matches', {
         club_id: clubId, match_type: matchType, team1_score: a, team2_score: b,
         team1_player_ids: team1, team2_player_ids: team2,
       });

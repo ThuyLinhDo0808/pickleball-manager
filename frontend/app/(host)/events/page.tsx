@@ -25,7 +25,7 @@ function buildMonth(year: number, month: number) {
 export default function SchedulePage() {
   const router = useRouter();
   const { t } = useI18n();
-  const { data, error, loading } = useLoad(() => api.get('/api/events'), []);
+  const { data, error, loading } = useLoad(() => api.get('/events'), []);
 
   const today = todayISO();
   const [view, setView] = useState('calendar');

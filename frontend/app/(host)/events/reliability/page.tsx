@@ -14,7 +14,7 @@ function tone(pct: number | null) {
 
 export default function PlayersReliabilityPage() {
   const { t } = useI18n();
-  const { data, error, loading } = useLoad(() => api.get('/api/events/players/reliability'), []);
+  const { data, error, loading } = useLoad(() => api.get('/events/players/reliability'), []);
   const [order, setOrder] = useState('worst');
 
   const players = useMemo(() => {

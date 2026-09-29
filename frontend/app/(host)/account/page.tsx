@@ -17,7 +17,7 @@ export default function AccountPage() {
   const router = useRouter();
   const { t, lang, setLanguage } = useI18n();
   const { mode, setMode } = useMode();
-  const { data } = useLoad(() => api.get('/api/host/me'), []);
+  const { data } = useLoad(() => api.get('/host/me'), []);
   const user = data?.user;
 
   function confirmSignOut() {

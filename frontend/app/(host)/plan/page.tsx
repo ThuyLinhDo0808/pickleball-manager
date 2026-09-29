@@ -18,7 +18,7 @@ const TIERS = [
 
 export default function PlanPage() {
   const { t } = useI18n();
-  const { data, loading, reload } = useLoad(() => api.get('/api/host/me'), []);
+  const { data, loading, reload } = useLoad(() => api.get('/host/me'), []);
   const [busy, setBusy] = useState<string | null>(null);
 
   if (loading || !data) return <div className="p-8 text-center">Đang tải...</div>;
@@ -33,7 +33,7 @@ export default function PlanPage() {
     if (window.confirm(confirmMsg)) {
       try {
         setBusy(item.tier);
-        await api.post('/api/host/subscription', { tier: item.tier });
+        await api.post('/host/subscription', { tier: item.tier });
         toast.success(t('plan.switched', { name }));
         reload();
       } catch (e: any) {

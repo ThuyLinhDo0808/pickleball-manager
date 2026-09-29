@@ -24,8 +24,8 @@ export default function EventFormPage({ params }: { params?: Promise<{ eventId?:
 
   const { data, error, loading } = useLoad(async () => {
     const [c, e] = await Promise.all([
-      api.get('/api/clubs'),
-      editing ? api.get(`/api/events/${eventId}`) : Promise.resolve(null),
+      api.get('/clubs'),
+      editing ? api.get(`/events/${eventId}`) : Promise.resolve(null),
     ]);
     return { clubs: c.clubs, event: e ? e.event : null };
   }, [eventId]);
@@ -81,12 +81,12 @@ export default function EventFormPage({ params }: { params?: Promise<{ eventId?:
     try {
       setSaving(true);
       if (editing) {
-        await api.patch(`/api/events/${eventId}`, payload);
+        await api.patch(`/events/${eventId}`, payload);
         toast.success(t('common.saved'));
         router.push(`/events/${eventId}/participants`);
       } else {
         const series = repeat === 'weekly' ? Number(repeatCount) : 1;
-        const res = await api.post('/api/events', { ...payload, repeat_count: series });
+        const res = await api.post('/events', { ...payload, repeat_count: series });
         if (series > 1) {
           toast.success(t('eventForm.seriesCreated', { count: series }));
           router.push('/events');

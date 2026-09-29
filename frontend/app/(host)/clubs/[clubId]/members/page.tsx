@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 export default function MembersPage({ params }: { params: Promise<{ clubId: string }> }) {
   const { clubId } = use(params);
   const { t } = useI18n();
-  const { data, error, loading, reload } = useLoad(() => api.get(`/api/clubs/${clubId}/members`), [clubId]);
+  const { data, error, loading, reload } = useLoad(() => api.get(`/clubs/${clubId}/members`), [clubId]);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<any>(null);
 
@@ -103,10 +103,10 @@ function MemberModal({ clubId, member, onClose, onDone }: any) {
     try {
       setSaving(true);
       if (isNew) {
-        await api.post(`/api/clubs/${clubId}/members`, payload);
+        await api.post(`/clubs/${clubId}/members`, payload);
         toast.success(t('members.added', { name: payload.display_name }));
       } else {
-        await api.patch(`/api/clubs/${clubId}/members/${member.id}`, payload);
+        await api.patch(`/clubs/${clubId}/members/${member.id}`, payload);
         toast.success(t('common.saved'));
       }
       onDone();

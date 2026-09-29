@@ -16,8 +16,8 @@ export default function ParticipantsPage({ params }: { params: Promise<{ eventId
   const { t } = useI18n();
   const { data, error, loading, reload } = useLoad(async () => {
     const [e, p] = await Promise.all([
-      api.get(`/api/events/${eventId}`),
-      api.get(`/api/events/${eventId}/participants`),
+      api.get(`/events/${eventId}`),
+      api.get(`/events/${eventId}/participants`),
     ]);
     return { event: e.event, participants: p.participants };
   }, [eventId]);
@@ -44,7 +44,7 @@ export default function ParticipantsPage({ params }: { params: Promise<{ eventId
   async function act(p: any, action: string) {
     try {
       setBusyId(p.id);
-      const res: any = await api.post(`/api/events/${eventId}/participants/${p.id}/${action}`, {});
+      const res: any = await api.post(`/events/${eventId}/participants/${p.id}/${action}`, {});
       if (action === 'cancel' && res?.promoted) {
         toast.success(t('participants.promoted', { name: res.promoted.display_name }));
       }
@@ -144,7 +144,7 @@ function ManualAddModal({ eventId, event, onClose, onDone }: any) {
     if (!name.trim()) return alert(t('participants.nameRequiredBody'));
     try {
       setSaving(true);
-      const res: any = await api.post(`/api/events/${eventId}/participants`, {
+      const res: any = await api.post(`/events/${eventId}/participants`, {
         display_name: name.trim(), phone: phone.trim() || null,
         fee_amount: fee.trim() ? parseMoney(fee) : null,
       });

@@ -16,10 +16,10 @@ export default function FundPage({ params }: { params: Promise<{ clubId: string 
   const { t } = useI18n();
   const { data, error, loading, reload } = useLoad(async () => {
     const [c, b, tx, m] = await Promise.all([
-      api.get(`/api/clubs/${clubId}`),
-      api.get(`/api/clubs/${clubId}/fund-balance`),
-      api.get(`/api/transactions?club_id=${clubId}`),
-      api.get(`/api/clubs/${clubId}/members`),
+      api.get(`/clubs/${clubId}`),
+      api.get(`/clubs/${clubId}/fund-balance`),
+      api.get(`/transactions?club_id=${clubId}`),
+      api.get(`/clubs/${clubId}/members`),
     ]);
     return { club: c.club, balance: b.balance, txns: tx.transactions, members: m.members };
   }, [clubId]);

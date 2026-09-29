@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 //  - Physical phone on Wi-Fi: your computer's LAN IP, e.g. http://192.168.1.20:4000
 //  - Deployed: your Render URL, e.g. https://pickleball-backend.onrender.com
 // 'localhost' only works in a simulator on the same machine, never on a real phone.
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.60:4000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
 
 // Render's free tier sleeps when idle; the first request can take ~30-60s.
 const TIMEOUT_MS = 60000;

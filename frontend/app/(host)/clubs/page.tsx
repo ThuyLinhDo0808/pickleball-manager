@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 export default function ClubListPage() {
   const router = useRouter();
   const { t } = useI18n();
-  const { data, error, loading, reload, retry } = useLoad(() => api.get(`/api/clubs?today=${todayISO()}`), []);
+  const { data, error, loading, reload, retry } = useLoad(() => api.get(`/clubs?today=${todayISO()}`), []);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [fee, setFee] = useState('');
@@ -26,7 +26,7 @@ export default function ClubListPage() {
     if (!name.trim()) return alert(t('club.nameRequired'));
     try {
       setSaving(true);
-      const { club } = await api.post('/api/clubs', { name: name.trim(), monthly_fee_default: Number(fee.replace(/\D/g, '')) || 0 });
+      const { club } = await api.post('/clubs', { name: name.trim(), monthly_fee_default: Number(fee.replace(/\D/g, '')) || 0 });
       setName(''); setFee(''); setCreating(false);
       toast.success(t('common.saved'));
       router.push(`/clubs/${club.id}/members`);

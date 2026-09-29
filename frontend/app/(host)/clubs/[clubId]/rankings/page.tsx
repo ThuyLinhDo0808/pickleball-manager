@@ -14,8 +14,8 @@ export default function RankingsPage({ params }: { params: Promise<{ clubId: str
   const { t } = useI18n();
   const { data, error, loading } = useLoad(async () => {
     const [a, m] = await Promise.all([
-      api.get(`/api/clubs/${clubId}/rankings/all-time`),
-      api.get(`/api/clubs/${clubId}/rankings/monthly`),
+      api.get(`/clubs/${clubId}/rankings/all-time`),
+      api.get(`/clubs/${clubId}/rankings/monthly`),
     ]);
     return { allTime: a.rankings, monthly: m.rankings };
   }, [clubId]);

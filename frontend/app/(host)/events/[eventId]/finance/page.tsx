@@ -17,9 +17,9 @@ export default function EventFinancePage({ params }: { params: Promise<{ eventId
   const { t } = useI18n();
   const { data, error, loading, reload } = useLoad(async () => {
     const [f, p, tx] = await Promise.all([
-      api.get(`/api/events/${eventId}/finance`),
-      api.get(`/api/events/${eventId}/participants`),
-      api.get(`/api/transactions?event_id=${eventId}`),
+      api.get(`/events/${eventId}/finance`),
+      api.get(`/events/${eventId}/participants`),
+      api.get(`/transactions?event_id=${eventId}`),
     ]);
     return { finance: f.finance, event: f.event, participants: p.participants, txns: tx.transactions };
   }, [eventId]);
@@ -58,7 +58,7 @@ export default function EventFinancePage({ params }: { params: Promise<{ eventId
     e.preventDefault();
     try {
       setSavingCosts(true);
-      await api.patch(`/api/events/${eventId}`, { court_cost: parseMoney(courtCost), ball_cost: parseMoney(ballCost) });
+      await api.patch(`/events/${eventId}`, { court_cost: parseMoney(courtCost), ball_cost: parseMoney(ballCost) });
       setCostsDirty(false);
       toast.success(t('common.saved'));
       reload();
@@ -71,7 +71,7 @@ export default function EventFinancePage({ params }: { params: Promise<{ eventId
 
   async function toggleFee(p: any) {
     try {
-      await api.patch(`/api/events/${eventId}/participants/${p.id}/fee`, { fee_paid: !p.fee_paid });
+      await api.patch(`/events/${eventId}/participants/${p.id}/fee`, { fee_paid: !p.fee_paid });
       reload();
     } catch (e: any) {
       toast.error(t('finance.feeUpdateFailed') + ': ' + e.message);
@@ -84,7 +84,7 @@ export default function EventFinancePage({ params }: { params: Promise<{ eventId
     if (!desc.trim() || value <= 0) return alert(t('finance.expenseInvalid'));
     try {
       setSavingExpense(true);
-      await api.post('/api/transactions', { event_id: eventId, type: 'expense', source: 'event_expense', amount: value, description: desc.trim() });
+      await api.post('/transactions', { event_id: eventId, type: 'expense', source: 'event_expense', amount: value, description: desc.trim() });
       setDesc(''); setAmount('');
       toast.success(t('fund.expenseAdded'));
       reload();
@@ -98,7 +98,7 @@ export default function EventFinancePage({ params }: { params: Promise<{ eventId
   async function setStatus(status: string) {
     if (status === event.status) return;
     try {
-      await api.patch(`/api/events/${eventId}`, { status });
+      await api.patch(`/events/${eventId}`, { status });
       toast.success(t('finance.statusChanged', { status: t(`estatus.${status}`) }));
       reload();
     } catch (e: any) {
