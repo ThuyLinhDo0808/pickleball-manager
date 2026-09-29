@@ -13,7 +13,19 @@ function nowIso() {
 
 // ---- PUBLIC routes (no auth) — must be registered before requireAuth below,
 // so a matching request is handled here and never falls through to it. ------
+// Only what a player needs to see — no host id, fees config internals, or phones.
+const PUBLIC_EVENT_FIELDS = [
+  'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
+  'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
+  'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
+];
+
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
+
 router.get('/public/:publicToken', async (req, res) => {
+  if (!isUuid(req.params.publicToken)) return notFound(res, 'Event');
   const { data: event, error } = await supabase
     .from('v_event_summary')
     .select('*')
@@ -21,10 +33,30 @@ router.get('/public/:publicToken', async (req, res) => {
     .maybeSingle();
   if (error) return dbError(res, error);
   if (!event) return notFound(res, 'Event');
-  res.json(event);
+
+  const { data: people, error: pErr } = await supabase
+    .from('event_participants')
+    .select('full_name, dupr_level, status, joined_at')
+    .eq('event_id', event.id)
+    .in('status', [...MAIN_LIST, 'waitlisted'])
+    .order('joined_at', { ascending: true });
+  if (pErr) return dbError(res, pErr);
+
+  let closedCode = null;
+  if (!event.allow_public_registration) closedCode = 'disabled';
+  else if (!['draft', 'open'].includes(event.status)) closedCode = 'not_open';
+  else if (event.registration_deadline && new Date(event.registration_deadline) < new Date()) closedCode = 'deadline';
+
+  res.json({
+    ...pick(event, PUBLIC_EVENT_FIELDS),
+    registration_open: !closedCode,
+    closed_code: closedCode,
+    participants: people.map(({ joined_at, ...p }) => p),
+  });
 });
 
 router.post('/public/:publicToken/register', async (req, res) => {
+  if (!isUuid(req.params.publicToken)) return notFound(res, 'Event');
   const { data: event, error: eErr } = await supabase
     .from('events')
     .select('*')
@@ -37,8 +69,25 @@ router.post('/public/:publicToken/register', async (req, res) => {
   const blockedReason = assertRegistrationOpen(event);
   if (blockedReason) return res.status(403).json({ error: blockedReason });
 
-  const { full_name, phone, dupr_level } = req.body;
+  const full_name = String(req.body.full_name || '').trim();
+  const phone = String(req.body.phone || '').trim();
+  const dupr_level = req.body.dupr_level === '' || req.body.dupr_level == null ? null : Number(req.body.dupr_level);
   if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
+  if (normalizePhone(phone).length < 9) return res.status(400).json({ error: 'A valid phone number is required.' });
+  if (dupr_level != null && !(dupr_level >= 1 && dupr_level <= 8)) {
+    return res.status(400).json({ error: 'dupr_level must be between 1 and 8.' });
+  }
+
+  // One active registration per phone number per event.
+  const { data: existing, error: dErr } = await supabase
+    .from('event_participants')
+    .select('phone')
+    .eq('event_id', event.id)
+    .in('status', [...MAIN_LIST, 'waitlisted']);
+  if (dErr) return dbError(res, dErr);
+  if (existing.some((p) => normalizePhone(p.phone) === normalizePhone(phone))) {
+    return res.status(409).json({ error: 'This phone number is already registered for this event.' });
+  }
 
   const { count } = await supabase
     .from('event_participants')
@@ -49,8 +98,8 @@ router.post('/public/:publicToken/register', async (req, res) => {
 
   const { data, error } = await supabase
     .from('event_participants')
-    .insert({ event_id: event.id, full_name, phone: phone || null, dupr_level: dupr_level ?? null, status })
-    .select()
+    .insert({ event_id: event.id, full_name, phone, dupr_level, status })
+    .select('full_name, status')
     .single();
   if (error) return dbError(res, error);
   res.status(201).json(data);
@@ -116,7 +165,7 @@ router.post('/', async (req, res) => {
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration',
+    'allow_public_registration', 'notice',
   ]);
   const { data, error } = await supabase
     .from('events')
@@ -133,7 +182,7 @@ router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration',
+    'allow_public_registration', 'notice',
   ]);
   const { data, error } = await supabase
     .from('events')

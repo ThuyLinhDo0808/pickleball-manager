@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import EventShareCard from '@/components/EventShareCard';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -14,7 +15,7 @@ export default function EventDetailPage() {
   const { club } = useDefaultClub();
   const [tab, setTab] = useState('participants');
 
-  const { data: event, reload: reloadEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
+  const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   const { data: participants, reload: reloadParticipants } = useLoad(
     () => api.get(`/api/events/${eventId}/participants`),
     [eventId]
@@ -95,6 +96,8 @@ export default function EventDetailPage() {
         </div>
         <button className="btn-secondary shrink-0 text-sm" onClick={onExport}>{t('common.exportExcel')}</button>
       </div>
+
+      <EventShareCard event={event} onSaved={setEvent} />
 
       <div className="flex gap-2 mb-4">
         {['participants', 'finance'].map((tb) => (

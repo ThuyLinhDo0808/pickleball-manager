@@ -242,6 +242,8 @@ alter table public.events add column if not exists club_id uuid references publi
 alter table public.events add column if not exists registration_deadline timestamptz;
 alter table public.events add column if not exists public_token uuid not null default gen_random_uuid();
 alter table public.events add column if not exists allow_public_registration boolean not null default false;
+-- Message from the Host shown on the public registration page.
+alter table public.events add column if not exists notice text;
 
 create table if not exists public.event_participants (
   id uuid primary key default gen_random_uuid(),
@@ -272,7 +274,10 @@ create table if not exists public.event_scorers (
   created_at timestamptz not null default now()
 );
 
-create or replace view public.v_event_summary as
+-- Dropped first: `e.*` expands at creation, so new events columns would
+-- otherwise shift this view's columns and make CREATE OR REPLACE fail.
+drop view if exists public.v_event_summary;
+create view public.v_event_summary as
 select
   e.*,
   c.name as club_name,
