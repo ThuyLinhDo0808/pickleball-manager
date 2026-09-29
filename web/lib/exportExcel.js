@@ -73,3 +73,27 @@ export function exportClubBackup(club, members, events, rankings) {
 
   XLSX.writeFile(wb, `${(club.name || 'club').replace(/\s+/g, '-').toLowerCase()}-backup.xlsx`);
 }
+
+// Rankings for one period (day / month / quarter / year / all) + awards sheet.
+export function exportRankings(clubName, label, stats, t) {
+  const wb = XLSX.utils.book_new();
+  const head = ['#', t('common.name'), t('rankings.played'), t('rankings.wins'), t('rankings.losses'), t('rankings.winRate'), t('rankings.pointsFor'), t('rankings.pointsAgainst'), t('rankings.diff')];
+  const rows = stats.rankings.map((r, i) => [i + 1, r.full_name, r.matches_played, r.wins, r.losses, r.win_rate / 100, r.points_scored, r.points_lost, r.point_diff]);
+  const ws = XLSX.utils.aoa_to_sheet([[`${clubName} — ${label}`], [], head, ...rows]);
+  rows.forEach((_, i) => {
+    const cell = ws[XLSX.utils.encode_cell({ r: i + 3, c: 5 })];
+    if (cell) cell.z = '0.0%';
+  });
+  XLSX.utils.book_append_sheet(wb, ws, 'Rankings');
+
+  const a = stats.awards;
+  const awardRows = [[t('rankings.awards'), '#', t('common.name'), '']];
+  a.top_win_rate.forEach((r, i) => awardRows.push([t('rankings.topWinRate'), i + 1, r.full_name, `${r.value}%`]));
+  a.top_point_diff.forEach((r, i) => awardRows.push([t('rankings.topDiff'), i + 1, r.full_name, r.value]));
+  a.top_attendance.forEach((r, i) => awardRows.push([t('rankings.topAttendance'), i + 1, r.full_name, r.value]));
+  if (a.lowest_win_rate) awardRows.push([t('rankings.lowest'), 1, a.lowest_win_rate.full_name, `${a.lowest_win_rate.value}%`]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(awardRows), 'Awards');
+
+  const safe = `${clubName}-${label}`.replace(/[^\p{L}\p{N}-]+/gu, '_');
+  XLSX.writeFile(wb, `rankings-${safe}.xlsx`);
+}

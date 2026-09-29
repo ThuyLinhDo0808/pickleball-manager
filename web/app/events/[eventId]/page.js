@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import EventShareCard from '@/components/EventShareCard';
+import Modal from '@/components/Modal';
+import MatchForm from '@/components/MatchForm';
+import MatchList from '@/components/MatchList';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -32,6 +35,8 @@ export default function EventDetailPage() {
   const [showImport, setShowImport] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [flash, setFlash] = useState('');
+  const [showMatch, setShowMatch] = useState(false);
+  const { data: matches, reload: reloadMatches } = useLoad(() => api.get(`/api/matches?event_id=${eventId}`), [eventId]);
   const [txnForm, setTxnForm] = useState({ type: 'expense', category: '', amount: '', note: '' });
 
   async function addParticipant(e) {
@@ -111,13 +116,13 @@ export default function EventDetailPage() {
       <EventShareCard event={event} onSaved={setEvent} />
 
       <div className="flex gap-2 mb-4">
-        {['participants', 'finance'].map((tb) => (
+        {['participants', 'matches', 'finance'].map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
             className={`px-3 py-1.5 rounded-lg text-sm ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-800 text-gray-300'}`}
           >
-            {tb === 'participants' ? t('nav.members') : t('nav.finance')}
+            {tb === 'participants' ? t('nav.members') : tb === 'matches' ? t('matches.title') : t('nav.finance')}
           </button>
         ))}
       </div>
@@ -168,6 +173,29 @@ export default function EventDetailPage() {
           )}
           <ParticipantTable title={t('events.mainList')} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
           <ParticipantTable title={t('events.waitlist')} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />
+        </>
+      )}
+
+      {tab === 'matches' && (
+        <>
+          <div className="flex justify-end mb-3">
+            <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
+          </div>
+          <MatchList matches={matches || []} onChanged={reloadMatches} />
+          <Modal open={showMatch} title={t('matches.add')} onClose={() => setShowMatch(false)}>
+            {showMatch && (
+              <MatchForm
+                players={main.map((p) => ({ id: p.id, name: p.full_name }))}
+                idField="event_participant_id"
+                parent={{ event_id: eventId }}
+                onCancel={() => setShowMatch(false)}
+                onSaved={() => {
+                  setShowMatch(false);
+                  reloadMatches();
+                }}
+              />
+            )}
+          </Modal>
         </>
       )}
 
