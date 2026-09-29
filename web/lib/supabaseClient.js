@@ -8,4 +8,8 @@ if (!url || !anonKey) {
   console.warn('Supabase env vars are missing — copy .env.local.example to .env.local and fill them in.');
 }
 
-export const supabase = createClient(url || '', anonKey || '');
+// Fall back to a syntactically valid placeholder URL so createClient() doesn't
+// throw during build/import when env vars aren't set yet (e.g. first Vercel
+// deploy before env vars are configured). Auth calls will simply fail until
+// the real env vars are set.
+export const supabase = createClient(url || 'https://placeholder.supabase.co', anonKey || 'placeholder-anon-key');
