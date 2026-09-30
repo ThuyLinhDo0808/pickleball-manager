@@ -128,6 +128,7 @@ export const vi = {
     created: 'Tạo ngày {date}',
   },
   auth: {
+    linkExpired: 'Link xác nhận đã hết hạn hoặc đã được dùng. Hãy thử đăng nhập; nếu chưa được, bấm Đăng ký lại để nhận email mới.',
     checkEmail: 'Đã gửi email xác nhận. Mở email, bấm xác nhận rồi quay lại đăng nhập.',
     signIn: 'Đăng nhập',
     signUp: 'Đăng ký',

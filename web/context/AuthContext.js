@@ -18,7 +18,9 @@ export function AuthProvider({ children }) {
     user: session?.user || null,
     loading: session === undefined,
     signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
-    signUp: (email, password) => supabase.auth.signUp({ email, password }),
+    // The confirmation email brings people back to this same site (not Supabase's Site URL).
+    signUp: (email, password) =>
+      supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/sign-in` } }),
     signOut: () => supabase.auth.signOut(),
   };
 

@@ -25,6 +25,15 @@ export default function SignInPage() {
     if (!loading && user) router.replace(nextPath());
   }, [loading, user, router]);
 
+  // Coming back from an expired / already-used confirmation link (#error_code=otp_expired…).
+  useEffect(() => {
+    const h = new URLSearchParams(window.location.hash.slice(1));
+    if (!h.get('error')) return;
+    setError(h.get('error_code') === 'otp_expired' ? t('auth.linkExpired') : h.get('error_description') || t('common.error'));
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
