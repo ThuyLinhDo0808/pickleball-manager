@@ -996,5 +996,11 @@ update public.club_members set joined_on = created_at::date where joined_on is n
 alter table public.club_members alter column joined_on set default current_date;
 create index if not exists ix_club_members_birth_md on public.club_members (club_id, (extract(month from birth_date)));
 
+-- ----------------------------------------------------------------------------
+-- TOURNAMENT ENTRY FEE  (migration 20261004090000)
+-- ----------------------------------------------------------------------------
+alter table public.tournaments add column if not exists entry_fee numeric(12,0) not null default 0
+  check (entry_fee >= 0);
+
 select 1; -- done
 notify pgrst, 'reload schema';

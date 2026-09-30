@@ -116,7 +116,7 @@ Tóm tắt CLB đang chọn và các buổi sắp tới, kèm lối tắt tạo 
 - Nút **Xoá** nằm cạnh: tick chọn nhiều người, bấm xoá, rồi **xác nhận** (liệt kê tên từng người) để tránh bấm nhầm. Xoá thành viên cũng xoá lịch sử trận đấu và gói hội viên của họ.
 
 **Bấm vào tên để mở chi tiết thành viên:**
-- Sửa thông tin.
+- **✏️ Sửa thông tin**: họ tên, SĐT, giới tính, DUPR, ngày sinh, loại, hạng, tháng vào CLB, đang hoạt động hay không.
 - **Gói hội viên** của người đó: đăng ký gói, đánh dấu đã đóng/chưa đóng, trừ hoặc hoàn buổi thủ công.
 - **Ghi chú nội bộ** (chỉ Host thấy): cờ *Chưa đóng tiền*, *Hay đi trễ*, *Ý thức kém*, cùng ghi chú tự do.
 - **Tài khoản người chơi** đã liên kết (nếu người đó tự tham gia qua link). Host có thể huỷ liên kết.
@@ -192,9 +192,10 @@ Nằm trong menu **Thống kê** (cùng Bảng xếp hạng và Phân tích).
 
 Trang **Tạo giải đấu** bắt đầu bằng mục **1. Thể thức**: chọn 1 trong 2 kiểu, đặt tên giải, ngày, giờ và địa điểm (giải hiện trên Lịch sự kiện). Danh sách các giải đã tạo ở link *Các giải đã tạo →*.
 
-#### Thể thức 1 — Cá nhân & Đôi (Individual / Pairs)
-1. Chọn nội dung: **Đơn / Đôi / Đôi nam nữ**. Với Đơn và Đôi chọn thêm **hạng mục**: *Tự do*, *Nam* hoặc *Nữ* (đôi nam, đôi nữ, đơn nam, đơn nữ). Hạng mục Nam/Nữ chỉ liệt kê người đúng giới tính; server cũng kiểm tra lại.
-2. Chọn người chơi.
+#### Thể thức 1 — Đánh đôi
+Giải trong CLB luôn là **đánh đôi**: cặp nam, nữ hay nam nữ đều được, không chia nội dung đơn / đôi nam / đôi nam nữ (đánh đơn nằm trong giải Đồng đội). Mục 1 có thêm **Lệ phí / người** (hiện trên trang giải).
+1. Chọn người chơi.
+
 3. **Ghép cặp**:
    - *Cân bằng*: người trình độ cao ghép với người thấp hơn để các đội đều sức. Người chưa có DUPR được tính là 3.0.
    - *Ngẫu nhiên*.
@@ -203,6 +204,10 @@ Trang **Tạo giải đấu** bắt đầu bằng mục **1. Thể thức**: ch�
    - **Vòng bảng → loại trực tiếp**: chọn số bảng và số đội mỗi bảng đi tiếp. Các đội được chia bảng theo kiểu "rắn" để các bảng cân sức.
    - **Chỉ loại trực tiếp**.
 5. Bấm **Tạo giải & xếp lịch**. App tự sinh lịch vòng tròn trong mỗi bảng.
+
+**Ghép cặp phải đủ:** cặp nào còn thiếu người sẽ báo đỏ và nút *Tạo giải* bị khoá (trước đây cặp thiếu bị bỏ ra khỏi giải mà không báo, nên bảng đấu bị hụt đội). Người được chọn mà chưa có cặp được liệt kê màu vàng.
+
+**Quay lại sửa giải:** trang giải có nút *← Các giải đã tạo* và **✏️ Sửa**. *Sửa* mở lại trang tạo giải với tên, ngày, lệ phí, người chơi, cặp, số bảng… đã điền sẵn; bấm *Tạo giải & xếp lịch* thì giải cũ được thay bằng giải mới (lịch xếp lại; nếu đã có kết quả, app hỏi trước vì kết quả sẽ mất).
 
 **Trong giải:**
 - Nhập tỷ số từng trận. Bảng xếp hạng vòng bảng tính theo thắng và hiệu số.
@@ -669,7 +674,8 @@ supabase/migrations/
 ├── 20260930120000_cancel_policy_qr_coadmin_notify.sql   # hạn huỷ, QR, co-admin, thông báo
 ├── 20261001090000_paid_signup_tickets.sql               # đăng ký bắt buộc đăng nhập, ảnh chuyển khoản, vé QR, xác thực thành viên
 ├── 20261002090000_activities_team_tournaments.sql       # loại hoạt động, yêu cầu vào CLB, giải Team League + trận phụ
-└── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
+├── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
+└── 20261004090000_tournament_entry_fee.sql              # lệ phí tham gia giải
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):

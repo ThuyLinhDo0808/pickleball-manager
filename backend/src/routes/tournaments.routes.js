@@ -22,6 +22,11 @@ function scheduleFields(body) {
     }
   }
   if ('location' in body) out.location = String(body.location || '').trim() || null;
+  if ('entry_fee' in body) {
+    const fee = Number(body.entry_fee || 0);
+    if (!Number.isFinite(fee) || fee < 0 || fee > 100000000) throw badRequest('entry_fee must be 0-100,000,000.');
+    out.entry_fee = Math.round(fee);
+  }
   if (out.start_time && out.end_time && out.end_time <= out.start_time) throw badRequest('end_time must be after start_time.');
   return out;
 }

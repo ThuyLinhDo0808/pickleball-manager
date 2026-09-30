@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
@@ -12,9 +12,6 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const TEAM_SIZE = { singles: 1, doubles: 2, mixed: 2 };
-const DIVISIONS = ['open', 'men', 'women'];
-const DIVISION_GENDER = { men: 'male', women: 'female' };
 
 export default function NewTournamentPage() {
   const { t } = useI18n();
@@ -22,7 +19,42 @@ export default function NewTournamentPage() {
   const { club } = useDefaultClub();
   const { data: members } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])), [club?.id]);
   const [kind, setKind] = useState('pairs');
-  const [info, setInfo] = useState({ name: '', event_date: todayYmd(), start_time: '08:00', end_time: '', location: '' });
+  const [info, setInfo] = useState({ name: '', event_date: todayYmd(), start_time: '08:00', end_time: '', location: '', entry_fee: '' });
+  // ?from=<id>: "edit" an existing tournament = rebuild it with its settings pre-filled.
+  const [from, setFrom] = useState(null);
+  const [prefill, setPrefill] = useState(null);
+  const [loadingFrom, setLoadingFrom] = useState(false);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('from');
+    if (!id) return;
+    setLoadingFrom(true);
+    api
+      .get(`/api/tournaments/${id}`)
+      .then((tr) => {
+        setFrom(tr);
+        setKind(tr.kind === 'team' ? 'team' : 'pairs');
+        setInfo({
+          name: tr.name,
+          event_date: tr.event_date || todayYmd(),
+          start_time: tr.start_time ? tr.start_time.slice(0, 5) : '',
+          end_time: tr.end_time ? tr.end_time.slice(0, 5) : '',
+          location: tr.location || '',
+          entry_fee: tr.entry_fee ? String(Number(tr.entry_fee)) : '',
+        });
+        setPrefill(
+          tr.kind === 'team'
+            ? { formats: tr.sub_formats, winRule: tr.win_rule, teams: tr.teams.map((tm) => ({ name: tm.name, ids: tm.players.map((p) => p.id) })) }
+            : {
+                teams: tr.teams.map((tm) => [tm.player1_id, tm.player2_id].filter(Boolean)),
+                mode: tr.group_count > 0 ? 'groups' : 'ko',
+                groupCount: tr.group_count || 2,
+                advance: tr.advance_per_group || 2,
+              }
+        );
+      })
+      .catch(() => {})
+      .finally(() => setLoadingFrom(false));
+  }, []);
   const setI = (patch) => setInfo((x) => ({ ...x, ...patch }));
   const base = {
     club_id: club?.id,
@@ -31,18 +63,29 @@ export default function NewTournamentPage() {
     start_time: info.start_time || null,
     end_time: info.end_time || null,
     location: info.location.trim() || null,
+    entry_fee: Number(info.entry_fee || 0),
   };
   const timeError = info.start_time && info.end_time && info.end_time <= info.start_time ? t('create.endAfterStart') : '';
   const ready = !!club && !!base.name && !timeError;
-  const active = (members || []).filter((m) => m.is_active);
-  const done = (created) => router.push(`/club/tournaments/${created.id}`);
+  // Players already in the tournament being edited stay selectable even if inactive now.
+  const inTournament = new Set(prefill ? prefill.teams.flatMap((tm) => (Array.isArray(tm) ? tm : tm.ids)) : []);
+  const active = (members || []).filter((m) => m.is_active || inTournament.has(m.id));
+  // Rebuilt from an existing tournament: the old one is replaced.
+  const done = async (created) => {
+    if (from) await api.del(`/api/tournaments/${from.id}`).catch(() => {});
+    router.push(`/club/tournaments/${created.id}`);
+  };
 
   return (
     <AppShell>
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h1 className="text-white text-2xl font-bold">{t('nav.createTournament')}</h1>
-        <Link href="/club/tournaments" className="text-gray-400 text-sm hover:text-white shrink-0">{t('tournaments.allList')} →</Link>
+        <h1 className="text-white text-2xl font-bold">{from ? t('tournaments.editTitle') : t('nav.createTournament')}</h1>
+        <Link href={from ? `/club/tournaments/${from.id}` : '/club/tournaments'} className="text-gray-400 text-sm hover:text-white shrink-0">
+          {from ? `← ${from.name}` : `${t('tournaments.allList')} →`}
+        </Link>
       </div>
+      {from && <p className="card !py-3 mb-4 border-yellow-400/50 text-yellow-200 text-sm">✏️ {t('tournaments.editHint')}</p>}
+      {loadingFrom && <p className="text-gray-400 text-sm mb-4">{t('common.loading')}</p>}
 
       <Section n={1} title={t('tournaments.kindTitle')}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -76,60 +119,52 @@ export default function NewTournamentPage() {
             <label className="text-xs text-gray-400">{t('create.end')}</label>
             <input className="input" type="time" value={info.end_time} onChange={(e) => setI({ end_time: e.target.value })} />
           </div>
-          <div className="col-span-2 md:col-span-4">
+          <div className="col-span-2 md:col-span-3">
             <label className="text-xs text-gray-400">{t('events.location')}</label>
             <input className="input" placeholder={t('create.locationPh')} value={info.location} onChange={(e) => setI({ location: e.target.value })} />
+          </div>
+          <div className="col-span-2 md:col-span-1">
+            <label className="text-xs text-gray-400">{t('tournaments.entryFee')}</label>
+            <input className="input" type="number" inputMode="numeric" min="0" step="10000" placeholder="0" value={info.entry_fee} onChange={(e) => setI({ entry_fee: e.target.value })} />
           </div>
         </div>
         {timeError && <p className="text-red-400 text-xs mt-2">{timeError}</p>}
       </Section>
 
-      {kind === 'pairs' ? (
-        <PairsSetup club={club} active={active} base={base} ready={ready} onCreated={done} />
-      ) : (
-        <TeamLeagueSetup club={club} active={active} base={base} ready={ready} onCreated={done} />
-      )}
+      {!loadingFrom &&
+        (kind === 'pairs' ? (
+          <PairsSetup key={`p${from?.id || ''}`} club={club} active={active} base={base} ready={ready} onCreated={done} initial={from?.kind !== 'team' ? prefill : null} />
+        ) : (
+          <TeamLeagueSetup key={`t${from?.id || ''}`} club={club} active={active} base={base} ready={ready} onCreated={done} initial={from?.kind === 'team' ? prefill : null} />
+        ))}
     </AppShell>
   );
 }
 
-// Individual / pairs: singles, men's/women's/open doubles or mixed; groups → knockout.
-function PairsSetup({ club, active: allActive, base, ready, onCreated }) {
+// Doubles: pairs of any genders (a club tournament is always doubles); groups → knockout.
+const format = 'doubles';
+const size = 2;
+function PairsSetup({ club, active, base, ready, onCreated, initial }) {
   const { t } = useI18n();
-  const [format, setFormat] = useState('doubles');
-  const [division, setDivision] = useState('open');
-  const [picked, setPicked] = useState([]);
-  const [teams, setTeams] = useState([]); // [[id, id], ...]
+  const [picked, setPicked] = useState(() => (initial ? initial.teams.flat() : []));
+  const [teams, setTeams] = useState(() => (initial ? initial.teams.map((tm) => [tm[0] || '', tm[1] || '']) : [])); // [[id, id], ...]
   const [leftover, setLeftover] = useState([]);
-  const [mode, setMode] = useState('groups');
-  const [groupCount, setGroupCount] = useState(2);
-  const [advance, setAdvance] = useState(2);
+  const [mode, setMode] = useState(initial?.mode || 'groups');
+  const [groupCount, setGroupCount] = useState(initial?.groupCount || 2);
+  const [advance, setAdvance] = useState(initial?.advance || 2);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  // A men's / women's event only lists players of that gender.
-  const want = format === 'mixed' ? null : DIVISION_GENDER[division];
-  const active = want ? allActive.filter((m) => m.gender === want) : allActive;
   const byId = useMemo(() => new Map(active.map((m) => [m.id, m])), [active]);
-  const size = TEAM_SIZE[format];
   const complete = teams.filter((tm) => tm.length === size && tm.every(Boolean));
+  const incomplete = teams.length - complete.length;
   const inTeams = new Set(teams.flat().filter(Boolean));
-
-  function changeFormat(f, div = division) {
-    const g = f === 'mixed' ? null : DIVISION_GENDER[div];
-    const keep = g ? picked.filter((id) => allActive.find((m) => m.id === id)?.gender === g) : picked;
-    setFormat(f);
-    setDivision(div);
-    setPicked(keep);
-    setTeams(f === 'singles' ? keep.map((id) => [id]) : []);
-    setLeftover([]);
-  }
+  const unpaired = picked.filter((id) => !inTeams.has(id)).map((id) => byId.get(id)?.full_name).filter(Boolean);
 
   function togglePlayer(id) {
     const next = picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id];
     setPicked(next);
-    if (format === 'singles') setTeams(next.map((x) => [x]));
-    else setTeams((ts) => ts.map((tm) => tm.map((x) => (next.includes(x) ? x : ''))));
+    setTeams((ts) => ts.map((tm) => tm.map((x) => (next.includes(x) ? x : ''))));
   }
 
   async function autoPair(pairMode) {
@@ -164,7 +199,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated }) {
         ...base,
         kind: 'pairs',
         format,
-        division: format === 'mixed' ? 'open' : division,
+        division: 'open',
         group_count: groups,
         advance_per_group: Math.min(advance, perGroup || advance),
         teams: complete.map((tm) => ({ player_ids: tm })),
@@ -180,37 +215,8 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated }) {
 
   return (
     <>
-      <Section n={2} title={t('tournaments.format')}>
-        <div className="grid grid-cols-3 bg-navy-950 rounded-lg p-1 text-sm">
-          {Object.keys(TEAM_SIZE).map((f) => (
-            <button key={f} type="button" onClick={() => changeFormat(f)} className={`rounded-md py-1.5 ${format === f ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
-              {t(`matches.${f}`)}
-            </button>
-          ))}
-        </div>
-        {format === 'mixed' ? (
-          <p className="text-gray-500 text-xs mt-2">{t('matches.mixedHint')}</p>
-        ) : (
-          <>
-            <label className="text-xs text-gray-400 block mt-3 mb-1">{t('tournaments.division')}</label>
-            <div className="grid grid-cols-3 bg-navy-950 rounded-lg p-1 text-sm">
-              {DIVISIONS.map((d) => (
-                <button key={d} type="button" onClick={() => changeFormat(format, d)} className={`rounded-md py-1.5 ${division === d ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
-                  {t(`tournaments.div_${d}${format === 'singles' ? 'S' : ''}`)}
-                </button>
-              ))}
-            </div>
-            {want && <p className="text-gray-500 text-xs mt-2">{t('tournaments.divHint')}</p>}
-          </>
-        )}
-      </Section>
-
-      <Section n={3} title={t('tournaments.players', { n: picked.length })}>
-        <button type="button" className="text-lime-400 text-sm mb-2" onClick={() => {
-          const all = active.map((m) => m.id);
-          setPicked(all);
-          if (format === 'singles') setTeams(all.map((x) => [x]));
-        }}>
+      <Section n={2} title={t('tournaments.players', { n: picked.length })}>
+        <button type="button" className="text-lime-400 text-sm mb-2" onClick={() => setPicked(active.map((m) => m.id))}>
           {t('tournaments.selectAll')}
         </button>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 max-h-72 overflow-y-auto">
@@ -223,8 +229,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated }) {
         </div>
       </Section>
 
-      {format !== 'singles' && (
-        <Section n={4} title={t('tournaments.teams', { n: complete.length })}>
+      <Section n={3} title={t('tournaments.teams', { n: complete.length })}>
           <div className="flex flex-wrap gap-2 mb-2">
             <button type="button" className="btn-primary text-sm" disabled={picked.length < 2} onClick={() => autoPair('balanced')}>{t('tournaments.pairBalanced')}</button>
             <button type="button" className="btn-secondary text-sm" disabled={picked.length < 2} onClick={() => autoPair('random')}>{t('tournaments.pairRandom')}</button>
@@ -252,10 +257,11 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated }) {
           <button type="button" className="text-lime-400 text-sm mt-2" onClick={() => setTeams((ts) => [...ts, Array(size).fill('')])}>
             {t('tournaments.addTeam')}
           </button>
-        </Section>
-      )}
+          {incomplete > 0 && <p className="text-red-400 text-sm mt-2">⚠️ {t('tournaments.incomplete', { n: incomplete })}</p>}
+          {teams.length > 0 && unpaired.length > 0 && <p className="text-yellow-300 text-sm mt-1">{t('tournaments.unpaired', { names: unpaired.join(', ') })}</p>}
+      </Section>
 
-      <Section n={format === 'singles' ? 4 : 5} title={t('tournaments.structure')}>
+      <Section n={4} title={t('tournaments.structure')}>
         <div className="grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm mb-3">
           {['groups', 'ko'].map((k) => (
             <button key={k} type="button" onClick={() => setMode(k)} className={`rounded-md py-1.5 ${mode === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
@@ -285,7 +291,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated }) {
       {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
       {complete.length < 2 && <p className="text-gray-500 text-xs mb-2">{t('tournaments.needTeams')}</p>}
       {!base.name && <p className="text-gray-500 text-xs mb-2">{t('tournaments.needName')}</p>}
-      <button className="btn-primary w-full sm:w-auto" disabled={busy || !ready || complete.length < 2} onClick={create}>
+      <button className="btn-primary w-full sm:w-auto" disabled={busy || !ready || complete.length < 2 || incomplete > 0} onClick={create}>
         {t('tournaments.createBtn')}
       </button>
     </>

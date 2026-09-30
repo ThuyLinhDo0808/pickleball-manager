@@ -18,13 +18,13 @@ function missingFor(players, formats) {
 
 // Team League: teams of 4–8 play every other team once; each fixture holds several
 // sub-matches (men's, women's, mixed doubles…). The builder balances total DUPR.
-export default function TeamLeagueSetup({ club, active, base, ready, onCreated }) {
+export default function TeamLeagueSetup({ club, active, base, ready, onCreated, initial }) {
   const { t } = useI18n();
-  const [formats, setFormats] = useState(['mens', 'womens', 'mixed']);
-  const [winRule, setWinRule] = useState('sub_wins');
-  const [picked, setPicked] = useState([]);
-  const [teamCount, setTeamCount] = useState(2);
-  const [teams, setTeams] = useState([]); // [{ name, ids: [] }]
+  const [formats, setFormats] = useState(initial?.formats || ['mens', 'womens', 'mixed']);
+  const [winRule, setWinRule] = useState(initial?.winRule || 'sub_wins');
+  const [picked, setPicked] = useState(() => (initial ? initial.teams.flatMap((tm) => tm.ids) : []));
+  const [teamCount, setTeamCount] = useState(initial ? initial.teams.length : 2);
+  const [teams, setTeams] = useState(initial?.teams || []); // [{ name, ids: [] }]
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
