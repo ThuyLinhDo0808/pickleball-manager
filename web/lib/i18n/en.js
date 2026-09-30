@@ -1005,6 +1005,15 @@ export const en = {
     paid: 'Paid',
     notPaid: 'Not paid',
   },
+  bday: {
+    today: 'Birthday today:',
+    soon: 'Birthdays coming up:',
+    tomorrow: 'tomorrow',
+    inDays: 'in {n} days',
+    turns: 'turns {age}',
+    hint: 'Remember a gift or a message for them!',
+    hide: 'Hide for today',
+  },
   verify: {
     verified: 'verified',
     pending: 'to verify',

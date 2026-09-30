@@ -9,6 +9,7 @@ import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 import FeedbackButton from '@/components/FeedbackButton';
 import SchemaBanner from '@/components/SchemaBanner';
+import BirthdayBanner from '@/components/BirthdayBanner';
 import { api } from '@/lib/api';
 
 const ICONS = {
@@ -522,6 +523,7 @@ export default function AppShell({ children }) {
                 {t('coadmin.banner', { name: club?.name || '', owner: club?.owner_email || '—' })}
               </p>
             )}
+            {workspace === 'club' && <BirthdayBanner clubId={club?.id} />}
             {children}
           </>
         )}
