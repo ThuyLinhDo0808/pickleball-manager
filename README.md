@@ -39,7 +39,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 | **Người mở kèo lẻ (Xé Vé)** | Tạo kèo và gửi link đăng ký vào nhóm Zalo/Telegram. App tự xếp danh sách chính / danh sách chờ, tự đẩy người chờ lên khi có người huỷ và nhắn tin báo họ. Áp dụng hạn chót huỷ kèo, check-in bằng quét QR, đánh dấu vắng, thu phí, tính lãi/lỗ từng kèo và xuất Excel. |
 | **Trọng tài / điều phối viên** | Đăng nhập bằng tài khoản riêng để check-in người chơi (bấm tay hoặc quét QR) và nhập tỷ số của các kèo được giao. Không thấy tài chính hay số điện thoại. |
 | **Đồng quản trị (người cùng góp vốn)** | Dùng email riêng để cùng xem và quản lý Thành viên + Tài chính của một CLB. Không xoá được CLB. |
-| **Người chơi** | Đăng ký kèo qua link, tham gia CLB, chuyển khoản bằng mã QR, đưa mã QR cá nhân để check-in, tự huỷ kèo, nhận tin Telegram khi được lên danh sách chính. Xem số buổi còn lại, công nợ, lịch sử tham gia, phong độ và biến động DUPR. |
+| **Người chơi** | Đăng nhập rồi đăng ký kèo qua link, chuyển khoản và gửi ảnh xác nhận, nhận vé QR check-in, chuyển nhượng slot cho bạn, tự huỷ kèo, tham gia CLB, nhận tin Telegram khi được lên danh sách chính. Xem số buổi còn lại, công nợ, lịch sử tham gia, phong độ và biến động DUPR. |
 
 ---
 
@@ -287,28 +287,46 @@ Bấm **＋ Tạo sự kiện mới**. Nếu đang ở chế độ Ngày thì fo
 
 Form kiểm tra trước khi gửi: giờ kết thúc phải sau giờ bắt đầu, và "DUPR đến" phải lớn hơn hoặc bằng "DUPR từ". Tạo 1 kèo thì app mở luôn trang kèo để bạn copy link đăng ký. Tạo nhiều tuần thì app quay về lịch.
 
-### 5.3. Link đăng ký công khai (`/e/<token>`)
-- Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* vào nhóm Zalo/Telegram.
-- Người chơi **không cần tài khoản**. Trang đăng ký hiện:
-  - thông tin kèo và thông báo của Host;
-  - phí và trình độ;
-  - số chỗ còn;
-  - danh sách người đã đăng ký.
-- Người chơi nhập họ tên, số điện thoại và DUPR (không bắt buộc). **Số điện thoại chỉ Host thấy.**
-- Hết chỗ thì người đăng ký vào **danh sách chờ**. Một số điện thoại chỉ đăng ký được một lần mỗi kèo.
-- Link bị chặn khi kèo tắt đăng ký, không ở trạng thái *Đang mở* hoặc đã quá hạn.
-- Nếu người chơi đang đăng nhập, lượt đăng ký được gắn vào tài khoản và hiện trong lịch sử của họ.
-- Nếu kèo có hạn chót huỷ, trang hiện: "⏰ Huỷ miễn phí trước giờ chơi X tiếng…".
+### 5.3. Đăng ký qua link: đăng nhập → xác nhận → thanh toán → nhận vé (`/e/<token>`)
+Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* vào nhóm Zalo/Telegram. Ai cũng xem được trang kèo (thông tin, phí, trình độ, số chỗ, thông báo của Host, chính sách huỷ, danh sách người tham gia). Nhưng **muốn đăng ký thì phải đăng nhập**, để app biết người đó là **thành viên CLB** hay **khách giao lưu**.
+
+| Bước | Người chơi thấy gì |
+|---|---|
+| **1. Đăng nhập / Đăng ký** | Nút "Đăng nhập / Đăng ký để tham gia". Xong thì quay lại đúng trang kèo. Lần đầu nhập họ tên + số điện thoại (+ DUPR). |
+| **2. Xác nhận** | App cho biết bạn đăng ký với tư cách gì và phải trả bao nhiêu: *Thành viên có gói còn hiệu lực* thì "Trừ 1 buổi trong gói"; *khách* (hoặc thành viên hết gói) thì "Phí buổi này 130.000 ₫". Tick "Tôi đã đọc thông tin kèo…" rồi bấm **Xác nhận**. |
+| **3. Thanh toán** (khách, phí > 0) | Chỗ được **giữ 30 phút**. Trang hiện **VietQR** (đã điền sẵn số tiền + nội dung `PBxxxxxx`), **ảnh QR ngân hàng của Host** (nếu Host tải lên), số tài khoản và nút Copy. Chuyển khoản xong, **tải ảnh chụp màn hình giao dịch** lên. Trạng thái chuyển thành **"⏳ Host đang xác nhận thanh toán"**. |
+| **4. Nhận vé** | Host xác nhận thì trang chuyển thành **"🎉 Đăng ký thành công"** kèm **vé QR check-in**, có khung vàng nhắc rất rõ: **"📸 CHỤP MÀN HÌNH MÃ QR NÀY"**. Nếu đã kết nối Telegram, người chơi cũng nhận tin kèm link vé. |
+
+- **Thành viên có gói** và **kèo miễn phí** đi thẳng từ bước 2 sang bước 4 (không cần thanh toán).
+- **Quá 30 phút chưa gửi ảnh** thì chỗ tự được nhả cho người trong danh sách chờ. **Host từ chối ảnh** (kèm lý do, ví dụ "sai số tiền") thì người chơi có thêm 2 giờ để gửi ảnh khác.
+- **Hết chỗ** thì vào **danh sách chờ**, chưa phải trả tiền. Khi có người huỷ, người đầu danh sách được đẩy lên: thành viên có gói thì vào thẳng; khách thì nhận tin "đã có chỗ, hãy chuyển khoản trong 2 giờ".
+- **Mỗi lượt đăng ký có một vé riêng** (`/t/<mã vé>`, không cần đăng nhập để mở). Lỡ mất ảnh thì mở lại link kèo, Cổng người chơi, hoặc trang vé; Host cũng check-in tay được.
+- **Chuyển nhượng slot** (khách không đi được): bấm *Chuyển nhượng slot cho người khác* → nhập tên + SĐT người nhận → vé cũ mất hiệu lực, người nhận có **vé mới** (gửi link hoặc ảnh QR cho họ). Slot của thành viên gắn với gói nên không tự chuyển được; Host vẫn chuyển giúp được.
+- **Huỷ**: theo [chính sách huỷ](#55-chính-sách-huỷ--hoàn-buổi). Khách đã trả tiền huỷ trước hạn thì Host thấy nhãn **Cần hoàn tiền**.
+- **Số điện thoại chỉ Host thấy.** Một số điện thoại chỉ có một lượt đăng ký còn hiệu lực mỗi kèo.
+- Link bị chặn khi kèo tắt đăng ký, không ở trạng thái *Đang mở* hoặc đã quá hạn đăng ký.
+
+**Thành viên CLB được xác thực thế nào?** Tài khoản chỉ được tính là thành viên khi **Host đã xác thực**:
+- Người chơi bấm **"Tôi là thành viên — gửi Host xác thực"** trên trang kèo. App tìm thành viên có cùng số điện thoại và gắn tài khoản vào, trạng thái *chờ xác thực*. (Tham gia CLB qua link `/join` cũng gắn tài khoản như vậy.)
+- Host vào **Thành viên** (có banner "n tài khoản chờ xác thực") → bấm tên → **Xác thực**. Host xác nhận thanh toán gói hội viên của người đó cũng coi như đã xác thực.
+- Trong lúc chờ, người chơi vẫn đăng ký được như khách (trả phí).
 
 ### 5.4. Quản lý người chơi trong kèo (`/events/<id>`)
-- **Danh sách chính** (x/số chỗ), **danh sách chờ** và **đã huỷ**. Thêm tay, hoặc nhập từ CLB (workspace Club).
+- **Bảng đếm trên sân**: *Đã đến sân* (x/y) · *Giữ chỗ / tổng* · *Chờ xác nhận thanh toán* · *Chờ chuyển khoản* · *Danh sách chờ*.
+- **💸 Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ.
+  - Người đã gửi ảnh: bấm **Xem ảnh** để mở ảnh chụp chuyển khoản (kèm số tiền và nội dung cần khớp), rồi **Xác nhận** hoặc **Từ chối** (ghi lý do).
+  - Người chưa gửi ảnh: hiện giờ hết hạn giữ chỗ. Khách trả tiền mặt tại sân thì bấm **Đã thu tiền mặt**.
+  - Xác nhận xong, người chơi nhận vé QR và khoản **Phí kèo** tự ghi vào thu của kèo.
+  - Mọi ảnh chờ xác nhận của mọi kèo cũng hiện ở **Tài chính → Tổng quan**.
+- **Danh sách chính** (x/số chỗ), **danh sách chờ** và **đã huỷ**. Thêm tay (người không dùng smartphone), hoặc nhập từ CLB (workspace Club). Nhãn *Hội viên* / *Khách* cho từng người.
 - Thao tác từng người:
   - **Check-in** / **Vắng mặt** / **Hoàn tác**
   - **Đưa lên DS chính** (người trong danh sách chờ; người đó nhận thông báo)
   - **Huỷ đăng ký** (có hỏi xác nhận, áp dụng [chính sách huỷ](#55-chính-sách-huỷ--hoàn-buổi))
   - **Miễn phạt** (người huỷ muộn)
-  - Bật/tắt **đã thu phí**
-- **📷 Quét QR**: check-in bằng mã QR cá nhân của người chơi (xem [6.3](#63-check-in-bằng-mã-qr)).
+  - **Chuyển slot**: đổi sang tên + SĐT người khác, cấp vé mới
+  - Bật/tắt **đã thu phí**; người huỷ trước hạn đã trả tiền có nhãn **Cần hoàn tiền** → bấm *Đánh dấu đã hoàn tiền* (khoản thu phí tự bị huỷ)
+- **📷 Quét QR**: check-in bằng vé QR hoặc mã QR cá nhân của người chơi (xem [6.3](#63-check-in-bằng-mã-qr)). Người quên ảnh thì Host bấm **Check-in** tay trong danh sách, hoặc gõ mã vé trong ô dưới camera.
 - Khi một người trong danh sách chính huỷ, người đầu tiên trong danh sách chờ **tự được đưa lên** và **được báo ngay** qua Telegram / webhook (xem [8.6](#86-thông-báo-khi-được-đẩy-từ-danh-sách-chờ)).
 - Nhập trận đấu của kèo ngay trong trang.
 - Sửa trạng thái, hạn đăng ký, hạn chót huỷ và thông báo ở khung **Link đăng ký**.
@@ -361,12 +379,13 @@ Họ **không bao giờ thấy tài chính hay số điện thoại**. Check-in 
 
 ### 6.3. Check-in bằng mã QR
 Thay vì lướt tìm tên, làm như sau:
-1. Mỗi người chơi có **mã QR cá nhân** trong Cổng người chơi (nút *Phóng to* để hiện to trên màn hình).
+1. Người chơi đưa **vé QR** của lượt đăng ký (mã `PBT:…`, hiện sau khi đăng ký thành công và trên trang vé), hoặc **mã QR cá nhân** trong Cổng người chơi (mã `PBP:…`, nút *Phóng to*).
 2. Host (trang kèo) hoặc điều phối viên (trang kèo được giao) bấm **📷 Quét QR**, rồi chĩa camera sau của điện thoại vào mã.
 3. App tự **check-in** và **trừ 1 buổi** nếu người đó là hội viên có gói. Kết quả hiện ngay: "✓ Lan đã check-in · còn 5 buổi". Có thể quét liên tục nhiều người. Mỗi mã chỉ tính 1 lần, quét lại sẽ báo "đã check-in trước đó".
-4. App báo rõ các trường hợp: *không có tên trong kèo*, *đang ở danh sách chờ*, *đã huỷ*, *mã không hợp lệ*.
+4. App báo rõ các trường hợp: *không có tên trong kèo*, *chưa được xác nhận thanh toán*, *đang ở danh sách chờ*, *đã huỷ*, *vé của kèo khác*, *mã không hợp lệ hoặc đã chuyển nhượng*.
 
-- Camera chỉ chạy trên **https** (Vercel đã có sẵn). Nếu không mở được camera, dán mã `PBP:…` vào ô bên dưới.
+- Camera chỉ chạy trên **https** (Vercel đã có sẵn). Nếu không mở được camera, gõ hoặc dán mã `PBT:…` / `PBP:…` vào ô bên dưới.
+- Điều phối viên không check-in được người chưa được xác nhận thanh toán; chỉ Host mới làm được (ví dụ thu tiền mặt tại sân).
 - Người chơi có thể bấm **Đổi mã mới** nếu lỡ chia sẻ mã. Mã cũ hết hiệu lực ngay.
 - Mã QR chỉ nhận diện người chơi. Chỉ Host hoặc điều phối viên của kèo mới dùng được mã để check-in.
 
@@ -396,6 +415,7 @@ Người chơi dùng chung app, chọn workspace **Tôi là người chơi** (`/
   - yêu cầu *chờ thanh toán* (xem lại QR hoặc huỷ yêu cầu).
 - Các mục khác trên **Trang của tôi**:
   - **Lịch sử tham gia**: đã đăng ký / danh sách chờ / đã chơi / vắng / đã huỷ (kèm nhãn *Huỷ muộn*).
+  - **🎟 Xem vé QR** cho từng kèo đã đăng ký thành công; **💸 Thanh toán để giữ chỗ** / *Host đang xác nhận* cho kèo đang chờ.
   - **Tự huỷ kèo sắp tới**: nút *Huỷ* cạnh từng kèo, kèm dòng "Huỷ miễn phí đến 20:00 30/09" hoặc "Đã quá hạn huỷ miễn phí". Nếu đã quá hạn, app hỏi lại trước khi huỷ (xem [5.5](#55-chính-sách-huỷ--hoàn-buổi)).
   - **Phí kèo chưa thanh toán**: các kèo đã chơi hoặc huỷ muộn mà chưa trả phí. Được cộng vào *Công nợ*.
   - **Phong độ 12 tháng**: số trận, số thắng, tỷ lệ thắng, số buổi đã chơi.
@@ -441,6 +461,17 @@ Có hai kênh độc lập. Kênh nào lỗi cũng không làm hỏng thao tác 
 | **Bot Telegram** (miễn phí) | Nhà phát triển cài bot một lần (xem [11.3](#113-bot-telegram-thông-báo-danh-sách-chờ)). Người chơi bấm **Kết nối Telegram** trong Cổng người chơi rồi bấm *Start*. | Chính người chơi, qua tin nhắn riêng |
 | **Webhook của Host** | **Tài khoản → Thông báo cho người chơi**: dán URL `https://…` rồi bấm *Gửi thử* | Hệ thống của Host (Make / Zapier / n8n), để chuyển tiếp qua **Zalo ZNS**, SMS, nhóm Telegram, Slack… |
 
+Cùng hai kênh đó, app còn gửi các tin sau:
+
+| `type` (webhook) | Khi nào | Ai nhận |
+|---|---|---|
+| `waitlist_promoted` | Người chờ được đẩy lên (`payment_required: true` nếu là khách phải chuyển khoản trong 2 giờ) | Người chơi + Host |
+| `payment_submitted` | Khách vừa gửi ảnh chuyển khoản (`amount`) | Host (chỉ webhook) |
+| `payment_confirmed` | Host xác nhận thanh toán (`ticket_url` = link vé) | Người chơi + Host |
+| *(chỉ Telegram)* | Host từ chối ảnh chuyển khoản (kèm lý do) | Người chơi |
+
+Trong Make/Zapier, thêm **Filter** theo `type` để mỗi loại tin đi một đường riêng.
+
 Webhook nhận JSON:
 ```json
 {
@@ -475,6 +506,15 @@ Ví dụ Zalo ZNS: trong Make, tạo scenario *Webhooks → Custom webhook*, dá
 3. Tại sân: **📷 Quét QR** của từng người để check-in (hoặc bấm tay), đánh dấu vắng, tick *đã thu phí*, thêm khoản chi tiền sân và bóng.
 4. Xem lãi/lỗ, **Xuất Excel** nếu cần. Chuyển kèo sang **Đã xong**.
 5. (Tuỳ chọn) **Cài đặt → Phân quyền**: giao kèo cho một điều phối viên check-in thay mình.
+
+### Buổi giao lưu CLB cố định (ví dụ thứ 7 hằng tuần, 16 chỗ)
+Host tạo buổi lặp lại hằng tuần, đặt phí khách (ví dụ 130.000 ₫) và hạn huỷ 12 tiếng, rồi gửi link vào nhóm.
+- **TH1: đủ 16 thành viên đăng ký.** Mỗi thành viên (đã được Host xác thực, có gói) đăng nhập → *Xác nhận* → có vé ngay, không trả tiền. Đến sân: quét vé, tự trừ 1 buổi. Bảng đếm cho biết bao nhiêu người đã đến.
+- **TH2: thiếu người.** Host gửi link cho người ngoài CLB. Họ đăng ký như **khách** → chuyển khoản → gửi ảnh → Host xác nhận → nhận vé.
+  - **TH2.1: khách đến sân.** Quét vé → check-in. Phí đã nằm trong thu của buổi.
+  - **TH2.2: khách báo không đến.** Khách tự bấm *Huỷ* (hoặc Host huỷ giúp). Huỷ trước hạn thì Host thấy nhãn **Cần hoàn tiền**, chuyển trả rồi bấm *Đánh dấu đã hoàn tiền*. Huỷ sau hạn thì không hoàn. Chỗ trống tự chuyển cho người chờ.
+  - **TH2.3: khách nhường slot cho bạn.** Khách bấm *Chuyển nhượng slot* → nhập tên + SĐT bạn mình → gửi vé mới cho bạn. Vé cũ hết hiệu lực. Host cũng làm được bằng nút *Chuyển slot*.
+- **Người không có smartphone / quên ảnh vé:** Host thêm tay hoặc bấm *Check-in* trong danh sách, hoặc gõ mã vé.
 
 ### Mời người cùng góp vốn quản lý CLB
 **Cài đặt → Phân quyền** → nhập email của họ → chọn **Đồng quản trị** → chọn CLB → *Cấp quyền*. Họ đăng nhập bằng email đó, chọn workspace **Club**, và cùng xem/ghi Thành viên, Tài chính với bạn. Họ không xoá được CLB.
@@ -566,7 +606,8 @@ Route `/health` rất nhẹ: không cần đăng nhập và không truy vấn da
 
 ```
 supabase/migrations/
-└── 20260930120000_cancel_policy_qr_coadmin_notify.sql   # hạn huỷ, QR, co-admin, thông báo
+├── 20260930120000_cancel_policy_qr_coadmin_notify.sql   # hạn huỷ, QR, co-admin, thông báo
+└── 20261001090000_paid_signup_tickets.sql               # đăng ký bắt buộc đăng nhập, ảnh chuyển khoản, vé QR, xác thực thành viên
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -620,6 +661,7 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `TELEGRAM_BOT_USERNAME` | | Username của bot (không có `@`), dùng cho nút "Kết nối Telegram" |
 | `TELEGRAM_WEBHOOK_SECRET` | | Chuỗi bí mật Telegram gửi kèm mỗi cập nhật (header `X-Telegram-Bot-Api-Secret-Token`) |
 | `TELEGRAM_API_URL` | | Tuỳ chọn: Bot API server tự host (mặc định `https://api.telegram.org`) |
+| `PUBLIC_WEB_URL` | | Địa chỉ web (ví dụ `https://pickleball-manager.vercel.app`) để đưa link vé / link thanh toán vào tin nhắn. Bỏ trống thì dùng `CORS_ORIGIN` nếu là https. |
 
 ### Web (`web/.env.local` hoặc Vercel → Environment Variables)
 
@@ -731,7 +773,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Route chính |
 |---|---|
 | Sức khỏe | `GET /health` |
-| Host | `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
+| Host | `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
 | CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH/DELETE /api/clubs/:id` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. `PATCH`, `DELETE` và `rotate` chỉ chủ CLB được gọi (co-admin nhận `403 owner_only`). |
 | Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
@@ -739,14 +781,16 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
 | Sự kiện | `GET/POST /api/events` · `GET/PATCH/DELETE /api/events/:id` · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
-| Công khai | `GET /api/events/public/:token` · `POST /api/events/public/:token/register` · `GET /api/public/clubs/:token` · `POST /api/public/telegram` (chỉ Telegram, có secret) |
+| Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) |
+| Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
+| Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` · `PATCH/DELETE /api/matches/:id` |
 | Giải đấu | `GET/POST /api/tournaments` · `POST /api/tournaments/pairing` · `GET/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` · `GET /api/staff/events` · `GET /api/staff/events/:id` · `POST …/participants/:pid/:action` · `POST …/checkin-code` · `POST/PATCH …/matches` |
-| Người chơi | `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
+| Người chơi | `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
 
 ---
 
@@ -754,10 +798,10 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 | Nhóm | Bảng / View |
 |---|---|
-| Tài khoản | `users` (có `notify_webhook_url`), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký), view `v_host_capacity_usage` |
-| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, DUPR, loại, hạng, cờ nội bộ, tài khoản liên kết) |
+| Tài khoản | `users` (có `notify_webhook_url`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký), view `v_host_capacity_usage` |
+| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, DUPR, loại, hạng, cờ nội bộ, tài khoản liên kết + `account_verified`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
-| Sự kiện | `events` (có `cancel_deadline_hours`), `event_participants` (có `late_cancel`), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`), view `v_event_summary`, `v_player_reliability` |
+| Sự kiện | `events` (có `cancel_deadline_hours`), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`), view `v_event_summary`, `v_player_reliability` |
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo, có `video_url`), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
 | Giải đấu | `tournaments`, `tournament_teams`, `tournament_matches` |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
@@ -793,6 +837,9 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nút *Quét QR* không mở được camera | Camera chỉ chạy trên **https** và cần cho phép quyền camera trong trình duyệt. Nếu vẫn không được, dán mã `PBP:…` vào ô bên dưới camera. |
 | Quét QR báo "Không có tên trong kèo" | Người chơi chưa đăng ký kèo này (hoặc đăng ký bằng số điện thoại khác mà không đăng nhập). Hãy thêm họ vào kèo trước. |
 | Người chơi không nhận được tin Telegram | Kiểm tra 3 biến `TELEGRAM_*` trên Render, đã chạy `npm run telegram:webhook`, và người chơi đã bấm *Start* (Cổng người chơi hiện "Đã kết nối ✓"). |
+| Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số trong danh sách thành viên thì nút "Tôi là thành viên" mới tìm được. |
+| Khách chuyển khoản rồi nhưng chỗ bị huỷ | Quá 30 phút (hoặc 2 giờ sau khi bị từ chối) mà chưa gửi ảnh thì chỗ tự nhả. Host thêm tay người đó rồi bấm *Đã thu tiền mặt* / *đã thu phí*. |
+| Trang thanh toán không hiện VietQR | Chưa cài tài khoản nhận tiền: **Tài khoản → Tài khoản nhận tiền (kèo)**, hoặc tài khoản của CLB trong *CLB của tôi → Thanh toán*. |
 | Đồng quản trị không thấy CLB | Họ phải đăng nhập bằng **đúng email** được cấp, **xác nhận email**, rồi chọn workspace **Club**. |
 | `Capacity limit reached` | Đã chạm giới hạn gói (xem [8.4](#84-gói-dịch-vụ--giới-hạn)). Nâng gói hoặc cho thành viên cũ ngừng hoạt động. |
 | Đăng ký xong không đăng nhập được | Mở email và bấm link xác nhận. Kiểm tra *Site URL* trong Supabase Auth. |

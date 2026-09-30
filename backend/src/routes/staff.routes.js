@@ -214,7 +214,7 @@ staff.get('/events/:eventId', async (req, res) => {
         .from('event_participants')
         .select('id, full_name, dupr_level, status, checked_in_at')
         .eq('event_id', req.event.id)
-        .in('status', ['registered', 'checked_in', 'no_show', 'waitlisted'])
+        .in('status', ['registered', 'checked_in', 'no_show', 'waitlisted', 'pending'])
         .order('joined_at', { ascending: true }),
       supabase.from('matches').select(PLAYER_SELECT).eq('event_id', req.event.id).order('played_at', { ascending: false }),
     ]);
@@ -245,6 +245,9 @@ staff.post('/events/:eventId/participants/:participantId/:action', async (req, r
       .maybeSingle();
     if (error) throw error;
     if (!prior) return notFound(res, 'Participant');
+    if (prior.status === 'pending' && req.params.action === 'check-in') {
+      return res.status(409).json({ error: "This player's payment hasn't been confirmed by the host yet.", code: 'unpaid' });
+    }
     const updated = await setAttendance(req.event, prior, req.params.action);
     res.json({ id: updated.id, full_name: updated.full_name, status: updated.status, pass: updated.pass });
   } catch (err) {

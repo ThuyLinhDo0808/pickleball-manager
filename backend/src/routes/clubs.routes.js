@@ -248,7 +248,12 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
     return res.status(400).json({ error: 'tier can only be set on fixed members.' });
   }
   if (fields.member_type === 'guest') fields.tier = null; // clear tier if downgraded to guest
-  if (req.body.unlink_account === true) fields.user_id = null; // detach the player's login
+  if (req.body.unlink_account === true) {
+    fields.user_id = null; // detach the player's login
+    fields.account_verified = false;
+  }
+  // Host confirms the linked player account really is this member.
+  if (req.body.account_verified === true && req.member.user_id) fields.account_verified = true;
 
   const { data, error } = await supabase
     .from('club_members')
@@ -589,6 +594,8 @@ router.post('/:clubId/pending-payments/:ref/confirm', async (req, res) => {
       if (uErr) throw uErr;
       await syncMembershipTxn({ membership: updated, hostId: req.hostId, clubId: req.club.id, memberName: owner.full_name });
     }
+    // Paying a membership the Host confirmed also confirms the player's account is this member.
+    await supabase.from('club_members').update({ account_verified: true }).eq('id', rows[0].club_member_id).not('user_id', 'is', null);
     res.json({ ok: true, confirmed: rows.length });
   } catch (err) {
     dbError(res, err);

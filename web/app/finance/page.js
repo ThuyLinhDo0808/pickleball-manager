@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import FinanceTrend from '@/components/FinanceTrend';
 import PendingPayments from '@/components/PendingPayments';
+import EventPaymentsPending from '@/components/EventPaymentsPending';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
@@ -53,6 +54,7 @@ export default function FinanceOverview() {
         />
       </div>
 
+      <EventPaymentsPending />
       {isClub && <PendingPayments club={club} />}
 
       {fin && <FinanceTrend fin={fin} />}

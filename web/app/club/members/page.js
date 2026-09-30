@@ -36,6 +36,7 @@ export default function MembersPage() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState([]);
   const [detailId, setDetailId] = useState(null);
+  const toVerify = (members || []).filter((m) => m.account_email && !m.account_verified);
 
   const rows = members || [];
   const detailMember = rows.find((m) => m.id === detailId) || null;
@@ -114,6 +115,14 @@ export default function MembersPage() {
         </div>
       </div>
 
+      {toVerify.length > 0 && (
+        <div className="card mb-3 border-yellow-400/50 text-sm">
+          <span className="text-yellow-300 font-semibold">{t('verify.banner', { n: toVerify.length })}</span>{' '}
+          <span className="text-gray-300">{toVerify.map((m) => m.full_name).join(', ')}</span>
+          <p className="text-gray-500 text-xs mt-1">{t('verify.bannerHint')}</p>
+        </div>
+      )}
+
       <div className="card">
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
         {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t('members.empty')}</p>}
@@ -166,6 +175,9 @@ export default function MembersPage() {
                         >
                           {m.full_name}
                         </button>
+                        {m.account_email && !m.account_verified && (
+                          <span className="ml-2 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>
+                        )}
                         {m.flags?.length > 0 && (
                           <span className="inline-flex gap-1 ml-2 align-middle">
                             {m.flags.map((f) => (

@@ -107,4 +107,41 @@ router.post('/notifications/test', async (req, res) => {
   res.json({ webhook: result });
 });
 
+// Where guests pay for events (club sessions use the club's own account when it has one).
+router.get('/payment-settings', async (req, res) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('bank_code, bank_account, bank_holder, payment_qr_image')
+    .eq('id', req.hostId)
+    .single();
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
+router.patch('/payment-settings', async (req, res) => {
+  const fields = {};
+  for (const k of ['bank_code', 'bank_account', 'bank_holder']) {
+    if (k in req.body) fields[k] = String(req.body[k] ?? '').trim() || null;
+  }
+  if (fields.bank_code) fields.bank_code = fields.bank_code.toUpperCase();
+  if (fields.bank_account && !/^[0-9A-Za-z]{4,30}$/.test(fields.bank_account)) {
+    return res.status(400).json({ error: 'bank_account should be 4-30 letters/digits, no spaces.' });
+  }
+  if ('payment_qr_image' in req.body) {
+    const img = req.body.payment_qr_image;
+    if (img && !(typeof img === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(img) && img.length <= 400000)) {
+      return res.status(400).json({ error: 'The QR image must be a small JPEG/PNG/WebP.' });
+    }
+    fields.payment_qr_image = img || null;
+  }
+  const { data, error } = await supabase
+    .from('users')
+    .update(fields)
+    .eq('id', req.hostId)
+    .select('bank_code, bank_account, bank_holder, payment_qr_image')
+    .single();
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
 module.exports = router;

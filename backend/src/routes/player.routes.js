@@ -7,6 +7,7 @@ const { todayYmd, periodRange, summarize, normalizePhone } = require('../service
 const { localDate, winnerTeam } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, cancelParticipant } = require('../services/attendance');
+const { transferSlot } = require('../services/signup');
 const { telegramSend } = require('../services/notify');
 
 function badRequest(message, status = 400, code) {
@@ -44,6 +45,34 @@ publicRoutes.get('/clubs/:token', async (req, res) => {
     if (error) throw error;
     // Bank details are only shown after the player has signed in and joined.
     res.json({ name: club.name, description: club.description, join_note: club.join_note, plans });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// A ticket page anyone with the (secret, random) ticket code can open — the link a player
+// saves or forwards to a friend after transferring their place. No phone numbers.
+publicRoutes.get('/tickets/:code', async (req, res) => {
+  try {
+    if (!isUuid(req.params.code)) return notFound(res, 'Ticket');
+    const { data: p, error } = await supabase
+      .from('event_participants')
+      .select('full_name, status, kind, payment_status, ticket_code, transferred_from, events(title, event_date, start_time, end_time, location, public_token, clubs(name))')
+      .eq('ticket_code', req.params.code)
+      .maybeSingle();
+    if (error) throw error;
+    if (!p) return notFound(res, 'Ticket');
+    const valid = ['registered', 'checked_in'].includes(p.status);
+    res.json({
+      full_name: p.full_name,
+      status: p.status,
+      kind: p.kind,
+      payment_status: p.payment_status,
+      transferred_from: p.transferred_from,
+      valid,
+      checkin_code: valid ? `PBT:${p.ticket_code}` : null,
+      event: { ...p.events, club_name: p.events?.clubs?.name || null, clubs: undefined },
+    });
   } catch (err) {
     fail(res, err);
   }
@@ -167,7 +196,7 @@ player.post('/join/:token', async (req, res) => {
       if (member) {
         const { data: linked, error } = await supabase
           .from('club_members')
-          .update({ user_id: req.hostId, ...blanksFrom(member, profile) })
+          .update({ user_id: req.hostId, account_verified: false, ...blanksFrom(member, profile) })
           .eq('id', member.id)
           .select()
           .single();
@@ -183,6 +212,7 @@ player.post('/join/:token', async (req, res) => {
         .insert({
           club_id: club.id,
           user_id: req.hostId,
+          account_verified: false,
           full_name: profile.full_name,
           phone: profile.phone,
           dupr_level: profile.dupr_level,
@@ -285,6 +315,7 @@ player.get('/me', async (req, res) => {
         club_name: m.clubs?.name,
         member_type: m.member_type,
         tier: m.tier,
+        account_verified: m.account_verified,
         ...summarize(mine, today),
         memberships: mine.slice(0, 12).map((p) => ({
           period_label: p.period_label,
@@ -304,7 +335,7 @@ player.get('/me', async (req, res) => {
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
       .select(
-        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, events(title, event_date, start_time, location, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
+        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, events(title, event_date, start_time, location, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
       )
       .or(orFilter)
       .limit(500);
@@ -312,7 +343,7 @@ player.get('/me', async (req, res) => {
     const seen = new Set();
     const history = [];
     // Prefer the live registration when a player has several rows for one event.
-    const order = { checked_in: 0, registered: 1, waitlisted: 2, no_show: 3, cancelled: 4 };
+    const order = { checked_in: 0, registered: 1, pending: 2, waitlisted: 3, no_show: 4, cancelled: 5 };
     regs.sort((a, b) => order[a.status] - order[b.status]);
     for (const r of regs) {
       if (!r.events || seen.has(r.event_id)) continue;
@@ -321,9 +352,13 @@ player.get('/me', async (req, res) => {
       const deadline = cancelDeadline(r.events);
       history.push({
         participant_id: r.id,
-        can_cancel: upcoming && ['registered', 'waitlisted'].includes(r.status),
+        can_cancel: upcoming && ['registered', 'waitlisted', 'pending'].includes(r.status),
         cancel_deadline: deadline ? deadline.toISOString() : null,
         late_cancel: r.late_cancel,
+        payment_status: r.payment_status,
+        ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null,
+        transferable: upcoming && r.kind === 'guest' && ['registered', 'pending'].includes(r.status),
+        public_token: r.events.public_token,
         event_id: r.event_id,
         title: r.events.title,
         event_date: r.events.event_date,
@@ -439,9 +474,26 @@ player.post('/participations/:participantId/cancel', async (req, res) => {
     if (event.event_date < todayYmd() || !['draft', 'open', 'closed'].includes(event.status)) {
       throw badRequest('This event can no longer be cancelled here. Please contact the host.', 409, 'event_over');
     }
-    if (!['registered', 'waitlisted'].includes(prior.status)) throw badRequest('Only upcoming registrations can be cancelled.', 409, 'not_cancellable');
+    if (!['registered', 'waitlisted', 'pending'].includes(prior.status)) throw badRequest('Only upcoming registrations can be cancelled.', 409, 'not_cancellable');
     const r = await cancelParticipant(event, prior);
     res.json({ status: r.status, late: r.late, pass: r.pass });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Give my (guest) place to someone else: they get a new ticket link, my old ticket stops working.
+player.post('/participations/:participantId/transfer', async (req, res) => {
+  try {
+    if (!isUuid(req.params.participantId)) throw badRequest('Registration not found.', 404);
+    const { data: prior } = await supabase.from('event_participants').select('*').eq('id', req.params.participantId).maybeSingle();
+    if (!prior || prior.user_id !== req.hostId) throw badRequest('Registration not found.', 404);
+    const { data: event } = await supabase.from('events').select('*').eq('id', prior.event_id).single();
+    if (event.event_date < todayYmd() || !['draft', 'open', 'closed'].includes(event.status)) {
+      throw badRequest('This event is over.', 409, 'event_over');
+    }
+    const moved = await transferSlot(event, prior, req.body);
+    res.json({ full_name: moved.full_name, status: moved.status, ticket_code: moved.ticket_code });
   } catch (err) {
     fail(res, err);
   }

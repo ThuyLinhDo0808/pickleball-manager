@@ -28,35 +28,50 @@ function CopyRow({ label, value }) {
   );
 }
 
-// Bank transfer details + VietQR for a membership request.
+// Bank transfer details + VietQR, for a membership request or an event fee.
+// `payment.total` (memberships) or `payment.amount` (events); `qr_image` = the Host's own bank QR.
 export default function PaymentCard({ payment }) {
   const { t } = useI18n();
   const [qrFailed, setQrFailed] = useState(false);
+  const [showOwnQr, setShowOwnQr] = useState(false);
+  const total = payment.total ?? payment.amount;
 
   if (payment.status === 'paid') return <p className="text-lime-400 font-semibold text-center py-4">{t('join.paid')}</p>;
+  const vietqr = payment.qr_url && !qrFailed;
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-gray-300 text-sm">{t('join.payHint')}</p>
-      {payment.qr_url && !qrFailed && (
+      {vietqr && !showOwnQr && (
         <div className="bg-white rounded-xl p-3 mx-auto w-full max-w-[280px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={payment.qr_url} alt="VietQR" className="w-full h-auto" onError={() => setQrFailed(true)} />
         </div>
       )}
-      {payment.bank ? (
+      {payment.qr_image && (!vietqr || showOwnQr) && (
+        <div className="bg-white rounded-xl p-2 mx-auto w-full max-w-[280px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={payment.qr_image} alt={t('pay.hostQr')} className="w-full h-auto" />
+        </div>
+      )}
+      {vietqr && payment.qr_image && (
+        <button type="button" className="text-lime-400 text-xs self-center" onClick={() => setShowOwnQr(!showOwnQr)}>
+          {showOwnQr ? t('pay.showVietqr') : t('pay.showHostQr')}
+        </button>
+      )}
+      {payment.bank || payment.qr_image ? (
         <div className="bg-navy-900 rounded-lg px-3">
-          <CopyRow label={t('join.bank')} value={payment.bank.code} />
-          <CopyRow label={t('join.account')} value={payment.bank.account} />
-          {payment.bank.holder && <CopyRow label={t('join.holder')} value={payment.bank.holder} />}
-          <CopyRow label={t('join.amount')} value={formatVnd(payment.total)} />
+          {payment.bank && <CopyRow label={t('join.bank')} value={payment.bank.code} />}
+          {payment.bank && <CopyRow label={t('join.account')} value={payment.bank.account} />}
+          {payment.bank?.holder && <CopyRow label={t('join.holder')} value={payment.bank.holder} />}
+          <CopyRow label={t('join.amount')} value={formatVnd(total)} />
           <CopyRow label={t('join.note')} value={payment.ref} />
         </div>
       ) : (
         <>
           <p className="text-yellow-300 text-sm">{t('join.noBank')}</p>
           <div className="bg-navy-900 rounded-lg px-3">
-            <CopyRow label={t('join.amount')} value={formatVnd(payment.total)} />
+            <CopyRow label={t('join.amount')} value={formatVnd(total)} />
             <CopyRow label={t('join.note')} value={payment.ref} />
           </div>
         </>
