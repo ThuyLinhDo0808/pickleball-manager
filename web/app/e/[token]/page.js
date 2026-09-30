@@ -125,6 +125,12 @@ export default function PublicEventPage() {
         </div>
       </section>
 
+      {ev.cancel_deadline_hours != null && (
+        <p className="card mb-4 !py-3 text-sm text-gray-300">
+          ⏰ {t('policy.public', { h: ev.cancel_deadline_hours })}
+        </p>
+      )}
+
       {ev.notice && (
         <section className="card mb-4 border-lime-400/40">
           <h2 className="text-lime-400 text-xs font-semibold uppercase tracking-wide mb-1">{t('public.hostNotice')}</h2>

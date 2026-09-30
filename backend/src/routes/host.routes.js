@@ -4,6 +4,7 @@ const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
 
 const { notifyFeedback } = require('../services/feedback');
+const { postWebhook, promotedText } = require('../services/notify');
 
 const router = express.Router();
 const ALLOW_SELF_SERVE = process.env.ALLOW_TIER_SELF_SERVE === 'true';
@@ -53,6 +54,57 @@ router.post('/feedback', async (req, res) => {
   if (error) return dbError(res, error);
   const delivery = await notifyFeedback({ message, contact, page, userEmail: req.hostEmail });
   res.status(201).json({ id: data.id, ...delivery }); // saved either way; delivery is best-effort
+});
+
+// Notification webhook: where "moved up from the waitlist" events are POSTed (JSON).
+// https only, and never to localhost / private networks (the server makes this call).
+function cleanWebhookUrl(v) {
+  const raw = String(v || '').trim();
+  if (!raw) return { url: null };
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    return { error: 'Not a valid URL.' };
+  }
+  const host = u.hostname.toLowerCase();
+  const privateHost =
+    host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal') || host === '[::1]' ||
+    /^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+  if (u.protocol !== 'https:' || privateHost) return { error: 'Use a public https:// URL.' };
+  return { url: u.toString() };
+}
+
+router.get('/notifications', async (req, res) => {
+  const { data, error } = await supabase.from('users').select('notify_webhook_url').eq('id', req.hostId).single();
+  if (error) return dbError(res, error);
+  res.json({ notify_webhook_url: data.notify_webhook_url, telegram_bot: process.env.TELEGRAM_BOT_USERNAME || null });
+});
+
+router.patch('/notifications', async (req, res) => {
+  const { url, error: bad } = cleanWebhookUrl(req.body.notify_webhook_url);
+  if (bad) return res.status(400).json({ error: bad });
+  const { data, error } = await supabase.from('users').update({ notify_webhook_url: url }).eq('id', req.hostId).select('notify_webhook_url').single();
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
+// Send a sample "promoted" message so the Host can check their Zalo/Make/Zapier flow.
+router.post('/notifications/test', async (req, res) => {
+  const { data } = await supabase.from('users').select('notify_webhook_url').eq('id', req.hostId).single();
+  if (!data?.notify_webhook_url) return res.status(400).json({ error: 'Save a webhook URL first.' });
+  const event = { title: 'Kèo thử', event_date: new Date().toISOString().slice(0, 10), start_time: '20:00:00', location: 'Sân mẫu' };
+  const text = promotedText(event, 'Người chơi mẫu');
+  const result = await postWebhook(data.notify_webhook_url, {
+    type: 'waitlist_promoted',
+    test: true,
+    event,
+    player: { full_name: 'Người chơi mẫu', phone: '0900000000' },
+    text,
+    content: text,
+    created_at: new Date().toISOString(),
+  }).catch(() => 'failed');
+  res.json({ webhook: result });
 });
 
 module.exports = router;

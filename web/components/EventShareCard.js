@@ -19,6 +19,7 @@ function formFrom(event) {
     status: event.status,
     registration_deadline: toLocalInput(event.registration_deadline),
     notice: event.notice || '',
+    cancel_deadline_hours: event.cancel_deadline_hours == null ? '' : String(event.cancel_deadline_hours),
   };
 }
 
@@ -51,6 +52,7 @@ export default function EventShareCard({ event, onSaved }) {
         ...patch,
         registration_deadline: patch.registration_deadline ? new Date(patch.registration_deadline).toISOString() : null,
         notice: patch.notice?.trim() || null,
+        cancel_deadline_hours: patch.cancel_deadline_hours === '' ? null : Number(patch.cancel_deadline_hours),
       });
       onSaved?.(updated);
     } catch (err) {
@@ -146,6 +148,14 @@ export default function EventShareCard({ event, onSaved }) {
             value={form.registration_deadline}
             onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })}
           />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs text-gray-400">{t('policy.label')}</label>
+          <select className="input" value={form.cancel_deadline_hours} onChange={(e) => setForm({ ...form, cancel_deadline_hours: e.target.value })}>
+            {['', '2', '6', '12', '24', '48', ...(['', '2', '6', '12', '24', '48'].includes(form.cancel_deadline_hours) ? [] : [form.cancel_deadline_hours])].map((h) => (
+              <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hours', { h })}</option>
+            ))}
+          </select>
         </div>
         <div className="sm:col-span-2">
           <label className="text-xs text-gray-400">{t('events.notice')}</label>

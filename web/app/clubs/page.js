@@ -80,14 +80,19 @@ export default function ClubsPage() {
                         <div className="text-white font-semibold truncate">{c.name}</div>
                         {c.description && <p className="text-gray-400 text-sm mt-0.5">{c.description}</p>}
                         <p className="text-gray-500 text-xs mt-1">
-                          {t('clubs.created', { date: new Date(c.created_at).toLocaleDateString() })}
+                          {c.role === 'co_admin'
+                            ? t('coadmin.sharedBy', { owner: c.owner_email || '—' })
+                            : t('clubs.created', { date: new Date(c.created_at).toLocaleDateString() })}
                         </p>
                       </div>
-                      {isCurrent && (
-                        <span className="shrink-0 text-xs bg-lime-400 text-navy-950 font-semibold rounded-full px-2 py-0.5">
-                          {t('clubs.current')}
-                        </span>
-                      )}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {isCurrent && (
+                          <span className="text-xs bg-lime-400 text-navy-950 font-semibold rounded-full px-2 py-0.5">{t('clubs.current')}</span>
+                        )}
+                        {c.role === 'co_admin' && (
+                          <span className="text-xs border border-sky-400/60 text-sky-300 rounded-full px-2 py-0.5">{t('staff.co_admin')}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-3">
                       {!isCurrent && (
@@ -95,15 +100,19 @@ export default function ClubsPage() {
                           {t('clubs.switchTo')}
                         </button>
                       )}
-                      <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => setSettingsId(c.id)}>
-                        {t('payments.settings')}
-                      </button>
-                      <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => startRename(c)}>
-                        {t('clubs.rename')}
-                      </button>
-                      <button className="text-red-400 text-sm px-3 py-2" onClick={() => remove(c)}>
-                        {t('common.delete')}
-                      </button>
+                      {c.role !== 'co_admin' && (
+                        <>
+                          <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => setSettingsId(c.id)}>
+                            {t('payments.settings')}
+                          </button>
+                          <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => startRename(c)}>
+                            {t('clubs.rename')}
+                          </button>
+                          <button className="text-red-400 text-sm px-3 py-2" onClick={() => remove(c)}>
+                            {t('common.delete')}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </>
                 )}

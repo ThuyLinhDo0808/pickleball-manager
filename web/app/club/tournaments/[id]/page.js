@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
@@ -75,6 +75,12 @@ export default function TournamentPage() {
   const [tab, setTab] = useState(null);
   const [scoring, setScoring] = useState(null);
   const [error, setError] = useState('');
+  // Knockout: bracket (swipe sideways) or one round at a time as a list — the default on phones.
+  const [koView, setKoView] = useState('bracket');
+  const [koRound, setKoRound] = useState(null);
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 767px)').matches) setKoView('list');
+  }, []);
 
   if (loading && !tour) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
   if (!tour) return <AppShell><p className="text-gray-400">{t('tournaments.none')}</p></AppShell>;
@@ -210,22 +216,72 @@ export default function TournamentPage() {
         </>
       )}
 
-      {current === 'ko' && ko.length > 0 && (
+      {current === 'ko' && ko.length > 0 && (() => {
+        const rounds = Array.from({ length: tour.rounds }, (_, i) => i + 1);
+        const pending = (rd) => ko.filter((m) => m.round === rd && !m.is_bye && m.team1_id && m.team2_id && m.winner_id == null).length;
+        const shownRound = koRound || rounds.find((rd) => pending(rd) > 0) || rounds[rounds.length - 1];
+        return (
         <>
-          <div className="overflow-x-auto -mx-4 px-4 pb-2">
-            <div className="flex gap-4 min-w-max">
-              {Array.from({ length: tour.rounds }, (_, i) => i + 1).map((rd) => (
-                <div key={rd} className="w-60 flex flex-col">
-                  <div className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-2">{roundLabel(rd, tour.rounds, t)}</div>
-                  <div className="flex flex-col justify-around flex-1 gap-3">
-                    {ko.filter((m) => m.round === rd).map((m) => (
-                      <MatchRow key={m.id} m={m} teamName={teamName} onOpen={setScoring} />
-                    ))}
-                  </div>
-                </div>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="grid grid-cols-2 bg-navy-900 rounded-lg p-1 text-xs" role="tablist">
+              {['list', 'bracket'].map((v) => (
+                <button key={v} type="button" role="tab" aria-selected={koView === v} onClick={() => setKoView(v)} className={`rounded-md px-3 py-1.5 ${koView === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
+                  {t(`bracket.${v}`)}
+                </button>
               ))}
             </div>
+            {koView === 'bracket' && <span className="md:hidden text-gray-500 text-xs">{t('bracket.swipe')}</span>}
           </div>
+
+          {koView === 'list' ? (
+            <>
+              <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 mb-2">
+                {rounds.map((rd) => {
+                  const total = ko.filter((m) => m.round === rd && !m.is_bye).length;
+                  const left = pending(rd);
+                  return (
+                    <button
+                      key={rd}
+                      type="button"
+                      onClick={() => setKoRound(rd)}
+                      className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${shownRound === rd ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300'}`}
+                    >
+                      {roundLabel(rd, tour.rounds, t)}
+                      <span className="ml-1.5 text-xs text-gray-500">{total ? `${total - left}/${total}` : ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-col gap-2">
+                {ko.filter((m) => m.round === shownRound).map((m) => (
+                  <MatchRow key={m.id} m={m} teamName={teamName} onOpen={setScoring} />
+                ))}
+              </div>
+              <div className="flex justify-between mt-3 text-sm">
+                <button type="button" className="text-gray-400 disabled:opacity-30" disabled={shownRound <= 1} onClick={() => setKoRound(shownRound - 1)}>
+                  ← {shownRound > 1 ? roundLabel(shownRound - 1, tour.rounds, t) : ''}
+                </button>
+                <button type="button" className="text-lime-400 disabled:opacity-30" disabled={shownRound >= tour.rounds} onClick={() => setKoRound(shownRound + 1)}>
+                  {shownRound < tour.rounds ? roundLabel(shownRound + 1, tour.rounds, t) : ''} →
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4 pb-2 snap-x snap-mandatory">
+              <div className="flex gap-4 min-w-max">
+                {rounds.map((rd) => (
+                  <div key={rd} className="w-[78vw] max-w-[15rem] sm:w-60 flex flex-col snap-start">
+                    <div className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-2">{roundLabel(rd, tour.rounds, t)}</div>
+                    <div className="flex flex-col justify-around flex-1 gap-3">
+                      {ko.filter((m) => m.round === rd).map((m) => (
+                        <MatchRow key={m.id} m={m} teamName={teamName} onOpen={setScoring} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {tour.group_count > 0 && (
             <button className="text-gray-400 text-sm underline mt-4" onClick={() => {
               if (window.confirm(t('tournaments.resetKoConfirm'))) {
@@ -240,7 +296,8 @@ export default function TournamentPage() {
             </button>
           )}
         </>
-      )}
+        );
+      })()}
 
       <Modal open={!!scoring} title={t('tournaments.enterScore')} onClose={() => setScoring(null)}>
         {scoring && <ScoreForm match={scoring} teamName={teamName} onSave={saveScore} onClear={clearScore} onCancel={() => setScoring(null)} />}

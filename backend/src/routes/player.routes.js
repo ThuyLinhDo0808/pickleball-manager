@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
@@ -5,6 +6,8 @@ const { limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, normalizePhone } = require('../services/memberships');
 const { localDate, winnerTeam } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
+const { cancelDeadline, cancelParticipant } = require('../services/attendance');
+const { telegramSend } = require('../services/notify');
 
 function badRequest(message, status = 400, code) {
   return Object.assign(new Error(message), { status, code });
@@ -43,6 +46,37 @@ publicRoutes.get('/clubs/:token', async (req, res) => {
     res.json({ name: club.name, description: club.description, join_note: club.join_note, plans });
   } catch (err) {
     fail(res, err);
+  }
+});
+
+// Telegram bot updates (set up with backend/scripts/telegram-webhook.js). Telegram
+// signs each call with the secret we registered; anything else is ignored.
+publicRoutes.post('/telegram', async (req, res) => {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!secret || req.get('X-Telegram-Bot-Api-Secret-Token') !== secret) return res.status(404).json({ error: 'Not found.' });
+  res.json({ ok: true }); // answer Telegram right away; it retries on errors
+  try {
+    const msg = req.body?.message;
+    const code = String(msg?.text || '').match(/^\/start\s+([a-f0-9]{16,64})$/i)?.[1];
+    if (!msg?.chat?.id) return;
+    if (!code) {
+      await telegramSend(msg.chat.id, 'Xin chào! Hãy mở Cổng người chơi → Hồ sơ → "Kết nối Telegram" để nhận thông báo kèo.');
+      return;
+    }
+    const { data: profile } = await supabase
+      .from('player_profiles')
+      .update({ telegram_chat_id: msg.chat.id })
+      .eq('telegram_link_code', code.toLowerCase())
+      .select('full_name')
+      .maybeSingle();
+    await telegramSend(
+      msg.chat.id,
+      profile
+        ? `✅ Đã kết nối, ${profile.full_name}! Bạn sẽ nhận tin khi được đẩy từ danh sách chờ lên danh sách chính.`
+        : 'Mã kết nối không đúng hoặc đã hết hạn. Hãy bấm lại "Kết nối Telegram" trong app.'
+    );
+  } catch (err) {
+    console.error('telegram webhook', err);
   }
 });
 
@@ -242,7 +276,6 @@ player.get('/me', async (req, res) => {
       ? await supabase.from('memberships').select('id, club_member_id, payment_ref, requested_by_player, status, amount, period_label, membership_plans(name)').in('club_member_id', memberIds)
       : { data: [] };
     const today = todayYmd();
-
     const clubs = members.map((m) => {
       const mine = (passes || []).filter((p) => p.club_member_id === m.id);
       const raw = (rawMemberships || []).filter((x) => x.club_member_id === m.id);
@@ -270,16 +303,27 @@ player.get('/me', async (req, res) => {
     const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
-      .select('id, status, event_id, events(title, event_date, start_time, location, public_token, allow_public_registration, status, clubs(name))')
+      .select(
+        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, events(title, event_date, start_time, location, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
+      )
       .or(orFilter)
       .limit(500);
     if (rErr) throw rErr;
     const seen = new Set();
     const history = [];
+    // Prefer the live registration when a player has several rows for one event.
+    const order = { checked_in: 0, registered: 1, waitlisted: 2, no_show: 3, cancelled: 4 };
+    regs.sort((a, b) => order[a.status] - order[b.status]);
     for (const r of regs) {
       if (!r.events || seen.has(r.event_id)) continue;
       seen.add(r.event_id);
+      const upcoming = r.events.event_date >= today && ['draft', 'open', 'closed'].includes(r.events.status);
+      const deadline = cancelDeadline(r.events);
       history.push({
+        participant_id: r.id,
+        can_cancel: upcoming && ['registered', 'waitlisted'].includes(r.status),
+        cancel_deadline: deadline ? deadline.toISOString() : null,
+        late_cancel: r.late_cancel,
         event_id: r.event_id,
         title: r.events.title,
         event_date: r.events.event_date,
@@ -291,6 +335,27 @@ player.get('/me', async (req, res) => {
       });
     }
     history.sort((a, b) => b.event_date.localeCompare(a.event_date));
+
+    // Event fees still owed: played (or cancelled late), not marked paid by the Host,
+    // and not covered by a membership session.
+    const membershipIds = (rawMemberships || []).map((m) => m.id);
+    const { data: usedSessions } = membershipIds.length
+      ? await supabase.from('membership_sessions').select('event_id').in('membership_id', membershipIds).not('event_id', 'is', null)
+      : { data: [] };
+    const coveredByPass = new Set((usedSessions || []).map((u) => u.event_id));
+    const eventDebts = regs
+      .filter((r) => r.events && !r.fee_paid && (r.status === 'checked_in' || (r.status === 'cancelled' && r.late_cancel)))
+      .filter((r) => !(r.source_club_member_id && coveredByPass.has(r.event_id)))
+      .map((r) => ({
+        event_id: r.event_id,
+        title: r.events.title,
+        event_date: r.events.event_date,
+        club_name: r.events.clubs?.name || null,
+        amount: Number(r.fee_amount ?? r.events.fee_amount ?? 0),
+        late_cancel: r.status === 'cancelled',
+      }))
+      .filter((d) => d.amount > 0)
+      .sort((a, b) => b.event_date.localeCompare(a.event_date));
 
     // Form over the last 12 months: club matches + matches inside events I played.
     const participantIds = regs.map((r) => r.id);
@@ -335,7 +400,13 @@ player.get('/me', async (req, res) => {
 
     res.json({
       email: req.hostEmail,
-      profile,
+      profile: profile && (({ telegram_link_code, telegram_chat_id, ...p }) => p)(profile),
+      checkin_code: profile ? `PBP:${profile.checkin_token}` : null,
+      telegram: {
+        available: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME),
+        linked: !!profile?.telegram_chat_id,
+      },
+      event_debts: eventDebts,
       dupr_history: duprHistory,
       clubs,
       history: history.slice(0, 50),
@@ -343,10 +414,81 @@ player.get('/me', async (req, res) => {
       totals: {
         matches: form.reduce((s, x) => s + x.matches, 0),
         wins: form.reduce((s, x) => s + x.wins, 0),
-        debt: clubs.reduce((s, c) => s + c.debt, 0),
+        debt: clubs.reduce((s, c) => s + c.debt, 0) + eventDebts.reduce((s, d) => s + d.amount, 0),
         events: history.filter((h) => h.status === 'checked_in').length,
       },
     });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Cancel one of my registrations. Same policy as the Host's cancel: after the event's
+// cancel deadline the session is still used / the fee still owed.
+player.post('/participations/:participantId/cancel', async (req, res) => {
+  try {
+    if (!isUuid(req.params.participantId)) throw badRequest('Registration not found.', 404);
+    const { data: prior } = await supabase.from('event_participants').select('*').eq('id', req.params.participantId).maybeSingle();
+    let mine = prior?.user_id === req.hostId;
+    if (prior && !mine && prior.source_club_member_id) {
+      const { data: m } = await supabase.from('club_members').select('user_id').eq('id', prior.source_club_member_id).maybeSingle();
+      mine = m?.user_id === req.hostId;
+    }
+    if (!mine) throw badRequest('Registration not found.', 404);
+    const { data: event } = await supabase.from('events').select('*').eq('id', prior.event_id).single();
+    if (event.event_date < todayYmd() || !['draft', 'open', 'closed'].includes(event.status)) {
+      throw badRequest('This event can no longer be cancelled here. Please contact the host.', 409, 'event_over');
+    }
+    if (!['registered', 'waitlisted'].includes(prior.status)) throw badRequest('Only upcoming registrations can be cancelled.', 409, 'not_cancellable');
+    const r = await cancelParticipant(event, prior);
+    res.json({ status: r.status, late: r.late, pass: r.pass });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// My personal check-in QR: make a new one if the old one was shared by mistake.
+player.post('/checkin-code/rotate', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('player_profiles')
+      .update({ checkin_token: crypto.randomUUID() })
+      .eq('user_id', req.hostId)
+      .select('checkin_token')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw badRequest('Complete your profile first.', 400, 'profile_required');
+    res.json({ checkin_code: `PBP:${data.checkin_token}` });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Telegram: get a one-time link that opens the bot and connects this account.
+player.post('/telegram/link', async (req, res) => {
+  try {
+    const bot = process.env.TELEGRAM_BOT_USERNAME;
+    if (!process.env.TELEGRAM_BOT_TOKEN || !bot) throw badRequest('Telegram notifications are not set up on this server.', 501, 'not_configured');
+    const code = crypto.randomBytes(12).toString('hex');
+    const { data, error } = await supabase
+      .from('player_profiles')
+      .update({ telegram_link_code: code })
+      .eq('user_id', req.hostId)
+      .select('user_id')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw badRequest('Complete your profile first.', 400, 'profile_required');
+    res.json({ url: `https://t.me/${bot.replace(/^@/, '')}?start=${code}` });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+player.delete('/telegram', async (req, res) => {
+  try {
+    const { error } = await supabase.from('player_profiles').update({ telegram_chat_id: null, telegram_link_code: null }).eq('user_id', req.hostId);
+    if (error) throw error;
+    res.status(204).end();
   } catch (err) {
     fail(res, err);
   }

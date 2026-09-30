@@ -68,14 +68,14 @@ export function ClubProvider({ children }) {
 
   const createClub = useCallback(async ({ name, description }) => {
     const created = await api.post('/api/clubs', { name, description: description || null });
-    setClubs((list) => [created, ...list]);
+    setClubs((list) => [{ ...created, role: 'owner' }, ...list]);
     setSelectedId(created.id);
     return created;
   }, []);
 
   const updateClub = useCallback(async (id, fields) => {
     const updated = await api.patch(`/api/clubs/${id}`, fields);
-    setClubs((list) => list.map((c) => (c.id === id ? updated : c)));
+    setClubs((list) => list.map((c) => (c.id === id ? { ...c, ...updated } : c)));
     return updated;
   }, []);
 
@@ -88,10 +88,12 @@ export function ClubProvider({ children }) {
   }, [clubs]);
 
   const club = clubs.find((c) => c.id === selectedId) || null;
+  // Co-admin of someone else's club: members + finance only (see backend services/clubAccess.js).
+  const isCoAdmin = club?.role === 'co_admin';
 
   const value = useMemo(
-    () => ({ clubs, club, loading, error, reload, selectClub, createClub, updateClub, deleteClub }),
-    [clubs, club, loading, error, reload, selectClub, createClub, updateClub, deleteClub]
+    () => ({ clubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub, deleteClub }),
+    [clubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub, deleteClub]
   );
 
   return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>;

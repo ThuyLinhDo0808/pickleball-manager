@@ -6,6 +6,7 @@ import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
+import QrCheckinPanel from '@/components/QrCheckinPanel';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -23,6 +24,7 @@ export default function StaffEventPage() {
   const [busyId, setBusyId] = useState(null);
   const [flash, setFlash] = useState('');
   const [showMatch, setShowMatch] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   if (loading && !ev) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
   if (!ev) return <AppShell><p className="text-gray-400">{t('staffView.none')}</p></AppShell>;
@@ -89,7 +91,13 @@ export default function StaffEventPage() {
               <button className="text-gray-400 text-lg leading-none" aria-label="Close" onClick={() => setFlash('')}>×</button>
             </div>
           )}
-          <input className="input mb-3" type="search" placeholder={t('staffView.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
+          <div className="flex gap-2 mb-3">
+            <input className="input" type="search" placeholder={t('staffView.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <button className="btn-primary shrink-0 text-sm" onClick={() => setShowQr(true)}>📷 {t('qr.scan')}</button>
+          </div>
+          <Modal open={showQr} title={t('qr.scanTitle')} onClose={() => setShowQr(false)}>
+            {showQr && <QrCheckinPanel endpoint={`${base}/checkin-code`} onCheckedIn={reload} />}
+          </Modal>
           <div className="card !p-0 divide-y divide-navy-700">
             {people.map((p) => (
               <div key={p.id} className={`flex items-center gap-3 px-4 py-3 ${p.status === 'waitlisted' ? 'opacity-60' : ''}`}>

@@ -3,6 +3,7 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
 const { localDate, winnerTeam } = require('../services/stats');
+const { clubAccess } = require('../services/clubAccess');
 
 const router = express.Router();
 
@@ -25,13 +26,12 @@ function lastMonths(n) {
   });
 }
 
-// Scope = one of the host's clubs (?club_id=) or their standalone Xé Vé events (?scope=standalone).
+// Scope = a club I own or co-admin (?club_id=), or my standalone Xé Vé events (?scope=standalone).
+// hostId is whose data it is: the club's owner (also for a co-admin), or me.
 async function resolveScope(req) {
-  if (req.query.scope === 'standalone') return { clubId: null };
-  const clubId = req.query.club_id;
-  if (!isUuid(clubId)) return null;
-  const { data } = await supabase.from('clubs').select('id').eq('id', clubId).eq('host_id', req.hostId).maybeSingle();
-  return data ? { clubId } : null;
+  if (req.query.scope === 'standalone') return { clubId: null, hostId: req.hostId };
+  const access = await clubAccess(req, req.query.club_id);
+  return access ? { clubId: access.club.id, hostId: access.club.host_id } : null;
 }
 
 async function scopeEvents(hostId, clubId, fields) {
@@ -49,7 +49,7 @@ router.get('/finance', async (req, res) => {
     if (!scope) return notFound(res, 'Club');
     const months = lastMonths(Math.min(Math.max(parseInt(req.query.months, 10) || 12, 3), 36));
     const from = `${months[0]}-01`;
-    const events = await scopeEvents(req.hostId, scope.clubId, 'id');
+    const events = await scopeEvents(scope.hostId, scope.clubId, 'id');
     const filters = [];
     if (scope.clubId) filters.push(`and(owner_type.eq.club,club_id.eq.${scope.clubId})`);
     if (events.length) filters.push(`and(owner_type.eq.event,event_id.in.(${events.map((e) => e.id).join(',')}))`);
@@ -58,7 +58,7 @@ router.get('/finance', async (req, res) => {
       const { data, error } = await supabase
         .from('transactions')
         .select('type, category, amount, occurred_on, owner_type')
-        .eq('host_id', req.hostId)
+        .eq('host_id', scope.hostId)
         .eq('is_voided', false)
         .gte('occurred_on', from)
         .or(filters.join(','));
@@ -93,7 +93,7 @@ router.get('/events-pnl', async (req, res) => {
     const months = Math.min(Math.max(parseInt(req.query.months, 10) || 12, 1), 36);
     const [y, m] = todayYmd().split('-').map(Number);
     const since = new Date(Date.UTC(y, m - 1 - months, 1)).toISOString().slice(0, 10);
-    const events = (await scopeEvents(req.hostId, scope.clubId, 'id, title, event_date, start_time, status')).filter((e) => e.event_date >= since);
+    const events = (await scopeEvents(scope.hostId, scope.clubId, 'id, title, event_date, start_time, status')).filter((e) => e.event_date >= since);
     if (!events.length) return res.json([]);
     const ids = events.map((e) => e.id);
     const [{ data: fin, error: fErr }, { data: parts, error: pErr }] = await Promise.all([
@@ -135,7 +135,7 @@ router.get('/no-shows', async (req, res) => {
     const today = todayYmd();
     const [y, m, d] = today.split('-').map(Number);
     const since = new Date(Date.UTC(y, m - 1 - months, d)).toISOString().slice(0, 10);
-    const events = (await scopeEvents(req.hostId, scope.clubId, 'id, event_date, start_time')).filter(
+    const events = (await scopeEvents(scope.hostId, scope.clubId, 'id, event_date, start_time')).filter(
       (e) => e.event_date >= since && e.event_date < today && e.start_time
     );
     const cells = new Map();

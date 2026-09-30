@@ -108,6 +108,26 @@ const TABS_BY_WORKSPACE = {
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
 };
 
+// Co-admin of someone else's club (granted by its owner): members + finance only.
+const FINANCE_GROUP = NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance');
+const CO_ADMIN_NAV = [
+  { href: '/club/members', key: 'nav.members', icon: 'members' },
+  FINANCE_GROUP,
+  {
+    key: 'nav.groupSettings',
+    icon: 'clubs',
+    children: [
+      { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
+      { href: '/account', key: 'nav.account', icon: 'account' },
+    ],
+  },
+];
+const CO_ADMIN_TABS = [
+  { href: '/club/members', key: 'nav.members', icon: 'members' },
+  { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
+];
+const CO_ADMIN_OK = ['/club/members', '/finance', '/clubs', '/account'];
+
 const GROUPS_KEY = 'pickleball_nav_groups';
 
 const WORKSPACE_ICON = { club: 'clubs', xeve: 'ticket', staff: 'whistle' };
@@ -235,7 +255,7 @@ function LangSelect() {
 export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
   const { t } = useI18n();
-  const { clubs, loading: clubsLoading } = useClubs();
+  const { clubs, club, isCoAdmin, loading: clubsLoading } = useClubs();
   const { workspace, ready: wsReady, workspaces } = useWorkspace();
   const pathname = usePathname() || '';
   const router = useRouter();
@@ -293,8 +313,10 @@ export default function AppShell({ children }) {
 
   const isActive = (href, exact = false) => pathname === href || (!exact && pathname.startsWith(`${href}/`));
   const itemActive = (item) => (item.children ? item.children.some((c) => isActive(c.href, c.exact)) : isActive(item.href, item.exact));
-  const NAV = NAV_BY_WORKSPACE[workspace] || [];
-  const tabs = TABS_BY_WORKSPACE[workspace] || [];
+  const coAdmin = workspace === 'club' && isCoAdmin;
+  const NAV = coAdmin ? CO_ADMIN_NAV : NAV_BY_WORKSPACE[workspace] || [];
+  const tabs = coAdmin ? CO_ADMIN_TABS : TABS_BY_WORKSPACE[workspace] || [];
+  const coAdminBlocked = coAdmin && !CO_ADMIN_OK.some((p) => isActive(p));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p));
   const moreActive = !tabs.some((tab) => isActive(tab.href));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
@@ -428,8 +450,24 @@ export default function AppShell({ children }) {
             <p className="text-gray-400 text-sm mb-4">{t('clubs.createFirstHint')}</p>
             <CreateClubForm autoFocus />
           </div>
+        ) : coAdminBlocked ? (
+          <div className="max-w-md mx-auto card mt-4">
+            <h1 className="text-white text-xl font-bold mb-1">{t('coadmin.title', { name: club?.name || '' })}</h1>
+            <p className="text-gray-400 text-sm mb-4">{t('coadmin.limited', { owner: club?.owner_email || '—' })}</p>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/club/members" className="btn-primary">{t('nav.members')}</Link>
+              <Link href="/finance" className="btn-secondary">{t('nav.groupFinance')}</Link>
+            </div>
+          </div>
         ) : (
-          children
+          <>
+            {coAdmin && (
+              <p className="mb-3 text-xs text-sky-300">
+                {t('coadmin.banner', { name: club?.name || '', owner: club?.owner_email || '—' })}
+              </p>
+            )}
+            {children}
+          </>
         )}
       </main>
 

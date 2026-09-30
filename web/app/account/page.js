@@ -7,6 +7,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { exportClubBackup } from '@/lib/exportExcel';
+import NotifySettings from '@/components/NotifySettings';
 
 export default function AccountPage() {
   const { t } = useI18n();
@@ -52,6 +53,8 @@ export default function AccountPage() {
           </p>
         )}
       </div>
+
+      <NotifySettings />
 
       <div className="card mb-4">
         <h2 className="text-white font-semibold mb-2">Club backup</h2>

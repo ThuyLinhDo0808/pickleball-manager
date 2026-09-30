@@ -6,7 +6,7 @@ import { useClubs } from '@/context/ClubContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const ROLES = ['coordinator', 'referee'];
+const ROLES = ['coordinator', 'referee', 'co_admin'];
 const emptyForm = { email: '', full_name: '', role: 'coordinator', scope: 'all' };
 
 function todayYmd() {
@@ -16,7 +16,8 @@ function todayYmd() {
 
 export default function StaffAccessPage() {
   const { t } = useI18n();
-  const { clubs } = useClubs();
+  const { clubs: allClubs } = useClubs();
+  const clubs = allClubs.filter((c) => c.role !== 'co_admin'); // only clubs I own can be shared
   const { data: grants, loading, reload } = useLoad(() => api.get('/api/staff-grants'), []);
   const { data: events } = useLoad(() => api.get('/api/events'), []);
   const [form, setForm] = useState(emptyForm);
@@ -24,9 +25,17 @@ export default function StaffAccessPage() {
   const [error, setError] = useState('');
 
   const upcoming = (events || []).filter((e) => e.event_date >= todayYmd() && e.status !== 'cancelled');
+  const isCo = form.role === 'co_admin';
+
+  function pickRole(r) {
+    // A co-admin is always for one club: switch the scope to a club if needed.
+    const scope = r === 'co_admin' && !form.scope.startsWith('club:') ? (clubs[0] ? `club:${clubs[0].id}` : '') : form.scope;
+    setForm({ ...form, role: r, scope });
+  }
 
   function scopeLabel(g) {
     if (g.event_id) return t('staff.scopeEvent', { title: g.events?.title || '?', date: g.events?.event_date || '' });
+    if (g.club_id && g.role === 'co_admin') return t('coadmin.scopeClub', { name: g.clubs?.name || '?' });
     if (g.club_id) return t('staff.scopeClub', { name: g.clubs?.name || '?' });
     return t('staff.scopeAll');
   }
@@ -47,14 +56,18 @@ export default function StaffAccessPage() {
       setForm({ ...emptyForm, role: form.role });
       reload();
     } catch (err) {
-      setError(err.message);
+      setError(err.payload?.code === 'co_admin_needs_club' ? t('coadmin.needsClub') : err.message);
     } finally {
       setBusy(false);
     }
   }
 
   async function changeRole(g, role) {
-    await api.patch(`/api/staff-grants/${g.id}`, { role });
+    try {
+      await api.patch(`/api/staff-grants/${g.id}`, { role });
+    } catch (err) {
+      window.alert(err.payload?.code === 'co_admin_needs_club' ? t('coadmin.needsClub') : err.message);
+    }
     reload();
   }
 
@@ -80,12 +93,13 @@ export default function StaffAccessPage() {
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('staff.role')}</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {ROLES.map((r) => (
               <button
                 key={r}
                 type="button"
-                onClick={() => setForm({ ...form, role: r })}
+                disabled={r === 'co_admin' && !clubs.length}
+                onClick={() => pickRole(r)}
                 className={`rounded-lg border px-3 py-2 text-left ${form.role === r ? 'border-lime-400 bg-lime-400/10' : 'border-navy-700'}`}
               >
                 <div className={`text-sm font-semibold ${form.role === r ? 'text-lime-400' : 'text-white'}`}>{t(`staff.${r}`)}</div>
@@ -97,16 +111,18 @@ export default function StaffAccessPage() {
         <div>
           <label className="text-xs text-gray-400">{t('staff.scope')}</label>
           <select className="input" value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
-            <option value="all">{t('staff.scopeAll')}</option>
+            {!isCo && <option value="all">{t('staff.scopeAll')}</option>}
             {clubs.map((c) => (
-              <option key={c.id} value={`club:${c.id}`}>{t('staff.scopeClub', { name: c.name })}</option>
+              <option key={c.id} value={`club:${c.id}`}>{isCo ? t('coadmin.scopeClub', { name: c.name }) : t('staff.scopeClub', { name: c.name })}</option>
             ))}
-            {upcoming.map((ev) => (
-              <option key={ev.id} value={`event:${ev.id}`}>{t('staff.scopeEvent', { title: ev.title, date: ev.event_date })}</option>
-            ))}
+            {!isCo &&
+              upcoming.map((ev) => (
+                <option key={ev.id} value={`event:${ev.id}`}>{t('staff.scopeEvent', { title: ev.title, date: ev.event_date })}</option>
+              ))}
           </select>
+          {isCo && <p className="text-sky-300 text-xs mt-1">{t('coadmin.grantNote')}</p>}
         </div>
-        <p className="md:col-span-2 text-gray-500 text-xs">{t('staff.verifyNote')}</p>
+        <p className="md:col-span-2 text-gray-500 text-xs">{isCo ? t('coadmin.verifyNote') : t('staff.verifyNote')}</p>
         <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3">
           <button className="btn-primary w-full sm:w-auto" disabled={busy}>{t('staff.add')}</button>
           {error && <span className="text-red-400 text-sm">{error}</span>}
@@ -126,7 +142,7 @@ export default function StaffAccessPage() {
             <div className="flex items-center gap-2">
               <select className="input text-sm !w-auto" value={g.role} onChange={(e) => changeRole(g, e.target.value)} aria-label={t('staff.role')}>
                 {ROLES.map((r) => (
-                  <option key={r} value={r}>{t(`staff.${r}`)}</option>
+                  <option key={r} value={r} disabled={r === 'co_admin' && !g.club_id}>{t(`staff.${r}`)}</option>
                 ))}
               </select>
               <button className="text-red-400 text-sm px-2" onClick={() => revoke(g)}>{t('staff.remove')}</button>

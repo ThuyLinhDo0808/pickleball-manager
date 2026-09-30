@@ -3,8 +3,15 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
-const { normalizePhone, findClubMemberByPhone, releaseSession } = require('../services/memberships');
-const { ATTENDANCE_ACTIONS, setAttendance } = require('../services/attendance');
+const { normalizePhone, findClubMemberByPhone } = require('../services/memberships');
+const {
+  ATTENDANCE_ACTIONS,
+  setAttendance,
+  cancelParticipant,
+  waiveLateCancel,
+  promoteParticipant,
+  checkInByCode,
+} = require('../services/attendance');
 
 const router = express.Router();
 const MAIN_LIST = ['registered', 'checked_in'];
@@ -20,6 +27,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
+  'cancel_deadline_hours',
 ];
 
 router.get('/public/:publicToken', async (req, res) => {
@@ -161,6 +169,18 @@ async function ownsClub(hostId, clubId) {
   return !!data;
 }
 
+// Normalises optional fields in place; returns an error message or null.
+function cleanEventFields(fields) {
+  if ('cancel_deadline_hours' in fields) {
+    const v = fields.cancel_deadline_hours;
+    if (v === '' || v == null) fields.cancel_deadline_hours = null;
+    else if (!(Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 168)) return 'cancel_deadline_hours must be 0-168.';
+    else fields.cancel_deadline_hours = Number(v);
+  }
+  if (fields.start_time && fields.end_time && fields.end_time <= fields.start_time) return 'end_time must be after start_time.';
+  return null;
+}
+
 function addDays(ymd, days) {
   const d = new Date(`${ymd}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -186,8 +206,10 @@ router.post('/', async (req, res) => {
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours',
   ]);
+  const bad = cleanEventFields(fields);
+  if (bad) return res.status(400).json({ error: bad });
   if (!(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
@@ -212,8 +234,10 @@ router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours',
   ]);
+  const bad = cleanEventFields(fields);
+  if (bad) return res.status(400).json({ error: bad });
   if ('club_id' in fields && !(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
   const { data, error } = await supabase
     .from('events')
@@ -314,33 +338,23 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
   res.status(201).json(data);
 });
 
-// Actions: check-in / no-show / promote / cancel / fee
+// Actions: check-in / no-show / reset / promote / cancel / waive / fee
 router.post('/:eventId/participants/:participantId/:action', async (req, res) => {
   const { action } = req.params;
   const prior = req.participant;
-  const patch = {};
 
-  if (ATTENDANCE_ACTIONS.includes(action)) {
-    try {
-      return res.json(await setAttendance(req.event, prior, action));
-    } catch (err) {
-      return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
-    }
+  try {
+    if (ATTENDANCE_ACTIONS.includes(action)) return res.json(await setAttendance(req.event, prior, action));
+    if (action === 'cancel') return res.json(await cancelParticipant(req.event, prior));
+    if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
+    if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
+  } catch (err) {
+    return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
   }
+  if (action !== 'fee') return res.status(400).json({ error: `Unknown action: ${action}` });
 
-  if (action === 'cancel') {
-    patch.status = 'cancelled';
-    patch.cancelled_at = nowIso();
-  } else if (action === 'promote') {
-    patch.status = 'registered';
-  } else if (action === 'fee') {
-    const paid = !!req.body.fee_paid;
-    patch.fee_paid = paid;
-    if (req.body.fee_amount != null) patch.fee_amount = req.body.fee_amount;
-  } else {
-    return res.status(400).json({ error: `Unknown action: ${action}` });
-  }
-
+  const patch = { fee_paid: !!req.body.fee_paid };
+  if (req.body.fee_amount != null) patch.fee_amount = req.body.fee_amount;
   const { data: updated, error } = await supabase
     .from('event_participants')
     .update(patch)
@@ -349,35 +363,9 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     .single();
   if (error) return dbError(res, error);
 
-  // Cancelling a checked-in club member gives their pass session back.
-  if (action === 'cancel' && prior.status === 'checked_in' && prior.source_club_member_id && req.event.club_id) {
-    try {
-      await releaseSession(prior.source_club_member_id, req.event.id);
-    } catch (err) {
-      return dbError(res, err);
-    }
-  }
-
-  // Cancelling someone who held a main-list slot frees it up -> auto-promote next waitlisted
-  if (action === 'cancel') {
-    const freedAPlace = MAIN_LIST.includes(prior.status);
-    if (freedAPlace) {
-      const { data: nextUp } = await supabase
-        .from('event_participants')
-        .select('*')
-        .eq('event_id', req.event.id)
-        .eq('status', 'waitlisted')
-        .order('joined_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (nextUp) {
-        await supabase.from('event_participants').update({ status: 'registered' }).eq('id', nextUp.id);
-      }
-    }
-  }
-
   // Fee ledger sync: write/void an event_fee transaction to match fee_paid
-  if (action === 'fee') {
+  // (only on an actual change, so a repeated "paid" can't book the fee twice).
+  if (patch.fee_paid !== !!prior.fee_paid) {
     const owed = req.body.fee_amount ?? prior.fee_amount ?? req.event.fee_amount ?? 0;
     if (patch.fee_paid) {
       await supabase.from('transactions').insert({
@@ -410,6 +398,15 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
   }
 
   res.json(updated);
+});
+
+// Scan a player's personal QR (from the player portal) -> check them in.
+router.post('/:eventId/checkin-code', async (req, res) => {
+  try {
+    res.json(await checkInByCode(req.event, req.body.code));
+  } catch (err) {
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
 });
 
 // ---- Match scorers (referee/coordinator role) ------------------------------
@@ -456,6 +453,13 @@ router.get('/:eventId/finance', async (req, res) => {
 // ---- Player reliability -------------------------------------------------------
 router.get('/reliability/:clubMemberId', async (req, res) => {
   if (!isUuid(req.params.clubMemberId)) return notFound(res, 'Club member');
+  const { data: member } = await supabase
+    .from('club_members')
+    .select('id, clubs!inner(host_id)')
+    .eq('id', req.params.clubMemberId)
+    .eq('clubs.host_id', req.hostId)
+    .maybeSingle();
+  if (!member) return notFound(res, 'Club member');
   const { data, error } = await supabase
     .from('v_player_reliability')
     .select('*')
