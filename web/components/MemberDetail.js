@@ -158,7 +158,22 @@ export default function MemberDetail({ club, member, onClose, onChanged }) {
             <span className="min-w-0 truncate">
               <span className="text-gray-400">{t('payments.linked')}: </span>
               <span className="text-white">{member.account_email}</span>
+              {member.account_verified ? (
+                <span className="ml-2 text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">✓ {t('verify.verified')}</span>
+              ) : (
+                <span className="ml-2 text-[10px] rounded border border-yellow-400/60 text-yellow-300 px-1">{t('verify.pending')}</span>
+              )}
             </span>
+            {!member.account_verified && (
+              <button
+                type="button"
+                className="text-lime-400 text-xs font-semibold shrink-0"
+                disabled={busy}
+                onClick={() => window.confirm(t('verify.ask', { email: member.account_email, name: member.full_name })) && patchMember({ account_verified: true })}
+              >
+                {t('verify.do')}
+              </button>
+            )}
             <button
               type="button"
               className="text-red-400 text-xs shrink-0"

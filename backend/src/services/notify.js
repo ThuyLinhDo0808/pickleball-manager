@@ -1,4 +1,5 @@
-// Tell a player they moved from the waitlist to the main list. Two independent,
+// Tell players about their registration (moved up from the waitlist, payment confirmed
+// or rejected) and the Host about new transfer screenshots. Two independent,
 // best-effort channels — neither can fail the request that triggered them:
 //
 //   Telegram DM:  TELEGRAM_BOT_TOKEN (+ TELEGRAM_BOT_USERNAME for the link button).
@@ -19,10 +20,25 @@ function when(event) {
   return `${time}${wd} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
 }
 
-function promotedText(event, name) {
+// Web app address for links in messages (ticket / payment page).
+function webUrl(path) {
+  const cors = (process.env.CORS_ORIGIN || '').split(',')[0].trim();
+  const base = (process.env.PUBLIC_WEB_URL || (/^https:\/\//.test(cors) ? cors : '')).replace(/\/+$/, '');
+  return base ? `${base}${path}` : null;
+}
+
+const hi = (name) => (name ? `${name} ơi, bạn` : 'Bạn');
+const where = (event) => `kèo "${event.title}" — ${when(event)}${event.location ? ` tại ${event.location}` : ''}`;
+
+function promotedText(event, name, { mustPay = false, payUrl = null } = {}) {
+  if (mustPay) {
+    return (
+      `🎉 ${hi(name)} đã có chỗ ở ${where(event)}.\n` +
+      `Hãy chuyển khoản và gửi ảnh xác nhận trong 2 giờ để giữ chỗ${payUrl ? `: ${payUrl}` : ' (mở lại link đăng ký kèo)'}.`
+    );
+  }
   return (
-    `🎉 ${name ? `${name} ơi, bạn` : 'Bạn'} đã được đẩy lên DANH SÁCH CHÍNH THỨC kèo "${event.title}" — ${when(event)}` +
-    `${event.location ? ` tại ${event.location}` : ''}.\n` +
+    `🎉 ${hi(name)} đã được đẩy lên DANH SÁCH CHÍNH THỨC ${where(event)}.\n` +
     'Hẹn gặp bạn ở sân! Nếu không đi được, hãy báo Host sớm để nhường chỗ.'
   );
 }
@@ -82,11 +98,9 @@ const safe = (p) =>
     return 'failed';
   });
 
-// Never throws. Returns { telegram, webhook } with 'sent' | 'not_configured' | 'not_linked' | 'failed…'.
-async function notifyPromoted(event, participant) {
-  const text = promotedText(event, participant.full_name);
-  const payload = {
-    type: 'waitlist_promoted',
+function payloadFor(type, event, participant, text, extra = {}) {
+  return {
+    type,
     event: {
       id: event.id,
       title: event.title,
@@ -98,10 +112,58 @@ async function notifyPromoted(event, participant) {
     player: { full_name: participant.full_name, phone: participant.phone || null },
     text,
     content: text, // Discord-style webhooks
+    ...extra,
     created_at: new Date().toISOString(),
   };
-  const [telegram, webhook] = await Promise.all([safe(sendToPlayer(participant, text)), safe(sendToHostWebhook(event.host_id, payload))]);
+}
+
+// Player (Telegram) + Host webhook. Never throws; returns { telegram, webhook }.
+async function tellPlayerAndHost(type, event, participant, text, extra) {
+  const [telegram, webhook] = await Promise.all([
+    safe(sendToPlayer(participant, text)),
+    safe(sendToHostWebhook(event.host_id, payloadFor(type, event, participant, text, extra))),
+  ]);
   return { telegram, webhook };
 }
 
-module.exports = { notifyPromoted, telegramSend, postWebhook, promotedText };
+async function notifyPromoted(event, participant) {
+  const mustPay = participant.status === 'pending';
+  const payUrl = event.public_token ? webUrl(`/e/${event.public_token}`) : null;
+  return tellPlayerAndHost('waitlist_promoted', event, participant, promotedText(event, participant.full_name, { mustPay, payUrl }), {
+    payment_required: mustPay,
+  });
+}
+
+async function notifyPaymentConfirmed(event, participant) {
+  const ticketUrl = webUrl(`/t/${participant.ticket_code}`);
+  const text =
+    `✅ Host đã xác nhận thanh toán — ${hi(participant.full_name).replace(' ơi, bạn', '')} đã đăng ký thành công ${where(event)}.\n` +
+    `${ticketUrl ? `Vé check-in (mã QR): ${ticketUrl}\n` : ''}📸 Hãy chụp màn hình mã QR để check-in tại sân.`;
+  return tellPlayerAndHost('payment_confirmed', event, participant, text, { ticket_url: ticketUrl });
+}
+
+async function notifyPaymentRejected(event, participant, note) {
+  const payUrl = event.public_token ? webUrl(`/e/${event.public_token}`) : null;
+  const text =
+    `⚠️ Host chưa xác nhận được thanh toán của bạn cho ${where(event)}${note ? `: ${note}` : '.'}\n` +
+    `Vui lòng gửi lại ảnh chuyển khoản${payUrl ? `: ${payUrl}` : ''}.`;
+  return safe(sendToPlayer(participant, text)).then((telegram) => ({ telegram }));
+}
+
+// Host only: a guest uploaded a transfer screenshot to check.
+async function notifyPaymentSubmitted(event, participant, amount) {
+  const text = `💸 ${participant.full_name} đã gửi ảnh chuyển khoản ${Number(amount || 0).toLocaleString('vi-VN')}đ cho ${where(event)}. Vào app để xác nhận.`;
+  const webhook = await safe(sendToHostWebhook(event.host_id, payloadFor('payment_submitted', event, participant, text, { amount: Number(amount || 0) })));
+  return { webhook };
+}
+
+module.exports = {
+  notifyPromoted,
+  notifyPaymentConfirmed,
+  notifyPaymentRejected,
+  notifyPaymentSubmitted,
+  telegramSend,
+  postWebhook,
+  promotedText,
+  webUrl,
+};

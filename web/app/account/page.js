@@ -8,6 +8,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { exportClubBackup } from '@/lib/exportExcel';
 import NotifySettings from '@/components/NotifySettings';
+import HostPaymentSettings from '@/components/HostPaymentSettings';
 
 export default function AccountPage() {
   const { t } = useI18n();
@@ -54,6 +55,7 @@ export default function AccountPage() {
         )}
       </div>
 
+      <HostPaymentSettings />
       <NotifySettings />
 
       <div className="card mb-4">

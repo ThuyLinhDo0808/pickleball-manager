@@ -2,6 +2,10 @@ const { supabase } = require('../supabase');
 const { consumeSession, releaseSession } = require('./memberships');
 const { APP_TZ } = require('./stats');
 const { notifyPromoted } = require('./notify');
+const { HOLDS_PLACE, needsOnlinePayment } = require('./fees');
+const { newPaymentRef } = require('./payment');
+
+const PROMOTED_HOLD_MS = 2 * 3600 * 1000; // a promoted guest has 2 hours to pay
 
 const ATTENDANCE_ACTIONS = ['check-in', 'no-show', 'reset'];
 
@@ -76,6 +80,17 @@ function isLateCancel(event, prior, now = new Date()) {
   return !!deadline && MAIN_LIST.includes(prior.status) && now > deadline;
 }
 
+// Status for someone getting a place: straight in, or 'pending' while an online guest pays.
+async function placePatch(event, participant) {
+  if (!(await needsOnlinePayment(event, participant))) return { status: 'registered' };
+  return {
+    status: 'pending',
+    payment_status: participant.payment_status === 'proof_submitted' ? 'proof_submitted' : 'awaiting_proof',
+    payment_ref: participant.payment_ref || newPaymentRef(),
+    hold_expires_at: new Date(Date.now() + PROMOTED_HOLD_MS).toISOString(),
+  };
+}
+
 // Move the first waitlisted player up and tell them (in the background).
 async function promoteNext(event) {
   const { data: nextUp } = await supabase
@@ -89,7 +104,7 @@ async function promoteNext(event) {
   if (!nextUp) return null;
   const { data: promoted, error } = await supabase
     .from('event_participants')
-    .update({ status: 'registered' })
+    .update(await placePatch(event, nextUp))
     .eq('id', nextUp.id)
     .eq('status', 'waitlisted') // someone else may have promoted them meanwhile
     .select()
@@ -103,7 +118,8 @@ async function promoteNext(event) {
 //  - before the event's deadline (or no deadline): free — a used session is given back;
 //  - after it: marked late_cancel — a club member's session is still used and the
 //    fee is still owed. The Host can waive it afterwards (waiveLateCancel).
-// A freed main-list place goes to the next waitlisted player.
+// A freed main-list place goes to the next waitlisted player. A guest still waiting for
+// payment confirmation ('pending') cancels for free: they never had a confirmed place.
 async function cancelParticipant(event, prior, now = new Date()) {
   if (prior.status === 'cancelled') throw httpError('This registration is already cancelled.', 400, 'already_cancelled');
   const late = isLateCancel(event, prior, now);
@@ -120,7 +136,7 @@ async function cancelParticipant(event, prior, now = new Date()) {
     if (late) pass = await consumeSession(prior.source_club_member_id, event.event_date, event.id);
     else if (prior.status === 'checked_in') await releaseSession(prior.source_club_member_id, event.id);
   }
-  const promoted = MAIN_LIST.includes(prior.status) ? await promoteNext(event) : null;
+  const promoted = HOLDS_PLACE.includes(prior.status) ? await promoteNext(event) : null;
   return {
     ...updated,
     late,
@@ -141,38 +157,59 @@ async function waiveLateCancel(event, prior) {
 // Manual promotion by the Host (also notifies the player).
 async function promoteParticipant(event, prior) {
   if (prior.status !== 'waitlisted') throw httpError('Only waitlisted players can be promoted.', 400, 'not_waitlisted');
-  const { data, error } = await supabase.from('event_participants').update({ status: 'registered' }).eq('id', prior.id).select().single();
+  const { data, error } = await supabase.from('event_participants').update(await placePatch(event, prior)).eq('id', prior.id).select().single();
   if (error) throw error;
   notifyPromoted(event, data);
   return data;
 }
 
-// Personal QR from the player portal: "PBP:<checkin_token>" (a bare token also works).
+// Two kinds of check-in QR:
+//   "PBT:<ticket_code>"    the ticket of one registration (shown after sign-up / payment)
+//   "PBP:<checkin_token>"  the player's personal code from the portal (a bare token = PBP)
+const UUID = '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})';
 function parseCheckinCode(code) {
-  const m = String(code || '').trim().match(/^(?:PBP:)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
-  return m ? m[1].toLowerCase() : null;
+  const m = String(code || '').trim().match(new RegExp(`^(?:(PBT|PBP):)?${UUID}$`, 'i'));
+  return m ? { kind: (m[1] || 'PBP').toUpperCase() === 'PBT' ? 'ticket' : 'player', token: m[2].toLowerCase() } : null;
 }
 
-// Scan -> find this player's registration in the event -> check them in (uses a session).
-async function checkInByCode(event, code) {
-  const token = parseCheckinCode(code);
-  if (!token) throw httpError('This is not a player check-in QR code.', 400, 'bad_code');
-  const { data: profile, error: pErr } = await supabase.from('player_profiles').select('user_id, full_name').eq('checkin_token', token).maybeSingle();
+async function registrationsForCode(event, parsed) {
+  if (parsed.kind === 'ticket') {
+    const { data, error } = await supabase.from('event_participants').select('*').eq('ticket_code', parsed.token).maybeSingle();
+    if (error) throw error;
+    if (!data) throw httpError('Unknown or replaced ticket.', 404, 'unknown_code');
+    if (data.event_id !== event.id) throw httpError(`This ticket (${data.full_name}) is for another event.`, 409, 'other_event');
+    return { rows: [data], name: data.full_name };
+  }
+  const { data: profile, error: pErr } = await supabase.from('player_profiles').select('user_id, full_name').eq('checkin_token', parsed.token).maybeSingle();
   if (pErr) throw pErr;
   if (!profile) throw httpError('Unknown or expired QR code.', 404, 'unknown_code');
-
   const filters = [`user_id.eq.${profile.user_id}`];
   if (event.club_id) {
-    const { data: members } = await supabase.from('club_members').select('id').eq('club_id', event.club_id).eq('user_id', profile.user_id);
+    // only member records the Host has verified as this account
+    const { data: members } = await supabase
+      .from('club_members')
+      .select('id')
+      .eq('club_id', event.club_id)
+      .eq('user_id', profile.user_id)
+      .eq('account_verified', true);
     if (members?.length) filters.push(`source_club_member_id.in.(${members.map((m) => m.id).join(',')})`);
   }
   const { data: rows, error } = await supabase.from('event_participants').select('*').eq('event_id', event.id).or(filters.join(','));
   if (error) throw error;
+  return { rows: rows || [], name: profile.full_name };
+}
 
-  const rank = { checked_in: 0, registered: 1, no_show: 2, waitlisted: 3, cancelled: 4 };
-  const prior = (rows || []).sort((a, b) => rank[a.status] - rank[b.status])[0];
-  const player = { full_name: prior?.full_name || profile.full_name };
+// Scan -> find the registration in this event -> check them in (uses a session).
+async function checkInByCode(event, code) {
+  const parsed = parseCheckinCode(code);
+  if (!parsed) throw httpError('This is not a check-in QR code.', 400, 'bad_code');
+  const { rows, name } = await registrationsForCode(event, parsed);
+
+  const rank = { checked_in: 0, registered: 1, pending: 2, no_show: 3, waitlisted: 4, cancelled: 5 };
+  const prior = rows.sort((a, b) => rank[a.status] - rank[b.status])[0];
+  const player = { full_name: prior?.full_name || name };
   if (!prior) throw httpError(`${player.full_name} is not registered for this event.`, 404, 'not_registered');
+  if (prior.status === 'pending') throw httpError(`${player.full_name} hasn't had their payment confirmed yet.`, 409, 'unpaid');
   if (prior.status === 'waitlisted') throw httpError(`${player.full_name} is still on the waitlist.`, 409, 'waitlisted');
   if (prior.status === 'cancelled') throw httpError(`${player.full_name} cancelled this registration.`, 409, 'cancelled');
   if (prior.status === 'checked_in') return { ...prior, already: true, pass: null };
@@ -189,6 +226,7 @@ module.exports = {
   waiveLateCancel,
   promoteParticipant,
   promoteNext,
+  placePatch,
   checkInByCode,
   parseCheckinCode,
   zonedToUtc,

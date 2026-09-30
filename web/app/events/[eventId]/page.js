@@ -7,6 +7,7 @@ import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
+import PaymentReview from '@/components/PaymentReview';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
@@ -81,6 +82,7 @@ export default function EventDetailPage() {
   }
 
   async function toggleFee(p) {
+    if (p.status === 'cancelled' && p.fee_paid && !window.confirm(t('slot.refundAsk', { name: p.full_name }))) return;
     await api.post(`/api/events/${eventId}/participants/${p.id}/fee`, { fee_paid: !p.fee_paid });
     reloadParticipants();
     reloadFinance();
@@ -117,8 +119,30 @@ export default function EventDetailPage() {
   if (!event) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
 
   const main = (participants || []).filter((p) => ['registered', 'checked_in', 'no_show'].includes(p.status));
+  const pending = (participants || []).filter((p) => p.status === 'pending');
   const waitlist = (participants || []).filter((p) => p.status === 'waitlisted');
   const cancelled = (participants || []).filter((p) => p.status === 'cancelled');
+  const counts = {
+    arrived: main.filter((p) => p.status === 'checked_in').length,
+    confirmed: main.filter((p) => p.status !== 'no_show').length,
+    toReview: pending.filter((p) => p.payment_status === 'proof_submitted').length,
+    toPay: pending.filter((p) => p.payment_status !== 'proof_submitted').length,
+    absent: main.filter((p) => p.status === 'no_show').length,
+  };
+
+  async function transfer(p) {
+    const name = window.prompt(t('slot.newName'));
+    if (!name) return;
+    const phone = window.prompt(t('slot.newPhone'));
+    if (!phone) return;
+    try {
+      const r = await api.post(`/api/events/${eventId}/participants/${p.id}/transfer`, { full_name: name, phone });
+      setFlash(t('slot.done', { from: p.full_name, to: r.full_name }));
+      refresh();
+    } catch (err) {
+      setFlash(err.message);
+    }
+  }
   const refresh = () => {
     reloadParticipants();
     reloadEvent();
@@ -204,7 +228,22 @@ export default function EventDetailPage() {
               <button className="text-gray-400 text-lg leading-none" aria-label="Close" onClick={() => setFlash('')}>×</button>
             </div>
           )}
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${main.filter((p) => p.status !== 'no_show').length}/${event.slots}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
+            {[
+              ['arrived', `${counts.arrived}/${counts.confirmed}`, 'text-lime-400'],
+              ['confirmed', `${counts.confirmed + pending.length}/${event.slots}`, 'text-white'],
+              ['toReview', counts.toReview, counts.toReview ? 'text-sky-300' : 'text-gray-500'],
+              ['toPay', counts.toPay, counts.toPay ? 'text-yellow-300' : 'text-gray-500'],
+              ['waitlist', waitlist.length, 'text-gray-300'],
+            ].map(([k, v, tone]) => (
+              <div key={k} className="card !p-2 text-center">
+                <div className={`text-lg font-bold tabular-nums ${tone}`}>{v}</div>
+                <div className="text-gray-400 text-[11px] leading-tight">{t(`court.${k}`)}</div>
+              </div>
+            ))}
+          </div>
+          <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} onTransfer={transfer} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />
           {cancelled.length > 0 && (
             <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} fee={event.fee_amount} />
@@ -284,7 +323,7 @@ export default function EventDetailPage() {
 
 const STATUS_TONE = { checked_in: 'text-lime-400', registered: 'text-gray-300', no_show: 'text-yellow-400', waitlisted: 'text-sky-300', cancelled: 'text-gray-500' };
 
-function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
+function ParticipantTable({ kind, title, rows, t, onAction, onFee, onTransfer, fee }) {
   return (
     <div className="card mb-4">
       <h3 className="text-white font-semibold mb-2">{title}</h3>
@@ -300,15 +339,22 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
                 {p.source_club_member_id && (
                   <span className="ml-2 text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">{t('events.member')}</span>
                 )}
+                {!p.source_club_member_id && p.user_id && (
+                  <span className="ml-2 text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t('review.kind_guest')}</span>
+                )}
                 {p.late_cancel && (
                   <span className="ml-2 text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>
                 )}
+                {kind === 'cancelled' && p.fee_paid && !p.late_cancel && (
+                  <span className="ml-2 text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">{t('slot.refundDue')}</span>
+                )}
+                {p.transferred_from && <div className="text-gray-500 text-[11px]">{t('slot.from', { name: p.transferred_from })}</div>}
               </td>
               <td className={`text-xs ${STATUS_TONE[p.status]}`}>{t(`player.status_${p.status}`)}</td>
               <td>
-                {(kind !== 'cancelled' || p.late_cancel) && (
+                {(kind !== 'cancelled' || p.late_cancel || p.fee_paid) && (
                   <button className={`text-xs mr-2 ${p.fee_paid ? 'text-lime-400' : 'text-gray-300'}`} onClick={() => onFee(p)}>
-                    {p.fee_paid ? t('common.paid') : t('common.unpaid')}
+                    {kind === 'cancelled' && p.fee_paid && !p.late_cancel ? t('slot.markRefunded') : p.fee_paid ? t('common.paid') : t('common.unpaid')}
                     {kind === 'cancelled' && !p.fee_paid && Number(p.fee_amount ?? fee) > 0 && ` · ${formatVnd(p.fee_amount ?? fee)}`}
                   </button>
                 )}
@@ -324,6 +370,9 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
                     )}
                     {p.status !== 'registered' && (
                       <button className="text-gray-400 text-xs mr-2" onClick={() => onAction(p, 'reset')}>{t('staffView.undo')}</button>
+                    )}
+                    {p.status === 'registered' && onTransfer && (
+                      <button className="text-sky-300 text-xs mr-2" onClick={() => onTransfer(p)}>{t('slot.transfer')}</button>
                     )}
                   </>
                 )}

@@ -1,12 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import EventSignup from '@/components/EventSignup';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-
-const emptyForm = { full_name: '', phone: '', dupr_level: '' };
 
 function locale(lang) {
   return lang === 'vi' ? 'vi-VN' : 'en-GB';
@@ -31,51 +29,18 @@ function Info({ label, value }) {
   );
 }
 
-// Player-facing page opened from the link the Host posts in Zalo/Telegram. No login.
+// Player-facing page opened from the link the Host posts in Zalo/Telegram. Anyone can read
+// it; signing up needs an account (member vs guest, payment, ticket).
 export default function PublicEventPage() {
   const { token } = useParams();
   const { t, lang, setLang } = useI18n();
-  const { data: ev, error, loading, reload } = useLoad(() => api.publicGet(`/api/events/public/${token}`), [token]);
-  const [form, setForm] = useState(emptyForm);
-  const [busy, setBusy] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [result, setResult] = useState(null);
   const { user } = useAuth();
-
-  // Signed-in players: prefill from their profile; the sign-up then shows in their history.
-  useEffect(() => {
-    if (!user) return;
-    api
-      .get('/api/player/me')
-      .then((me) => {
-        const p = me.profile;
-        if (p) setForm((f) => ({ full_name: f.full_name || p.full_name, phone: f.phone || p.phone || '', dupr_level: f.dupr_level || (p.dupr_level ?? '') }));
-      })
-      .catch(() => {});
-  }, [user?.id]);
-
-  async function register(e) {
-    e.preventDefault();
-    setBusy(true);
-    setFormError('');
-    try {
-      const send = user ? api.post : api.publicPost; // token attached when signed in
-      const res = await send(`/api/events/public/${token}/register`, {
-        full_name: form.full_name.trim(),
-        phone: form.phone.trim(),
-        dupr_level: form.dupr_level === '' ? null : Number(form.dupr_level),
-      });
-      setResult(res);
-      setForm(emptyForm);
-      reload();
-    } catch (err) {
-      if (err.status === 409) setFormError(t('public.duplicate'));
-      else if (err.status === 403) reload(); // deadline passed meanwhile — page re-renders as closed
-      else setFormError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { data: ev, error, loading, reload } = useLoad(() => api.publicGet(`/api/events/public/${token}`), [token]);
+  const { data: me, reload: reloadMe } = useLoad(() => (user ? api.get(`/api/events/public/${token}/me`) : Promise.resolve(null)), [token, user?.id]);
+  const refresh = () => {
+    reload();
+    reloadMe();
+  };
 
   const langToggle = (
     <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
@@ -95,7 +60,6 @@ export default function PublicEventPage() {
     );
   }
 
-  const spotsLeft = Math.max(ev.slots - ev.main_count, 0);
   const main = ev.participants.filter((p) => p.status !== 'waitlisted');
   const waitlist = ev.participants.filter((p) => p.status === 'waitlisted');
   const level =
@@ -139,53 +103,7 @@ export default function PublicEventPage() {
       )}
 
       <section className="card mb-4">
-        {result ? (
-          <div className="text-center py-2">
-            <div className="text-4xl mb-2">{result.status === 'waitlisted' ? '⏳' : '🎉'}</div>
-            <p className="text-white font-semibold">{result.full_name}</p>
-            <p className="text-gray-300 text-sm mt-1">
-              {result.status === 'waitlisted' ? t('public.successWait') : t('public.successMain')}
-            </p>
-            {ev.registration_open && (
-              <button className="btn-secondary mt-4 w-full" onClick={() => setResult(null)}>
-                {t('public.registerAnother')}
-              </button>
-            )}
-          </div>
-        ) : ev.registration_open ? (
-          <form onSubmit={register} className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="text-white font-semibold">{t('public.register')}</h2>
-              <span className={`text-xs ${spotsLeft ? 'text-lime-400' : 'text-yellow-400'}`}>
-                {spotsLeft ? t('public.spotsLeft', { n: spotsLeft }) : t('public.full')}
-              </span>
-            </div>
-            {ev.registration_deadline && (
-              <p className="text-gray-400 text-xs -mt-2">
-                {t('public.deadlineIn', { date: new Date(ev.registration_deadline).toLocaleString(locale(lang), { dateStyle: 'short', timeStyle: 'short' }) })}
-              </p>
-            )}
-            <div>
-              <label className="text-xs text-gray-400">{t('public.yourName')}</label>
-              <input className="input" required autoComplete="name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400">{t('public.yourPhone')}</label>
-              <input className="input" required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <p className="text-gray-500 text-xs mt-1">{t('public.phoneHint')}</p>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
-              <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={form.dupr_level} onChange={(e) => setForm({ ...form, dupr_level: e.target.value })} />
-            </div>
-            {formError && <p className="text-red-400 text-sm">{formError}</p>}
-            <button className="btn-primary w-full py-3 text-base" disabled={busy}>
-              {t('public.submit')}
-            </button>
-          </form>
-        ) : (
-          <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>
-        )}
+        <EventSignup ev={ev} me={me} user={user} token={token} onChanged={refresh} />
       </section>
 
       <section className="card mb-6">
@@ -199,6 +117,7 @@ export default function PublicEventPage() {
               <span className="text-gray-200">
                 <span className="text-gray-500 w-6 inline-block">{i + 1}.</span>
                 {p.full_name}
+                {p.status === 'pending' && <span className="ml-2 text-[11px] text-sky-300">({t('signup.pendingShort')})</span>}
               </span>
               {p.dupr_level != null && <span className="text-gray-400 text-xs">{p.dupr_level}</span>}
             </li>

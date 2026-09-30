@@ -11,7 +11,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const STATUS_ORDER = { registered: 0, checked_in: 1, no_show: 2, waitlisted: 3 };
+const STATUS_ORDER = { registered: 0, checked_in: 1, no_show: 2, pending: 3, waitlisted: 4 };
 
 // What a referee / coordinator sees for one event: check-in and scores. No money, no phones.
 export default function StaffEventPage() {
@@ -104,7 +104,7 @@ export default function StaffEventPage() {
                 <div className="min-w-0 flex-1">
                   <div className="text-white truncate">{p.full_name}</div>
                   <div className="text-gray-500 text-xs">
-                    {p.status === 'waitlisted' ? t('events.waitlist') : p.dupr_level != null ? `DUPR ${p.dupr_level}` : ''}
+                    {p.status === 'waitlisted' ? t('events.waitlist') : p.status === 'pending' ? t('signup.pendingShort') : p.dupr_level != null ? `DUPR ${p.dupr_level}` : ''}
                   </div>
                 </div>
                 {p.status === 'checked_in' || p.status === 'no_show' ? (

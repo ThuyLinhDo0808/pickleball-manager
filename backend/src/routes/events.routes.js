@@ -2,7 +2,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
-const { requireAuth, optionalAuth } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 const { normalizePhone, findClubMemberByPhone } = require('../services/memberships');
 const {
   ATTENDANCE_ACTIONS,
@@ -12,9 +12,11 @@ const {
   promoteParticipant,
   checkInByCode,
 } = require('../services/attendance');
+const signup = require('../services/signup');
+const { HOLDS_PLACE } = require('../services/fees');
 
 const router = express.Router();
-const MAIN_LIST = ['registered', 'checked_in'];
+const MAIN_LIST = HOLDS_PLACE; // registered, checked_in, pending (payment being checked)
 
 function nowIso() {
   return new Date().toISOString();
@@ -39,6 +41,11 @@ router.get('/public/:publicToken', async (req, res) => {
     .maybeSingle();
   if (error) return dbError(res, error);
   if (!event) return notFound(res, 'Event');
+  try {
+    await signup.expireHolds(event);
+  } catch (err) {
+    return dbError(res, err);
+  }
 
   const { data: people, error: pErr } = await supabase
     .from('event_participants')
@@ -61,62 +68,86 @@ router.get('/public/:publicToken', async (req, res) => {
   });
 });
 
-router.post('/public/:publicToken/register', optionalAuth, async (req, res) => {
-  if (!isUuid(req.params.publicToken)) return notFound(res, 'Event');
-  const { data: event, error: eErr } = await supabase
-    .from('events')
-    .select('*')
-    .eq('public_token', req.params.publicToken)
-    .eq('allow_public_registration', true)
-    .maybeSingle();
-  if (eErr) return dbError(res, eErr);
-  if (!event) return notFound(res, 'Event');
-
-  const blockedReason = assertRegistrationOpen(event);
-  if (blockedReason) return res.status(403).json({ error: blockedReason });
-
-  const full_name = String(req.body.full_name || '').trim();
-  const phone = String(req.body.phone || '').trim();
-  const dupr_level = req.body.dupr_level === '' || req.body.dupr_level == null ? null : Number(req.body.dupr_level);
-  if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
-  if (normalizePhone(phone).length < 9) return res.status(400).json({ error: 'A valid phone number is required.' });
-  if (dupr_level != null && !(dupr_level >= 1 && dupr_level <= 8)) {
-    return res.status(400).json({ error: 'dupr_level must be between 1 and 8.' });
+// ---- Signed-in player on the public page ------------------------------------
+// Sign-ups need an account: it tells a verified club member from a guest, and guests
+// pay (and get their ticket) through it.
+async function publicEvent(req, res) {
+  if (!isUuid(req.params.publicToken)) {
+    notFound(res, 'Event');
+    return null;
   }
-
-  // One active registration per phone number per event.
-  const { data: existing, error: dErr } = await supabase
-    .from('event_participants')
-    .select('phone')
-    .eq('event_id', event.id)
-    .in('status', [...MAIN_LIST, 'waitlisted']);
-  if (dErr) return dbError(res, dErr);
-  if (existing.some((p) => normalizePhone(p.phone) === normalizePhone(phone))) {
-    return res.status(409).json({ error: 'This phone number is already registered for this event.' });
+  const { data: event, error } = await supabase.from('events').select('*').eq('public_token', req.params.publicToken).maybeSingle();
+  if (error) {
+    dbError(res, error);
+    return null;
   }
+  if (!event) notFound(res, 'Event');
+  return event;
+}
 
-  const { count } = await supabase
-    .from('event_participants')
-    .select('id', { count: 'exact', head: true })
-    .eq('event_id', event.id)
-    .in('status', MAIN_LIST);
-  const status = (count || 0) >= event.slots ? 'waitlisted' : 'registered';
+function fail(res, err) {
+  return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+}
 
-  const { data, error } = await supabase
-    .from('event_participants')
-    .insert({
-      event_id: event.id,
-      full_name,
-      phone,
-      dupr_level,
-      status,
-      source_club_member_id: await findClubMemberByPhone(event.club_id, phone),
-      user_id: req.userId || null, // signed-in player: shows up in their history
-    })
-    .select('full_name, status')
-    .single();
-  if (error) return dbError(res, error);
-  res.status(201).json(data);
+async function playerProfile(userId) {
+  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level').eq('user_id', userId).maybeSingle();
+  return data;
+}
+
+// My standing (member / pending verification / guest) and my registration, with payment details when owed.
+router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
+  const event = await publicEvent(req, res);
+  if (!event) return;
+  try {
+    await signup.expireHolds(event);
+    const [profile, mine] = await Promise.all([playerProfile(req.userId), signup.myRegistration(event, req.userId)]);
+    const { standing, participant } = mine;
+    res.json({
+      profile,
+      member: {
+        state: standing.state, // 'verified' | 'pending' | 'none'
+        is_club_event: !!event.club_id,
+        has_pass: !!standing.pass,
+        sessions_remaining: standing.pass ? (standing.pass.sessions_included === 0 ? null : standing.pass.sessions_remaining) : null,
+      },
+      registration: await signup.registrationView(event, participant),
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
+  const event = await publicEvent(req, res);
+  if (!event) return;
+  try {
+    res.status(201).json(await signup.registerOnline(event, req.userId, await playerProfile(req.userId)));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/public/:publicToken/payment-proof', requireAuth, async (req, res) => {
+  const event = await publicEvent(req, res);
+  if (!event) return;
+  try {
+    const { participant } = await signup.myRegistration(event, req.userId);
+    if (!participant) throw Object.assign(new Error('You are not registered for this event.'), { status: 404, code: 'not_registered' });
+    res.json(await signup.submitProof(event, participant, req.body.image));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// "I'm a member of this club" -> links the account to the member with my phone; the Host verifies it.
+router.post('/public/:publicToken/claim-member', requireAuth, async (req, res) => {
+  const event = await publicEvent(req, res);
+  if (!event) return;
+  try {
+    res.json({ state: await signup.claimMembership(event, req.userId, await playerProfile(req.userId)) });
+  } catch (err) {
+    fail(res, err);
+  }
 });
 
 // Everything below requires the authenticated Host.
@@ -151,16 +182,6 @@ router.param('participantId', async (req, res, next, participantId) => {
   next();
 });
 
-function assertRegistrationOpen(event) {
-  if (!['draft', 'open'].includes(event.status)) {
-    return 'Registration is not open for this event.';
-  }
-  if (event.registration_deadline && new Date(event.registration_deadline) < new Date()) {
-    return 'The registration deadline has passed.';
-  }
-  return null;
-}
-
 // ---- Events CRUD (schedule) -------------------------------------------------
 async function ownsClub(hostId, clubId) {
   if (!clubId) return true; // standalone (Xé Vé) event
@@ -186,6 +207,30 @@ function addDays(ymd, days) {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+// Transfer screenshots waiting for the Host, across all their upcoming events.
+router.get('/pending-payments', async (req, res) => {
+  const { data: events, error } = await supabase
+    .from('events')
+    .select('id, title, event_date, start_time, fee_amount, club_id')
+    .eq('host_id', req.hostId)
+    .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+  if (error) return dbError(res, error);
+  if (!events.length) return res.json([]);
+  const { data: rows, error: pErr } = await supabase
+    .from('event_participants')
+    .select('id, event_id, full_name, phone, kind, fee_amount, payment_ref, payment_submitted_at')
+    .in('event_id', events.map((e) => e.id))
+    .eq('status', 'pending')
+    .eq('payment_status', 'proof_submitted')
+    .order('payment_submitted_at', { ascending: true });
+  if (pErr) return dbError(res, pErr);
+  const byId = new Map(events.map((e) => [e.id, e]));
+  res.json(rows.map((r) => {
+    const e = byId.get(r.event_id);
+    return { ...r, event: { id: e.id, title: e.title, event_date: e.event_date, start_time: e.start_time }, amount: Number(r.fee_amount ?? e.fee_amount ?? 0) };
+  }));
+});
 
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
 router.get('/', async (req, res) => {
@@ -257,18 +302,30 @@ router.delete('/:eventId', async (req, res) => {
 
 // ---- Participants -----------------------------------------------------------
 router.get('/:eventId/participants', async (req, res) => {
+  try {
+    await signup.expireHolds(req.event);
+  } catch (err) {
+    return dbError(res, err);
+  }
   const { data, error } = await supabase
     .from('event_participants')
     .select('*')
     .eq('event_id', req.event.id)
     .order('joined_at', { ascending: true });
   if (error) return dbError(res, error);
-  res.json(data);
+  // screenshots are fetched one at a time (they are large)
+  res.json(data.map(({ payment_proof, ...p }) => ({ ...p, has_proof: !!payment_proof })));
+});
+
+router.get('/:eventId/participants/:participantId/proof', (req, res) => {
+  if (!req.participant.payment_proof) return notFound(res, 'Screenshot');
+  res.json({ image: req.participant.payment_proof, submitted_at: req.participant.payment_submitted_at, ref: req.participant.payment_ref });
 });
 
 router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
   const { full_name, phone, dupr_level, fee_amount } = req.body;
   if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
+  const memberId = await findClubMemberByPhone(req.event.club_id, phone);
 
   const { count } = await supabase
     .from('event_participants')
@@ -286,7 +343,8 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
       dupr_level: dupr_level ?? null,
       fee_amount: fee_amount ?? null,
       status,
-      source_club_member_id: await findClubMemberByPhone(req.event.club_id, phone),
+      source_club_member_id: memberId,
+      kind: memberId ? 'member' : 'guest',
     })
     .select()
     .single();
@@ -329,6 +387,7 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
       phone: m.phone,
       dupr_level: m.dupr_level,
       source_club_member_id: m.id,
+      kind: 'member',
       status,
     };
   });
@@ -348,6 +407,11 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     if (action === 'cancel') return res.json(await cancelParticipant(req.event, prior));
     if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
+    if (action === 'confirm-payment') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
+    if (action === 'reject-payment') return res.json(await signup.rejectPayment(req.event, prior, req.body.note));
+    if (action === 'transfer') return res.json(await signup.transferSlot(req.event, prior, req.body, { byHost: true }));
+    // "Paid" on someone still waiting for confirmation = confirm their payment.
+    if (action === 'fee' && req.body.fee_paid && prior.status === 'pending') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
   } catch (err) {
     return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
   }

@@ -33,6 +33,9 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   create type participant_status as enum ('registered','waitlisted','checked_in','no_show','cancelled');
 exception when duplicate_object then null; end $$;
+-- Holds a place while a guest's transfer is checked by the Host. New enum values can't be
+-- used in the same transaction, so SQL below compares status::text.
+alter type participant_status add value if not exists 'pending';
 
 do $$ begin
   create type transaction_type as enum ('income','expense');
@@ -67,6 +70,13 @@ create table if not exists public.users (
 );
 -- Host notification webhook (e.g. Make/Zapier -> Zalo ZNS, a Telegram group, Slack...).
 alter table public.users add column if not exists notify_webhook_url text;
+-- Where guests transfer event fees (standalone events; club events use the club's account first).
+alter table public.users add column if not exists bank_code text;
+alter table public.users add column if not exists bank_account text;
+alter table public.users add column if not exists bank_holder text;
+-- The Host's own bank QR image (small data: URL), shown on the payment page.
+alter table public.users add column if not exists payment_qr_image text
+  check (payment_qr_image is null or length(payment_qr_image) <= 400000);
 
 create table if not exists public.host_subscriptions (
   host_id uuid primary key references public.users(id) on delete cascade,
@@ -161,6 +171,15 @@ alter table public.club_members add column if not exists flags text[] not null d
 -- The player's own login, when they joined through the portal (Host can unlink).
 alter table public.club_members add column if not exists user_id uuid references public.users(id) on delete set null;
 create index if not exists ix_club_members_user on public.club_members (user_id);
+-- A player account linked to a member record counts as that member only once the Host
+-- has verified it. Links that existed before this column are trusted (backfilled once).
+do $$ begin
+  if not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'club_members' and column_name = 'account_verified') then
+    alter table public.club_members add column account_verified boolean not null default false;
+    update public.club_members set account_verified = true where user_id is not null;
+  end if;
+end $$;
 create unique index if not exists ux_club_members_club_user on public.club_members (club_id, user_id) where user_id is not null;
 
 do $$ begin
@@ -298,6 +317,22 @@ alter table public.event_participants add column if not exists source_club_membe
 alter table public.event_participants add column if not exists user_id uuid references public.users(id) on delete set null;
 -- Cancelled after the event's cancel deadline: the session is used / the fee is still owed.
 alter table public.event_participants add column if not exists late_cancel boolean not null default false;
+-- Online sign-ups: member (verified club member) or guest; guests pay first, the Host
+-- checks the transfer screenshot, then the registration gets its ticket QR.
+alter table public.event_participants add column if not exists kind text not null default 'guest'
+  check (kind in ('member','guest'));
+alter table public.event_participants add column if not exists ticket_code uuid not null default gen_random_uuid();
+create unique index if not exists ux_participant_ticket on public.event_participants (ticket_code);
+alter table public.event_participants add column if not exists payment_status text not null default 'none'
+  check (payment_status in ('none','awaiting_proof','proof_submitted','rejected','confirmed'));
+alter table public.event_participants add column if not exists payment_ref text;
+alter table public.event_participants add column if not exists payment_proof text
+  check (payment_proof is null or length(payment_proof) <= 400000);
+alter table public.event_participants add column if not exists payment_submitted_at timestamptz;
+alter table public.event_participants add column if not exists payment_note text;
+-- An unpaid hold is released automatically after this time.
+alter table public.event_participants add column if not exists hold_expires_at timestamptz;
+alter table public.event_participants add column if not exists transferred_from text;
 
 -- Event-scoped roles (referee / coordinator) — limited access, no finance view
 create table if not exists public.event_scorers (
@@ -342,9 +377,11 @@ select
   e.*,
   c.name as club_name,
   (select count(*) from public.event_participants p
-     where p.event_id = e.id and p.status in ('registered','checked_in')) as main_count,
+     where p.event_id = e.id and p.status::text in ('registered','checked_in','pending')) as main_count,
   (select count(*) from public.event_participants p
-     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'pending') as pending_count
 from public.events e
 left join public.clubs c on c.id = e.club_id;
 
@@ -647,7 +684,7 @@ left join (
   select e.host_id, count(p.id) as participant_count
   from public.events e
   join public.event_participants p on p.event_id = e.id
-    and p.status in ('registered','waitlisted','checked_in')
+    and p.status::text in ('registered','waitlisted','checked_in','pending')
   where e.status in ('draft','open','closed')
     and e.event_date >= current_date - 1
   group by e.host_id

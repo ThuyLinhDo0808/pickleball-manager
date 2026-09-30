@@ -184,6 +184,7 @@ export default function PlayerHome() {
                 <div>
                   <div className="text-white font-semibold">{c.club_name}</div>
                   <div className="text-gray-400 text-xs">{c.current_period ? `${t('player.period')}: ${c.current_period}` : t(`membership.state_${c.membership_state}`)}</div>
+                  {c.account_verified === false && <div className="text-yellow-300 text-xs">⏳ {t('verify.pendingPlayer')}</div>}
                 </div>
                 <div className="text-right">
                   <div className="text-lime-400 text-2xl font-bold tabular-nums">
@@ -245,7 +246,17 @@ export default function PlayerHome() {
             );
             return (
               <div key={h.event_id} className="flex items-center justify-between gap-3 py-2">
-                {h.link ? <Link href={`/e/${h.link}`} className="min-w-0">{info}</Link> : info}
+                <div className="min-w-0">
+                  {h.link ? <Link href={`/e/${h.link}`}>{info}</Link> : info}
+                  {h.ticket_code && (
+                    <Link href={`/t/${h.ticket_code}`} className="text-lime-400 text-xs font-semibold">🎟 {t('pp.ticket')}</Link>
+                  )}
+                  {h.status === 'pending' && h.link && (
+                    <Link href={`/e/${h.link}`} className="text-yellow-300 text-xs font-semibold">
+                      {h.payment_status === 'proof_submitted' ? `⏳ ${t('signup.hostChecking')}` : `💸 ${t('pp.payNow')}`}
+                    </Link>
+                  )}
+                </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-xs ${h.status === 'checked_in' ? 'text-lime-400' : h.status === 'no_show' ? 'text-red-300' : 'text-gray-400'}`}>
                     {t(`player.status_${h.status}`)}
