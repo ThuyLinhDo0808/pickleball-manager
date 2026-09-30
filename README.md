@@ -116,14 +116,14 @@ Tóm tắt CLB đang chọn và các buổi sắp tới, kèm lối tắt tạo 
 - Nút **Xoá** nằm cạnh: tick chọn nhiều người, bấm xoá, rồi **xác nhận** (liệt kê tên từng người) để tránh bấm nhầm. Xoá thành viên cũng xoá lịch sử trận đấu và gói hội viên của họ.
 
 **Bấm vào tên để mở chi tiết thành viên:**
-- **✏️ Sửa thông tin**: họ tên, SĐT, giới tính, DUPR, ngày sinh, loại, hạng, tháng vào CLB, đang hoạt động hay không.
+- **✏️ Sửa thông tin** (nút ✏️ ngay cạnh tên trong bảng, hoặc trong chi tiết): họ tên, SĐT, giới tính, DUPR, ngày sinh, loại, hạng, tháng vào CLB, đang hoạt động hay không.
 - **Gói hội viên** của người đó: đăng ký gói, đánh dấu đã đóng/chưa đóng, trừ hoặc hoàn buổi thủ công.
 - **Ghi chú nội bộ** (chỉ Host thấy): cờ *Chưa đóng tiền*, *Hay đi trễ*, *Ý thức kém*, cùng ghi chú tự do.
 - **Tài khoản người chơi** đã liên kết (nếu người đó tự tham gia qua link). Host có thể huỷ liên kết.
 - **Lịch sử thay đổi**: DUPR, loại, hạng, trạng thái hoạt động, trạng thái thanh toán gói. Xem [4.11](#411-lịch-sử-thay-đổi-scd-type-2).
 
 **Ngày sinh & thâm niên:**
-- Cột **Ngày sinh** (dd/mm/yyyy) và **Vào CLB** (tháng/năm + thâm niên, VD "2 năm 3 tháng"). Nhập khi thêm thành viên hoặc sửa trong chi tiết thành viên. Thành viên mới mặc định vào CLB tháng hiện tại.
+- Cột **Ngày sinh** (dd/mm/yyyy; thành viên cũ mới có năm sinh hiện "1990 · thiếu ngày" để Host bổ sung) và **Vào CLB** (tháng/năm + thâm niên, VD "2 năm 3 tháng"). Nhập khi thêm thành viên hoặc sửa trong chi tiết thành viên. Thành viên mới mặc định vào CLB tháng hiện tại.
 - Người có **sinh nhật trong tháng** hiện 🎂, và đầu trang có dòng "Sinh nhật tháng này" để CLB chuẩn bị quà.
 - Bảng thành viên chỉ để xem thông tin; số buổi còn lại xem ở **Thống kê → Thống kê thành viên**.
 
@@ -486,6 +486,9 @@ Người chơi dùng chung app, chọn workspace **Tôi là người chơi** (`/
 
 ## 8. Tính năng chung
 
+> **Hồ sơ người chơi bắt buộc có ngày tháng năm sinh đầy đủ** (cùng họ tên, SĐT). Người chơi cũ chỉ có năm sinh sẽ được nhắc cập nhật trước khi đăng ký kèo / CLB. Ngày sinh tự điền vào hồ sơ thành viên CLB của họ nếu Host chưa nhập.
+
+
 ### 8.1. Đăng nhập (`/sign-in`)
 Email + mật khẩu qua Supabase Auth. Người đăng ký mới nhận **email xác nhận** và phải bấm xác nhận rồi mới đăng nhập được.
 
@@ -678,7 +681,8 @@ supabase/migrations/
 ├── 20261002090000_activities_team_tournaments.sql       # loại hoạt động, yêu cầu vào CLB, giải Team League + trận phụ
 ├── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
 ├── 20261004090000_tournament_entry_fee.sql              # lệ phí tham gia giải
-└── 20261005090000_tournament_fee_payments.sql           # ai đã đóng lệ phí giải (ghi thu vào quỹ CLB)
+├── 20261005090000_tournament_fee_payments.sql           # ai đã đóng lệ phí giải (ghi thu vào quỹ CLB)
+└── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):

@@ -114,8 +114,8 @@ function assertOpen(event) {
 
 async function registerOnline(event, userId, profile) {
   assertOpen(event);
-  if (!profile?.full_name || normalizePhone(profile.phone).length < 9) {
-    throw httpError('Complete your profile (name, phone) first.', 400, 'profile_required');
+  if (!profile?.full_name || normalizePhone(profile.phone).length < 9 || !profile.birth_date) {
+    throw httpError('Complete your profile (name, phone, birth date) first.', 400, 'profile_required');
   }
   await expireHolds(event);
   const { standing, participant: existing } = await myRegistration(event, userId);
@@ -275,6 +275,7 @@ async function claimMembership(event, userId, profile) {
         dupr_level: profile.dupr_level ?? null,
         gender: profile.gender ?? null,
         birth_year: profile.birth_year ?? null,
+        birth_date: profile.birth_date ?? null,
         member_type: 'fixed',
       })
       .select()

@@ -127,20 +127,25 @@ function cleanProfile(body) {
   if (normalizePhone(phone).length < 9) throw badRequest('A valid phone number is required.');
   const dupr = body.dupr_level === '' || body.dupr_level == null ? null : Number(body.dupr_level);
   if (dupr != null && !(dupr >= 1 && dupr <= 8)) throw badRequest('dupr_level must be between 1 and 8.');
-  const year = body.birth_year === '' || body.birth_year == null ? null : Number(body.birth_year);
-  if (year != null && !(Number.isInteger(year) && year >= 1900 && year <= 2100)) throw badRequest('birth_year is not valid.');
+  // Full birth date is required (the club uses it for birthdays); the year follows it.
+  const birth = String(body.birth_date || '').slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || Number.isNaN(Date.parse(birth)) || birth < '1900-01-01' || birth > today) {
+    throw badRequest('A valid birth date is required.', 400, 'birth_date_required');
+  }
+  const year = Number(birth.slice(0, 4));
   const gender = ['male', 'female'].includes(body.gender) ? body.gender : null;
   let avatar = body.avatar || null;
   if (avatar && !(/^data:image\/(jpeg|png|webp);base64,/.test(avatar) && avatar.length <= 150000)) {
     throw badRequest('avatar must be a small JPEG/PNG/WebP image.');
   }
-  return { full_name, phone, dupr_level: dupr, birth_year: year, gender, avatar };
+  return { full_name, phone, dupr_level: dupr, birth_date: birth, birth_year: year, gender, avatar };
 }
 
 // Copy profile details into blank fields of a club record (never overwrite the Host's data).
 function blanksFrom(member, profile) {
   const patch = {};
-  for (const k of ['phone', 'dupr_level', 'gender', 'birth_year']) if (member[k] == null && profile[k] != null) patch[k] = profile[k];
+  for (const k of ['phone', 'dupr_level', 'gender', 'birth_year', 'birth_date']) if (member[k] == null && profile[k] != null) patch[k] = profile[k];
   return patch;
 }
 
@@ -172,7 +177,7 @@ player.post('/join/:token', async (req, res) => {
     const club = await clubByToken(req.params.token);
     if (!club) throw badRequest('Club not found.', 404);
     const profile = await getProfile(req.hostId);
-    if (!profile?.full_name || !profile?.phone) throw badRequest('Complete your profile first.', 400, 'profile_required');
+    if (!profile?.full_name || !profile?.phone || !profile?.birth_date) throw badRequest('Complete your profile first.', 400, 'profile_required');
 
     const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
     if (!isUuid(req.body.plan_id) || !/^\d{4}-\d{2}$/.test(req.body.start_month || '')) {
@@ -218,6 +223,7 @@ player.post('/join/:token', async (req, res) => {
           dupr_level: profile.dupr_level,
           gender: profile.gender,
           birth_year: profile.birth_year,
+          birth_date: profile.birth_date || null,
           member_type: 'fixed',
         })
         .select()

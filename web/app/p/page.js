@@ -104,9 +104,9 @@ export default function PlayerHome() {
         </div>
       </div>
 
-      {!p && (
+      {(!p || !p.birth_date) && (
         <Link href="/p/profile" className="card block mb-4 border-lime-400/50 text-lime-300 text-sm">
-          {t('player.completeProfile')} →
+          {p ? t('player.needBirthDate') : t('player.completeProfile')} →
         </Link>
       )}
 

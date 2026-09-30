@@ -157,6 +157,8 @@ export const vi = {
     notes: 'Ghi chú',
   },
   members: {
+    noDayMonth: 'Mới có năm sinh — bấm ✏️ để nhập đủ ngày tháng năm sinh',
+    noDayMonthShort: 'thiếu ngày',
     edit: 'Sửa thông tin',
     active: 'Đang hoạt động',
     birthDate: 'Ngày sinh',
@@ -186,7 +188,7 @@ export const vi = {
     empty: 'Chưa có thành viên. Bấm + để thêm.',
     sessionsLeft: 'Buổi còn lại',
     info: 'Thông tin',
-    openHint: 'Bấm vào tên để xem chi tiết, gói hội viên và ghi chú.',
+    openHint: 'Bấm vào tên để xem chi tiết, gói hội viên và ghi chú; bấm ✏️ để sửa thông tin.',
   },
   events: {
     addEvent: 'Tạo sự kiện mới',
@@ -432,6 +434,7 @@ export const vi = {
     profile: 'Hồ sơ',
     hostApp: 'Quản lý CLB',
     hello: 'Chào {name}!',
+    needBirthDate: 'Hãy cập nhật ngày tháng năm sinh đầy đủ trong hồ sơ (bắt buộc để đăng ký kèo / CLB).',
     completeProfile: 'Hoàn thiện hồ sơ để đăng ký CLB và theo dõi thành tích.',
     myClubs: 'CLB của tôi',
     noClubs: 'Bạn chưa tham gia CLB nào. Hãy mở link tham gia mà Host gửi cho bạn.',

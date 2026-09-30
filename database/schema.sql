@@ -1024,5 +1024,11 @@ create policy p_tfee_owner on public.tournament_fee_payments for all
   using (exists (select 1 from public.tournaments t where t.id = tournament_id and t.host_id = auth.uid()))
   with check (exists (select 1 from public.tournaments t where t.id = tournament_id and t.host_id = auth.uid()));
 
+-- ----------------------------------------------------------------------------
+-- PLAYER BIRTH DATE  (migration 20261006090000)
+-- ----------------------------------------------------------------------------
+-- Players give their full birth date (not just the year); it fills the club record.
+alter table public.player_profiles add column if not exists birth_date date;
+
 select 1; -- done
 notify pgrst, 'reload schema';
