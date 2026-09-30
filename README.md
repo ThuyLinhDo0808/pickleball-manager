@@ -192,8 +192,10 @@ Nằm trong menu **Thống kê** (cùng Bảng xếp hạng và Phân tích).
 
 Trang **Tạo giải đấu** bắt đầu bằng mục **1. Thể thức**: chọn 1 trong 2 kiểu, đặt tên giải, ngày, giờ và địa điểm (giải hiện trên Lịch sự kiện). Danh sách các giải đã tạo ở link *Các giải đã tạo →*.
 
-#### Thể thức 1 — Đánh đôi
-Giải trong CLB luôn là **đánh đôi**: cặp nam, nữ hay nam nữ đều được, không chia nội dung đơn / đôi nam / đôi nam nữ (đánh đơn nằm trong giải Đồng đội). Mục 1 có thêm **Lệ phí / người** (hiện trên trang giải).
+#### Thể thức 1 — Đánh theo bảng
+Giải trong CLB luôn là **đánh đôi**: cặp nam, nữ hay nam nữ đều được, không chia nội dung đơn / đôi nam / đôi nam nữ (đánh đơn nằm trong giải Đồng đội). Mục 1 có ô **💰 Lệ phí / người**.
+
+**Thu lệ phí giải:** khi giải có lệ phí, trang giải có mục **💰 Lệ phí giải**: tổng đã thu / cần thu (lệ phí × số người) và danh sách người chơi. Bấm vào tên khi người đó đã đóng → app ghi 1 khoản thu *Lệ phí giải* vào quỹ CLB (xem ở Tài chính → Sổ thu chi); bấm lại để bỏ đánh dấu thì khoản thu bị hủy. Sửa giải vẫn giữ nguyên ai đã đóng; xóa giải thì các khoản thu lệ phí bị hủy.
 1. Chọn người chơi.
 
 3. **Ghép cặp**:
@@ -675,7 +677,8 @@ supabase/migrations/
 ├── 20261001090000_paid_signup_tickets.sql               # đăng ký bắt buộc đăng nhập, ảnh chuyển khoản, vé QR, xác thực thành viên
 ├── 20261002090000_activities_team_tournaments.sql       # loại hoạt động, yêu cầu vào CLB, giải Team League + trận phụ
 ├── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
-└── 20261004090000_tournament_entry_fee.sql              # lệ phí tham gia giải
+├── 20261004090000_tournament_entry_fee.sql              # lệ phí tham gia giải
+└── 20261005090000_tournament_fee_payments.sql           # ai đã đóng lệ phí giải (ghi thu vào quỹ CLB)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -853,7 +856,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` · `PATCH/DELETE /api/matches/:id` |
-| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League) · `POST/DELETE …/knockout` |
+| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` · `PATCH/DELETE /api/staff-grants/:id` |

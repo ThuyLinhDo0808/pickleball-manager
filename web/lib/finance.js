@@ -1,5 +1,5 @@
 // Standard ledger categories. Anything else a Host types is kept as free text.
-export const INCOME_CATEGORIES = ['membership', 'event_fee', 'prize', 'other'];
+export const INCOME_CATEGORIES = ['membership', 'event_fee', 'tournament_fee', 'prize', 'other'];
 export const EXPENSE_CATEGORIES = ['court', 'balls', 'water', 'coach', 'prize', 'other'];
 const KNOWN = new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES]);
 

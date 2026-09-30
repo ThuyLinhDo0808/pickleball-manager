@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import TeamLeagueView from '@/components/TeamLeagueView';
+import TournamentFees from '@/components/TournamentFees';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
@@ -165,6 +166,8 @@ export default function TournamentPage() {
       )}
 
       {error && <p className="card text-red-400 text-sm mb-4">{error}</p>}
+
+      <TournamentFees tour={tour} />
 
       {tour.kind === 'team' && <TeamLeagueView tour={tour} onChange={setData} />}
 

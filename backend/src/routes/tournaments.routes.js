@@ -467,7 +467,110 @@ router.patch('/:tournamentId/sub-matches/:subId', async (req, res) => {
   }
 });
 
+// ---- Entry fees -------------------------------------------------------------
+// Every player in the tournament, who has paid, and the totals. Marking a player paid
+// writes a club-fund income ("tournament_fee"); unmarking voids it.
+async function tournamentPlayers(t) {
+  if (t.kind === 'team') {
+    const { data, error } = await supabase
+      .from('tournament_team_members')
+      .select('club_member_id, tournament_teams!inner(tournament_id, name)')
+      .eq('tournament_teams.tournament_id', t.id);
+    if (error) throw error;
+    return data.map((r) => ({ id: r.club_member_id, team: r.tournament_teams.name }));
+  }
+  const { data, error } = await supabase.from('tournament_teams').select('name, player1_id, player2_id').eq('tournament_id', t.id).order('seed');
+  if (error) throw error;
+  return data.flatMap((tm) => [tm.player1_id, tm.player2_id].filter(Boolean).map((id) => ({ id, team: tm.name })));
+}
+
+async function feeSummary(t) {
+  const players = await tournamentPlayers(t);
+  const ids = players.map((p) => p.id);
+  const [{ data: members, error: e1 }, { data: paid, error: e2 }] = await Promise.all([
+    ids.length ? supabase.from('club_members').select('id, full_name').in('id', ids) : { data: [] },
+    supabase.from('tournament_fee_payments').select('club_member_id, amount, paid_at').eq('tournament_id', t.id),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  const name = new Map(members.map((m) => [m.id, m.full_name]));
+  const paidBy = new Map(paid.map((p) => [p.club_member_id, p]));
+  const fee = Number(t.entry_fee || 0);
+  const rows = players.map((p) => ({ club_member_id: p.id, full_name: name.get(p.id) || '?', team: p.team, paid: paidBy.has(p.id), amount: Number(paidBy.get(p.id)?.amount ?? fee) }));
+  const collected = rows.filter((r) => r.paid).reduce((s, r) => s + r.amount, 0);
+  return { entry_fee: fee, players: rows, paid_count: rows.filter((r) => r.paid).length, expected: fee * rows.length, collected };
+}
+
+// "Edit" rebuilds a tournament: carry the entry-fee payments over from the old one.
+router.post('/:tournamentId/fees/import', async (req, res) => {
+  const t = req.tournament;
+  try {
+    const fromId = req.body.from;
+    if (!isUuid(fromId) || fromId === t.id) throw badRequest('from is required.');
+    const { data: old } = await supabase.from('tournaments').select('id').eq('id', fromId).eq('host_id', req.hostId).maybeSingle();
+    if (!old) throw badRequest('Tournament not found.', 404);
+    const ids = (await tournamentPlayers(t)).map((p) => p.id);
+    if (ids.length) {
+      const { error } = await supabase.from('tournament_fee_payments').update({ tournament_id: t.id }).eq('tournament_id', fromId).in('club_member_id', ids);
+      if (error) throw error;
+    }
+    res.json(await feeSummary(t));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.get('/:tournamentId/fees', async (req, res) => {
+  try {
+    res.json(await feeSummary(req.tournament));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/:tournamentId/fees/:memberId', async (req, res) => {
+  const t = req.tournament;
+  const memberId = req.params.memberId;
+  try {
+    if (!isUuid(memberId)) throw badRequest('Player not found.', 404);
+    const players = await tournamentPlayers(t);
+    if (!players.some((p) => p.id === memberId)) throw badRequest('This player is not in the tournament.', 404);
+    const { data: existing } = await supabase.from('tournament_fee_payments').select('*').eq('tournament_id', t.id).eq('club_member_id', memberId).maybeSingle();
+    if (req.body.paid && !existing) {
+      const fee = Number(t.entry_fee || 0);
+      if (!(fee > 0)) throw badRequest('Set the entry fee first.');
+      const { data: m } = await supabase.from('club_members').select('full_name').eq('id', memberId).single();
+      const { data: txn, error: tErr } = await supabase
+        .from('transactions')
+        .insert({ host_id: t.host_id, owner_type: 'club', club_id: t.club_id, type: 'income', category: 'tournament_fee', amount: fee, note: `${t.name} — ${m?.full_name || ''}` })
+        .select('id')
+        .single();
+      if (tErr) throw tErr;
+      const { error } = await supabase.from('tournament_fee_payments').insert({ tournament_id: t.id, club_member_id: memberId, amount: fee, transaction_id: txn.id });
+      if (error) throw error;
+    } else if (!req.body.paid && existing) {
+      if (existing.transaction_id) {
+        await supabase
+          .from('transactions')
+          .update({ is_voided: true, voided_at: new Date().toISOString(), void_reason: 'entry fee marked unpaid' })
+          .eq('id', existing.transaction_id);
+      }
+      const { error } = await supabase.from('tournament_fee_payments').delete().eq('tournament_id', t.id).eq('club_member_id', memberId);
+      if (error) throw error;
+    }
+    res.json(await feeSummary(t));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 router.delete('/:tournamentId', async (req, res) => {
+  // Entry fees already booked for this tournament are voided (the ledger keeps them).
+  const { data: fees } = await supabase.from('tournament_fee_payments').select('transaction_id').eq('tournament_id', req.tournament.id);
+  const txnIds = (fees || []).map((f) => f.transaction_id).filter(Boolean);
+  if (txnIds.length) {
+    await supabase.from('transactions').update({ is_voided: true, voided_at: new Date().toISOString(), void_reason: 'tournament deleted' }).in('id', txnIds).eq('is_voided', false);
+  }
   const { error } = await supabase.from('tournaments').delete().eq('id', req.tournament.id);
   if (error) return dbError(res, error);
   res.status(204).end();

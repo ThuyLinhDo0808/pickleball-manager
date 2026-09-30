@@ -72,7 +72,11 @@ export default function NewTournamentPage() {
   const active = (members || []).filter((m) => m.is_active || inTournament.has(m.id));
   // Rebuilt from an existing tournament: the old one is replaced.
   const done = async (created) => {
-    if (from) await api.del(`/api/tournaments/${from.id}`).catch(() => {});
+    if (from) {
+      // Keep who already paid the entry fee, then retire the old version.
+      await api.post(`/api/tournaments/${created.id}/fees/import`, { from: from.id }).catch(() => {});
+      await api.del(`/api/tournaments/${from.id}`).catch(() => {});
+    }
     router.push(`/club/tournaments/${created.id}`);
   };
 
@@ -119,13 +123,16 @@ export default function NewTournamentPage() {
             <label className="text-xs text-gray-400">{t('create.end')}</label>
             <input className="input" type="time" value={info.end_time} onChange={(e) => setI({ end_time: e.target.value })} />
           </div>
-          <div className="col-span-2 md:col-span-3">
+          <div className="col-span-2 md:col-span-4">
             <label className="text-xs text-gray-400">{t('events.location')}</label>
             <input className="input" placeholder={t('create.locationPh')} value={info.location} onChange={(e) => setI({ location: e.target.value })} />
           </div>
-          <div className="col-span-2 md:col-span-1">
-            <label className="text-xs text-gray-400">{t('tournaments.entryFee')}</label>
-            <input className="input" type="number" inputMode="numeric" min="0" step="10000" placeholder="0" value={info.entry_fee} onChange={(e) => setI({ entry_fee: e.target.value })} />
+          <div className="col-span-2 md:col-span-4 rounded-lg border border-lime-400/30 bg-lime-400/5 p-3 grid grid-cols-1 sm:grid-cols-[14rem_1fr] gap-x-4 gap-y-1 items-center">
+            <div className="min-w-0">
+              <label className="text-xs text-lime-300 font-semibold">💰 {t('tournaments.entryFee')}</label>
+              <input className="input" type="number" inputMode="numeric" min="0" step="10000" placeholder="0" value={info.entry_fee} onChange={(e) => setI({ entry_fee: e.target.value })} />
+            </div>
+            <p className="text-gray-400 text-xs">{t('tournaments.entryFeeHint')}</p>
           </div>
         </div>
         {timeError && <p className="text-red-400 text-xs mt-2">{timeError}</p>}

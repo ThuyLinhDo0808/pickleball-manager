@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { categoryLabel, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/lib/finance';
 
-const AUTO = new Set(['membership', 'event_fee']);
+const AUTO = new Set(['membership', 'event_fee', 'tournament_fee']);
 
 function todayYmd() {
   const d = new Date();
