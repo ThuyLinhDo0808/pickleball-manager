@@ -5,6 +5,7 @@ const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
 const { itemMetrics } = require('../services/inventory');
+const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
   DEFAULT_MIN_MATCHES,
@@ -30,19 +31,23 @@ function cleanBirthYear(v) {
   return v !== '' && v != null && Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null;
 }
 
-// ---- ownership guard for :clubId ------------------------------------------
+// ---- access guard for :clubId: the owner, or a co-admin of this club -------
+// A co-admin then acts as the owner (req.hostId = owner) for everything in this
+// router, so fund entries, capacity limits etc. stay the owner's; owner-only
+// routes are wrapped in `ownerOnly`.
 router.param('clubId', async (req, res, next, clubId) => {
-  if (!isUuid(clubId)) return notFound(res, 'Club');
-  const { data, error } = await supabase
-    .from('clubs')
-    .select('*')
-    .eq('id', clubId)
-    .eq('host_id', req.hostId)
-    .maybeSingle();
-  if (error) return dbError(res, error);
-  if (!data) return notFound(res, 'Club');
-  req.club = data;
-  next();
+  try {
+    const access = await clubAccess(req, clubId);
+    if (!access) return notFound(res, 'Club');
+    req.club = access.club;
+    if (access.role === 'co_admin') {
+      req.hostId = access.club.host_id;
+      req.coAdmin = true;
+    }
+    next();
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 // ---- ownership guard for :memberId (must belong to req.club) --------------
@@ -93,6 +98,7 @@ router.param('membershipId', async (req, res, next, membershipId) => {
 });
 
 // ---- Clubs CRUD -------------------------------------------------------------
+// My clubs (role 'owner') followed by clubs shared with me as co-admin.
 router.get('/', async (req, res) => {
   const { data, error } = await supabase
     .from('clubs')
@@ -100,7 +106,12 @@ router.get('/', async (req, res) => {
     .eq('host_id', req.hostId)
     .order('created_at', { ascending: false });
   if (error) return dbError(res, error);
-  res.json(data);
+  try {
+    const shared = await coAdminClubs(req);
+    res.json([...data.map((c) => ({ ...c, role: 'owner' })), ...shared.filter((c) => c.host_id !== req.hostId)]);
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 router.post('/', async (req, res) => {
@@ -115,9 +126,9 @@ router.post('/', async (req, res) => {
   res.status(201).json(data);
 });
 
-router.get('/:clubId', (req, res) => res.json(req.club));
+router.get('/:clubId', (req, res) => res.json({ ...req.club, role: req.coAdmin ? 'co_admin' : 'owner' }));
 
-router.patch('/:clubId', async (req, res) => {
+router.patch('/:clubId', ownerOnly, async (req, res) => {
   const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder']);
   for (const k of ['join_note', 'bank_code', 'bank_account', 'bank_holder']) {
     if (k in fields) fields[k] = String(fields[k] ?? '').trim() || null;
@@ -137,7 +148,7 @@ router.patch('/:clubId', async (req, res) => {
   res.json(data);
 });
 
-router.delete('/:clubId', async (req, res) => {
+router.delete('/:clubId', ownerOnly, async (req, res) => {
   const { error } = await supabase.from('clubs').delete().eq('id', req.club.id);
   if (error) return dbError(res, error);
   res.status(204).end();
@@ -522,7 +533,7 @@ router.get('/:clubId/stats', async (req, res) => {
 });
 
 // ---- Player self-service: join link + payments to confirm -------------------
-router.post('/:clubId/join-token/rotate', async (req, res) => {
+router.post('/:clubId/join-token/rotate', ownerOnly, async (req, res) => {
   const { data, error } = await supabase
     .from('clubs')
     .update({ join_token: crypto.randomUUID() })

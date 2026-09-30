@@ -1,19 +1,18 @@
 const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
+const { clubAccess } = require('../services/clubAccess');
 
 const router = express.Router();
 
-async function ownsParent(hostId, { club_id, event_id }) {
-  if (club_id) {
-    const { data } = await supabase.from('clubs').select('id').eq('id', club_id).eq('host_id', hostId).maybeSingle();
-    return !!data;
+// Whose ledger an entry goes into: a club I own or co-admin (-> its owner), or an event I own (-> me).
+async function ledgerOwner(req, { club_id, event_id }) {
+  if (club_id) return (await clubAccess(req, club_id))?.club.host_id || null;
+  if (event_id && isUuid(event_id)) {
+    const { data } = await supabase.from('events').select('id').eq('id', event_id).eq('host_id', req.hostId).maybeSingle();
+    return data ? req.hostId : null;
   }
-  if (event_id) {
-    const { data } = await supabase.from('events').select('id').eq('id', event_id).eq('host_id', hostId).maybeSingle();
-    return !!data;
-  }
-  return false;
+  return null;
 }
 
 router.get('/', async (req, res) => {
@@ -26,8 +25,15 @@ router.get('/', async (req, res) => {
     if (!evs.length) return res.json([]);
     query = query.eq('owner_type', 'event').in('event_id', evs.map((e) => e.id));
   } else if (club_id) {
-    if (!isUuid(club_id)) return res.status(400).json({ error: 'invalid club_id' });
-    query = query.eq('owner_type', 'club').eq('club_id', club_id);
+    const access = await clubAccess(req, club_id);
+    if (!access) return notFound(res, 'Club');
+    query = supabase
+      .from('transactions')
+      .select('*, events(title, event_date)')
+      .eq('host_id', access.club.host_id)
+      .eq('owner_type', 'club')
+      .eq('club_id', club_id)
+      .order('occurred_on', { ascending: false });
   } else if (event_id) {
     if (!isUuid(event_id)) return res.status(400).json({ error: 'invalid event_id' });
     query = query.eq('owner_type', 'event').eq('event_id', event_id);
@@ -44,13 +50,13 @@ router.post('/', async (req, res) => {
   if (amount == null || amount < 0) return res.status(400).json({ error: 'amount must be >= 0.' });
 
   const parent = owner_type === 'club' ? { club_id } : { event_id };
-  const owns = await ownsParent(req.hostId, parent);
-  if (!owns) return res.status(403).json({ error: 'You do not own this club/event.' });
+  const hostId = await ledgerOwner(req, parent);
+  if (!hostId) return res.status(403).json({ error: 'You do not have access to this club/event.' });
 
   const { data, error } = await supabase
     .from('transactions')
     .insert({
-      host_id: req.hostId,
+      host_id: hostId,
       owner_type,
       club_id: owner_type === 'club' ? club_id : null,
       event_id: owner_type === 'event' ? event_id : null,
@@ -72,10 +78,10 @@ router.post('/:id/void', async (req, res) => {
     .from('transactions')
     .select('*')
     .eq('id', req.params.id)
-    .eq('host_id', req.hostId)
     .maybeSingle();
   if (fErr) return dbError(res, fErr);
-  if (!txn) return notFound(res, 'Transaction');
+  const allowed = txn && (txn.host_id === req.hostId || (txn.owner_type === 'club' && (await clubAccess(req, txn.club_id))));
+  if (!allowed) return notFound(res, 'Transaction');
   if (txn.is_voided) return res.status(400).json({ error: 'Already voided.' });
 
   // Entries created from somewhere else must be changed there, or the two would disagree.

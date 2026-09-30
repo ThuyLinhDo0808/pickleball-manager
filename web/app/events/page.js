@@ -1,157 +1,159 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import EventCalendar, { STATUS_STYLE } from '@/components/EventCalendar';
+import DatePopover from '@/components/DatePopover';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 
-const emptyForm = {
-  title: '', event_date: '', start_time: '', location: '', courts: 2, slots: 16, fee_amount: 0,
-  registration_deadline: '', level_min: '', level_max: '', notice: '', allow_public_registration: true,
-  repeat_weeks: 1,
-};
+const VIEWS = ['list', 'month', 'week', 'day'];
+const VIEW_KEY = 'pickleball_events_view';
 
+function EventCard({ e }) {
+  const { t, lang } = useI18n();
+  return (
+    <Link href={`/events/${e.id}`} className="card hover:border-lime-400 transition flex gap-3">
+      <div className={`w-1 shrink-0 rounded-full border ${STATUS_STYLE[e.status]}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex justify-between gap-2">
+          <span className="text-white font-semibold truncate">{e.title}</span>
+          <span className="text-gray-400 text-xs uppercase shrink-0">{t(`events.status_${e.status}`)}</span>
+        </div>
+        <div className="text-gray-400 text-sm">
+          {formatDay(e.event_date, lang)} {e.start_time ? `· ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''} · {e.location || '—'}
+        </div>
+        <div className="text-gray-300 text-sm mt-1">
+          {e.main_count}/{e.slots} {t('events.mainList').toLowerCase()}
+          {e.waitlist_count > 0 && ` · ${e.waitlist_count} ${t('events.waitlist').toLowerCase()}`}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Schedule (Club) / Kèo list (Xé Vé): list or calendar (month / week / day).
 export default function EventsPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { club } = useDefaultClub();
-  const router = useRouter();
   const { workspace } = useWorkspace();
-  // Club workspace: the selected club's schedule. Xé Vé: standalone events not tied to a club.
   const isClub = workspace === 'club';
-  const { data: events, loading, reload } = useLoad(() => {
+  const { data: events, loading } = useLoad(() => {
     if (!workspace) return Promise.resolve([]);
     if (!isClub) return api.get('/api/events?scope=standalone');
     return club ? api.get(`/api/clubs/${club.id}/events`) : Promise.resolve([]);
   }, [workspace, club?.id]);
-  const [info, setInfo] = useState('');
-  const [form, setForm] = useState(emptyForm);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
 
-  async function createEvent(e) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    setInfo('');
+  const [view, setView] = useState('month');
+  const [date, setDate] = useState(todayYmd());
+  const [showPast, setShowPast] = useState(false);
+  useEffect(() => {
     try {
-      const created = await api.post('/api/events', {
-        ...form,
-        club_id: isClub ? club?.id || null : null,
-        repeat_weeks: isClub ? Number(form.repeat_weeks || 1) : 1,
-        courts: Number(form.courts),
-        slots: Number(form.slots),
-        fee_amount: Number(form.fee_amount || 0),
-        level_min: form.level_min === '' ? null : Number(form.level_min),
-        level_max: form.level_max === '' ? null : Number(form.level_max),
-        notice: form.notice.trim() || null,
-        registration_deadline: form.registration_deadline ? new Date(form.registration_deadline).toISOString() : null,
-        status: 'open',
-      });
-      if (created.created_count > 1) {
-        setForm(emptyForm);
-        setInfo(t('events.createdMany', { n: created.created_count }));
-        reload();
-      } else {
-        // Go straight to the event so the Host can copy the sign-up link.
-        router.push(`/events/${created.id}`);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (VIEWS.includes(saved)) setView(saved);
+    } catch {
+      /* private mode */
+    }
+  }, []);
+  function pickView(v) {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* ignore */
     }
   }
 
-  const sorted = [...(events || [])].sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+  const all = events || [];
+  const marks = useMemo(() => all.reduce((m, e) => ({ ...m, [e.event_date]: (m[e.event_date] || 0) + 1 }), {}), [all]);
+  const today = todayYmd();
+  const sorted = [...all].sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
+  const upcoming = sorted.filter((e) => e.event_date >= today);
+  const past = sorted.filter((e) => e.event_date < today).reverse();
+
+  const step = { month: (n) => addMonths(date, n), week: (n) => addDays(date, 7 * n), day: (n) => addDays(date, n) }[view];
+  const week = weekDays(date);
+  const title =
+    view === 'month'
+      ? monthTitle(date, lang)
+      : view === 'week'
+        ? `${formatDay(week[0], lang, { day: 'numeric', month: 'numeric' })} – ${formatDay(week[6], lang, { day: 'numeric', month: 'numeric', year: 'numeric' })}`
+        : formatDay(date, lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Clicking a day anywhere (mini calendar, month cell, week header) opens its timeline.
+  function openDay(d) {
+    setDate(d);
+    pickView('day');
+  }
 
   return (
     <AppShell>
-      <h1 className="text-white text-2xl font-bold mb-4">{isClub ? t('nav.schedule') : t('nav.kevents')}</h1>
-
-      <form onSubmit={createEvent} className="card mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label className="text-xs text-gray-400">{t('events.title')}</label>
-          <input className="input" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.date')}</label>
-          <input className="input" type="date" required value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.time')}</label>
-          <input className="input" type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.location')}</label>
-          <input className="input" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.courts')}</label>
-          <input className="input" type="number" min="1" value={form.courts} onChange={(e) => setForm({ ...form, courts: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.slots')}</label>
-          <input className="input" type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('common.fee')}</label>
-          <input className="input" type="number" min="0" value={form.fee_amount} onChange={(e) => setForm({ ...form, fee_amount: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.deadline')}</label>
-          <input className="input" type="datetime-local" value={form.registration_deadline} onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.levelMin')}</label>
-          <input className="input" type="number" inputMode="decimal" step="0.25" min="1" max="8" value={form.level_min} onChange={(e) => setForm({ ...form, level_min: e.target.value })} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('events.levelMax')}</label>
-          <input className="input" type="number" inputMode="decimal" step="0.25" min="1" max="8" value={form.level_max} onChange={(e) => setForm({ ...form, level_max: e.target.value })} />
-        </div>
-        <div className="md:col-span-3">
-          <label className="text-xs text-gray-400">{t('events.notice')}</label>
-          <textarea className="input" rows={2} placeholder={t('events.noticeHint')} value={form.notice} onChange={(e) => setForm({ ...form, notice: e.target.value })} />
-        </div>
-        {isClub && (
-          <div>
-            <label className="text-xs text-gray-400">{t('events.repeatWeeks')}</label>
-            <input className="input" type="number" inputMode="numeric" min="1" max="26" value={form.repeat_weeks} onChange={(e) => setForm({ ...form, repeat_weeks: e.target.value })} />
-            <p className="text-gray-500 text-xs mt-1">{t('events.repeatHint')}</p>
-          </div>
-        )}
-        <label className="md:col-span-3 flex items-center gap-2 text-sm text-gray-200">
-          <input type="checkbox" checked={form.allow_public_registration} onChange={(e) => setForm({ ...form, allow_public_registration: e.target.checked })} />
-          {t('events.allowPublic')}
-        </label>
-        <div className="md:col-span-3 flex flex-col sm:flex-row sm:items-center gap-3">
-          <button className="btn-primary w-full md:w-auto" disabled={busy || (isClub && !club)}>{t('events.addEvent')}</button>
-          {error && <span className="text-red-400 text-sm">{error}</span>}
-          {info && <span className="text-lime-400 text-sm">{info}</span>}
-        </div>
-      </form>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
-        {!loading && sorted.length === 0 && <p className="text-gray-400 text-sm">—</p>}
-        {sorted.map((e) => (
-          <Link key={e.id} href={`/events/${e.id}`} className="card hover:border-lime-400 transition">
-            <div className="flex justify-between gap-2">
-              <span className="text-white font-semibold">{e.title}</span>
-              <span className="text-gray-400 text-xs uppercase shrink-0">{t(`events.status_${e.status}`)}</span>
-            </div>
-            <div className="text-gray-400 text-sm">{e.event_date} {e.start_time || ''} · {e.location || '—'}</div>
-            <div className="text-gray-300 text-sm mt-1">
-              {e.main_count}/{e.slots} {t('events.mainList').toLowerCase()}
-              {e.waitlist_count > 0 && ` · ${e.waitlist_count} ${t('events.waitlist').toLowerCase()}`}
-            </div>
-          </Link>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 className="text-white text-2xl font-bold">{isClub ? t('nav.schedule') : t('nav.kevents')}</h1>
+        <Link href={`/events/create${view === 'day' ? `?date=${date}` : ''}`} className={`btn-primary ${isClub && !club ? 'pointer-events-none opacity-50' : ''}`}>
+          ＋ {t('events.addEvent')}
+        </Link>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="grid grid-cols-4 rounded-lg bg-navy-900 border border-navy-700 p-1 text-sm" role="tablist">
+          {VIEWS.map((v) => (
+            <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => pickView(v)} className={`whitespace-nowrap rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm ${view === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:text-white'}`}>
+              {t(`cal.${v}`)}
+            </button>
+          ))}
+        </div>
+        {view !== 'list' && (
+          <>
+            <div className="flex items-center gap-1">
+              <button type="button" className="btn-secondary !px-3" onClick={() => setDate(step(-1))} aria-label={t('cal.prev')}>‹</button>
+              <button type="button" className="btn-secondary !px-3 text-sm" onClick={() => setDate(today)}>{t('cal.today')}</button>
+              <button type="button" className="btn-secondary !px-3" onClick={() => setDate(step(1))} aria-label={t('cal.next')}>›</button>
+            </div>
+            <span className="text-white font-semibold capitalize">{title}</span>
+            <DatePopover className="ml-auto" align="right" value={date} marks={marks} onChange={openDay} />
+          </>
+        )}
+      </div>
+
+      {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
+
+      {!loading && view !== 'list' && <EventCalendar view={view} date={date} events={all} onPickDay={openDay} />}
+
+      {!loading && view !== 'list' && (
+        <div className="flex flex-wrap gap-3 mt-3 text-xs text-gray-400">
+          {Object.keys(STATUS_STYLE).map((s) => (
+            <span key={s} className="flex items-center gap-1.5">
+              <span className={`h-3 w-3 rounded-sm border-l-4 ${STATUS_STYLE[s]}`} />
+              {t(`events.status_${s}`)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {!loading && view === 'list' && (
+        <>
+          <h2 className="text-gray-300 text-sm font-semibold mb-2">{t('cal.upcoming')} ({upcoming.length})</h2>
+          {upcoming.length === 0 && <p className="text-gray-400 text-sm mb-4">{t('cal.noUpcoming')}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+            {upcoming.map((e) => <EventCard key={e.id} e={e} />)}
+          </div>
+          {past.length > 0 && (
+            <button type="button" className="text-lime-400 text-sm mb-3" onClick={() => setShowPast(!showPast)}>
+              {showPast ? '▾' : '▸'} {t('cal.past')} ({past.length})
+            </button>
+          )}
+          {showPast && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-80">
+              {past.map((e) => <EventCard key={e.id} e={e} />)}
+            </div>
+          )}
+        </>
+      )}
     </AppShell>
   );
 }

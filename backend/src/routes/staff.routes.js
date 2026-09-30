@@ -2,10 +2,12 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
-const { setAttendance } = require('../services/attendance');
+const { setAttendance, checkInByCode } = require('../services/attendance');
 const { PLAYER_SELECT, createMatch, updateMatch } = require('../services/matches');
 
-const ROLES = ['referee', 'coordinator'];
+const EVENT_ROLES = ['referee', 'coordinator'];
+// co_admin: co-owner of one club (members + finance); handled by services/clubAccess.js, not here.
+const ROLES = [...EVENT_ROLES, 'co_admin'];
 const RANK = { referee: 1, coordinator: 2 };
 // What each role may do. Neither ever sees phones, fees or any finance data.
 const CAN = {
@@ -49,8 +51,9 @@ grants.post('/', async (req, res) => {
   const club_id = req.body.club_id || null;
   const event_id = req.body.event_id || null;
   if (!email) return res.status(400).json({ error: 'A valid email is required.' });
-  if (!ROLES.includes(role)) return res.status(400).json({ error: 'role must be referee or coordinator.' });
+  if (!ROLES.includes(role)) return res.status(400).json({ error: 'role must be referee, coordinator or co_admin.' });
   if (club_id && event_id) return res.status(400).json({ error: 'Choose one club or one event, not both.' });
+  if (role === 'co_admin' && !club_id) return res.status(400).json({ error: 'A co-admin is always for one club.', code: 'co_admin_needs_club' });
   if (email === String(req.hostEmail || '').toLowerCase()) {
     return res.status(400).json({ error: 'You already have full access to your own events.' });
   }
@@ -78,7 +81,11 @@ grants.post('/', async (req, res) => {
 
 grants.patch('/:grantId', async (req, res) => {
   if (!isUuid(req.params.grantId)) return notFound(res, 'Grant');
-  if (!ROLES.includes(req.body.role)) return res.status(400).json({ error: 'role must be referee or coordinator.' });
+  if (!ROLES.includes(req.body.role)) return res.status(400).json({ error: 'role must be referee, coordinator or co_admin.' });
+  if (req.body.role === 'co_admin') {
+    const { data: g } = await supabase.from('staff_grants').select('club_id').eq('id', req.params.grantId).eq('host_id', req.hostId).maybeSingle();
+    if (g && !g.club_id) return res.status(400).json({ error: 'A co-admin is always for one club.', code: 'co_admin_needs_club' });
+  }
   const { data, error } = await supabase
     .from('staff_grants')
     .update({ role: req.body.role })
@@ -105,11 +112,16 @@ const staff = express.Router();
 
 // Grants for the signed-in account. Unconfirmed emails get none: otherwise anyone
 // could sign up with a coordinator's address and inherit their access.
-async function myGrants(req) {
+async function allMyGrants(req) {
   if (!req.emailVerified || !req.hostEmail) return [];
   const { data, error } = await supabase.from('staff_grants').select('*').eq('email', req.hostEmail.toLowerCase());
   if (error) throw error;
   return data;
+}
+
+// Event roles only (referee / coordinator) — what the Staff workspace works with.
+async function myGrants(req) {
+  return (await allMyGrants(req)).filter((g) => EVENT_ROLES.includes(g.role));
 }
 
 // Highest role any grant gives this user on this event, or null.
@@ -157,8 +169,14 @@ const STAFF_EVENT_FIELDS = (e) => ({
 // Does this account have any staff access at all? (drives the "Staff" workspace)
 staff.get('/me', async (req, res) => {
   try {
-    const list = await myGrants(req);
-    res.json({ is_staff: list.length > 0, grants: list.length, email_verified: req.emailVerified });
+    const all = await allMyGrants(req);
+    const list = all.filter((g) => EVENT_ROLES.includes(g.role));
+    res.json({
+      is_staff: list.length > 0,
+      grants: list.length,
+      co_admin_clubs: all.filter((g) => g.role === 'co_admin').length,
+      email_verified: req.emailVerified,
+    });
   } catch (err) {
     fail(res, err);
   }
@@ -231,6 +249,17 @@ staff.post('/events/:eventId/participants/:participantId/:action', async (req, r
     res.json({ id: updated.id, full_name: updated.full_name, status: updated.status, pass: updated.pass });
   } catch (err) {
     fail(res, err);
+  }
+});
+
+// Coordinator scans a player's personal QR -> check-in (uses their session like a manual check-in).
+staff.post('/events/:eventId/checkin-code', async (req, res) => {
+  if (!CAN[req.staffRole].checkIn) return res.status(403).json({ error: 'Referees cannot check players in.' });
+  try {
+    const p = await checkInByCode(req.event, req.body.code);
+    res.json({ id: p.id, full_name: p.full_name, status: p.status, already: p.already, pass: p.pass });
+  } catch (err) {
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : fail(res, err);
   }
 });
 

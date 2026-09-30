@@ -6,6 +6,9 @@ import EventShareCard from '@/components/EventShareCard';
 import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
+import QrCheckinPanel from '@/components/QrCheckinPanel';
+import { formatDay, hhmm } from '@/lib/dates';
+import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -14,9 +17,10 @@ import { exportEventFinance } from '@/lib/exportExcel';
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { club } = useDefaultClub();
   const [tab, setTab] = useState('participants');
+  const [showQr, setShowQr] = useState(false);
 
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   const { data: participants, reload: reloadParticipants } = useLoad(
@@ -48,7 +52,19 @@ export default function EventDetailPage() {
   }
 
   async function doAction(p, action) {
-    const res = await api.post(`/api/events/${eventId}/participants/${p.id}/${action}`, {});
+    let res;
+    try {
+      res = await api.post(`/api/events/${eventId}/participants/${p.id}/${action}`, {});
+    } catch (err) {
+      setFlash(err.message);
+      return;
+    }
+    if (action === 'cancel') {
+      const parts = [res.late ? t('policy.cancelledLate', { name: p.full_name }) : t('policy.cancelledFree', { name: p.full_name })];
+      if (res.promoted) parts.push(t('policy.promoted', { name: res.promoted.full_name }));
+      setFlash(parts.join(' '));
+    }
+    if (action === 'promote') setFlash(t('policy.promoted', { name: p.full_name }));
     if (action === 'check-in' && p.source_club_member_id && event?.club_id) {
       const pass = res?.pass;
       setFlash(
@@ -100,18 +116,35 @@ export default function EventDetailPage() {
 
   if (!event) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
 
-  const main = (participants || []).filter((p) => ['registered', 'checked_in'].includes(p.status));
+  const main = (participants || []).filter((p) => ['registered', 'checked_in', 'no_show'].includes(p.status));
   const waitlist = (participants || []).filter((p) => p.status === 'waitlisted');
+  const cancelled = (participants || []).filter((p) => p.status === 'cancelled');
+  const refresh = () => {
+    reloadParticipants();
+    reloadEvent();
+  };
 
   return (
     <AppShell>
       <div className="flex justify-between items-start gap-3 mb-4">
         <div className="min-w-0">
           <h1 className="text-white text-2xl font-bold">{event.title}</h1>
-          <p className="text-gray-400 text-sm">{event.event_date} {event.start_time || ''} · {event.location || '—'}</p>
+          <p className="text-gray-400 text-sm">
+            {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
+            {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`} · {event.location || '—'}
+          </p>
+          <p className="text-gray-500 text-xs mt-0.5">
+            {event.cancel_deadline_hours == null ? t('policy.noneShort') : t('policy.short', { h: event.cancel_deadline_hours })}
+          </p>
         </div>
-        <button className="btn-secondary shrink-0 text-sm" onClick={onExport}>{t('common.exportExcel')}</button>
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          <button className="btn-primary text-sm" onClick={() => setShowQr(true)}>📷 {t('qr.scan')}</button>
+          <button className="btn-secondary text-sm" onClick={onExport}>{t('common.exportExcel')}</button>
+        </div>
       </div>
+      <Modal open={showQr} title={t('qr.scanTitle')} onClose={() => setShowQr(false)}>
+        {showQr && <QrCheckinPanel endpoint={`/api/events/${eventId}/checkin-code`} onCheckedIn={refresh} />}
+      </Modal>
 
       <EventShareCard event={event} onSaved={setEvent} />
 
@@ -171,8 +204,11 @@ export default function EventDetailPage() {
               <button className="text-gray-400 text-lg leading-none" aria-label="Close" onClick={() => setFlash('')}>×</button>
             </div>
           )}
-          <ParticipantTable title={t('events.mainList')} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
-          <ParticipantTable title={t('events.waitlist')} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${main.filter((p) => p.status !== 'no_show').length}/${event.slots}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
+          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />
+          {cancelled.length > 0 && (
+            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} fee={event.fee_amount} />
+          )}
         </>
       )}
 
@@ -246,10 +282,13 @@ export default function EventDetailPage() {
   );
 }
 
-function ParticipantTable({ title, rows, t, onAction, onFee }) {
+const STATUS_TONE = { checked_in: 'text-lime-400', registered: 'text-gray-300', no_show: 'text-yellow-400', waitlisted: 'text-sky-300', cancelled: 'text-gray-500' };
+
+function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
   return (
     <div className="card mb-4">
-      <h3 className="text-white font-semibold mb-2">{title} ({rows.length})</h3>
+      <h3 className="text-white font-semibold mb-2">{title}</h3>
+      {kind === 'cancelled' && <p className="text-gray-500 text-xs mb-2">{t('policy.cancelledHint')}</p>}
       {rows.length === 0 && <p className="text-gray-400 text-sm">—</p>}
       <div className="table-wrap">
         <table className="w-full text-sm">
@@ -261,19 +300,46 @@ function ParticipantTable({ title, rows, t, onAction, onFee }) {
                 {p.source_club_member_id && (
                   <span className="ml-2 text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">{t('events.member')}</span>
                 )}
+                {p.late_cancel && (
+                  <span className="ml-2 text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>
+                )}
               </td>
-              <td className="text-gray-400 text-xs uppercase">{p.status}</td>
+              <td className={`text-xs ${STATUS_TONE[p.status]}`}>{t(`player.status_${p.status}`)}</td>
               <td>
-                <button className="text-xs text-gray-300 mr-2" onClick={() => onFee(p)}>
-                  {p.fee_paid ? t('common.paid') : t('common.unpaid')}
-                </button>
+                {(kind !== 'cancelled' || p.late_cancel) && (
+                  <button className={`text-xs mr-2 ${p.fee_paid ? 'text-lime-400' : 'text-gray-300'}`} onClick={() => onFee(p)}>
+                    {p.fee_paid ? t('common.paid') : t('common.unpaid')}
+                    {kind === 'cancelled' && !p.fee_paid && Number(p.fee_amount ?? fee) > 0 && ` · ${formatVnd(p.fee_amount ?? fee)}`}
+                  </button>
+                )}
               </td>
               <td className="text-right">
-                {p.status !== 'checked_in' && (
-                  <button className="text-lime-400 text-xs mr-2" onClick={() => onAction(p, 'check-in')}>{t('events.checkIn')}</button>
+                {kind === 'main' && (
+                  <>
+                    {p.status !== 'checked_in' && (
+                      <button className="text-lime-400 text-xs mr-2" onClick={() => onAction(p, 'check-in')}>{t('events.checkIn')}</button>
+                    )}
+                    {p.status !== 'no_show' && (
+                      <button className="text-yellow-400 text-xs mr-2" onClick={() => onAction(p, 'no-show')}>{t('events.noShow')}</button>
+                    )}
+                    {p.status !== 'registered' && (
+                      <button className="text-gray-400 text-xs mr-2" onClick={() => onAction(p, 'reset')}>{t('staffView.undo')}</button>
+                    )}
+                  </>
                 )}
-                <button className="text-yellow-400 text-xs mr-2" onClick={() => onAction(p, 'no-show')}>{t('events.noShow')}</button>
-                <button className="text-red-400 text-xs" onClick={() => onAction(p, 'cancel')}>{t('events.cancel')}</button>
+                {kind === 'waitlist' && (
+                  <button className="text-sky-300 text-xs mr-2" onClick={() => onAction(p, 'promote')}>{t('policy.promote')}</button>
+                )}
+                {kind === 'cancelled' && p.late_cancel && (
+                  <button className="text-orange-300 text-xs" onClick={() => window.confirm(t('policy.waiveAsk', { name: p.full_name })) && onAction(p, 'waive')}>
+                    {t('policy.waive')}
+                  </button>
+                )}
+                {kind !== 'cancelled' && (
+                  <button className="text-red-400 text-xs" onClick={() => window.confirm(t('policy.cancelAsk', { name: p.full_name })) && onAction(p, 'cancel')}>
+                    {t('events.cancel')}
+                  </button>
+                )}
               </td>
             </tr>
           ))}

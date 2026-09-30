@@ -53,6 +53,8 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   create type event_role as enum ('referee','coordinator');
 exception when duplicate_object then null; end $$;
+-- Co-owner of one club: members + finance, never deletes the club or edits where payments go.
+alter type event_role add value if not exists 'co_admin';
 
 -- ----------------------------------------------------------------------------
 -- USERS / HOST SUBSCRIPTIONS  (one row per authenticated Host)
@@ -63,6 +65,8 @@ create table if not exists public.users (
   full_name text,
   created_at timestamptz not null default now()
 );
+-- Host notification webhook (e.g. Make/Zapier -> Zalo ZNS, a Telegram group, Slack...).
+alter table public.users add column if not exists notify_webhook_url text;
 
 create table if not exists public.host_subscriptions (
   host_id uuid primary key references public.users(id) on delete cascade,
@@ -265,6 +269,10 @@ alter table public.events add column if not exists club_id uuid references publi
 alter table public.events add column if not exists registration_deadline timestamptz;
 alter table public.events add column if not exists public_token uuid not null default gen_random_uuid();
 alter table public.events add column if not exists allow_public_registration boolean not null default false;
+-- Cancellation policy: cancelling later than N hours before the start still uses the
+-- session / still owes the fee. NULL = free cancellation at any time.
+alter table public.events add column if not exists cancel_deadline_hours int
+  check (cancel_deadline_hours is null or cancel_deadline_hours between 0 and 168);
 -- Message from the Host shown on the public registration page.
 alter table public.events add column if not exists notice text;
 
@@ -288,6 +296,8 @@ alter table public.event_participants add column if not exists dupr_level numeri
 alter table public.event_participants add column if not exists source_club_member_id uuid references public.club_members(id) on delete set null;
 -- Signed-in players registering via the public link (drives their history).
 alter table public.event_participants add column if not exists user_id uuid references public.users(id) on delete set null;
+-- Cancelled after the event's cancel deadline: the session is used / the fee is still owed.
+alter table public.event_participants add column if not exists late_cancel boolean not null default false;
 
 -- Event-scoped roles (referee / coordinator) — limited access, no finance view
 create table if not exists public.event_scorers (
@@ -321,6 +331,10 @@ create unique index if not exists ux_staff_grants_scope on public.staff_grants (
   coalesce(event_id, '00000000-0000-0000-0000-000000000000'::uuid)
 );
 create index if not exists ix_staff_grants_email on public.staff_grants (email);
+do $$ begin
+  alter table public.staff_grants add constraint chk_staff_co_admin_club
+    check (role::text <> 'co_admin' or (club_id is not null and event_id is null));
+exception when duplicate_object then null; end $$;
 
 drop view if exists public.v_event_summary;
 create view public.v_event_summary as
@@ -380,6 +394,13 @@ create table if not exists public.player_profiles (
   avatar text check (avatar is null or length(avatar) <= 150000), -- small data: URL
   updated_at timestamptz not null default now()
 );
+-- Personal check-in QR (shown in the player portal, scanned by the Host / coordinator).
+alter table public.player_profiles add column if not exists checkin_token uuid not null default gen_random_uuid();
+create unique index if not exists ux_player_checkin_token on public.player_profiles (checkin_token);
+-- Telegram notifications: the player opens t.me/<bot>?start=<link code>, the bot stores the chat.
+alter table public.player_profiles add column if not exists telegram_link_code text;
+alter table public.player_profiles add column if not exists telegram_chat_id bigint;
+create unique index if not exists ux_player_telegram_code on public.player_profiles (telegram_link_code);
 
 -- ----------------------------------------------------------------------------
 -- INVENTORY (balls & supplies): purchases, retirements (with how long they
@@ -405,7 +426,6 @@ create table if not exists public.inventory_moves (
   sessions_lasted numeric(6,1) check (sessions_lasted is null or sessions_lasted > 0),
   occurred_on date not null default current_date,
   note text,
-  transaction_id uuid references public.transactions(id) on delete set null,
   created_at timestamptz not null default now(),
   constraint chk_move_shape check (
     (kind = 'purchase' and quantity > 0 and unit_cost is not null) or
@@ -590,6 +610,8 @@ create trigger trg_block_txn_mutation before update on public.transactions
 
 -- Club-fund income written when a membership is marked paid (voided if unpaid again).
 alter table public.memberships add column if not exists transaction_id uuid references public.transactions(id) on delete set null;
+-- Club-fund expense written for a ball purchase (added here: transactions must exist first).
+alter table public.inventory_moves add column if not exists transaction_id uuid references public.transactions(id) on delete set null;
 
 -- ----------------------------------------------------------------------------
 -- FEEDBACK (emailed to developer)

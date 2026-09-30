@@ -25,6 +25,9 @@ async function requireAuth(req, res, next) {
 
     await ensureHostRows(data.user.id, data.user.email);
     req.hostId = data.user.id;
+    // The signed-in account itself. req.hostId can later be swapped to a club's owner
+    // when this account is that club's co-admin (see services/clubAccess.js).
+    req.userId = data.user.id;
     req.hostEmail = data.user.email;
     // Staff access is granted by email, so only trust an email Supabase has confirmed.
     req.emailVerified = !!data.user.email_confirmed_at;
