@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
+import FeedbackButton from '@/components/FeedbackButton';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -26,6 +27,9 @@ const ICONS = {
   whistle: 'M3 11a5 5 0 1010 0 5 5 0 00-10 0zM8 6V4h13v4l-8 3',
   key: 'M15 7a4 4 0 11-3.9 5H3v3h3v-2h2v2h3',
   trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3',
+  box: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
+  chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  chat: 'M4 5h16v11H9l-5 4z',
 };
 
 // Each workspace has its own menu. `tab: true` items go in the phone's bottom bar;
@@ -39,6 +43,8 @@ const NAV_BY_WORKSPACE = {
     { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
     { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
     { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy' },
+    { href: '/analytics', key: 'nav.analytics', icon: 'chart' },
+    { href: '/club/inventory', key: 'nav.inventory', icon: 'box' },
     { href: '/club/plans', key: 'nav.plans', icon: 'plans' },
     { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
     { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
@@ -46,7 +52,8 @@ const NAV_BY_WORKSPACE = {
   ],
   xeve: [
     { href: '/events', key: 'nav.kevents', icon: 'ticket', tab: true },
-    { href: '/staff-access', key: 'nav.staffAccess', icon: 'key', tab: true },
+    { href: '/analytics', key: 'nav.analytics', icon: 'chart', tab: true },
+    { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
     { href: '/account', key: 'nav.account', icon: 'account', tab: true },
   ],
   // Referees / coordinators: only their assigned events. No finance, no members.
@@ -270,6 +277,10 @@ export default function AppShell({ children }) {
             </button>
           ) : (
             <>
+              <FeedbackButton className="text-gray-300 text-sm flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-navy-800">
+                <Icon name="chat" className="w-4 h-4" />
+                {t('feedback.button')}
+              </FeedbackButton>
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">
                 {t('nav.signOut')}
@@ -332,6 +343,10 @@ export default function AppShell({ children }) {
                 {t(item.key)}
               </Link>
             ))}
+            <FeedbackButton className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200 w-full text-left">
+              <Icon name="chat" />
+              {t('feedback.button')}
+            </FeedbackButton>
             <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-navy-700">
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">

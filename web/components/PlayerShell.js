@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import FeedbackButton from '@/components/FeedbackButton';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -45,6 +46,7 @@ export default function PlayerShell({ children, requireAuth = true }) {
           <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1 shrink-0">
             {lang === 'vi' ? 'EN' : 'VI'}
           </button>
+          <FeedbackButton className="text-xs text-gray-400 shrink-0" />
           {user && (
             <button onClick={() => signOut()} className="text-xs text-gray-400 shrink-0">
               {t('nav.signOut')}

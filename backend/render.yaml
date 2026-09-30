@@ -14,3 +14,12 @@ services:
         value: "true"
       - key: CORS_ORIGIN
         sync: false
+      # Optional: email feedback to the developer via Resend (https://resend.com)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FEEDBACK_TO_EMAIL
+        sync: false
+      - key: FEEDBACK_FROM_EMAIL
+        sync: false
+      - key: APP_TZ
+        value: Asia/Ho_Chi_Minh
