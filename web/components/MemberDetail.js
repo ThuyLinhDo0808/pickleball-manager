@@ -56,7 +56,7 @@ function RegisterForm({ club, member, plans, onDone }) {
     return (
       <p className="text-gray-400 text-sm">
         {t('membership.noPlans')}{' '}
-        <Link href="/club/plans" className="text-lime-400">{t('membership.createPlans')} →</Link>
+        <Link href="/finance/plans" className="text-lime-400">{t('membership.createPlans')} →</Link>
       </p>
     );
   }

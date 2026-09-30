@@ -21,5 +21,10 @@ services:
         sync: false
       - key: FEEDBACK_FROM_EMAIL
         sync: false
+      # Optional: also POST each feedback as JSON to a webhook (Apps Script, Zapier, Make, Discord...)
+      - key: FEEDBACK_WEBHOOK_URL
+        sync: false
+      - key: FEEDBACK_WEBHOOK_SECRET
+        sync: false
       - key: APP_TZ
         value: Asia/Ho_Chi_Minh

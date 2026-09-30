@@ -18,8 +18,14 @@ async function ownsParent(hostId, { club_id, event_id }) {
 
 router.get('/', async (req, res) => {
   const { club_id, event_id } = req.query;
-  let query = supabase.from('transactions').select('*').eq('host_id', req.hostId).order('occurred_on', { ascending: false });
-  if (club_id) {
+  let query = supabase.from('transactions').select('*, events(title, event_date)').eq('host_id', req.hostId).order('occurred_on', { ascending: false });
+  if (req.query.scope === 'standalone') {
+    // Xé Vé ledger: every entry of the host's events that aren't tied to a club.
+    const { data: evs, error: eErr } = await supabase.from('events').select('id').eq('host_id', req.hostId).is('club_id', null);
+    if (eErr) return dbError(res, eErr);
+    if (!evs.length) return res.json([]);
+    query = query.eq('owner_type', 'event').in('event_id', evs.map((e) => e.id));
+  } else if (club_id) {
     if (!isUuid(club_id)) return res.status(400).json({ error: 'invalid club_id' });
     query = query.eq('owner_type', 'club').eq('club_id', club_id);
   } else if (event_id) {
@@ -71,6 +77,16 @@ router.post('/:id/void', async (req, res) => {
   if (fErr) return dbError(res, fErr);
   if (!txn) return notFound(res, 'Transaction');
   if (txn.is_voided) return res.status(400).json({ error: 'Already voided.' });
+
+  // Entries created from somewhere else must be changed there, or the two would disagree.
+  const [{ data: ms }, { data: moves }] = await Promise.all([
+    supabase.from('memberships').select('id').eq('transaction_id', txn.id).limit(1),
+    supabase.from('inventory_moves').select('id').eq('transaction_id', txn.id).limit(1),
+  ]);
+  const source = ms?.length ? 'membership' : moves?.length ? 'inventory' : txn.category === 'event_fee' ? 'event_fee' : null;
+  if (source) {
+    return res.status(409).json({ error: `This entry comes from a ${source.replace('_', ' ')}; change it there instead.`, code: `linked_${source}` });
+  }
 
   const { data, error } = await supabase
     .from('transactions')

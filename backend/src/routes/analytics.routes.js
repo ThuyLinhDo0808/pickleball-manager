@@ -85,6 +85,47 @@ router.get('/finance', async (req, res) => {
   }
 });
 
+// Profit / loss per event (sessions of a club, or standalone Xé Vé events), newest first.
+router.get('/events-pnl', async (req, res) => {
+  try {
+    const scope = await resolveScope(req);
+    if (!scope) return notFound(res, 'Club');
+    const months = Math.min(Math.max(parseInt(req.query.months, 10) || 12, 1), 36);
+    const [y, m] = todayYmd().split('-').map(Number);
+    const since = new Date(Date.UTC(y, m - 1 - months, 1)).toISOString().slice(0, 10);
+    const events = (await scopeEvents(req.hostId, scope.clubId, 'id, title, event_date, start_time, status')).filter((e) => e.event_date >= since);
+    if (!events.length) return res.json([]);
+    const ids = events.map((e) => e.id);
+    const [{ data: fin, error: fErr }, { data: parts, error: pErr }] = await Promise.all([
+      supabase.from('v_event_finance').select('*').in('event_id', ids),
+      supabase.from('event_participants').select('event_id, status').in('event_id', ids).in('status', ['registered', 'checked_in']),
+    ]);
+    if (fErr) throw fErr;
+    if (pErr) throw pErr;
+    const byEvent = new Map(fin.map((f) => [f.event_id, f]));
+    res.json(
+      events
+        .map((e) => {
+          const f = byEvent.get(e.id) || {};
+          return {
+            event_id: e.id,
+            title: e.title,
+            event_date: e.event_date,
+            status: e.status,
+            players: parts.filter((p) => p.event_id === e.id).length,
+            income: Number(f.income || 0),
+            expense: Number(f.expense || 0),
+            net: Number(f.net || 0),
+          };
+        })
+        .filter((e) => e.income || e.expense)
+        .sort((a, b) => b.event_date.localeCompare(a.event_date))
+    );
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
 // No-show rate by weekday x start-time slot, over past sessions in the last N months.
 router.get('/no-shows', async (req, res) => {
   try {

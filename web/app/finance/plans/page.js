@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import AppShell from '@/components/AppShell';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -45,8 +44,7 @@ export default function PlansPage() {
   }
 
   return (
-    <AppShell>
-      <h1 className="text-white text-2xl font-bold mb-4">{t('plans.title')}</h1>
+    <>
 
       <form onSubmit={create} className="card mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
         <div className="col-span-2">
@@ -100,6 +98,6 @@ export default function PlansPage() {
           </div>
         ))}
       </div>
-    </AppShell>
+    </>
   );
 }
