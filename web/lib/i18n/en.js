@@ -213,6 +213,8 @@ export const en = {
     member: 'Member',
   },
   public: {
+    loadError: "Couldn't load this event — the server has a problem. Try again in a few minutes or tell the host.",
+    retry: 'Try again',
     notFound: "Event not found. The link may be wrong or the event was removed.",
     hostNotice: 'Notice from the host',
     fee: 'Fee',
@@ -842,5 +844,24 @@ export const en = {
     hostQr: "Host's QR",
     showHostQr: "Use the host's QR",
     showVietqr: 'Use VietQR (amount pre-filled)',
+  },
+  schema: {
+    title: 'Database needs an update',
+    hint: 'The backend is newer than the database. Open Supabase → SQL Editor, paste the file below and press Run (README section 11.2). Until then event sign-up may fail.',
+  },
+  manage: {
+    lockedDeadline: 'Sign-ups locked (deadline passed)',
+    open: 'Open sign-ups',
+    close: 'Close sign-ups',
+    complete: 'Mark completed',
+    edit: 'Edit details',
+    cancelEvent: 'Cancel event',
+    closeAsk: 'Close sign-ups? The link still shows the event but nobody else can register.',
+    openPastDeadline: 'The registration deadline has passed. Reopening clears it so people can register again. Continue?',
+    cancelAsk: 'Cancel this event? Registered players are notified (Telegram/webhook). The list and money records are kept; paid guests need refunds.',
+    deleteAsk: 'Delete "{title}" for good? This cannot be undone.',
+    deleteForceAsk: 'This event has {people} registrations and {money} money records. Deleting removes the list and the money history. To just stop it, use "Cancel event". Delete anyway?',
+    editTitle: 'Edit event',
+    editWarning: '{n} people are registered. If you change the date, time or place, let them know.',
   },
 };

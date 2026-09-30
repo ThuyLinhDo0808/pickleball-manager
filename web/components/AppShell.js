@@ -8,6 +8,7 @@ import { useClubs } from '@/context/ClubContext';
 import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 import FeedbackButton from '@/components/FeedbackButton';
+import SchemaBanner from '@/components/SchemaBanner';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -442,6 +443,7 @@ export default function AppShell({ children }) {
       </header>
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
+        {workspace && workspace !== 'staff' && <SchemaBanner />}
         {!wsReady ? null : !workspace ? (
           <WorkspacePicker />
         ) : needsClub ? (

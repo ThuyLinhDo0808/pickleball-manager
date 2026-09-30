@@ -312,6 +312,12 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 - Trong lúc chờ, người chơi vẫn đăng ký được như khách (trả phí).
 
 ### 5.4. Quản lý người chơi trong kèo (`/events/<id>`)
+- **Thanh điều khiển kèo** (Host bấm tay lúc nào cũng được, không phụ thuộc hạn đăng ký):
+  - **🔓 Mở đăng ký / 🔒 Đóng đăng ký**. Mở lại khi hạn đăng ký đã qua thì hạn cũ được xoá để mọi người đăng ký tiếp.
+  - **✓ Đánh dấu đã xong**.
+  - **✏️ Sửa thông tin** (`/events/<id>/edit`): sửa ngày, giờ, địa điểm, phí, số chỗ… Nếu kèo đã có người đăng ký, app nhắc bạn báo lại cho họ.
+  - **Huỷ kèo**: giữ lại danh sách và thu chi, và báo cho mọi người đã đăng ký (Telegram + webhook `event_cancelled`). Khách đã trả tiền cần được hoàn.
+  - **🗑 Xoá**: kèo trống thì xoá ngay. Kèo đã có người đăng ký hoặc có thu chi thì app hỏi lại lần hai (xoá sẽ mất hết lịch sử) và gợi ý dùng *Huỷ kèo* thay thế.
 - **Bảng đếm trên sân**: *Đã đến sân* (x/y) · *Giữ chỗ / tổng* · *Chờ xác nhận thanh toán* · *Chờ chuyển khoản* · *Danh sách chờ*.
 - **💸 Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ.
   - Người đã gửi ảnh: bấm **Xem ảnh** để mở ảnh chụp chuyển khoản (kèm số tiền và nội dung cần khớp), rồi **Xác nhận** hoặc **Từ chối** (ghi lý do).
@@ -772,7 +778,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 | Nhóm | Route chính |
 |---|---|
-| Sức khỏe | `GET /health` |
+| Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
 | Host | `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
 | CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH/DELETE /api/clubs/:id` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. `PATCH`, `DELETE` và `rotate` chỉ chủ CLB được gọi (co-admin nhận `403 owner_only`). |
 | Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` |
@@ -780,7 +786,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
-| Sự kiện | `GET/POST /api/events` · `GET/PATCH/DELETE /api/events/:id` · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
+| Sự kiện | `GET/POST /api/events` · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
@@ -833,6 +839,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Web báo lỗi mạng / `Failed to fetch` | Kiểm tra `NEXT_PUBLIC_API_URL` và `/health` của backend. Kiểm tra `CORS_ORIGIN` có đúng domain web không. |
 | Lần mở đầu tiên trong ngày rất chậm (30–60 giây) | Render free đang "ngủ". Cài cron-job.org gọi `/health` mỗi 10 phút (xem [11.1](#111-giữ-backend-render-luôn-thức-miễn-phí)). |
 | `401 Invalid or expired session` | Đăng xuất rồi đăng nhập lại. Kiểm tra backend và web dùng **cùng** project Supabase. |
+| Link kèo báo "Không tìm thấy kèo" / "Không tải được kèo" ngay sau khi cập nhật code | Database chưa chạy migration mới. Trong app, Host sẽ thấy khung đỏ **"Database chưa được cập nhật"** ghi đúng tên file cần chạy. Hoặc mở `https://<backend>.onrender.com/health/schema` để xem `missing_migrations`. Dán file đó vào Supabase SQL Editor rồi bấm Run. |
 | Lỗi kiểu `column … does not exist` sau khi cập nhật code | Database chưa được cập nhật. Chạy `supabase db push` (xem [11.2](#112-cập-nhật-database-production-bằng-migration-supabase-cli)), hoặc chạy lại `database/schema.sql` nếu chưa có dữ liệu thật. |
 | Nút *Quét QR* không mở được camera | Camera chỉ chạy trên **https** và cần cho phép quyền camera trong trình duyệt. Nếu vẫn không được, dán mã `PBP:…` vào ô bên dưới camera. |
 | Quét QR báo "Không có tên trong kèo" | Người chơi chưa đăng ký kèo này (hoặc đăng ký bằng số điện thoại khác mà không đăng nhập). Hãy thêm họ vào kèo trước. |

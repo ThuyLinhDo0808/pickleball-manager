@@ -213,6 +213,8 @@ export const vi = {
     member: 'Hội viên',
   },
   public: {
+    loadError: 'Không tải được kèo — máy chủ đang gặp lỗi. Thử lại sau ít phút hoặc báo Host.',
+    retry: 'Thử lại',
     notFound: 'Không tìm thấy kèo. Link có thể đã sai hoặc bị xóa.',
     hostNotice: 'Thông báo từ Host',
     fee: 'Phí',
@@ -842,5 +844,24 @@ export const vi = {
     hostQr: 'Mã QR của Host',
     showHostQr: 'Dùng mã QR của Host',
     showVietqr: 'Dùng VietQR (điền sẵn số tiền)',
+  },
+  schema: {
+    title: 'Database chưa được cập nhật',
+    hint: 'Backend đã có phiên bản mới nhưng database còn thiếu migration. Mở Supabase → SQL Editor, dán nội dung file dưới đây rồi bấm Run (README mục 11.2). Trước khi chạy, trang đăng ký kèo có thể lỗi.',
+  },
+  manage: {
+    lockedDeadline: 'Đã khóa đăng ký (quá hạn đăng ký)',
+    open: 'Mở đăng ký',
+    close: 'Đóng đăng ký',
+    complete: 'Đánh dấu đã xong',
+    edit: 'Sửa thông tin',
+    cancelEvent: 'Hủy kèo',
+    closeAsk: 'Đóng đăng ký kèo này? Link vẫn xem được nhưng không ai đăng ký thêm.',
+    openPastDeadline: 'Hạn đăng ký đã qua. Mở lại sẽ xóa hạn đăng ký cũ để mọi người đăng ký tiếp. Tiếp tục?',
+    cancelAsk: 'Hủy kèo này? Người đã đăng ký sẽ được báo (Telegram/webhook). Danh sách và thu chi vẫn được giữ lại; khách đã trả tiền cần được hoàn.',
+    deleteAsk: 'Xóa hẳn kèo "{title}"? Không thể hoàn tác.',
+    deleteForceAsk: 'Kèo này có {people} người đăng ký và {money} khoản thu/chi. Xóa sẽ mất toàn bộ danh sách và lịch sử tiền. Nếu chỉ muốn dừng kèo, hãy bấm "Hủy kèo". Vẫn xóa hẳn?',
+    editTitle: 'Sửa thông tin kèo',
+    editWarning: 'Kèo đã có {n} người đăng ký. Nếu đổi ngày, giờ hoặc địa điểm, hãy báo cho họ.',
   },
 };

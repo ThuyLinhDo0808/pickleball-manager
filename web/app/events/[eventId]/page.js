@@ -8,6 +8,7 @@ import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
+import EventControls from '@/components/EventControls';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
@@ -170,6 +171,7 @@ export default function EventDetailPage() {
         {showQr && <QrCheckinPanel endpoint={`/api/events/${eventId}/checkin-code`} onCheckedIn={refresh} />}
       </Modal>
 
+      <EventControls event={event} onChanged={setEvent} />
       <EventShareCard event={event} onSaved={setEvent} />
 
       <div className="flex gap-2 mb-4">

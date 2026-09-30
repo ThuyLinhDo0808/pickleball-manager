@@ -157,7 +157,27 @@ async function notifyPaymentSubmitted(event, participant, amount) {
   return { webhook };
 }
 
+// Host cancelled the whole event: DM everyone still on it; one webhook call with the count.
+async function notifyEventCancelled(event) {
+  try {
+    const { data: people } = await supabase
+      .from('event_participants')
+      .select('full_name, phone, user_id, source_club_member_id, fee_paid')
+      .eq('event_id', event.id)
+      .in('status', ['registered', 'checked_in', 'pending', 'waitlisted']);
+    const list = people || [];
+    const text = `❌ Host đã hủy ${where(event)}.`;
+    await Promise.all(
+      list.map((p) => safe(sendToPlayer(p, `${text}${p.fee_paid ? '\nHost sẽ liên hệ hoàn tiền cho bạn.' : ''}`)))
+    );
+    await safe(sendToHostWebhook(event.host_id, { ...payloadFor('event_cancelled', event, { full_name: null }, text), players: list.length, player: undefined }));
+  } catch (err) {
+    console.error('event cancelled notification failed', err);
+  }
+}
+
 module.exports = {
+  notifyEventCancelled,
   notifyPromoted,
   notifyPaymentConfirmed,
   notifyPaymentRejected,
