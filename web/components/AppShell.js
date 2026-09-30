@@ -32,33 +32,83 @@ const ICONS = {
   chat: 'M4 5h16v11H9l-5 4z',
 };
 
-// Each workspace has its own menu. `tab: true` items go in the phone's bottom bar;
-// the rest live under "More".
+// Each workspace has its own menu, grouped by segment. A group ({ key, icon, children })
+// is a collapsible sub-folder in the sidebar and a titled block in the phone's "More" sheet.
 const NAV_BY_WORKSPACE = {
   club: [
-    { href: '/dashboard', key: 'nav.dashboard', icon: 'dashboard', tab: true },
-    { href: '/club/members', key: 'nav.members', icon: 'members', tab: true },
-    { href: '/events', key: 'nav.schedule', icon: 'schedule', tab: true },
-    { href: '/club/fund', key: 'nav.fund', icon: 'fund', tab: true },
-    { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
-    { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
-    { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy' },
-    { href: '/analytics', key: 'nav.analytics', icon: 'chart' },
-    { href: '/club/inventory', key: 'nav.inventory', icon: 'box' },
-    { href: '/club/plans', key: 'nav.plans', icon: 'plans' },
-    { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
-    { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
-    { href: '/account', key: 'nav.account', icon: 'account' },
+    { href: '/dashboard', key: 'nav.dashboard', icon: 'dashboard' },
+    { href: '/club/members', key: 'nav.members', icon: 'members' },
+    {
+      key: 'nav.groupPlay',
+      icon: 'schedule',
+      children: [
+        { href: '/events', key: 'nav.schedule', icon: 'schedule' },
+        { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
+        { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+        { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy' },
+        { href: '/analytics', key: 'nav.analytics', icon: 'chart' },
+      ],
+    },
+    {
+      key: 'nav.groupFinance',
+      icon: 'fund',
+      children: [
+        { href: '/finance', key: 'nav.finOverview', icon: 'fund', exact: true },
+        { href: '/finance/ledger', key: 'nav.ledger', icon: 'plans' },
+        { href: '/finance/plans', key: 'nav.plans', icon: 'plans' },
+        { href: '/finance/inventory', key: 'nav.inventory', icon: 'box' },
+      ],
+    },
+    {
+      key: 'nav.groupSettings',
+      icon: 'clubs',
+      children: [
+        { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
+        { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
+        { href: '/account', key: 'nav.account', icon: 'account' },
+      ],
+    },
   ],
   xeve: [
-    { href: '/events', key: 'nav.kevents', icon: 'ticket', tab: true },
-    { href: '/analytics', key: 'nav.analytics', icon: 'chart', tab: true },
-    { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
-    { href: '/account', key: 'nav.account', icon: 'account', tab: true },
+    { href: '/events', key: 'nav.kevents', icon: 'ticket' },
+    { href: '/analytics', key: 'nav.analytics', icon: 'chart' },
+    {
+      key: 'nav.groupFinance',
+      icon: 'fund',
+      children: [
+        { href: '/finance', key: 'nav.finOverview', icon: 'fund', exact: true },
+        { href: '/finance/ledger', key: 'nav.ledger', icon: 'plans' },
+      ],
+    },
+    {
+      key: 'nav.groupSettings',
+      icon: 'clubs',
+      children: [
+        { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
+        { href: '/account', key: 'nav.account', icon: 'account' },
+      ],
+    },
   ],
   // Referees / coordinators: only their assigned events. No finance, no members.
-  staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle', tab: true }],
+  staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
 };
+
+// Phone bottom bar (plus "More", which holds the full grouped menu).
+const TABS_BY_WORKSPACE = {
+  club: [
+    { href: '/dashboard', key: 'nav.dashboard', icon: 'dashboard' },
+    { href: '/club/members', key: 'nav.members', icon: 'members' },
+    { href: '/events', key: 'nav.schedule', icon: 'schedule' },
+    { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
+  ],
+  xeve: [
+    { href: '/events', key: 'nav.kevents', icon: 'ticket' },
+    { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
+  ],
+  staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
+};
+
+const GROUPS_KEY = 'pickleball_nav_groups';
 
 const WORKSPACE_ICON = { club: 'clubs', xeve: 'ticket', staff: 'whistle' };
 const WORKSPACE_ABBR = { club: 'CLB', xeve: 'XV', staff: 'TT' };
@@ -191,6 +241,27 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState({});
+
+  useEffect(() => {
+    try {
+      setOpenGroups(JSON.parse(window.localStorage.getItem(GROUPS_KEY) || '{}'));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function toggleGroup(key, isOpen) {
+    setOpenGroups((g) => {
+      const next = { ...g, [key]: !isOpen };
+      try {
+        window.localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     try {
@@ -220,12 +291,17 @@ export default function AppShell({ children }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white">{t('common.loading')}</div>;
   if (!user) return null;
 
-  const isActive = (href) => pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (href, exact = false) => pathname === href || (!exact && pathname.startsWith(`${href}/`));
+  const itemActive = (item) => (item.children ? item.children.some((c) => isActive(c.href, c.exact)) : isActive(item.href, item.exact));
   const NAV = NAV_BY_WORKSPACE[workspace] || [];
-  const tabs = NAV.filter((n) => n.tab);
-  const moreItems = NAV.filter((n) => !n.tab);
-  const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some(isActive);
-  const moreActive = moreItems.some((n) => isActive(n.href));
+  const tabs = TABS_BY_WORKSPACE[workspace] || [];
+  const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p));
+  const moreActive = !tabs.some((tab) => isActive(tab.href));
+  // A group is open if the Host opened it, or (until they close it) when it holds the current page.
+  const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
+
+  const linkClass = (active, extra = '') =>
+    `flex items-center gap-3 rounded-lg text-sm ${extra} ${active ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:bg-navy-800'}`;
 
   return (
     <div className="min-h-screen md:flex">
@@ -252,19 +328,51 @@ export default function AppShell({ children }) {
             {!collapsed && workspace === 'club' && <ClubSwitcher />}
           </div>
         )}
-        {NAV.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            title={collapsed ? t(item.key) : undefined}
-            className={`flex items-center gap-3 rounded-lg text-sm ${collapsed ? 'justify-center h-10' : 'px-3 py-2'} ${
-              isActive(item.href) ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:bg-navy-800'
-            }`}
-          >
-            <Icon name={item.icon} className={collapsed ? 'w-5 h-5' : 'w-4 h-4'} />
-            {!collapsed && t(item.key)}
-          </Link>
-        ))}
+        {NAV.map((item) => {
+          if (collapsed) {
+            // Icon rail: a group icon opens its first page.
+            const href = item.children ? item.children[0].href : item.href;
+            return (
+              <Link key={item.key} href={href} title={t(item.key)} className={linkClass(itemActive(item), 'justify-center h-10')}>
+                <Icon name={item.icon} className="w-5 h-5" />
+              </Link>
+            );
+          }
+          if (!item.children) {
+            return (
+              <Link key={item.key} href={item.href} className={linkClass(itemActive(item), 'px-3 py-2')}>
+                <Icon name={item.icon} className="w-4 h-4" />
+                {t(item.key)}
+              </Link>
+            );
+          }
+          const open = groupOpen(item);
+          return (
+            <div key={item.key}>
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => toggleGroup(item.key, open)}
+                className={`w-full flex items-center gap-3 rounded-lg text-sm px-3 py-2 hover:bg-navy-800 ${itemActive(item) ? 'text-lime-400' : 'text-gray-300'}`}
+              >
+                <Icon name={item.icon} className="w-4 h-4" />
+                <span className="flex-1 text-left">{t(item.key)}</span>
+                <svg viewBox="0 0 24 24" className={`w-4 h-4 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </button>
+              {open && (
+                <div className="ml-5 pl-3 border-l border-navy-700 flex flex-col gap-0.5 my-0.5">
+                  {item.children.map((c) => (
+                    <Link key={c.href} href={c.href} className={linkClass(isActive(c.href, c.exact), 'px-3 py-1.5')}>
+                      {t(c.key)}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
         <div className="mt-auto flex flex-col gap-2 pt-4">
           {collapsed ? (
             <button
@@ -331,18 +439,36 @@ export default function AppShell({ children }) {
           <button aria-label={t('common.cancel')} className="absolute inset-0 bg-black/60" onClick={() => setMoreOpen(false)} />
           <div className="absolute bottom-0 inset-x-0 bg-navy-900 border-t border-navy-700 rounded-t-2xl p-4 pb-safe-4 flex flex-col gap-1">
             <div className="mx-auto w-10 h-1 rounded-full bg-navy-600 mb-3" />
-            {moreItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg ${
-                  isActive(item.href) ? 'bg-navy-700 text-lime-400' : 'text-gray-200'
-                }`}
-              >
-                <Icon name={item.icon} />
-                {t(item.key)}
-              </Link>
-            ))}
+            <div className="max-h-[60vh] overflow-y-auto flex flex-col gap-1">
+              {NAV.map((item) =>
+                item.children ? (
+                  <div key={item.key} className="mt-2">
+                    <div className="text-gray-500 text-xs font-semibold uppercase tracking-wide px-3 mb-1">{t(item.key)}</div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {item.children.map((c) => (
+                        <Link
+                          key={c.href}
+                          href={c.href}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${isActive(c.href, c.exact) ? 'bg-navy-700 text-lime-400' : 'text-gray-200 bg-navy-800/60'}`}
+                        >
+                          <Icon name={c.icon} className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{t(c.key)}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg ${isActive(item.href) ? 'bg-navy-700 text-lime-400' : 'text-gray-200'}`}
+                  >
+                    <Icon name={item.icon} />
+                    {t(item.key)}
+                  </Link>
+                )
+              )}
+            </div>
             <FeedbackButton className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200 w-full text-left">
               <Icon name="chat" />
               {t('feedback.button')}

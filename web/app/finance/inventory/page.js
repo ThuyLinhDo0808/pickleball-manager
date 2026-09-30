@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
@@ -132,12 +131,11 @@ export default function InventoryPage() {
   const compare = (items || []).filter((i) => i.cost_per_session != null).map((i) => ({ name: i.name, value: i.cost_per_session, durability: i.durability }));
 
   return (
-    <AppShell>
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <h1 className="text-white text-2xl font-bold">{t('inventory.title')}</h1>
-        <button className="btn-primary text-sm" onClick={() => setAdding(true)} disabled={!club}>+ {t('inventory.addItem')}</button>
+    <>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+        <p className="text-gray-400 text-sm">{t('inventory.hint')}</p>
+        <button className="btn-primary text-sm shrink-0" onClick={() => setAdding(true)} disabled={!club}>+ {t('inventory.addItem')}</button>
       </div>
-      <p className="text-gray-400 text-sm mb-4">{t('inventory.hint')}</p>
 
       <section className="card mb-4">
         <h2 className="text-white font-semibold">{t('inventory.compare')}</h2>
@@ -254,6 +252,6 @@ export default function InventoryPage() {
           />
         )}
       </Modal>
-    </AppShell>
+    </>
   );
 }

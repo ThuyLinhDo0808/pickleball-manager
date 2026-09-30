@@ -1,18 +1,15 @@
 'use client';
 import { useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AppShell from '@/components/AppShell';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import { formatVnd } from '@/lib/format';
 
-// Colours validated on the dark card surface #16223b (dataviz validator):
-// income/expense = categorical slots 1-2 (blue/orange, CVD ΔE 26.8); single series = #72A313.
-const INCOME = '#3987e5';
-const EXPENSE = '#d95926';
+// Colours validated on the dark card surface #16223b (dataviz validator). Money charts
+// live under /finance; this page is about play (attendance and form).
 const SINGLE = '#72A313';
 const SURFACE = '#16223b';
 const GRID = '#1e2f4d';
@@ -22,7 +19,6 @@ const HEAT = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#b7d3f6'];
 const HEAT_TEXT = ['#ffffff', '#ffffff', '#ffffff', '#0b1220', '#0b1220'];
 
 const monthLabel = (ym) => `${Number(ym.slice(5))}/${ym.slice(2, 4)}`;
-const kVnd = (v) => (Math.abs(v) >= 1e6 ? `${Math.round(v / 1e5) / 10}tr` : `${Math.round(v / 1000)}k`);
 
 function heatIndex(rate) {
   if (rate < 5) return 0;
@@ -32,22 +28,12 @@ function heatIndex(rate) {
   return 4;
 }
 
-function Tile({ label, value, tone }) {
-  return (
-    <div className="card !p-3">
-      <div className="text-gray-400 text-xs">{label}</div>
-      <div className={`text-lg sm:text-xl font-bold tabular-nums ${tone}`}>{value}</div>
-    </div>
-  );
-}
-
 export default function AnalyticsPage() {
   const { t } = useI18n();
   const { workspace } = useWorkspace();
   const { club } = useDefaultClub();
   const isClub = workspace === 'club';
   const scope = isClub ? (club ? `club_id=${club.id}` : null) : 'scope=standalone';
-  const { data: fin } = useLoad(() => (scope ? api.get(`/api/analytics/finance?${scope}&months=12`) : Promise.resolve(null)), [scope]);
   const { data: ns } = useLoad(() => (scope ? api.get(`/api/analytics/no-shows?${scope}&months=6`) : Promise.resolve(null)), [scope]);
   const { data: members } = useLoad(() => (isClub && club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])), [isClub, club?.id]);
   const [memberId, setMemberId] = useState('');
@@ -59,70 +45,7 @@ export default function AnalyticsPage() {
 
   return (
     <AppShell>
-      <h1 className="text-white text-2xl font-bold mb-4">{t('analytics.title')}</h1>
-
-      {fin && (
-        <>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <Tile label={`${t('analytics.income')} · ${t('analytics.months', { n: 12 })}`} value={formatVnd(fin.totals.income)} tone="text-white" />
-            <Tile label={t('analytics.expense')} value={formatVnd(fin.totals.expense)} tone="text-white" />
-            <Tile label={t('analytics.net')} value={formatVnd(fin.totals.net)} tone={fin.totals.net >= 0 ? 'text-lime-400' : 'text-red-400'} />
-          </div>
-
-          <section className="card mb-4">
-            <h2 className="text-white font-semibold mb-2">{t('analytics.finance')}</h2>
-            <div className="h-64" role="img" aria-label={t('analytics.finance')}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={fin.months} margin={{ top: 8, right: 4, bottom: 0, left: -8 }} barGap={2}>
-                  <CartesianGrid vertical={false} stroke={GRID} strokeWidth={1} />
-                  <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={kVnd} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} width={48} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                    content={({ active, payload }) =>
-                      active && payload?.length ? (
-                        <div className="bg-navy-950 border border-navy-600 rounded-lg px-3 py-2 text-xs">
-                          <div className="text-white font-semibold mb-1">{monthLabel(payload[0].payload.month)}</div>
-                          <div className="text-gray-300"><span style={{ color: INCOME }}>■</span> {t('analytics.income')}: {formatVnd(payload[0].payload.income)}</div>
-                          <div className="text-gray-300"><span style={{ color: EXPENSE }}>■</span> {t('analytics.expense')}: {formatVnd(payload[0].payload.expense)}</div>
-                          <div className="text-white mt-1">{t('analytics.net')}: {formatVnd(payload[0].payload.net)}</div>
-                        </div>
-                      ) : null
-                    }
-                  />
-                  <Legend iconType="square" wrapperStyle={{ fontSize: 12, color: '#e5e7eb' }} formatter={(v) => <span className="text-gray-300">{v}</span>} />
-                  <Bar name={t('analytics.income')} dataKey="income" fill={INCOME} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-                  <Bar name={t('analytics.expense')} dataKey="expense" fill={EXPENSE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <table className="sr-only">
-              <caption>{t('analytics.finance')}</caption>
-              <tbody>
-                {fin.months.map((m) => (
-                  <tr key={m.month}><td>{m.month}</td><td>{m.income}</td><td>{m.expense}</td><td>{m.net}</td></tr>
-                ))}
-              </tbody>
-            </table>
-            {fin.categories.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-gray-300 text-sm font-semibold mb-1">{t('analytics.categories')}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                  {fin.categories.map((c) => (
-                    <div key={`${c.type}${c.category}`} className="flex justify-between text-sm py-1 border-b border-navy-700">
-                      <span className="text-gray-300">
-                        <span style={{ color: c.type === 'income' ? INCOME : EXPENSE }}>■</span>{' '}
-                        {['membership', 'event_fee', 'balls'].includes(c.category) ? t(`analytics.cat_${c.category}`) : c.category === 'other' ? t('analytics.cat_other') : c.category}
-                      </span>
-                      <span className="text-white tabular-nums">{formatVnd(c.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        </>
-      )}
+      <h1 className="text-white text-2xl font-bold mb-4">{t('nav.analytics')}</h1>
 
       {ns && (
         <section className="card mb-4">
