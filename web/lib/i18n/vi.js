@@ -1005,6 +1005,15 @@ export const vi = {
     paid: 'Đã đóng',
     notPaid: 'Chưa đóng',
   },
+  bday: {
+    today: 'Hôm nay sinh nhật:',
+    soon: 'Sắp sinh nhật:',
+    tomorrow: 'ngày mai',
+    inDays: 'còn {n} ngày',
+    turns: 'tròn {age} tuổi',
+    hint: 'Nhớ chuẩn bị quà / lời chúc cho thành viên nhé!',
+    hide: 'Ẩn đến hết hôm nay',
+  },
   verify: {
     verified: 'đã xác thực',
     pending: 'chờ xác thực',

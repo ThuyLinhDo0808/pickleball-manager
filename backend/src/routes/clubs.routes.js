@@ -5,6 +5,7 @@ const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
 const { itemMetrics } = require('../services/inventory');
+const birthdays = require('../services/birthdays');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
@@ -944,6 +945,19 @@ router.get('/:clubId/attendance', async (req, res) => {
     guests,
     passes,
   });
+});
+
+// Birthdays today or in the next few days (default 3) — shown as a reminder on the Host's pages.
+router.get('/:clubId/birthdays', async (req, res) => {
+  const within = Math.min(Math.max(parseInt(req.query.days, 10) || 3, 0), 31);
+  const { data, error } = await supabase
+    .from('club_members')
+    .select('id, full_name, birth_date, member_type')
+    .eq('club_id', req.club.id)
+    .eq('is_active', true)
+    .not('birth_date', 'is', null);
+  if (error) return dbError(res, error);
+  res.json(birthdays.upcoming(data, within));
 });
 
 module.exports = router;

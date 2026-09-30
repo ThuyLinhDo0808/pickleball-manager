@@ -125,6 +125,7 @@ Tóm tắt CLB đang chọn và các buổi sắp tới, kèm lối tắt tạo 
 **Ngày sinh & thâm niên:**
 - Cột **Ngày sinh** (dd/mm/yyyy; thành viên cũ mới có năm sinh hiện "1990 · thiếu ngày" để Host bổ sung) và **Vào CLB** (tháng/năm + thâm niên, VD "2 năm 3 tháng"). Nhập khi thêm thành viên hoặc sửa trong chi tiết thành viên. Thành viên mới mặc định vào CLB tháng hiện tại.
 - Người có **sinh nhật trong tháng** hiện 🎂, và đầu trang có dòng "Sinh nhật tháng này" để CLB chuẩn bị quà.
+- **Nhắc sinh nhật trên web:** ở đầu mọi trang của Host (Club) hiện khung 🎂 khi có thành viên đang hoạt động sinh nhật **hôm nay** (kèm "tròn N tuổi") hoặc **trong 3 ngày tới** ("ngày mai", "còn 2/3 ngày" + ngày). Bấm × để ẩn đến hết hôm nay. Chỉ tính thành viên đã có ngày sinh đầy đủ.
 - Bảng thành viên chỉ để xem thông tin; số buổi còn lại xem ở **Thống kê → Thống kê thành viên**.
 
 **Hai tab: "Đã là thành viên" và "Chờ xác nhận":**
@@ -850,7 +851,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
 | Host | `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
 | CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH/DELETE /api/clubs/:id` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. `PATCH`, `DELETE` và `rotate` chỉ chủ CLB được gọi (co-admin nhận `403 owner_only`). |
-| Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
+| Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `GET /api/clubs/:id/birthdays?days=3` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=` · `GET /api/clubs/:id/fund` |
