@@ -9,6 +9,7 @@ import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 import FeedbackButton from '@/components/FeedbackButton';
 import SchemaBanner from '@/components/SchemaBanner';
+import { api } from '@/lib/api';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -38,16 +39,25 @@ const ICONS = {
 const NAV_BY_WORKSPACE = {
   club: [
     { href: '/dashboard', key: 'nav.dashboard', icon: 'dashboard' },
-    { href: '/club/members', key: 'nav.members', icon: 'members' },
+    { href: '/club/members', key: 'nav.members', icon: 'members', badge: 'memberRequests' },
     {
-      key: 'nav.groupPlay',
+      key: 'nav.groupActivities',
       icon: 'schedule',
       children: [
-        { href: '/events', key: 'nav.schedule', icon: 'schedule' },
-        { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
+        // The calendar only shows; each kind of activity has its own create page.
+        { href: '/events', key: 'nav.schedule', icon: 'schedule', exclude: ['/events/create'] },
+        { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
+        { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
+        { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
+      ],
+    },
+    {
+      key: 'nav.groupStats',
+      icon: 'chart',
+      children: [
         { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
-        { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy' },
-        { href: '/analytics', key: 'nav.analytics', icon: 'chart' },
+        { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
+        { href: '/analytics', key: 'nav.analyticsCharts', icon: 'chart' },
       ],
     },
     {
@@ -71,7 +81,8 @@ const NAV_BY_WORKSPACE = {
     },
   ],
   xeve: [
-    { href: '/events', key: 'nav.kevents', icon: 'ticket' },
+    { href: '/events', key: 'nav.kevents', icon: 'ticket', exclude: ['/events/create'] },
+    { href: '/events/create', key: 'nav.createGame', icon: 'plans', exact: true },
     { href: '/analytics', key: 'nav.analytics', icon: 'chart' },
     {
       key: 'nav.groupFinance',
@@ -98,8 +109,8 @@ const NAV_BY_WORKSPACE = {
 const TABS_BY_WORKSPACE = {
   club: [
     { href: '/dashboard', key: 'nav.dashboard', icon: 'dashboard' },
-    { href: '/club/members', key: 'nav.members', icon: 'members' },
-    { href: '/events', key: 'nav.schedule', icon: 'schedule' },
+    { href: '/club/members', key: 'nav.members', icon: 'members', badge: 'memberRequests' },
+    { href: '/events', key: 'nav.schedule', icon: 'schedule', exclude: ['/events/create'] },
     { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
   ],
   xeve: [
@@ -112,7 +123,7 @@ const TABS_BY_WORKSPACE = {
 // Co-admin of someone else's club (granted by its owner): members + finance only.
 const FINANCE_GROUP = NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance');
 const CO_ADMIN_NAV = [
-  { href: '/club/members', key: 'nav.members', icon: 'members' },
+  { href: '/club/members', key: 'nav.members', icon: 'members', badge: 'memberRequests' },
   FINANCE_GROUP,
   {
     key: 'nav.groupSettings',
@@ -124,7 +135,7 @@ const CO_ADMIN_NAV = [
   },
 ];
 const CO_ADMIN_TABS = [
-  { href: '/club/members', key: 'nav.members', icon: 'members' },
+  { href: '/club/members', key: 'nav.members', icon: 'members', badge: 'memberRequests' },
   { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
 ];
 const CO_ADMIN_OK = ['/club/members', '/finance', '/clubs', '/account'];
@@ -138,6 +149,39 @@ const COLLAPSE_KEY = 'pickleball_nav_collapsed';
 
 // Pages that work without a club; everything else prompts to create one first.
 const NO_CLUB_OK = ['/clubs', '/account', '/staff-access'];
+
+function Badge({ n, className = '' }) {
+  if (!n) return null;
+  return (
+    <span className={`min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold leading-5 text-center ${className}`}>
+      {n > 99 ? '99+' : n}
+    </span>
+  );
+}
+
+// How many accounts wait for the Host to confirm them as club members.
+function useMemberRequestCount(clubId, enabled, pathname) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!enabled || !clubId) {
+      setN(0);
+      return undefined;
+    }
+    let alive = true;
+    const load = () =>
+      api
+        .get(`/api/clubs/${clubId}/member-requests`)
+        .then((rows) => alive && setN(Array.isArray(rows) ? rows.length : 0))
+        .catch(() => alive && setN(0));
+    load();
+    window.addEventListener('member-requests-changed', load);
+    return () => {
+      alive = false;
+      window.removeEventListener('member-requests-changed', load);
+    };
+  }, [clubId, enabled, pathname]);
+  return n;
+}
 
 function Icon({ name, className = 'w-5 h-5' }) {
   return (
@@ -263,6 +307,8 @@ export default function AppShell({ children }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState({});
+  const requestCount = useMemberRequestCount(club?.id, !!user && workspace === 'club', pathname);
+  const badges = { memberRequests: requestCount };
 
   useEffect(() => {
     try {
@@ -313,13 +359,18 @@ export default function AppShell({ children }) {
   if (!user) return null;
 
   const isActive = (href, exact = false) => pathname === href || (!exact && pathname.startsWith(`${href}/`));
-  const itemActive = (item) => (item.children ? item.children.some((c) => isActive(c.href, c.exact)) : isActive(item.href, item.exact));
+  // An item may also light up for related pages (`also`) and skip sub-pages that have their own item (`exclude`).
+  const navActive = (item) =>
+    pathname === item.href ||
+    (isActive(item.href, item.exact) && !(item.exclude || []).some((p) => isActive(p))) ||
+    (item.also || []).some((p) => isActive(p));
+  const itemActive = (item) => (item.children ? item.children.some(navActive) : navActive(item));
   const coAdmin = workspace === 'club' && isCoAdmin;
   const NAV = coAdmin ? CO_ADMIN_NAV : NAV_BY_WORKSPACE[workspace] || [];
   const tabs = coAdmin ? CO_ADMIN_TABS : TABS_BY_WORKSPACE[workspace] || [];
   const coAdminBlocked = coAdmin && !CO_ADMIN_OK.some((p) => isActive(p));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p));
-  const moreActive = !tabs.some((tab) => isActive(tab.href));
+  const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
 
@@ -356,8 +407,9 @@ export default function AppShell({ children }) {
             // Icon rail: a group icon opens its first page.
             const href = item.children ? item.children[0].href : item.href;
             return (
-              <Link key={item.key} href={href} title={t(item.key)} className={linkClass(itemActive(item), 'justify-center h-10')}>
+              <Link key={item.key} href={href} title={t(item.key)} className={linkClass(itemActive(item), 'justify-center h-10 relative')}>
                 <Icon name={item.icon} className="w-5 h-5" />
+                <Badge n={badges[item.badge]} className="absolute -top-1 -right-1" />
               </Link>
             );
           }
@@ -365,7 +417,8 @@ export default function AppShell({ children }) {
             return (
               <Link key={item.key} href={item.href} className={linkClass(itemActive(item), 'px-3 py-2')}>
                 <Icon name={item.icon} className="w-4 h-4" />
-                {t(item.key)}
+                <span className="flex-1">{t(item.key)}</span>
+                <Badge n={badges[item.badge]} />
               </Link>
             );
           }
@@ -387,7 +440,7 @@ export default function AppShell({ children }) {
               {open && (
                 <div className="ml-5 pl-3 border-l border-navy-700 flex flex-col gap-0.5 my-0.5">
                   {item.children.map((c) => (
-                    <Link key={c.href} href={c.href} className={linkClass(isActive(c.href, c.exact), 'px-3 py-1.5')}>
+                    <Link key={c.href} href={c.href} className={linkClass(navActive(c), 'px-3 py-1.5')}>
                       {t(c.key)}
                     </Link>
                   ))}
@@ -489,10 +542,10 @@ export default function AppShell({ children }) {
                         <Link
                           key={c.href}
                           href={c.href}
-                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${isActive(c.href, c.exact) ? 'bg-navy-700 text-lime-400' : 'text-gray-200 bg-navy-800/60'}`}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${navActive(c) ? 'bg-navy-700 text-lime-400' : 'text-gray-200 bg-navy-800/60'}`}
                         >
                           <Icon name={c.icon} className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{t(c.key)}</span>
+                          <span className="leading-tight">{t(c.key)}</span>
                         </Link>
                       ))}
                     </div>
@@ -501,10 +554,11 @@ export default function AppShell({ children }) {
                   <Link
                     key={item.key}
                     href={item.href}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-lg ${isActive(item.href) ? 'bg-navy-700 text-lime-400' : 'text-gray-200'}`}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg ${navActive(item) ? 'bg-navy-700 text-lime-400' : 'text-gray-200'}`}
                   >
                     <Icon name={item.icon} />
-                    {t(item.key)}
+                    <span className="flex-1">{t(item.key)}</span>
+                    <Badge n={badges[item.badge]} />
                   </Link>
                 )
               )}
@@ -533,10 +587,13 @@ export default function AppShell({ children }) {
                 key={href}
                 href={href}
                 className={`flex flex-col items-center justify-center gap-0.5 h-16 text-[11px] ${
-                  isActive(href) ? 'text-lime-400' : 'text-gray-400'
+                  navActive(item) ? 'text-lime-400' : 'text-gray-400'
                 }`}
               >
-                <Icon name={item.icon} />
+                <span className="relative">
+                  <Icon name={item.icon} />
+                  <Badge n={badges[item.badge]} className="absolute -top-2 -right-3" />
+                </span>
                 <span className="truncate max-w-full px-1">{t(item.key)}</span>
               </Link>
             );

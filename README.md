@@ -74,7 +74,7 @@ Sau khi đăng nhập, bạn chọn **không gian làm việc** (workspace). Có
 
 | Workspace | Dành cho | Menu |
 |---|---|---|
-| **Club Manager** | Cộng đồng chơi lâu dài | Tổng quan · Thành viên · **Thi đấu ▸** (Lịch, Trận đấu, Xếp hạng, Giải đấu, Thống kê) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
+| **Club Manager** | Cộng đồng chơi lâu dài | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Bảng xếp hạng, Trận đấu, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
 | **Xé Vé Manager** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Thống kê · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
 | **Trọng tài / Điều phối** | Người được Host giao việc | Kèo được giao |
 | **Tôi là người chơi** | Người chơi | Của tôi · Hồ sơ |
@@ -122,6 +122,15 @@ Tóm tắt CLB đang chọn và các buổi sắp tới, kèm lối tắt tạo 
 - **Tài khoản người chơi** đã liên kết (nếu người đó tự tham gia qua link). Host có thể huỷ liên kết.
 - **Lịch sử thay đổi**: DUPR, loại, hạng, trạng thái hoạt động, trạng thái thanh toán gói. Xem [4.11](#411-lịch-sử-thay-đổi-scd-type-2).
 
+**Hai tab: "Đã là thành viên" và "Chờ xác nhận":**
+- Khi người chơi bấm *Tôi là thành viên CLB* trên trang đăng ký kèo, app tìm thành viên có cùng SĐT:
+  - **Khớp SĐT** → tài khoản được gắn vào thành viên đó, chờ Host xác nhận.
+  - **Không khớp** → tạo một **yêu cầu vào CLB** mới (chưa hiện trong danh sách chính).
+- Host nhận thông báo qua webhook (loại `member_request`), menu **Thành viên** hiện **số đỏ** đếm người đang chờ, và trang Thành viên có dòng nhắc.
+- Tab **Chờ xác nhận** hiện tên tài khoản, email, SĐT, DUPR và loại yêu cầu:
+  - **Duyệt** → thành viên đã xác thực, đăng ký kèo như thành viên (dùng buổi trong gói, không trả phí).
+  - **Từ chối** → yêu cầu mới bị xoá; nếu là khớp SĐT thì chỉ gỡ liên kết tài khoản (thành viên vẫn giữ). Người đó đăng ký như khách.
+
 Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84-gói-dịch-vụ--giới-hạn)).
 
 ### 4.4. Gói hội viên (`/finance/plans`)
@@ -139,18 +148,28 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 - Đánh dấu **đã đóng** thì app tự ghi thu vào quỹ. Đánh dấu **chưa đóng** lại thì khoản thu đó tự bị huỷ.
 - Xoá gói cũng huỷ khoản thu đi kèm.
 
-### 4.5. Lịch buổi chơi (`/events` khi ở workspace Club)
-- Xem lịch dạng **Danh sách / Tháng / Tuần / Ngày** (xem [5.1](#51-lịch-kèo-dạng-calendar-events)).
-- Tạo buổi ở trang **Tạo kèo** (`/events/create`, xem [5.2](#52-tạo-kèo-eventscreate)).
-- **Lặp lại hằng tuần**: nhập số buổi (1–26), app tạo sẵn các tuần liên tiếp.
+### 4.5. Tạo hoạt động: lịch sự kiện, lịch hàng tuần, giải đấu, kèo
+Menu **Tạo hoạt động** gồm 4 mục:
+
+| Mục | Đường dẫn | Dùng để |
+|---|---|---|
+| **Lịch sự kiện** | `/events` | **Chỉ xem** toàn bộ hoạt động của CLB: lịch chơi hàng tuần 🗓, kèo 🏓, buổi tập 🎯, họp 👥, kèo thách đấu ⚔️ và **giải đấu 🏆**. Dạng **Danh sách / Tháng / Tuần / Ngày** (xem [5.1](#51-lịch-kèo-dạng-calendar-events)). Bấm vào giải thì mở trang giải. |
+| **Tạo lịch chơi hàng tuần** | `/events/create/weekly` | Buổi chơi cố định của CLB. **Lặp lại hằng tuần**: nhập số buổi (1–26, mặc định 8), app tạo sẵn các tuần liên tiếp. |
+| **Tạo giải đấu** | `/club/tournaments/new` | Xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments). |
+| **Tạo kèo** | `/events/create` | Một buổi lẻ. Chọn **loại hoạt động**: *Kèo giao lưu*, *Buổi tập*, *Họp / gặp mặt*, hoặc *Kèo thách đấu* (kèo ăn thua giữa thành viên: bên thua trả tiền sân/nước…; ghi tỉ số ở mục Trận đấu sau khi chơi). Các ô còn lại giống [5.2](#52-tạo-kèo-eventscreate). |
+
+Loại hoạt động sửa được ở trang *Sửa* của buổi.
+
+Trang chi tiết buổi:
 - Trang chi tiết buổi giống kèo Xé Vé (xem [mục 5](#5-tính-năng-chi-tiết--xé-vé-manager)), cộng thêm:
   - **Nhập từ CLB**: chọn thành viên đưa vào buổi.
   - **Check-in một hội viên sẽ tự trừ 1 buổi** trong gói còn hiệu lực. App báo "đã trừ 1 buổi, còn n buổi", hoặc "gói không giới hạn", hoặc "không có gói còn hiệu lực". Huỷ check-in thì buổi được hoàn lại. Mỗi buổi chỉ trừ tối đa 1 lần.
 
 ### 4.6. Trận đấu (`/club/matches`)
-- **Nhập trận** theo thể thức Đơn, Đôi hoặc Đôi nam nữ (mỗi đội 1 nam + 1 nữ). Mỗi trận gồm người chơi 2 đội, tỷ số, thời gian và **link YouTube** (không bắt buộc).
-- Có video thì xem được ngay trong app.
-- Sửa tỷ số/video hoặc xoá trận. Bảng xếp hạng tự tính lại.
+Nằm trong menu **Thống kê** (cùng Bảng xếp hạng và Phân tích).
+- **Nhập trận** theo thể thức Đơn, Đôi hoặc Đôi nam nữ (mỗi đội 1 nam + 1 nữ). Mỗi trận gồm người chơi 2 đội, tỷ số và thời gian.
+- Sửa tỷ số hoặc xoá trận. Bảng xếp hạng tự tính lại.
+- (Phần gắn link video YouTube tạm thời đã bỏ khỏi app.)
 - Trận nhập trong trang của một buổi cũng được tính.
 
 ### 4.7. Bảng xếp hạng & vinh danh (`/club/rankings`)
@@ -166,8 +185,10 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 
 ### 4.8. Giải đấu nội bộ (`/club/tournaments`)
 
-**Tạo giải:**
-1. Đặt tên giải và chọn nội dung (đơn / đôi / đôi nam nữ).
+Trang **Tạo giải đấu** bắt đầu bằng mục **1. Thể thức**: chọn 1 trong 2 kiểu, đặt tên giải, ngày, giờ và địa điểm (giải hiện trên Lịch sự kiện). Danh sách các giải đã tạo ở link *Các giải đã tạo →*.
+
+#### Thể thức 1 — Cá nhân & Đôi (Individual / Pairs)
+1. Chọn nội dung: **Đơn / Đôi / Đôi nam nữ**. Với Đơn và Đôi chọn thêm **hạng mục**: *Tự do*, *Nam* hoặc *Nữ* (đôi nam, đôi nữ, đơn nam, đơn nữ). Hạng mục Nam/Nữ chỉ liệt kê người đúng giới tính; server cũng kiểm tra lại.
 2. Chọn người chơi.
 3. **Ghép cặp**:
    - *Cân bằng*: người trình độ cao ghép với người thấp hơn để các đội đều sức. Người chưa có DUPR được tính là 3.0.
@@ -182,6 +203,22 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 - Nhập tỷ số từng trận. Bảng xếp hạng vòng bảng tính theo thắng và hiệu số.
 - Nhập xong vòng bảng thì bấm **Tạo vòng loại trực tiếp**. Đội hạt giống cao được **miễn đấu** nếu số đội không tròn, người thắng tự vào vòng sau. Các vòng hiển thị là tứ kết, bán kết, chung kết, rồi đến **Vô địch**.
 - Có thể *Làm lại vòng loại trực tiếp* mà vẫn giữ kết quả vòng bảng, hoặc xoá kết quả một trận.
+
+#### Thể thức 2 — Đồng đội (Team League)
+Các đội 4–8 người đá **vòng tròn**, mỗi lần hai đội gặp nhau là một **lượt đấu** gồm nhiều **trận phụ**.
+1. **Trận phụ mỗi lượt đấu**: chọn trong *Đôi nam, Đôi nữ, Đôi nam nữ, Đôi tự do, Đơn* (mặc định 3 trận: đôi nam, đôi nữ, đôi nam nữ).
+2. **Cách tính thắng lượt đấu**:
+   - *Thắng nhiều trận phụ hơn* — ví dụ thắng 2/3 là thắng; khi đã thắng đủ thì lượt đấu kết thúc sớm. Bằng nhau thì xét tổng điểm.
+   - *Tổng điểm các trận phụ* — cộng điểm mọi trận phụ, đội nhiều điểm hơn thắng.
+3. Chọn người chơi (cần có giới tính để xếp đôi nam / nữ / nam nữ).
+4. **Chia đội**: nhập số đội (app gợi ý ~6 người/đội) rồi bấm **Chia đội cân bằng**. Trợ lý cộng **tổng DUPR** từng đội (chưa có DUPR tính 3.0), chia đều nam/nữ và số người, rồi đổi chỗ người cùng giới cho tới khi chênh lệch tổng DUPR nhỏ nhất. Hiện *chênh lệch tổng DUPR giữa đội mạnh nhất và yếu nhất*. Sau đó vẫn đổi tên đội, chuyển người giữa các đội, thêm/bỏ đội được. Có nút *Ghép ngẫu nhiên*. Đội thiếu người cho một trận phụ (ví dụ không đủ 2 nữ cho đôi nữ) sẽ báo đỏ.
+5. **Tạo giải & xếp lịch**: app sinh lịch vòng tròn, mỗi lượt đấu có sẵn các trận phụ.
+
+**Trong giải Team League:**
+- **Bảng xếp hạng**: thắng 3 điểm, hoà 1 điểm; bằng điểm thì xét *hiệu số trận phụ*, rồi *hiệu số điểm*.
+- **Lượt đấu** theo từng lượt: bấm một trận phụ để chọn người đánh mỗi bên (chỉ hiện người trong đội, đúng giới tính của trận phụ) và nhập tỷ số (không có hoà). Chọn người không bắt buộc.
+- Tỷ số lượt đấu = số trận phụ thắng. Xong mọi lượt đấu thì hiện **Vô địch**. Xoá kết quả một trận phụ thì lượt đấu mở lại.
+- **Danh sách đội** kèm tổng DUPR từng đội.
 
 **Xem vòng loại trực tiếp trên điện thoại:** có 2 chế độ, đổi bằng nút *Theo vòng / Sơ đồ*.
 - **Theo vòng** (mặc định trên điện thoại): mỗi lần hiện một vòng dạng danh sách. Các nút vòng *Tứ kết → Bán kết → Chung kết* kèm số trận đã xong (vd `2/4`). App tự mở vòng còn trận chưa nhập, và có nút chuyển sang vòng trước/sau.
@@ -475,6 +512,8 @@ Cùng hai kênh đó, app còn gửi các tin sau:
 | `payment_submitted` | Khách vừa gửi ảnh chuyển khoản (`amount`) | Host (chỉ webhook) |
 | `payment_confirmed` | Host xác nhận thanh toán (`ticket_url` = link vé) | Người chơi + Host |
 | *(chỉ Telegram)* | Host từ chối ảnh chuyển khoản (kèm lý do) | Người chơi |
+| `event_cancelled` | Host huỷ kèo (`players` = số người được báo) | Người chơi + Host |
+| `member_request` | Có người xin xác nhận là thành viên CLB (`new_member: true` nếu là yêu cầu vào CLB mới, `false` nếu khớp SĐT thành viên có sẵn) | Host (chỉ webhook) |
 
 Trong Make/Zapier, thêm **Filter** theo `type` để mỗi loại tin đi một đường riêng.
 
@@ -502,9 +541,12 @@ Ví dụ Zalo ZNS: trong Make, tạo scenario *Webhooks → Custom webhook*, dá
 5. Người chơi đăng ký và chuyển khoản bằng QR. Host vào **Tài chính → Tổng quan → Chờ xác nhận** và bấm *Đã nhận tiền*.
 
 ### Chơi định kỳ hằng tuần
-1. **Thi đấu → Lịch → Tạo sự kiện mới**, đặt *Lặp lại hằng tuần* = 4 để có 4 tuần.
+1. **Tạo hoạt động → Tạo lịch chơi hàng tuần**, đặt *Lặp lại hằng tuần* = 8 để có 8 tuần.
 2. Mỗi buổi: **Nhập từ CLB** (hoặc mở link đăng ký), đến giờ thì **Check-in**. App tự trừ buổi trong gói.
-3. Nhập trận (kèm link YouTube nếu có). Cuối tháng xem **Xếp hạng → Tháng → Vinh danh**.
+3. Nhập trận ở **Thống kê → Trận đấu**. Cuối tháng xem **Thống kê → Bảng xếp hạng → Tháng → Vinh danh**.
+
+### Duyệt người xin làm thành viên
+Menu **Thành viên** có số đỏ → mở tab **Chờ xác nhận** → *Duyệt* (dùng buổi trong gói) hoặc *Từ chối* (đăng ký như khách).
 
 ### Mở một kèo Xé Vé
 1. Chuyển workspace sang **Xé Vé**, bấm **＋ Tạo sự kiện mới**. Điền 4 nhóm thông tin; chọn *Hạn chót huỷ kèo* (ví dụ trước 12 tiếng) và trạng thái **Đang mở**.
@@ -526,7 +568,8 @@ Host tạo buổi lặp lại hằng tuần, đặt phí khách (ví dụ 130.00
 **Cài đặt → Phân quyền** → nhập email của họ → chọn **Đồng quản trị** → chọn CLB → *Cấp quyền*. Họ đăng nhập bằng email đó, chọn workspace **Club**, và cùng xem/ghi Thành viên, Tài chính với bạn. Họ không xoá được CLB.
 
 ### Tổ chức giải nội bộ
-**Thi đấu → Giải đấu → Tạo giải** → chọn người chơi → *Ghép cặp cân bằng* → 2 bảng, mỗi bảng 2 đội đi tiếp → *Tạo giải & xếp lịch* → nhập tỷ số vòng bảng → *Tạo vòng loại trực tiếp* → nhập tỷ số đến chung kết.
+- **Cá nhân & Đôi**: **Tạo hoạt động → Tạo giải đấu** → *Cá nhân & Đôi* → tên, ngày → Đôi + hạng mục (ví dụ Đôi nam) → chọn người chơi → *Ghép cặp cân bằng* → 2 bảng, mỗi bảng 2 đội đi tiếp → *Tạo giải & xếp lịch* → nhập tỷ số vòng bảng → *Tạo vòng loại trực tiếp* → nhập tỷ số đến chung kết.
+- **Team League**: **Tạo giải đấu** → *Đồng đội* → giữ 3 trận phụ đôi nam / đôi nữ / đôi nam nữ, luật *thắng 2/3* → *Chọn tất cả* → số đội = 3 → *Chia đội cân bằng* → đổi tên đội → *Tạo giải & xếp lịch* → mỗi lượt đấu bấm từng trận phụ để chọn người và nhập tỷ số.
 
 ### Theo dõi chi phí bóng
 **Tài chính → Kho bóng** → thêm loại bóng → *Nhập hàng* (tick ghi vào chi quỹ) → mỗi lần bỏ bóng thì ghi *Bóng hỏng/thay* kèm số buổi đã dùng → xem bảng so sánh **chi phí / quả / buổi**.
@@ -613,7 +656,8 @@ Route `/health` rất nhẹ: không cần đăng nhập và không truy vấn da
 ```
 supabase/migrations/
 ├── 20260930120000_cancel_policy_qr_coadmin_notify.sql   # hạn huỷ, QR, co-admin, thông báo
-└── 20261001090000_paid_signup_tickets.sql               # đăng ký bắt buộc đăng nhập, ảnh chuyển khoản, vé QR, xác thực thành viên
+├── 20261001090000_paid_signup_tickets.sql               # đăng ký bắt buộc đăng nhập, ảnh chuyển khoản, vé QR, xác thực thành viên
+└── 20261002090000_activities_team_tournaments.sql       # loại hoạt động, yêu cầu vào CLB, giải Team League + trận phụ
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -781,17 +825,17 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
 | Host | `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
 | CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH/DELETE /api/clubs/:id` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. `PATCH`, `DELETE` và `rotate` chỉ chủ CLB được gọi (co-admin nhận `403 owner_only`). |
-| Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` |
+| Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
-| Sự kiện | `GET/POST /api/events` · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
+| Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge`) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` · `PATCH/DELETE /api/matches/:id` |
-| Giải đấu | `GET/POST /api/tournaments` · `POST /api/tournaments/pairing` · `GET/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `POST/DELETE …/knockout` |
+| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League) · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` · `PATCH/DELETE /api/staff-grants/:id` |
@@ -805,11 +849,11 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Bảng / View |
 |---|---|
 | Tài khoản | `users` (có `notify_webhook_url`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký), view `v_host_capacity_usage` |
-| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, DUPR, loại, hạng, cờ nội bộ, tài khoản liên kết + `account_verified`) |
+| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, DUPR, loại, hạng, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
-| Sự kiện | `events` (có `cancel_deadline_hours`), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`), view `v_event_summary`, `v_player_reliability` |
-| Thi đấu | `matches` (thuộc CLB **hoặc** kèo, có `video_url`), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
-| Giải đấu | `tournaments`, `tournament_teams`, `tournament_matches` |
+| Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`), view `v_event_summary`, `v_player_reliability` |
+| Thi đấu | `matches` (thuộc CLB **hoặc** kèo; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
+| Giải đấu | `tournaments` (`kind` pairs/team, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams`, `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items`, `inventory_moves` |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |

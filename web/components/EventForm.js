@@ -2,14 +2,16 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import DatePopover from '@/components/DatePopover';
-import { STATUS_STYLE } from '@/components/EventCalendar';
+import { KIND_ICON, STATUS_STYLE } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { todayYmd } from '@/lib/dates';
 
+export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 const STATUSES = ['draft', 'open', 'closed', 'completed', 'cancelled'];
 const CANCEL_PRESETS = ['', '2', '6', '12', '24', '48'];
 
-export const blankEvent = (date = todayYmd()) => ({
+export const blankEvent = (date = todayYmd(), kind = 'game') => ({
+  kind,
   title: '',
   event_date: date,
   start_time: '19:00',
@@ -63,7 +65,7 @@ function toLocalInput(iso) {
 // An existing event -> form values (for editing).
 export function formFromEvent(ev) {
   return {
-    ...blankEvent(ev.event_date),
+    ...blankEvent(ev.event_date, ev.kind || 'game'),
     title: ev.title || '',
     start_time: ev.start_time ? ev.start_time.slice(0, 5) : '',
     end_time: ev.end_time ? ev.end_time.slice(0, 5) : '',
@@ -84,6 +86,7 @@ export function formFromEvent(ev) {
 // Form values -> API body (shared by create and edit).
 export function eventPayload(f) {
   return {
+    kind: f.kind,
     title: f.title.trim(),
     event_date: f.event_date,
     start_time: f.start_time || null,
@@ -103,7 +106,8 @@ export function eventPayload(f) {
 }
 
 // The event form in 4 groups: basic info, rules & finance, notes, status.
-export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null }) {
+// `kinds`: the activity types the Host may pick here (none → the kind is fixed by the page).
+export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null }) {
   const { t } = useI18n();
   const [f, setF] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -128,6 +132,24 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   return (
       <form onSubmit={submit} className="max-w-4xl">
         <Section n={1} title={t('create.basic')}>
+          {kinds && kinds.length > 1 && (
+            <Field label={t('kind.label')} span={4} hint={t(`kind.hint_${f.kind}`)}>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+                {kinds.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={f.kind === k}
+                    onClick={() => set({ kind: k })}
+                    className={`rounded-lg border px-3 py-2 text-sm text-left ${f.kind === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+                  >
+                    <span className="mr-1">{KIND_ICON[k]}</span>
+                    {t(`kind.${k}`)}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
           <Field label={t('events.title')} span={4}>
             <input className="input" required maxLength={120} placeholder={t('create.titlePh')} value={f.title} onChange={(e) => set({ title: e.target.value })} />
           </Field>

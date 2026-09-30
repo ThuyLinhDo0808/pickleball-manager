@@ -3,6 +3,7 @@ import { useState } from 'react';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
+import MemberRequests from '@/components/MemberRequests';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -36,9 +37,15 @@ export default function MembersPage() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState([]);
   const [detailId, setDetailId] = useState(null);
-  const toVerify = (members || []).filter((m) => m.account_email && !m.account_verified);
+  const [tab, setTab] = useState('members');
+  const { data: requests, reload: reloadRequests } = useLoad(
+    () => (club ? api.get(`/api/clubs/${club.id}/member-requests`).catch(() => []) : Promise.resolve([])),
+    [club?.id]
+  );
+  const pending = requests || [];
 
-  const rows = members || [];
+  // New join requests live only in the "waiting" tab until the Host approves them.
+  const rows = (members || []).filter((m) => !(m.join_requested && !m.account_verified));
   const detailMember = rows.find((m) => m.id === detailId) || null;
   const allSelected = rows.length > 0 && selected.length === rows.length;
 
@@ -93,7 +100,7 @@ export default function MembersPage() {
     <AppShell>
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-white text-2xl font-bold">
-          {t('nav.members')} {rows.length > 0 && <span className="text-gray-400 text-base font-normal">({rows.length})</span>}
+          {t('nav.members')}
         </h1>
         <div className="flex items-center gap-2">
           <button
@@ -115,15 +122,31 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {toVerify.length > 0 && (
-        <div className="card mb-3 border-yellow-400/50 text-sm">
-          <span className="text-yellow-300 font-semibold">{t('verify.banner', { n: toVerify.length })}</span>{' '}
-          <span className="text-gray-300">{toVerify.map((m) => m.full_name).join(', ')}</span>
-          <p className="text-gray-500 text-xs mt-1">{t('verify.bannerHint')}</p>
-        </div>
+      <div role="tablist" className="grid grid-cols-2 sm:inline-grid sm:grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-lg p-1 mb-3 text-sm font-semibold">
+        <button role="tab" aria-selected={tab === 'members'} onClick={() => setTab('members')}
+          className={`rounded-md px-3 py-2 ${tab === 'members' ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
+          {t('requests.tabMembers')} ({rows.length})
+        </button>
+        <button role="tab" aria-selected={tab === 'pending'} onClick={() => setTab('pending')}
+          className={`rounded-md px-3 py-2 flex items-center justify-center gap-2 ${tab === 'pending' ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
+          {t('requests.tabPending')}
+          {pending.length > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs leading-5">{pending.length}</span>}
+        </button>
+      </div>
+
+      {tab === 'pending' && (
+        <MemberRequests club={club} requests={pending} onChanged={() => { reloadRequests(); reload(); }} />
       )}
 
-      <div className="card">
+      {tab === 'members' && pending.length > 0 && (
+        <button className="card mb-3 w-full text-left border-yellow-400/50 text-sm" onClick={() => setTab('pending')}>
+          <span className="text-yellow-300 font-semibold">{t('requests.banner', { n: pending.length })}</span>{' '}
+          <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
+          <span className="text-lime-400 ml-1">→</span>
+        </button>
+      )}
+
+      <div className={`card ${tab === 'members' ? '' : 'hidden'}`}>
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
         {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t('members.empty')}</p>}
         {!loading && rows.length > 0 && (

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
-import EventCalendar, { STATUS_STYLE } from '@/components/EventCalendar';
+import EventCalendar, { KIND_ICON, STATUS_STYLE, hrefOf } from '@/components/EventCalendar';
 import DatePopover from '@/components/DatePopover';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -14,22 +14,48 @@ import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } f
 const VIEWS = ['list', 'month', 'week', 'day'];
 const VIEW_KEY = 'pickleball_events_view';
 
+// A tournament shown on the calendar (links to its own page; no sign-up counts).
+function tournamentAsEvent(tr) {
+  return {
+    id: `t-${tr.id}`,
+    href: `/club/tournaments/${tr.id}`,
+    kind: 'tournament',
+    title: tr.name,
+    event_date: tr.event_date || tr.created_at.slice(0, 10),
+    start_time: tr.start_time || null,
+    end_time: tr.end_time || null,
+    location: tr.location || null,
+    status: tr.status === 'completed' ? 'completed' : 'open',
+    tstatus: tr.status,
+    tkind: tr.kind,
+    team_count: tr.team_count,
+    slots: null,
+  };
+}
+
 function EventCard({ e }) {
   const { t, lang } = useI18n();
   return (
-    <Link href={`/events/${e.id}`} className="card hover:border-lime-400 transition flex gap-3">
+    <Link href={hrefOf(e)} className="card hover:border-lime-400 transition flex gap-3">
       <div className={`w-1 shrink-0 rounded-full border ${STATUS_STYLE[e.status]}`} />
       <div className="min-w-0 flex-1">
         <div className="flex justify-between gap-2">
-          <span className="text-white font-semibold truncate">{e.title}</span>
-          <span className="text-gray-400 text-xs uppercase shrink-0">{t(`events.status_${e.status}`)}</span>
+          <span className="text-white font-semibold truncate">{KIND_ICON[e.kind] && `${KIND_ICON[e.kind]} `}{e.title}</span>
+          <span className="text-gray-400 text-xs uppercase shrink-0">{e.kind === 'tournament' ? (e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)) : t(`events.status_${e.status}`)}</span>
         </div>
         <div className="text-gray-400 text-sm">
           {formatDay(e.event_date, lang)} {e.start_time ? `· ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''} · {e.location || '—'}
         </div>
         <div className="text-gray-300 text-sm mt-1">
-          {e.main_count}/{e.slots} {t('events.mainList').toLowerCase()}
-          {e.waitlist_count > 0 && ` · ${e.waitlist_count} ${t('events.waitlist').toLowerCase()}`}
+          {e.kind && <span className="text-gray-400">{t(`kind.${e.kind}`)} · </span>}
+          {e.slots != null ? (
+            <>
+              {e.main_count}/{e.slots} {t('events.mainList').toLowerCase()}
+              {e.waitlist_count > 0 && ` · ${e.waitlist_count} ${t('events.waitlist').toLowerCase()}`}
+            </>
+          ) : (
+            t('tournaments.teamsN', { n: e.team_count })
+          )}
         </div>
       </div>
     </Link>
@@ -42,10 +68,16 @@ export default function EventsPage() {
   const { club } = useDefaultClub();
   const { workspace } = useWorkspace();
   const isClub = workspace === 'club';
-  const { data: events, loading } = useLoad(() => {
-    if (!workspace) return Promise.resolve([]);
+  const { data: events, loading } = useLoad(async () => {
+    if (!workspace) return [];
     if (!isClub) return api.get('/api/events?scope=standalone');
-    return club ? api.get(`/api/clubs/${club.id}/events`) : Promise.resolve([]);
+    if (!club) return [];
+    // Everything the club runs in one calendar: weekly play, games/sessions and tournaments.
+    const [evs, tours] = await Promise.all([
+      api.get(`/api/clubs/${club.id}/events`),
+      api.get(`/api/tournaments?club_id=${club.id}`).catch(() => []),
+    ]);
+    return [...evs, ...tours.map(tournamentAsEvent)];
   }, [workspace, club?.id]);
 
   const [view, setView] = useState('month');
@@ -94,9 +126,11 @@ export default function EventsPage() {
     <AppShell>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h1 className="text-white text-2xl font-bold">{isClub ? t('nav.schedule') : t('nav.kevents')}</h1>
-        <Link href={`/events/create${view === 'day' ? `?date=${date}` : ''}`} className={`btn-primary ${isClub && !club ? 'pointer-events-none opacity-50' : ''}`}>
-          ＋ {t('events.addEvent')}
-        </Link>
+        {!isClub && (
+          <Link href={`/events/create${view === 'day' ? `?date=${date}` : ''}`} className="btn-primary">
+            ＋ {t('events.addEvent')}
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -132,6 +166,13 @@ export default function EventsPage() {
               {t(`events.status_${s}`)}
             </span>
           ))}
+          {isClub && (
+            <span className="flex flex-wrap gap-3 basis-full sm:basis-auto sm:ml-auto">
+              {Object.entries(KIND_ICON).map(([k, icon]) => (
+                <span key={k}>{icon} {t(`kind.${k}`)}</span>
+              ))}
+            </span>
+          )}
         </div>
       )}
 

@@ -8,6 +8,9 @@ const PROBES = [
   { table: 'player_profiles', column: 'checkin_token', migration: '20260930120000_cancel_policy_qr_coadmin_notify.sql' },
   { table: 'event_participants', column: 'payment_status', migration: '20261001090000_paid_signup_tickets.sql' },
   { table: 'club_members', column: 'account_verified', migration: '20261001090000_paid_signup_tickets.sql' },
+  { table: 'events', column: 'kind', migration: '20261002090000_activities_team_tournaments.sql' },
+  { table: 'tournaments', column: 'kind', migration: '20261002090000_activities_team_tournaments.sql' },
+  { table: 'club_members', column: 'join_requested', migration: '20261002090000_activities_team_tournaments.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

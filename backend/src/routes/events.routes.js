@@ -30,7 +30,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
-  'cancel_deadline_hours',
+  'cancel_deadline_hours', 'kind',
 ];
 
 router.get('/public/:publicToken', async (req, res) => {
@@ -92,7 +92,7 @@ function fail(res, err) {
 }
 
 async function playerProfile(userId) {
-  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level').eq('user_id', userId).maybeSingle();
+  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level, gender, birth_year').eq('user_id', userId).maybeSingle();
   return data;
 }
 
@@ -192,8 +192,11 @@ async function ownsClub(hostId, clubId) {
   return !!data;
 }
 
+const EVENT_KINDS = ['weekly', 'game', 'training', 'meeting', 'challenge'];
+
 // Normalises optional fields in place; returns an error message or null.
 function cleanEventFields(fields) {
+  if ('kind' in fields && !EVENT_KINDS.includes(fields.kind)) return `kind must be one of ${EVENT_KINDS.join(', ')}.`;
   if ('cancel_deadline_hours' in fields) {
     const v = fields.cancel_deadline_hours;
     if (v === '' || v == null) fields.cancel_deadline_hours = null;
@@ -253,7 +256,7 @@ router.post('/', async (req, res) => {
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -281,7 +284,7 @@ router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });

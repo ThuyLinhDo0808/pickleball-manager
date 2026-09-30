@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import EventForm, { eventPayload, formFromEvent } from '@/components/EventForm';
+import EventForm, { GAME_KINDS, eventPayload, formFromEvent } from '@/components/EventForm';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -36,6 +36,7 @@ export default function EditEventPage() {
           submitLabel={t('common.save')}
           cancelHref={`/events/${eventId}`}
           warning={active ? t('manage.editWarning', { n: active }) : null}
+          kinds={event.club_id ? ['weekly', ...GAME_KINDS] : GAME_KINDS}
         />
       )}
     </AppShell>

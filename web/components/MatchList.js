@@ -3,7 +3,6 @@ import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import { youtubeEmbedUrl } from '@/lib/youtube';
 
 function playerName(mp) {
   return mp.club_members?.full_name || mp.event_participants?.full_name || '?';
@@ -11,7 +10,7 @@ function playerName(mp) {
 
 function EditMatch({ match, basePath, onSaved, onCancel }) {
   const { t } = useI18n();
-  const [form, setForm] = useState({ team1_score: match.team1_score, team2_score: match.team2_score, video_url: match.video_url || '' });
+  const [form, setForm] = useState({ team1_score: match.team1_score, team2_score: match.team2_score });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,7 +22,6 @@ function EditMatch({ match, basePath, onSaved, onCancel }) {
       await api.patch(`${basePath}/${match.id}`, {
         team1_score: Number(form.team1_score || 0),
         team2_score: Number(form.team2_score || 0),
-        video_url: form.video_url.trim() || null,
       });
       onSaved();
     } catch (err) {
@@ -51,10 +49,6 @@ function EditMatch({ match, basePath, onSaved, onCancel }) {
           </div>
         ))}
       </div>
-      <div>
-        <label className="text-xs text-gray-400">{t('matches.video')}</label>
-        <input className="input" type="url" placeholder={t('matches.videoPh')} value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} />
-      </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex gap-2">
         <button type="button" className="btn-secondary flex-1" onClick={onCancel}>{t('common.cancel')}</button>
@@ -67,7 +61,6 @@ function EditMatch({ match, basePath, onSaved, onCancel }) {
 // basePath: where edits go ('/api/matches' for hosts, the staff API for referees).
 export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true }) {
   const { t, lang } = useI18n();
-  const [video, setVideo] = useState(null);
   const [editing, setEditing] = useState(null);
 
   async function remove(m) {
@@ -112,11 +105,6 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm">
-                {m.video_url && youtubeEmbedUrl(m.video_url) && (
-                  <button className="text-red-400 font-semibold" onClick={() => setVideo(m)}>
-                    ▶ {t('matches.watch')}
-                  </button>
-                )}
                 <button className="text-gray-300" onClick={() => setEditing(m)}>{t('matches.edit')}</button>
                 {allowDelete && (
                   <button className="text-red-400/80 ml-auto" onClick={() => remove(m)}>{t('common.delete')}</button>
@@ -126,25 +114,6 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
           );
         })}
       </div>
-
-      <Modal open={!!video} title={t('matches.watch')} onClose={() => setVideo(null)}>
-        {video && (
-          <div className="flex flex-col gap-2">
-            <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-              <iframe
-                className="absolute inset-0 w-full h-full rounded-lg"
-                src={youtubeEmbedUrl(video.video_url)}
-                title="YouTube"
-                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <a href={video.video_url} target="_blank" rel="noreferrer" className="text-xs text-gray-400 underline self-end">
-              YouTube ↗
-            </a>
-          </div>
-        )}
-      </Modal>
 
       <Modal open={!!editing} title={t('matches.edit')} onClose={() => setEditing(null)}>
         {editing && (

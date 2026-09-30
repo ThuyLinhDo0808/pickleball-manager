@@ -265,6 +265,53 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   res.json(data);
 });
 
+// Accounts waiting for the Host: links to an existing member (by phone) and new join requests.
+router.get('/:clubId/member-requests', async (req, res) => {
+  const { data, error } = await supabase
+    .from('club_members')
+    .select('id, full_name, phone, gender, birth_year, dupr_level, join_requested, user_id, created_at, users(email)')
+    .eq('club_id', req.club.id)
+    .eq('account_verified', false)
+    .not('user_id', 'is', null)
+    .order('created_at', { ascending: true });
+  if (error) return dbError(res, error);
+  const { data: profiles } = data.length
+    ? await supabase.from('player_profiles').select('user_id, full_name, phone').in('user_id', data.map((m) => m.user_id))
+    : { data: [] };
+  res.json(
+    data.map(({ users, ...m }) => {
+      const p = (profiles || []).find((x) => x.user_id === m.user_id);
+      return { ...m, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null };
+    })
+  );
+});
+
+router.post('/:clubId/members/:memberId/approve', async (req, res) => {
+  if (!req.member.user_id) return res.status(400).json({ error: 'No player account is linked to this member.' });
+  const { data, error } = await supabase
+    .from('club_members')
+    .update({ account_verified: true, join_requested: false })
+    .eq('id', req.member.id)
+    .select()
+    .single();
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
+// Not our member: a new join request is removed; a link to an existing member is undone.
+router.post('/:clubId/members/:memberId/reject', async (req, res) => {
+  const m = req.member;
+  if (m.account_verified) return res.status(400).json({ error: 'This account is already verified; unlink it instead.' });
+  if (m.join_requested) {
+    const { error } = await supabase.from('club_members').delete().eq('id', m.id);
+    if (error) return dbError(res, error);
+    return res.json({ removed: true });
+  }
+  const { error } = await supabase.from('club_members').update({ user_id: null, account_verified: false }).eq('id', m.id);
+  if (error) return dbError(res, error);
+  res.json({ unlinked: true });
+});
+
 router.delete('/:clubId/members/:memberId', async (req, res) => {
   const { error } = await supabase.from('club_members').delete().eq('id', req.member.id);
   if (error) return dbError(res, error);
