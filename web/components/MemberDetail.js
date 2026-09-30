@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
 import MemberHistory from '@/components/MemberHistory';
-import { tenureLabel } from '@/lib/memberDates';
+import { dmy, my, tenureLabel } from '@/lib/memberDates';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -98,36 +98,111 @@ function RegisterForm({ club, member, plans, onDone }) {
 }
 
 // Popup with a member's internal notes and membership passes.
-// Birth date (birthday gifts) and the month they joined (seniority), edited in place.
-function MemberDates({ member, busy, onSave }) {
+// Edit the member's details (name, phone, gender, DUPR, type, tier, birth date, join month).
+const fromMember = (m) => ({
+  full_name: m.full_name || '',
+  phone: m.phone || '',
+  gender: m.gender || '',
+  dupr_level: m.dupr_level ?? '',
+  member_type: m.member_type || 'fixed',
+  tier: m.tier || '',
+  birth_date: m.birth_date || '',
+  joined: m.joined_on ? m.joined_on.slice(0, 7) : '',
+  is_active: m.is_active !== false,
+});
+
+function MemberEdit({ member, busy, onSave }) {
   const { t } = useI18n();
-  const [birth, setBirth] = useState(member.birth_date || '');
-  const [joined, setJoined] = useState(member.joined_on ? member.joined_on.slice(0, 7) : '');
-  const changed = birth !== (member.birth_date || '') || joined !== (member.joined_on ? member.joined_on.slice(0, 7) : '');
-  return (
-    <div className="grid grid-cols-2 gap-3 items-end">
-      <div>
-        <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
-        <input className="input text-sm" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs text-gray-400">
-          {t('members.joinedMonth')}
-          {member.joined_on && <span className="text-gray-500"> · {tenureLabel(member.joined_on, t)}</span>}
-        </label>
-        <input className="input text-sm" type="month" value={joined} onChange={(e) => setJoined(e.target.value)} />
-      </div>
-      {changed && (
-        <button
-          type="button"
-          className="btn-primary text-sm col-span-2"
-          disabled={busy}
-          onClick={() => onSave({ birth_date: birth || null, joined_on: joined ? `${joined}-01` : null })}
-        >
-          {t('common.save')}
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState(() => fromMember(member));
+  const set = (patch) => setF((x) => ({ ...x, ...patch }));
+
+  if (!open) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <span className="text-gray-400">
+          {t('members.birthDate')}: <span className="text-gray-200">{member.birth_date ? dmy(member.birth_date) : member.birth_year ?? '—'}</span>
+        </span>
+        <span className="text-gray-400">
+          {t('members.joined')}: <span className="text-gray-200">{member.joined_on ? `${my(member.joined_on)} · ${tenureLabel(member.joined_on, t)}` : '—'}</span>
+        </span>
+        <button type="button" className="btn-secondary !py-1.5 text-sm ml-auto" onClick={() => { setF(fromMember(member)); setOpen(true); }}>
+          ✏️ {t('members.edit')}
         </button>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    const ok = await onSave({
+      full_name: f.full_name.trim(),
+      phone: f.phone.trim() || null,
+      gender: f.gender || null,
+      dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level),
+      member_type: f.member_type,
+      tier: f.member_type === 'fixed' ? f.tier || null : null,
+      birth_date: f.birth_date || null,
+      joined_on: f.joined ? `${f.joined}-01` : null,
+      is_active: f.is_active,
+    });
+    if (ok !== false) setOpen(false);
+  }
+
+  return (
+    <form onSubmit={save} className="grid grid-cols-2 gap-3 rounded-lg border border-navy-600 p-3">
+      <div className="col-span-2">
+        <label className="text-xs text-gray-400">{t('common.name')}</label>
+        <input className="input" required value={f.full_name} onChange={(e) => set({ full_name: e.target.value })} />
+      </div>
+      <div className="min-w-0">
+        <label className="text-xs text-gray-400">{t('common.phone')}</label>
+        <input className="input" type="tel" value={f.phone} onChange={(e) => set({ phone: e.target.value })} />
+      </div>
+      <div className="min-w-0">
+        <label className="text-xs text-gray-400">{t('members.gender')}</label>
+        <select className="input" value={f.gender} onChange={(e) => set({ gender: e.target.value })}>
+          <option value="">—</option>
+          <option value="male">{t('members.male')}</option>
+          <option value="female">{t('members.female')}</option>
+        </select>
+      </div>
+      <div className="min-w-0">
+        <label className="text-xs text-gray-400">{t('common.level')}</label>
+        <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={f.dupr_level} onChange={(e) => set({ dupr_level: e.target.value })} />
+      </div>
+      <div className="min-w-0">
+        <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
+        <input className="input" type="date" value={f.birth_date} onChange={(e) => set({ birth_date: e.target.value })} />
+      </div>
+      <div className="min-w-0">
+        <label className="text-xs text-gray-400">{t('members.type')}</label>
+        <select className="input" value={f.member_type} onChange={(e) => set({ member_type: e.target.value })}>
+          <option value="fixed">{t('members.fixed')}</option>
+          <option value="guest">{t('members.guest')}</option>
+        </select>
+      </div>
+      <div className="min-w-0">
+        <label className="text-xs text-gray-400">{t('members.tier')}</label>
+        <select className="input" disabled={f.member_type !== 'fixed'} value={f.member_type === 'fixed' ? f.tier : ''} onChange={(e) => set({ tier: e.target.value })}>
+          <option value="">—</option>
+          <option value="vip">{t('members.vip')}</option>
+          <option value="standard">{t('members.standard')}</option>
+        </select>
+      </div>
+      <div className="min-w-0">
+        <label className="text-xs text-gray-400">{t('members.joinedMonth')}</label>
+        <input className="input" type="month" value={f.joined} onChange={(e) => set({ joined: e.target.value })} />
+      </div>
+      <label className="min-w-0 flex items-center gap-2 text-sm text-gray-200 self-end pb-2">
+        <input type="checkbox" checked={f.is_active} onChange={(e) => set({ is_active: e.target.checked })} />
+        {t('members.active')}
+      </label>
+      <div className="col-span-2 flex gap-2">
+        <button type="button" className="btn-secondary flex-1" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
+        <button className="btn-primary flex-1" disabled={busy || !f.full_name.trim()}>{t('common.save')}</button>
+      </div>
+    </form>
   );
 }
 
@@ -160,8 +235,10 @@ export default function MemberDetail({ club, member, onClose, onChanged }) {
       await fn();
       reloadPasses();
       onChanged();
+      return true;
     } catch (err) {
       window.alert(err.message);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -187,7 +264,7 @@ export default function MemberDetail({ club, member, onClose, onChanged }) {
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
 
-        <MemberDates key={`${member.id}${member.birth_date}${member.joined_on}`} member={member} busy={busy} onSave={patchMember} />
+        <MemberEdit key={member.id} member={member} busy={busy} onSave={patchMember} />
 
         {member.account_email && (
           <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">

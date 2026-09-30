@@ -39,7 +39,7 @@ export default function TournamentsPage() {
               </span>
             </div>
             <div className="text-gray-400 text-sm mt-1">
-              {x.kind === 'team' ? t('tournaments.kind_team') : t(`matches.${x.format}`)} · {t('tournaments.teamsN', { n: x.team_count })}
+              {x.kind === 'team' ? t('tournaments.kind_team') : t('tournaments.kind_pairs')} · {t('tournaments.teamsN', { n: x.team_count })}
               {x.kind !== 'team' && x.group_count > 0 ? ` · ${x.group_count} ${t('tournaments.groupCount').toLowerCase()}` : ''}
               {' · '}
               {x.event_date

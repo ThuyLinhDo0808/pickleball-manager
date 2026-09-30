@@ -1,10 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import TeamLeagueView from '@/components/TeamLeagueView';
+import TournamentFees from '@/components/TournamentFees';
 import { formatDay, hhmm } from '@/lib/dates';
+import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -112,6 +115,13 @@ export default function TournamentPage() {
     await run(() => api.patch(`/api/tournaments/${id}/matches/${m.id}`, { clear: true }));
   }
 
+  // Edit = rebuild with the same settings pre-filled (players, pairs, groups…).
+  function edit() {
+    const played = tour.matches.some((m) => m.winner_id && !m.is_bye) || (tour.matches.some((m) => (m.subs || []).some((x) => x.team1_score != null)));
+    if (played && !window.confirm(t('tournaments.editLosesResults'))) return;
+    router.push(`/club/tournaments/new?from=${tour.id}`);
+  }
+
   async function remove() {
     if (!window.confirm(t('tournaments.deleteConfirm', { name: tour.name }))) return;
     await api.del(`/api/tournaments/${id}`);
@@ -120,13 +130,16 @@ export default function TournamentPage() {
 
   return (
     <AppShell>
+      <Link href="/club/tournaments" className="text-gray-400 text-sm hover:text-white inline-block mb-2">← {t('tournaments.allList')}</Link>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0">
           <h1 className="text-white text-2xl font-bold">🏆 {tour.name}</h1>
           <p className="text-gray-400 text-sm">
             {tour.kind === 'team'
               ? t('tournaments.kind_team')
-              : `${t(`matches.${tour.format}`)}${tour.division && tour.division !== 'open' && tour.format !== 'mixed' ? ` · ${t(`tournaments.div_${tour.division}${tour.format === 'singles' ? 'S' : ''}`)}` : ''}`}
+              : tour.format === 'doubles' && (!tour.division || tour.division === 'open')
+                ? t('tournaments.kind_pairs')
+                : `${t(`matches.${tour.format}`)}${tour.division && tour.division !== 'open' && tour.format !== 'mixed' ? ` · ${t(`tournaments.div_${tour.division}${tour.format === 'singles' ? 'S' : ''}`)}` : ''}`}
             {' · '}{t('tournaments.teamsN', { n: tour.teams.length })} · {tour.kind === 'team' && tour.status !== 'completed' ? t('league.inProgress') : t(`tournaments.status_${tour.status}`)}
           </p>
           {tour.event_date && (
@@ -136,8 +149,12 @@ export default function TournamentPage() {
               {tour.location && <span className="text-gray-300 normal-case"> · 📍 {tour.location}</span>}
             </p>
           )}
+          {Number(tour.entry_fee) > 0 && <p className="text-gray-300 text-sm">{t('tournaments.entryFeeShow', { fee: formatVnd(tour.entry_fee) })}</p>}
         </div>
-        <button className="text-red-400 text-sm shrink-0" onClick={remove}>{t('common.delete')}</button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button className="btn-secondary !py-1.5 text-sm" onClick={edit}>✏️ {t('tournaments.edit')}</button>
+          <button className="text-red-400 text-sm" onClick={remove}>{t('common.delete')}</button>
+        </div>
       </div>
 
       {tour.champion_id && (
@@ -149,6 +166,8 @@ export default function TournamentPage() {
       )}
 
       {error && <p className="card text-red-400 text-sm mb-4">{error}</p>}
+
+      <TournamentFees tour={tour} />
 
       {tour.kind === 'team' && <TeamLeagueView tour={tour} onChange={setData} />}
 
