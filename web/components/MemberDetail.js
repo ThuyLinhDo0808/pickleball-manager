@@ -1,4 +1,5 @@
 'use client';
+import { LockedSection } from '@/components/Locked';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
@@ -417,7 +418,9 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
           </div>
         </section>
 
-        <MemberHistory key={member.id} club={club} member={member} />
+        <LockedSection feature="audit_trail" title={t('history.title')}>
+          <MemberHistory key={member.id} club={club} member={member} />
+        </LockedSection>
       </div>
     </Modal>
   );

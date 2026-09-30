@@ -1,4 +1,5 @@
 'use client';
+import { LockedSection } from '@/components/Locked';
 import { useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AppShell from '@/components/AppShell';
@@ -47,6 +48,7 @@ export default function AnalyticsPage() {
     <AppShell>
       <h1 className="text-white text-2xl font-bold mb-4">{t('nav.analytics')}</h1>
 
+      <LockedSection feature="advanced_analytics" title={t('analytics.noShows')}>
       {ns && (
         <section className="card mb-4">
           <div className="flex items-baseline justify-between gap-2 mb-1">
@@ -99,8 +101,10 @@ export default function AnalyticsPage() {
           )}
         </section>
       )}
+      </LockedSection>
 
       {isClub && (
+        <LockedSection feature="advanced_analytics" title={t('analytics.playerForm')}>
         <section className="card">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h2 className="text-white font-semibold">{t('analytics.playerForm')}</h2>
@@ -135,6 +139,7 @@ export default function AnalyticsPage() {
             </div>
           )}
         </section>
+        </LockedSection>
       )}
     </AppShell>
   );

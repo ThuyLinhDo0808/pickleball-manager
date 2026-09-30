@@ -1,4 +1,6 @@
 'use client';
+import { useFeatures } from '@/lib/useFeatures';
+import { LockedSection, UpgradeBadge } from '@/components/Locked';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -16,6 +18,7 @@ import { api } from '@/lib/api';
 export default function NewTournamentPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const feat = useFeatures();
   const { club } = useDefaultClub();
   const { data: members } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])), [club?.id]);
   const [kind, setKind] = useState('pairs');
@@ -101,7 +104,10 @@ export default function NewTournamentPage() {
               onClick={() => setKind(k)}
               className={`rounded-xl border p-3 text-left transition ${kind === k ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
             >
-              <div className="text-white font-semibold">{k === 'pairs' ? '🏓' : '👥'} {t(`tournaments.kind_${k}`)}</div>
+              <div className="text-white font-semibold flex flex-wrap items-center gap-2">
+                <span>{k === 'pairs' ? '🏓' : '👥'} {t(`tournaments.kind_${k}`)}</span>
+                {k === 'team' && <UpgradeBadge feature="team_league" />}
+              </div>
               <p className="text-gray-400 text-xs mt-1">{t(`tournaments.kind_${k}Desc`)}</p>
             </button>
           ))}
@@ -141,6 +147,8 @@ export default function NewTournamentPage() {
       {!loadingFrom &&
         (kind === 'pairs' ? (
           <PairsSetup key={`p${from?.id || ''}`} club={club} active={active} base={base} ready={ready} onCreated={done} initial={from?.kind !== 'team' ? prefill : null} />
+        ) : !feat.has('team_league') ? (
+          <LockedSection feature="team_league" title={t('tournaments.kind_team')} />
         ) : (
           <TeamLeagueSetup key={`t${from?.id || ''}`} club={club} active={active} base={base} ready={ready} onCreated={done} initial={from?.kind === 'team' ? prefill : null} />
         ))}
@@ -153,6 +161,7 @@ const format = 'doubles';
 const size = 2;
 function PairsSetup({ club, active, base, ready, onCreated, initial }) {
   const { t } = useI18n();
+  const feat = useFeatures();
   const [picked, setPicked] = useState(() => (initial ? initial.teams.flat() : []));
   const [teams, setTeams] = useState(() => (initial ? initial.teams.map((tm) => [tm[0] || '', tm[1] || '']) : [])); // [[id, id], ...]
   const [leftover, setLeftover] = useState([]);
@@ -238,7 +247,9 @@ function PairsSetup({ club, active, base, ready, onCreated, initial }) {
 
       <Section n={3} title={t('tournaments.teams', { n: complete.length })}>
           <div className="flex flex-wrap gap-2 mb-2">
-            <button type="button" className="btn-primary text-sm" disabled={picked.length < 2} onClick={() => autoPair('balanced')}>{t('tournaments.pairBalanced')}</button>
+            <button type="button" className="btn-primary text-sm inline-flex items-center gap-2" disabled={picked.length < 2 || !feat.has('balanced_pairing')} onClick={() => autoPair('balanced')}>
+              {t('tournaments.pairBalanced')} <UpgradeBadge feature="balanced_pairing" />
+            </button>
             <button type="button" className="btn-secondary text-sm" disabled={picked.length < 2} onClick={() => autoPair('random')}>{t('tournaments.pairRandom')}</button>
           </div>
           <p className="text-gray-500 text-xs mb-3">{t('tournaments.pairHint')}</p>

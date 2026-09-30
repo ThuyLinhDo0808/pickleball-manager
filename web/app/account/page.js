@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { exportClubBackup } from '@/lib/exportExcel';
 import NotifySettings from '@/components/NotifySettings';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
+import PlanTable from '@/components/PlanTable';
 
 export default function AccountPage() {
   const { t } = useI18n();
@@ -55,6 +56,7 @@ export default function AccountPage() {
         )}
       </div>
 
+      <PlanTable />
       <HostPaymentSettings />
       <NotifySettings />
 

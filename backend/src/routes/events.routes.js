@@ -1,5 +1,6 @@
 const express = require('express');
 const { supabase } = require('../supabase');
+const features = require('../services/features');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
@@ -33,6 +34,36 @@ const PUBLIC_EVENT_FIELDS = [
   'cancel_deadline_hours', 'kind',
 ];
 
+// Privacy (paid feature): players who chose to hide their identity show as initials.
+const maskName = (name) =>
+  String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => `${w[0].toUpperCase()}.`)
+    .join(' ') || '•••';
+
+async function hiddenPlayers(event, rows) {
+  const out = new Set();
+  try {
+    if (!rows.length || !(await features.hostHas(event.host_id, 'privacy'))) return out;
+    const memberIds = [...new Set(rows.map((r) => r.source_club_member_id).filter(Boolean))];
+    const { data: members } = memberIds.length
+      ? await supabase.from('club_members').select('id, user_id').in('id', memberIds).not('user_id', 'is', null)
+      : { data: [] };
+    const userOf = new Map((members || []).map((m) => [m.id, m.user_id]));
+    const userIds = [...new Set([...rows.map((r) => r.user_id), ...userOf.values()].filter(Boolean))];
+    if (!userIds.length) return out;
+    const { data: profiles } = await supabase.from('player_profiles').select('user_id').in('user_id', userIds).eq('hide_identity', true);
+    const hiddenUsers = new Set((profiles || []).map((p) => p.user_id));
+    for (const u of hiddenUsers) out.add(u);
+    for (const [mid, u] of userOf) if (hiddenUsers.has(u)) out.add(`m:${mid}`);
+  } catch (err) {
+    console.error('privacy lookup failed', err); // never block the public page
+  }
+  return out;
+}
+
 router.get('/public/:publicToken', async (req, res) => {
   if (!isUuid(req.params.publicToken)) return notFound(res, 'Event');
   const { data: event, error } = await supabase
@@ -49,13 +80,17 @@ router.get('/public/:publicToken', async (req, res) => {
     console.error('expireHolds failed on public page', err);
   }
 
-  const { data: people, error: pErr } = await supabase
+  const { data: rows, error: pErr } = await supabase
     .from('event_participants')
-    .select('full_name, dupr_level, status, joined_at')
+    .select('full_name, dupr_level, status, joined_at, user_id, source_club_member_id')
     .eq('event_id', event.id)
     .not('status', 'in', '(cancelled,no_show)') // (works on databases that don't know 'pending' yet)
     .order('joined_at', { ascending: true });
   if (pErr) return dbError(res, pErr);
+  const hidden = await hiddenPlayers(event, rows);
+  const people = rows.map(({ user_id, source_club_member_id, ...p }) =>
+    hidden.has(user_id) || hidden.has(`m:${source_club_member_id}`) ? { ...p, full_name: maskName(p.full_name), hidden: true } : p
+  );
 
   let closedCode = null;
   if (!event.allow_public_registration) closedCode = 'disabled';
@@ -88,7 +123,7 @@ async function publicEvent(req, res) {
 }
 
 function fail(res, err) {
-  return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  return err.status ? res.status(err.status).json({ error: err.message, code: err.code, feature: err.feature, tier_needed: err.tier_needed }) : dbError(res, err);
 }
 
 async function playerProfile(userId) {
@@ -270,6 +305,9 @@ router.post('/', async (req, res) => {
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
   if (!(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
+  if (fields.cancel_deadline_hours != null && !(await features.hostHas(req.hostId, 'cancel_policy'))) {
+    return features.sendUpgrade(res, features.upgradeError('cancel_policy'));
+  }
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
   const days = dates || Array.from({ length: weeks }, (_, i) => addDays(event_date, 7 * i));
@@ -301,6 +339,9 @@ router.patch('/:eventId', async (req, res) => {
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
   if ('club_id' in fields && !(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
+  if (fields.cancel_deadline_hours != null && fields.cancel_deadline_hours !== req.event.cancel_deadline_hours && !(await features.hostHas(req.hostId, 'cancel_policy'))) {
+    return features.sendUpgrade(res, features.upgradeError('cancel_policy'));
+  }
   const { data, error } = await supabase
     .from('events')
     .update(fields)
@@ -443,7 +484,7 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     // "Paid" on someone still waiting for confirmation = confirm their payment.
     if (action === 'fee' && req.body.fee_paid && prior.status === 'pending') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
   } catch (err) {
-    return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+    return err.status ? res.status(err.status).json({ error: err.message, code: err.code, feature: err.feature, tier_needed: err.tier_needed }) : dbError(res, err);
   }
   if (action !== 'fee') return res.status(400).json({ error: `Unknown action: ${action}` });
 
@@ -497,9 +538,10 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
 // Scan a player's personal QR (from the player portal) -> check them in.
 router.post('/:eventId/checkin-code', async (req, res) => {
   try {
+    await features.assertFeature(req.event.host_id, 'qr_checkin');
     res.json(await checkInByCode(req.event, req.body.code));
   } catch (err) {
-    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code, feature: err.feature, tier_needed: err.tier_needed }) : dbError(res, err);
   }
 });
 

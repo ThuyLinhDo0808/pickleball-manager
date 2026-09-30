@@ -1,4 +1,5 @@
 'use client';
+import { LockedSection } from '@/components/Locked';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
@@ -6,7 +7,7 @@ import { api } from '@/lib/api';
 // Host: where "moved up from the waitlist" notices go. Players who connected Telegram
 // in the portal get a DM automatically; this webhook is for everything else
 // (Make / Zapier / n8n -> Zalo ZNS, SMS, a Telegram group, Slack...).
-export default function NotifySettings() {
+function NotifySettingsInner() {
   const { t } = useI18n();
   const [url, setUrl] = useState('');
   const [saved, setSaved] = useState('');
@@ -69,5 +70,14 @@ export default function NotifySettings() {
       {msg && <p className="text-sm text-gray-300 mt-2">{msg}</p>}
       <p className="text-gray-500 text-xs mt-2">{t('notify.webhookHelp')}</p>
     </div>
+  );
+}
+
+export default function NotifySettings() {
+  const { t } = useI18n();
+  return (
+    <LockedSection feature="auto_notify" title={t('notify.title')}>
+      <NotifySettingsInner />
+    </LockedSection>
   );
 }

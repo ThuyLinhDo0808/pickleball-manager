@@ -120,7 +120,7 @@ export default function PublicEventPage() {
             <li key={i} className="flex items-center justify-between py-2 text-sm">
               <span className="text-gray-200">
                 <span className="text-gray-500 w-6 inline-block">{i + 1}.</span>
-                {p.full_name}
+                {p.full_name}{p.hidden && <span title={t('privacy.hiddenTip')}> 🕶</span>}
                 {p.status === 'pending' && <span className="ml-2 text-[11px] text-sky-300">({t('signup.pendingShort')})</span>}
               </span>
               {p.dupr_level != null && <span className="text-gray-400 text-xs">{p.dupr_level}</span>}
@@ -136,7 +136,7 @@ export default function PublicEventPage() {
               {waitlist.map((p, i) => (
                 <li key={i} className="py-2 text-sm text-gray-400">
                   <span className="text-gray-500 w-6 inline-block">{i + 1}.</span>
-                  {p.full_name}
+                  {p.full_name}{p.hidden && <span title={t('privacy.hiddenTip')}> 🕶</span>}
                 </li>
               ))}
             </ol>

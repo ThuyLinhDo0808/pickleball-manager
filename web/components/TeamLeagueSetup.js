@@ -1,4 +1,6 @@
 'use client';
+import { useFeatures } from '@/lib/useFeatures';
+import { UpgradeBadge } from '@/components/Locked';
 import { useMemo, useState } from 'react';
 import Section from '@/components/NumberedSection';
 import { useI18n } from '@/context/I18nContext';
@@ -20,6 +22,7 @@ function missingFor(players, formats) {
 // sub-matches (men's, women's, mixed doubles…). The builder balances total DUPR.
 export default function TeamLeagueSetup({ club, active, base, ready, onCreated, initial }) {
   const { t } = useI18n();
+  const feat = useFeatures();
   const [formats, setFormats] = useState(initial?.formats || ['mens', 'womens', 'mixed']);
   const [winRule, setWinRule] = useState(initial?.winRule || 'sub_wins');
   const [picked, setPicked] = useState(() => (initial ? initial.teams.flatMap((tm) => tm.ids) : []));
@@ -151,7 +154,9 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
             <label className="text-xs text-gray-400">{t('league.teamCount')}</label>
             <input className="input" type="number" inputMode="numeric" min="2" max="16" value={teamCount} onChange={(e) => setTeamCount(e.target.value)} />
           </div>
-          <button type="button" className="btn-primary text-sm" disabled={picked.length < 4} onClick={() => build('balanced')}>⚖️ {t('league.buildBalanced')}</button>
+          <button type="button" className="btn-primary text-sm inline-flex items-center gap-2" disabled={picked.length < 4 || !feat.has('balanced_pairing')} onClick={() => build('balanced')}>
+            ⚖️ {t('league.buildBalanced')} <UpgradeBadge feature="balanced_pairing" />
+          </button>
           <button type="button" className="btn-secondary text-sm" disabled={picked.length < 4} onClick={() => build('random')}>🎲 {t('tournaments.pairRandom')}</button>
         </div>
         {picked.length >= 4 && Number(teamCount) !== suggested && (

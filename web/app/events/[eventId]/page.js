@@ -1,4 +1,5 @@
 'use client';
+import { LockedSection, UpgradeBadge } from '@/components/Locked';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
@@ -163,12 +164,16 @@ export default function EventDetailPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-          <button className="btn-primary text-sm" onClick={() => setShowQr(true)}>📷 {t('qr.scan')}</button>
+          <button className="btn-primary text-sm inline-flex items-center gap-2" onClick={() => setShowQr(true)}>📷 {t('qr.scan')} <UpgradeBadge feature="qr_checkin" /></button>
           <button className="btn-secondary text-sm" onClick={onExport}>{t('common.exportExcel')}</button>
         </div>
       </div>
       <Modal open={showQr} title={t('qr.scanTitle')} onClose={() => setShowQr(false)}>
-        {showQr && <QrCheckinPanel endpoint={`/api/events/${eventId}/checkin-code`} onCheckedIn={refresh} />}
+        {showQr && (
+          <LockedSection feature="qr_checkin" title={t('qr.scanTitle')}>
+            <QrCheckinPanel endpoint={`/api/events/${eventId}/checkin-code`} onCheckedIn={refresh} />
+          </LockedSection>
+        )}
       </Modal>
 
       <EventControls event={event} onChanged={setEvent} />

@@ -1,5 +1,6 @@
 const express = require('express');
 const { supabase } = require('../supabase');
+const features = require('../services/features');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
 const { setAttendance, checkInByCode } = require('../services/attendance');
@@ -45,7 +46,7 @@ grants.get('/', async (req, res) => {
   res.json(data);
 });
 
-grants.post('/', async (req, res) => {
+grants.post('/', features.requireFeature('staff_roles'), async (req, res) => {
   const email = cleanEmail(req.body.email);
   const { role } = req.body;
   const club_id = req.body.club_id || null;
@@ -259,10 +260,11 @@ staff.post('/events/:eventId/participants/:participantId/:action', async (req, r
 staff.post('/events/:eventId/checkin-code', async (req, res) => {
   if (!CAN[req.staffRole].checkIn) return res.status(403).json({ error: 'Referees cannot check players in.' });
   try {
+    await features.assertFeature(req.event.host_id, 'qr_checkin');
     const p = await checkInByCode(req.event, req.body.code);
     res.json({ id: p.id, full_name: p.full_name, status: p.status, already: p.already, pass: p.pass });
   } catch (err) {
-    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : fail(res, err);
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code, feature: err.feature, tier_needed: err.tier_needed }) : fail(res, err);
   }
 });
 

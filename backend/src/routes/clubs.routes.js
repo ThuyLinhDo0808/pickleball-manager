@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const { supabase } = require('../supabase');
+const features = require('../services/features');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
@@ -353,7 +354,7 @@ router.delete('/:clubId/members/:memberId', async (req, res) => {
 
 // Change history (SCD Type 2, written by DB triggers): member status/tier/type/DUPR,
 // membership payment status, and the linked player's own DUPR.
-router.get('/:clubId/members/:memberId/history', async (req, res) => {
+router.get('/:clubId/members/:memberId/history', features.requireFeature('audit_trail'), async (req, res) => {
   const { data: ms, error: mErr } = await supabase.from('memberships').select('id, period_label').eq('club_member_id', req.member.id);
   if (mErr) return dbError(res, mErr);
   const filters = [`and(entity.eq.club_member,entity_id.eq.${req.member.id})`];

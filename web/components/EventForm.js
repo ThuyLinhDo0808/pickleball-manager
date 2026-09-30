@@ -1,5 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useFeatures } from '@/lib/useFeatures';
+import { UpgradeBadge } from '@/components/Locked';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DatePopover from '@/components/DatePopover';
 import { KIND_ICON, STATUS_STYLE } from '@/components/EventCalendar';
@@ -110,6 +112,14 @@ export function eventPayload(f) {
 export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null }) {
   const { t } = useI18n();
   const [f, setF] = useState(initial);
+  const feat = useFeatures();
+  // Free plan: no cancellation deadline (the select is locked and nothing is sent).
+  useEffect(() => {
+    if (feat.ready && !feat.has('cancel_policy') && f.cancel_deadline_hours !== '') {
+      setF((prev) => ({ ...prev, cancel_deadline_hours: '' }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feat.ready]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = (patch) => setF((prev) => ({ ...prev, ...patch }));
@@ -195,8 +205,12 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('events.deadline')} span={2}>
             <input className="input" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} />
           </Field>
-          <Field label={t('policy.label')} span={2} hint={f.cancel_deadline_hours === '' ? t('policy.noneHint') : t('policy.hint', { h: f.cancel_deadline_hours })}>
-            <select className="input" value={f.cancel_deadline_hours} onChange={(e) => set({ cancel_deadline_hours: e.target.value })}>
+          <Field
+            label={<span className="inline-flex items-center gap-2">{t('policy.label')} <UpgradeBadge feature="cancel_policy" /></span>}
+            span={2}
+            hint={!feat.has('cancel_policy') ? t('plans.policyLocked') : f.cancel_deadline_hours === '' ? t('policy.noneHint') : t('policy.hint', { h: f.cancel_deadline_hours })}
+          >
+            <select className="input" disabled={!feat.has('cancel_policy')} value={feat.has('cancel_policy') ? f.cancel_deadline_hours : ''} onChange={(e) => set({ cancel_deadline_hours: e.target.value })}>
               {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hours', { h })}</option>)}
             </select>
           </Field>

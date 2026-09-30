@@ -1,5 +1,6 @@
 const express = require('express');
 const { supabase } = require('../supabase');
+const features = require('../services/features');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
 const { localDate, winnerTeam } = require('../services/stats');
@@ -127,7 +128,7 @@ router.get('/events-pnl', async (req, res) => {
 });
 
 // No-show rate by weekday x start-time slot, over past sessions in the last N months.
-router.get('/no-shows', async (req, res) => {
+router.get('/no-shows', features.requireFeature('advanced_analytics'), async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope) return notFound(res, 'Club');
@@ -177,7 +178,7 @@ router.get('/no-shows', async (req, res) => {
 });
 
 // One member's form per month: club matches + matches inside the club's sessions.
-router.get('/player-form', async (req, res) => {
+router.get('/player-form', features.requireFeature('advanced_analytics'), async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope?.clubId) return notFound(res, 'Club');

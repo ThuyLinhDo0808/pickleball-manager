@@ -1,4 +1,5 @@
 'use client';
+import { LockedSection, UpgradeBadge } from '@/components/Locked';
 import { useState } from 'react';
 import AppShell from '@/components/AppShell';
 import { useI18n } from '@/context/I18nContext';
@@ -82,6 +83,7 @@ export default function StaffAccessPage() {
       <h1 className="text-white text-2xl font-bold mb-1">{t('staff.title')}</h1>
       <p className="text-gray-400 text-sm mb-4">{t('staff.hint')}</p>
 
+      <LockedSection feature="staff_roles" title={t('staff.title')}>
       <form onSubmit={grant} className="card mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-gray-400">{t('staff.email')}</label>
@@ -128,6 +130,7 @@ export default function StaffAccessPage() {
           {error && <span className="text-red-400 text-sm">{error}</span>}
         </div>
       </form>
+      </LockedSection>
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {!loading && (grants || []).length === 0 && <p className="text-gray-400 text-sm">{t('staff.none')}</p>}

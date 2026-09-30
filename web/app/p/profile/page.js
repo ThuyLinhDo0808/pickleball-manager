@@ -6,7 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-const empty = { full_name: '', phone: '', dupr_level: '', gender: '', birth_date: '', avatar: null };
+const empty = { full_name: '', phone: '', dupr_level: '', gender: '', birth_date: '', avatar: null, hide_identity: false };
 
 // Shrink a photo to a 256px square JPEG data URL (~20-40 KB) so it can live in the profile row.
 function resizePhoto(file) {
@@ -128,6 +128,13 @@ export default function PlayerProfile() {
             <option value="female">{t('members.female')}</option>
           </select>
         </div>
+        <label className="col-span-2 flex items-start gap-3 rounded-lg border border-navy-600 p-3 cursor-pointer">
+          <input type="checkbox" className="mt-1" checked={!!form.hide_identity} onChange={(e) => setForm((f) => ({ ...f, hide_identity: e.target.checked }))} />
+          <span>
+            <span className="text-white text-sm font-semibold block">🕶 {t('privacy.toggle')}</span>
+            <span className="text-gray-400 text-xs">{t('privacy.hint')}</span>
+          </span>
+        </label>
         {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
         <div className="col-span-2 flex items-center gap-3">
           <button className="btn-primary" disabled={busy}>{t('common.save')}</button>

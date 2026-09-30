@@ -1,4 +1,5 @@
 'use client';
+import { LockedSection } from '@/components/Locked';
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import Modal from '@/components/Modal';
@@ -137,6 +138,7 @@ export default function InventoryPage() {
         <button className="btn-primary text-sm shrink-0" onClick={() => setAdding(true)} disabled={!club}>+ {t('inventory.addItem')}</button>
       </div>
 
+      <LockedSection feature="advanced_analytics" title={t('inventory.compare')}>
       <section className="card mb-4">
         <h2 className="text-white font-semibold">{t('inventory.compare')}</h2>
         <p className="text-gray-500 text-xs mb-2">{t('inventory.compareHint')}</p>
@@ -167,6 +169,7 @@ export default function InventoryPage() {
           </div>
         )}
       </section>
+      </LockedSection>
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {!loading && (items || []).length === 0 && <p className="text-gray-400 text-sm">{t('inventory.none')}</p>}

@@ -511,6 +511,26 @@ Mỗi Host có một gói, giới hạn **số người đang được quản l�
 
 Khi hết chỗ, app chặn thêm người và báo lỗi. Trang **Tài khoản** hiển thị gói và mức đã dùng (`used/limit`). Nếu backend đặt `ALLOW_TIER_SELF_SERVE=true`, Host tự đổi gói được (tiện cho giai đoạn thử nghiệm). Tắt đi khi có thanh toán thật.
 
+
+#### Tính năng theo gói (cấu hình ở `backend/src/services/features.js`)
+Gói cao hơn có mọi thứ của gói thấp hơn. Xem bảng so sánh trong **Cài đặt → Tài khoản → Gói dịch vụ**.
+
+| Nhóm | Tính năng | Gói tối thiểu | Bản Free |
+|---|---|---|---|
+| Tự động hóa | Check-in bằng quét mã QR | Basic | Chỉ bấm nút check-in |
+| Tự động hóa | Thông báo tự động (Telegram / webhook) | Basic | Không gửi tin; Host tự theo dõi |
+| Tự động hóa | Trợ lý ghép cặp / chia đội cân bằng DUPR | Basic | Ghép ngẫu nhiên hoặc xếp tay |
+| Quản trị | Phân quyền nhân sự (điều phối, trọng tài, đồng quản trị) | Standard | — |
+| Quản trị | Giải Đồng đội (Team League) | Standard | Giải đánh theo bảng vẫn dùng được |
+| Quản trị | Chính sách hủy kèo (hạn hủy, hủy muộn trừ buổi / tính phí) | Standard | Không đặt hạn hủy |
+| Phân tích & bảo mật | Heatmap vắng mặt theo khung giờ, phong độ 12 tháng, chi phí bóng / buổi | Pro | Doanh thu tổng |
+| Phân tích & bảo mật | Lịch sử thay đổi (audit trail) | Pro | — |
+| Phân tích & bảo mật | Chế độ riêng tư: người chơi ẩn tên trên link đăng ký công khai | Pro | — |
+
+- Trên web, tính năng chưa có trong gói hiện nhãn **🔒 Basic / Standard / Pro** và khung giải thích + nút *Xem gói*.
+- Server cũng chặn: gọi API của tính năng bị khoá trả **402** `{ code: "upgrade_required", feature, tier_needed }`.
+- **Riêng tư:** người chơi bật *"Ẩn tên tôi trên link đăng ký công khai"* ở trang Hồ sơ. Ở kèo/CLB của Host gói Pro, trang đăng ký công khai chỉ hiện tên viết tắt (vd "N. V. A." 🕶); Host vẫn thấy tên thật và SĐT.
+
 ### 8.5. Sao lưu (`/account`)
 **Club backup** xuất một file Excel gồm Thành viên, Lịch buổi và Xếp hạng của CLB đang chọn.
 
@@ -683,7 +703,8 @@ supabase/migrations/
 ├── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
 ├── 20261004090000_tournament_entry_fee.sql              # lệ phí tham gia giải
 ├── 20261005090000_tournament_fee_payments.sql           # ai đã đóng lệ phí giải (ghi thu vào quỹ CLB)
-└── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
+├── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
+└── 20261007090000_player_privacy.sql                    # người chơi ẩn tên trên link công khai (gói Pro)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):

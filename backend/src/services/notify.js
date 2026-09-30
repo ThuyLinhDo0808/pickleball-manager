@@ -184,13 +184,24 @@ async function notifyMemberRequest(event, member, isNew) {
   return safe(sendToHostWebhook(event.host_id, payloadFor('member_request', event, member, text, { new_member: isNew })));
 }
 
+// Automatic messages are a paid feature (plan "auto_notify"): on lower plans nothing is sent.
+const { hostHas } = require('./features');
+const gated = (fn) => async (event, ...rest) => {
+  try {
+    if (!(await hostHas(event?.host_id, 'auto_notify'))) return { skipped: 'plan' };
+  } catch {
+    return { skipped: 'plan' };
+  }
+  return fn(event, ...rest);
+};
+
 module.exports = {
-  notifyMemberRequest,
-  notifyEventCancelled,
-  notifyPromoted,
-  notifyPaymentConfirmed,
-  notifyPaymentRejected,
-  notifyPaymentSubmitted,
+  notifyMemberRequest: gated(notifyMemberRequest),
+  notifyEventCancelled: gated(notifyEventCancelled),
+  notifyPromoted: gated(notifyPromoted),
+  notifyPaymentConfirmed: gated(notifyPaymentConfirmed),
+  notifyPaymentRejected: gated(notifyPaymentRejected),
+  notifyPaymentSubmitted: gated(notifyPaymentSubmitted),
   telegramSend,
   postWebhook,
   promotedText,

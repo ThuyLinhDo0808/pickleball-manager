@@ -1,5 +1,6 @@
 const express = require('express');
 const { supabase } = require('../supabase');
+const features = require('../services/features');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const T = require('../services/tournament');
 
@@ -36,7 +37,7 @@ function badRequest(message, status = 400) {
 }
 
 function fail(res, err) {
-  return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+  return err.status ? res.status(err.status).json({ error: err.message, code: err.code, feature: err.feature, tier_needed: err.tier_needed }) : dbError(res, err);
 }
 
 async function ownedClub(hostId, clubId) {
@@ -142,6 +143,7 @@ router.post('/pairing', async (req, res) => {
   if (!FORMATS.includes(format)) return res.status(400).json({ error: 'format must be singles, doubles or mixed.' });
   if (!ids.every(isUuid)) return res.status(400).json({ error: 'invalid player id.' });
   try {
+    if (mode !== 'random') await features.assertFeature(req.hostId, 'balanced_pairing');
     const players = await clubMembers(club_id, ids);
     res.json(T.pairTeams(players, format, mode === 'random' ? 'random' : 'balanced'));
   } catch (err) {
@@ -159,6 +161,8 @@ router.post('/team-builder', async (req, res) => {
   if (!(count >= 2 && count <= 16)) return res.status(400).json({ error: 'team_count must be 2-16.' });
   if (ids.length < count * 2) return res.status(400).json({ error: 'Each team needs at least 2 players.' });
   try {
+    await features.assertFeature(req.hostId, 'team_league');
+    if (req.body.mode !== 'random') await features.assertFeature(req.hostId, 'balanced_pairing');
     const players = await clubMembers(club_id, ids);
     res.json({ teams: T.buildTeams(players, count, req.body.mode === 'random' ? 'random' : 'balanced') });
   } catch (err) {
@@ -285,6 +289,7 @@ async function createTeamLeague(req, res) {
   const winRule = req.body.win_rule === 'points' ? 'points' : 'sub_wins';
   try {
     if (!(await ownedClub(req.hostId, club_id))) throw badRequest('Club not found.', 404);
+    await features.assertFeature(req.hostId, 'team_league');
     if (!name) throw badRequest('name is required.');
     if (teamsIn.length < 2) throw badRequest('At least 2 teams are needed.');
     if (!subFormats.length || subFormats.length > 7 || !subFormats.every((f) => T.SUB_FORMATS.includes(f))) {

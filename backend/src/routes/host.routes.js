@@ -1,5 +1,6 @@
 const express = require('express');
 const { supabase } = require('../supabase');
+const features = require('../services/features');
 const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
 
@@ -21,7 +22,7 @@ router.get('/subscription', async (req, res) => {
   const { data, error } = await supabase.from('host_subscriptions').select('*').eq('host_id', req.hostId).single();
   if (error) return dbError(res, error);
   const usage = await getUsage(req.hostId).catch(() => null);
-  res.json({ ...data, usage });
+  res.json({ ...data, usage, features: features.featureMap(data.tier), feature_tiers: features.FEATURES, tiers: features.TIER_ORDER });
 });
 
 router.patch('/subscription', async (req, res) => {
@@ -90,7 +91,7 @@ router.patch('/notifications', async (req, res) => {
 });
 
 // Send a sample "promoted" message so the Host can check their Zalo/Make/Zapier flow.
-router.post('/notifications/test', async (req, res) => {
+router.post('/notifications/test', features.requireFeature('auto_notify'), async (req, res) => {
   const { data } = await supabase.from('users').select('notify_webhook_url').eq('id', req.hostId).single();
   if (!data?.notify_webhook_url) return res.status(400).json({ error: 'Save a webhook URL first.' });
   const event = { title: 'Kèo thử', event_date: new Date().toISOString().slice(0, 10), start_time: '20:00:00', location: 'Sân mẫu' };

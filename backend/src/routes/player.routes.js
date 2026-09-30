@@ -139,7 +139,7 @@ function cleanProfile(body) {
   if (avatar && !(/^data:image\/(jpeg|png|webp);base64,/.test(avatar) && avatar.length <= 150000)) {
     throw badRequest('avatar must be a small JPEG/PNG/WebP image.');
   }
-  return { full_name, phone, dupr_level: dupr, birth_date: birth, birth_year: year, gender, avatar };
+  return { full_name, phone, dupr_level: dupr, birth_date: birth, birth_year: year, gender, avatar, hide_identity: body.hide_identity === true };
 }
 
 // Copy profile details into blank fields of a club record (never overwrite the Host's data).

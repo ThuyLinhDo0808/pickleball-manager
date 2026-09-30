@@ -1030,5 +1030,12 @@ create policy p_tfee_owner on public.tournament_fee_payments for all
 -- Players give their full birth date (not just the year); it fills the club record.
 alter table public.player_profiles add column if not exists birth_date date;
 
+-- ----------------------------------------------------------------------------
+-- PLAYER PRIVACY  (migration 20261007090000)
+-- ----------------------------------------------------------------------------
+-- A player can hide their name on public sign-up pages (applies where the host's plan
+-- includes the privacy feature); the host still sees the real name.
+alter table public.player_profiles add column if not exists hide_identity boolean not null default false;
+
 select 1; -- done
 notify pgrst, 'reload schema';
