@@ -4,6 +4,7 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
+const { itemMetrics } = require('../services/inventory');
 const {
   PERIODS: PERIODS_STATS,
   DEFAULT_MIN_MATCHES,
@@ -252,6 +253,25 @@ router.delete('/:clubId/members/:memberId', async (req, res) => {
   const { error } = await supabase.from('club_members').delete().eq('id', req.member.id);
   if (error) return dbError(res, error);
   res.status(204).end();
+});
+
+// Change history (SCD Type 2, written by DB triggers): member status/tier/type/DUPR,
+// membership payment status, and the linked player's own DUPR.
+router.get('/:clubId/members/:memberId/history', async (req, res) => {
+  const { data: ms, error: mErr } = await supabase.from('memberships').select('id, period_label').eq('club_member_id', req.member.id);
+  if (mErr) return dbError(res, mErr);
+  const filters = [`and(entity.eq.club_member,entity_id.eq.${req.member.id})`];
+  if (ms.length) filters.push(`and(entity.eq.membership,entity_id.in.(${ms.map((m) => m.id).join(',')}))`);
+  if (req.member.user_id) filters.push(`and(entity.eq.player,entity_id.eq.${req.member.user_id})`);
+  const { data, error } = await supabase
+    .from('change_history')
+    .select('entity, entity_id, attribute, value, valid_from, valid_to')
+    .or(filters.join(','))
+    .order('valid_from', { ascending: false })
+    .limit(500);
+  if (error) return dbError(res, error);
+  const label = new Map(ms.map((m) => [m.id, m.period_label]));
+  res.json(data.map((h) => ({ ...h, period_label: h.entity === 'membership' ? label.get(h.entity_id) || null : null })));
 });
 
 // ---- Membership plans / registrations -----------------------------------
@@ -562,6 +582,159 @@ router.post('/:clubId/pending-payments/:ref/confirm', async (req, res) => {
   } catch (err) {
     dbError(res, err);
   }
+});
+
+// ---- Inventory (balls & supplies) -------------------------------------------
+router.param('itemId', async (req, res, next, itemId) => {
+  if (!isUuid(itemId)) return notFound(res, 'Item');
+  const { data, error } = await supabase.from('inventory_items').select('*').eq('id', itemId).eq('club_id', req.club.id).maybeSingle();
+  if (error) return dbError(res, error);
+  if (!data) return notFound(res, 'Item');
+  req.item = data;
+  next();
+});
+
+async function inventoryFor(clubId) {
+  const { data: items, error } = await supabase
+    .from('inventory_items')
+    .select('*, inventory_moves(*)')
+    .eq('club_id', clubId)
+    .order('created_at');
+  if (error) throw error;
+  return items.map(({ inventory_moves: moves, ...item }) => ({
+    ...item,
+    ...itemMetrics(moves || []),
+    moves: (moves || []).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || b.created_at.localeCompare(a.created_at)).slice(0, 30),
+  }));
+}
+
+async function stockOf(itemId) {
+  const { data, error } = await supabase.from('inventory_moves').select('kind, quantity, unit_cost, sessions_lasted').eq('item_id', itemId);
+  if (error) throw error;
+  return itemMetrics(data).stock;
+}
+
+router.get('/:clubId/inventory', async (req, res) => {
+  try {
+    res.json(await inventoryFor(req.club.id));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+router.post('/:clubId/inventory', async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'name is required.' });
+  const holes = req.body.holes === '' || req.body.holes == null ? null : parseInt(req.body.holes, 10);
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .insert({
+      club_id: req.club.id,
+      name,
+      category: req.body.category === 'other' ? 'other' : 'ball',
+      holes: Number.isInteger(holes) ? holes : null,
+      unit: String(req.body.unit || '').trim() || 'quả',
+    })
+    .select()
+    .single();
+  if (error) return dbError(res, error);
+  res.status(201).json(data);
+});
+
+router.patch('/:clubId/inventory/:itemId', async (req, res) => {
+  const fields = pick(req.body, ['name', 'is_active', 'unit']);
+  const { data, error } = await supabase.from('inventory_items').update(fields).eq('id', req.item.id).select().single();
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
+// Purchase (optionally also a club-fund expense), retire (with sessions lasted) or adjust.
+router.post('/:clubId/inventory/:itemId/moves', async (req, res) => {
+  const kind = req.body.kind;
+  const quantity = parseInt(req.body.quantity, 10);
+  if (!['purchase', 'retire', 'adjust'].includes(kind)) return res.status(400).json({ error: 'kind must be purchase, retire or adjust.' });
+  if (!Number.isInteger(quantity) || quantity === 0 || (kind !== 'adjust' && quantity < 0)) {
+    return res.status(400).json({ error: 'quantity must be a whole number (positive for purchase/retire).' });
+  }
+  const unitCost = kind === 'purchase' ? Number(req.body.unit_cost) : null;
+  if (kind === 'purchase' && !(unitCost >= 0)) return res.status(400).json({ error: 'unit_cost is required for a purchase.' });
+  const lasted = kind === 'retire' && req.body.sessions_lasted !== '' && req.body.sessions_lasted != null ? Number(req.body.sessions_lasted) : null;
+  if (lasted != null && !(lasted > 0 && lasted < 10000)) return res.status(400).json({ error: 'sessions_lasted must be > 0.' });
+  const occurred_on = /^\d{4}-\d{2}-\d{2}$/.test(req.body.occurred_on || '') ? req.body.occurred_on : todayYmd();
+
+  try {
+    // Stock can never go below zero (retiring or a negative adjustment).
+    if (kind === 'retire' || (kind === 'adjust' && quantity < 0)) {
+      const stock = await stockOf(req.item.id);
+      if (Math.abs(quantity) > stock) return res.status(400).json({ error: `Only ${stock} in stock.` });
+    }
+    let transaction_id = null;
+    if (kind === 'purchase' && req.body.record_expense !== false && unitCost * quantity > 0) {
+      const { data: txn, error: tErr } = await supabase
+        .from('transactions')
+        .insert({
+          host_id: req.hostId,
+          owner_type: 'club',
+          club_id: req.club.id,
+          type: 'expense',
+          category: 'balls',
+          amount: Math.round(unitCost * quantity),
+          note: `${quantity} × ${req.item.name}`,
+          occurred_on,
+        })
+        .select('id')
+        .single();
+      if (tErr) throw tErr;
+      transaction_id = txn.id;
+    }
+    const { data, error } = await supabase
+      .from('inventory_moves')
+      .insert({
+        item_id: req.item.id,
+        kind,
+        quantity,
+        unit_cost: unitCost,
+        sessions_lasted: lasted,
+        occurred_on,
+        note: String(req.body.note || '').trim() || null,
+        transaction_id,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// Undo a mistaken entry; a linked fund expense is voided (the ledger stays append-only).
+router.delete('/:clubId/inventory/:itemId/moves/:moveId', async (req, res) => {
+  if (!isUuid(req.params.moveId)) return notFound(res, 'Move');
+  const { data: move } = await supabase.from('inventory_moves').select('*').eq('id', req.params.moveId).eq('item_id', req.item.id).maybeSingle();
+  if (!move) return notFound(res, 'Move');
+  // Removing a purchase (or a positive adjustment) must not leave negative stock.
+  const effect = move.kind === 'retire' ? -move.quantity : move.quantity;
+  if (effect > 0) {
+    let stock;
+    try {
+      stock = await stockOf(req.item.id);
+    } catch (err) {
+      return dbError(res, err);
+    }
+    if (stock - effect < 0) {
+      return res.status(400).json({ error: `Can't delete: ${effect - stock} of these balls were already retired or adjusted. Delete those entries first.` });
+    }
+  }
+  if (move.transaction_id) {
+    await supabase
+      .from('transactions')
+      .update({ is_voided: true, voided_at: new Date().toISOString(), void_reason: 'inventory entry deleted' })
+      .eq('id', move.transaction_id);
+  }
+  const { error } = await supabase.from('inventory_moves').delete().eq('id', move.id);
+  if (error) return dbError(res, error);
+  res.status(204).end();
 });
 
 // ---- Rankings / fund ------------------------------------------------------

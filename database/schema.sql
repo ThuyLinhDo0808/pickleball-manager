@@ -382,6 +382,131 @@ create table if not exists public.player_profiles (
 );
 
 -- ----------------------------------------------------------------------------
+-- INVENTORY (balls & supplies): purchases, retirements (with how long they
+-- lasted) and adjustments -> stock, durability and cost per ball per session.
+-- ----------------------------------------------------------------------------
+create table if not exists public.inventory_items (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  name text not null,
+  category text not null default 'ball' check (category in ('ball','other')),
+  holes int check (holes is null or holes between 10 and 80), -- e.g. 40-hole outdoor, 26-hole indoor
+  unit text not null default 'quả',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.inventory_moves (
+  id uuid primary key default gen_random_uuid(),
+  item_id uuid not null references public.inventory_items(id) on delete cascade,
+  kind text not null check (kind in ('purchase','retire','adjust')),
+  quantity int not null check (quantity <> 0),
+  unit_cost numeric(12,0) check (unit_cost is null or unit_cost >= 0),
+  sessions_lasted numeric(6,1) check (sessions_lasted is null or sessions_lasted > 0),
+  occurred_on date not null default current_date,
+  note text,
+  transaction_id uuid references public.transactions(id) on delete set null,
+  created_at timestamptz not null default now(),
+  constraint chk_move_shape check (
+    (kind = 'purchase' and quantity > 0 and unit_cost is not null) or
+    (kind = 'retire' and quantity > 0) or
+    (kind = 'adjust')
+  )
+);
+create index if not exists ix_inventory_moves_item on public.inventory_moves (item_id, occurred_on);
+
+-- ----------------------------------------------------------------------------
+-- CHANGE HISTORY (SCD Type 2): every change to a tracked attribute closes the
+-- current row (valid_to) and opens a new one — nothing is overwritten.
+-- Filled by triggers, so it is complete no matter which code path made the change.
+-- ----------------------------------------------------------------------------
+create table if not exists public.change_history (
+  id bigserial primary key,
+  entity text not null check (entity in ('club_member','membership','player')),
+  entity_id uuid not null,
+  club_id uuid references public.clubs(id) on delete cascade, -- null for player profiles
+  attribute text not null,
+  value text,
+  valid_from timestamptz not null default now(),
+  valid_to timestamptz -- null = current value
+);
+create index if not exists ix_history_entity on public.change_history (entity, entity_id, attribute, valid_from);
+create unique index if not exists ux_history_current on public.change_history (entity, entity_id, attribute) where valid_to is null;
+
+-- Trigger args: entity, id column, then the attributes to track.
+create or replace function public.scd2_track() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  ent text := TG_ARGV[0];
+  id_col text := TG_ARGV[1];
+  attr text;
+  rec jsonb := to_jsonb(coalesce(new, old));
+  eid uuid := (rec ->> id_col)::uuid;
+  club uuid;
+  old_v text;
+  new_v text;
+begin
+  if ent = 'club_member' then
+    club := (rec ->> 'club_id')::uuid;
+  elsif ent = 'membership' then
+    select cm.club_id into club from public.club_members cm where cm.id = (rec ->> 'club_member_id')::uuid;
+  end if;
+
+  if TG_OP = 'DELETE' then
+    update public.change_history set valid_to = now()
+      where entity = ent and entity_id = eid and valid_to is null;
+    return old;
+  end if;
+
+  for i in 2 .. TG_NARGS - 1 loop
+    attr := TG_ARGV[i];
+    new_v := to_jsonb(new) ->> attr;
+    old_v := case when TG_OP = 'UPDATE' then to_jsonb(old) ->> attr end;
+    if TG_OP = 'INSERT' and new_v is null then continue; end if;
+    if TG_OP = 'UPDATE' and old_v is not distinct from new_v then continue; end if;
+    update public.change_history set valid_to = now()
+      where entity = ent and entity_id = eid and attribute = attr and valid_to is null;
+    insert into public.change_history (entity, entity_id, club_id, attribute, value)
+      values (ent, eid, club, attr, new_v);
+  end loop;
+  return new;
+end; $$;
+
+drop trigger if exists trg_hist_club_members on public.club_members;
+create trigger trg_hist_club_members after insert or update or delete on public.club_members
+  for each row execute function public.scd2_track('club_member', 'id', 'dupr_level', 'member_type', 'tier', 'is_active');
+
+drop trigger if exists trg_hist_memberships on public.memberships;
+create trigger trg_hist_memberships after insert or update or delete on public.memberships
+  for each row execute function public.scd2_track('membership', 'id', 'status', 'amount');
+
+drop trigger if exists trg_hist_player_profiles on public.player_profiles;
+create trigger trg_hist_player_profiles after insert or update or delete on public.player_profiles
+  for each row execute function public.scd2_track('player', 'user_id', 'dupr_level');
+
+-- Backfill: open a history row for data that existed before tracking started.
+insert into public.change_history (entity, entity_id, club_id, attribute, value, valid_from)
+select 'club_member', cm.id, cm.club_id, a.attr, a.val, cm.created_at
+from public.club_members cm
+cross join lateral (values ('dupr_level', cm.dupr_level::text), ('member_type', cm.member_type::text),
+                           ('tier', cm.tier::text), ('is_active', cm.is_active::text)) as a(attr, val)
+where a.val is not null
+  and not exists (select 1 from public.change_history h where h.entity = 'club_member' and h.entity_id = cm.id and h.attribute = a.attr);
+
+insert into public.change_history (entity, entity_id, club_id, attribute, value, valid_from)
+select 'membership', m.id, cm.club_id, a.attr, a.val, m.created_at
+from public.memberships m
+join public.club_members cm on cm.id = m.club_member_id
+cross join lateral (values ('status', m.status::text), ('amount', m.amount::text)) as a(attr, val)
+where not exists (select 1 from public.change_history h where h.entity = 'membership' and h.entity_id = m.id and h.attribute = a.attr);
+
+insert into public.change_history (entity, entity_id, attribute, value, valid_from)
+select 'player', p.user_id, 'dupr_level', p.dupr_level::text, p.updated_at
+from public.player_profiles p
+where p.dupr_level is not null
+  and not exists (select 1 from public.change_history h where h.entity = 'player' and h.entity_id = p.user_id);
+
+-- ----------------------------------------------------------------------------
 -- TOURNAMENTS (internal club tournaments: round-robin groups -> knockout)
 -- ----------------------------------------------------------------------------
 create table if not exists public.tournaments (
@@ -588,6 +713,9 @@ alter table public.transactions enable row level security;
 alter table public.feedback enable row level security;
 alter table public.staff_grants enable row level security;
 alter table public.player_profiles enable row level security;
+alter table public.change_history enable row level security;
+alter table public.inventory_items enable row level security;
+alter table public.inventory_moves enable row level security;
 alter table public.tournaments enable row level security;
 alter table public.tournament_teams enable row level security;
 alter table public.tournament_matches enable row level security;
@@ -599,6 +727,20 @@ create policy p_users_self on public.users for all
 drop policy if exists p_sub_self on public.host_subscriptions;
 create policy p_sub_self on public.host_subscriptions for all
   using (host_id = auth.uid()) with check (host_id = auth.uid());
+
+drop policy if exists p_inventory_owner on public.inventory_items;
+create policy p_inventory_owner on public.inventory_items for all
+  using (exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()))
+  with check (exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid()));
+drop policy if exists p_inventory_moves_owner on public.inventory_moves;
+create policy p_inventory_moves_owner on public.inventory_moves for all
+  using (exists (select 1 from public.inventory_items i join public.clubs c on c.id = i.club_id where i.id = item_id and c.host_id = auth.uid()))
+  with check (exists (select 1 from public.inventory_items i join public.clubs c on c.id = i.club_id where i.id = item_id and c.host_id = auth.uid()));
+
+drop policy if exists p_history_owner on public.change_history;
+create policy p_history_owner on public.change_history for select
+  using (exists (select 1 from public.clubs c where c.id = club_id and c.host_id = auth.uid())
+         or (entity = 'player' and entity_id = auth.uid()));
 
 drop policy if exists p_profile_self on public.player_profiles;
 create policy p_profile_self on public.player_profiles for all

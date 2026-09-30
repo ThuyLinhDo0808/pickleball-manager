@@ -4,6 +4,7 @@ import Link from 'next/link';
 import PlayerShell from '@/components/PlayerShell';
 import PaymentCard from '@/components/PaymentCard';
 import FormChart from '@/components/FormChart';
+import DuprChart from '@/components/DuprChart';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
@@ -129,6 +130,11 @@ export default function PlayerHome() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="card mb-4">
+        <h2 className="text-white font-semibold mb-1">{t('player.dupr')}</h2>
+        {me.dupr_history?.length ? <DuprChart data={me.dupr_history} /> : <p className="text-gray-400 text-sm">{t('player.noDupr')}</p>}
       </section>
 
       <section className="card mb-4">

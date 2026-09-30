@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
+import MemberHistory from '@/components/MemberHistory';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -287,6 +288,8 @@ export default function MemberDetail({ club, member, onClose, onChanged }) {
             })}
           </div>
         </section>
+
+        <MemberHistory key={member.id} club={club} member={member} />
       </div>
     </Modal>
   );

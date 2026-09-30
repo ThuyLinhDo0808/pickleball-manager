@@ -319,9 +319,24 @@ player.get('/me', async (req, res) => {
       .slice(-12)
       .map((s) => ({ ...s, win_rate: Math.round((1000 * s.wins) / s.matches) / 10, diff: s.points_for - s.points_against }));
 
+    // DUPR over time (SCD2 history): the player's own profile + what their clubs recorded.
+    const duprFilters = [`and(entity.eq.player,entity_id.eq.${uid})`];
+    if (memberIds.length) duprFilters.push(`and(entity.eq.club_member,entity_id.in.(${memberIds.join(',')}))`);
+    const { data: dupr } = await supabase
+      .from('change_history')
+      .select('entity, value, valid_from')
+      .eq('attribute', 'dupr_level')
+      .or(duprFilters.join(','))
+      .order('valid_from', { ascending: true })
+      .limit(200);
+    const duprHistory = (dupr || [])
+      .filter((h) => h.value != null)
+      .map((h) => ({ date: localDate(h.valid_from), dupr: Number(h.value), source: h.entity === 'player' ? 'self' : 'club' }));
+
     res.json({
       email: req.hostEmail,
       profile,
+      dupr_history: duprHistory,
       clubs,
       history: history.slice(0, 50),
       form,
