@@ -13,6 +13,7 @@ const {
   checkInByCode,
 } = require('../services/attendance');
 const signup = require('../services/signup');
+const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
 
 const router = express.Router();
@@ -29,7 +30,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
-  'cancel_deadline_hours',
+  'cancel_deadline_hours', 'kind',
 ];
 
 router.get('/public/:publicToken', async (req, res) => {
@@ -44,14 +45,15 @@ router.get('/public/:publicToken', async (req, res) => {
   try {
     await signup.expireHolds(event);
   } catch (err) {
-    return dbError(res, err);
+    // Housekeeping only — never keep players from seeing the event (e.g. a migration not run yet).
+    console.error('expireHolds failed on public page', err);
   }
 
   const { data: people, error: pErr } = await supabase
     .from('event_participants')
     .select('full_name, dupr_level, status, joined_at')
     .eq('event_id', event.id)
-    .in('status', [...MAIN_LIST, 'waitlisted'])
+    .not('status', 'in', '(cancelled,no_show)') // (works on databases that don't know 'pending' yet)
     .order('joined_at', { ascending: true });
   if (pErr) return dbError(res, pErr);
 
@@ -90,7 +92,7 @@ function fail(res, err) {
 }
 
 async function playerProfile(userId) {
-  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level').eq('user_id', userId).maybeSingle();
+  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level, gender, birth_year').eq('user_id', userId).maybeSingle();
   return data;
 }
 
@@ -190,8 +192,11 @@ async function ownsClub(hostId, clubId) {
   return !!data;
 }
 
+const EVENT_KINDS = ['weekly', 'game', 'training', 'meeting', 'challenge'];
+
 // Normalises optional fields in place; returns an error message or null.
 function cleanEventFields(fields) {
+  if ('kind' in fields && !EVENT_KINDS.includes(fields.kind)) return `kind must be one of ${EVENT_KINDS.join(', ')}.`;
   if ('cancel_deadline_hours' in fields) {
     const v = fields.cancel_deadline_hours;
     if (v === '' || v == null) fields.cancel_deadline_hours = null;
@@ -251,7 +256,7 @@ router.post('/', async (req, res) => {
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -279,7 +284,7 @@ router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -291,10 +296,23 @@ router.patch('/:eventId', async (req, res) => {
     .select()
     .single();
   if (error) return dbError(res, error);
+  // Host cancelled the event: tell everyone who had a place (in the background).
+  if (fields.status === 'cancelled' && req.event.status !== 'cancelled') notifyEventCancelled(data);
   res.json(data);
 });
 
+// Deleting wipes the event's participants and money records too. When there are any,
+// the Host must confirm (?force=1); "Cancelled" is the way to keep the history.
 router.delete('/:eventId', async (req, res) => {
+  if (req.query.force !== '1') {
+    const [{ count: people }, { count: money }] = await Promise.all([
+      supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).neq('status', 'cancelled'),
+      supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false),
+    ]);
+    if ((people || 0) + (money || 0) > 0) {
+      return res.status(409).json({ error: 'This event has registrations or money records.', code: 'has_activity', participants: people || 0, transactions: money || 0 });
+    }
+  }
   const { error } = await supabase.from('events').delete().eq('id', req.event.id);
   if (error) return dbError(res, error);
   res.status(204).end();

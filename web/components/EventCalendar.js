@@ -23,6 +23,11 @@ export const STATUS_DOT = {
   cancelled: 'bg-red-400',
 };
 
+// Icon per kind of activity (tournaments come from their own table).
+export const KIND_ICON = { weekly: '🗓', game: '🏓', training: '🎯', meeting: '👥', challenge: '⚔️', tournament: '🏆' };
+export const hrefOf = (e) => e.href || `/events/${e.id}`;
+const Kind = ({ e }) => (KIND_ICON[e.kind] ? <span aria-hidden="true">{KIND_ICON[e.kind]} </span> : null);
+
 const HOUR_PX = 48; // height of one hour in week/day views
 
 function byDay(events) {
@@ -46,6 +51,7 @@ function hourRange(events) {
 }
 
 function Fill({ e }) {
+  if (e.slots == null) return null;
   const full = e.main_count >= e.slots;
   return (
     <span className={`tabular-nums ${full ? 'text-orange-300' : 'opacity-80'}`}>
@@ -87,7 +93,7 @@ function MonthView({ date, events, onPickDay }) {
               <div className="hidden sm:block space-y-0.5">
                 {list.slice(0, 3).map((e) => (
                   <div key={e.id} className={`truncate rounded border-l-2 px-1 text-[11px] ${STATUS_STYLE[e.status]}`}>
-                    {hhmm(e.start_time)} {e.title}
+                    {hhmm(e.start_time)} <Kind e={e} />{e.title}
                   </div>
                 ))}
                 {list.length > 3 && <div className="text-[11px] text-gray-400">{t('cal.more', { n: list.length - 3 })}</div>}
@@ -108,12 +114,12 @@ function Block({ e, lane, lanes, from }) {
   const height = Math.max(((s.end - s.start) / 60) * HOUR_PX - 2, 22);
   return (
     <Link
-      href={`/events/${e.id}`}
+      href={hrefOf(e)}
       className={`absolute rounded-md border-l-4 px-1.5 py-1 text-[11px] leading-tight overflow-hidden hover:brightness-125 hover:z-10 ${STATUS_STYLE[e.status]}`}
       style={{ top, height, left: `calc(${lane * width}% + 2px)`, width: `calc(${width}% - 4px)` }}
       title={`${hhmm(e.start_time)}–${hhmm(e.end_time)} ${e.title}`}
     >
-      <div className="font-semibold truncate">{e.title}</div>
+      <div className="font-semibold truncate"><Kind e={e} />{e.title}</div>
       <div className="opacity-80 truncate">{hhmm(e.start_time)}–{hhmm(e.end_time) || '…'}</div>
       <Fill e={e} />
     </Link>
@@ -156,7 +162,7 @@ function TimeGrid({ days, events, onPickDay }) {
             {days.map((d) => (
               <div key={d} className="p-0.5 space-y-0.5">
                 {(map[d] || []).filter((e) => !span(e)).map((e) => (
-                  <Link key={e.id} href={`/events/${e.id}`} className={`block truncate rounded border-l-2 px-1 text-[11px] ${STATUS_STYLE[e.status]}`}>{e.title}</Link>
+                  <Link key={e.id} href={hrefOf(e)} className={`block truncate rounded border-l-2 px-1 text-[11px] ${STATUS_STYLE[e.status]}`}><Kind e={e} />{e.title}</Link>
                 ))}
               </div>
             ))}
@@ -203,14 +209,16 @@ function DayView({ date, events, onPickDay }) {
               <div className="text-lime-400 text-xs font-semibold tabular-nums">
                 {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : t('cal.allDay')}
               </div>
-              <Link href={`/events/${e.id}`} className="text-white font-medium hover:text-lime-400">{e.title}</Link>
+              <Link href={hrefOf(e)} className="text-white font-medium hover:text-lime-400"><Kind e={e} />{e.title}</Link>
               <div className="text-gray-400 text-xs">
-                {e.location || '—'} · {e.courts} {t('events.courts').toLowerCase()} · {t(`events.status_${e.status}`)}
+                {[e.location || '—', e.courts && `${e.courts} ${t('events.courts').toLowerCase()}`, e.kind && t(`kind.${e.kind}`), t(`events.status_${e.status}`)].filter(Boolean).join(' · ')}
               </div>
-              <div className="text-gray-300 text-xs">
-                {t('events.mainList')}: <Fill e={e} />
-                {Number(e.fee_amount) > 0 && ` · ${formatVnd(e.fee_amount)}`}
-              </div>
+              {e.slots != null && (
+                <div className="text-gray-300 text-xs">
+                  {t('events.mainList')}: <Fill e={e} />
+                  {Number(e.fee_amount) > 0 && ` · ${formatVnd(e.fee_amount)}`}
+                </div>
+              )}
             </li>
           ))}
         </ol>

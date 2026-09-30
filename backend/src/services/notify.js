@@ -157,7 +157,36 @@ async function notifyPaymentSubmitted(event, participant, amount) {
   return { webhook };
 }
 
+// Host cancelled the whole event: DM everyone still on it; one webhook call with the count.
+async function notifyEventCancelled(event) {
+  try {
+    const { data: people } = await supabase
+      .from('event_participants')
+      .select('full_name, phone, user_id, source_club_member_id, fee_paid')
+      .eq('event_id', event.id)
+      .in('status', ['registered', 'checked_in', 'pending', 'waitlisted']);
+    const list = people || [];
+    const text = `❌ Host đã hủy ${where(event)}.`;
+    await Promise.all(
+      list.map((p) => safe(sendToPlayer(p, `${text}${p.fee_paid ? '\nHost sẽ liên hệ hoàn tiền cho bạn.' : ''}`)))
+    );
+    await safe(sendToHostWebhook(event.host_id, { ...payloadFor('event_cancelled', event, { full_name: null }, text), players: list.length, player: undefined }));
+  } catch (err) {
+    console.error('event cancelled notification failed', err);
+  }
+}
+
+// Host only: a player says they belong to the club (linked by phone, or a new join request).
+async function notifyMemberRequest(event, member, isNew) {
+  const text = isNew
+    ? `🙋 ${member.full_name} (${member.phone || '—'}) xin tham gia CLB qua kèo "${event.title}". Vào app → Thành viên để duyệt.`
+    : `🙋 ${member.full_name} xác nhận là thành viên CLB (khớp số điện thoại). Vào app → Thành viên để xác thực.`;
+  return safe(sendToHostWebhook(event.host_id, payloadFor('member_request', event, member, text, { new_member: isNew })));
+}
+
 module.exports = {
+  notifyMemberRequest,
+  notifyEventCancelled,
   notifyPromoted,
   notifyPaymentConfirmed,
   notifyPaymentRejected,

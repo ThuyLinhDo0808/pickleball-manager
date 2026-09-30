@@ -23,7 +23,8 @@ export default function TicketPage() {
   if (error || !tk) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-gray-300">{t('ticket.notFound')}</p>
+        <p className="text-gray-300">{!error || error.status === 404 ? t('ticket.notFound') : t('public.loadError')}</p>
+        {error && error.status !== 404 && <p className="text-gray-500 text-xs break-all">{error.message}</p>}
         {langToggle}
       </div>
     );

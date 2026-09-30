@@ -12,12 +12,21 @@ const { staffGrantsRoutes, staffRoutes } = require('./routes/staff.routes');
 const tournamentsRoutes = require('./routes/tournaments.routes');
 const { publicRoutes, playerRoutes } = require('./routes/player.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const { schemaStatus } = require('./services/schemaCheck');
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true }));
+// Which migrations (supabase/migrations/*.sql) still need to be run on this database.
+app.get('/health/schema', async (req, res) => {
+  try {
+    res.json(await schemaStatus());
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // /api/events contains its own public (unauthenticated) routes for shareable
 // event links, declared before its internal `router.use(requireAuth)` — see

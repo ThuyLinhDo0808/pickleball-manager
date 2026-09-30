@@ -19,7 +19,6 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
   const [slots, setSlots] = useState({ 1: ['', ''], 2: ['', ''] });
   const [score, setScore] = useState({ 1: '', 2: '' });
   const [playedAt, setPlayedAt] = useState(nowLocalInput);
-  const [video, setVideo] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,7 +41,6 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
         team1_score: Number(score[1] || 0),
         team2_score: Number(score[2] || 0),
         played_at: new Date(playedAt).toISOString(),
-        video_url: video.trim() || null,
         players: [1, 2].flatMap((team) => slots[team].slice(0, size).map((id) => ({ team, [idField]: id }))),
       });
       onSaved(saved);
@@ -106,15 +104,9 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
         </div>
       ))}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-gray-400">{t('matches.playedAt')}</label>
-          <input className="input" type="datetime-local" required value={playedAt} onChange={(e) => setPlayedAt(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('matches.video')}</label>
-          <input className="input" type="url" inputMode="url" placeholder={t('matches.videoPh')} value={video} onChange={(e) => setVideo(e.target.value)} />
-        </div>
+      <div>
+        <label className="text-xs text-gray-400">{t('matches.playedAt')}</label>
+        <input className="input" type="datetime-local" required value={playedAt} onChange={(e) => setPlayedAt(e.target.value)} />
       </div>
 
       {error && <p className="text-red-400 text-sm">{error}</p>}

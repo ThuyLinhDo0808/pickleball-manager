@@ -12,7 +12,7 @@ const { normalizePhone } = require('./memberships');
 const { newPaymentRef, vietqrUrl } = require('./payment');
 const { HOLDS_PLACE, feeFor, memberStanding, needsOnlinePayment } = require('./fees');
 const { promoteNext } = require('./attendance');
-const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted } = require('./notify');
+const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted, notifyMemberRequest } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
 const REJECTED_HOLD_MS = 2 * 3600 * 1000; // time to send a better screenshot
@@ -256,9 +256,33 @@ async function claimMembership(event, userId, profile) {
   if (standing.state !== 'none') return standing.state;
   const { data: members } = await supabase.from('club_members').select('id, phone').eq('club_id', event.club_id).is('user_id', null);
   const match = (members || []).find((m) => normalizePhone(m.phone) === normalizePhone(profile.phone));
-  if (!match) throw httpError('No club member has your phone number. Ask the host to add you.', 404, 'no_member');
-  const { error } = await supabase.from('club_members').update({ user_id: userId, account_verified: false }).eq('id', match.id).is('user_id', null);
-  if (error) throw error;
+  let member;
+  if (match) {
+    const { data, error } = await supabase.from('club_members').update({ user_id: userId, account_verified: false }).eq('id', match.id).is('user_id', null).select().single();
+    if (error) throw error;
+    member = data;
+  } else {
+    // Not on the list yet: a join request the Host approves (member kept) or rejects (removed).
+    const { data, error } = await supabase
+      .from('club_members')
+      .insert({
+        club_id: event.club_id,
+        user_id: userId,
+        account_verified: false,
+        join_requested: true,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        dupr_level: profile.dupr_level ?? null,
+        gender: profile.gender ?? null,
+        birth_year: profile.birth_year ?? null,
+        member_type: 'fixed',
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    member = data;
+  }
+  notifyMemberRequest(event, member, !match);
   return 'pending';
 }
 

@@ -220,7 +220,7 @@ function Transfer({ reg, onDone }) {
 }
 
 // Everything the signed-in player does on the event page: log in → confirm → pay → ticket.
-export default function EventSignup({ ev, me, user, token, onChanged }) {
+export default function EventSignup({ ev, me, meError, user, token, onChanged }) {
   const { t, lang } = useI18n();
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -247,6 +247,15 @@ export default function EventSignup({ ev, me, user, token, onChanged }) {
           <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>
         )}
       </>
+    );
+  }
+  if (meError) {
+    return (
+      <div className="text-center">
+        <p className="text-yellow-300 text-sm">{t('public.loadError')}</p>
+        <p className="text-gray-500 text-xs break-all mt-1">{meError.message}</p>
+        <button type="button" className="btn-secondary mt-3" onClick={onChanged}>{t('public.retry')}</button>
+      </div>
     );
   }
   if (!me) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;

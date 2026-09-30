@@ -36,7 +36,7 @@ export default function PublicEventPage() {
   const { t, lang, setLang } = useI18n();
   const { user } = useAuth();
   const { data: ev, error, loading, reload } = useLoad(() => api.publicGet(`/api/events/public/${token}`), [token]);
-  const { data: me, reload: reloadMe } = useLoad(() => (user ? api.get(`/api/events/public/${token}/me`) : Promise.resolve(null)), [token, user?.id]);
+  const { data: me, error: meError, reload: reloadMe } = useLoad(() => (user ? api.get(`/api/events/public/${token}/me`) : Promise.resolve(null)), [token, user?.id]);
   const refresh = () => {
     reload();
     reloadMe();
@@ -52,9 +52,13 @@ export default function PublicEventPage() {
     return <div className="min-h-screen flex items-center justify-center text-gray-400">{t('common.loading')}</div>;
   }
   if (error || !ev) {
+    // Only a 404 means the link is wrong; anything else is a server problem worth showing.
+    const notFound = !error || error.status === 404;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-gray-300">{t('public.notFound')}</p>
+        <p className="text-gray-300">{notFound ? t('public.notFound') : t('public.loadError')}</p>
+        {!notFound && <p className="text-gray-500 text-xs break-all">{error.message}</p>}
+        {!notFound && <button className="btn-secondary" onClick={reload}>{t('public.retry')}</button>}
         {langToggle}
       </div>
     );
@@ -103,7 +107,7 @@ export default function PublicEventPage() {
       )}
 
       <section className="card mb-4">
-        <EventSignup ev={ev} me={me} user={user} token={token} onChanged={refresh} />
+        <EventSignup ev={ev} me={me} meError={meError} user={user} token={token} onChanged={refresh} />
       </section>
 
       <section className="card mb-6">

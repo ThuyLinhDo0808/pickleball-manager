@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
+import TeamLeagueView from '@/components/TeamLeagueView';
+import { formatDay, hhmm } from '@/lib/dates';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -70,7 +72,7 @@ function MatchRow({ m, teamName, onOpen }) {
 export default function TournamentPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data: tour, loading, setData } = useLoad(() => api.get(`/api/tournaments/${id}`), [id]);
   const [tab, setTab] = useState(null);
   const [scoring, setScoring] = useState(null);
@@ -122,8 +124,18 @@ export default function TournamentPage() {
         <div className="min-w-0">
           <h1 className="text-white text-2xl font-bold">🏆 {tour.name}</h1>
           <p className="text-gray-400 text-sm">
-            {t(`matches.${tour.format}`)} · {t('tournaments.teamsN', { n: tour.teams.length })} · {t(`tournaments.status_${tour.status}`)}
+            {tour.kind === 'team'
+              ? t('tournaments.kind_team')
+              : `${t(`matches.${tour.format}`)}${tour.division && tour.division !== 'open' && tour.format !== 'mixed' ? ` · ${t(`tournaments.div_${tour.division}${tour.format === 'singles' ? 'S' : ''}`)}` : ''}`}
+            {' · '}{t('tournaments.teamsN', { n: tour.teams.length })} · {tour.kind === 'team' && tour.status !== 'completed' ? t('league.inProgress') : t(`tournaments.status_${tour.status}`)}
           </p>
+          {tour.event_date && (
+            <p className="text-lime-400 text-sm capitalize">
+              {formatDay(tour.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+              {tour.start_time && ` · ${hhmm(tour.start_time)}${tour.end_time ? `–${hhmm(tour.end_time)}` : ''}`}
+              {tour.location && <span className="text-gray-300 normal-case"> · 📍 {tour.location}</span>}
+            </p>
+          )}
         </div>
         <button className="text-red-400 text-sm shrink-0" onClick={remove}>{t('common.delete')}</button>
       </div>
@@ -138,7 +150,9 @@ export default function TournamentPage() {
 
       {error && <p className="card text-red-400 text-sm mb-4">{error}</p>}
 
-      {tour.group_count > 0 && (
+      {tour.kind === 'team' && <TeamLeagueView tour={tour} onChange={setData} />}
+
+      {tour.kind !== 'team' && tour.group_count > 0 && (
         <div className="grid grid-cols-2 bg-navy-900 rounded-lg p-1 text-sm mb-4">
           {['groups', 'ko'].map((k) => (
             <button key={k} disabled={k === 'ko' && !ko.length} onClick={() => setTab(k)} className={`rounded-md py-2 disabled:opacity-30 ${current === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
@@ -148,7 +162,7 @@ export default function TournamentPage() {
         </div>
       )}
 
-      {current === 'groups' && tour.group_count > 0 && (
+      {tour.kind !== 'team' && current === 'groups' && tour.group_count > 0 && (
         <>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
             {Object.entries(tour.groups).map(([g, rows]) => {
@@ -216,7 +230,7 @@ export default function TournamentPage() {
         </>
       )}
 
-      {current === 'ko' && ko.length > 0 && (() => {
+      {tour.kind !== 'team' && current === 'ko' && ko.length > 0 && (() => {
         const rounds = Array.from({ length: tour.rounds }, (_, i) => i + 1);
         const pending = (rd) => ko.filter((m) => m.round === rd && !m.is_bye && m.team1_id && m.team2_id && m.winner_id == null).length;
         const shownRound = koRound || rounds.find((rd) => pending(rd) > 0) || rounds[rounds.length - 1];
