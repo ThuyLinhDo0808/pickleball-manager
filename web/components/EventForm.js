@@ -130,7 +130,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   }
 
   return (
-      <form onSubmit={submit} className="max-w-4xl">
+      <form onSubmit={submit} className="w-full">
         <Section n={1} title={t('create.basic')}>
           {kinds && kinds.length > 1 && (
             <Field label={t('kind.label')} span={4} hint={t(`kind.hint_${f.kind}`)}>
