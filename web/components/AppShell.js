@@ -55,6 +55,7 @@ const NAV_BY_WORKSPACE = {
       key: 'nav.groupStats',
       icon: 'chart',
       children: [
+        { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
         { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
         { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
         { href: '/analytics', key: 'nav.analyticsCharts', icon: 'chart' },

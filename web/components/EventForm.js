@@ -107,7 +107,7 @@ export function eventPayload(f) {
 
 // The event form in 4 groups: basic info, rules & finance, notes, status.
 // `kinds`: the activity types the Host may pick here (none → the kind is fixed by the page).
-export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null }) {
+export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null }) {
   const { t } = useI18n();
   const [f, setF] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -153,9 +153,13 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('events.title')} span={4}>
             <input className="input" required maxLength={120} placeholder={t('create.titlePh')} value={f.title} onChange={(e) => set({ title: e.target.value })} />
           </Field>
-          <Field label={t('events.date')} span={2}>
-            <DatePopover value={f.event_date} onChange={(d) => set({ event_date: d })} />
-          </Field>
+          {dateField ? (
+            <Field label={t('weekly.sessions')} span={4}>{dateField}</Field>
+          ) : (
+            <Field label={t('events.date')} span={2}>
+              <DatePopover value={f.event_date} onChange={(d) => set({ event_date: d })} />
+            </Field>
+          )}
           <Field label={t('create.start')}>
             <input className="input" type="time" value={f.start_time} onChange={(e) => set({ start_time: e.target.value })} />
           </Field>

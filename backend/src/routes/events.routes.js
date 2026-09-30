@@ -248,7 +248,16 @@ router.get('/', async (req, res) => {
 
 // `repeat_weeks` (1-26) creates the same session every week — the club's recurring schedule.
 router.post('/', async (req, res) => {
-  const { title, event_date } = req.body;
+  const { title } = req.body;
+  // `dates`: explicit list of days (weekly schedule: e.g. every Tue/Thu/Sat between two dates).
+  let dates = null;
+  if (Array.isArray(req.body.dates)) {
+    dates = [...new Set(req.body.dates.map(String))].sort();
+    if (!dates.length || dates.length > 200 || !dates.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)))) {
+      return res.status(400).json({ error: 'dates must be 1-200 days (YYYY-MM-DD).' });
+    }
+  }
+  const event_date = dates ? dates[0] : req.body.event_date;
   if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(event_date || '')) {
     return res.status(400).json({ error: 'title and event_date are required.' });
   }
@@ -263,13 +272,16 @@ router.post('/', async (req, res) => {
   if (!(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
-  const rows = Array.from({ length: weeks }, (_, i) => ({
+  const days = dates || Array.from({ length: weeks }, (_, i) => addDays(event_date, 7 * i));
+  // The registration deadline keeps the same distance to each session as to the first.
+  const dayMs = (d) => Date.parse(`${d}T00:00:00Z`);
+  const rows = days.map((d) => ({
     host_id: req.hostId,
     title,
     ...fields,
-    event_date: addDays(event_date, 7 * i),
+    event_date: d,
     registration_deadline: fields.registration_deadline
-      ? new Date(new Date(fields.registration_deadline).getTime() + i * 7 * 86400000).toISOString()
+      ? new Date(new Date(fields.registration_deadline).getTime() + dayMs(d) - dayMs(event_date)).toISOString()
       : null,
   }));
   const { data, error } = await supabase.from('events').insert(rows).select();

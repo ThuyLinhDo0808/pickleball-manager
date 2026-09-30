@@ -31,6 +31,25 @@ function cleanBirthYear(v) {
   return v !== '' && v != null && Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null;
 }
 
+// Dates as YYYY-MM-DD (birth date, club join date); '' / null clears.
+function cleanDate(v, field) {
+  if (v === '' || v == null) return null;
+  const d = String(v).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(Date.parse(d))) throw Object.assign(new Error(`${field} must be YYYY-MM-DD.`), { status: 400 });
+  return d;
+}
+
+// birth_date / joined_on from a request body; birth_year follows the birth date.
+function memberDates(body) {
+  const out = {};
+  if ('birth_date' in body) {
+    out.birth_date = cleanDate(body.birth_date, 'birth_date');
+    if (out.birth_date) out.birth_year = Number(out.birth_date.slice(0, 4));
+  }
+  if ('joined_on' in body) out.joined_on = cleanDate(body.joined_on, 'joined_on');
+  return out;
+}
+
 // ---- access guard for :clubId: the owner, or a co-admin of this club -------
 // A co-admin then acts as the owner (req.hostId = owner) for everything in this
 // router, so fund entries, capacity limits etc. stay the owner's; owner-only
@@ -185,6 +204,13 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
   }
   const nextType = member_type === 'guest' ? 'guest' : 'fixed';
   if (tier && nextType !== 'fixed') tier = null; // guests are never tiered
+  let dates;
+  try {
+    dates = memberDates(req.body);
+    if (!dates.joined_on) delete dates.joined_on; // defaults to today
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 
   const { data, error } = await supabase
     .from('club_members')
@@ -198,6 +224,7 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
       gender: cleanGender(req.body.gender),
       birth_year: cleanBirthYear(req.body.birth_year),
       notes: req.body.notes || null,
+      ...dates,
     })
     .select()
     .single();
@@ -239,6 +266,11 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   if ('flags' in fields) fields.flags = (Array.isArray(fields.flags) ? fields.flags : []).filter((f) => FLAGS.includes(f));
   if ('gender' in fields) fields.gender = cleanGender(fields.gender);
   if ('birth_year' in fields) fields.birth_year = cleanBirthYear(fields.birth_year);
+  try {
+    Object.assign(fields, memberDates(req.body));
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 
   if (fields.tier && !TIERS.includes(fields.tier)) {
     return res.status(400).json({ error: 'tier must be vip or standard.' });
@@ -838,6 +870,80 @@ router.get('/:clubId/events', async (req, res) => {
     .order('event_date', { ascending: true });
   if (error) return dbError(res, error);
   res.json(data);
+});
+
+// ---- Attendance (Stats → Members) ----------------------------------------------
+// Everything for the attendance grid in one request: the club's sessions in a date
+// range, who was on each (members and guests), and each member's passes (sessions
+// included / used / left — what carries over to the next period).
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+router.get('/:clubId/attendance', async (req, res) => {
+  const { from, to } = req.query;
+  if (!YMD.test(from || '') || !YMD.test(to || '') || to < from) return res.status(400).json({ error: 'from and to (YYYY-MM-DD) are required.' });
+  if ((Date.parse(to) - Date.parse(from)) / 86400000 > 400) return res.status(400).json({ error: 'Pick at most about a year.' });
+
+  const [{ data: events, error: e1 }, { data: members, error: e2 }] = await Promise.all([
+    supabase
+      .from('events')
+      .select('id, title, event_date, start_time, kind, status')
+      .eq('club_id', req.club.id)
+      .gte('event_date', from)
+      .lte('event_date', to)
+      .neq('status', 'cancelled')
+      .order('event_date')
+      .order('start_time'),
+    supabase
+      .from('club_members')
+      .select('id, full_name, member_type, tier, is_active, joined_on, birth_date, user_id')
+      .eq('club_id', req.club.id)
+      .order('full_name'),
+  ]);
+  if (e1) return dbError(res, e1);
+  if (e2) return dbError(res, e2);
+
+  const eventIds = events.map((e) => e.id);
+  const memberIds = members.map((m) => m.id);
+  const [{ data: people, error: e3 }, { data: passes, error: e4 }] = await Promise.all([
+    eventIds.length
+      ? supabase
+          .from('event_participants')
+          .select('event_id, source_club_member_id, user_id, kind, full_name, phone, status, late_cancel')
+          .in('event_id', eventIds)
+          .in('status', ['registered', 'checked_in', 'no_show', 'cancelled'])
+      : { data: [] },
+    memberIds.length
+      ? supabase
+          .from('v_membership_status')
+          .select('club_member_id, period_label, starts_on, ends_on, status, sessions_included, sessions_used, sessions_remaining')
+          .in('club_member_id', memberIds)
+          .lte('starts_on', to)
+          .gte('ends_on', from)
+          .order('starts_on')
+      : { data: [] },
+  ]);
+  if (e3) return dbError(res, e3);
+  if (e4) return dbError(res, e4);
+
+  const byUser = new Map(members.filter((m) => m.user_id).map((m) => [m.user_id, m.id]));
+  const cells = [];
+  const guests = [];
+  for (const p of people) {
+    // Cancelled in time doesn't count at all; a late cancel counts as absent.
+    if (p.status === 'cancelled' && !p.late_cancel) continue;
+    const state = p.status === 'checked_in' ? 'attended' : p.status === 'registered' ? 'registered' : 'absent';
+    const memberId = p.source_club_member_id || (p.user_id && byUser.get(p.user_id)) || null;
+    if (memberId) cells.push({ event_id: p.event_id, club_member_id: memberId, state });
+    else guests.push({ event_id: p.event_id, full_name: p.full_name, phone: p.phone, state });
+  }
+  res.json({
+    from,
+    to,
+    events,
+    members: members.map(({ user_id, ...m }) => m),
+    cells,
+    guests,
+    passes,
+  });
 });
 
 module.exports = router;

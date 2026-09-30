@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import EventForm, { GAME_KINDS, blankEvent, eventPayload } from '@/components/EventForm';
+import WeeklyDates, { MAX_SESSIONS, blankWeekly, weeklyDates } from '@/components/WeeklyDates';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
@@ -19,18 +20,25 @@ export default function CreateEventView({ weekly = false }) {
   const isClub = workspace === 'club';
   // ?date=YYYY-MM-DD pre-fills the day
   const [initial, setInitial] = useState(null);
+  const [plan, setPlan] = useState(blankWeekly);
   useEffect(() => {
     const d = new URLSearchParams(window.location.search).get('date');
     const base = blankEvent(/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : undefined, weekly ? 'weekly' : 'game');
-    setInitial(weekly ? { ...base, repeat_weeks: 8, title: t('weekly.titleDefault') } : base);
+    setInitial(weekly ? { ...base, title: t('weekly.titleDefault') } : base);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekly]);
 
   async function create(f) {
+    let dates;
+    if (weekly) {
+      dates = weeklyDates(plan);
+      if (!dates.length) throw new Error(t('weekly.needDates'));
+      if (dates.length > MAX_SESSIONS) throw new Error(t('weekly.tooMany', { max: MAX_SESSIONS }));
+    }
     const created = await api.post('/api/events', {
       ...eventPayload(f),
       club_id: isClub ? club?.id || null : null,
-      repeat_weeks: weekly && isClub ? Number(f.repeat_weeks || 1) : 1,
+      ...(dates ? { dates } : {}),
     });
     // One event: open it so the Host can share the link. Several: back to the calendar.
     router.push(created.created_count > 1 ? '/events' : `/events/${created.id}`);
@@ -59,7 +67,8 @@ export default function CreateEventView({ weekly = false }) {
           initial={initial}
           onSubmit={create}
           submitLabel={weekly ? t('weekly.submit') : t('create.submit')}
-          showRepeat={weekly && isClub}
+          showRepeat={false}
+          dateField={weekly ? <WeeklyDates value={plan} onChange={setPlan} /> : null}
           kinds={weekly ? null : GAME_KINDS}
           disabled={isClub && !club}
         />
