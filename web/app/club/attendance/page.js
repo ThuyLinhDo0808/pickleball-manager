@@ -1,0 +1,353 @@
+'use client';
+import { useMemo, useState } from 'react';
+import AppShell from '@/components/AppShell';
+import DatePopover from '@/components/DatePopover';
+import { KIND_ICON } from '@/components/EventCalendar';
+import { useI18n } from '@/context/I18nContext';
+import { useDefaultClub } from '@/lib/useDefaultClub';
+import { useLoad } from '@/lib/useLoad';
+import { api } from '@/lib/api';
+import { addDays, addMonths, todayYmd } from '@/lib/dates';
+
+const PERIODS = ['month', 'quarter', 'year', 'custom'];
+const TABS = ['attendance', 'passes', 'guests'];
+
+// First/last day of the month / quarter / year containing `anchor`.
+function rangeOf(period, anchor) {
+  const [y, m] = anchor.split('-').map(Number);
+  if (period === 'month') return [`${anchor.slice(0, 7)}-01`, addDays(addMonths(anchor, 1), -1)];
+  if (period === 'quarter') {
+    const q = Math.floor((m - 1) / 3) * 3 + 1;
+    const start = `${y}-${String(q).padStart(2, '0')}-01`;
+    return [start, addDays(addMonths(start, 3), -1)];
+  }
+  return [`${y}-01-01`, `${y}-12-31`];
+}
+
+const dm = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const monthKey = (d) => d.slice(0, 7);
+const monthLabel = (k) => `${k.slice(5, 7)}/${k.slice(0, 4)}`;
+
+function Mark({ state }) {
+  if (state === 'attended') return <span className="text-lime-400 font-bold">x</span>;
+  if (state === 'absent') return <span className="text-red-400 font-bold" title="vắng / hủy muộn">x</span>;
+  if (state === 'registered') return <span className="text-gray-500">·</span>;
+  return null;
+}
+
+// Excel-friendly CSV (UTF-8 with BOM so Vietnamese names open correctly).
+function downloadCsv(name, rows) {
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const blob = new Blob(['﻿' + rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export default function AttendancePage() {
+  const { t } = useI18n();
+  const { club } = useDefaultClub();
+  const [period, setPeriod] = useState('month');
+  const [anchor, setAnchor] = useState(todayYmd());
+  const [custom, setCustom] = useState(() => [addMonths(todayYmd(), -2), todayYmd()]);
+  const [tab, setTab] = useState('attendance');
+  const [by, setBy] = useState('session'); // session | month
+  const [sort, setSort] = useState('name'); // name | count
+  const [onlyActive, setOnlyActive] = useState(true);
+
+  const [from, to] = period === 'custom' ? custom : rangeOf(period, anchor);
+  const step = { month: 1, quarter: 3, year: 12 }[period];
+  const { data, loading, error } = useLoad(
+    () => (club ? api.get(`/api/clubs/${club.id}/attendance?from=${from}&to=${to}`) : Promise.resolve(null)),
+    [club?.id, from, to]
+  );
+
+  const view = useMemo(() => {
+    if (!data) return null;
+    const today = todayYmd();
+    const cell = new Map(data.cells.map((c) => [`${c.club_member_id}|${c.event_id}`, c.state]));
+    const evDate = new Map(data.events.map((e) => [e.id, e.event_date]));
+    const attended = {};
+    const perMonth = {};
+    for (const c of data.cells) {
+      if (c.state !== 'attended') continue;
+      attended[c.club_member_id] = (attended[c.club_member_id] || 0) + 1;
+      const k = `${c.club_member_id}|${monthKey(evDate.get(c.event_id))}`;
+      perMonth[k] = (perMonth[k] || 0) + 1;
+    }
+    const withCells = new Set(data.cells.map((c) => c.club_member_id));
+    let members = data.members.filter((m) => withCells.has(m.id) || (m.member_type === 'fixed' && (!onlyActive || m.is_active)));
+    if (onlyActive) members = members.filter((m) => m.is_active || withCells.has(m.id));
+    members.sort((a, b) => (sort === 'count' ? (attended[b.id] || 0) - (attended[a.id] || 0) : 0) || a.full_name.localeCompare(b.full_name, 'vi'));
+    const months = [...new Set(data.events.map((e) => monthKey(e.event_date)))];
+
+    // Guests: one row per person (phone, else name).
+    const guestRows = new Map();
+    for (const g of data.guests) {
+      const key = (g.phone || '').replace(/\D/g, '') || g.full_name.trim().toLowerCase();
+      if (!guestRows.has(key)) guestRows.set(key, { key, full_name: g.full_name, phone: g.phone, events: {} });
+      guestRows.get(key).events[g.event_id] = g.state;
+    }
+    const guests = [...guestRows.values()]
+      .map((g) => ({ ...g, count: Object.values(g.events).filter((s) => s === 'attended').length }))
+      .sort((a, b) => b.count - a.count || a.full_name.localeCompare(b.full_name, 'vi'));
+    const guestEvents = data.events.filter((e) => data.guests.some((g) => g.event_id === e.id));
+
+    const perEvent = (id) => ({
+      members: data.cells.filter((c) => c.event_id === id && c.state === 'attended').length,
+      guests: data.guests.filter((g) => g.event_id === id && g.state === 'attended').length,
+    });
+    const maxCount = Math.max(1, ...Object.values(attended));
+
+    // Passes: sessions left in each period — what the club carries over ("bảo lưu").
+    const name = new Map(data.members.map((m) => [m.id, m.full_name]));
+    const passes = data.passes
+      .map((p) => ({ ...p, full_name: name.get(p.club_member_id) || '?', ended: p.ends_on < today }))
+      .sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi') || a.starts_on.localeCompare(b.starts_on));
+    const carry = passes.filter((p) => p.ended && p.sessions_included > 0 && p.status === 'paid').reduce((s, p) => s + p.sessions_remaining, 0);
+
+    return { cell, attended, perMonth, members, months, guests, guestEvents, perEvent, maxCount, passes, carry };
+  }, [data, sort, onlyActive]);
+
+  function exportCsv() {
+    if (!view) return;
+    const ev = data.events;
+    const rows =
+      by === 'session'
+        ? [
+            ['STT', t('common.name'), ...ev.map((e) => dm(e.event_date)), t('stats.sessionsCol')],
+            ...view.members.map((m, i) => [
+              i + 1,
+              m.full_name,
+              ...ev.map((e) => ({ attended: 'x', absent: 'vắng', registered: 'đăng ký' })[view.cell.get(`${m.id}|${e.id}`)] || ''),
+              view.attended[m.id] || 0,
+            ]),
+            ['', t('stats.guestsRow'), ...ev.map((e) => view.perEvent(e.id).guests), ''],
+          ]
+        : [
+            ['STT', t('common.name'), ...view.months.map(monthLabel), t('stats.sessionsCol')],
+            ...view.members.map((m, i) => [i + 1, m.full_name, ...view.months.map((k) => view.perMonth[`${m.id}|${k}`] || 0), view.attended[m.id] || 0]),
+          ];
+    downloadCsv(`diem-danh_${from}_${to}.csv`, rows);
+  }
+
+  const seg = (items, value, onPick, label) => (
+    <div className="inline-flex flex-wrap gap-1 rounded-lg bg-navy-900 border border-navy-700 p-1 text-sm max-w-full" role="tablist">
+      {items.map((k) => (
+        <button key={k} type="button" role="tab" aria-selected={value === k} onClick={() => onPick(k)} className={`flex-auto whitespace-nowrap rounded-md px-2.5 py-1.5 ${value === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:text-white'}`}>
+          {label(k)}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <AppShell>
+      <h1 className="text-white text-2xl font-bold mb-4">{t('nav.memberStats')}</h1>
+
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        {seg(PERIODS, period, setPeriod, (k) => t(`stats.p_${k}`))}
+        {period !== 'custom' ? (
+          <div className="flex items-center gap-1">
+            <button type="button" className="btn-secondary !px-3" onClick={() => setAnchor(addMonths(anchor, -step))} aria-label={t('cal.prev')}>‹</button>
+            <span className="text-white font-semibold text-sm px-2 tabular-nums">{`${dm(from)}/${from.slice(0, 4)} – ${dm(to)}/${to.slice(0, 4)}`}</span>
+            <button type="button" className="btn-secondary !px-3" onClick={() => setAnchor(addMonths(anchor, step))} aria-label={t('cal.next')}>›</button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <DatePopover value={custom[0]} onChange={(d) => setCustom([d, custom[1] < d ? d : custom[1]])} />
+            <span className="text-gray-400">→</span>
+            <DatePopover align="right" value={custom[1]} onChange={(d) => setCustom([custom[0] > d ? d : custom[0], d])} />
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">{seg(TABS, tab, setTab, (k) => t(`stats.tab_${k}`))}</div>
+
+      {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
+      {error && <p className="text-red-400 text-sm">{error.message}</p>}
+
+      {view && tab === 'attendance' && (
+        <div className="card">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {seg(['session', 'month'], by, setBy, (k) => t(`stats.by_${k}`))}
+            {seg(['name', 'count'], sort, setSort, (k) => t(`stats.sort_${k}`))}
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
+              {t('stats.onlyActive')}
+            </label>
+            <button type="button" className="btn-secondary text-sm sm:ml-auto" onClick={exportCsv}>⬇ {t('stats.exportCsv')}</button>
+          </div>
+          <p className="text-gray-500 text-xs mb-2">{t('stats.legend')}</p>
+          {data.events.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t('stats.noSessions')}</p>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4">
+              <table className="text-sm grid-table compact-cells">
+                <thead>
+                  <tr className="text-gray-300 bg-navy-900">
+                    <th className="w-10 text-center sticky left-0 bg-navy-900 z-10">#</th>
+                    <th className="text-left min-w-[10rem] sticky left-10 bg-navy-900 z-10">{t('common.name')}</th>
+                    {by === 'session'
+                      ? data.events.map((e) => (
+                          <th key={e.id} className="text-center whitespace-nowrap font-normal" title={e.title}>
+                            <div className="text-[10px] leading-none">{KIND_ICON[e.kind] || ''}</div>
+                            {dm(e.event_date)}
+                          </th>
+                        ))
+                      : view.months.map((k) => <th key={k} className="text-center whitespace-nowrap">{monthLabel(k)}</th>)}
+                    <th className="text-left min-w-[8rem]">{t('stats.sessionsCol')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.members.map((m, i) => (
+                    <tr key={m.id} className="hover:bg-navy-700/40">
+                      <td className="text-center text-gray-400 sticky left-0 bg-navy-800">{i + 1}</td>
+                      <td className="text-white whitespace-nowrap sticky left-10 bg-navy-800">
+                        {m.full_name}
+                        {m.member_type !== 'fixed' && <span className="text-gray-500 text-xs"> · {t('members.guest')}</span>}
+                      </td>
+                      {by === 'session'
+                        ? data.events.map((e) => (
+                            <td key={e.id} className="text-center">
+                              <Mark state={view.cell.get(`${m.id}|${e.id}`)} />
+                            </td>
+                          ))
+                        : view.months.map((k) => (
+                            <td key={k} className="text-center tabular-nums text-gray-200">{view.perMonth[`${m.id}|${k}`] || ''}</td>
+                          ))}
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <span className="tabular-nums text-white font-semibold w-6 text-right">{view.attended[m.id] || 0}</span>
+                          <span className="h-2 rounded bg-lime-400/70" style={{ width: `${((view.attended[m.id] || 0) / view.maxCount) * 5}rem` }} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {by === 'session' && (
+                  <tfoot>
+                    <tr className="bg-navy-900 text-gray-300">
+                      <td className="sticky left-0 bg-navy-900" />
+                      <td className="sticky left-10 bg-navy-900 text-xs">{t('stats.membersRow')}</td>
+                      {data.events.map((e) => <td key={e.id} className="text-center tabular-nums">{view.perEvent(e.id).members}</td>)}
+                      <td />
+                    </tr>
+                    <tr className="bg-navy-900 text-gray-300">
+                      <td className="sticky left-0 bg-navy-900" />
+                      <td className="sticky left-10 bg-navy-900 text-xs">{t('stats.guestsRow')}</td>
+                      {data.events.map((e) => <td key={e.id} className="text-center tabular-nums text-sky-300">{view.perEvent(e.id).guests || ''}</td>)}
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {view && tab === 'passes' && (
+        <div className="card">
+          <p className="text-gray-400 text-sm mb-1">{t('stats.passesHint')}</p>
+          <p className="text-lime-400 text-sm font-semibold mb-3">{t('stats.carryTotal', { n: view.carry })}</p>
+          {view.passes.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t('stats.noPasses')}</p>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4">
+              <table className="w-full text-sm grid-table compact-cells">
+                <thead>
+                  <tr className="text-gray-300 bg-navy-900 text-left">
+                    <th>{t('common.name')}</th>
+                    <th>{t('stats.periodCol')}</th>
+                    <th className="text-right">{t('stats.included')}</th>
+                    <th className="text-right">{t('stats.used')}</th>
+                    <th className="text-right">{t('stats.left')}</th>
+                    <th>{t('stats.carryCol')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.passes.map((p) => {
+                    const unlimited = p.sessions_included === 0;
+                    return (
+                      <tr key={`${p.club_member_id}${p.starts_on}`}>
+                        <td className="text-white whitespace-nowrap">{p.full_name}</td>
+                        <td className="text-gray-300 whitespace-nowrap">
+                          {/^\d{4}-\d{2}$/.test(p.period_label || '') ? monthLabel(p.period_label) : p.period_label || `${dm(p.starts_on)} – ${dm(p.ends_on)}`}
+                          {p.status !== 'paid' && <span className="ml-1 text-yellow-300 text-xs">· {t('membership.pending')}</span>}
+                        </td>
+                        <td className="text-right tabular-nums text-gray-300">{unlimited ? '∞' : p.sessions_included}</td>
+                        <td className="text-right tabular-nums text-gray-300">{p.sessions_used}</td>
+                        <td className={`text-right tabular-nums font-semibold ${unlimited ? 'text-gray-400' : p.sessions_remaining > 0 ? 'text-lime-400' : 'text-gray-400'}`}>
+                          {unlimited ? '∞' : p.sessions_remaining}
+                        </td>
+                        <td className="text-sm">
+                          {unlimited ? (
+                            <span className="text-gray-500">—</span>
+                          ) : p.ended ? (
+                            p.sessions_remaining > 0 && p.status === 'paid' ? (
+                              <span className="text-lime-300">{t('stats.carryN', { n: p.sessions_remaining })}</span>
+                            ) : (
+                              <span className="text-gray-500">{t('stats.carryNone')}</span>
+                            )
+                          ) : (
+                            <span className="text-sky-300">{t('stats.running')}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {view && tab === 'guests' && (
+        <div className="card">
+          <p className="text-gray-400 text-sm mb-3">{t('stats.guestsHint', { n: view.guests.length })}</p>
+          {view.guests.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t('stats.noGuests')}</p>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4">
+              <table className="text-sm grid-table compact-cells">
+                <thead>
+                  <tr className="text-gray-300 bg-navy-900">
+                    <th className="w-10 text-center">#</th>
+                    <th className="text-left min-w-[10rem]">{t('common.name')}</th>
+                    <th className="text-left">{t('common.phone')}</th>
+                    {view.guestEvents.map((e) => <th key={e.id} className="text-center whitespace-nowrap font-normal" title={e.title}>{dm(e.event_date)}</th>)}
+                    <th className="text-right">{t('stats.sessionsCol')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.guests.map((g, i) => (
+                    <tr key={g.key}>
+                      <td className="text-center text-gray-400">{i + 1}</td>
+                      <td className="text-white whitespace-nowrap">{g.full_name}</td>
+                      <td className="text-gray-400 whitespace-nowrap">{g.phone || '—'}</td>
+                      {view.guestEvents.map((e) => <td key={e.id} className="text-center"><Mark state={g.events[e.id]} /></td>)}
+                      <td className="text-right tabular-nums text-white font-semibold">{g.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-navy-900 text-gray-300">
+                    <td />
+                    <td className="text-xs">{t('stats.guestsRow')}</td>
+                    <td />
+                    {view.guestEvents.map((e) => <td key={e.id} className="text-center tabular-nums text-sky-300">{view.perEvent(e.id).guests}</td>)}
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </AppShell>
+  );
+}

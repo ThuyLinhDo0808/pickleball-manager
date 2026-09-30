@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
 import MemberHistory from '@/components/MemberHistory';
+import { tenureLabel } from '@/lib/memberDates';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -97,6 +98,39 @@ function RegisterForm({ club, member, plans, onDone }) {
 }
 
 // Popup with a member's internal notes and membership passes.
+// Birth date (birthday gifts) and the month they joined (seniority), edited in place.
+function MemberDates({ member, busy, onSave }) {
+  const { t } = useI18n();
+  const [birth, setBirth] = useState(member.birth_date || '');
+  const [joined, setJoined] = useState(member.joined_on ? member.joined_on.slice(0, 7) : '');
+  const changed = birth !== (member.birth_date || '') || joined !== (member.joined_on ? member.joined_on.slice(0, 7) : '');
+  return (
+    <div className="grid grid-cols-2 gap-3 items-end">
+      <div>
+        <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
+        <input className="input text-sm" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs text-gray-400">
+          {t('members.joinedMonth')}
+          {member.joined_on && <span className="text-gray-500"> · {tenureLabel(member.joined_on, t)}</span>}
+        </label>
+        <input className="input text-sm" type="month" value={joined} onChange={(e) => setJoined(e.target.value)} />
+      </div>
+      {changed && (
+        <button
+          type="button"
+          className="btn-primary text-sm col-span-2"
+          disabled={busy}
+          onClick={() => onSave({ birth_date: birth || null, joined_on: joined ? `${joined}-01` : null })}
+        >
+          {t('common.save')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function MemberDetail({ club, member, onClose, onChanged }) {
   const { t } = useI18n();
   const open = !!member;
@@ -152,6 +186,8 @@ export default function MemberDetail({ club, member, onClose, onChanged }) {
           {member.dupr_level != null && <span>DUPR {member.dupr_level}</span>}
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
+
+        <MemberDates key={`${member.id}${member.birth_date}${member.joined_on}`} member={member} busy={busy} onSave={patchMember} />
 
         {member.account_email && (
           <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">

@@ -11,6 +11,7 @@ const PROBES = [
   { table: 'events', column: 'kind', migration: '20261002090000_activities_team_tournaments.sql' },
   { table: 'tournaments', column: 'kind', migration: '20261002090000_activities_team_tournaments.sql' },
   { table: 'club_members', column: 'join_requested', migration: '20261002090000_activities_team_tournaments.sql' },
+  { table: 'club_members', column: 'joined_on', migration: '20261003090000_signup_safety_member_dates.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

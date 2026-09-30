@@ -122,6 +122,11 @@ Tóm tắt CLB đang chọn và các buổi sắp tới, kèm lối tắt tạo 
 - **Tài khoản người chơi** đã liên kết (nếu người đó tự tham gia qua link). Host có thể huỷ liên kết.
 - **Lịch sử thay đổi**: DUPR, loại, hạng, trạng thái hoạt động, trạng thái thanh toán gói. Xem [4.11](#411-lịch-sử-thay-đổi-scd-type-2).
 
+**Ngày sinh & thâm niên:**
+- Cột **Ngày sinh** (dd/mm/yyyy) và **Vào CLB** (tháng/năm + thâm niên, VD "2 năm 3 tháng"). Nhập khi thêm thành viên hoặc sửa trong chi tiết thành viên. Thành viên mới mặc định vào CLB tháng hiện tại.
+- Người có **sinh nhật trong tháng** hiện 🎂, và đầu trang có dòng "Sinh nhật tháng này" để CLB chuẩn bị quà.
+- Bảng thành viên chỉ để xem thông tin; số buổi còn lại xem ở **Thống kê → Thống kê thành viên**.
+
 **Hai tab: "Đã là thành viên" và "Chờ xác nhận":**
 - Khi người chơi bấm *Tôi là thành viên CLB* trên trang đăng ký kèo, app tìm thành viên có cùng SĐT:
   - **Khớp SĐT** → tài khoản được gắn vào thành viên đó, chờ Host xác nhận.
@@ -154,7 +159,7 @@ Menu **Tạo hoạt động** gồm 4 mục:
 | Mục | Đường dẫn | Dùng để |
 |---|---|---|
 | **Lịch sự kiện** | `/events` | **Chỉ xem** toàn bộ hoạt động của CLB: lịch chơi hàng tuần 🗓, kèo 🏓, buổi tập 🎯, họp 👥, kèo thách đấu ⚔️ và **giải đấu 🏆**. Dạng **Danh sách / Tháng / Tuần / Ngày** (xem [5.1](#51-lịch-kèo-dạng-calendar-events)). Bấm vào giải thì mở trang giải. |
-| **Tạo lịch chơi hàng tuần** | `/events/create/weekly` | Buổi chơi cố định của CLB. **Lặp lại hằng tuần**: nhập số buổi (1–26, mặc định 8), app tạo sẵn các tuần liên tiếp. |
+| **Tạo lịch chơi hàng tuần** | `/events/create/weekly` | Buổi chơi cố định của CLB. Tick **các thứ trong tuần** (VD T3, T5, T7) và chọn **từ ngày – đến ngày**; lịch bên dưới tô sẵn mọi buổi, bấm vào một ngày để thêm/bỏ riêng buổi đó (nghỉ lễ, buổi bù). App tạo tất cả trong một lần (tối đa 200 buổi). |
 | **Tạo giải đấu** | `/club/tournaments/new` | Xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments). |
 | **Tạo kèo** | `/events/create` | Một buổi lẻ. Chọn **loại hoạt động**: *Kèo giao lưu*, *Buổi tập*, *Họp / gặp mặt*, hoặc *Kèo thách đấu* (kèo ăn thua giữa thành viên: bên thua trả tiền sân/nước…; ghi tỉ số ở mục Trận đấu sau khi chơi). Các ô còn lại giống [5.2](#52-tạo-kèo-eventscreate). |
 
@@ -286,7 +291,13 @@ Khi người chơi đăng ký gói qua link:
 2. Yêu cầu hiện ở **Tài chính → Tổng quan → Chờ xác nhận thanh toán**.
 3. Nhận được tiền thì Host bấm **Đã nhận tiền**. Gói chuyển sang *Đã đóng* và app ghi khoản thu vào quỹ.
 
-### 4.13. Thống kê (`/analytics`)
+### 4.13. Thống kê thành viên (`/club/attendance`)
+Menu **Thống kê → Thống kê thành viên**. Chọn kỳ *Tháng / Quý / Năm* (nút ‹ ›) hoặc *Tùy chọn* từ ngày – đến ngày. Ba tab:
+- **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). `x` xanh = có mặt (đã check-in), `x` đỏ = vắng / huỷ muộn, `·` = đã đăng ký chưa check-in. Cột **Số buổi** có thanh biểu đồ. Xem *Theo buổi* hoặc *Theo tháng*, sắp xếp A→Z hoặc *Chơi nhiều*, hàng cuối đếm thành viên và khách mỗi buổi. **Xuất Excel (CSV)**.
+- **Buổi còn lại & bảo lưu**: mỗi gói hội viên trong kỳ — số buổi của gói, đã dùng, còn lại. Gói đã hết kỳ, đã đóng tiền mà còn buổi = số buổi cần **bảo lưu** sang kỳ sau (có tổng).
+- **Khách giao lưu**: người ngoài CLB đã đến các buổi (gộp theo SĐT), đánh dấu từng buổi và tổng số lần đến.
+
+### 4.14. Thống kê (`/analytics`)
 - **Tỷ lệ vắng mặt theo khung giờ**: heatmap *thứ trong tuần × khung giờ bắt đầu*, tính trên các buổi đã qua trong những tháng gần đây. Ô càng sáng thì khung giờ đó càng hay bị "bùng" kèo, giúp chọn giờ mở kèo.
 - **Phong độ theo thời gian** của một thành viên: tỷ lệ thắng và hiệu số theo từng tháng.
 
@@ -541,7 +552,7 @@ Ví dụ Zalo ZNS: trong Make, tạo scenario *Webhooks → Custom webhook*, dá
 5. Người chơi đăng ký và chuyển khoản bằng QR. Host vào **Tài chính → Tổng quan → Chờ xác nhận** và bấm *Đã nhận tiền*.
 
 ### Chơi định kỳ hằng tuần
-1. **Tạo hoạt động → Tạo lịch chơi hàng tuần**, đặt *Lặp lại hằng tuần* = 8 để có 8 tuần.
+1. **Tạo hoạt động → Tạo lịch chơi hàng tuần**, tick T3, T5, T7, chọn từ 01/10 đến 31/12, bỏ tick các ngày nghỉ lễ trên lịch.
 2. Mỗi buổi: **Nhập từ CLB** (hoặc mở link đăng ký), đến giờ thì **Check-in**. App tự trừ buổi trong gói.
 3. Nhập trận ở **Thống kê → Trận đấu**. Cuối tháng xem **Thống kê → Bảng xếp hạng → Tháng → Vinh danh**.
 
@@ -657,7 +668,8 @@ Route `/health` rất nhẹ: không cần đăng nhập và không truy vấn da
 supabase/migrations/
 ├── 20260930120000_cancel_policy_qr_coadmin_notify.sql   # hạn huỷ, QR, co-admin, thông báo
 ├── 20261001090000_paid_signup_tickets.sql               # đăng ký bắt buộc đăng nhập, ảnh chuyển khoản, vé QR, xác thực thành viên
-└── 20261002090000_activities_team_tournaments.sql       # loại hoạt động, yêu cầu vào CLB, giải Team League + trận phụ
+├── 20261002090000_activities_team_tournaments.sql       # loại hoạt động, yêu cầu vào CLB, giải Team League + trận phụ
+└── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -825,12 +837,12 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
 | Host | `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
 | CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH/DELETE /api/clubs/:id` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. `PATCH`, `DELETE` và `rotate` chỉ chủ CLB được gọi (co-admin nhận `403 owner_only`). |
-| Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
+| Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
-| Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge`) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
+| Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge`; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
@@ -849,7 +861,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Bảng / View |
 |---|---|
 | Tài khoản | `users` (có `notify_webhook_url`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký), view `v_host_capacity_usage` |
-| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, DUPR, loại, hạng, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
+| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
 | Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`), view `v_event_summary`, `v_player_reliability` |
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
@@ -888,6 +900,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nút *Quét QR* không mở được camera | Camera chỉ chạy trên **https** và cần cho phép quyền camera trong trình duyệt. Nếu vẫn không được, dán mã `PBP:…` vào ô bên dưới camera. |
 | Quét QR báo "Không có tên trong kèo" | Người chơi chưa đăng ký kèo này (hoặc đăng ký bằng số điện thoại khác mà không đăng nhập). Hãy thêm họ vào kèo trước. |
 | Người chơi không nhận được tin Telegram | Kiểm tra 3 biến `TELEGRAM_*` trên Render, đã chạy `npm run telegram:webhook`, và người chơi đã bấm *Start* (Cổng người chơi hiện "Đã kết nối ✓"). |
+| Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |
 | Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số trong danh sách thành viên thì nút "Tôi là thành viên" mới tìm được. |
 | Khách chuyển khoản rồi nhưng chỗ bị huỷ | Quá 30 phút (hoặc 2 giờ sau khi bị từ chối) mà chưa gửi ảnh thì chỗ tự nhả. Host thêm tay người đó rồi bấm *Đã thu tiền mặt* / *đã thu phí*. |
 | Trang thanh toán không hiện VietQR | Chưa cài tài khoản nhận tiền: **Tài khoản → Tài khoản nhận tiền (kèo)**, hoặc tài khoản của CLB trong *CLB của tôi → Thanh toán*. |

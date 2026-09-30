@@ -8,21 +8,10 @@ import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { todayYmd } from '@/lib/dates';
+import { dmy, isBirthdayMonth, my, tenureLabel } from '@/lib/memberDates';
 
-const emptyForm = { full_name: '', gender: '', birth_year: '', dupr_level: '', member_type: 'fixed', tier: '', phone: '' };
-
-function SessionsCell({ m, t }) {
-  if (m.membership_state === 'active') {
-    return m.sessions_unlimited ? (
-      <span className="text-lime-400">∞</span>
-    ) : (
-      <span className={`font-semibold ${m.sessions_remaining > 0 ? 'text-lime-400' : 'text-red-400'}`}>{m.sessions_remaining}</span>
-    );
-  }
-  if (m.membership_state === 'unpaid') return <span className="text-yellow-400 text-xs">{t('membership.pending')}</span>;
-  if (m.membership_state === 'expired') return <span className="text-gray-500 text-xs">{t('membership.state_expired')}</span>;
-  return <span className="text-gray-600">—</span>;
-}
+const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '' });
 
 export default function MembersPage() {
   const { t } = useI18n();
@@ -32,7 +21,7 @@ export default function MembersPage() {
     [club?.id]
   );
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(emptyForm());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState([]);
@@ -51,7 +40,7 @@ export default function MembersPage() {
 
   function closeAdd() {
     setShowAdd(false);
-    setForm(emptyForm);
+    setForm(emptyForm());
     setError('');
   }
 
@@ -64,7 +53,9 @@ export default function MembersPage() {
       await api.post(`/api/clubs/${club.id}/members`, {
         ...form,
         dupr_level: form.dupr_level ? Number(form.dupr_level) : null,
-        birth_year: form.birth_year ? Number(form.birth_year) : null,
+        birth_date: form.birth_date || null,
+        joined_on: form.joined_month ? `${form.joined_month}-01` : null,
+        joined_month: undefined,
         gender: form.gender || null,
         tier: form.tier || null,
       });
@@ -146,6 +137,16 @@ export default function MembersPage() {
         </button>
       )}
 
+      {tab === 'members' && (() => {
+        const bdays = rows.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
+        return bdays.length > 0 ? (
+          <div className="card mb-3 !py-3 text-sm border-pink-400/40">
+            <span className="text-pink-300 font-semibold">🎂 {t('members.birthdaysThisMonth', { n: bdays.length })}</span>{' '}
+            <span className="text-gray-300">{bdays.map((m) => `${m.full_name} (${m.birth_date.slice(8, 10)}/${m.birth_date.slice(5, 7)})`).join(', ')}</span>
+          </div>
+        ) : null;
+      })()}
+
       <div className={`card ${tab === 'members' ? '' : 'hidden'}`}>
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
         {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t('members.empty')}</p>}
@@ -169,11 +170,11 @@ export default function MembersPage() {
                     <th className="w-12 text-center">{t('members.no')}</th>
                     <th>{t('common.name')}</th>
                     <th>{t('members.gender')}</th>
-                    <th>{t('members.birthYear')}</th>
+                    <th>{t('members.birthDate')}</th>
+                    <th>{t('members.joined')}</th>
                     <th>{t('common.level')}</th>
                     <th>{t('members.type')}</th>
                     <th>{t('members.tier')}</th>
-                    <th className="text-center">{t('members.sessionsLeft')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,13 +213,20 @@ export default function MembersPage() {
                         )}
                       </td>
                       <td className="text-gray-300">{m.gender ? t(`members.${m.gender}`) : '—'}</td>
-                      <td className="text-gray-300">{m.birth_year ?? '—'}</td>
+                      <td className="text-gray-300 whitespace-nowrap">
+                        {m.birth_date ? dmy(m.birth_date) : m.birth_year ?? '—'}
+                        {isBirthdayMonth(m.birth_date) && <span className="ml-1" title={t('members.birthdayMonth')}>🎂</span>}
+                      </td>
+                      <td className="text-gray-300 whitespace-nowrap">
+                        {m.joined_on ? (
+                          <>
+                            {my(m.joined_on)} <span className="text-gray-500 text-xs">· {tenureLabel(m.joined_on, t)}</span>
+                          </>
+                        ) : '—'}
+                      </td>
                       <td className="text-gray-300">{m.dupr_level ?? '—'}</td>
                       <td className="text-gray-300">{m.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</td>
                       <td className="text-gray-300">{m.tier ? t(`members.${m.tier}`) : '—'}</td>
-                      <td className="text-center">
-                        <SessionsCell m={m} t={t} />
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -245,17 +253,12 @@ export default function MembersPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-400">{t('members.birthYear')}</label>
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min="1900"
-              max={new Date().getFullYear()}
-              placeholder="1995"
-              value={form.birth_year}
-              onChange={(e) => setForm({ ...form, birth_year: e.target.value })}
-            />
+            <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
+            <input className="input" type="date" max={todayYmd()} value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">{t('members.joinedMonth')}</label>
+            <input className="input" type="month" value={form.joined_month} onChange={(e) => setForm({ ...form, joined_month: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('common.level')}</label>
