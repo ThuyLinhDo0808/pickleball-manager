@@ -44,7 +44,7 @@ function Section({ n, title, hint, children }) {
 }
 
 function Field({ label, hint, span = 1, children }) {
-  const cls = { 1: 'col-span-1', 2: 'col-span-2', 4: 'col-span-2 md:col-span-4' }[span];
+  const cls = `min-w-0 ${{ 1: 'col-span-1', 2: 'col-span-2', 4: 'col-span-2 md:col-span-4' }[span]}`;
   return (
     <div className={cls}>
       <label className="text-xs text-gray-400">{label}</label>

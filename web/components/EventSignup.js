@@ -235,7 +235,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const fee = Number(ev.fee_amount || 0);
   const next = `/sign-in?next=${encodeURIComponent(`/e/${token}`)}`;
 
-  if (!user) {
+  if (!user || meError?.status === 401) {
     return (
       <>
         <Steps current="login" guestPays={fee > 0} />
