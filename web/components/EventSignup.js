@@ -39,7 +39,13 @@ function minutesLeft(iso) {
 
 function ProfileForm({ profile, onSaved }) {
   const { t } = useI18n();
-  const [f, setF] = useState({ full_name: profile?.full_name || '', phone: profile?.phone || '', dupr_level: profile?.dupr_level ?? '' });
+  const [f, setF] = useState({
+    full_name: profile?.full_name || '',
+    phone: profile?.phone || '',
+    dupr_level: profile?.dupr_level ?? '',
+    birth_date: profile?.birth_date || '',
+    gender: profile?.gender || '',
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function save(e) {
@@ -47,7 +53,8 @@ function ProfileForm({ profile, onSaved }) {
     setBusy(true);
     setError('');
     try {
-      await api.put('/api/player/profile', { ...f, dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level) });
+      // Keep the rest of the profile (e.g. avatar) as it is.
+      await api.put('/api/player/profile', { ...(profile || {}), ...f, dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level) });
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -66,6 +73,20 @@ function ProfileForm({ profile, onSaved }) {
         <label className="text-xs text-gray-400">{t('public.yourPhone')}</label>
         <input className="input" required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
         <p className="text-gray-500 text-xs mt-1">{t('public.phoneHint')}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0">
+          <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
+          <input className="input" required type="date" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={f.birth_date} onChange={(e) => setF({ ...f, birth_date: e.target.value })} />
+        </div>
+        <div className="min-w-0">
+          <label className="text-xs text-gray-400">{t('members.gender')}</label>
+          <select className="input" value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
+            <option value="">—</option>
+            <option value="male">{t('members.male')}</option>
+            <option value="female">{t('members.female')}</option>
+          </select>
+        </div>
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
@@ -362,7 +383,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!ev.registration_open) {
     return <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>;
   }
-  if (!me.profile?.full_name || !me.profile?.phone) return <ProfileForm profile={me.profile} onSaved={onChanged} />;
+  if (!me.profile?.full_name || !me.profile?.phone || !me.profile?.birth_date) return <ProfileForm profile={me.profile} onSaved={onChanged} />;
 
   async function register() {
     setBusy(true);

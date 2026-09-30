@@ -6,7 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-const empty = { full_name: '', phone: '', dupr_level: '', gender: '', birth_year: '', avatar: null };
+const empty = { full_name: '', phone: '', dupr_level: '', gender: '', birth_date: '', avatar: null };
 
 // Shrink a photo to a 256px square JPEG data URL (~20-40 KB) so it can live in the profile row.
 function resizePhoto(file) {
@@ -44,7 +44,7 @@ export default function PlayerProfile() {
       setEmail(me.email);
       if (me.profile) {
         const p = me.profile;
-        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', birth_year: p.birth_year ?? '', gender: p.gender || '' });
+        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
       }
     });
   }, [user?.id]);
@@ -116,8 +116,9 @@ export default function PlayerProfile() {
           <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={form.dupr_level} onChange={set('dupr_level')} />
         </div>
         <div>
-          <label className="text-xs text-gray-400">{t('members.birthYear')}</label>
-          <input className="input" type="number" inputMode="numeric" min="1900" max={new Date().getFullYear()} value={form.birth_year} onChange={set('birth_year')} />
+          <label className="text-xs text-gray-400">{t('members.birthDate')} *</label>
+          <input className="input" required type="date" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={form.birth_date} onChange={set('birth_date')} />
+          {!form.birth_date && form.birth_year && <p className="text-yellow-300 text-xs mt-1">{t('player.needBirthDate')}</p>}
         </div>
         <div className="col-span-2">
           <label className="text-xs text-gray-400">{t('members.gender')}</label>

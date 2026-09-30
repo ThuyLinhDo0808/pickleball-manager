@@ -111,9 +111,9 @@ const fromMember = (m) => ({
   is_active: m.is_active !== false,
 });
 
-function MemberEdit({ member, busy, onSave }) {
+function MemberEdit({ member, busy, onSave, autoEdit = false }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoEdit);
   const [f, setF] = useState(() => fromMember(member));
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
 
@@ -206,7 +206,7 @@ function MemberEdit({ member, busy, onSave }) {
   );
 }
 
-export default function MemberDetail({ club, member, onClose, onChanged }) {
+export default function MemberDetail({ club, member, onClose, onChanged, autoEdit = false }) {
   const { t } = useI18n();
   const open = !!member;
   const { data: plans } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/plans`) : Promise.resolve([])), [club?.id]);
@@ -264,7 +264,7 @@ export default function MemberDetail({ club, member, onClose, onChanged }) {
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
 
-        <MemberEdit key={member.id} member={member} busy={busy} onSave={patchMember} />
+        <MemberEdit key={member.id} member={member} busy={busy} onSave={patchMember} autoEdit={autoEdit} />
 
         {member.account_email && (
           <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">

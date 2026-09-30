@@ -26,6 +26,7 @@ export default function MembersPage() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState([]);
   const [detailId, setDetailId] = useState(null);
+  const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState('members');
   const { data: requests, reload: reloadRequests } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/member-requests`).catch(() => []) : Promise.resolve([])),
@@ -194,10 +195,24 @@ export default function MembersPage() {
                           className="text-white hover:text-lime-400 underline decoration-navy-600 underline-offset-4 text-left"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setEditing(false);
                             setDetailId(m.id);
                           }}
                         >
                           {m.full_name}
+                        </button>
+                        <button
+                          type="button"
+                          title={t('members.edit')}
+                          aria-label={`${t('members.edit')}: ${m.full_name}`}
+                          className="ml-1.5 rounded px-1 text-sm opacity-70 hover:opacity-100 hover:bg-navy-700 align-middle"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditing(true);
+                            setDetailId(m.id);
+                          }}
+                        >
+                          ✏️
                         </button>
                         {m.account_email && !m.account_verified && (
                           <span className="ml-2 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>
@@ -214,7 +229,11 @@ export default function MembersPage() {
                       </td>
                       <td className="text-gray-300">{m.gender ? t(`members.${m.gender}`) : '—'}</td>
                       <td className="text-gray-300 whitespace-nowrap">
-                        {m.birth_date ? dmy(m.birth_date) : m.birth_year ?? '—'}
+                        {m.birth_date ? dmy(m.birth_date) : m.birth_year ? (
+                          <>
+                            {m.birth_year} <span className="text-yellow-300/80 text-xs" title={t('members.noDayMonth')}>· {t('members.noDayMonthShort')}</span>
+                          </>
+                        ) : '—'}
                         {isBirthdayMonth(m.birth_date) && <span className="ml-1" title={t('members.birthdayMonth')}>🎂</span>}
                       </td>
                       <td className="text-gray-300 whitespace-nowrap">
@@ -236,7 +255,7 @@ export default function MembersPage() {
         )}
       </div>
 
-      <MemberDetail club={club} member={detailMember} onClose={() => setDetailId(null)} onChanged={reload} />
+      <MemberDetail club={club} member={detailMember} autoEdit={editing} onClose={() => { setDetailId(null); setEditing(false); }} onChanged={reload} />
 
       <Modal open={showAdd} title={t('members.newMember')} onClose={closeAdd}>
         <form onSubmit={addMember} className="grid grid-cols-2 gap-3">

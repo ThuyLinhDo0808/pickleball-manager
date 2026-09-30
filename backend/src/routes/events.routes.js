@@ -92,7 +92,7 @@ function fail(res, err) {
 }
 
 async function playerProfile(userId) {
-  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level, gender, birth_year').eq('user_id', userId).maybeSingle();
+  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level, gender, birth_year, birth_date').eq('user_id', userId).maybeSingle();
   return data;
 }
 

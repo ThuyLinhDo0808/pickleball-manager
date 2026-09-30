@@ -157,6 +157,8 @@ export const en = {
     notes: 'Notes',
   },
   members: {
+    noDayMonth: 'Only the year is known — press ✏️ to add the full birth date',
+    noDayMonthShort: 'no day',
     edit: 'Edit details',
     active: 'Active',
     birthDate: 'Birth date',
@@ -186,7 +188,7 @@ export const en = {
     empty: 'No members yet. Tap + to add one.',
     sessionsLeft: 'Sessions left',
     info: 'Details',
-    openHint: 'Tap a name to see details, memberships and notes.',
+    openHint: 'Tap a name to see details, memberships and notes; press ✏️ to edit.',
   },
   events: {
     addEvent: 'Create event',
@@ -432,6 +434,7 @@ export const en = {
     profile: 'Profile',
     hostApp: 'Club manager',
     hello: 'Hi {name}!',
+    needBirthDate: 'Please add your full birth date to your profile (required to sign up for games / clubs).',
     completeProfile: 'Complete your profile to join clubs and track your games.',
     myClubs: 'My clubs',
     noClubs: "You haven't joined a club yet. Open the join link your host sent you.",
