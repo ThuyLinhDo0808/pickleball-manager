@@ -579,9 +579,10 @@ export const vi = {
     title: 'Góp ý cho nhà phát triển',
     hint: 'Bạn muốn app có thêm gì, hay gặp lỗi ở đâu? Góp ý sẽ được gửi thẳng tới nhà phát triển.',
     message: 'Nội dung',
-    contact: 'Liên hệ (không bắt buộc)',
     send: 'Gửi góp ý',
-    thanks: 'Cảm ơn bạn! Góp ý đã được gửi.',
+    thanksTitle: 'Cảm ơn bạn đã góp ý!',
+    thanks: 'Góp ý của bạn đã được gửi tới nhà phát triển. Mọi ý kiến đều giúp app tốt hơn.',
+    close: 'Đóng',
   },
   fin: {
     customCategory: 'Khác (tự nhập)…',

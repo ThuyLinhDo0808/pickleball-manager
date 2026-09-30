@@ -13,7 +13,6 @@ export default function FeedbackButton({ className = '', children }) {
   const pathname = usePathname() || '';
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [contact, setContact] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +28,7 @@ export default function FeedbackButton({ className = '', children }) {
     setBusy(true);
     setError('');
     try {
-      await api.post('/api/host/feedback', { message, contact: contact || user?.email, page: pathname });
+      await api.post('/api/host/feedback', { message, contact: user?.email, page: pathname });
       setMessage('');
       setSent(true);
     } catch (err) {
@@ -48,10 +47,11 @@ export default function FeedbackButton({ className = '', children }) {
       </button>
       <Modal open={open} title={t('feedback.title')} onClose={close}>
         {sent ? (
-          <div className="text-center py-4">
-            <div className="text-3xl mb-2">💌</div>
-            <p className="text-lime-300">{t('feedback.thanks')}</p>
-            <button className="btn-secondary mt-4" onClick={close}>OK</button>
+          <div className="text-center py-6">
+            <div className="text-5xl mb-3">💚</div>
+            <p className="text-white text-lg font-semibold">{t('feedback.thanksTitle')}</p>
+            <p className="text-gray-300 text-sm mt-1">{t('feedback.thanks')}</p>
+            <button className="btn-primary mt-5 w-full sm:w-auto sm:px-10" onClick={close}>{t('feedback.close')}</button>
           </div>
         ) : (
           <form onSubmit={send} className="flex flex-col gap-3">
@@ -59,10 +59,6 @@ export default function FeedbackButton({ className = '', children }) {
             <div>
               <label className="text-xs text-gray-400">{t('feedback.message')}</label>
               <textarea className="input" rows={5} required maxLength={4000} autoFocus value={message} onChange={(e) => setMessage(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400">{t('feedback.contact')}</label>
-              <input className="input" placeholder={user?.email} value={contact} onChange={(e) => setContact(e.target.value)} />
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button className="btn-primary" disabled={busy || !message.trim()}>{t('feedback.send')}</button>

@@ -10,14 +10,21 @@ async function authHeader() {
 }
 
 async function request(path, { method = 'GET', body, isPublic = false } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (!isPublic) Object.assign(headers, await authHeader());
+  const send = async () => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (!isPublic) Object.assign(headers, await authHeader());
+    return fetch(`${API_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  };
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res = await send();
+  // A stale login (token expired while the phone slept, or the account was removed):
+  // refresh once; if the server still rejects it, sign out locally so the page shows
+  // "log in" instead of an error.
+  if (res.status === 401 && !isPublic) {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (!error && data?.session) res = await send();
+    if (res.status === 401) await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  }
 
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));

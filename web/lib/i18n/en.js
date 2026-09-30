@@ -579,9 +579,10 @@ export const en = {
     title: 'Feedback for the developer',
     hint: 'Missing something, or found a bug? Your message goes straight to the developer.',
     message: 'Message',
-    contact: 'Contact (optional)',
     send: 'Send',
-    thanks: 'Thank you! Your feedback was sent.',
+    thanksTitle: 'Thank you for your feedback!',
+    thanks: 'It has been sent to the developer. Every idea helps make the app better.',
+    close: 'Close',
   },
   fin: {
     customCategory: 'Other (type your own)…',

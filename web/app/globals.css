@@ -23,6 +23,24 @@ body {
   @apply bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-white w-full outline-none focus:border-lime-400;
 }
 
+/* iOS Safari gives date/time pickers an intrinsic width wider than a half-width
+   column, so they spill out of the card; keep them inside their grid cell. */
+.input[type='time'],
+.input[type='date'],
+.input[type='month'],
+.input[type='datetime-local'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  min-height: 2.625rem;
+  text-align: left;
+}
+.input::-webkit-date-and-time-value {
+  text-align: left;
+}
+
 /* ---- Mobile helpers ------------------------------------------------------ */
 .pt-safe {
   padding-top: env(safe-area-inset-top);
