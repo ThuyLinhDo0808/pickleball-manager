@@ -1,4 +1,5 @@
 'use client';
+import Podium from '@/components/Podium';
 import GamesInput, { gamesPayload, gamesText } from '@/components/GamesInput';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -169,13 +170,16 @@ export default function TournamentPage() {
         </div>
       </div>
 
-      {tour.champion_id && (
-        <div className="card mb-4 border-lime-400 text-center py-5">
-          <div className="text-4xl mb-1">🏆</div>
-          <div className="text-gray-400 text-xs uppercase tracking-wide">{t('tournaments.champion')}</div>
-          <div className="text-lime-400 text-2xl font-bold">{teamName(tour.champion_id)}</div>
-        </div>
-      )}
+      {tour.champion_id &&
+        (tour.podium ? (
+          <Podium podium={tour.podium} />
+        ) : (
+          <div className="card mb-4 border-lime-400 text-center py-5">
+            <div className="text-4xl mb-1">🏆</div>
+            <div className="text-gray-400 text-xs uppercase tracking-wide">{t('tournaments.champion')}</div>
+            <div className="text-lime-400 text-2xl font-bold">{teamName(tour.champion_id)}</div>
+          </div>
+        ))}
 
       {error && <p className="card text-red-400 text-sm mb-4">{error}</p>}
 

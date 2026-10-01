@@ -18,9 +18,16 @@ export function AuthProvider({ children }) {
     user: session?.user || null,
     loading: session === undefined,
     signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
-    // The confirmation email brings people back to this same site (not Supabase's Site URL).
+    // The confirmation email brings people to the welcome page of this site. Supabase only
+    // follows it when the URL is in Authentication → URL Configuration → Redirect URLs;
+    // otherwise it falls back to the Site URL (e.g. localhost). NEXT_PUBLIC_SITE_URL can pin
+    // the public address.
     signUp: (email, password) =>
-      supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/sign-in` } }),
+      supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/+$/, '')}/welcome` },
+      }),
     signOut: () => supabase.auth.signOut(),
   };
 

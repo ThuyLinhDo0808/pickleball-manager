@@ -6,7 +6,7 @@ const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
 const { itemMetrics } = require('../services/inventory');
 const birthdays = require('../services/birthdays');
-const { guestsReady, guestStats, PERKS } = require('../services/guests');
+const { guestsReady, discountReady, guestStats, PERKS } = require('../services/guests');
 const { phoneLinkReady } = require('../services/phoneLink');
 const { completeFinished } = require('../services/eventStatus');
 const { setAttendance } = require('../services/attendance');
@@ -326,7 +326,7 @@ router.post('/:clubId/members/bulk', async (req, res) => {
 });
 
 router.patch('/:clubId/members/:memberId', async (req, res) => {
-  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags', 'guest_perk']);
+  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags', 'guest_perk', 'guest_discount_pct']);
   if ('notes' in fields) fields.notes = String(fields.notes ?? '').trim().slice(0, 2000) || null;
   if ('dupr_level' in fields) {
     try {
@@ -338,10 +338,23 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   if ('guest_perk' in fields && !(await guestsReady())) delete fields.guest_perk; // migration not run yet
   if ('guest_perk' in fields) {
     fields.guest_perk = fields.guest_perk || null;
-    if (fields.guest_perk && !PERKS.includes(fields.guest_perk)) return res.status(400).json({ error: 'guest_perk must be priority or vip.' });
+    if (fields.guest_perk && !PERKS.includes(fields.guest_perk)) return res.status(400).json({ error: 'Guests can only get the priority perk.', code: 'perk' });
     if (fields.guest_perk && (fields.member_type || req.member.member_type) !== 'guest') {
       return res.status(400).json({ error: 'Perks are for guests only.' });
     }
+  }
+  // Priority guests: % off the ticket (0-100). Dropped with the perk.
+  if ('guest_discount_pct' in fields && !(await discountReady())) delete fields.guest_discount_pct;
+  if ('guest_discount_pct' in fields) {
+    const raw = fields.guest_discount_pct;
+    const pct = raw === '' || raw == null ? null : Number(raw);
+    if (pct != null && !(Number.isInteger(pct) && pct >= 0 && pct <= 100)) {
+      return res.status(400).json({ error: 'Discount must be a whole percent from 0 to 100.', code: 'discount' });
+    }
+    const perk = 'guest_perk' in fields ? fields.guest_perk : req.member.guest_perk;
+    fields.guest_discount_pct = perk ? pct || null : null;
+  } else if ('guest_perk' in fields && !fields.guest_perk && (await discountReady())) {
+    fields.guest_discount_pct = null;
   }
   if ('flags' in fields) fields.flags = (Array.isArray(fields.flags) ? fields.flags : []).filter((f) => FLAGS.includes(f));
   if ('gender' in fields) fields.gender = cleanGender(fields.gender);
@@ -508,8 +521,25 @@ router.post('/:clubId/plans', async (req, res) => {
   res.status(201).json(data);
 });
 
+// Edit a plan. Periods already registered keep their dates and amounts; the new
+// period / price apply to the next registrations.
 router.patch('/:clubId/plans/:planId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'price', 'sessions_included', 'is_active']);
+  const fields = pick(req.body, ['name', 'period', 'price', 'sessions_included', 'is_active']);
+  if ('name' in fields) {
+    fields.name = String(fields.name || '').trim().slice(0, 120);
+    if (!fields.name) return res.status(400).json({ error: 'name is required.' });
+  }
+  if ('period' in fields && !PERIODS.includes(fields.period)) {
+    return res.status(400).json({ error: 'period must be month, quarter, or year.' });
+  }
+  for (const k of ['price', 'sessions_included']) {
+    if (k in fields) {
+      const n = Number(fields[k] === '' || fields[k] == null ? 0 : fields[k]);
+      if (!(Number.isFinite(n) && n >= 0)) return res.status(400).json({ error: 'price and sessions_included must be >= 0.' });
+      fields[k] = k === 'sessions_included' ? Math.floor(n) : n;
+    }
+  }
+  if ('is_active' in fields) fields.is_active = !!fields.is_active;
   const { data, error } = await supabase.from('membership_plans').update(fields).eq('id', req.plan.id).select().single();
   if (error) return dbError(res, error);
   res.json(data);
@@ -531,6 +561,10 @@ router.post('/:clubId/members/:memberId/memberships', async (req, res) => {
     .maybeSingle();
   if (planErr) return dbError(res, planErr);
   if (!plan) return notFound(res, 'Plan');
+  // Guests buy single tickets; plans are for the fixed team.
+  if (req.member.member_type !== 'fixed') {
+    return res.status(400).json({ error: 'Membership plans are for fixed members only.', code: 'fixed_only' });
+  }
 
   const amount = req.body.amount != null && req.body.amount !== '' ? Number(req.body.amount) : Number(plan.price);
   const rows = Array.from({ length: count }, (_, i) => ({

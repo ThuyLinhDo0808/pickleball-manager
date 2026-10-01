@@ -4,6 +4,8 @@ import LevelInput from '@/components/LevelInput';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
+import VipBadge from '@/components/VipBadge';
+import { GuestPerkBadge } from '@/components/GuestColumns';
 import MemberHistory from '@/components/MemberHistory';
 import { dmy, my, tenureLabel } from '@/lib/memberDates';
 import { useI18n } from '@/context/I18nContext';
@@ -108,7 +110,8 @@ const fromMember = (m) => ({
   dupr_level: m.dupr_level ?? '',
   member_type: m.member_type || 'fixed',
   tier: m.tier || '',
-  guest_perk: m.guest_perk || '',
+  guest_perk: m.guest_perk ? 'priority' : '',
+  guest_discount_pct: m.guest_discount_pct ?? '',
   birth_date: m.birth_date || '',
   joined: m.joined_on ? m.joined_on.slice(0, 7) : '',
   is_active: m.is_active !== false,
@@ -145,7 +148,9 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level),
       member_type: f.member_type,
       tier: f.member_type === 'fixed' ? f.tier || null : null,
-      ...(f.member_type === 'guest' ? { guest_perk: f.guest_perk || null } : {}),
+      ...(f.member_type === 'guest'
+        ? { guest_perk: f.guest_perk || null, guest_discount_pct: f.guest_perk && f.guest_discount_pct !== '' ? Number(f.guest_discount_pct) : null }
+        : {}),
       birth_date: f.birth_date || null,
       joined_on: f.joined ? `${f.joined}-01` : null,
       is_active: f.is_active,
@@ -198,15 +203,51 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
           </>
         ) : (
           <>
-            <label className="text-xs text-gray-400">{t('guests.perk')}</label>
-            <select className="input" value={f.guest_perk} onChange={(e) => set({ guest_perk: e.target.value })}>
-              <option value="">—</option>
-              <option value="priority">⚡ {t('guests.perk_priority')}</option>
-              <option value="vip">⭐ {t('guests.perk_vip')}</option>
-            </select>
+            <span className="text-xs text-gray-400">{t('guests.perk')}</span>
+            <label className="input flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!f.guest_perk}
+                onChange={(e) => set({ guest_perk: e.target.checked ? 'priority' : '', guest_discount_pct: e.target.checked ? f.guest_discount_pct : '' })}
+              />
+              <span>⚡ {t('guests.perk_priority')}</span>
+            </label>
           </>
         )}
       </div>
+      {f.member_type === 'guest' && f.guest_perk && (
+        <div className="col-span-2">
+          <label htmlFor="md-discount" className="text-xs text-gray-400">{t('guests.discountLabel')}</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-28">
+              <input
+                id="md-discount"
+                className="input !pr-7"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                max="100"
+                step="1"
+                placeholder="0"
+                value={f.guest_discount_pct}
+                onChange={(e) => set({ guest_discount_pct: e.target.value })}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+            </div>
+            {[10, 20, 30, 50].map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => set({ guest_discount_pct: String(p) })}
+                className={`rounded-full border px-2.5 py-1 text-xs ${String(f.guest_discount_pct) === String(p) ? 'border-lime-400 text-lime-300' : 'border-navy-600 text-gray-300'}`}
+              >
+                −{p}%
+              </button>
+            ))}
+          </div>
+          <p className="text-gray-500 text-xs mt-1">{t('guests.discountHint')}</p>
+        </div>
+      )}
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('members.joinedMonth')}</label>
         <input className="input" type="month" value={f.joined} onChange={(e) => set({ joined: e.target.value })} />
@@ -275,7 +316,12 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
     <Modal open title={member.full_name} onClose={onClose}>
       <div className="flex flex-col gap-5">
         <div className="text-gray-400 text-sm flex flex-wrap gap-x-4 gap-y-1">
-          <span>{member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}{member.tier && ` · ${t(`members.${member.tier}`)}`}</span>
+          <span>
+            {member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}
+            {member.member_type === 'fixed' && member.tier && ` · ${t(`members.${member.tier}`)}`}
+          </span>
+          {member.member_type === 'fixed' && <VipBadge stars={member.vip_stars} />}
+          {member.member_type !== 'fixed' && member.guest_perk && <GuestPerkBadge perk={member.guest_perk} pct={member.guest_discount_pct} />}
           {member.phone && <a href={`tel:${member.phone}`} className="text-lime-400">{member.phone}</a>}
           {member.dupr_level != null && <span>{levelTag(member.dupr_level, sport, t)}</span>}
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
@@ -349,12 +395,15 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-white font-semibold text-sm">{t('membership.title')}</h3>
-            <button type="button" className="text-lime-400 text-sm" onClick={() => setShowRegister((s) => !s)}>
-              {showRegister ? t('common.cancel') : `+ ${t('membership.register')}`}
-            </button>
+            {member.member_type === 'fixed' && (
+              <button type="button" className="text-lime-400 text-sm" onClick={() => setShowRegister((s) => !s)}>
+                {showRegister ? t('common.cancel') : `+ ${t('membership.register')}`}
+              </button>
+            )}
           </div>
+          {member.member_type !== 'fixed' && <p className="text-gray-400 text-xs mb-2">{t('membership.guestNoPlans')}</p>}
 
-          {showRegister && plans && (
+          {showRegister && plans && member.member_type === 'fixed' && (
             <div className="mb-3">
               <RegisterForm
                 club={club}
@@ -369,7 +418,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             </div>
           )}
 
-          {(passes || []).length === 0 && !showRegister && <p className="text-gray-400 text-sm">{t('membership.none')}</p>}
+          {(passes || []).length === 0 && !showRegister && member.member_type === 'fixed' && <p className="text-gray-400 text-sm">{t('membership.none')}</p>}
           <div className="flex flex-col gap-2">
             {(passes || []).map((p) => {
               const unlimited = p.sessions_included === 0;

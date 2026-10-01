@@ -127,8 +127,8 @@ function MemberStanding({ me, clubName }) {
         <span className="text-sky-200 font-semibold">🤝 {t('signup.youAreGuest', { club: clubName })}</span>
         {m.guest_perk && (
           <div className="text-gray-200 text-xs mt-0.5">
-            {m.guest_perk === 'vip' ? '⭐ ' : '⚡ '}
-            {t(m.guest_perk === 'vip' ? 'signup.perkVip' : 'signup.perkPriority')}
+            ⚡ {t('signup.perkPriority')}
+            {m.discount_pct > 0 && <span className="text-lime-300"> {t('signup.perkDiscount', { pct: m.discount_pct })}</span>}
           </div>
         )}
       </div>
@@ -237,7 +237,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
 
   const reg = me.registration && ACTIVE.includes(me.registration.status) ? me.registration : null;
   const memberFree = me.member.state === 'verified' && me.member.has_pass;
-  const myFee = me.member.my_fee ?? fee; // VIP guests pay the club's VIP price
+  const myFee = me.member.my_fee ?? fee; // priority guests pay the price after their discount
   const guestPays = myFee > 0 && !memberFree;
 
   async function cancel() {

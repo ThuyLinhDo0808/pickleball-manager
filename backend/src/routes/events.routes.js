@@ -120,6 +120,7 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
       member: {
         guest_perk: perks?.perk || null,
         my_fee: perks?.fee_amount ?? null,
+        discount_pct: perks?.discount_pct ?? null,
         state: standing.state, // 'verified' | 'pending' | 'guest' | 'none'
         is_club_event: !!event.club_id,
         has_pass: !!standing.pass,

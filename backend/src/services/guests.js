@@ -2,8 +2,9 @@
 // confirmed place at a club session is kept in the club's member list as a guest, so
 // the Host knows who came, can note who cancelled after paying, and can give perks:
 //
-//   priority = first off the waitlist
-//   vip      = priority + the club's VIP discount on every session fee
+//   priority = first off the waitlist, plus the % off the ticket the Host set for this
+//              guest (guest_discount_pct). Guests buy single tickets only: membership
+//              plans (and their VIP stars) are for fixed members.
 //
 // Sign-ups that never got a confirmed place (unpaid holds, cancelled before paying)
 // never reach the list.
@@ -13,13 +14,27 @@ const { schemaStatus } = require('./schemaCheck');
 const { clubSport, profileLevel } = require('./sport');
 
 const MIGRATION = '20261009090000_guest_perks_survey.sql';
-const PERKS = ['priority', 'vip'];
+const PERKS = ['priority'];
+const DISCOUNT_MIGRATION = '20261013090000_guest_priority_discount.sql';
 const CONFIRMED = ['registered', 'checked_in'];
 
 // False until the Host has run the migration: callers then behave exactly as before.
 async function guestsReady() {
   const s = await schemaStatus();
   return !s.missing_migrations.includes(MIGRATION);
+}
+
+async function discountReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes(DISCOUNT_MIGRATION);
+}
+
+// Ticket price after a priority guest's discount (whole VND).
+function discountedFee(base, pct) {
+  const p = Number(pct || 0);
+  const b = Number(base || 0);
+  if (!(p > 0) || !(b > 0)) return null;
+  return Math.max(0, Math.round((b * (100 - Math.min(p, 100))) / 100));
 }
 
 // This person's record in the club: their linked account first, else an unlinked
@@ -40,15 +55,10 @@ async function perksFor(event, { userId = null, phone = null } = {}) {
   const none = { member: null, perk: null, priority: false, fee_amount: null };
   if (!event.club_id || !(await guestsReady())) return none;
   const member = await findClubPerson(event.club_id, { userId, phone });
-  if (!member || member.member_type === 'fixed' || !PERKS.includes(member.guest_perk)) return { ...none, member };
-  let fee = null;
-  if (member.guest_perk === 'vip') {
-    const { data: club } = await supabase.from('clubs').select('guest_vip_discount').eq('id', event.club_id).maybeSingle();
-    const discount = Number(club?.guest_vip_discount || 0);
-    const base = Number(event.fee_amount || 0);
-    if (discount > 0 && base > 0) fee = Math.max(0, base - discount);
-  }
-  return { member, perk: member.guest_perk, priority: true, fee_amount: fee };
+  // ('vip' is a perk from before migration 20261013090000: treated as priority.)
+  if (!member || member.member_type === 'fixed' || !['priority', 'vip'].includes(member.guest_perk)) return { ...none, member };
+  const pct = Number(member.guest_discount_pct || 0);
+  return { member, perk: 'priority', priority: true, discount_pct: pct || null, fee_amount: discountedFee(event.fee_amount, pct) };
 }
 
 function monthStart(ymd) {
@@ -143,4 +153,4 @@ async function guestStats(memberIds) {
   return out;
 }
 
-module.exports = { MIGRATION, PERKS, guestsReady, findClubPerson, perksFor, ensureGuestMember, guestStats };
+module.exports = { MIGRATION, PERKS, guestsReady, discountReady, discountedFee, findClubPerson, perksFor, ensureGuestMember, guestStats };
