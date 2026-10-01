@@ -7,6 +7,7 @@ import Modal from '@/components/Modal';
 import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
 import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
+import VipBadge from '@/components/VipBadge';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -145,7 +146,7 @@ export default function MembersPage() {
         </button>
       )}
 
-      {isGuestTab && club && <GuestPerkSettings club={club} />}
+      {isGuestTab && club && <GuestPerkSettings />}
 
       {tab !== 'waiting' && (() => {
         const bdays = all.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
@@ -221,6 +222,7 @@ export default function MembersPage() {
                         >
                           {m.full_name}
                         </button>
+                        {m.member_type === 'fixed' && <VipBadge stars={m.vip_stars} className="ml-2" />}
                         {m.account_email && !m.account_verified && (
                           <span className="ml-2 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>
                         )}
@@ -258,13 +260,13 @@ export default function MembersPage() {
                             {m.guest_stats?.played ?? 0}
                             {m.guest_stats?.last_played && <span className="text-gray-500 text-xs"> · {dmy(m.guest_stats.last_played).slice(0, 5)}</span>}
                           </td>
-                          <td><GuestPerkBadge perk={m.guest_perk} /></td>
+                          <td><GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} /></td>
                           <td className="!whitespace-normal min-w-[11rem] max-w-[16rem]" onClick={(e) => e.stopPropagation()}><GuestNoteCell club={club} member={m} onSaved={reload} /></td>
                         </>
                       ) : (
                         <>
                           <td className="text-gray-300">{m.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</td>
-                          <td className="text-gray-300">{m.tier ? t(`members.${m.tier}`) : '—'}</td>
+                          <td className="text-gray-300">{m.vip_stars > 0 ? <VipBadge stars={m.vip_stars} /> : m.tier ? t(`members.${m.tier}`) : '—'}</td>
                         </>
                       )}
                       <td className="text-center">

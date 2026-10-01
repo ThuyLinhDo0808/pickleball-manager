@@ -5,6 +5,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import Modal from '@/components/Modal';
 
 const emptyForm = { name: '', period: 'month', price: '', sessions_included: '8' };
 
@@ -38,6 +39,29 @@ export default function PlansPage() {
     }
   }
 
+  // Edit a plan in a modal. Periods already registered keep their dates and price.
+  const [editing, setEditing] = useState(null);
+  const [editErr, setEditErr] = useState('');
+  async function saveEdit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setEditErr('');
+    try {
+      await api.patch(`/api/clubs/${club.id}/plans/${editing.id}`, {
+        name: editing.name,
+        period: editing.period,
+        price: Number(editing.price || 0),
+        sessions_included: Number(editing.sessions_included || 0),
+      });
+      setEditing(null);
+      reload();
+    } catch (err) {
+      setEditErr(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function toggle(p) {
     await api.patch(`/api/clubs/${club.id}/plans/${p.id}`, { is_active: !p.is_active });
     reload();
@@ -45,6 +69,40 @@ export default function PlansPage() {
 
   return (
     <>
+      <Modal open={!!editing} title={t('plans.editTitle')} onClose={() => setEditing(null)}>
+        {editing && (
+          <form onSubmit={saveEdit} className="flex flex-col gap-3">
+            <div>
+              <label htmlFor="pe-name" className="text-xs text-gray-400">{t('plans.name')}</label>
+              <input id="pe-name" className="input" required value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="min-w-0">
+                <label htmlFor="pe-period" className="text-xs text-gray-400">{t('plans.period')}</label>
+                <select id="pe-period" className="input" value={editing.period} onChange={(e) => setEditing({ ...editing, period: e.target.value })}>
+                  {['month', 'quarter', 'year'].map((p) => (
+                    <option key={p} value={p}>{t(`plans.${p}`)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-0">
+                <label htmlFor="pe-price" className="text-xs text-gray-400">{t('plans.price')}</label>
+                <input id="pe-price" className="input" required type="number" inputMode="numeric" min="0" step="1000" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value })} />
+              </div>
+              <div className="min-w-0">
+                <label htmlFor="pe-sessions" className="text-xs text-gray-400">{t('plans.sessions')}</label>
+                <input id="pe-sessions" className="input" type="number" inputMode="numeric" min="0" value={editing.sessions_included} onChange={(e) => setEditing({ ...editing, sessions_included: e.target.value })} />
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs">{t('plans.sessionsHint')}.<br />{t('plans.editHint')}</p>
+            {editErr && <p className="text-red-400 text-sm">{editErr}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</button>
+              <button className="btn-primary" disabled={busy}>{t('common.save')}</button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       <form onSubmit={create} className="card mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
         <div className="col-span-2">
@@ -92,9 +150,21 @@ export default function PlansPage() {
             <div className="text-gray-300 text-sm">
               {p.sessions_included ? t('plans.sessionsN', { n: p.sessions_included }) : t('plans.unlimited')}
             </div>
-            <button className="btn-secondary text-sm mt-3 w-full" onClick={() => toggle(p)}>
-              {p.is_active ? t('plans.stop') : t('plans.resume')}
-            </button>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={() => {
+                  setEditErr('');
+                  setEditing({ id: p.id, name: p.name, period: p.period, price: String(Number(p.price)), sessions_included: String(p.sessions_included ?? 0) });
+                }}
+              >
+                ✏️ {t('plans.edit')}
+              </button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => toggle(p)}>
+                {p.is_active ? t('plans.stop') : t('plans.resume')}
+              </button>
+            </div>
           </div>
         ))}
       </div>

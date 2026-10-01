@@ -339,7 +339,7 @@ export default function AttendancePage() {
                       <td className="text-center text-gray-500 sticky left-0 bg-navy-800">{i + 1}</td>
                       <td className="text-sky-100 whitespace-nowrap sticky left-10 bg-navy-800">
                         {g.full_name}
-                        {g.guest_perk && <span className="ml-1 text-xs">{g.guest_perk === 'vip' ? '⭐' : '⚡'}</span>}
+                        {g.guest_perk && <span className="ml-1 text-xs">⚡</span>}
                       </td>
                       {by === 'session'
                         ? data.events.map((e) => {
@@ -471,7 +471,7 @@ export default function AttendancePage() {
                       <td className="text-center text-gray-400">{i + 1}</td>
                       <td className="text-white whitespace-nowrap">
                         {g.full_name}
-                        {g.guest_perk && <span className="ml-1 text-xs">{g.guest_perk === 'vip' ? '⭐ VIP' : `⚡ ${t('guests.perk_priority')}`}</span>}
+                        {g.guest_perk && <span className="ml-1 text-xs">⚡ {t('guests.perk_priority')}</span>}
                       </td>
                       <td className="text-gray-400 whitespace-nowrap">{g.phone || '—'}</td>
                       <td className="text-right tabular-nums text-white font-semibold">{g.sessions}</td>

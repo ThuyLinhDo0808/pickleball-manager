@@ -6,6 +6,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatDay } from '@/lib/dates';
+import Podium from '@/components/Podium';
 
 const STATUS_STYLE = {
   groups: 'bg-navy-700 text-gray-200',
@@ -47,6 +48,7 @@ export default function TournamentsPage() {
                 : new Date(x.created_at).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')}
               {x.location ? ` · ${x.location}` : ''}
             </div>
+            <Podium podium={x.podium} compact />
           </Link>
         ))}
       </div>

@@ -52,6 +52,16 @@ async function findClubMemberByPhone(clubId, phone) {
   return (data || []).find((m) => normalizePhone(m.phone) === wanted)?.id || null;
 }
 
+// VIP stars for a fixed member's current plan: ★ month, ★★ quarter, ★★★ year.
+function vipStars(current) {
+  let stars = 0;
+  for (const m of current) {
+    const days = (Date.parse(m.ends_on) - Date.parse(m.starts_on)) / 86400000;
+    stars = Math.max(stars, days > 100 ? 3 : days > 40 ? 2 : 1);
+  }
+  return stars;
+}
+
 // Per-member pass summary used by the members table.
 function summarize(memberships, today = todayYmd()) {
   const current = memberships.filter((m) => m.starts_on <= today && m.ends_on >= today);
@@ -64,6 +74,7 @@ function summarize(memberships, today = todayYmd()) {
 
   return {
     membership_state: state,
+    vip_stars: vipStars(current),
     current_period: (paidNow[0] || current[0])?.period_label || null,
     sessions_unlimited: unlimited,
     sessions_remaining: paidNow.length ? paidNow.reduce((s, m) => s + (m.sessions_remaining || 0), 0) : null,

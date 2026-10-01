@@ -73,8 +73,29 @@ async function clubMembers(clubId, ids) {
   return data;
 }
 
+// Podium: 1st and 2nd, plus 3rd (the two losing semi-finalists share it — there is no
+// third-place match). Team leagues use the final table. Empty until there is a champion.
+function podium(full) {
+  const name = (id) => full.teams.find((x) => x.id === id)?.name || null;
+  const team = (id) => (id ? { id, name: name(id) } : null);
+  if (!full.champion_id) return null;
+  if (full.kind === 'team') {
+    const [a, b, c] = full.standings || [];
+    return { first: team(a?.team_id), second: team(b?.team_id), third: c ? [team(c.team_id)] : [] };
+  }
+  const ko = full.matches.filter((m) => m.stage === 'knockout');
+  const final = ko.find((m) => m.round === full.rounds);
+  const loser = (m) => (m && m.winner_id ? (m.winner_id === m.team1_id ? m.team2_id : m.team1_id) : null);
+  const semis = ko.filter((m) => m.round === full.rounds - 1);
+  return {
+    first: team(full.champion_id),
+    second: team(loser(final)),
+    third: semis.map(loser).filter(Boolean).map(team),
+  };
+}
+
 // Everything the tournament page needs, with group tables computed on the fly.
-async function loadFull(t) {
+async function loadBase(t) {
   if (t.kind === 'team') return loadTeamLeague(t);
   const [{ data: teams, error: e1 }, { data: matches, error: e2 }] = await Promise.all([
     supabase.from('tournament_teams').select('*').eq('tournament_id', t.id).order('seed'),
@@ -101,6 +122,11 @@ async function loadFull(t) {
     group_stage_done: matches.filter((m) => m.stage === 'group').every(T.isPlayed),
     champion_id: final?.winner_id || null,
   };
+}
+
+async function loadFull(t) {
+  const full = await loadBase(t);
+  return { ...full, podium: podium(full) };
 }
 
 // Team league: rosters, fixtures with their sub-matches, league table, champion.
@@ -149,7 +175,18 @@ router.get('/', async (req, res) => {
     .eq('club_id', req.query.club_id)
     .order('created_at', { ascending: false });
   if (error) return dbError(res, error);
-  res.json(data.map(({ tournament_teams, ...t }) => ({ ...t, team_count: tournament_teams?.[0]?.count ?? 0 })));
+  try {
+    const rows = await Promise.all(
+      data.map(async ({ tournament_teams, ...t }) => ({
+        ...t,
+        team_count: tournament_teams?.[0]?.count ?? 0,
+        podium: t.status === 'completed' ? (await loadFull(t)).podium : null,
+      }))
+    );
+    res.json(rows);
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 // Suggested teams (balanced or random) — the Host can still edit them before creating.
