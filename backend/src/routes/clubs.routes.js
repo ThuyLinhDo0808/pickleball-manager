@@ -9,6 +9,7 @@ const birthdays = require('../services/birthdays');
 const { guestsReady, guestStats, PERKS } = require('../services/guests');
 const { phoneLinkReady } = require('../services/phoneLink');
 const { completeFinished } = require('../services/eventStatus');
+const { setAttendance } = require('../services/attendance');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
@@ -1004,8 +1005,9 @@ router.get('/:clubId/attendance', async (req, res) => {
     // Cancelled in time doesn't count at all; a late cancel counts as absent.
     if (p.status === 'cancelled' && !p.late_cancel) continue;
     const state = p.status === 'checked_in' ? 'attended' : p.status === 'registered' ? 'registered' : 'absent';
+    const locked = p.status === 'cancelled'; // a late cancel stays "absent"
     if (isFixed) {
-      cells.push({ event_id: p.event_id, club_member_id: memberId, state });
+      cells.push({ event_id: p.event_id, club_member_id: memberId, state, participant_id: p.id, locked });
       continue;
     }
     if (!guestRows.has(key)) {
@@ -1017,13 +1019,17 @@ router.get('/:clubId/attendance', async (req, res) => {
         guest_perk: member?.guest_perk || null,
         is_active: member ? member.is_active : true,
         events: {},
+        participants: {}, // event id -> { participant_id, locked } (for editing)
         sessions: 0,
         matches: 0,
         wins: 0,
       });
     }
     const g = guestRows.get(key);
-    if (g.events[p.event_id] !== 'attended') g.events[p.event_id] = state;
+    if (g.events[p.event_id] !== 'attended') {
+      g.events[p.event_id] = state;
+      g.participants[p.event_id] = { participant_id: p.id, locked };
+    }
   }
   for (const g of guestRows.values()) g.sessions = Object.values(g.events).filter((s) => s === 'attended').length;
 
@@ -1061,6 +1067,39 @@ router.get('/:clubId/attendance', async (req, res) => {
     guests: [...guestRows.values()],
     passes,
   });
+});
+
+// Host fixes the attendance grid (late check-in, wrong tick). The page sends every change
+// at once after the Host confirms them. Same rules as checking in at the court: a club
+// member's pass session is used / given back.
+const EDIT_ACTION = { attended: 'check-in', absent: 'no-show', registered: 'reset' };
+router.post('/:clubId/attendance/edits', async (req, res) => {
+  const changes = Array.isArray(req.body?.changes) ? req.body.changes : [];
+  if (!changes.length || changes.length > 500) return res.status(400).json({ error: 'Send 1-500 changes.' });
+  if (!changes.every((c) => isUuid(c.participant_id) && EDIT_ACTION[c.state])) {
+    return res.status(400).json({ error: 'Each change needs participant_id and state (attended / absent / registered).' });
+  }
+  const ids = [...new Set(changes.map((c) => c.participant_id))];
+  const { data: rows, error } = await supabase.from('event_participants').select('*, events(*)').in('id', ids);
+  if (error) return dbError(res, error);
+  const byId = new Map((rows || []).map((r) => [r.id, r]));
+  if (ids.some((id) => byId.get(id)?.events?.club_id !== req.club.id)) return notFound(res, 'Participant');
+  const results = [];
+  try {
+    for (const c of changes) {
+      const { events: event, ...prior } = byId.get(c.participant_id);
+      if (prior.status === 'cancelled') {
+        results.push({ participant_id: prior.id, skipped: 'cancelled' });
+        continue;
+      }
+      const updated = await setAttendance(event, prior, EDIT_ACTION[c.state]);
+      byId.set(prior.id, { ...updated, events: event });
+      results.push({ participant_id: prior.id, status: updated.status });
+    }
+  } catch (err) {
+    return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+  }
+  res.json({ updated: results.filter((r) => r.status).length, results });
 });
 
 // Birthdays today or in the next few days (default 3) — shown as a reminder on the Host's pages.

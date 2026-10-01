@@ -7,7 +7,6 @@ const { todayYmd, periodRange, summarize, normalizePhone } = require('../service
 const { localDate, winnerTeam } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, cancelParticipant } = require('../services/attendance');
-const { transferSlot } = require('../services/signup');
 const { telegramSend } = require('../services/notify');
 const survey = require('../services/survey');
 const { linkByPhone } = require('../services/phoneLink');
@@ -391,7 +390,6 @@ player.get('/me', async (req, res) => {
         late_cancel: r.late_cancel,
         payment_status: r.payment_status,
         ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null,
-        transferable: upcoming && r.kind === 'guest' && ['registered', 'pending'].includes(r.status),
         public_token: r.events.public_token,
         event_id: r.event_id,
         title: r.events.title,
@@ -512,23 +510,6 @@ player.post('/participations/:participantId/cancel', async (req, res) => {
     if (!['registered', 'waitlisted', 'pending'].includes(prior.status)) throw badRequest('Only upcoming registrations can be cancelled.', 409, 'not_cancellable');
     const r = await cancelParticipant(event, prior);
     res.json({ status: r.status, late: r.late, pass: r.pass });
-  } catch (err) {
-    fail(res, err);
-  }
-});
-
-// Give my (guest) place to someone else: they get a new ticket link, my old ticket stops working.
-player.post('/participations/:participantId/transfer', async (req, res) => {
-  try {
-    if (!isUuid(req.params.participantId)) throw badRequest('Registration not found.', 404);
-    const { data: prior } = await supabase.from('event_participants').select('*').eq('id', req.params.participantId).maybeSingle();
-    if (!prior || prior.user_id !== req.hostId) throw badRequest('Registration not found.', 404);
-    const { data: event } = await supabase.from('events').select('*').eq('id', prior.event_id).single();
-    if (event.event_date < todayYmd() || !['draft', 'open', 'closed'].includes(event.status)) {
-      throw badRequest('This event is over.', 409, 'event_over');
-    }
-    const moved = await transferSlot(event, prior, req.body);
-    res.json({ full_name: moved.full_name, status: moved.status, ticket_code: moved.ticket_code });
   } catch (err) {
     fail(res, err);
   }

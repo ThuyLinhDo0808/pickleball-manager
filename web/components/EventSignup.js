@@ -193,51 +193,12 @@ function ProofUpload({ token, reg, onChanged }) {
   );
 }
 
-function Transfer({ reg, onDone }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ full_name: '', phone: '' });
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  if (!reg.transferable) return null;
-  async function submit(e) {
-    e.preventDefault();
-    if (!window.confirm(t('signup.transferAsk', { name: f.full_name }))) return;
-    setBusy(true);
-    setError('');
-    try {
-      const r = await api.post(`/api/player/participations/${reg.id}/transfer`, f);
-      onDone(r);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  if (!open) {
-    return <button type="button" className="text-sky-300 text-sm" onClick={() => setOpen(true)}>{t('signup.transfer')}</button>;
-  }
-  return (
-    <form onSubmit={submit} className="w-full rounded-lg border border-navy-600 p-3 flex flex-col gap-2 text-left">
-      <p className="text-gray-300 text-xs">{t('signup.transferHint')}</p>
-      <input className="input" required placeholder={t('public.yourName')} value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} />
-      <input className="input" required type="tel" inputMode="tel" minLength={9} placeholder={t('public.yourPhone')} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-      <div className="flex gap-2">
-        <button className="btn-primary flex-1" disabled={busy}>{t('signup.transferGo')}</button>
-        <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
-      </div>
-    </form>
-  );
-}
-
 // Everything the signed-in player does on the event page: log in → confirm → pay → ticket.
 export default function EventSignup({ ev, me, meError, user, token, onChanged }) {
   const { t, lang } = useI18n();
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [transferred, setTransferred] = useState(null);
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30000); // hold countdown
@@ -292,16 +253,6 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     }
   }
 
-  if (transferred) {
-    return (
-      <div className="text-center">
-        <p className="text-lime-300 font-semibold mb-2">✅ {t('signup.transferred', { name: transferred.full_name })}</p>
-        <p className="text-gray-300 text-sm mb-3">{t('signup.transferShare')}</p>
-        <TicketCard ticketCode={transferred.ticket_code} name={transferred.full_name} />
-      </div>
-    );
-  }
-
   // ---- already registered -----------------------------------------------------
   if (reg?.status === 'registered' || reg?.status === 'checked_in') {
     return (
@@ -316,12 +267,12 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
           {reg.fee_paid && reg.fee > 0 ? ` · ${t('signup.paid', { amount: formatVnd(reg.fee) })}` : ''}
         </p>
         <TicketCard ticketCode={reg.ticket_code} name={reg.full_name} />
-        <div className="flex flex-wrap justify-center gap-4 mt-4">
-          <Transfer reg={reg} onDone={setTransferred} />
-          {reg.status === 'registered' && (
+        {reg.status === 'registered' && (
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <p className="text-gray-400 text-xs max-w-xs">{t('signup.noTransfer')}</p>
             <button type="button" className="text-red-400 text-sm" onClick={cancel}>{t('events.cancel')}</button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   }

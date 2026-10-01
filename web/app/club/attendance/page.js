@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/AppShell';
+import Modal from '@/components/Modal';
 import DatePopover from '@/components/DatePopover';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
@@ -27,6 +28,25 @@ function rangeOf(period, anchor) {
 const dm = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const monthKey = (d) => d.slice(0, 7);
 const monthLabel = (k) => `${k.slice(5, 7)}/${k.slice(0, 4)}`;
+
+// Editing the grid: a click moves a sign-up to the next state.
+const NEXT_STATE = { registered: 'attended', attended: 'absent', absent: 'registered' };
+
+// A cell while editing: clickable when there is a sign-up (late cancels stay locked).
+function EditCell({ info, state, changed, onToggle }) {
+  if (!info) return null;
+  if (info.locked) return <Mark state={state} />;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`h-6 w-6 rounded hover:bg-navy-600 ${changed ? 'ring-2 ring-amber-400 bg-amber-400/10' : 'ring-1 ring-navy-600'}`}
+      aria-label={state}
+    >
+      <Mark state={state} />
+    </button>
+  );
+}
 
 function Mark({ state }) {
   if (state === 'attended') return <span className="text-lime-400 font-bold">x</span>;
@@ -59,7 +79,12 @@ export default function AttendancePage() {
 
   const [from, to] = period === 'custom' ? custom : rangeOf(period, anchor);
   const step = { month: 1, quarter: 3, year: 12 }[period];
-  const { data, loading, error } = useLoad(
+  const [editing, setEditing] = useState(false);
+  const [changes, setChanges] = useState({}); // participant_id -> { state, from, name, date }
+  const [confirming, setConfirming] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const { data, loading, error, reload } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/attendance?from=${from}&to=${to}`) : Promise.resolve(null)),
     [club?.id, from, to]
   );
@@ -68,6 +93,7 @@ export default function AttendancePage() {
     if (!data) return null;
     const today = todayYmd();
     const cell = new Map(data.cells.map((c) => [`${c.club_member_id}|${c.event_id}`, c.state]));
+    const cellInfo = new Map(data.cells.map((c) => [`${c.club_member_id}|${c.event_id}`, c]));
     const evDate = new Map(data.events.map((e) => [e.id, e.event_date]));
     const attended = {};
     const perMonth = {};
@@ -96,6 +122,10 @@ export default function AttendancePage() {
       members: data.cells.filter((c) => c.event_id === id && c.state === 'attended').length,
       guests: guests.filter((g) => g.events[id] === 'attended').length,
     });
+    const pastIds = new Set(data.events.filter((e) => e.event_date < today || e.status === 'completed').map((e) => e.id));
+    const missed =
+      data.cells.filter((c) => c.state === 'registered' && pastIds.has(c.event_id)).length +
+      guests.reduce((n, g) => n + Object.entries(g.events).filter(([id, st]) => st === 'registered' && pastIds.has(id)).length, 0);
     const maxCount = Math.max(1, ...Object.values(attended), ...guests.map((g) => g.sessions));
 
     // Passes: sessions left in each period — what the club carries over ("bảo lưu").
@@ -105,8 +135,45 @@ export default function AttendancePage() {
       .sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi') || a.starts_on.localeCompare(b.starts_on));
     const carry = passes.filter((p) => p.ended && p.sessions_included > 0 && p.status === 'paid').reduce((s, p) => s + p.sessions_remaining, 0);
 
-    return { cell, attended, perMonth, members, months, guestMonth, guests, guestsByCount, guestEvents, perEvent, maxCount, passes, carry };
+    return { missed, cell, cellInfo, attended, perMonth, members, months, guestMonth, guests, guestsByCount, guestEvents, perEvent, maxCount, passes, carry };
   }, [data, sort, onlyActive]);
+
+  const evDay = (id) => dm(data.events.find((e) => e.id === id)?.event_date || '');
+  const shown = (pid, state) => changes[pid]?.state ?? state;
+  function toggle(info, state, name, eventId) {
+    const pid = info.participant_id;
+    const from = changes[pid]?.from ?? state;
+    const next = NEXT_STATE[shown(pid, state)] || 'attended';
+    setChanges((c) => {
+      const copy = { ...c };
+      if (next === from) delete copy[pid];
+      else copy[pid] = { state: next, from, name, date: evDay(eventId) };
+      return copy;
+    });
+  }
+  function stopEditing() {
+    setEditing(false);
+    setChanges({});
+    setConfirming(false);
+    setSaveError('');
+  }
+  async function saveChanges() {
+    setSaving(true);
+    setSaveError('');
+    try {
+      await api.post(`/api/clubs/${club.id}/attendance/edits`, {
+        changes: Object.entries(changes).map(([participant_id, c]) => ({ participant_id, state: c.state })),
+      });
+      stopEditing();
+      reload();
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  const nChanges = Object.keys(changes).length;
+  const stateLabel = (st) => t(`stats.state_${st}`);
 
   function exportCsv() {
     if (!view) return;
@@ -183,8 +250,29 @@ export default function AttendancePage() {
               <input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
               {t('stats.onlyActive')}
             </label>
-            <button type="button" className="btn-secondary text-sm sm:ml-auto" onClick={exportCsv}>⬇ {t('stats.exportCsv')}</button>
+            <div className="flex gap-2 sm:ml-auto">
+              {by === 'session' && !editing && (
+                <button type="button" className="btn-secondary text-sm" onClick={() => setEditing(true)}>✏️ {t('stats.editGrid')}</button>
+              )}
+              <button type="button" className="btn-secondary text-sm" onClick={exportCsv}>⬇ {t('stats.exportCsv')}</button>
+            </div>
           </div>
+          {!editing && view.missed > 0 && (
+            <button type="button" className="w-full text-left rounded-lg border border-amber-400/50 bg-amber-400/5 px-3 py-2 text-sm mb-3" onClick={() => { setBy('session'); setEditing(true); }}>
+              <span className="text-amber-300 font-semibold">⚠️ {t('stats.missed', { n: view.missed })}</span>{' '}
+              <span className="text-lime-400">{t('stats.missedCta')} →</span>
+            </button>
+          )}
+          {editing && (
+            <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/60 bg-navy-900 px-3 py-2 text-sm mb-3">
+              <span className="text-amber-200">{t('stats.editHint')}</span>
+              <span className="text-white font-semibold">{t('stats.changesN', { n: nChanges })}</span>
+              <div className="flex gap-2 ml-auto">
+                <button type="button" className="btn-secondary !py-1 text-sm" onClick={stopEditing}>{t('common.cancel')}</button>
+                <button type="button" className="btn-primary !py-1 text-sm" disabled={!nChanges} onClick={() => setConfirming(true)}>{t('stats.reviewSave')}</button>
+              </div>
+            </div>
+          )}
           <p className="text-gray-500 text-xs mb-2">{t('stats.legend')}</p>
           {data.events.length === 0 ? (
             <p className="text-gray-400 text-sm">{t('stats.noSessions')}</p>
@@ -215,11 +303,19 @@ export default function AttendancePage() {
                         {m.member_type !== 'fixed' && <span className="text-gray-500 text-xs"> · {t('members.guest')}</span>}
                       </td>
                       {by === 'session'
-                        ? data.events.map((e) => (
-                            <td key={e.id} className="text-center">
-                              <Mark state={view.cell.get(`${m.id}|${e.id}`)} />
-                            </td>
-                          ))
+                        ? data.events.map((e) => {
+                            const info = view.cellInfo.get(`${m.id}|${e.id}`);
+                            const st = info ? shown(info.participant_id, info.state) : undefined;
+                            return (
+                              <td key={e.id} className="text-center">
+                                {editing ? (
+                                  <EditCell info={info} state={st} changed={!!(info && changes[info.participant_id])} onToggle={() => toggle(info, info.state, m.full_name, e.id)} />
+                                ) : (
+                                  <Mark state={st} />
+                                )}
+                              </td>
+                            );
+                          })
                         : view.months.map((k) => (
                             <td key={k} className="text-center tabular-nums text-gray-200">{view.perMonth[`${m.id}|${k}`] || ''}</td>
                           ))}
@@ -246,11 +342,19 @@ export default function AttendancePage() {
                         {g.guest_perk && <span className="ml-1 text-xs">{g.guest_perk === 'vip' ? '⭐' : '⚡'}</span>}
                       </td>
                       {by === 'session'
-                        ? data.events.map((e) => (
-                            <td key={e.id} className="text-center">
-                              <Mark state={g.events[e.id]} />
-                            </td>
-                          ))
+                        ? data.events.map((e) => {
+                            const info = g.participants?.[e.id];
+                            const st = info ? shown(info.participant_id, g.events[e.id]) : g.events[e.id];
+                            return (
+                              <td key={e.id} className="text-center">
+                                {editing ? (
+                                  <EditCell info={info} state={st} changed={!!(info && changes[info.participant_id])} onToggle={() => toggle(info, g.events[e.id], g.full_name, e.id)} />
+                                ) : (
+                                  <Mark state={st} />
+                                )}
+                              </td>
+                            );
+                          })
                         : view.months.map((k) => (
                             <td key={k} className="text-center tabular-nums text-gray-200">{view.guestMonth(g, k) || ''}</td>
                           ))}
@@ -393,6 +497,25 @@ export default function AttendancePage() {
           )}
         </div>
       )}
+      <Modal open={confirming} title={t('stats.confirmTitle', { n: nChanges })} onClose={() => setConfirming(false)}>
+        <p className="text-gray-300 text-sm mb-3">{t('stats.confirmHint')}</p>
+        <ul className="max-h-72 overflow-y-auto divide-y divide-navy-700 text-sm mb-4">
+          {Object.entries(changes).map(([pid, c]) => (
+            <li key={pid} className="py-1.5 flex flex-wrap gap-x-2">
+              <span className="text-white">{c.name}</span>
+              <span className="text-gray-400">· {c.date}</span>
+              <span className="ml-auto text-gray-400">
+                {stateLabel(c.from)} → <span className={c.state === 'attended' ? 'text-lime-400' : c.state === 'absent' ? 'text-red-400' : 'text-gray-300'}>{stateLabel(c.state)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        {saveError && <p className="text-red-400 text-sm mb-2">{saveError}</p>}
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className="btn-secondary" onClick={() => setConfirming(false)}>{t('stats.backToEdit')}</button>
+          <button type="button" className="btn-primary" disabled={saving} onClick={saveChanges}>{t('stats.confirmSave')}</button>
+        </div>
+      </Modal>
     </AppShell>
   );
 }

@@ -6,13 +6,12 @@
 //             the money, upload the screenshot; the Host confirms -> 'registered' + ticket.
 //
 // Every registration has a ticket_code; its QR ("PBT:<code>") is what gets scanned at the court.
-const crypto = require('crypto');
 const { supabase } = require('../supabase');
 const { normalizePhone } = require('./memberships');
 const { newPaymentRef, vietqrUrl } = require('./payment');
 const { HOLDS_PLACE, feeFor, memberStanding, needsOnlinePayment } = require('./fees');
 const { promoteNext } = require('./attendance');
-const { perksFor, ensureGuestMember, guestsReady } = require('./guests');
+const { perksFor, ensureGuestMember } = require('./guests');
 const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
@@ -71,7 +70,6 @@ async function registrationView(event, p) {
     payment_submitted_at: p.payment_submitted_at,
     has_proof: !!p.payment_proof,
     hold_expires_at: p.hold_expires_at,
-    transferable: p.kind === 'guest' && ['registered', 'pending'].includes(p.status),
     // The ticket only exists for players who actually have a confirmed place.
     ticket_code: ['registered', 'checked_in'].includes(p.status) ? p.ticket_code : null,
   };
@@ -224,40 +222,6 @@ async function rejectPayment(event, participant, note) {
   return data;
 }
 
-// Give the place to someone else (paid guest can't come). New name/phone, new ticket;
-// the old ticket stops working. Member places are tied to the member's pass, so they aren't transferable.
-async function transferSlot(event, participant, { full_name, phone }, { byHost = false } = {}) {
-  const name = String(full_name || '').trim();
-  const tel = String(phone || '').trim();
-  if (!name) throw httpError('Enter the new player\'s name.', 400, 'name_required');
-  if (normalizePhone(tel).length < 9) throw httpError('Enter a valid phone number for the new player.', 400, 'phone_required');
-  if (!['registered', 'pending'].includes(participant.status)) throw httpError('Only upcoming places can be transferred.', 409, 'not_transferable');
-  if (!byHost && participant.kind !== 'guest') throw httpError('Member places use your pass and cannot be transferred.', 409, 'member_place');
-  const { data: others } = await supabase.from('event_participants').select('id, phone').eq('event_id', event.id).in('status', ACTIVE);
-  if ((others || []).some((o) => o.id !== participant.id && normalizePhone(o.phone) === normalizePhone(tel))) {
-    throw httpError('This phone number is already registered for this event.', 409, 'duplicate_phone');
-  }
-  const { data, error } = await supabase
-    .from('event_participants')
-    .update({
-      full_name: name,
-      phone: tel,
-      user_id: null,
-      source_club_member_id: null,
-      kind: 'guest',
-      dupr_level: null,
-      transferred_from: participant.full_name,
-      ticket_code: crypto.randomUUID(),
-      // A different person now: not the old guest's record, perk or survey link.
-      ...((await guestsReady()) ? { guest_member_id: null, priority: false, survey_token: crypto.randomUUID() } : {}),
-    })
-    .eq('id', participant.id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
-
 module.exports = {
   expireHolds,
   payeeFor,
@@ -267,6 +231,5 @@ module.exports = {
   submitProof,
   confirmPayment,
   rejectPayment,
-  transferSlot,
   MAX_PROOF,
 };
