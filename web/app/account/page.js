@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { exportClubBackup } from '@/lib/exportExcel';
 import NotifySettings from '@/components/NotifySettings';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
+import DeleteAccount from '@/components/DeleteAccount';
 
 export default function AccountPage() {
   const { t } = useI18n();
@@ -75,6 +76,8 @@ export default function AccountPage() {
           </form>
         )}
       </div>
+
+      <DeleteAccount />
     </AppShell>
   );
 }

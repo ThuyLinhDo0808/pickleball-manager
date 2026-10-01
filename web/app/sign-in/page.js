@@ -25,9 +25,20 @@ export default function SignInPage() {
     if (!loading && user) router.replace(nextPath());
   }, [loading, user, router]);
 
-  // /sign-in?mode=signUp opens the sign-up form (link on the welcome page).
+  // /sign-in?mode=signUp opens the sign-up form (link on the welcome page);
+  // a flag in sessionStorage comes from deleting an account.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('mode') === 'signUp') setMode('signUp');
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('mode') === 'signUp') setMode('signUp');
+    try {
+      if (window.sessionStorage.getItem('pickleball_deleted')) {
+        window.sessionStorage.removeItem('pickleball_deleted');
+        setInfo(t('deleteAccount.done'));
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Coming back from an expired / already-used confirmation link (#error_code=otp_expired…).

@@ -1,4 +1,5 @@
 'use client';
+import DeleteAccount from '@/components/DeleteAccount';
 import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -139,6 +140,8 @@ export default function PlayerProfile() {
           {saved && <span className="text-lime-400 text-sm">{t('player.saved')}</span>}
         </div>
       </form>
+
+      <DeleteAccount />
     </PlayerShell>
   );
 }

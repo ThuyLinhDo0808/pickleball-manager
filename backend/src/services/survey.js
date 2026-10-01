@@ -5,6 +5,8 @@
 // whose answers land in the club's waiting list (DS chờ) for the Host to approve.
 const { supabase } = require('../supabase');
 const { normalizePhone } = require('./memberships');
+
+const APP_TZ = process.env.APP_TZ || 'Asia/Ho_Chi_Minh';
 const { eventEndMs } = require('./attendance');
 const { guestsReady, findClubPerson } = require('./guests');
 const { notifySurvey, notifyJoinFromSurvey, webUrl } = require('./notify');
@@ -19,7 +21,8 @@ function httpError(message, status, code) {
 }
 
 const isUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
-const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+// Calendar days in the club's time zone (event dates are local), not UTC.
+const daysAgo = (n) => new Intl.DateTimeFormat('en-CA', { timeZone: APP_TZ }).format(new Date(Date.now() - n * 86400000));
 
 // Fixed members get no survey; everyone else who played does.
 async function isGuestParticipant(p) {
