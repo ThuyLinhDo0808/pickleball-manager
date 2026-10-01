@@ -9,6 +9,7 @@ import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
 import EventControls from '@/components/EventControls';
+import EventSurveys from '@/components/EventSurveys';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
@@ -121,7 +122,8 @@ export default function EventDetailPage() {
 
   const main = (participants || []).filter((p) => ['registered', 'checked_in', 'no_show'].includes(p.status));
   const pending = (participants || []).filter((p) => p.status === 'pending');
-  const waitlist = (participants || []).filter((p) => p.status === 'waitlisted');
+  // Guests with a perk go first off the waitlist, so show them first.
+  const waitlist = (participants || []).filter((p) => p.status === 'waitlisted').sort((a, b) => Number(!!b.priority) - Number(!!a.priority));
   const cancelled = (participants || []).filter((p) => p.status === 'cancelled');
   const counts = {
     arrived: main.filter((p) => p.status === 'checked_in').length,
@@ -250,6 +252,7 @@ export default function EventDetailPage() {
           {cancelled.length > 0 && (
             <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} fee={event.fee_amount} />
           )}
+          {event.club_id && <EventSurveys eventId={event.id} />}
         </>
       )}
 
@@ -343,6 +346,9 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onTransfer, f
                 )}
                 {!p.source_club_member_id && p.user_id && (
                   <span className="ml-2 text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t('review.kind_guest')}</span>
+                )}
+                {p.priority && (
+                  <span className="ml-2 text-[10px] rounded border border-sky-400/60 text-sky-300 px-1" title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>
                 )}
                 {p.late_cancel && (
                   <span className="ml-2 text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>

@@ -13,6 +13,7 @@ const tournamentsRoutes = require('./routes/tournaments.routes');
 const { publicRoutes, playerRoutes } = require('./routes/player.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const { schemaStatus } = require('./services/schemaCheck');
+const { startSurveySweeper } = require('./services/survey');
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
@@ -51,3 +52,5 @@ app.use((err, req, res, next) => {
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`Pickleball API listening on :${port}`));
+// Thank-you + survey link to guests once their session is over.
+if (process.env.SURVEY_SWEEP_DISABLED !== 'true') startSurveySweeper();

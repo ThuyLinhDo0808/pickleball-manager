@@ -12,6 +12,7 @@ const { normalizePhone } = require('./memberships');
 const { newPaymentRef, vietqrUrl } = require('./payment');
 const { HOLDS_PLACE, feeFor, memberStanding, needsOnlinePayment } = require('./fees');
 const { promoteNext } = require('./attendance');
+const { perksFor, ensureGuestMember, guestsReady } = require('./guests');
 const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted, notifyMemberRequest } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
@@ -145,6 +146,12 @@ async function registerOnline(event, userId, profile) {
     source_club_member_id: isMember ? standing.member.id : null,
     status: hasPlace ? 'registered' : 'waitlisted',
   };
+  // Guest perks: VIP pays the club's VIP price; priority/VIP go first off the waitlist.
+  if (!isMember) {
+    const perks = await perksFor(event, { userId, phone: profile.phone });
+    if (perks.priority) row.priority = true;
+    if (perks.fee_amount != null) row.fee_amount = perks.fee_amount;
+  }
   if (hasPlace && (await needsOnlinePayment(event, row))) {
     Object.assign(row, {
       status: 'pending',
@@ -155,6 +162,7 @@ async function registerOnline(event, userId, profile) {
   }
   const { data, error } = await supabase.from('event_participants').insert(row).select().single();
   if (error) throw error;
+  if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
   return registrationView(event, data);
 }
 
@@ -198,6 +206,7 @@ async function confirmPayment(event, participant, hostId) {
     if (tErr) throw tErr;
   }
   if (participant.status === 'pending') notifyPaymentConfirmed(event, data);
+  await ensureGuestMember(event, data); // paid and on the list: now on the club's guest list
   return data;
 }
 
@@ -239,6 +248,8 @@ async function transferSlot(event, participant, { full_name, phone }, { byHost =
       dupr_level: null,
       transferred_from: participant.full_name,
       ticket_code: crypto.randomUUID(),
+      // A different person now: not the old guest's record, perk or survey link.
+      ...((await guestsReady()) ? { guest_member_id: null, priority: false, survey_token: crypto.randomUUID() } : {}),
     })
     .eq('id', participant.id)
     .select()

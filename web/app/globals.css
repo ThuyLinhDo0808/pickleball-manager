@@ -91,6 +91,11 @@ body {
   @apply border-collapse border border-navy-600;
 }
 
+/* Wide tables (guest list): headers may wrap so the notes column stays on screen. */
+.table-wrap .grid-table.wrap-head th {
+  @apply whitespace-normal align-bottom;
+}
+
 .grid-table th,
 .grid-table td {
   @apply border border-navy-600 px-3 py-2;

@@ -9,6 +9,7 @@ const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, cancelParticipant } = require('../services/attendance');
 const { transferSlot } = require('../services/signup');
 const { telegramSend } = require('../services/notify');
+const survey = require('../services/survey');
 
 function badRequest(message, status = 400, code) {
   return Object.assign(new Error(message), { status, code });
@@ -52,6 +53,30 @@ publicRoutes.get('/clubs/:token', async (req, res) => {
 
 // A ticket page anyone with the (secret, random) ticket code can open — the link a player
 // saves or forwards to a friend after transferring their place. No phone numbers.
+// After-session survey (private link sent to the guest; no login needed).
+publicRoutes.get('/surveys/:token', async (req, res) => {
+  try {
+    res.json(await survey.surveyView(req.params.token));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+publicRoutes.post('/surveys/:token', async (req, res) => {
+  try {
+    res.json(await survey.answerSurvey(req.params.token, req.body || {}));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+// "I want to join the fixed team" member form -> the club's waiting list.
+publicRoutes.post('/surveys/:token/join', async (req, res) => {
+  try {
+    res.json(await survey.joinFromSurvey(req.params.token, req.body || {}));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 publicRoutes.get('/tickets/:code', async (req, res) => {
   try {
     if (!isUuid(req.params.code)) return notFound(res, 'Ticket');
@@ -448,6 +473,7 @@ player.get('/me', async (req, res) => {
         linked: !!profile?.telegram_chat_id,
       },
       event_debts: eventDebts,
+      surveys_due: await survey.surveysDueFor(uid).catch(() => []),
       dupr_history: duprHistory,
       clubs,
       history: history.slice(0, 50),

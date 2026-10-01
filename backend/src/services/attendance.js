@@ -4,6 +4,7 @@ const { APP_TZ } = require('./stats');
 const { notifyPromoted } = require('./notify');
 const { HOLDS_PLACE, needsOnlinePayment } = require('./fees');
 const { newPaymentRef } = require('./payment');
+const { ensureGuestMember, guestsReady } = require('./guests');
 
 const PROMOTED_HOLD_MS = 2 * 3600 * 1000; // a promoted guest has 2 hours to pay
 
@@ -26,6 +27,7 @@ async function setAttendance(event, prior, action) {
 
   const { data: updated, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
   if (error) throw error;
+  if (action === 'check-in') await ensureGuestMember(event, updated);
 
   let pass = null;
   const memberId = prior.source_club_member_id;
@@ -69,6 +71,13 @@ function eventStartMs(event) {
   return zonedToUtc(event.event_date, (event.start_time || '00:00').slice(0, 5));
 }
 
+// When the session is over: its end time, else 2 hours after the start, else end of day.
+function eventEndMs(event) {
+  if (event.end_time) return zonedToUtc(event.event_date, event.end_time.slice(0, 5));
+  if (event.start_time) return eventStartMs(event) + 2 * 3600000;
+  return zonedToUtc(event.event_date, '23:59');
+}
+
 // Last moment a main-list player can cancel for free, or null when the event has no policy.
 function cancelDeadline(event) {
   if (event.cancel_deadline_hours == null) return null;
@@ -92,15 +101,11 @@ async function placePatch(event, participant) {
 }
 
 // Move the first waitlisted player up and tell them (in the background).
+// Guests with a perk (priority / VIP) go before everyone else on the waitlist.
 async function promoteNext(event) {
-  const { data: nextUp } = await supabase
-    .from('event_participants')
-    .select('*')
-    .eq('event_id', event.id)
-    .eq('status', 'waitlisted')
-    .order('joined_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  let q = supabase.from('event_participants').select('*').eq('event_id', event.id).eq('status', 'waitlisted');
+  if (await guestsReady()) q = q.order('priority', { ascending: false });
+  const { data: nextUp } = await q.order('joined_at', { ascending: true }).limit(1).maybeSingle();
   if (!nextUp) return null;
   const { data: promoted, error } = await supabase
     .from('event_participants')
@@ -111,6 +116,7 @@ async function promoteNext(event) {
     .maybeSingle();
   if (error) throw error;
   if (promoted) notifyPromoted(event, promoted); // never throws; don't make the canceller wait
+  if (promoted?.status === 'registered') await ensureGuestMember(event, promoted);
   return promoted;
 }
 
@@ -218,6 +224,7 @@ async function checkInByCode(event, code) {
 
 module.exports = {
   ATTENDANCE_ACTIONS,
+  eventEndMs,
   MAIN_LIST,
   setAttendance,
   cancelDeadline,

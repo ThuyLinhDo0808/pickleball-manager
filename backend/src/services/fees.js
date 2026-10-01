@@ -23,16 +23,18 @@ async function activePass(clubMemberId, eventDate) {
 }
 
 // The signed-in player's standing in the event's club: a Host-verified member (maybe with a pass),
-// a link waiting for the Host to verify, or nobody.
+// a link waiting for the Host to verify, a guest on the club's guest list, or nobody.
+// Guests sign up and pay like anyone else (plus their perk, see guests.js).
 async function memberStanding(event, userId) {
   if (!event.club_id || !userId) return { state: 'none', member: null, pass: null };
   const { data: member } = await supabase
     .from('club_members')
-    .select('id, full_name, member_type, account_verified, is_active')
+    .select('*')
     .eq('club_id', event.club_id)
     .eq('user_id', userId)
     .maybeSingle();
   if (!member) return { state: 'none', member: null, pass: null };
+  if (member.member_type === 'guest') return { state: 'guest', member, pass: null };
   if (!member.account_verified) return { state: 'pending', member, pass: null };
   return { state: 'verified', member, pass: await activePass(member.id, event.event_date) };
 }

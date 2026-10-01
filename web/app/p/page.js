@@ -126,6 +126,21 @@ export default function PlayerHome() {
         <Stat label={t('player.winRate')} value={me.totals.matches ? `${Math.round((100 * me.totals.wins) / me.totals.matches)}%` : '—'} />
       </div>
 
+      {me.surveys_due?.length > 0 && (
+        <section className="card mb-4 border-lime-400/40">
+          <h2 className="text-lime-300 font-semibold mb-1">🙏 {t('survey.portalTitle')}</h2>
+          {me.surveys_due.map((x) => (
+            <Link key={x.token} href={`/s/${x.token}`} className="flex items-center justify-between gap-2 py-2 border-b border-navy-700 last:border-0 text-sm">
+              <span className="text-white min-w-0">
+                {x.title}
+                <span className="text-gray-400 text-xs"> · {x.event_date.split('-').reverse().join('/')}{x.club_name ? ` · ${x.club_name}` : ''}</span>
+              </span>
+              <span className="text-lime-400 whitespace-nowrap">{t('survey.portalCta')} →</span>
+            </Link>
+          ))}
+        </section>
+      )}
+
       {pending.length > 0 && (
         <section className="card mb-4 border-yellow-500/40">
           <h2 className="text-yellow-300 font-semibold mb-2">{t('player.waitingPayment')}</h2>

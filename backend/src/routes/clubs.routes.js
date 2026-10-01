@@ -6,6 +6,7 @@ const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
 const { itemMetrics } = require('../services/inventory');
 const birthdays = require('../services/birthdays');
+const { guestsReady, guestStats, PERKS } = require('../services/guests');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
@@ -149,7 +150,15 @@ router.post('/', async (req, res) => {
 router.get('/:clubId', (req, res) => res.json({ ...req.club, role: req.coAdmin ? 'co_admin' : 'owner' }));
 
 router.patch('/:clubId', ownerOnly, async (req, res) => {
-  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder']);
+  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount']);
+  if ('guest_vip_discount' in fields && !(await guestsReady())) {
+    return res.status(409).json({ error: 'Run migration 20261009090000_guest_perks_survey.sql first.' });
+  }
+  if ('guest_vip_discount' in fields) {
+    const d = Number(fields.guest_vip_discount || 0);
+    if (!Number.isInteger(d) || d < 0 || d > 100000000) return res.status(400).json({ error: 'VIP discount must be a whole number of VND, 0 or more.' });
+    fields.guest_vip_discount = d;
+  }
   for (const k of ['join_note', 'bank_code', 'bank_account', 'bank_holder']) {
     if (k in fields) fields[k] = String(fields[k] ?? '').trim() || null;
   }
@@ -190,8 +199,20 @@ router.get('/:clubId/members', async (req, res) => {
     : { data: [] };
   if (pErr) return dbError(res, pErr);
   const today = todayYmd();
+  // Guests: sessions played and cancellations after a paid / confirmed place.
+  let stats = {};
+  try {
+    stats = await guestStats(data.filter((m) => m.member_type === 'guest').map((m) => m.id));
+  } catch (err) {
+    return dbError(res, err);
+  }
   res.json(
-    data.map(({ users, ...m }) => ({ ...m, account_email: users?.email || null, ...summarize(passes.filter((p) => p.club_member_id === m.id), today) }))
+    data.map(({ users, ...m }) => ({
+      ...m,
+      account_email: users?.email || null,
+      ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
+      ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
+    }))
   );
 });
 
@@ -263,7 +284,16 @@ router.post('/:clubId/members/bulk', async (req, res) => {
 });
 
 router.patch('/:clubId/members/:memberId', async (req, res) => {
-  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags']);
+  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags', 'guest_perk']);
+  if ('notes' in fields) fields.notes = String(fields.notes ?? '').trim().slice(0, 2000) || null;
+  if ('guest_perk' in fields && !(await guestsReady())) delete fields.guest_perk; // migration not run yet
+  if ('guest_perk' in fields) {
+    fields.guest_perk = fields.guest_perk || null;
+    if (fields.guest_perk && !PERKS.includes(fields.guest_perk)) return res.status(400).json({ error: 'guest_perk must be priority or vip.' });
+    if (fields.guest_perk && (fields.member_type || req.member.member_type) !== 'guest') {
+      return res.status(400).json({ error: 'Perks are for guests only.' });
+    }
+  }
   if ('flags' in fields) fields.flags = (Array.isArray(fields.flags) ? fields.flags : []).filter((f) => FLAGS.includes(f));
   if ('gender' in fields) fields.gender = cleanGender(fields.gender);
   if ('birth_year' in fields) fields.birth_year = cleanBirthYear(fields.birth_year);
@@ -281,6 +311,7 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
     return res.status(400).json({ error: 'tier can only be set on fixed members.' });
   }
   if (fields.member_type === 'guest') fields.tier = null; // clear tier if downgraded to guest
+  if (fields.member_type === 'fixed' && req.member.guest_perk) fields.guest_perk = null; // perks are for guests
   if (req.body.unlink_account === true) {
     fields.user_id = null; // detach the player's login
     fields.account_verified = false;
@@ -298,14 +329,17 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   res.json(data);
 });
 
-// Accounts waiting for the Host: links to an existing member (by phone) and new join requests.
+// Waiting list (DS chờ): accounts linked to a member by phone, join requests from the
+// event page, and guests who asked to join the fixed team in the after-session survey.
 router.get('/:clubId/member-requests', async (req, res) => {
+  const ready = await guestsReady();
   const { data, error } = await supabase
     .from('club_members')
-    .select('id, full_name, phone, gender, birth_year, dupr_level, join_requested, user_id, created_at, users(email)')
+    .select(
+      `id, full_name, phone, gender, birth_year, birth_date, dupr_level, member_type, join_requested, account_verified, user_id, created_at, users(email)${ready ? ', join_requested_at, join_note' : ''}`
+    )
     .eq('club_id', req.club.id)
-    .eq('account_verified', false)
-    .not('user_id', 'is', null)
+    .or('and(account_verified.eq.false,user_id.not.is.null),join_requested.eq.true')
     .order('created_at', { ascending: true });
   if (error) return dbError(res, error);
   const { data: profiles } = data.length
@@ -314,16 +348,31 @@ router.get('/:clubId/member-requests', async (req, res) => {
   res.json(
     data.map(({ users, ...m }) => {
       const p = (profiles || []).find((x) => x.user_id === m.user_id);
-      return { ...m, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null };
+      // survey = guest asked in the after-session survey; request = "I'm a member" with no match; link = phone matched
+      const source = m.join_requested_at ? 'survey' : m.join_requested ? 'request' : 'link';
+      return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null };
     })
   );
 });
 
+// Approve: the Host also picks the membership type (fixed by default for join requests).
 router.post('/:clubId/members/:memberId/approve', async (req, res) => {
-  if (!req.member.user_id) return res.status(400).json({ error: 'No player account is linked to this member.' });
+  const m = req.member;
+  if (!m.user_id && !m.join_requested) return res.status(400).json({ error: 'No player account is linked to this member.' });
+  const patch = { join_requested: false };
+  if (m.user_id) patch.account_verified = true;
+  if (m.join_requested) {
+    const type = req.body?.member_type === 'guest' ? 'guest' : 'fixed';
+    patch.member_type = type;
+    patch.tier = type === 'fixed' && TIERS.includes(req.body?.tier) ? req.body.tier : null;
+    if (type === 'fixed') {
+      if (m.guest_perk) patch.guest_perk = null;
+      if (m.member_type !== 'fixed' || !m.joined_on) patch.joined_on = `${todayYmd().slice(0, 7)}-01`; // joined the fixed team now
+    }
+  }
   const { data, error } = await supabase
     .from('club_members')
-    .update({ account_verified: true, join_requested: false })
+    .update(patch)
     .eq('id', req.member.id)
     .select()
     .single();
@@ -334,6 +383,12 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
 // Not our member: a new join request is removed; a link to an existing member is undone.
 router.post('/:clubId/members/:memberId/reject', async (req, res) => {
   const m = req.member;
+  // A guest who asked to join the fixed team stays a guest; only the request goes.
+  if (m.join_requested && m.member_type === 'guest') {
+    const { error } = await supabase.from('club_members').update({ join_requested: false }).eq('id', m.id);
+    if (error) return dbError(res, error);
+    return res.json({ declined: true });
+  }
   if (m.account_verified) return res.status(400).json({ error: 'This account is already verified; unlink it instead.' });
   if (m.join_requested) {
     const { error } = await supabase.from('club_members').delete().eq('id', m.id);

@@ -106,6 +106,7 @@ const fromMember = (m) => ({
   dupr_level: m.dupr_level ?? '',
   member_type: m.member_type || 'fixed',
   tier: m.tier || '',
+  guest_perk: m.guest_perk || '',
   birth_date: m.birth_date || '',
   joined: m.joined_on ? m.joined_on.slice(0, 7) : '',
   is_active: m.is_active !== false,
@@ -142,6 +143,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level),
       member_type: f.member_type,
       tier: f.member_type === 'fixed' ? f.tier || null : null,
+      ...(f.member_type === 'guest' ? { guest_perk: f.guest_perk || null } : {}),
       birth_date: f.birth_date || null,
       joined_on: f.joined ? `${f.joined}-01` : null,
       is_active: f.is_active,
@@ -183,12 +185,25 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
         </select>
       </div>
       <div className="min-w-0">
-        <label className="text-xs text-gray-400">{t('members.tier')}</label>
-        <select className="input" disabled={f.member_type !== 'fixed'} value={f.member_type === 'fixed' ? f.tier : ''} onChange={(e) => set({ tier: e.target.value })}>
-          <option value="">—</option>
-          <option value="vip">{t('members.vip')}</option>
-          <option value="standard">{t('members.standard')}</option>
-        </select>
+        {f.member_type === 'fixed' ? (
+          <>
+            <label className="text-xs text-gray-400">{t('members.tier')}</label>
+            <select className="input" value={f.tier} onChange={(e) => set({ tier: e.target.value })}>
+              <option value="">—</option>
+              <option value="vip">{t('members.vip')}</option>
+              <option value="standard">{t('members.standard')}</option>
+            </select>
+          </>
+        ) : (
+          <>
+            <label className="text-xs text-gray-400">{t('guests.perk')}</label>
+            <select className="input" value={f.guest_perk} onChange={(e) => set({ guest_perk: e.target.value })}>
+              <option value="">—</option>
+              <option value="priority">⚡ {t('guests.perk_priority')}</option>
+              <option value="vip">⭐ {t('guests.perk_vip')}</option>
+            </select>
+          </>
+        )}
       </div>
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('members.joinedMonth')}</label>

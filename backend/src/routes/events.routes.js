@@ -15,6 +15,8 @@ const {
 const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
+const { perksFor, ensureGuestMember } = require('../services/guests');
+const survey = require('../services/survey');
 
 const router = express.Router();
 const MAIN_LIST = HOLDS_PLACE; // registered, checked_in, pending (payment being checked)
@@ -104,10 +106,14 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
     await signup.expireHolds(event);
     const [profile, mine] = await Promise.all([playerProfile(req.userId), signup.myRegistration(event, req.userId)]);
     const { standing, participant } = mine;
+    // Guest perk (priority / VIP price) the club gave this player, if any.
+    const perks = standing.state === 'verified' ? null : await perksFor(event, { userId: req.userId, phone: profile?.phone });
     res.json({
       profile,
       member: {
-        state: standing.state, // 'verified' | 'pending' | 'none'
+        guest_perk: perks?.perk || null,
+        my_fee: perks?.fee_amount ?? null,
+        state: standing.state, // 'verified' | 'pending' | 'guest' | 'none'
         is_club_event: !!event.club_id,
         has_pass: !!standing.pass,
         sessions_remaining: standing.pass ? (standing.pass.sessions_included === 0 ? null : standing.pass.sessions_remaining) : null,
@@ -363,10 +369,12 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
     .eq('event_id', req.event.id)
     .in('status', MAIN_LIST);
   const status = (count || 0) >= req.event.slots ? 'waitlisted' : 'registered';
+  const perks = await perksFor(req.event, { phone });
 
   const { data, error } = await supabase
     .from('event_participants')
     .insert({
+      ...(perks?.priority ? { priority: true } : {}),
       event_id: req.event.id,
       full_name,
       phone: phone || null,
@@ -379,7 +387,17 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
     .select()
     .single();
   if (error) return dbError(res, error);
+  await ensureGuestMember(req.event, data);
   res.status(201).json(data);
+});
+
+// After-session survey answers for this event (guests' stars, comments, join wishes).
+router.get('/:eventId/surveys', async (req, res) => {
+  try {
+    res.json(await survey.eventSurveys(req.event));
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 // Import from Club: clone selected club members into this event's participants
