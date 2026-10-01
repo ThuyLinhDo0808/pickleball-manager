@@ -2,6 +2,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
+const { forgetHost } = require('../middleware/auth');
 
 const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText } = require('../services/notify');
@@ -142,6 +143,52 @@ router.patch('/payment-settings', async (req, res) => {
     .single();
   if (error) return dbError(res, error);
   res.json(data);
+});
+
+// ---- Delete my account -----------------------------------------------------------
+// What goes with the account: the clubs it owns (members, sessions, tournaments, fund),
+// its Xé Vé events, and its player profile. Records in other people's clubs stay with the
+// club (name, attendance) but are no longer linked to this account.
+async function accountFootprint(userId) {
+  const count = (table, col, val) =>
+    supabase.from(table).select('id', { count: 'exact', head: true }).eq(col, val).then((r) => r.count || 0);
+  const { data: clubs, error } = await supabase.from('clubs').select('id, name').eq('host_id', userId).order('name');
+  if (error) throw error;
+  const [xeve, linked] = await Promise.all([
+    supabase.from('events').select('id', { count: 'exact', head: true }).eq('host_id', userId).is('club_id', null).then((r) => r.count || 0),
+    count('club_members', 'user_id', userId),
+  ]);
+  return { clubs: clubs || [], xeve_events: xeve, linked_memberships: linked };
+}
+
+router.get('/account/delete-preview', async (req, res) => {
+  try {
+    res.json({ email: req.hostEmail, ...(await accountFootprint(req.userId)) });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+router.delete('/account', async (req, res) => {
+  const userId = req.userId;
+  const typed = String(req.query.confirm || '').trim().toLowerCase();
+  if (!typed || typed !== String(req.hostEmail || '').trim().toLowerCase()) {
+    return res.status(400).json({ error: 'Type your account email to confirm.', code: 'confirm_email' });
+  }
+  // Tournaments first (their line-ups point at members and would clash while cascading),
+  // then events (club sessions and Xé Vé), then the clubs; the account deletion cascades
+  // to everything else the account owns.
+  for (const table of ['tournaments', 'events', 'clubs']) {
+    const { error } = await supabase.from(table).delete().eq('host_id', userId);
+    if (error) return dbError(res, error);
+  }
+  const { error } = await supabase.auth.admin.deleteUser(userId);
+  if (error) {
+    console.error('delete account failed', error);
+    return res.status(500).json({ error: 'Could not delete the account. Please try again.' });
+  }
+  forgetHost(userId);
+  res.status(204).end();
 });
 
 module.exports = router;

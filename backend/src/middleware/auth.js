@@ -56,4 +56,9 @@ async function optionalAuth(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, optionalAuth, ensureHostRows };
+// After an account is deleted, its rows must not be silently re-created from the cache.
+function forgetHost(userId) {
+  ensuredHosts.delete(userId);
+}
+
+module.exports = { requireAuth, optionalAuth, ensureHostRows, forgetHost };
