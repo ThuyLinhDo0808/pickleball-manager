@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
@@ -299,10 +299,22 @@ function LangSelect() {
   );
 }
 
+const SIDEBAR_SCROLL_KEY = 'pickleball_sidebar_scroll';
+
 export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
   const { t } = useI18n();
   const { clubs, club, isCoAdmin, loading: clubsLoading } = useClubs();
+  // Each page mounts its own shell: put the sidebar back where it was scrolled to,
+  // instead of jumping to the top after every click.
+  const sideRef = useRef(null);
+  useLayoutEffect(() => {
+    if (!sideRef.current) return;
+    try {
+      const y = Number(sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || 0);
+      if (y) sideRef.current.scrollTop = y;
+    } catch {}
+  });
   const { workspace, ready: wsReady, workspaces } = useWorkspace();
   const pathname = usePathname() || '';
   const router = useRouter();
@@ -383,6 +395,12 @@ export default function AppShell({ children }) {
     <div className="min-h-screen md:flex">
       {/* Desktop sidebar */}
       <aside
+        ref={sideRef}
+        onScroll={(e) => {
+          try {
+            sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(e.currentTarget.scrollTop));
+          } catch {}
+        }}
         className={`hidden md:flex shrink-0 bg-navy-900 border-r border-navy-700 flex-col gap-1 sticky top-0 h-screen overflow-y-auto transition-[width] duration-200 ${
           collapsed ? 'w-16 p-2' : 'w-64 p-4'
         }`}

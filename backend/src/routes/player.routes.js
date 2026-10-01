@@ -10,6 +10,7 @@ const { cancelDeadline, cancelParticipant } = require('../services/attendance');
 const { transferSlot } = require('../services/signup');
 const { telegramSend } = require('../services/notify');
 const survey = require('../services/survey');
+const { linkByPhone } = require('../services/phoneLink');
 
 function badRequest(message, status = 400, code) {
   return Object.assign(new Error(message), { status, code });
@@ -183,6 +184,7 @@ player.put('/profile', async (req, res) => {
       .select()
       .single();
     if (error) throw error;
+    await linkByPhone(req.hostId, data); // a club already has this phone -> member there
 
     // Fill blanks on the player's club records (never overwrite what the Host entered).
     const { data: mine } = await supabase.from('club_members').select('*').eq('user_id', req.hostId);
@@ -326,6 +328,7 @@ player.get('/me', async (req, res) => {
   try {
     const uid = req.hostId;
     const profile = await getProfile(uid);
+    await linkByPhone(uid, profile); // members the Host added since the last visit
     const { data: members, error: mErr } = await supabase.from('club_members').select('*, clubs(id, name, bank_code, bank_account, bank_holder)').eq('user_id', uid);
     if (mErr) throw mErr;
     const memberIds = members.map((m) => m.id);

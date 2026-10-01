@@ -13,7 +13,7 @@ const { newPaymentRef, vietqrUrl } = require('./payment');
 const { HOLDS_PLACE, feeFor, memberStanding, needsOnlinePayment } = require('./fees');
 const { promoteNext } = require('./attendance');
 const { perksFor, ensureGuestMember, guestsReady } = require('./guests');
-const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted, notifyMemberRequest } = require('./notify');
+const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
 const REJECTED_HOLD_MS = 2 * 3600 * 1000; // time to send a better screenshot
@@ -258,46 +258,6 @@ async function transferSlot(event, participant, { full_name, phone }, { byHost =
   return data;
 }
 
-// Player says "I'm a member of this club": link their account to the member with the same phone.
-// It only counts once the Host verifies it (club_members.account_verified).
-async function claimMembership(event, userId, profile) {
-  if (!event.club_id) throw httpError('This event is not a club session.', 400, 'no_club');
-  if (normalizePhone(profile?.phone).length < 9) throw httpError('Complete your profile (phone) first.', 400, 'profile_required');
-  const standing = await memberStanding(event, userId);
-  if (standing.state !== 'none') return standing.state;
-  const { data: members } = await supabase.from('club_members').select('id, phone').eq('club_id', event.club_id).is('user_id', null);
-  const match = (members || []).find((m) => normalizePhone(m.phone) === normalizePhone(profile.phone));
-  let member;
-  if (match) {
-    const { data, error } = await supabase.from('club_members').update({ user_id: userId, account_verified: false }).eq('id', match.id).is('user_id', null).select().single();
-    if (error) throw error;
-    member = data;
-  } else {
-    // Not on the list yet: a join request the Host approves (member kept) or rejects (removed).
-    const { data, error } = await supabase
-      .from('club_members')
-      .insert({
-        club_id: event.club_id,
-        user_id: userId,
-        account_verified: false,
-        join_requested: true,
-        full_name: profile.full_name,
-        phone: profile.phone,
-        dupr_level: profile.dupr_level ?? null,
-        gender: profile.gender ?? null,
-        birth_year: profile.birth_year ?? null,
-        birth_date: profile.birth_date ?? null,
-        member_type: 'fixed',
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    member = data;
-  }
-  notifyMemberRequest(event, member, !match);
-  return 'pending';
-}
-
 module.exports = {
   expireHolds,
   payeeFor,
@@ -308,6 +268,5 @@ module.exports = {
   confirmPayment,
   rejectPayment,
   transferSlot,
-  claimMembership,
   MAX_PROOF,
 };

@@ -17,6 +17,7 @@ const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember } = require('../services/guests');
 const survey = require('../services/survey');
+const { linkByPhone } = require('../services/phoneLink');
 
 const router = express.Router();
 const MAIN_LIST = HOLDS_PLACE; // registered, checked_in, pending (payment being checked)
@@ -104,7 +105,9 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
   if (!event) return;
   try {
     await signup.expireHolds(event);
-    const [profile, mine] = await Promise.all([playerProfile(req.userId), signup.myRegistration(event, req.userId)]);
+    const profile = await playerProfile(req.userId);
+    await linkByPhone(req.userId, profile); // same phone as a club member -> that member
+    const mine = await signup.myRegistration(event, req.userId);
     const { standing, participant } = mine;
     // Guest perk (priority / VIP price) the club gave this player, if any.
     const perks = standing.state === 'verified' ? null : await perksFor(event, { userId: req.userId, phone: profile?.phone });
@@ -129,7 +132,9 @@ router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
   const event = await publicEvent(req, res);
   if (!event) return;
   try {
-    res.status(201).json(await signup.registerOnline(event, req.userId, await playerProfile(req.userId)));
+    const profile = await playerProfile(req.userId);
+    await linkByPhone(req.userId, profile);
+    res.status(201).json(await signup.registerOnline(event, req.userId, profile));
   } catch (err) {
     fail(res, err);
   }
@@ -142,17 +147,6 @@ router.post('/public/:publicToken/payment-proof', requireAuth, async (req, res) 
     const { participant } = await signup.myRegistration(event, req.userId);
     if (!participant) throw Object.assign(new Error('You are not registered for this event.'), { status: 404, code: 'not_registered' });
     res.json(await signup.submitProof(event, participant, req.body.image));
-  } catch (err) {
-    fail(res, err);
-  }
-});
-
-// "I'm a member of this club" -> links the account to the member with my phone; the Host verifies it.
-router.post('/public/:publicToken/claim-member', requireAuth, async (req, res) => {
-  const event = await publicEvent(req, res);
-  if (!event) return;
-  try {
-    res.json({ state: await signup.claimMembership(event, req.userId, await playerProfile(req.userId)) });
   } catch (err) {
     fail(res, err);
   }

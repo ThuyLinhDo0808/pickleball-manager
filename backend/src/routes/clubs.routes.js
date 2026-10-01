@@ -7,6 +7,7 @@ const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../serv
 const { itemMetrics } = require('../services/inventory');
 const birthdays = require('../services/birthdays');
 const { guestsReady, guestStats, PERKS } = require('../services/guests');
+const { phoneLinkReady } = require('../services/phoneLink');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
@@ -315,6 +316,7 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   if (req.body.unlink_account === true) {
     fields.user_id = null; // detach the player's login
     fields.account_verified = false;
+    if (req.member.user_id && (await phoneLinkReady())) fields.unlinked_user_id = req.member.user_id; // don't auto-link it again
   }
   // Host confirms the linked player account really is this member.
   if (req.body.account_verified === true && req.member.user_id) fields.account_verified = true;
@@ -395,7 +397,9 @@ router.post('/:clubId/members/:memberId/reject', async (req, res) => {
     if (error) return dbError(res, error);
     return res.json({ removed: true });
   }
-  const { error } = await supabase.from('club_members').update({ user_id: null, account_verified: false }).eq('id', m.id);
+  const unlink = { user_id: null, account_verified: false };
+  if (m.user_id && (await phoneLinkReady())) unlink.unlinked_user_id = m.user_id; // don't auto-link it again
+  const { error } = await supabase.from('club_members').update(unlink).eq('id', m.id);
   if (error) return dbError(res, error);
   res.json({ unlinked: true });
 });

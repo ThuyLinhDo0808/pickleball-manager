@@ -98,26 +98,12 @@ function ProfileForm({ profile, onSaved }) {
   );
 }
 
-// Who am I for this club: verified member / waiting for the Host / guest (+ "I'm a member").
-function MemberStanding({ me, clubName, token, onChanged }) {
+// Who am I for this club: verified member / waiting for the Host / guest. Members are
+// recognised by the phone in the profile (it must match the phone the club saved).
+function MemberStanding({ me, clubName }) {
   const { t } = useI18n();
-  const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
   const m = me.member;
   if (!m.is_club_event) return null;
-
-  async function claim() {
-    setBusy(true);
-    setMsg('');
-    try {
-      await api.post(`/api/events/public/${token}/claim-member`, {});
-      onChanged();
-    } catch (err) {
-      setMsg(err.payload?.code === 'no_member' ? t('signup.noMember') : err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   if (m.state === 'verified') {
     return (
@@ -149,15 +135,7 @@ function MemberStanding({ me, clubName, token, onChanged }) {
   if (m.state === 'pending') {
     return <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-200 mb-3">⏳ {t('signup.memberPending')}</p>;
   }
-  return (
-    <div className="rounded-lg border border-navy-600 px-3 py-2 text-sm mb-3">
-      <p className="text-gray-300">{t('signup.areYouMember', { club: clubName })}</p>
-      <button type="button" className="text-lime-400 text-sm font-semibold mt-1" disabled={busy} onClick={claim}>
-        {t('signup.claim')} →
-      </button>
-      {msg && <p className="text-yellow-300 text-xs mt-1">{msg}</p>}
-    </div>
-  );
+  return <p className="text-gray-500 text-xs mb-3">{t('signup.memberByPhone', { club: clubName })}</p>;
 }
 
 function ProofUpload({ token, reg, onChanged }) {
@@ -417,7 +395,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     <div className="flex flex-col">
       <Steps current="confirm" guestPays={guestPays} />
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}
-      <MemberStanding me={me} clubName={ev.club_name} token={token} onChanged={onChanged} />
+      <MemberStanding me={me} clubName={ev.club_name} />
       <div className="rounded-lg bg-navy-900 px-3 py-2 text-sm mb-3">
         <div className="flex justify-between gap-2">
           <span className="text-gray-400">{t('signup.registerAs')}</span>

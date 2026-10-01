@@ -176,14 +176,6 @@ async function notifyEventCancelled(event) {
   }
 }
 
-// Host only: a player says they belong to the club (linked by phone, or a new join request).
-async function notifyMemberRequest(event, member, isNew) {
-  const text = isNew
-    ? `🙋 ${member.full_name} (${member.phone || '—'}) xin tham gia CLB qua kèo "${event.title}". Vào app → Thành viên để duyệt.`
-    : `🙋 ${member.full_name} xác nhận là thành viên CLB (khớp số điện thoại). Vào app → Thành viên để xác thực.`;
-  return safe(sendToHostWebhook(event.host_id, payloadFor('member_request', event, member, text, { new_member: isNew })));
-}
-
 // Email to a player (optional channel). Needs RESEND_API_KEY and NOTIFY_FROM_EMAIL on a
 // domain verified in Resend — the test sender can only mail the Resend account owner.
 async function emailPlayer(userIds, subject, text) {
@@ -223,7 +215,6 @@ async function notifyJoinFromSurvey(event, member) {
 }
 
 module.exports = {
-  notifyMemberRequest,
   notifySurvey,
   notifyJoinFromSurvey,
   notifyEventCancelled,
