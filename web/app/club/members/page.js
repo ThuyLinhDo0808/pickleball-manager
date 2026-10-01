@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
+import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -27,16 +28,22 @@ export default function MembersPage() {
   const [selected, setSelected] = useState([]);
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState('members');
+  const [tab, setTab] = useState('fixed');
   const { data: requests, reload: reloadRequests } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/member-requests`).catch(() => []) : Promise.resolve([])),
     [club?.id]
   );
   const pending = requests || [];
 
-  // New join requests live only in the "waiting" tab until the Host approves them.
-  const rows = (members || []).filter((m) => !(m.join_requested && !m.account_verified));
-  const detailMember = rows.find((m) => m.id === detailId) || null;
+  // New join requests ("I'm a member", no match) only live in DS chờ until approved. Guests who
+  // asked to join from the survey stay in the guest tab meanwhile (they did play).
+  const all = (members || []).filter((m) => !(m.join_requested && !m.account_verified && m.member_type === 'fixed'));
+  const fixedRows = all.filter((m) => m.member_type === 'fixed');
+  const guestRows = all.filter((m) => m.member_type !== 'fixed');
+  // Tabs: fixed members, guests, waiting list. Editing a member's type moves them across.
+  const rows = tab === 'fixed' ? fixedRows : tab === 'guest' ? guestRows : [];
+  const isGuestTab = tab === 'guest';
+  const detailMember = all.find((m) => m.id === detailId) || null;
   const allSelected = rows.length > 0 && selected.length === rows.length;
 
   function closeAdd() {
@@ -114,32 +121,32 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <div role="tablist" className="grid grid-cols-2 sm:inline-grid sm:grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-lg p-1 mb-3 text-sm font-semibold">
-        <button role="tab" aria-selected={tab === 'members'} onClick={() => setTab('members')}
-          className={`rounded-md px-3 py-2 ${tab === 'members' ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
-          {t('requests.tabMembers')} ({rows.length})
-        </button>
-        <button role="tab" aria-selected={tab === 'pending'} onClick={() => setTab('pending')}
-          className={`rounded-md px-3 py-2 flex items-center justify-center gap-2 ${tab === 'pending' ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
-          {t('requests.tabPending')}
-          {pending.length > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs leading-5">{pending.length}</span>}
-        </button>
+      <div role="tablist" className="grid grid-cols-3 sm:inline-grid sm:grid-cols-3 gap-1 bg-navy-900 border border-navy-700 rounded-lg p-1 mb-3 text-sm font-semibold">
+        {[['fixed', 'requests.tabFixed', fixedRows.length], ['guest', 'requests.tabGuest', guestRows.length], ['waiting', 'requests.tabWaiting', null]].map(([k, label, n]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSelected([]); }}
+            className={`rounded-md px-2 sm:px-3 py-2 flex items-center justify-center gap-1.5 ${tab === k ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
+            <span>{t(label)}{n != null && ` (${n})`}</span>
+            {k === 'waiting' && pending.length > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs leading-5">{pending.length}</span>}
+          </button>
+        ))}
       </div>
 
-      {tab === 'pending' && (
+      {tab === 'waiting' && (
         <MemberRequests club={club} requests={pending} onChanged={() => { reloadRequests(); reload(); }} />
       )}
 
-      {tab === 'members' && pending.length > 0 && (
-        <button className="card mb-3 w-full text-left border-yellow-400/50 text-sm" onClick={() => setTab('pending')}>
+      {tab !== 'waiting' && pending.length > 0 && (
+        <button className="card mb-3 w-full text-left border-yellow-400/50 text-sm" onClick={() => setTab('waiting')}>
           <span className="text-yellow-300 font-semibold">{t('requests.banner', { n: pending.length })}</span>{' '}
           <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
           <span className="text-lime-400 ml-1">→</span>
         </button>
       )}
 
-      {tab === 'members' && (() => {
-        const bdays = rows.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
+      {isGuestTab && club && <GuestPerkSettings club={club} />}
+
+      {tab !== 'waiting' && (() => {
+        const bdays = all.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
         return bdays.length > 0 ? (
           <div className="card mb-3 !py-3 text-sm border-pink-400/40">
             <span className="text-pink-300 font-semibold">🎂 {t('members.birthdaysThisMonth', { n: bdays.length })}</span>{' '}
@@ -148,16 +155,16 @@ export default function MembersPage() {
         ) : null;
       })()}
 
-      <div className={`card ${tab === 'members' ? '' : 'hidden'}`}>
+      <div className={`card ${tab === 'waiting' ? 'hidden' : ''}`}>
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
-        {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t('members.empty')}</p>}
+        {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t(isGuestTab ? 'guests.empty' : 'members.empty')}</p>}
         {!loading && rows.length > 0 && (
           <>
             <p className="text-gray-500 text-xs mb-2">
               {t('members.selectHint')} {t('members.openHint')}
             </p>
             <div className="table-wrap">
-              <table className="w-full text-sm grid-table">
+              <table className={`w-full text-sm grid-table ${isGuestTab ? 'wrap-head' : ''}`}>
                 <thead>
                   <tr className="text-gray-300 text-left bg-navy-900">
                     <th className="w-10 text-center">
@@ -174,8 +181,19 @@ export default function MembersPage() {
                     <th>{t('members.birthDate')}</th>
                     <th>{t('members.joined')}</th>
                     <th>{t('common.level')}</th>
-                    <th>{t('members.type')}</th>
-                    <th>{t('members.tier')}</th>
+                    {isGuestTab ? (
+                      <>
+                        <th>{t('guests.played')}</th>
+                        <th>{t('guests.perk')}</th>
+                        <th>{t('guests.notes')}</th>
+                      </>
+                    ) : (
+                      <>
+                        <th>{t('members.type')}</th>
+                        <th>{t('members.tier')}</th>
+                      </>
+                    )}
+                    <th className="w-14 text-center">{t('members.editCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -200,19 +218,6 @@ export default function MembersPage() {
                           }}
                         >
                           {m.full_name}
-                        </button>
-                        <button
-                          type="button"
-                          title={t('members.edit')}
-                          aria-label={`${t('members.edit')}: ${m.full_name}`}
-                          className="ml-1.5 rounded px-1 text-sm opacity-70 hover:opacity-100 hover:bg-navy-700 align-middle"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditing(true);
-                            setDetailId(m.id);
-                          }}
-                        >
-                          ✏️
                         </button>
                         {m.account_email && !m.account_verified && (
                           <span className="ml-2 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>
@@ -239,13 +244,42 @@ export default function MembersPage() {
                       <td className="text-gray-300 whitespace-nowrap">
                         {m.joined_on ? (
                           <>
-                            {my(m.joined_on)} <span className="text-gray-500 text-xs">· {tenureLabel(m.joined_on, t)}</span>
+                            {my(m.joined_on)}
+                            {!isGuestTab && <span className="text-gray-500 text-xs"> · {tenureLabel(m.joined_on, t)}</span>}
                           </>
                         ) : '—'}
                       </td>
                       <td className="text-gray-300">{m.dupr_level ?? '—'}</td>
-                      <td className="text-gray-300">{m.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</td>
-                      <td className="text-gray-300">{m.tier ? t(`members.${m.tier}`) : '—'}</td>
+                      {isGuestTab ? (
+                        <>
+                          <td className="text-gray-300 whitespace-nowrap">
+                            {m.guest_stats?.played ?? 0}
+                            {m.guest_stats?.last_played && <span className="text-gray-500 text-xs"> · {dmy(m.guest_stats.last_played).slice(0, 5)}</span>}
+                          </td>
+                          <td><GuestPerkBadge perk={m.guest_perk} /></td>
+                          <td className="!whitespace-normal min-w-[11rem] max-w-[16rem]" onClick={(e) => e.stopPropagation()}><GuestNoteCell club={club} member={m} onSaved={reload} /></td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="text-gray-300">{m.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</td>
+                          <td className="text-gray-300">{m.tier ? t(`members.${m.tier}`) : '—'}</td>
+                        </>
+                      )}
+                      <td className="text-center">
+                        <button
+                          type="button"
+                          title={t('members.edit')}
+                          aria-label={`${t('members.edit')}: ${m.full_name}`}
+                          className="rounded px-1.5 py-0.5 text-sm opacity-70 hover:opacity-100 hover:bg-navy-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditing(true);
+                            setDetailId(m.id);
+                          }}
+                        >
+                          ✏️
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

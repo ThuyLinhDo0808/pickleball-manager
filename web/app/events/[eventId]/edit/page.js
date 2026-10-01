@@ -37,6 +37,7 @@ export default function EditEventPage() {
           cancelHref={`/events/${eventId}`}
           warning={active ? t('manage.editWarning', { n: active }) : null}
           kinds={event.club_id ? ['weekly', ...GAME_KINDS] : GAME_KINDS}
+          showStatus
         />
       )}
     </AppShell>

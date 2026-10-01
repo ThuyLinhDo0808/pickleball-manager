@@ -176,16 +176,47 @@ async function notifyEventCancelled(event) {
   }
 }
 
-// Host only: a player says they belong to the club (linked by phone, or a new join request).
-async function notifyMemberRequest(event, member, isNew) {
-  const text = isNew
-    ? `🙋 ${member.full_name} (${member.phone || '—'}) xin tham gia CLB qua kèo "${event.title}". Vào app → Thành viên để duyệt.`
-    : `🙋 ${member.full_name} xác nhận là thành viên CLB (khớp số điện thoại). Vào app → Thành viên để xác thực.`;
-  return safe(sendToHostWebhook(event.host_id, payloadFor('member_request', event, member, text, { new_member: isNew })));
+// Email to a player (optional channel). Needs RESEND_API_KEY and NOTIFY_FROM_EMAIL on a
+// domain verified in Resend — the test sender can only mail the Resend account owner.
+async function emailPlayer(userIds, subject, text) {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.NOTIFY_FROM_EMAIL;
+  if (!key || !from) return 'not_configured';
+  if (!userIds.length) return 'no_account';
+  const { data } = await supabase.from('users').select('email').in('id', userIds);
+  const to = (data || []).map((u) => u.email).filter(Boolean);
+  if (!to.length) return 'no_email';
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to, subject, text }),
+    signal: AbortSignal.timeout(8000),
+  });
+  return r.ok ? 'sent' : `failed_${r.status}`;
+}
+
+// Guest played a session: thank them and send the survey link (Telegram + email).
+async function notifySurvey(event, participant, { clubName, url }) {
+  const text =
+    `🙏 Cảm ơn ${participant.full_name || 'bạn'} đã đến giao lưu ở ${where(event)}${clubName ? ` cùng ${clubName}` : ''}!\n` +
+    `Bạn dành 1 phút đánh giá buổi chơi giúp CLB nhé${url ? `: ${url}` : ' (mở trang Người chơi trong app)'}.`;
+  const ids = await participantUserIds(participant);
+  const [telegram, email] = await Promise.all([
+    safe(sendToPlayer(participant, text)),
+    safe(emailPlayer(ids, `Cảm ơn bạn đã giao lưu cùng ${clubName || 'CLB'}`, text)),
+  ]);
+  return { telegram, email };
+}
+
+// Host: a guest asked to join the fixed team from the survey.
+async function notifyJoinFromSurvey(event, member) {
+  const text = `🙋 ${member.full_name} (${member.phone || '—'}) muốn gia nhập team cố định — qua khảo sát buổi "${event.title}". Vào app → Thành viên → DS chờ để duyệt.`;
+  return safe(sendToHostWebhook(event.host_id, payloadFor('join_request', event, member, text, { from_survey: true })));
 }
 
 module.exports = {
-  notifyMemberRequest,
+  notifySurvey,
+  notifyJoinFromSurvey,
   notifyEventCancelled,
   notifyPromoted,
   notifyPaymentConfirmed,

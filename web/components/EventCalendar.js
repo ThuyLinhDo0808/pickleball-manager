@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
 import { formatVnd } from '@/lib/format';
+import { api } from '@/lib/api';
 import { formatDay, hhmm, layoutLanes, monthGrid, span, todayYmd, weekDays, weekdayLabels } from '@/lib/dates';
 
 // Block colours by status (dark surface). Text stays light for contrast.
@@ -13,6 +14,10 @@ export const STATUS_STYLE = {
   completed: 'bg-sky-400/15 border-sky-400 text-sky-50',
   cancelled: 'bg-red-500/10 border-red-400/60 text-red-200 line-through',
 };
+
+// What the Host can set: upcoming (open), completed (automatic once the slot is over), cancelled.
+// draft / closed only show on events made before that rule.
+export const LEGEND_STATUSES = ['open', 'completed', 'cancelled'];
 
 // Solid colour per status for small dots (phone month view, timeline).
 export const STATUS_DOT = {
@@ -192,8 +197,70 @@ function TimeGrid({ days, events, onPickDay }) {
   );
 }
 
+// Edit / delete / cancel straight from the day's timeline. Nobody signed up → delete;
+// people signed up → cancel (they get a message; the list and payments are kept).
+function DayActions({ e, onChanged }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  if (e.kind === 'tournament') return null;
+  const people = Number(e.main_count || 0) + Number(e.waitlist_count || 0);
+  const canDelete = people === 0;
+  const canCancel = !canDelete && e.status !== 'cancelled' && e.status !== 'completed';
+
+  async function run(fn, ask) {
+    if (!window.confirm(ask)) return;
+    setBusy(true);
+    try {
+      await fn();
+      onChanged?.();
+    } catch (err) {
+      if (err.payload?.code === 'has_activity' && window.confirm(t('manage.deleteForceAsk', { people: 0, money: err.payload.transactions }))) {
+        try {
+          await api.del(`/api/events/${e.id}?force=1`);
+          onChanged?.();
+        } catch (e2) {
+          window.alert(e2.message);
+        }
+      } else {
+        window.alert(err.message);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-1.5">
+      {e.status !== 'cancelled' && (
+        <Link href={`/events/${e.id}/edit`} className="rounded-md border border-navy-600 px-2 py-0.5 text-xs text-gray-200 hover:border-lime-400">✏️ {t('common.edit')}</Link>
+      )}
+      {canDelete && (
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded-md border border-red-500/60 px-2 py-0.5 text-xs text-red-400 hover:bg-red-500/10"
+          onClick={() => run(() => api.del(`/api/events/${e.id}`), t('manage.deleteAsk', { title: e.title }))}
+        >
+          🗑 {t('common.delete')}
+        </button>
+      )}
+      {canCancel && (
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded-md border border-orange-400/60 px-2 py-0.5 text-xs text-orange-300 hover:bg-orange-400/10"
+          title={t('manage.cancelHint', { n: people })}
+          onClick={() => run(() => api.patch(`/api/events/${e.id}`, { status: 'cancelled' }), t('manage.cancelAskN', { title: e.title, n: people }))}
+        >
+          ✕ {t('manage.cancelEvent')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ---- Day: time grid + the day's events as a detailed timeline ----------------
-function DayView({ date, events, onPickDay }) {
+function DayView({ date, events, onPickDay, onChanged }) {
   const { t } = useI18n();
   const list = byDay(events)[date] || [];
   return (
@@ -219,6 +286,7 @@ function DayView({ date, events, onPickDay }) {
                   {Number(e.fee_amount) > 0 && ` · ${formatVnd(e.fee_amount)}`}
                 </div>
               )}
+              <DayActions e={e} onChanged={onChanged} />
             </li>
           ))}
         </ol>
@@ -227,8 +295,8 @@ function DayView({ date, events, onPickDay }) {
   );
 }
 
-export default function EventCalendar({ view, date, events, onPickDay }) {
+export default function EventCalendar({ view, date, events, onPickDay, onChanged }) {
   if (view === 'month') return <MonthView date={date} events={events} onPickDay={onPickDay} />;
   if (view === 'week') return <TimeGrid days={weekDays(date)} events={events} onPickDay={onPickDay} />;
-  return <DayView date={date} events={events} onPickDay={onPickDay} />;
+  return <DayView date={date} events={events} onPickDay={onPickDay} onChanged={onChanged} />;
 }

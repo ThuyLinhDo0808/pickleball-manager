@@ -683,7 +683,10 @@ supabase/migrations/
 ├── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
 ├── 20261004090000_tournament_entry_fee.sql              # lệ phí tham gia giải
 ├── 20261005090000_tournament_fee_payments.sql           # ai đã đóng lệ phí giải (ghi thu vào quỹ CLB)
-└── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
+├── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
+├── 20261009090000_guest_perks_survey.sql                # khách giao lưu: tự vào danh sách, đặc quyền VIP/Ưu tiên, khảo sát sau buổi, DS chờ
+├── 20261010090000_member_phone_link.sql                 # tài khoản tự nhận là thành viên CLB khi SĐT trùng (bỏ nút "Tôi là thành viên")
+└── 20261011090000_event_status_simplify.sql            # trạng thái chỉ còn Đang mở / Đã xong (tự động) / Đã hủy
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -737,7 +740,9 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `TELEGRAM_BOT_USERNAME` | | Username của bot (không có `@`), dùng cho nút "Kết nối Telegram" |
 | `TELEGRAM_WEBHOOK_SECRET` | | Chuỗi bí mật Telegram gửi kèm mỗi cập nhật (header `X-Telegram-Bot-Api-Secret-Token`) |
 | `TELEGRAM_API_URL` | | Tuỳ chọn: Bot API server tự host (mặc định `https://api.telegram.org`) |
-| `PUBLIC_WEB_URL` | | Địa chỉ web (ví dụ `https://pickleball-manager.vercel.app`) để đưa link vé / link thanh toán vào tin nhắn. Bỏ trống thì dùng `CORS_ORIGIN` nếu là https. |
+| `PUBLIC_WEB_URL` | | Địa chỉ web (ví dụ `https://pickleball-manager.vercel.app`) để đưa link vé / link thanh toán / link khảo sát vào tin nhắn. Bỏ trống thì dùng `CORS_ORIGIN` nếu là https. |
+| `NOTIFY_FROM_EMAIL` | | Tuỳ chọn: gửi email cảm ơn + link khảo sát cho khách giao lưu (cần `RESEND_API_KEY` và một domain đã xác minh trên Resend, ví dụ `CLB <noreply@clb-cua-ban.vn>`). Bỏ trống thì chỉ gửi qua Telegram và hiện trong trang Người chơi. |
+| `SURVEY_SWEEP_DISABLED` | | `true` để tắt việc tự gửi khảo sát sau buổi (mặc định bật, kiểm tra 10 phút/lần) |
 
 ### Web (`web/.env.local` hoặc Vercel → Environment Variables)
 

@@ -12,7 +12,8 @@ const { normalizePhone } = require('./memberships');
 const { newPaymentRef, vietqrUrl } = require('./payment');
 const { HOLDS_PLACE, feeFor, memberStanding, needsOnlinePayment } = require('./fees');
 const { promoteNext } = require('./attendance');
-const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted, notifyMemberRequest } = require('./notify');
+const { perksFor, ensureGuestMember, guestsReady } = require('./guests');
+const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
 const REJECTED_HOLD_MS = 2 * 3600 * 1000; // time to send a better screenshot
@@ -145,6 +146,12 @@ async function registerOnline(event, userId, profile) {
     source_club_member_id: isMember ? standing.member.id : null,
     status: hasPlace ? 'registered' : 'waitlisted',
   };
+  // Guest perks: VIP pays the club's VIP price; priority/VIP go first off the waitlist.
+  if (!isMember) {
+    const perks = await perksFor(event, { userId, phone: profile.phone });
+    if (perks.priority) row.priority = true;
+    if (perks.fee_amount != null) row.fee_amount = perks.fee_amount;
+  }
   if (hasPlace && (await needsOnlinePayment(event, row))) {
     Object.assign(row, {
       status: 'pending',
@@ -155,6 +162,7 @@ async function registerOnline(event, userId, profile) {
   }
   const { data, error } = await supabase.from('event_participants').insert(row).select().single();
   if (error) throw error;
+  if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
   return registrationView(event, data);
 }
 
@@ -198,6 +206,7 @@ async function confirmPayment(event, participant, hostId) {
     if (tErr) throw tErr;
   }
   if (participant.status === 'pending') notifyPaymentConfirmed(event, data);
+  await ensureGuestMember(event, data); // paid and on the list: now on the club's guest list
   return data;
 }
 
@@ -239,52 +248,14 @@ async function transferSlot(event, participant, { full_name, phone }, { byHost =
       dupr_level: null,
       transferred_from: participant.full_name,
       ticket_code: crypto.randomUUID(),
+      // A different person now: not the old guest's record, perk or survey link.
+      ...((await guestsReady()) ? { guest_member_id: null, priority: false, survey_token: crypto.randomUUID() } : {}),
     })
     .eq('id', participant.id)
     .select()
     .single();
   if (error) throw error;
   return data;
-}
-
-// Player says "I'm a member of this club": link their account to the member with the same phone.
-// It only counts once the Host verifies it (club_members.account_verified).
-async function claimMembership(event, userId, profile) {
-  if (!event.club_id) throw httpError('This event is not a club session.', 400, 'no_club');
-  if (normalizePhone(profile?.phone).length < 9) throw httpError('Complete your profile (phone) first.', 400, 'profile_required');
-  const standing = await memberStanding(event, userId);
-  if (standing.state !== 'none') return standing.state;
-  const { data: members } = await supabase.from('club_members').select('id, phone').eq('club_id', event.club_id).is('user_id', null);
-  const match = (members || []).find((m) => normalizePhone(m.phone) === normalizePhone(profile.phone));
-  let member;
-  if (match) {
-    const { data, error } = await supabase.from('club_members').update({ user_id: userId, account_verified: false }).eq('id', match.id).is('user_id', null).select().single();
-    if (error) throw error;
-    member = data;
-  } else {
-    // Not on the list yet: a join request the Host approves (member kept) or rejects (removed).
-    const { data, error } = await supabase
-      .from('club_members')
-      .insert({
-        club_id: event.club_id,
-        user_id: userId,
-        account_verified: false,
-        join_requested: true,
-        full_name: profile.full_name,
-        phone: profile.phone,
-        dupr_level: profile.dupr_level ?? null,
-        gender: profile.gender ?? null,
-        birth_year: profile.birth_year ?? null,
-        birth_date: profile.birth_date ?? null,
-        member_type: 'fixed',
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    member = data;
-  }
-  notifyMemberRequest(event, member, !match);
-  return 'pending';
 }
 
 module.exports = {
@@ -297,6 +268,5 @@ module.exports = {
   confirmPayment,
   rejectPayment,
   transferSlot,
-  claimMembership,
   MAX_PROOF,
 };

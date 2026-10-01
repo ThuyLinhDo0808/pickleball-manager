@@ -98,26 +98,12 @@ function ProfileForm({ profile, onSaved }) {
   );
 }
 
-// Who am I for this club: verified member / waiting for the Host / guest (+ "I'm a member").
-function MemberStanding({ me, clubName, token, onChanged }) {
+// Who am I for this club: verified member / waiting for the Host / guest. Members are
+// recognised by the phone in the profile (it must match the phone the club saved).
+function MemberStanding({ me, clubName }) {
   const { t } = useI18n();
-  const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
   const m = me.member;
   if (!m.is_club_event) return null;
-
-  async function claim() {
-    setBusy(true);
-    setMsg('');
-    try {
-      await api.post(`/api/events/public/${token}/claim-member`, {});
-      onChanged();
-    } catch (err) {
-      setMsg(err.payload?.code === 'no_member' ? t('signup.noMember') : err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   if (m.state === 'verified') {
     return (
@@ -133,18 +119,23 @@ function MemberStanding({ me, clubName, token, onChanged }) {
       </div>
     );
   }
+  if (m.state === 'guest') {
+    return (
+      <div className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm mb-3">
+        <span className="text-sky-200 font-semibold">🤝 {t('signup.youAreGuest', { club: clubName })}</span>
+        {m.guest_perk && (
+          <div className="text-gray-200 text-xs mt-0.5">
+            {m.guest_perk === 'vip' ? '⭐ ' : '⚡ '}
+            {t(m.guest_perk === 'vip' ? 'signup.perkVip' : 'signup.perkPriority')}
+          </div>
+        )}
+      </div>
+    );
+  }
   if (m.state === 'pending') {
     return <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-200 mb-3">⏳ {t('signup.memberPending')}</p>;
   }
-  return (
-    <div className="rounded-lg border border-navy-600 px-3 py-2 text-sm mb-3">
-      <p className="text-gray-300">{t('signup.areYouMember', { club: clubName })}</p>
-      <button type="button" className="text-lime-400 text-sm font-semibold mt-1" disabled={busy} onClick={claim}>
-        {t('signup.claim')} →
-      </button>
-      {msg && <p className="text-yellow-300 text-xs mt-1">{msg}</p>}
-    </div>
-  );
+  return <p className="text-gray-500 text-xs mb-3">{t('signup.memberByPhone', { club: clubName })}</p>;
 }
 
 function ProofUpload({ token, reg, onChanged }) {
@@ -283,7 +274,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
 
   const reg = me.registration && ACTIVE.includes(me.registration.status) ? me.registration : null;
   const memberFree = me.member.state === 'verified' && me.member.has_pass;
-  const guestPays = fee > 0 && !memberFree;
+  const myFee = me.member.my_fee ?? fee; // VIP guests pay the club's VIP price
+  const guestPays = myFee > 0 && !memberFree;
 
   async function cancel() {
     // Past the free-cancellation deadline (event time is local; players are in the same timezone).
@@ -372,7 +364,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       <div className="text-center">
         <div className="text-4xl">⏳</div>
         <p className="text-white font-bold">{t('public.successWait')}</p>
-        {guestPays && <p className="text-gray-300 text-sm mt-1">{t('signup.waitPayLater', { amount: formatVnd(fee) })}</p>}
+        {guestPays && <p className="text-gray-300 text-sm mt-1">{t('signup.waitPayLater', { amount: formatVnd(reg.fee ?? myFee) })}</p>}
         <p className="text-gray-500 text-xs mt-2">{t('signup.waitNotify')}</p>
         <button type="button" className="text-red-400 text-sm mt-3" onClick={cancel}>{t('events.cancel')}</button>
       </div>
@@ -403,7 +395,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     <div className="flex flex-col">
       <Steps current="confirm" guestPays={guestPays} />
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}
-      <MemberStanding me={me} clubName={ev.club_name} token={token} onChanged={onChanged} />
+      <MemberStanding me={me} clubName={ev.club_name} />
       <div className="rounded-lg bg-navy-900 px-3 py-2 text-sm mb-3">
         <div className="flex justify-between gap-2">
           <span className="text-gray-400">{t('signup.registerAs')}</span>
@@ -411,7 +403,10 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         </div>
         <div className="flex justify-between gap-2 mt-1">
           <span className="text-gray-400">{t('signup.youPay')}</span>
-          <span className="text-white font-semibold">{memberFree ? t('signup.usesSession') : fee > 0 ? formatVnd(fee) : t('public.free')}</span>
+          <span className="text-white font-semibold">
+            {memberFree ? t('signup.usesSession') : myFee > 0 ? formatVnd(myFee) : t('public.free')}
+            {!memberFree && myFee !== fee && <span className="ml-1.5 text-gray-500 line-through font-normal">{formatVnd(fee)}</span>}
+          </span>
         </div>
         {full && <p className="text-yellow-300 text-xs mt-2">{t('public.full')}</p>}
       </div>

@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
-import EventCalendar, { KIND_ICON, STATUS_STYLE, hrefOf } from '@/components/EventCalendar';
+import EventCalendar, { KIND_ICON, LEGEND_STATUSES, STATUS_STYLE, hrefOf } from '@/components/EventCalendar';
 import DatePopover from '@/components/DatePopover';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -12,7 +12,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 
 const VIEWS = ['list', 'month', 'week', 'day'];
-const VIEW_KEY = 'pickleball_events_view';
 
 // A tournament shown on the calendar (links to its own page; no sign-up counts).
 function tournamentAsEvent(tr) {
@@ -68,7 +67,7 @@ export default function EventsPage() {
   const { club } = useDefaultClub();
   const { workspace } = useWorkspace();
   const isClub = workspace === 'club';
-  const { data: events, loading } = useLoad(async () => {
+  const { data: events, loading, reload } = useLoad(async () => {
     if (!workspace) return [];
     if (!isClub) return api.get('/api/events?scope=standalone');
     if (!club) return [];
@@ -80,25 +79,11 @@ export default function EventsPage() {
     return [...evs, ...tours.map(tournamentAsEvent)];
   }, [workspace, club?.id]);
 
+  // Always opens on the month: the clearest overview. Clicking a day opens its timeline.
   const [view, setView] = useState('month');
   const [date, setDate] = useState(todayYmd());
   const [showPast, setShowPast] = useState(false);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(VIEW_KEY);
-      if (VIEWS.includes(saved)) setView(saved);
-    } catch {
-      /* private mode */
-    }
-  }, []);
-  function pickView(v) {
-    setView(v);
-    try {
-      localStorage.setItem(VIEW_KEY, v);
-    } catch {
-      /* ignore */
-    }
-  }
+  const pickView = setView;
 
   const all = events || [];
   const marks = useMemo(() => all.reduce((m, e) => ({ ...m, [e.event_date]: (m[e.event_date] || 0) + 1 }), {}), [all]);
@@ -156,11 +141,11 @@ export default function EventsPage() {
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
 
-      {!loading && view !== 'list' && <EventCalendar view={view} date={date} events={all} onPickDay={openDay} />}
+      {!loading && view !== 'list' && <EventCalendar view={view} date={date} events={all} onPickDay={openDay} onChanged={reload} />}
 
       {!loading && view !== 'list' && (
         <div className="flex flex-wrap gap-3 mt-3 text-xs text-gray-400">
-          {Object.keys(STATUS_STYLE).map((s) => (
+          {LEGEND_STATUSES.map((s) => (
             <span key={s} className="flex items-center gap-1.5">
               <span className={`h-3 w-3 rounded-sm border-l-4 ${STATUS_STYLE[s]}`} />
               {t(`events.status_${s}`)}
