@@ -10,6 +10,7 @@ const { cancelDeadline, cancelParticipant } = require('../services/attendance');
 const { telegramSend } = require('../services/notify');
 const survey = require('../services/survey');
 const { linkByPhone } = require('../services/phoneLink');
+const { sportReady, clubSport, profileLevel } = require('../services/sport');
 
 function badRequest(message, status = 400, code) {
   return Object.assign(new Error(message), { status, code });
@@ -145,13 +146,16 @@ async function getProfile(userId) {
   return data;
 }
 
-function cleanProfile(body) {
+function cleanProfile(body, { badminton = false } = {}) {
   const full_name = String(body.full_name || '').trim();
   const phone = String(body.phone || '').trim();
   if (!full_name) throw badRequest('full_name is required.');
   if (normalizePhone(phone).length < 9) throw badRequest('A valid phone number is required.');
   const dupr = body.dupr_level === '' || body.dupr_level == null ? null : Number(body.dupr_level);
   if (dupr != null && !(dupr >= 1 && dupr <= 8)) throw badRequest('dupr_level must be between 1 and 8.');
+  // Badminton level (step 1-6), kept apart from DUPR; only once the migration is in.
+  const bl = body.badminton_level === '' || body.badminton_level == null ? null : Number(body.badminton_level);
+  if (bl != null && !(Number.isInteger(bl) && bl >= 1 && bl <= 6)) throw badRequest('badminton_level must be a step from 1 to 6.');
   // Full birth date is required (the club uses it for birthdays); the year follows it.
   const birth = String(body.birth_date || '').slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
@@ -164,19 +168,22 @@ function cleanProfile(body) {
   if (avatar && !(/^data:image\/(jpeg|png|webp);base64,/.test(avatar) && avatar.length <= 150000)) {
     throw badRequest('avatar must be a small JPEG/PNG/WebP image.');
   }
-  return { full_name, phone, dupr_level: dupr, birth_date: birth, birth_year: year, gender, avatar };
+  return { full_name, phone, dupr_level: dupr, birth_date: birth, birth_year: year, gender, avatar, ...(badminton ? { badminton_level: bl } : {}) };
 }
 
 // Copy profile details into blank fields of a club record (never overwrite the Host's data).
-function blanksFrom(member, profile) {
+// The level copied is the one for the club's sport (DUPR, or the badminton step).
+function blanksFrom(member, profile, sport = 'pickleball') {
   const patch = {};
-  for (const k of ['phone', 'dupr_level', 'gender', 'birth_year', 'birth_date']) if (member[k] == null && profile[k] != null) patch[k] = profile[k];
+  for (const k of ['phone', 'gender', 'birth_year', 'birth_date']) if (member[k] == null && profile[k] != null) patch[k] = profile[k];
+  const level = profileLevel(profile, sport);
+  if (member.dupr_level == null && level != null) patch.dupr_level = level;
   return patch;
 }
 
 player.put('/profile', async (req, res) => {
   try {
-    const p = cleanProfile(req.body);
+    const p = cleanProfile(req.body, { badminton: await sportReady() });
     const { data, error } = await supabase
       .from('player_profiles')
       .upsert({ user_id: req.hostId, ...p, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
@@ -188,7 +195,7 @@ player.put('/profile', async (req, res) => {
     // Fill blanks on the player's club records (never overwrite what the Host entered).
     const { data: mine } = await supabase.from('club_members').select('*').eq('user_id', req.hostId);
     for (const m of mine || []) {
-      const patch = blanksFrom(m, p);
+      const patch = blanksFrom(m, p, await clubSport(m.club_id));
       if (Object.keys(patch).length) await supabase.from('club_members').update(patch).eq('id', m.id);
     }
     res.json(data);
@@ -227,7 +234,7 @@ player.post('/join/:token', async (req, res) => {
       if (member) {
         const { data: linked, error } = await supabase
           .from('club_members')
-          .update({ user_id: req.hostId, account_verified: false, ...blanksFrom(member, profile) })
+          .update({ user_id: req.hostId, account_verified: false, ...blanksFrom(member, profile, club.sport) })
           .eq('id', member.id)
           .select()
           .single();
@@ -246,7 +253,7 @@ player.post('/join/:token', async (req, res) => {
           account_verified: false,
           full_name: profile.full_name,
           phone: profile.phone,
-          dupr_level: profile.dupr_level,
+          dupr_level: profileLevel(profile, club.sport),
           gender: profile.gender,
           birth_year: profile.birth_year,
           birth_date: profile.birth_date || null,

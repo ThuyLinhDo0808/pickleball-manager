@@ -9,13 +9,17 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useClubs } from '@/context/ClubContext';
+import { clubTones, STATUS_MOD } from '@/lib/clubColors';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 
 const VIEWS = ['list', 'month', 'week', 'day'];
 
 // A tournament shown on the calendar (links to its own page; no sign-up counts).
-function tournamentAsEvent(tr) {
+function tournamentAsEvent(tr, club) {
   return {
+    club_id: club.id,
+    club_name: club.name,
     id: `t-${tr.id}`,
     href: `/club/tournaments/${tr.id}`,
     kind: 'tournament',
@@ -36,16 +40,17 @@ function EventCard({ e }) {
   const { t, lang } = useI18n();
   return (
     <Link href={hrefOf(e)} className="card hover:border-lime-400 transition flex gap-3">
-      <div className={`w-1 shrink-0 rounded-full border ${STATUS_STYLE[e.status]}`} />
+      <div className={`w-1 shrink-0 rounded-full border ${e.tone ? `${e.tone.chip} ${STATUS_MOD[e.status] || ''}` : STATUS_STYLE[e.status]}`} />
       <div className="min-w-0 flex-1">
         <div className="flex justify-between gap-2">
-          <span className="text-white font-semibold truncate">{KIND_ICON[e.kind] && `${KIND_ICON[e.kind]} `}{e.title}</span>
+          <span className="text-white font-semibold truncate">{KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}{e.title}</span>
           <span className="text-gray-400 text-xs uppercase shrink-0">{e.kind === 'tournament' ? (e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)) : t(`events.status_${e.status}`)}</span>
         </div>
         <div className="text-gray-400 text-sm">
           {formatDay(e.event_date, lang)} {e.start_time ? `· ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''} · {e.location || '—'}
         </div>
         <div className="text-gray-300 text-sm mt-1">
+          {e.club_name && <span className="text-sky-300">{e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name} · </span>}
           {e.kind && <span className="text-gray-400">{t(`kind.${e.kind}`)} · </span>}
           {e.slots != null ? (
             <>
@@ -65,19 +70,28 @@ function EventCard({ e }) {
 export default function EventsPage() {
   const { t, lang } = useI18n();
   const { club } = useDefaultClub();
+  const { clubs } = useClubs();
   const { workspace } = useWorkspace();
   const isClub = workspace === 'club';
+  const clubKey = (clubs || []).map((c) => c.id).join(',');
+  // Every club the Host runs (pickleball and badminton) in one calendar, each tagged with
+  // its club: weekly play, games/sessions and tournaments.
   const { data: events, loading, reload } = useLoad(async () => {
     if (!workspace) return [];
     if (!isClub) return api.get('/api/events?scope=standalone');
-    if (!club) return [];
-    // Everything the club runs in one calendar: weekly play, games/sessions and tournaments.
-    const [evs, tours] = await Promise.all([
-      api.get(`/api/clubs/${club.id}/events`),
-      api.get(`/api/tournaments?club_id=${club.id}`).catch(() => []),
-    ]);
-    return [...evs, ...tours.map(tournamentAsEvent)];
-  }, [workspace, club?.id]);
+    const list = clubs?.length ? clubs : club ? [club] : [];
+    const perClub = await Promise.all(
+      list.map(async (c) => {
+        const [evs, tours] = await Promise.all([
+          api.get(`/api/clubs/${c.id}/events`).catch(() => []),
+          api.get(`/api/tournaments?club_id=${c.id}`).catch(() => []),
+        ]);
+        return [...evs, ...tours.map((tr) => tournamentAsEvent(tr, c))].map((e) => ({ ...e, club_name: c.name, sport: c.sport || 'pickleball' }));
+      })
+    );
+    return perClub.flat();
+  }, [workspace, clubKey, club?.id]);
+  const [clubFilter, setClubFilter] = useState('all');
 
   // Always opens on the month: the clearest overview. Clicking a day opens its timeline.
   const [view, setView] = useState('month');
@@ -85,7 +99,12 @@ export default function EventsPage() {
   const [showPast, setShowPast] = useState(false);
   const pickView = setView;
 
-  const all = events || [];
+  // Each club (and sport) its own colour; status shows as faded (done) / struck out (cancelled).
+  const tones = useMemo(() => (isClub ? clubTones(clubs) : {}), [isClub, clubKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const all = (events || [])
+    .filter((e) => clubFilter === 'all' || e.club_id === clubFilter)
+    .map((e) => (tones[e.club_id] ? { ...e, tone: tones[e.club_id] } : e));
+  const manyClubs = isClub && (clubs || []).length > 1;
   const marks = useMemo(() => all.reduce((m, e) => ({ ...m, [e.event_date]: (m[e.event_date] || 0) + 1 }), {}), [all]);
   const today = todayYmd();
   const sorted = [...all].sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
@@ -139,18 +158,50 @@ export default function EventsPage() {
         )}
       </div>
 
+      {manyClubs && (
+        <div className="flex flex-wrap gap-1.5 mb-3 text-sm" role="tablist">
+          {[{ id: 'all', name: t('cal.allClubs') }, ...clubs].map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="tab"
+              aria-selected={clubFilter === c.id}
+              onClick={() => setClubFilter(c.id)}
+              className={`rounded-full border px-3 py-1 ${clubFilter === c.id ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+            >
+              {c.id !== 'all' && <span className={`inline-block h-2.5 w-2.5 rounded-full mr-1.5 align-middle ${tones[c.id]?.dot || ''}`} />}
+              {c.id !== 'all' && (c.sport === 'badminton' ? '🏸 ' : '🏓 ')}
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
 
       {!loading && view !== 'list' && <EventCalendar view={view} date={date} events={all} onPickDay={openDay} onChanged={reload} />}
 
       {!loading && view !== 'list' && (
         <div className="flex flex-wrap gap-3 mt-3 text-xs text-gray-400">
-          {LEGEND_STATUSES.map((s) => (
-            <span key={s} className="flex items-center gap-1.5">
-              <span className={`h-3 w-3 rounded-sm border-l-4 ${STATUS_STYLE[s]}`} />
-              {t(`events.status_${s}`)}
-            </span>
-          ))}
+          {isClub && (clubs || []).length > 0
+            ? [
+                ...(clubs || []).map((c) => (
+                  <span key={c.id} className="flex items-center gap-1.5">
+                    <span className={`h-3 w-3 rounded-sm border-l-4 ${tones[c.id]?.chip || ''}`} />
+                    {c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}
+                  </span>
+                )),
+                <span key="status" className="flex items-center gap-1.5">
+                  · <span className={`h-3 w-3 rounded-sm border-l-4 bg-gray-400/15 border-gray-400 ${STATUS_MOD.completed}`} /> {t('events.status_completed')}
+                  <span className="line-through">{t('events.status_cancelled')}</span>
+                </span>,
+              ]
+            : LEGEND_STATUSES.map((s) => (
+                <span key={s} className="flex items-center gap-1.5">
+                  <span className={`h-3 w-3 rounded-sm border-l-4 ${STATUS_STYLE[s]}`} />
+                  {t(`events.status_${s}`)}
+                </span>
+              ))}
           {isClub && (
             <span className="flex flex-wrap gap-3 basis-full sm:basis-auto sm:ml-auto">
               {Object.entries(KIND_ICON).map(([k, icon]) => (

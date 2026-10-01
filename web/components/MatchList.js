@@ -3,14 +3,18 @@ import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import GamesInput, { gamesPayload, gamesText } from '@/components/GamesInput';
 
 function playerName(mp) {
   return mp.club_members?.full_name || mp.event_participants?.full_name || '?';
 }
 
-function EditMatch({ match, basePath, onSaved, onCancel }) {
+function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
   const { t } = useI18n();
   const [form, setForm] = useState({ team1_score: match.team1_score, team2_score: match.team2_score });
+  const [games, setGames] = useState(() =>
+    Array.isArray(match.games) && match.games.length ? match.games.map(([a, b]) => [String(a), String(b)]) : [['', ''], ['', '']]
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,10 +23,10 @@ function EditMatch({ match, basePath, onSaved, onCancel }) {
     setBusy(true);
     setError('');
     try {
-      await api.patch(`${basePath}/${match.id}`, {
-        team1_score: Number(form.team1_score || 0),
-        team2_score: Number(form.team2_score || 0),
-      });
+      await api.patch(
+        `${basePath}/${match.id}`,
+        badminton ? { games: gamesPayload(games) } : { team1_score: Number(form.team1_score || 0), team2_score: Number(form.team2_score || 0) }
+      );
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -33,6 +37,7 @@ function EditMatch({ match, basePath, onSaved, onCancel }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      {badminton ? <GamesInput value={games} onChange={setGames} /> : (
       <div className="grid grid-cols-2 gap-3">
         {[1, 2].map((team) => (
           <div key={team}>
@@ -49,6 +54,7 @@ function EditMatch({ match, basePath, onSaved, onCancel }) {
           </div>
         ))}
       </div>
+      )}
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex gap-2">
         <button type="button" className="btn-secondary flex-1" onClick={onCancel}>{t('common.cancel')}</button>
@@ -59,8 +65,9 @@ function EditMatch({ match, basePath, onSaved, onCancel }) {
 }
 
 // basePath: where edits go ('/api/matches' for hosts, the staff API for referees).
-export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true }) {
-  const { t, lang } = useI18n();
+export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true, sport: sportProp }) {
+  const { t, lang, sport: clubSport } = useI18n();
+  const badminton = (sportProp || clubSport) === 'badminton';
   const [editing, setEditing] = useState(null);
 
   async function remove(m) {
@@ -104,6 +111,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
                   </div>
                 ))}
               </div>
+              {gamesText(m.games) && <p className="text-gray-400 text-xs mt-1 tabular-nums">{gamesText(m.games)}</p>}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm">
                 <button className="text-gray-300" onClick={() => setEditing(m)}>{t('matches.edit')}</button>
                 {allowDelete && (
@@ -119,6 +127,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
         {editing && (
           <EditMatch
             match={editing}
+            badminton={badminton || Array.isArray(editing.games)}
             basePath={basePath}
             onCancel={() => setEditing(null)}
             onSaved={() => {

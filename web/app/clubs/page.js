@@ -77,7 +77,7 @@ export default function ClubsPage() {
                   <>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-white font-semibold truncate">{c.name}</div>
+                        <div className="text-white font-semibold truncate">{c.name} <span className="ml-1 align-middle text-[11px] font-normal rounded-full border border-navy-500 text-gray-300 px-2 py-0.5">{t(`clubs.sport_${c.sport || 'pickleball'}`)}</span></div>
                         {c.description && <p className="text-gray-400 text-sm mt-0.5">{c.description}</p>}
                         <p className="text-gray-500 text-xs mt-1">
                           {c.role === 'co_admin'

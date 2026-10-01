@@ -7,6 +7,9 @@ const STORAGE_KEY = 'pickleball_lang';
 
 export function I18nProvider({ children }) {
   const [lang, setLang] = useState(DEFAULT_LANG);
+  // Sport of the club being managed (set by ClubContext); words like "DUPR" or "balls"
+  // follow it.
+  const [sport, setSport] = useState('pickleball');
 
   useEffect(() => {
     try {
@@ -27,9 +30,9 @@ export function I18nProvider({ children }) {
     }
   }, []);
 
-  const t = useCallback((key, params) => translate(lang, key, params), [lang]);
+  const t = useCallback((key, params) => translate(lang, key, params, sport), [lang, sport]);
 
-  const value = useMemo(() => ({ lang, setLang: changeLang, t, langs: SUPPORTED_LANGS }), [lang, changeLang, t]);
+  const value = useMemo(() => ({ lang, setLang: changeLang, t, langs: SUPPORTED_LANGS, sport, setSport }), [lang, changeLang, t, sport]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

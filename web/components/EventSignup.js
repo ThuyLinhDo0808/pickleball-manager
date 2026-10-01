@@ -1,4 +1,5 @@
 'use client';
+import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import PaymentCard from '@/components/PaymentCard';
@@ -37,12 +38,13 @@ function minutesLeft(iso) {
   return iso ? Math.max(Math.ceil((new Date(iso) - Date.now()) / 60000), 0) : null;
 }
 
-function ProfileForm({ profile, onSaved }) {
+function ProfileForm({ profile, onSaved, sport = 'pickleball' }) {
   const { t } = useI18n();
+  const levelKey = sport === 'badminton' ? 'badminton_level' : 'dupr_level'; // the level for this event's sport
   const [f, setF] = useState({
     full_name: profile?.full_name || '',
     phone: profile?.phone || '',
-    dupr_level: profile?.dupr_level ?? '',
+    [levelKey]: profile?.[levelKey] ?? '',
     birth_date: profile?.birth_date || '',
     gender: profile?.gender || '',
   });
@@ -54,7 +56,7 @@ function ProfileForm({ profile, onSaved }) {
     setError('');
     try {
       // Keep the rest of the profile (e.g. avatar) as it is.
-      await api.put('/api/player/profile', { ...(profile || {}), ...f, dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level) });
+      await api.put('/api/player/profile', { ...(profile || {}), ...f, [levelKey]: f[levelKey] === '' ? null : Number(f[levelKey]) });
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -90,7 +92,7 @@ function ProfileForm({ profile, onSaved }) {
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
-        <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={f.dupr_level} onChange={(e) => setF({ ...f, dupr_level: e.target.value })} />
+        <LevelInput sport={sport} value={f[levelKey]} onChange={(v) => setF({ ...f, [levelKey]: v })} />
       </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <button className="btn-primary w-full py-3" disabled={busy}>{t('common.save')}</button>
@@ -326,7 +328,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!ev.registration_open) {
     return <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>;
   }
-  if (!me.profile?.full_name || !me.profile?.phone || !me.profile?.birth_date) return <ProfileForm profile={me.profile} onSaved={onChanged} />;
+  if (!me.profile?.full_name || !me.profile?.phone || !me.profile?.birth_date) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} />;
 
   async function register() {
     setBusy(true);

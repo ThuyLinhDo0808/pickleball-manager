@@ -1,4 +1,6 @@
 'use client';
+import { levelTag } from '@/lib/levels';
+import LevelInput from '@/components/LevelInput';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
@@ -22,7 +24,7 @@ const PAY_STYLE = {
 };
 
 function RegisterForm({ club, member, plans, onDone }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const active = plans.filter((p) => p.is_active);
   const [form, setForm] = useState({ plan_id: active[0]?.id || '', start_month: thisMonth(), count: 1, amount: active[0]?.price ?? '', paid: true });
   const [busy, setBusy] = useState(false);
@@ -113,7 +115,7 @@ const fromMember = (m) => ({
 });
 
 function MemberEdit({ member, busy, onSave, autoEdit = false }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const [open, setOpen] = useState(autoEdit);
   const [f, setF] = useState(() => fromMember(member));
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
@@ -171,7 +173,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       </div>
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('common.level')}</label>
-        <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={f.dupr_level} onChange={(e) => set({ dupr_level: e.target.value })} />
+        <LevelInput value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
       </div>
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
@@ -222,7 +224,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
 }
 
 export default function MemberDetail({ club, member, onClose, onChanged, autoEdit = false }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const open = !!member;
   const { data: plans } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/plans`) : Promise.resolve([])), [club?.id]);
   const { data: passes, reload: reloadPasses } = useLoad(
@@ -275,7 +277,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         <div className="text-gray-400 text-sm flex flex-wrap gap-x-4 gap-y-1">
           <span>{member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}{member.tier && ` · ${t(`members.${member.tier}`)}`}</span>
           {member.phone && <a href={`tel:${member.phone}`} className="text-lime-400">{member.phone}</a>}
-          {member.dupr_level != null && <span>DUPR {member.dupr_level}</span>}
+          {member.dupr_level != null && <span>{levelTag(member.dupr_level, sport, t)}</span>}
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
 

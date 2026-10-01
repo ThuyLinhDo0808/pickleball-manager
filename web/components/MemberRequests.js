@@ -1,4 +1,5 @@
 'use client';
+import { levelTag } from '@/lib/levels';
 import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
@@ -15,7 +16,7 @@ const SOURCE_STYLE = {
 };
 
 export default function MemberRequests({ club, requests, onChanged }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const [choice, setChoice] = useState({}); // id -> { member_type, tier }
@@ -56,7 +57,7 @@ export default function MemberRequests({ club, requests, onChanged }) {
         const facts = [
           m.gender && t(`members.${m.gender}`),
           m.birth_date ? m.birth_date.split('-').reverse().join('/') : m.birth_year,
-          m.dupr_level != null && `DUPR ${m.dupr_level}`,
+          m.dupr_level != null && levelTag(m.dupr_level, sport, t),
         ].filter(Boolean);
         const source = m.source || (m.join_requested ? 'request' : 'link');
         const pick = choice[m.id] || { member_type: 'fixed', tier: '' };

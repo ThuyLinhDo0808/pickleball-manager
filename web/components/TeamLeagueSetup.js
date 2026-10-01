@@ -1,4 +1,5 @@
 'use client';
+import { levelText } from '@/lib/levels';
 import { useMemo, useState } from 'react';
 import Section from '@/components/NumberedSection';
 import { useI18n } from '@/context/I18nContext';
@@ -19,7 +20,7 @@ function missingFor(players, formats) {
 // Team League: teams of 4–8 play every other team once; each fixture holds several
 // sub-matches (men's, women's, mixed doubles…). The builder balances total DUPR.
 export default function TeamLeagueSetup({ club, active, base, ready, onCreated, initial }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const [formats, setFormats] = useState(initial?.formats || ['mens', 'womens', 'mixed']);
   const [winRule, setWinRule] = useState(initial?.winRule || 'sub_wins');
   const [picked, setPicked] = useState(() => (initial ? initial.teams.flatMap((tm) => tm.ids) : []));
@@ -93,7 +94,7 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
     }
   }
 
-  const label = (m) => `${m.full_name}${m.gender ? ` (${t(`members.${m.gender}`)})` : ''} · ${m.dupr_level ?? '—'}`;
+  const label = (m) => `${m.full_name}${m.gender ? ` (${t(`members.${m.gender}`)})` : ''} · ${levelText(m.dupr_level, sport, t) ?? '—'}`;
   const sizeOk = (n) => n >= 4 && n <= 8;
 
   return (
@@ -175,7 +176,7 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
                 <button type="button" className="text-red-400 text-xs shrink-0" onClick={() => setTeams((ts) => ts.filter((_, i) => i !== ti))}>{t('tournaments.remove')}</button>
               </div>
               <div className="flex flex-wrap gap-x-3 text-xs mb-2">
-                <span className="text-lime-400 font-semibold">Σ DUPR {info[ti].total}</span>
+                <span className="text-lime-400 font-semibold">Σ {t('level.sumLabel')} {info[ti].total}</span>
                 <span className={sizeOk(info[ti].players.length) ? 'text-gray-400' : 'text-yellow-300'}>{t('league.size', { n: info[ti].players.length })}</span>
                 <span className="text-gray-400">♂ {info[ti].men} · ♀ {info[ti].women}</span>
               </div>

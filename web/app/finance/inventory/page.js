@@ -103,7 +103,8 @@ function MoveForm({ club, item, kind, onDone, onCancel }) {
 }
 
 export default function InventoryPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, sport } = useI18n();
+  const badminton = sport === 'badminton';
   const { club } = useDefaultClub();
   const { data: items, loading, reload } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/inventory`) : Promise.resolve([])),
@@ -128,7 +129,9 @@ export default function InventoryPage() {
     reload();
   }
 
-  const compare = (items || []).filter((i) => i.cost_per_session != null).map((i) => ({ name: i.name, value: i.cost_per_session, durability: i.durability }));
+  // Badminton: shuttles are used up per session → compare the shuttle cost per session.
+  const costKey = badminton ? 'cost_per_used_session' : 'cost_per_session';
+  const compare = (items || []).filter((i) => i[costKey] != null).map((i) => ({ name: i.name, value: i[costKey], durability: i.durability, perSession: i.used_per_session }));
 
   return (
     <>
@@ -155,8 +158,8 @@ export default function InventoryPage() {
                     active && payload?.length ? (
                       <div className="bg-navy-950 border border-navy-600 rounded-lg px-3 py-2 text-xs">
                         <div className="text-white font-semibold">{payload[0].payload.name}</div>
-                        <div className="text-gray-300">{formatVnd(payload[0].value)} / {t('inventory.costPerSession').toLowerCase()}</div>
-                        <div className="text-gray-400">{t('inventory.durabilityVal', { n: payload[0].payload.durability })}</div>
+                        <div className="text-gray-300">{formatVnd(payload[0].value)} / {(badminton ? t('inventory.costPerUsedSession') : t('inventory.costPerSession')).toLowerCase()}</div>
+                        <div className="text-gray-400">{badminton ? t('shuttles.usedPerSession', { n: payload[0].payload.perSession }) : t('inventory.durabilityVal', { n: payload[0].payload.durability })}</div>
                       </div>
                     ) : null
                   }
@@ -175,8 +178,8 @@ export default function InventoryPage() {
           <div key={i.id} className="card">
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="text-white font-semibold">
-                🎾 {i.name}
-                {i.holes && <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-navy-700 text-gray-300">{i.holes} {t('inventory.holes').toLowerCase()}</span>}
+                {badminton ? '🏸' : '🎾'} {i.name}
+                {!badminton && i.holes && <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-navy-700 text-gray-300">{i.holes} {t('inventory.holes').toLowerCase()}</span>}
               </div>
               <div className="text-right">
                 <div className={`text-2xl font-bold tabular-nums ${i.stock > 0 ? 'text-lime-400' : 'text-red-400'}`}>{i.stock}</div>
@@ -185,8 +188,17 @@ export default function InventoryPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               <Metric label={t('inventory.avgCost')} value={i.avg_unit_cost != null ? formatVnd(i.avg_unit_cost) : '—'} />
-              <Metric label={t('inventory.durability')} value={i.durability != null ? t('inventory.durabilityVal', { n: i.durability }) : '—'} />
-              <Metric label={t('inventory.costPerSession')} value={i.cost_per_session != null ? formatVnd(i.cost_per_session) : '—'} tone="text-lime-400" />
+              {badminton ? (
+                <>
+                  <Metric label={t('inventory.perSession')} value={i.used_per_session != null ? t('shuttles.usedPerSession', { n: i.used_per_session }) : '—'} />
+                  <Metric label={t('inventory.costPerUsedSession')} value={i.cost_per_used_session != null ? formatVnd(i.cost_per_used_session) : '—'} tone="text-lime-400" />
+                </>
+              ) : (
+                <>
+                  <Metric label={t('inventory.durability')} value={i.durability != null ? t('inventory.durabilityVal', { n: i.durability }) : '—'} />
+                  <Metric label={t('inventory.costPerSession')} value={i.cost_per_session != null ? formatVnd(i.cost_per_session) : '—'} tone="text-lime-400" />
+                </>
+              )}
               <Metric label={t('inventory.spent')} value={formatVnd(i.total_spent)} />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -201,8 +213,8 @@ export default function InventoryPage() {
                   <div key={m.id} className="flex items-center justify-between gap-2 py-1.5">
                     <span className="text-gray-300">
                       {new Date(`${m.occurred_on}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')} · {t(`inventory.kind_${m.kind}`)}{' '}
-                      <span className={m.kind === 'purchase' ? 'text-lime-400' : m.quantity < 0 || m.kind === 'retire' ? 'text-orange-300' : 'text-gray-200'}>
-                        {m.kind === 'retire' ? '−' : m.quantity > 0 ? '+' : ''}{m.kind === 'retire' ? m.quantity : m.quantity}
+                      <span className={m.kind === 'purchase' ? 'text-lime-400' : m.quantity < 0 || m.kind === 'retire' || m.kind === 'use' ? 'text-orange-300' : 'text-gray-200'}>
+                        {m.kind === 'retire' || m.kind === 'use' ? '−' : m.quantity > 0 ? '+' : ''}{m.quantity}
                       </span>
                       {m.unit_cost != null && <span className="text-gray-500"> @ {formatVnd(m.unit_cost)}</span>}
                       {m.sessions_lasted != null && <span className="text-gray-500"> · {t('inventory.durabilityVal', { n: m.sessions_lasted })}</span>}
@@ -223,10 +235,12 @@ export default function InventoryPage() {
             <label className="text-xs text-gray-400">{t('inventory.name')}</label>
             <input className="input" required autoFocus placeholder={t('inventory.namePh')} value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
           </div>
+          {!badminton && (
           <div>
             <label className="text-xs text-gray-400">{t('inventory.holes')}</label>
             <input className="input" type="number" inputMode="numeric" min="10" max="80" placeholder="40" value={newItem.holes} onChange={(e) => setNewItem({ ...newItem, holes: e.target.value })} />
           </div>
+          )}
           <div>
             <label className="text-xs text-gray-400">{t('inventory.unit')}</label>
             <input className="input" value={newItem.unit} onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })} />

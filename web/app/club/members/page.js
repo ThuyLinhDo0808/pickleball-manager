@@ -1,4 +1,6 @@
 'use client';
+import LevelInput from '@/components/LevelInput';
+import { levelText } from '@/lib/levels';
 import { useState } from 'react';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
@@ -15,7 +17,7 @@ import { dmy, isBirthdayMonth, my, tenureLabel } from '@/lib/memberDates';
 const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '' });
 
 export default function MembersPage() {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const { club } = useDefaultClub();
   const { data: members, loading, reload } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])),
@@ -249,7 +251,7 @@ export default function MembersPage() {
                           </>
                         ) : '—'}
                       </td>
-                      <td className="text-gray-300">{m.dupr_level ?? '—'}</td>
+                      <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
                       {isGuestTab ? (
                         <>
                           <td className="text-gray-300 whitespace-nowrap">
@@ -315,7 +317,7 @@ export default function MembersPage() {
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('common.level')}</label>
-            <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={form.dupr_level} onChange={(e) => setForm({ ...form, dupr_level: e.target.value })} />
+            <LevelInput value={form.dupr_level} onChange={(v) => setForm({ ...form, dupr_level: v })} />
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('common.phone')}</label>

@@ -8,6 +8,7 @@ const { normalizePhone } = require('./memberships');
 const { eventEndMs } = require('./attendance');
 const { guestsReady, findClubPerson } = require('./guests');
 const { notifySurvey, notifyJoinFromSurvey, webUrl } = require('./notify');
+const { clubSport, profileLevel, cleanLevel } = require('./sport');
 
 const OPEN_DAYS = 30; // how long the link keeps working after the session
 const SEND_WINDOW_DAYS = 3; // sessions older than this are not swept (e.g. right after deploying)
@@ -97,6 +98,7 @@ async function participantByToken(token) {
 // What the survey page shows: the session, what was answered, and the join form's prefill.
 async function surveyView(token) {
   const { p, event } = await participantByToken(token);
+  const sport = await clubSport(event.club_id);
   const [{ data: answer }, member] = await Promise.all([
     supabase.from('event_surveys').select('rating, level_fit, comment, wants_join').eq('participant_id', p.id).maybeSingle(),
     p.guest_member_id
@@ -104,12 +106,13 @@ async function surveyView(token) {
       : findClubPerson(event.club_id, { userId: p.user_id, phone: p.phone }),
   ]);
   const { data: profile } = p.user_id
-    ? await supabase.from('player_profiles').select('full_name, phone, gender, birth_date, dupr_level').eq('user_id', p.user_id).maybeSingle()
+    ? await supabase.from('player_profiles').select('*').eq('user_id', p.user_id).maybeSingle()
     : { data: null };
   const started = Date.now() >= eventEndMs(event) - 3600000; // open from the last hour of play
   return {
     event: { title: event.title, event_date: event.event_date, start_time: event.start_time, location: event.location },
     club_name: event.clubs?.name || null,
+    sport,
     player_name: p.full_name,
     open: started,
     answer: answer || null,
@@ -120,7 +123,7 @@ async function surveyView(token) {
       phone: profile?.phone || member?.phone || p.phone || '',
       gender: profile?.gender || member?.gender || '',
       birth_date: profile?.birth_date || member?.birth_date || '',
-      dupr_level: profile?.dupr_level ?? member?.dupr_level ?? p.dupr_level ?? '',
+      dupr_level: profileLevel(profile, sport) ?? member?.dupr_level ?? p.dupr_level ?? '',
     },
   };
 }
@@ -148,12 +151,17 @@ async function joinFromSurvey(token, body) {
   const phone = String(body.phone || '').trim().slice(0, 30);
   const gender = ['male', 'female'].includes(body.gender) ? body.gender : null;
   const birth_date = /^\d{4}-\d{2}-\d{2}$/.test(body.birth_date || '') ? body.birth_date : null;
-  const dupr = body.dupr_level === '' || body.dupr_level == null ? null : Number(body.dupr_level);
+  const sport = await clubSport(event.club_id);
+  let dupr;
+  try {
+    dupr = cleanLevel(body.dupr_level, sport);
+  } catch (err) {
+    throw httpError(err.message, 400, 'level');
+  }
   const join_note = String(body.note || '').trim().slice(0, 1000) || null;
   if (!full_name) throw httpError('Enter your full name.', 400, 'name_required');
   if (normalizePhone(phone).length < 9) throw httpError('Enter a valid phone number.', 400, 'phone_required');
   if (!birth_date) throw httpError('Enter your date of birth.', 400, 'birth_required');
-  if (dupr != null && !(dupr >= 1 && dupr <= 8)) throw httpError('DUPR level should be between 1 and 8.', 400, 'dupr');
 
   let member = p.guest_member_id
     ? (await supabase.from('club_members').select('*').eq('id', p.guest_member_id).maybeSingle()).data

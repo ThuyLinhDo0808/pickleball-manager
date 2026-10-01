@@ -3,7 +3,7 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
-const { normalizePhone, findClubMemberByPhone } = require('../services/memberships');
+const { normalizePhone, findClubMemberByPhone, todayYmd } = require('../services/memberships');
 const {
   ATTENDANCE_ACTIONS,
   setAttendance,
@@ -17,6 +17,8 @@ const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember } = require('../services/guests');
 const survey = require('../services/survey');
+const { itemMetrics } = require('../services/inventory');
+const { clubSport } = require('../services/sport');
 const { linkByPhone } = require('../services/phoneLink');
 const { HOST_STATUSES, completeFinished, completeIfFinished } = require('../services/eventStatus');
 
@@ -68,6 +70,7 @@ router.get('/public/:publicToken', async (req, res) => {
 
   res.json({
     ...pick(event, PUBLIC_EVENT_FIELDS),
+    sport: await clubSport(event.club_id), // levels show as DUPR or badminton steps
     registration_open: !closedCode,
     closed_code: closedCode,
     participants: people.map(({ joined_at, ...p }) => p),
@@ -96,7 +99,7 @@ function fail(res, err) {
 }
 
 async function playerProfile(userId) {
-  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level, gender, birth_year, birth_date').eq('user_id', userId).maybeSingle();
+  const { data } = await supabase.from('player_profiles').select('*').eq('user_id', userId).maybeSingle();
   return data;
 }
 
@@ -324,18 +327,29 @@ router.patch('/:eventId', async (req, res) => {
 
 // Deleting wipes the event's participants and money records too. When there are any,
 // the Host must confirm (?force=1); "Cancelled" is the way to keep the history.
-// Anyone signed up (paid or not): never deleted — cancel it so they are told and the
-// history stays. Only money records (e.g. a court expense) can be deleted with ?force=1.
+// Upcoming session with people signed up: never deleted — cancel it so they are told.
+// A past session (completed / cancelled / its date gone) can be deleted to tidy up the
+// history, but only once the Host confirmed (?force=1) after seeing what goes with it.
+// Otherwise money records alone also need ?force=1.
 router.delete('/:eventId', async (req, res) => {
-  const [{ count: people }, { count: money }] = await Promise.all([
+  const [{ count: people }, { count: money }, { count: matches }] = await Promise.all([
     supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).neq('status', 'cancelled'),
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false),
+    supabase.from('matches').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id),
   ]);
-  if (people > 0) {
+  const past = ['completed', 'cancelled'].includes(req.event.status) || req.event.event_date < todayYmd();
+  const force = req.query.force === '1';
+  if (people > 0 && !past) {
     return res.status(409).json({ error: 'People have signed up for this event: cancel it instead (they will be notified).', code: 'has_signups', participants: people });
   }
-  if (money > 0 && req.query.force !== '1') {
-    return res.status(409).json({ error: 'This event has money records.', code: 'has_activity', participants: 0, transactions: money });
+  if (people + money + matches > 0 && !force) {
+    return res.status(409).json({
+      error: 'This event has sign-ups, matches or money records: confirm to delete them too.',
+      code: past ? 'past_has_data' : 'has_activity',
+      participants: people || 0,
+      transactions: money || 0,
+      matches: matches || 0,
+    });
   }
   const { error } = await supabase.from('events').delete().eq('id', req.event.id);
   if (error) return dbError(res, error);
@@ -395,6 +409,36 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
   if (error) return dbError(res, error);
   await ensureGuestMember(req.event, data);
   res.status(201).json(data);
+});
+
+// Badminton: shuttles used in this session, what they cost (each shuttle at its item's
+// average purchase price) and the share per player present.
+router.get('/:eventId/shuttles', async (req, res) => {
+  try {
+    if (!req.event.club_id) return res.json({ items: [], used: [], total_qty: 0, total_cost: 0, players: 0, per_player: null });
+    const { data: items, error } = await supabase.from('inventory_items').select('*, inventory_moves(*)').eq('club_id', req.event.club_id).order('created_at');
+    if (error) throw error;
+    const { count: players } = await supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('status', 'checked_in');
+    const used = [];
+    for (const it of items || []) {
+      const m = itemMetrics(it.inventory_moves || []);
+      for (const mv of (it.inventory_moves || []).filter((x) => x.kind === 'use' && x.event_id === req.event.id)) {
+        used.push({ move_id: mv.id, item_id: it.id, name: it.name, unit: it.unit, quantity: mv.quantity, unit_cost: m.avg_unit_cost, cost: Math.round(mv.quantity * (m.avg_unit_cost || 0)) });
+      }
+      it.stock = m.stock;
+    }
+    const total_cost = used.reduce((t, u) => t + u.cost, 0);
+    res.json({
+      items: (items || []).filter((i) => i.is_active).map((i) => ({ id: i.id, name: i.name, unit: i.unit, stock: i.stock })),
+      used,
+      total_qty: used.reduce((t, u) => t + u.quantity, 0),
+      total_cost,
+      players: players || 0,
+      per_player: players ? Math.round(total_cost / players) : null,
+    });
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 // After-session survey answers for this event (guests' stars, comments, join wishes).

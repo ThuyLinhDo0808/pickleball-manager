@@ -1,4 +1,5 @@
 'use client';
+import LevelInput from '@/components/LevelInput';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
@@ -231,7 +232,7 @@ function JoinForm({ token, data, onDone }) {
         </div>
         <div className="min-w-0">
           <label htmlFor="j-dupr" className="text-xs text-gray-400">{t('common.level')}</label>
-          <input id="j-dupr" className="input" type="number" step="0.01" min="1" max="8" value={f.dupr_level} onChange={(e) => set({ dupr_level: e.target.value })} />
+          <LevelInput id="j-dupr" sport={data.sport} value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
         </div>
       </div>
       <div>

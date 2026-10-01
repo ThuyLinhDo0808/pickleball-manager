@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import EventShareCard from '@/components/EventShareCard';
@@ -10,22 +10,30 @@ import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
 import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
+import EventShuttles from '@/components/EventShuttles';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
+import { useClubs } from '@/context/ClubContext';
 import { exportEventFinance } from '@/lib/exportExcel';
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
-  const { t, lang } = useI18n();
+  const { t, lang, sport } = useI18n();
   const { club } = useDefaultClub();
   const [tab, setTab] = useState('participants');
   const [showQr, setShowQr] = useState(false);
 
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
+  // Opened from the all-clubs calendar: switch to the event's club so the page speaks its
+  // sport (levels, scoring, shuttles) and imports from the right member list.
+  const { clubs, selectClub } = useClubs();
+  useEffect(() => {
+    if (event?.club_id && club?.id !== event.club_id && clubs.some((c) => c.id === event.club_id)) selectClub(event.club_id);
+  }, [event?.club_id, club?.id, clubs, selectClub]);
   const { data: participants, reload: reloadParticipants } = useLoad(
     () => api.get(`/api/events/${eventId}/participants`),
     [eventId]
@@ -234,6 +242,7 @@ export default function EventDetailPage() {
               </div>
             ))}
           </div>
+          {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
           <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />

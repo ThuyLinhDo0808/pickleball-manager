@@ -41,7 +41,11 @@ export default function EventControls({ event, onChanged }) {
     } catch (err) {
       if (err.payload?.code === 'has_signups') {
         setError(t('manage.hasSignups'));
-      } else if (err.payload?.code === 'has_activity' && window.confirm(t('manage.deleteForceAsk', { people: 0, money: err.payload.transactions }))) {
+      } else if (
+        (err.payload?.code === 'past_has_data' &&
+          window.confirm(t('manage.deletePastAsk', { title: event.title, people: err.payload.participants, matches: err.payload.matches, money: err.payload.transactions }))) ||
+        (err.payload?.code === 'has_activity' && window.confirm(t('manage.deleteForceAsk', { people: err.payload.participants, money: err.payload.transactions })))
+      ) {
         try {
           await api.del(`/api/events/${event.id}?force=1`);
           router.push('/events');

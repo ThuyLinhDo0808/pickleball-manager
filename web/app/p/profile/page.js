@@ -1,4 +1,5 @@
 'use client';
+import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
@@ -6,7 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-const empty = { full_name: '', phone: '', dupr_level: '', gender: '', birth_date: '', avatar: null };
+const empty = { full_name: '', phone: '', dupr_level: '', badminton_level: '', gender: '', birth_date: '', avatar: null };
 
 // Shrink a photo to a 256px square JPEG data URL (~20-40 KB) so it can live in the profile row.
 function resizePhoto(file) {
@@ -44,7 +45,7 @@ export default function PlayerProfile() {
       setEmail(me.email);
       if (me.profile) {
         const p = me.profile;
-        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
+        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', badminton_level: p.badminton_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
       }
     });
   }, [user?.id]);
@@ -112,8 +113,12 @@ export default function PlayerProfile() {
           <input className="input" required type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} />
         </div>
         <div>
-          <label className="text-xs text-gray-400">{t('common.level')}</label>
+          <label className="text-xs text-gray-400">{t('level.pickleballProfile')}</label>
           <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={form.dupr_level} onChange={set('dupr_level')} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-400">{t('level.badmintonProfile')}</label>
+          <LevelInput sport="badminton" value={form.badminton_level} onChange={(v) => setForm((x) => ({ ...x, badminton_level: v }))} />
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('members.birthDate')} *</label>
