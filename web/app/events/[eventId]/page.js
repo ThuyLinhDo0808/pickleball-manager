@@ -133,19 +133,7 @@ export default function EventDetailPage() {
     absent: main.filter((p) => p.status === 'no_show').length,
   };
 
-  async function transfer(p) {
-    const name = window.prompt(t('slot.newName'));
-    if (!name) return;
-    const phone = window.prompt(t('slot.newPhone'));
-    if (!phone) return;
-    try {
-      const r = await api.post(`/api/events/${eventId}/participants/${p.id}/transfer`, { full_name: name, phone });
-      setFlash(t('slot.done', { from: p.full_name, to: r.full_name }));
-      refresh();
-    } catch (err) {
-      setFlash(err.message);
-    }
-  }
+
   const refresh = () => {
     reloadParticipants();
     reloadEvent();
@@ -247,7 +235,7 @@ export default function EventDetailPage() {
             ))}
           </div>
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} onTransfer={transfer} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />
           {cancelled.length > 0 && (
             <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} fee={event.fee_amount} />
@@ -328,7 +316,7 @@ export default function EventDetailPage() {
 
 const STATUS_TONE = { checked_in: 'text-lime-400', registered: 'text-gray-300', no_show: 'text-yellow-400', waitlisted: 'text-sky-300', cancelled: 'text-gray-500' };
 
-function ParticipantTable({ kind, title, rows, t, onAction, onFee, onTransfer, fee }) {
+function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
   return (
     <div className="card mb-4">
       <h3 className="text-white font-semibold mb-2">{title}</h3>
@@ -378,9 +366,6 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onTransfer, f
                     )}
                     {p.status !== 'registered' && (
                       <button className="text-gray-400 text-xs mr-2" onClick={() => onAction(p, 'reset')}>{t('staffView.undo')}</button>
-                    )}
-                    {p.status === 'registered' && onTransfer && (
-                      <button className="text-sky-300 text-xs mr-2" onClick={() => onTransfer(p)}>{t('slot.transfer')}</button>
                     )}
                   </>
                 )}

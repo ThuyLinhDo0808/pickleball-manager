@@ -9,6 +9,7 @@ const birthdays = require('../services/birthdays');
 const { guestsReady, guestStats, PERKS } = require('../services/guests');
 const { phoneLinkReady } = require('../services/phoneLink');
 const { completeFinished } = require('../services/eventStatus');
+const { setAttendance } = require('../services/attendance');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
@@ -17,6 +18,7 @@ const {
   periodBounds,
   aggregate,
   awards,
+  winnerTeam,
 } = require('../services/stats');
 
 const router = express.Router();
@@ -956,7 +958,7 @@ router.get('/:clubId/attendance', async (req, res) => {
       .order('start_time'),
     supabase
       .from('club_members')
-      .select('id, full_name, member_type, tier, is_active, joined_on, birth_date, user_id')
+      .select('*')
       .eq('club_id', req.club.id)
       .order('full_name'),
   ]);
@@ -965,11 +967,12 @@ router.get('/:clubId/attendance', async (req, res) => {
 
   const eventIds = events.map((e) => e.id);
   const memberIds = members.map((m) => m.id);
+  const ready = await guestsReady();
   const [{ data: people, error: e3 }, { data: passes, error: e4 }] = await Promise.all([
     eventIds.length
       ? supabase
           .from('event_participants')
-          .select('event_id, source_club_member_id, user_id, kind, full_name, phone, status, late_cancel')
+          .select(`id, event_id, source_club_member_id, user_id, kind, full_name, phone, status, late_cancel${ready ? ', guest_member_id' : ''}`)
           .in('event_id', eventIds)
           .in('status', ['registered', 'checked_in', 'no_show', 'cancelled'])
       : { data: [] },
@@ -986,26 +989,117 @@ router.get('/:clubId/attendance', async (req, res) => {
   if (e3) return dbError(res, e3);
   if (e4) return dbError(res, e4);
 
+  // Fixed members fill the grid; everyone else is a guest row of their own (their guest
+  // record, else phone / name), with sessions played and matches played / won.
   const byUser = new Map(members.filter((m) => m.user_id).map((m) => [m.user_id, m.id]));
+  const memberById = new Map(members.map((m) => [m.id, m]));
   const cells = [];
-  const guests = [];
+  const guestRows = new Map();
+  const participantGuest = new Map(); // participant id -> guest row key
   for (const p of people) {
+    const memberId = p.source_club_member_id || p.guest_member_id || (p.user_id && byUser.get(p.user_id)) || null;
+    const member = memberId ? memberById.get(memberId) : null;
+    const isFixed = member?.member_type === 'fixed';
+    const key = member ? `m:${member.id}` : `p:${String(p.phone || '').replace(/\D/g, '').slice(-9) || p.full_name.trim().toLowerCase()}`;
+    if (!isFixed) participantGuest.set(p.id, key);
     // Cancelled in time doesn't count at all; a late cancel counts as absent.
     if (p.status === 'cancelled' && !p.late_cancel) continue;
     const state = p.status === 'checked_in' ? 'attended' : p.status === 'registered' ? 'registered' : 'absent';
-    const memberId = p.source_club_member_id || (p.user_id && byUser.get(p.user_id)) || null;
-    if (memberId) cells.push({ event_id: p.event_id, club_member_id: memberId, state });
-    else guests.push({ event_id: p.event_id, full_name: p.full_name, phone: p.phone, state });
+    const locked = p.status === 'cancelled'; // a late cancel stays "absent"
+    if (isFixed) {
+      cells.push({ event_id: p.event_id, club_member_id: memberId, state, participant_id: p.id, locked });
+      continue;
+    }
+    if (!guestRows.has(key)) {
+      guestRows.set(key, {
+        key,
+        member_id: member?.id || null,
+        full_name: member?.full_name || p.full_name,
+        phone: member?.phone || p.phone || null,
+        guest_perk: member?.guest_perk || null,
+        is_active: member ? member.is_active : true,
+        events: {},
+        participants: {}, // event id -> { participant_id, locked } (for editing)
+        sessions: 0,
+        matches: 0,
+        wins: 0,
+      });
+    }
+    const g = guestRows.get(key);
+    if (g.events[p.event_id] !== 'attended') {
+      g.events[p.event_id] = state;
+      g.participants[p.event_id] = { participant_id: p.id, locked };
+    }
   }
+  for (const g of guestRows.values()) g.sessions = Object.values(g.events).filter((s) => s === 'attended').length;
+
+  // Matches the guests played: inside the period's sessions, and club matches in the period.
+  const pids = [...participantGuest.keys()];
+  const guestMemberIds = [...guestRows.values()].map((g) => g.member_id).filter(Boolean);
+  const [{ data: eventMatches }, { data: clubMatches }] = await Promise.all([
+    pids.length
+      ? supabase.from('match_players').select('team, event_participant_id, matches(team1_score, team2_score)').in('event_participant_id', pids)
+      : { data: [] },
+    guestMemberIds.length
+      ? supabase.from('match_players').select('team, club_member_id, matches(played_at, team1_score, team2_score)').in('club_member_id', guestMemberIds)
+      : { data: [] },
+  ]);
+  const count = (key, row) => {
+    const g = guestRows.get(key);
+    if (!g || !row.matches) return;
+    g.matches++;
+    if (winnerTeam(row.matches) === row.team) g.wins++;
+  };
+  for (const r of eventMatches || []) count(participantGuest.get(r.event_participant_id), r);
+  for (const r of clubMatches || []) {
+    const day = r.matches && localDate(r.matches.played_at);
+    if (day && day >= from && day <= to) count(`m:${r.club_member_id}`, r);
+  }
+
   res.json({
     from,
     to,
     events,
-    members: members.map(({ user_id, ...m }) => m),
+    members: members
+      .filter((m) => m.member_type === 'fixed')
+      .map(({ id, full_name, member_type, tier, is_active, joined_on, birth_date }) => ({ id, full_name, member_type, tier, is_active, joined_on, birth_date })),
     cells,
-    guests,
+    guests: [...guestRows.values()],
     passes,
   });
+});
+
+// Host fixes the attendance grid (late check-in, wrong tick). The page sends every change
+// at once after the Host confirms them. Same rules as checking in at the court: a club
+// member's pass session is used / given back.
+const EDIT_ACTION = { attended: 'check-in', absent: 'no-show', registered: 'reset' };
+router.post('/:clubId/attendance/edits', async (req, res) => {
+  const changes = Array.isArray(req.body?.changes) ? req.body.changes : [];
+  if (!changes.length || changes.length > 500) return res.status(400).json({ error: 'Send 1-500 changes.' });
+  if (!changes.every((c) => isUuid(c.participant_id) && EDIT_ACTION[c.state])) {
+    return res.status(400).json({ error: 'Each change needs participant_id and state (attended / absent / registered).' });
+  }
+  const ids = [...new Set(changes.map((c) => c.participant_id))];
+  const { data: rows, error } = await supabase.from('event_participants').select('*, events(*)').in('id', ids);
+  if (error) return dbError(res, error);
+  const byId = new Map((rows || []).map((r) => [r.id, r]));
+  if (ids.some((id) => byId.get(id)?.events?.club_id !== req.club.id)) return notFound(res, 'Participant');
+  const results = [];
+  try {
+    for (const c of changes) {
+      const { events: event, ...prior } = byId.get(c.participant_id);
+      if (prior.status === 'cancelled') {
+        results.push({ participant_id: prior.id, skipped: 'cancelled' });
+        continue;
+      }
+      const updated = await setAttendance(event, prior, EDIT_ACTION[c.state]);
+      byId.set(prior.id, { ...updated, events: event });
+      results.push({ participant_id: prior.id, status: updated.status });
+    }
+  } catch (err) {
+    return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+  }
+  res.json({ updated: results.filter((r) => r.status).length, results });
 });
 
 // Birthdays today or in the next few days (default 3) — shown as a reminder on the Host's pages.

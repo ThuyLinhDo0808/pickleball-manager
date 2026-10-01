@@ -463,7 +463,6 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
     if (action === 'confirm-payment') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
     if (action === 'reject-payment') return res.json(await signup.rejectPayment(req.event, prior, req.body.note));
-    if (action === 'transfer') return res.json(await signup.transferSlot(req.event, prior, req.body, { byHost: true }));
     // "Paid" on someone still waiting for confirmation = confirm their payment.
     if (action === 'fee' && req.body.fee_paid && prior.status === 'pending') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
   } catch (err) {
