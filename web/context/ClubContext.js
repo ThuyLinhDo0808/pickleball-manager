@@ -80,8 +80,9 @@ export function ClubProvider({ children }) {
     return updated;
   }, []);
 
-  const deleteClub = useCallback(async (id) => {
-    await api.del(`/api/clubs/${id}`);
+  // `confirmName`: the club's name typed by the Host (the server checks it).
+  const deleteClub = useCallback(async (id, confirmName) => {
+    await api.del(`/api/clubs/${id}?confirm=${encodeURIComponent(confirmName || '')}`);
     const next = clubs.filter((c) => c.id !== id);
     setClubs(next);
     setSelectedId((current) => (current === id ? next[0]?.id || null : current));

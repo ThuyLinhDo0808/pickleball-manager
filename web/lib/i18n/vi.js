@@ -41,6 +41,11 @@ export const vi = {
     kevents: 'Kèo Xé Vé',
     workspace: 'Không gian làm việc',
   },
+  mode: {
+    label: 'Chế độ',
+    manage: 'Quản lý',
+    player: 'Người chơi',
+  },
   workspace: {
     player: 'Tôi là người chơi',
     playerDesc: 'Xem số buổi còn lại, công nợ, lịch sử và đăng ký hội viên.',
@@ -112,6 +117,14 @@ export const vi = {
     notes: 'Ghi chú thêm',
   },
   clubs: {
+    deleteTitle: 'Xóa CLB',
+    deleteIntro: 'Xóa CLB "{name}" sẽ xóa vĩnh viễn toàn bộ dữ liệu của CLB, không thể khôi phục:',
+    delMembers: '{n} thành viên (kèm gói hội viên, ghi chú)',
+    delEvents: '{n} buổi chơi / kèo (kèm danh sách đăng ký, trận đấu)',
+    delTournaments: '{n} giải đấu',
+    delMoney: '{n} khoản thu/chi trong quỹ CLB',
+    deleteType: 'Gõ đúng tên CLB "{name}" để xác nhận:',
+    deleteForever: 'Xóa vĩnh viễn',
     sport: 'Môn thể thao',
     sport_pickleball: '🏓 Pickleball',
     sport_badminton: '🏸 Cầu lông',

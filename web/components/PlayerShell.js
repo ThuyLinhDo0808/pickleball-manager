@@ -1,4 +1,5 @@
 'use client';
+import RoleSwitch, { rememberMode } from '@/components/RoleSwitch';
 import Link from 'next/link';
 import FeedbackButton from '@/components/FeedbackButton';
 import { usePathname, useRouter } from 'next/navigation';
@@ -17,6 +18,11 @@ export default function PlayerShell({ children, requireAuth = true }) {
   const { t, lang, setLang } = useI18n();
   const pathname = usePathname() || '';
   const router = useRouter();
+
+  // Opening the player portal makes it the mode the app reopens in.
+  useEffect(() => {
+    if (user) rememberMode('player');
+  }, [user]);
 
   useEffect(() => {
     if (requireAuth && !loading && !user) router.replace(`/sign-in?next=${encodeURIComponent(pathname)}`);
@@ -43,6 +49,11 @@ export default function PlayerShell({ children, requireAuth = true }) {
                 </Link>
               ))}
           </nav>
+          {user && (
+            <div className="hidden sm:block w-56 shrink-0">
+              <RoleSwitch current="player" />
+            </div>
+          )}
           <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1 shrink-0">
             {lang === 'vi' ? 'EN' : 'VI'}
           </button>
@@ -54,6 +65,11 @@ export default function PlayerShell({ children, requireAuth = true }) {
           )}
         </div>
       </header>
+      {user && (
+        <div className="sm:hidden max-w-3xl mx-auto px-4 pt-3">
+          <RoleSwitch current="player" />
+        </div>
+      )}
       <main className="max-w-3xl mx-auto p-4 pb-safe-4">{children}</main>
     </div>
   );

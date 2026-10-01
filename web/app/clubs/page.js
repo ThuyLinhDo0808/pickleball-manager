@@ -7,6 +7,7 @@ import ClubPaymentSettings from '@/components/ClubPaymentSettings';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
+import { api } from '@/lib/api';
 
 export default function ClubsPage() {
   const { t } = useI18n();
@@ -35,17 +36,66 @@ export default function ClubsPage() {
     }
   }
 
+  // Deleting a club: show what goes with it, and ask for the club's name before deleting.
+  const [deleting, setDeleting] = useState(null); // { club, preview }
+  const [typed, setTyped] = useState('');
+  const [delBusy, setDelBusy] = useState(false);
+  const [delError, setDelError] = useState('');
   async function remove(c) {
-    if (!window.confirm(t('clubs.deleteConfirm', { name: c.name }))) return;
+    setTyped('');
+    setDelError('');
+    setDeleting({ club: c, preview: null });
     try {
-      await deleteClub(c.id);
+      const preview = await api.get(`/api/clubs/${c.id}/delete-preview`);
+      setDeleting({ club: c, preview });
     } catch (err) {
-      setError(err.message);
+      setDelError(err.message);
+    }
+  }
+  async function confirmDelete() {
+    setDelBusy(true);
+    setDelError('');
+    try {
+      await deleteClub(deleting.club.id, typed);
+      setDeleting(null);
+    } catch (err) {
+      setDelError(err.message);
+    } finally {
+      setDelBusy(false);
     }
   }
 
   return (
     <AppShell>
+      <Modal open={!!deleting} title={t('clubs.deleteTitle')} onClose={() => setDeleting(null)}>
+        {deleting && (
+          <div className="flex flex-col gap-3 text-sm">
+            <p className="text-gray-200">{t('clubs.deleteIntro', { name: deleting.club.name })}</p>
+            {deleting.preview && (
+              <ul className="rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-red-200 list-disc list-inside">
+                <li>{t('clubs.delMembers', { n: deleting.preview.members })}</li>
+                <li>{t('clubs.delEvents', { n: deleting.preview.events })}</li>
+                <li>{t('clubs.delTournaments', { n: deleting.preview.tournaments })}</li>
+                <li>{t('clubs.delMoney', { n: deleting.preview.transactions })}</li>
+              </ul>
+            )}
+            <label htmlFor="del-club-name" className="text-gray-300">{t('clubs.deleteType', { name: deleting.club.name })}</label>
+            <input id="del-club-name" className="input" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={deleting.club.name} />
+            {delError && <p className="text-red-400">{delError}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setDeleting(null)}>{t('common.cancel')}</button>
+              <button
+                type="button"
+                className="rounded-lg px-3 py-2 font-semibold bg-red-500 text-white disabled:opacity-40"
+                disabled={delBusy || typed.trim() !== deleting.club.name.trim()}
+                onClick={confirmDelete}
+              >
+                🗑 {t('clubs.deleteForever')}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
       <h1 className="text-white text-2xl font-bold mb-4">{t('clubs.title')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
