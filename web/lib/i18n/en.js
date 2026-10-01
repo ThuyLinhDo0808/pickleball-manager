@@ -41,6 +41,11 @@ export const en = {
     kevents: 'Events',
     workspace: 'Workspace',
   },
+  mode: {
+    label: 'Mode',
+    manage: 'Manage',
+    player: 'Player',
+  },
   workspace: {
     player: "I'm a player",
     playerDesc: 'See sessions left, balance, history and join clubs.',
@@ -112,6 +117,14 @@ export const en = {
     notes: 'Extra notes',
   },
   clubs: {
+    deleteTitle: 'Delete club',
+    deleteIntro: 'Deleting "{name}" permanently removes all its data. This cannot be undone:',
+    delMembers: '{n} members (with memberships and notes)',
+    delEvents: '{n} sessions / games (with sign-ups and matches)',
+    delTournaments: '{n} tournaments',
+    delMoney: '{n} money records in the club fund',
+    deleteType: 'Type the club name "{name}" to confirm:',
+    deleteForever: 'Delete forever',
     sport: 'Sport',
     sport_pickleball: '🏓 Pickleball',
     sport_badminton: '🏸 Badminton',

@@ -1,4 +1,5 @@
 'use client';
+import RoleSwitch, { rememberMode } from '@/components/RoleSwitch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -324,6 +325,11 @@ export default function AppShell({ children }) {
   const requestCount = useMemberRequestCount(club?.id, !!user && workspace === 'club', pathname);
   const badges = { memberRequests: requestCount };
 
+  // Using the manager side makes it the mode the app reopens in (see RoleSwitch).
+  useEffect(() => {
+    if (user && (workspace === 'club' || workspace === 'xeve')) rememberMode('manage');
+  }, [user, workspace]);
+
   useEffect(() => {
     try {
       setOpenGroups(JSON.parse(window.localStorage.getItem(GROUPS_KEY) || '{}'));
@@ -418,6 +424,7 @@ export default function AppShell({ children }) {
         </div>
         {workspace && (
           <div className="mb-3 px-1 flex flex-col gap-2">
+            {workspace !== 'staff' && <RoleSwitch current="manage" compact={collapsed} />}
             <WorkspaceSwitch compact={collapsed} />
             {!collapsed && workspace === 'club' && <ClubSwitcher />}
           </div>
@@ -588,6 +595,9 @@ export default function AppShell({ children }) {
               <Icon name="chat" />
               {t('feedback.button')}
             </FeedbackButton>
+            <div className="pt-2">
+              <RoleSwitch current="manage" />
+            </div>
             <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-navy-700">
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">
