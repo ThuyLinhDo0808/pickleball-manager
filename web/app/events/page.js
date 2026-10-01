@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useClubs } from '@/context/ClubContext';
+import { clubTones, STATUS_MOD } from '@/lib/clubColors';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 
 const VIEWS = ['list', 'month', 'week', 'day'];
@@ -39,7 +40,7 @@ function EventCard({ e }) {
   const { t, lang } = useI18n();
   return (
     <Link href={hrefOf(e)} className="card hover:border-lime-400 transition flex gap-3">
-      <div className={`w-1 shrink-0 rounded-full border ${STATUS_STYLE[e.status]}`} />
+      <div className={`w-1 shrink-0 rounded-full border ${e.tone ? `${e.tone.chip} ${STATUS_MOD[e.status] || ''}` : STATUS_STYLE[e.status]}`} />
       <div className="min-w-0 flex-1">
         <div className="flex justify-between gap-2">
           <span className="text-white font-semibold truncate">{KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}{e.title}</span>
@@ -98,7 +99,11 @@ export default function EventsPage() {
   const [showPast, setShowPast] = useState(false);
   const pickView = setView;
 
-  const all = (events || []).filter((e) => clubFilter === 'all' || e.club_id === clubFilter);
+  // Each club (and sport) its own colour; status shows as faded (done) / struck out (cancelled).
+  const tones = useMemo(() => (isClub ? clubTones(clubs) : {}), [isClub, clubKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const all = (events || [])
+    .filter((e) => clubFilter === 'all' || e.club_id === clubFilter)
+    .map((e) => (tones[e.club_id] ? { ...e, tone: tones[e.club_id] } : e));
   const manyClubs = isClub && (clubs || []).length > 1;
   const marks = useMemo(() => all.reduce((m, e) => ({ ...m, [e.event_date]: (m[e.event_date] || 0) + 1 }), {}), [all]);
   const today = todayYmd();
@@ -164,6 +169,7 @@ export default function EventsPage() {
               onClick={() => setClubFilter(c.id)}
               className={`rounded-full border px-3 py-1 ${clubFilter === c.id ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
             >
+              {c.id !== 'all' && <span className={`inline-block h-2.5 w-2.5 rounded-full mr-1.5 align-middle ${tones[c.id]?.dot || ''}`} />}
               {c.id !== 'all' && (c.sport === 'badminton' ? '🏸 ' : '🏓 ')}
               {c.name}
             </button>
@@ -177,12 +183,25 @@ export default function EventsPage() {
 
       {!loading && view !== 'list' && (
         <div className="flex flex-wrap gap-3 mt-3 text-xs text-gray-400">
-          {LEGEND_STATUSES.map((s) => (
-            <span key={s} className="flex items-center gap-1.5">
-              <span className={`h-3 w-3 rounded-sm border-l-4 ${STATUS_STYLE[s]}`} />
-              {t(`events.status_${s}`)}
-            </span>
-          ))}
+          {isClub && (clubs || []).length > 0
+            ? [
+                ...(clubs || []).map((c) => (
+                  <span key={c.id} className="flex items-center gap-1.5">
+                    <span className={`h-3 w-3 rounded-sm border-l-4 ${tones[c.id]?.chip || ''}`} />
+                    {c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}
+                  </span>
+                )),
+                <span key="status" className="flex items-center gap-1.5">
+                  · <span className={`h-3 w-3 rounded-sm border-l-4 bg-gray-400/15 border-gray-400 ${STATUS_MOD.completed}`} /> {t('events.status_completed')}
+                  <span className="line-through">{t('events.status_cancelled')}</span>
+                </span>,
+              ]
+            : LEGEND_STATUSES.map((s) => (
+                <span key={s} className="flex items-center gap-1.5">
+                  <span className={`h-3 w-3 rounded-sm border-l-4 ${STATUS_STYLE[s]}`} />
+                  {t(`events.status_${s}`)}
+                </span>
+              ))}
           {isClub && (
             <span className="flex flex-wrap gap-3 basis-full sm:basis-auto sm:ml-auto">
               {Object.entries(KIND_ICON).map(([k, icon]) => (

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
 import { formatVnd } from '@/lib/format';
 import { api } from '@/lib/api';
+import { STATUS_MOD } from '@/lib/clubColors';
 import { formatDay, hhmm, layoutLanes, monthGrid, span, todayYmd, weekDays, weekdayLabels } from '@/lib/dates';
 
 // Block colours by status (dark surface). Text stays light for contrast.
@@ -27,6 +28,10 @@ export const STATUS_DOT = {
   completed: 'bg-sky-400',
   cancelled: 'bg-red-400',
 };
+
+// Club colour when the event carries one (calendar of several clubs), else the status colour.
+const chipOf = (e) => (e.tone ? `${e.tone.chip} ${STATUS_MOD[e.status] || ''}` : STATUS_STYLE[e.status]);
+const dotOf = (e) => (e.tone ? `${e.tone.dot} ${STATUS_MOD[e.status] || ''}` : STATUS_DOT[e.status]);
 
 // Icon per kind of activity (tournaments come from their own table).
 export const KIND_ICON = { weekly: '🗓', game: '🏓', training: '🎯', meeting: '👥', challenge: '⚔️', tournament: '🏆' };
@@ -95,11 +100,11 @@ function MonthView({ date, events, onPickDay }) {
               </div>
               {/* phone: dots; wider screens: chips */}
               <div className="flex flex-wrap gap-0.5 sm:hidden">
-                {list.slice(0, 4).map((e) => <span key={e.id} className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[e.status]}`} />)}
+                {list.slice(0, 4).map((e) => <span key={e.id} className={`h-1.5 w-1.5 rounded-full ${dotOf(e)}`} />)}
               </div>
               <div className="hidden sm:block space-y-0.5">
                 {list.slice(0, 3).map((e) => (
-                  <div key={e.id} className={`truncate rounded border-l-2 px-1 text-[11px] ${STATUS_STYLE[e.status]}`}>
+                  <div key={e.id} className={`truncate rounded border-l-2 px-1 text-[11px] ${chipOf(e)}`}>
                     {hhmm(e.start_time)} <Kind e={e} />{e.title}
                   </div>
                 ))}
@@ -122,7 +127,7 @@ function Block({ e, lane, lanes, from }) {
   return (
     <Link
       href={hrefOf(e)}
-      className={`absolute rounded-md border-l-4 px-1.5 py-1 text-[11px] leading-tight overflow-hidden hover:brightness-125 hover:z-10 ${STATUS_STYLE[e.status]}`}
+      className={`absolute rounded-md border-l-4 px-1.5 py-1 text-[11px] leading-tight overflow-hidden hover:brightness-125 hover:z-10 ${chipOf(e)}`}
       style={{ top, height, left: `calc(${lane * width}% + 2px)`, width: `calc(${width}% - 4px)` }}
       title={`${hhmm(e.start_time)}–${hhmm(e.end_time)} ${e.title}`}
     >
@@ -169,7 +174,7 @@ function TimeGrid({ days, events, onPickDay }) {
             {days.map((d) => (
               <div key={d} className="p-0.5 space-y-0.5">
                 {(map[d] || []).filter((e) => !span(e)).map((e) => (
-                  <Link key={e.id} href={hrefOf(e)} className={`block truncate rounded border-l-2 px-1 text-[11px] ${STATUS_STYLE[e.status]}`}><Kind e={e} />{e.title}</Link>
+                  <Link key={e.id} href={hrefOf(e)} className={`block truncate rounded border-l-2 px-1 text-[11px] ${chipOf(e)}`}><Kind e={e} />{e.title}</Link>
                 ))}
               </div>
             ))}
@@ -284,7 +289,7 @@ function DayView({ date, events, onPickDay, onChanged }) {
         <ol className="relative border-l border-navy-600 ml-2 space-y-4">
           {list.map((e) => (
             <li key={e.id} className="pl-4">
-              <span className={`absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full ${STATUS_DOT[e.status]}`} />
+              <span className={`absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full ${dotOf(e)}`} />
               <div className="text-lime-400 text-xs font-semibold tabular-nums">
                 {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : t('cal.allDay')}
               </div>
