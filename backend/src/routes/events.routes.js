@@ -18,6 +18,7 @@ const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember } = require('../services/guests');
 const survey = require('../services/survey');
 const { linkByPhone } = require('../services/phoneLink');
+const { HOST_STATUSES, completeFinished, completeIfFinished } = require('../services/eventStatus');
 
 const router = express.Router();
 const MAIN_LIST = HOLDS_PLACE; // registered, checked_in, pending (payment being checked)
@@ -166,7 +167,7 @@ router.param('eventId', async (req, res, next, eventId) => {
     .maybeSingle();
   if (error) return dbError(res, error);
   if (!data) return notFound(res, 'Event');
-  req.event = data;
+  req.event = await completeIfFinished(data);
   next();
 });
 
@@ -196,6 +197,9 @@ const EVENT_KINDS = ['weekly', 'game', 'training', 'meeting', 'challenge'];
 
 // Normalises optional fields in place; returns an error message or null.
 function cleanEventFields(fields) {
+  // Host picks open / completed / cancelled only (no drafts, no "closed": a session that
+  // won't happen is cancelled, or deleted while nobody has signed up).
+  if ('status' in fields && !HOST_STATUSES.includes(fields.status)) return `status must be one of ${HOST_STATUSES.join(', ')}.`;
   if ('kind' in fields && !EVENT_KINDS.includes(fields.kind)) return `kind must be one of ${EVENT_KINDS.join(', ')}.`;
   if ('cancel_deadline_hours' in fields) {
     const v = fields.cancel_deadline_hours;
@@ -239,6 +243,7 @@ router.get('/pending-payments', async (req, res) => {
 
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
 router.get('/', async (req, res) => {
+  await completeFinished({ hostId: req.hostId });
   let query = supabase.from('v_event_summary').select('*').eq('host_id', req.hostId);
   if (req.query.scope === 'standalone') query = query.is('club_id', null);
   const { data, error } = await query.order('event_date', { ascending: true });
@@ -279,6 +284,7 @@ router.post('/', async (req, res) => {
     host_id: req.hostId,
     title,
     ...fields,
+    status: fields.status || 'open',
     event_date: d,
     registration_deadline: fields.registration_deadline
       ? new Date(new Date(fields.registration_deadline).getTime() + dayMs(d) - dayMs(event_date)).toISOString()
@@ -300,6 +306,9 @@ router.patch('/:eventId', async (req, res) => {
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
+  if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
+    return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
+  }
   if ('club_id' in fields && !(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
   const { data, error } = await supabase
     .from('events')
@@ -315,15 +324,18 @@ router.patch('/:eventId', async (req, res) => {
 
 // Deleting wipes the event's participants and money records too. When there are any,
 // the Host must confirm (?force=1); "Cancelled" is the way to keep the history.
+// Anyone signed up (paid or not): never deleted — cancel it so they are told and the
+// history stays. Only money records (e.g. a court expense) can be deleted with ?force=1.
 router.delete('/:eventId', async (req, res) => {
-  if (req.query.force !== '1') {
-    const [{ count: people }, { count: money }] = await Promise.all([
-      supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).neq('status', 'cancelled'),
-      supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false),
-    ]);
-    if ((people || 0) + (money || 0) > 0) {
-      return res.status(409).json({ error: 'This event has registrations or money records.', code: 'has_activity', participants: people || 0, transactions: money || 0 });
-    }
+  const [{ count: people }, { count: money }] = await Promise.all([
+    supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).neq('status', 'cancelled'),
+    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false),
+  ]);
+  if (people > 0) {
+    return res.status(409).json({ error: 'People have signed up for this event: cancel it instead (they will be notified).', code: 'has_signups', participants: people });
+  }
+  if (money > 0 && req.query.force !== '1') {
+    return res.status(409).json({ error: 'This event has money records.', code: 'has_activity', participants: 0, transactions: money });
   }
   const { error } = await supabase.from('events').delete().eq('id', req.event.id);
   if (error) return dbError(res, error);

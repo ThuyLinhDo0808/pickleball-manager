@@ -8,6 +8,7 @@ const { itemMetrics } = require('../services/inventory');
 const birthdays = require('../services/birthdays');
 const { guestsReady, guestStats, PERKS } = require('../services/guests');
 const { phoneLinkReady } = require('../services/phoneLink');
+const { completeFinished } = require('../services/eventStatus');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
@@ -923,6 +924,7 @@ router.get('/:clubId/fund', async (req, res) => {
 
 // ---- Club events (schedule list scoped to a club) -------------------------
 router.get('/:clubId/events', async (req, res) => {
+  await completeFinished({ clubId: req.club.id });
   const { data, error } = await supabase
     .from('v_event_summary')
     .select('*')

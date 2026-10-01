@@ -685,7 +685,8 @@ supabase/migrations/
 ├── 20261005090000_tournament_fee_payments.sql           # ai đã đóng lệ phí giải (ghi thu vào quỹ CLB)
 ├── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
 ├── 20261009090000_guest_perks_survey.sql                # khách giao lưu: tự vào danh sách, đặc quyền VIP/Ưu tiên, khảo sát sau buổi, DS chờ
-└── 20261010090000_member_phone_link.sql                 # tài khoản tự nhận là thành viên CLB khi SĐT trùng (bỏ nút "Tôi là thành viên")
+├── 20261010090000_member_phone_link.sql                 # tài khoản tự nhận là thành viên CLB khi SĐT trùng (bỏ nút "Tôi là thành viên")
+└── 20261011090000_event_status_simplify.sql            # trạng thái chỉ còn Đang mở / Đã xong (tự động) / Đã hủy
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 
-const STATUSES = ['draft', 'open', 'closed', 'completed', 'cancelled'];
 
 // ISO timestamp -> value for <input type="datetime-local"> in the viewer's timezone.
 function toLocalInput(iso) {
@@ -16,7 +15,6 @@ function toLocalInput(iso) {
 function formFrom(event) {
   return {
     allow_public_registration: !!event.allow_public_registration,
-    status: event.status,
     registration_deadline: toLocalInput(event.registration_deadline),
     notice: event.notice || '',
     cancel_deadline_hours: event.cancel_deadline_hours == null ? '' : String(event.cancel_deadline_hours),
@@ -132,14 +130,6 @@ export default function EventShareCard({ event, onSaved }) {
         }}
         className="grid grid-cols-1 sm:grid-cols-2 gap-3"
       >
-        <div>
-          <label className="text-xs text-gray-400">{t('common.status')}</label>
-          <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{t(`events.status_${s}`)}</option>
-            ))}
-          </select>
-        </div>
         <div>
           <label className="text-xs text-gray-400">{t('events.deadline')}</label>
           <input

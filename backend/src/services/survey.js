@@ -70,7 +70,11 @@ async function sendDueSurveys(now = Date.now()) {
 
 // Run the sweep in the background every few minutes (never crashes the server).
 function startSurveySweeper(everyMs = 10 * 60 * 1000) {
-  const run = () => sendDueSurveys().catch((err) => console.error('survey sweep failed', err));
+  const { completeFinished } = require('./eventStatus');
+  const run = () =>
+    completeFinished()
+      .then(() => sendDueSurveys())
+      .catch((err) => console.error('survey sweep failed', err));
   setTimeout(run, 30 * 1000).unref();
   setInterval(run, everyMs).unref();
 }

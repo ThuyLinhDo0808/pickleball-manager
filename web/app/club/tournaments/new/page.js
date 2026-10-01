@@ -102,7 +102,6 @@ export default function NewTournamentPage() {
               className={`rounded-xl border p-3 text-left transition ${kind === k ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
             >
               <div className="text-white font-semibold">{k === 'pairs' ? '🏓' : '👥'} {t(`tournaments.kind_${k}`)}</div>
-              <p className="text-gray-400 text-xs mt-1">{t(`tournaments.kind_${k}Desc`)}</p>
             </button>
           ))}
         </div>

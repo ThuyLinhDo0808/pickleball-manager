@@ -7,7 +7,8 @@ import { useI18n } from '@/context/I18nContext';
 import { todayYmd } from '@/lib/dates';
 
 export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
-const STATUSES = ['draft', 'open', 'closed', 'completed', 'cancelled'];
+// open = upcoming; completed is also set automatically once the slot is over.
+const STATUSES = ['open', 'completed', 'cancelled'];
 const CANCEL_PRESETS = ['', '2', '6', '12', '24', '48'];
 
 export const blankEvent = (date = todayYmd(), kind = 'game') => ({
@@ -78,7 +79,7 @@ export function formFromEvent(ev) {
     registration_deadline: toLocalInput(ev.registration_deadline),
     cancel_deadline_hours: ev.cancel_deadline_hours == null ? '' : String(ev.cancel_deadline_hours),
     notice: ev.notice || '',
-    status: ev.status,
+    status: ['draft', 'closed'].includes(ev.status) ? 'open' : ev.status,
     allow_public_registration: !!ev.allow_public_registration,
   };
 }
@@ -107,7 +108,7 @@ export function eventPayload(f) {
 
 // The event form in 4 groups: basic info, rules & finance, notes, status.
 // `kinds`: the activity types the Host may pick here (none → the kind is fixed by the page).
-export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null }) {
+export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false }) {
   const { t } = useI18n();
   const [f, setF] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -151,7 +152,15 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </Field>
           )}
           <Field label={t('events.title')} span={4}>
-            <input className="input" required maxLength={120} placeholder={t('create.titlePh')} value={f.title} onChange={(e) => set({ title: e.target.value })} />
+            <input
+              className={`input ${lockTitle ? 'opacity-70 cursor-not-allowed' : ''}`}
+              required
+              maxLength={120}
+              readOnly={lockTitle}
+              placeholder={t('create.titlePh')}
+              value={f.title}
+              onChange={(e) => !lockTitle && set({ title: e.target.value })}
+            />
           </Field>
           {dateField ? (
             <Field label={t('weekly.sessions')} span={4}>{dateField}</Field>
@@ -212,6 +221,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           </label>
         </Section>
 
+        {showStatus && (
         <Section n={4} title={t('common.status')} hint={t('create.statusHint')}>
           <div className="col-span-2 md:col-span-4 flex flex-wrap gap-2">
             {STATUSES.map((s) => (
@@ -227,6 +237,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             ))}
           </div>
         </Section>
+        )}
 
         {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">⚠️ {warning}</p>}
         {error && <p className="text-red-400 text-sm mb-3">{error}</p>}

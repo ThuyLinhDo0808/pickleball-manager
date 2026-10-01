@@ -71,6 +71,7 @@ export default function CreateEventView({ weekly = false }) {
           dateField={weekly ? <WeeklyDates value={plan} onChange={setPlan} /> : null}
           kinds={weekly ? null : GAME_KINDS}
           disabled={isClub && !club}
+          lockTitle={weekly}
         />
       )}
     </AppShell>
