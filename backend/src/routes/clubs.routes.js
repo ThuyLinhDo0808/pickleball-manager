@@ -17,6 +17,7 @@ const {
   periodBounds,
   aggregate,
   awards,
+  winnerTeam,
 } = require('../services/stats');
 
 const router = express.Router();
@@ -956,7 +957,7 @@ router.get('/:clubId/attendance', async (req, res) => {
       .order('start_time'),
     supabase
       .from('club_members')
-      .select('id, full_name, member_type, tier, is_active, joined_on, birth_date, user_id')
+      .select('*')
       .eq('club_id', req.club.id)
       .order('full_name'),
   ]);
@@ -965,11 +966,12 @@ router.get('/:clubId/attendance', async (req, res) => {
 
   const eventIds = events.map((e) => e.id);
   const memberIds = members.map((m) => m.id);
+  const ready = await guestsReady();
   const [{ data: people, error: e3 }, { data: passes, error: e4 }] = await Promise.all([
     eventIds.length
       ? supabase
           .from('event_participants')
-          .select('event_id, source_club_member_id, user_id, kind, full_name, phone, status, late_cancel')
+          .select(`id, event_id, source_club_member_id, user_id, kind, full_name, phone, status, late_cancel${ready ? ', guest_member_id' : ''}`)
           .in('event_id', eventIds)
           .in('status', ['registered', 'checked_in', 'no_show', 'cancelled'])
       : { data: [] },
@@ -986,24 +988,77 @@ router.get('/:clubId/attendance', async (req, res) => {
   if (e3) return dbError(res, e3);
   if (e4) return dbError(res, e4);
 
+  // Fixed members fill the grid; everyone else is a guest row of their own (their guest
+  // record, else phone / name), with sessions played and matches played / won.
   const byUser = new Map(members.filter((m) => m.user_id).map((m) => [m.user_id, m.id]));
+  const memberById = new Map(members.map((m) => [m.id, m]));
   const cells = [];
-  const guests = [];
+  const guestRows = new Map();
+  const participantGuest = new Map(); // participant id -> guest row key
   for (const p of people) {
+    const memberId = p.source_club_member_id || p.guest_member_id || (p.user_id && byUser.get(p.user_id)) || null;
+    const member = memberId ? memberById.get(memberId) : null;
+    const isFixed = member?.member_type === 'fixed';
+    const key = member ? `m:${member.id}` : `p:${String(p.phone || '').replace(/\D/g, '').slice(-9) || p.full_name.trim().toLowerCase()}`;
+    if (!isFixed) participantGuest.set(p.id, key);
     // Cancelled in time doesn't count at all; a late cancel counts as absent.
     if (p.status === 'cancelled' && !p.late_cancel) continue;
     const state = p.status === 'checked_in' ? 'attended' : p.status === 'registered' ? 'registered' : 'absent';
-    const memberId = p.source_club_member_id || (p.user_id && byUser.get(p.user_id)) || null;
-    if (memberId) cells.push({ event_id: p.event_id, club_member_id: memberId, state });
-    else guests.push({ event_id: p.event_id, full_name: p.full_name, phone: p.phone, state });
+    if (isFixed) {
+      cells.push({ event_id: p.event_id, club_member_id: memberId, state });
+      continue;
+    }
+    if (!guestRows.has(key)) {
+      guestRows.set(key, {
+        key,
+        member_id: member?.id || null,
+        full_name: member?.full_name || p.full_name,
+        phone: member?.phone || p.phone || null,
+        guest_perk: member?.guest_perk || null,
+        is_active: member ? member.is_active : true,
+        events: {},
+        sessions: 0,
+        matches: 0,
+        wins: 0,
+      });
+    }
+    const g = guestRows.get(key);
+    if (g.events[p.event_id] !== 'attended') g.events[p.event_id] = state;
   }
+  for (const g of guestRows.values()) g.sessions = Object.values(g.events).filter((s) => s === 'attended').length;
+
+  // Matches the guests played: inside the period's sessions, and club matches in the period.
+  const pids = [...participantGuest.keys()];
+  const guestMemberIds = [...guestRows.values()].map((g) => g.member_id).filter(Boolean);
+  const [{ data: eventMatches }, { data: clubMatches }] = await Promise.all([
+    pids.length
+      ? supabase.from('match_players').select('team, event_participant_id, matches(team1_score, team2_score)').in('event_participant_id', pids)
+      : { data: [] },
+    guestMemberIds.length
+      ? supabase.from('match_players').select('team, club_member_id, matches(played_at, team1_score, team2_score)').in('club_member_id', guestMemberIds)
+      : { data: [] },
+  ]);
+  const count = (key, row) => {
+    const g = guestRows.get(key);
+    if (!g || !row.matches) return;
+    g.matches++;
+    if (winnerTeam(row.matches) === row.team) g.wins++;
+  };
+  for (const r of eventMatches || []) count(participantGuest.get(r.event_participant_id), r);
+  for (const r of clubMatches || []) {
+    const day = r.matches && localDate(r.matches.played_at);
+    if (day && day >= from && day <= to) count(`m:${r.club_member_id}`, r);
+  }
+
   res.json({
     from,
     to,
     events,
-    members: members.map(({ user_id, ...m }) => m),
+    members: members
+      .filter((m) => m.member_type === 'fixed')
+      .map(({ id, full_name, member_type, tier, is_active, joined_on, birth_date }) => ({ id, full_name, member_type, tier, is_active, joined_on, birth_date })),
     cells,
-    guests,
+    guests: [...guestRows.values()],
     passes,
   });
 });

@@ -82,24 +82,21 @@ export default function AttendancePage() {
     if (onlyActive) members = members.filter((m) => m.is_active || withCells.has(m.id));
     members.sort((a, b) => (sort === 'count' ? (attended[b.id] || 0) - (attended[a.id] || 0) : 0) || a.full_name.localeCompare(b.full_name, 'vi'));
     const months = [...new Set(data.events.map((e) => monthKey(e.event_date)))];
+    const guestMonth = (g, k) => Object.entries(g.events).filter(([id, st]) => st === 'attended' && monthKey(evDate.get(id)) === k).length;
 
-    // Guests: one row per person (phone, else name).
-    const guestRows = new Map();
-    for (const g of data.guests) {
-      const key = (g.phone || '').replace(/\D/g, '') || g.full_name.trim().toLowerCase();
-      if (!guestRows.has(key)) guestRows.set(key, { key, full_name: g.full_name, phone: g.phone, events: {} });
-      guestRows.get(key).events[g.event_id] = g.state;
-    }
-    const guests = [...guestRows.values()]
-      .map((g) => ({ ...g, count: Object.values(g.events).filter((s) => s === 'attended').length }))
-      .sort((a, b) => b.count - a.count || a.full_name.localeCompare(b.full_name, 'vi'));
-    const guestEvents = data.events.filter((e) => data.guests.some((g) => g.event_id === e.id));
+    // Guests: one row per person (the server merges by guest record / phone), each with
+    // sessions played, matches played and won with the club.
+    const guests = (data.guests || [])
+      .filter((g) => !onlyActive || g.is_active !== false || g.sessions > 0)
+      .sort((a, b) => (sort === 'count' ? b.sessions - a.sessions : 0) || a.full_name.localeCompare(b.full_name, 'vi'));
+    const guestsByCount = [...guests].sort((a, b) => b.sessions - a.sessions || b.matches - a.matches || a.full_name.localeCompare(b.full_name, 'vi'));
+    const guestEvents = data.events.filter((e) => guests.some((g) => g.events[e.id]));
 
     const perEvent = (id) => ({
       members: data.cells.filter((c) => c.event_id === id && c.state === 'attended').length,
-      guests: data.guests.filter((g) => g.event_id === id && g.state === 'attended').length,
+      guests: guests.filter((g) => g.events[id] === 'attended').length,
     });
-    const maxCount = Math.max(1, ...Object.values(attended));
+    const maxCount = Math.max(1, ...Object.values(attended), ...guests.map((g) => g.sessions));
 
     // Passes: sessions left in each period — what the club carries over ("bảo lưu").
     const name = new Map(data.members.map((m) => [m.id, m.full_name]));
@@ -108,7 +105,7 @@ export default function AttendancePage() {
       .sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi') || a.starts_on.localeCompare(b.starts_on));
     const carry = passes.filter((p) => p.ended && p.sessions_included > 0 && p.status === 'paid').reduce((s, p) => s + p.sessions_remaining, 0);
 
-    return { cell, attended, perMonth, members, months, guests, guestEvents, perEvent, maxCount, passes, carry };
+    return { cell, attended, perMonth, members, months, guestMonth, guests, guestsByCount, guestEvents, perEvent, maxCount, passes, carry };
   }, [data, sort, onlyActive]);
 
   function exportCsv() {
@@ -124,11 +121,19 @@ export default function AttendancePage() {
               ...ev.map((e) => ({ attended: 'x', absent: 'vắng', registered: 'đăng ký' })[view.cell.get(`${m.id}|${e.id}`)] || ''),
               view.attended[m.id] || 0,
             ]),
+            ...view.guests.map((g) => [
+              '',
+              `${g.full_name} (${t('members.guest')})`,
+              ...ev.map((e) => ({ attended: 'x', absent: 'vắng', registered: 'đăng ký' })[g.events[e.id]] || ''),
+              g.sessions,
+            ]),
+            ['', t('stats.membersRow'), ...ev.map((e) => view.perEvent(e.id).members), ''],
             ['', t('stats.guestsRow'), ...ev.map((e) => view.perEvent(e.id).guests), ''],
           ]
         : [
             ['STT', t('common.name'), ...view.months.map(monthLabel), t('stats.sessionsCol')],
             ...view.members.map((m, i) => [i + 1, m.full_name, ...view.months.map((k) => view.perMonth[`${m.id}|${k}`] || 0), view.attended[m.id] || 0]),
+            ...view.guests.map((g) => ['', `${g.full_name} (${t('members.guest')})`, ...view.months.map((k) => view.guestMonth(g, k)), g.sessions]),
           ];
     downloadCsv(`diem-danh_${from}_${to}.csv`, rows);
   }
@@ -226,6 +231,37 @@ export default function AttendancePage() {
                       </td>
                     </tr>
                   ))}
+                  {view.guests.length > 0 && (
+                    <tr className="bg-navy-900/70">
+                      <td className="sticky left-0 bg-navy-900" />
+                      <td className="sticky left-10 bg-navy-900 text-sky-300 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">{t('stats.guestSection', { n: view.guests.length })}</td>
+                      <td colSpan={(by === 'session' ? data.events.length : view.months.length) + 1} />
+                    </tr>
+                  )}
+                  {view.guests.map((g, i) => (
+                    <tr key={g.key} className="hover:bg-navy-700/40">
+                      <td className="text-center text-gray-500 sticky left-0 bg-navy-800">{i + 1}</td>
+                      <td className="text-sky-100 whitespace-nowrap sticky left-10 bg-navy-800">
+                        {g.full_name}
+                        {g.guest_perk && <span className="ml-1 text-xs">{g.guest_perk === 'vip' ? '⭐' : '⚡'}</span>}
+                      </td>
+                      {by === 'session'
+                        ? data.events.map((e) => (
+                            <td key={e.id} className="text-center">
+                              <Mark state={g.events[e.id]} />
+                            </td>
+                          ))
+                        : view.months.map((k) => (
+                            <td key={k} className="text-center tabular-nums text-gray-200">{view.guestMonth(g, k) || ''}</td>
+                          ))}
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <span className="tabular-nums text-white font-semibold w-6 text-right">{g.sessions}</span>
+                          <span className="h-2 rounded bg-sky-400/70" style={{ width: `${(g.sessions / view.maxCount) * 5}rem` }} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
                 {by === 'session' && (
                   <tfoot>
@@ -319,18 +355,28 @@ export default function AttendancePage() {
                     <th className="w-10 text-center">#</th>
                     <th className="text-left min-w-[10rem]">{t('common.name')}</th>
                     <th className="text-left">{t('common.phone')}</th>
-                    {view.guestEvents.map((e) => <th key={e.id} className="text-center whitespace-nowrap font-normal" title={e.title}>{dm(e.event_date)}</th>)}
                     <th className="text-right">{t('stats.sessionsCol')}</th>
+                    <th className="text-right">{t('stats.matchesCol')}</th>
+                    <th className="text-right">{t('stats.winsCol')}</th>
+                    {view.guestEvents.map((e) => <th key={e.id} className="text-center whitespace-nowrap font-normal" title={e.title}>{dm(e.event_date)}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {view.guests.map((g, i) => (
+                  {view.guestsByCount.map((g, i) => (
                     <tr key={g.key}>
                       <td className="text-center text-gray-400">{i + 1}</td>
-                      <td className="text-white whitespace-nowrap">{g.full_name}</td>
+                      <td className="text-white whitespace-nowrap">
+                        {g.full_name}
+                        {g.guest_perk && <span className="ml-1 text-xs">{g.guest_perk === 'vip' ? '⭐ VIP' : `⚡ ${t('guests.perk_priority')}`}</span>}
+                      </td>
                       <td className="text-gray-400 whitespace-nowrap">{g.phone || '—'}</td>
+                      <td className="text-right tabular-nums text-white font-semibold">{g.sessions}</td>
+                      <td className="text-right tabular-nums text-gray-200">{g.matches}</td>
+                      <td className="text-right tabular-nums text-gray-200 whitespace-nowrap">
+                        {g.wins}
+                        {g.matches > 0 && <span className="text-gray-500 text-xs"> · {Math.round((100 * g.wins) / g.matches)}%</span>}
+                      </td>
                       {view.guestEvents.map((e) => <td key={e.id} className="text-center"><Mark state={g.events[e.id]} /></td>)}
-                      <td className="text-right tabular-nums text-white font-semibold">{g.count}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -338,9 +384,8 @@ export default function AttendancePage() {
                   <tr className="bg-navy-900 text-gray-300">
                     <td />
                     <td className="text-xs">{t('stats.guestsRow')}</td>
-                    <td />
+                    <td colSpan={4} />
                     {view.guestEvents.map((e) => <td key={e.id} className="text-center tabular-nums text-sky-300">{view.perEvent(e.id).guests}</td>)}
-                    <td />
                   </tr>
                 </tfoot>
               </table>
