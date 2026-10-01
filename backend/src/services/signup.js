@@ -12,6 +12,7 @@ const { newPaymentRef, vietqrUrl } = require('./payment');
 const { HOLDS_PLACE, feeFor, memberStanding, needsOnlinePayment } = require('./fees');
 const { promoteNext } = require('./attendance');
 const { perksFor, ensureGuestMember } = require('./guests');
+const { clubSport, profileLevel } = require('./sport');
 const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
@@ -139,7 +140,7 @@ async function registerOnline(event, userId, profile) {
     user_id: userId,
     full_name: profile.full_name,
     phone: profile.phone,
-    dupr_level: profile.dupr_level ?? null,
+    dupr_level: profileLevel(profile, await clubSport(event.club_id)),
     kind: isMember ? 'member' : 'guest',
     source_club_member_id: isMember ? standing.member.id : null,
     status: hasPlace ? 'registered' : 'waitlisted',

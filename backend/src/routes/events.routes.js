@@ -17,6 +17,8 @@ const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember } = require('../services/guests');
 const survey = require('../services/survey');
+const { itemMetrics } = require('../services/inventory');
+const { clubSport } = require('../services/sport');
 const { linkByPhone } = require('../services/phoneLink');
 const { HOST_STATUSES, completeFinished, completeIfFinished } = require('../services/eventStatus');
 
@@ -68,6 +70,7 @@ router.get('/public/:publicToken', async (req, res) => {
 
   res.json({
     ...pick(event, PUBLIC_EVENT_FIELDS),
+    sport: await clubSport(event.club_id), // levels show as DUPR or badminton steps
     registration_open: !closedCode,
     closed_code: closedCode,
     participants: people.map(({ joined_at, ...p }) => p),
@@ -96,7 +99,7 @@ function fail(res, err) {
 }
 
 async function playerProfile(userId) {
-  const { data } = await supabase.from('player_profiles').select('full_name, phone, dupr_level, gender, birth_year, birth_date').eq('user_id', userId).maybeSingle();
+  const { data } = await supabase.from('player_profiles').select('*').eq('user_id', userId).maybeSingle();
   return data;
 }
 
@@ -395,6 +398,36 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
   if (error) return dbError(res, error);
   await ensureGuestMember(req.event, data);
   res.status(201).json(data);
+});
+
+// Badminton: shuttles used in this session, what they cost (each shuttle at its item's
+// average purchase price) and the share per player present.
+router.get('/:eventId/shuttles', async (req, res) => {
+  try {
+    if (!req.event.club_id) return res.json({ items: [], used: [], total_qty: 0, total_cost: 0, players: 0, per_player: null });
+    const { data: items, error } = await supabase.from('inventory_items').select('*, inventory_moves(*)').eq('club_id', req.event.club_id).order('created_at');
+    if (error) throw error;
+    const { count: players } = await supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('status', 'checked_in');
+    const used = [];
+    for (const it of items || []) {
+      const m = itemMetrics(it.inventory_moves || []);
+      for (const mv of (it.inventory_moves || []).filter((x) => x.kind === 'use' && x.event_id === req.event.id)) {
+        used.push({ move_id: mv.id, item_id: it.id, name: it.name, unit: it.unit, quantity: mv.quantity, unit_cost: m.avg_unit_cost, cost: Math.round(mv.quantity * (m.avg_unit_cost || 0)) });
+      }
+      it.stock = m.stock;
+    }
+    const total_cost = used.reduce((t, u) => t + u.cost, 0);
+    res.json({
+      items: (items || []).filter((i) => i.is_active).map((i) => ({ id: i.id, name: i.name, unit: i.unit, stock: i.stock })),
+      used,
+      total_qty: used.reduce((t, u) => t + u.quantity, 0),
+      total_cost,
+      players: players || 0,
+      per_player: players ? Math.round(total_cost / players) : null,
+    });
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 // After-session survey answers for this event (guests' stars, comments, join wishes).

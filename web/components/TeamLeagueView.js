@@ -1,4 +1,6 @@
 'use client';
+import GamesInput, { gamesPayload } from '@/components/GamesInput';
+import { levelText } from '@/lib/levels';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
@@ -9,13 +11,17 @@ const GENDER = { mens: 'male', womens: 'female' };
 
 // One sub-match: pick each side's line-up (from that team's roster, fitting the format) and the score.
 function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const team = (id) => tour.teams.find((x) => x.id === id);
   const size = SIZE[sub.format];
   const [p1, setP1] = useState([sub.team1_p1 || '', sub.team1_p2 || ''].slice(0, size));
   const [p2, setP2] = useState([sub.team2_p1 || '', sub.team2_p2 || ''].slice(0, size));
   const [s1, setS1] = useState(sub.team1_score ?? '');
   const [s2, setS2] = useState(sub.team2_score ?? '');
+  const badminton = sport === 'badminton'; // games to 21, best of 3
+  const [games, setGames] = useState(() =>
+    Array.isArray(sub.games) && sub.games.length ? sub.games.map(([a, b]) => [String(a), String(b)]) : [['', ''], ['', '']]
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,7 +47,8 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
 
   function submit(e) {
     e.preventDefault();
-    send({ team1_score: Number(s1), team2_score: Number(s2), team1_players: p1.filter(Boolean), team2_players: p2.filter(Boolean) });
+    const score = badminton ? { games: gamesPayload(games) } : { team1_score: Number(s1), team2_score: Number(s2) };
+    send({ ...score, team1_players: p1.filter(Boolean), team2_players: p2.filter(Boolean) });
   }
 
   const side = (tid, ids, setIds, score, setScore, i) => {
@@ -50,7 +57,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
       <div className="rounded-lg bg-navy-900 p-3">
         <div className="flex items-center gap-3 mb-2">
           <span className="flex-1 text-white font-semibold truncate">{team(tid)?.name}</span>
-          <input
+          {!badminton && <input
             className="input !w-20 text-center text-lg font-bold"
             type="number"
             inputMode="numeric"
@@ -61,7 +68,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
             aria-label={t('league.score')}
             value={score}
             onChange={(e) => setScore(e.target.value)}
-          />
+          />}
         </div>
         <div className={`grid gap-2 ${size === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {ids.map((id, k) => (
@@ -69,7 +76,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
               <option value="">{t('league.pickPlayer')}</option>
               {eligible(roster, k).map((p) => (
                 <option key={p.id} value={p.id} disabled={ids.includes(p.id) && p.id !== id}>
-                  {p.full_name} · {p.dupr_level ?? '—'}
+                  {p.full_name} · {levelText(p.dupr_level, sport, t) ?? '—'}
                 </option>
               ))}
             </select>
@@ -84,6 +91,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
       <p className="text-lime-400 text-sm font-semibold">{t(`league.sub_${sub.format}`)}</p>
       {side(fixture.team1_id, p1, setP1, s1, setS1, 0)}
       {side(fixture.team2_id, p2, setP2, s2, setS2, 1)}
+      {badminton && <GamesInput value={games} onChange={setGames} labels={[team(fixture.team1_id)?.name, team(fixture.team2_id)?.name]} />}
       <p className="text-gray-500 text-xs">{t('league.lineupHint')}</p>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex gap-2">
@@ -98,7 +106,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
 }
 
 export default function TeamLeagueView({ tour, onChange }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const [editing, setEditing] = useState(null); // { fixture, sub }
   const [round, setRound] = useState(null);
   const teamName = (id) => tour.teams.find((x) => x.id === id)?.name || '?';
@@ -225,13 +233,13 @@ export default function TeamLeagueView({ tour, onChange }) {
           <div key={tm.id} className="card !p-3">
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-white font-semibold truncate">{tm.name}</span>
-              <span className="text-lime-400 text-xs shrink-0">Σ DUPR {Math.round(tm.players.reduce((s, p) => s + Number(p.dupr_level ?? 3), 0) * 100) / 100}</span>
+              <span className="text-lime-400 text-xs shrink-0">Σ {t('level.sumLabel')} {Math.round(tm.players.reduce((s, p) => s + Number(p.dupr_level ?? 3), 0) * 100) / 100}</span>
             </div>
             <ul className="text-sm text-gray-300">
               {tm.players.map((p) => (
                 <li key={p.id} className="flex justify-between gap-2">
                   <span className="truncate">{p.full_name} {p.gender === 'male' ? '♂' : p.gender === 'female' ? '♀' : ''}</span>
-                  <span className="text-gray-500 tabular-nums">{p.dupr_level ?? '—'}</span>
+                  <span className="text-gray-500 tabular-nums">{levelText(p.dupr_level, sport, t) ?? '—'}</span>
                 </li>
               ))}
             </ul>

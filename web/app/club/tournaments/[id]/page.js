@@ -1,4 +1,5 @@
 'use client';
+import GamesInput, { gamesPayload, gamesText } from '@/components/GamesInput';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -12,6 +13,9 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
+// Badminton events by format/division (Đơn nam, Đôi nữ, Đôi nam nữ...).
+const BADMINTON_CAT = { 'singles/men': 'ms', 'singles/women': 'ws', 'doubles/men': 'md', 'doubles/women': 'wd', 'mixed/open': 'xd' };
+
 function roundLabel(round, rounds, t) {
   const left = rounds - round;
   if (left === 0) return t('tournaments.final');
@@ -21,18 +25,23 @@ function roundLabel(round, rounds, t) {
 }
 
 function ScoreForm({ match, teamName, onSave, onClear, onCancel }) {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
+  const badminton = sport === 'badminton'; // games to 21, best of 3
   const [s1, setS1] = useState(match.team1_score ?? '');
   const [s2, setS2] = useState(match.team2_score ?? '');
+  const [games, setGames] = useState(() =>
+    Array.isArray(match.games) && match.games.length ? match.games.map(([a, b]) => [String(a), String(b)]) : [['', ''], ['', '']]
+  );
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSave(Number(s1), Number(s2));
+        onSave(badminton ? { games: gamesPayload(games) } : { team1_score: Number(s1), team2_score: Number(s2) });
       }}
       className="flex flex-col gap-3"
     >
-      {[
+      {badminton && <GamesInput value={games} onChange={setGames} labels={[teamName(match.team1_id), teamName(match.team2_id)]} />}
+      {!badminton && [
         [match.team1_id, s1, setS1],
         [match.team2_id, s2, setS2],
       ].map(([id, v, set], i) => (
@@ -68,6 +77,7 @@ function MatchRow({ m, teamName, onOpen }) {
     <button type="button" disabled={!canScore} onClick={() => onOpen(m)} className={`w-full text-left bg-navy-900 rounded-lg px-3 py-2 text-sm flex flex-col gap-1 border ${canScore && !played ? 'border-lime-400/40 hover:border-lime-400' : 'border-transparent'}`}>
       {side(m.team1_id, m.team1_score)}
       {side(m.team2_id, m.team2_score)}
+      {played && gamesText(m.games) && <span className="text-gray-500 text-[11px] tabular-nums">{gamesText(m.games)}</span>}
     </button>
   );
 }
@@ -75,7 +85,7 @@ function MatchRow({ m, teamName, onOpen }) {
 export default function TournamentPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { t, lang } = useI18n();
+  const { t, lang, sport } = useI18n();
   const { data: tour, loading, setData } = useLoad(() => api.get(`/api/tournaments/${id}`), [id]);
   const [tab, setTab] = useState(null);
   const [scoring, setScoring] = useState(null);
@@ -103,10 +113,10 @@ export default function TournamentPage() {
     }
   }
 
-  async function saveScore(s1, s2) {
+  async function saveScore(body) {
     const m = scoring;
     setScoring(null);
-    await run(() => api.patch(`/api/tournaments/${id}/matches/${m.id}`, { team1_score: s1, team2_score: s2 }));
+    await run(() => api.patch(`/api/tournaments/${id}/matches/${m.id}`, body));
   }
 
   async function clearScore() {
@@ -137,6 +147,8 @@ export default function TournamentPage() {
           <p className="text-gray-400 text-sm">
             {tour.kind === 'team'
               ? t('tournaments.kind_team')
+              : BADMINTON_CAT[`${tour.format}/${tour.division || 'open'}`] && sport === 'badminton'
+                ? t(`tournaments.cat_${BADMINTON_CAT[`${tour.format}/${tour.division || 'open'}`]}`)
               : tour.format === 'doubles' && (!tour.division || tour.division === 'open')
                 ? t('tournaments.kind_pairs')
                 : `${t(`matches.${tour.format}`)}${tour.division && tour.division !== 'open' && tour.format !== 'mixed' ? ` · ${t(`tournaments.div_${tour.division}${tour.format === 'singles' ? 'S' : ''}`)}` : ''}`}

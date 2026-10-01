@@ -10,6 +10,7 @@
 const { supabase } = require('../supabase');
 const { normalizePhone } = require('./memberships');
 const { schemaStatus } = require('./schemaCheck');
+const { clubSport, profileLevel } = require('./sport');
 
 const MIGRATION = '20261009090000_guest_perks_survey.sql';
 const PERKS = ['priority', 'vip'];
@@ -74,7 +75,7 @@ async function ensureGuestMember(event, p) {
       // Nothing to recognise them by next time: skip.
       if (!p.user_id && normalizePhone(p.phone).length < 9) return null;
       const { data: profile } = p.user_id
-        ? await supabase.from('player_profiles').select('full_name, phone, gender, birth_date, birth_year, dupr_level').eq('user_id', p.user_id).maybeSingle()
+        ? await supabase.from('player_profiles').select('*').eq('user_id', p.user_id).maybeSingle()
         : { data: null };
       const { data, error } = await supabase
         .from('club_members')
@@ -84,7 +85,7 @@ async function ensureGuestMember(event, p) {
           account_verified: !!p.user_id,
           full_name: profile?.full_name || p.full_name,
           phone: profile?.phone || p.phone || null,
-          dupr_level: profile?.dupr_level ?? p.dupr_level ?? null,
+          dupr_level: (profile && profileLevel(profile, await clubSport(event.club_id))) ?? p.dupr_level ?? null,
           gender: profile?.gender ?? null,
           birth_date: profile?.birth_date ?? null,
           birth_year: profile?.birth_year ?? null,
@@ -102,9 +103,11 @@ async function ensureGuestMember(event, p) {
       }
     } else if (p.user_id && !member.user_id) {
       // The Host's record of this person: link the account and fill what the Host left blank.
-      const { data: profile } = await supabase.from('player_profiles').select('gender, birth_date, birth_year, dupr_level').eq('user_id', p.user_id).maybeSingle();
+      const { data: profile } = await supabase.from('player_profiles').select('*').eq('user_id', p.user_id).maybeSingle();
       const blanks = {};
-      for (const k of ['gender', 'birth_date', 'birth_year', 'dupr_level']) if (member[k] == null && profile?.[k] != null) blanks[k] = profile[k];
+      for (const k of ['gender', 'birth_date', 'birth_year']) if (member[k] == null && profile?.[k] != null) blanks[k] = profile[k];
+      const level = profileLevel(profile, await clubSport(event.club_id));
+      if (member.dupr_level == null && level != null) blanks.dupr_level = level;
       await supabase.from('club_members').update({ user_id: p.user_id, account_verified: true, ...blanks }).eq('id', member.id).is('user_id', null);
     }
 

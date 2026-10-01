@@ -206,7 +206,7 @@ function ClubSwitcher({ className = '' }) {
       className={`input text-sm truncate ${className}`}
     >
       {clubs.map((c) => (
-        <option key={c.id} value={c.id}>{c.name}</option>
+        <option key={c.id} value={c.id}>{c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}</option>
       ))}
       <option value="__new">+ {t('clubs.create')}</option>
     </select>

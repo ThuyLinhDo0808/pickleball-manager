@@ -1,4 +1,5 @@
 'use client';
+import { levelText } from '@/lib/levels';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -14,7 +15,7 @@ import { api } from '@/lib/api';
 
 
 export default function NewTournamentPage() {
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const router = useRouter();
   const { club } = useDefaultClub();
   const { data: members } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])), [club?.id]);
@@ -46,6 +47,7 @@ export default function NewTournamentPage() {
             ? { formats: tr.sub_formats, winRule: tr.win_rule, teams: tr.teams.map((tm) => ({ name: tm.name, ids: tm.players.map((p) => p.id) })) }
             : {
                 teams: tr.teams.map((tm) => [tm.player1_id, tm.player2_id].filter(Boolean)),
+                category: categoryOf(tr.format, tr.division),
                 mode: tr.group_count > 0 ? 'groups' : 'ko',
                 groupCount: tr.group_count || 2,
                 advance: tr.advance_per_group || 2,
@@ -101,7 +103,7 @@ export default function NewTournamentPage() {
               onClick={() => setKind(k)}
               className={`rounded-xl border p-3 text-left transition ${kind === k ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
             >
-              <div className="text-white font-semibold">{k === 'pairs' ? '🏓' : '👥'} {t(`tournaments.kind_${k}`)}</div>
+              <div className="text-white font-semibold">{k === 'pairs' ? (sport === 'badminton' ? '🏸' : '🏓') : '👥'} {t(`tournaments.kind_${k}`)}</div>
             </button>
           ))}
         </div>
@@ -147,13 +149,36 @@ export default function NewTournamentPage() {
   );
 }
 
-// Doubles: pairs of any genders (a club tournament is always doubles); groups → knockout.
-const format = 'doubles';
-const size = 2;
-function PairsSetup({ club, active, base, ready, onCreated, initial }) {
-  const { t } = useI18n();
+// Pickleball: pairs of any genders (always doubles). Badminton: pick the event — men's /
+// women's singles, men's / women's doubles or mixed doubles. Groups → knockout.
+const CATEGORIES = {
+  ms: { format: 'singles', division: 'men' },
+  ws: { format: 'singles', division: 'women' },
+  md: { format: 'doubles', division: 'men' },
+  wd: { format: 'doubles', division: 'women' },
+  xd: { format: 'mixed', division: 'open' },
+};
+const TEAM_SIZE = { singles: 1, doubles: 2, mixed: 2 };
+function categoryOf(format, division) {
+  return Object.keys(CATEGORIES).find((k) => CATEGORIES[k].format === format && CATEGORIES[k].division === division) || null;
+}
+function PairsSetup({ club, active: allActive, base, ready, onCreated, initial }) {
+  const { t, sport } = useI18n();
+  const badminton = sport === 'badminton';
+  const [cat, setCat] = useState(initial?.category || 'md');
+  const { format, division } = badminton ? CATEGORIES[cat] : { format: 'doubles', division: 'open' };
+  const size = TEAM_SIZE[format];
+  // Men's / women's events only list players of that gender.
+  const want = { men: 'male', women: 'female' }[division];
+  const active = useMemo(() => (want ? allActive.filter((m) => m.gender === want) : allActive), [allActive, want]);
   const [picked, setPicked] = useState(() => (initial ? initial.teams.flat() : []));
-  const [teams, setTeams] = useState(() => (initial ? initial.teams.map((tm) => [tm[0] || '', tm[1] || '']) : [])); // [[id, id], ...]
+  const [teams, setTeams] = useState(() => (initial ? initial.teams.map((tm) => tm.slice(0, 2)) : [])); // [[id, id], ...] or [[id]]
+  function pickCategory(k) {
+    setCat(k);
+    setPicked([]);
+    setTeams([]);
+    setLeftover([]);
+  }
   const [leftover, setLeftover] = useState([]);
   const [mode, setMode] = useState(initial?.mode || 'groups');
   const [groupCount, setGroupCount] = useState(initial?.groupCount || 2);
@@ -205,7 +230,7 @@ function PairsSetup({ club, active, base, ready, onCreated, initial }) {
         ...base,
         kind: 'pairs',
         format,
-        division: 'open',
+        division,
         group_count: groups,
         advance_per_group: Math.min(advance, perGroup || advance),
         teams: complete.map((tm) => ({ player_ids: tm })),
@@ -217,11 +242,28 @@ function PairsSetup({ club, active, base, ready, onCreated, initial }) {
     }
   }
 
-  const label = (m) => `${m.full_name}${m.gender ? ` (${t(`members.${m.gender}`)})` : ''}${m.dupr_level != null ? ` · ${m.dupr_level}` : ''}`;
+  const label = (m) => `${m.full_name}${m.gender ? ` (${t(`members.${m.gender}`)})` : ''}${m.dupr_level != null ? ` · ${levelText(m.dupr_level, sport, t)}` : ''}`;
 
   return (
     <>
-      <Section n={2} title={t('tournaments.players', { n: picked.length })}>
+      {badminton && (
+        <Section n={2} title={t('tournaments.category')}>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {Object.keys(CATEGORIES).map((k) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={cat === k}
+                onClick={() => pickCategory(k)}
+                className={`rounded-lg border px-3 py-2 text-sm font-semibold ${cat === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+              >
+                {t(`tournaments.cat_${k}`)}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+      <Section n={badminton ? 3 : 2} title={t('tournaments.players', { n: picked.length })}>
         <button type="button" className="text-lime-400 text-sm mb-2" onClick={() => setPicked(active.map((m) => m.id))}>
           {t('tournaments.selectAll')}
         </button>
@@ -235,7 +277,7 @@ function PairsSetup({ club, active, base, ready, onCreated, initial }) {
         </div>
       </Section>
 
-      <Section n={3} title={t('tournaments.teams', { n: complete.length })}>
+      <Section n={badminton ? 4 : 3} title={t('tournaments.teams', { n: complete.length })}>
           <div className="flex flex-wrap gap-2 mb-2">
             <button type="button" className="btn-primary text-sm" disabled={picked.length < 2} onClick={() => autoPair('balanced')}>{t('tournaments.pairBalanced')}</button>
             <button type="button" className="btn-secondary text-sm" disabled={picked.length < 2} onClick={() => autoPair('random')}>{t('tournaments.pairRandom')}</button>
@@ -267,7 +309,7 @@ function PairsSetup({ club, active, base, ready, onCreated, initial }) {
           {teams.length > 0 && unpaired.length > 0 && <p className="text-yellow-300 text-sm mt-1">{t('tournaments.unpaired', { names: unpaired.join(', ') })}</p>}
       </Section>
 
-      <Section n={4} title={t('tournaments.structure')}>
+      <Section n={badminton ? 5 : 4} title={t('tournaments.structure')}>
         <div className="grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm mb-3">
           {['groups', 'ko'].map((k) => (
             <button key={k} type="button" onClick={() => setMode(k)} className={`rounded-md py-1.5 ${mode === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>

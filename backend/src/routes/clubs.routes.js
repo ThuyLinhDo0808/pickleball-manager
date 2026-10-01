@@ -10,6 +10,7 @@ const { guestsReady, guestStats, PERKS } = require('../services/guests');
 const { phoneLinkReady } = require('../services/phoneLink');
 const { completeFinished } = require('../services/eventStatus');
 const { setAttendance } = require('../services/attendance');
+const { SPORTS, sportReady, cleanLevel } = require('../services/sport');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
   PERIODS: PERIODS_STATS,
@@ -142,9 +143,13 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { name, description } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required.' });
+  // The sport is picked once, when the club is created.
+  const sport = req.body.sport || 'pickleball';
+  if (!SPORTS.includes(sport)) return res.status(400).json({ error: `sport must be one of ${SPORTS.join(', ')}.` });
+  if (sport !== 'pickleball' && !(await sportReady())) return res.status(409).json({ error: 'Run migration 20261012090000_multi_sport_badminton.sql first.' });
   const { data, error } = await supabase
     .from('clubs')
-    .insert({ host_id: req.hostId, name, description: description || null })
+    .insert({ host_id: req.hostId, name, description: description || null, ...(sport !== 'pickleball' ? { sport } : {}) })
     .select()
     .single();
   if (error) return dbError(res, error);
@@ -221,8 +226,14 @@ router.get('/:clubId/members', async (req, res) => {
 });
 
 router.post('/:clubId/members', checkCapacity(), async (req, res) => {
-  const { full_name, phone, dupr_level, member_type } = req.body;
+  const { full_name, phone, member_type } = req.body;
   if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
+  let dupr_level;
+  try {
+    dupr_level = cleanLevel(req.body.dupr_level, req.club.sport); // badminton: step 1-6
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 
   let tier = req.body.tier || null;
   if (tier && !TIERS.includes(tier)) {
@@ -290,6 +301,13 @@ router.post('/:clubId/members/bulk', async (req, res) => {
 router.patch('/:clubId/members/:memberId', async (req, res) => {
   const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags', 'guest_perk']);
   if ('notes' in fields) fields.notes = String(fields.notes ?? '').trim().slice(0, 2000) || null;
+  if ('dupr_level' in fields) {
+    try {
+      fields.dupr_level = cleanLevel(fields.dupr_level, req.club.sport);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
   if ('guest_perk' in fields && !(await guestsReady())) delete fields.guest_perk; // migration not run yet
   if ('guest_perk' in fields) {
     fields.guest_perk = fields.guest_perk || null;
@@ -769,7 +787,7 @@ async function inventoryFor(clubId) {
 }
 
 async function stockOf(itemId) {
-  const { data, error } = await supabase.from('inventory_moves').select('kind, quantity, unit_cost, sessions_lasted').eq('item_id', itemId);
+  const { data, error } = await supabase.from('inventory_moves').select('*').eq('item_id', itemId);
   if (error) throw error;
   return itemMetrics(data).stock;
 }
@@ -812,19 +830,28 @@ router.patch('/:clubId/inventory/:itemId', async (req, res) => {
 router.post('/:clubId/inventory/:itemId/moves', async (req, res) => {
   const kind = req.body.kind;
   const quantity = parseInt(req.body.quantity, 10);
-  if (!['purchase', 'retire', 'adjust'].includes(kind)) return res.status(400).json({ error: 'kind must be purchase, retire or adjust.' });
+  if (!['purchase', 'retire', 'adjust', 'use'].includes(kind)) return res.status(400).json({ error: 'kind must be purchase, retire, use or adjust.' });
   if (!Number.isInteger(quantity) || quantity === 0 || (kind !== 'adjust' && quantity < 0)) {
-    return res.status(400).json({ error: 'quantity must be a whole number (positive for purchase/retire).' });
+    return res.status(400).json({ error: 'quantity must be a whole number (positive for purchase/retire/use).' });
+  }
+  // 'use': shuttles used up in one of this club's sessions.
+  let usedAt = null;
+  if (kind === 'use') {
+    if (!(await sportReady())) return res.status(409).json({ error: 'Run migration 20261012090000_multi_sport_badminton.sql first.' });
+    if (!isUuid(req.body.event_id)) return res.status(400).json({ error: 'event_id is required for use.' });
+    const { data: ev } = await supabase.from('events').select('id, event_date').eq('id', req.body.event_id).eq('club_id', req.club.id).maybeSingle();
+    if (!ev) return notFound(res, 'Event');
+    usedAt = ev;
   }
   const unitCost = kind === 'purchase' ? Number(req.body.unit_cost) : null;
   if (kind === 'purchase' && !(unitCost >= 0)) return res.status(400).json({ error: 'unit_cost is required for a purchase.' });
   const lasted = kind === 'retire' && req.body.sessions_lasted !== '' && req.body.sessions_lasted != null ? Number(req.body.sessions_lasted) : null;
   if (lasted != null && !(lasted > 0 && lasted < 10000)) return res.status(400).json({ error: 'sessions_lasted must be > 0.' });
-  const occurred_on = /^\d{4}-\d{2}-\d{2}$/.test(req.body.occurred_on || '') ? req.body.occurred_on : todayYmd();
+  const occurred_on = usedAt ? usedAt.event_date : /^\d{4}-\d{2}-\d{2}$/.test(req.body.occurred_on || '') ? req.body.occurred_on : todayYmd();
 
   try {
     // Stock can never go below zero (retiring or a negative adjustment).
-    if (kind === 'retire' || (kind === 'adjust' && quantity < 0)) {
+    if (kind === 'retire' || kind === 'use' || (kind === 'adjust' && quantity < 0)) {
       const stock = await stockOf(req.item.id);
       if (Math.abs(quantity) > stock) return res.status(400).json({ error: `Only ${stock} in stock.` });
     }
@@ -858,6 +885,7 @@ router.post('/:clubId/inventory/:itemId/moves', async (req, res) => {
         occurred_on,
         note: String(req.body.note || '').trim() || null,
         transaction_id,
+        ...(usedAt ? { event_id: usedAt.id } : {}),
       })
       .select()
       .single();

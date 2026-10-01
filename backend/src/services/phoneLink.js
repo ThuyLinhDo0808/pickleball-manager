@@ -6,6 +6,7 @@
 const { supabase } = require('../supabase');
 const { normalizePhone } = require('./memberships');
 const { schemaStatus } = require('./schemaCheck');
+const { clubSport, profileLevel } = require('./sport');
 
 const MIGRATION = '20261010090000_member_phone_link.sql';
 
@@ -15,9 +16,11 @@ async function ready() {
 }
 
 // Copy profile details into blank fields of a club record (never overwrite the Host's data).
-function blanksFrom(member, profile) {
+function blanksFrom(member, profile, sport) {
   const patch = {};
-  for (const k of ['dupr_level', 'gender', 'birth_year', 'birth_date']) if (member[k] == null && profile?.[k] != null) patch[k] = profile[k];
+  for (const k of ['gender', 'birth_year', 'birth_date']) if (member[k] == null && profile?.[k] != null) patch[k] = profile[k];
+  const level = profileLevel(profile, sport); // DUPR or the badminton step, by the club's sport
+  if (member.dupr_level == null && level != null) patch.dupr_level = level;
   return patch;
 }
 
@@ -44,7 +47,7 @@ async function linkByPhone(userId, profile) {
       if (m.user_id || haveClub.has(m.club_id)) continue; // someone else's, or already a member there
       const { data } = await supabase
         .from('club_members')
-        .update({ user_id: userId, account_verified: true, ...blanksFrom(m, profile) })
+        .update({ user_id: userId, account_verified: true, ...blanksFrom(m, profile, await clubSport(m.club_id)) })
         .eq('id', m.id)
         .is('user_id', null)
         .select('id, club_id')

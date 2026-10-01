@@ -10,6 +10,7 @@ import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
 import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
+import EventShuttles from '@/components/EventShuttles';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
@@ -20,7 +21,7 @@ import { exportEventFinance } from '@/lib/exportExcel';
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
-  const { t, lang } = useI18n();
+  const { t, lang, sport } = useI18n();
   const { club } = useDefaultClub();
   const [tab, setTab] = useState('participants');
   const [showQr, setShowQr] = useState(false);
@@ -234,6 +235,7 @@ export default function EventDetailPage() {
               </div>
             ))}
           </div>
+          {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
           <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />

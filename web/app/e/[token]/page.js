@@ -1,4 +1,6 @@
 'use client';
+import { useEffect } from 'react';
+import { levelRange, levelText } from '@/lib/levels';
 import { useParams } from 'next/navigation';
 import EventSignup from '@/components/EventSignup';
 import { useI18n } from '@/context/I18nContext';
@@ -33,9 +35,13 @@ function Info({ label, value }) {
 // it; signing up needs an account (member vs guest, payment, ticket).
 export default function PublicEventPage() {
   const { token } = useParams();
-  const { t, lang, setLang } = useI18n();
+  const { t, lang, setLang, setSport } = useI18n();
   const { user } = useAuth();
   const { data: ev, error, loading, reload } = useLoad(() => api.publicGet(`/api/events/public/${token}`), [token]);
+  // Words and levels follow the event's sport (DUPR vs badminton levels).
+  useEffect(() => {
+    if (ev?.sport) setSport(ev.sport);
+  }, [ev?.sport, setSport]);
   const { data: me, error: meError, reload: reloadMe } = useLoad(() => (user ? api.get(`/api/events/public/${token}/me`) : Promise.resolve(null)), [token, user?.id]);
   const refresh = () => {
     reload();
@@ -66,8 +72,7 @@ export default function PublicEventPage() {
 
   const main = ev.participants.filter((p) => p.status !== 'waitlisted');
   const waitlist = ev.participants.filter((p) => p.status === 'waitlisted');
-  const level =
-    ev.level_min || ev.level_max ? [ev.level_min ?? '…', ev.level_max ?? '…'].join(' – ') : t('public.anyLevel');
+  const level = levelRange(ev.level_min, ev.level_max, ev.sport, t) || t('public.anyLevel');
   const time = [formatTime(ev.start_time), formatTime(ev.end_time)].filter(Boolean).join(' – ');
 
   return (
@@ -123,7 +128,7 @@ export default function PublicEventPage() {
                 {p.full_name}
                 {p.status === 'pending' && <span className="ml-2 text-[11px] text-sky-300">({t('signup.pendingShort')})</span>}
               </span>
-              {p.dupr_level != null && <span className="text-gray-400 text-xs">{p.dupr_level}</span>}
+              {p.dupr_level != null && <span className="text-gray-400 text-xs">{levelText(p.dupr_level, ev.sport, t)}</span>}
             </li>
           ))}
         </ol>

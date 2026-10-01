@@ -1,4 +1,5 @@
 'use client';
+import { levelText } from '@/lib/levels';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PlayerShell from '@/components/PlayerShell';
@@ -100,7 +101,11 @@ export default function PlayerHome() {
         )}
         <div className="min-w-0">
           <h1 className="text-white text-xl font-bold truncate">{t('player.hello', { name: p?.full_name || me.email })}</h1>
-          {p?.dupr_level != null && <div className="text-gray-400 text-sm">DUPR {p.dupr_level}</div>}
+          {(p?.dupr_level != null || p?.badminton_level != null) && (
+            <div className="text-gray-400 text-sm">
+              {[p.dupr_level != null && `🏓 DUPR ${p.dupr_level}`, p.badminton_level != null && `🏸 ${levelText(p.badminton_level, 'badminton', t)}`].filter(Boolean).join(' · ')}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 'use client';
+import LevelInput from '@/components/LevelInput';
 import { useState } from 'react';
 import Link from 'next/link';
 import DatePopover from '@/components/DatePopover';
@@ -196,10 +197,10 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <input className="input" type="number" inputMode="numeric" min="0" step="1000" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
           </Field>
           <Field label={t('events.levelMin')}>
-            <input className="input" type="number" inputMode="decimal" step="0.25" min="1" max="8" placeholder="—" value={f.level_min} onChange={(e) => set({ level_min: e.target.value })} />
+            <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
           </Field>
           <Field label={t('events.levelMax')}>
-            <input className="input" type="number" inputMode="decimal" step="0.25" min="1" max="8" placeholder="—" value={f.level_max} onChange={(e) => set({ level_max: e.target.value })} />
+            <LevelInput value={f.level_max} onChange={(v) => set({ level_max: v })} placeholder="—" />
           </Field>
           <Field label={t('events.deadline')} span={2}>
             <input className="input" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} />

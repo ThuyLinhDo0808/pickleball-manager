@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import GamesInput, { blankGames, gamesPayload } from '@/components/GamesInput';
 
 const TEAM_SIZE = { singles: 1, doubles: 2, mixed: 2 };
 
@@ -13,8 +14,10 @@ function nowLocalInput() {
 
 // players: [{ id, name, gender }]; idField: 'club_member_id' | 'event_participant_id';
 // parent: { club_id } or { event_id }. `endpoint` lets staff post to their own API.
-export default function MatchForm({ players, idField, parent, onSaved, onCancel, endpoint = '/api/matches' }) {
-  const { t } = useI18n();
+export default function MatchForm({ players, idField, parent, onSaved, onCancel, endpoint = '/api/matches', sport: sportProp }) {
+  const { t, sport: clubSport } = useI18n();
+  const badminton = (sportProp || clubSport) === 'badminton'; // badminton: games to 21, best of 3
+  const [games, setGames] = useState(blankGames);
   const [type, setType] = useState('doubles');
   const [slots, setSlots] = useState({ 1: ['', ''], 2: ['', ''] });
   const [score, setScore] = useState({ 1: '', 2: '' });
@@ -38,8 +41,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
       const saved = await api.post(endpoint, {
         ...parent,
         match_type: type,
-        team1_score: Number(score[1] || 0),
-        team2_score: Number(score[2] || 0),
+        ...(badminton ? { games: gamesPayload(games) } : { team1_score: Number(score[1] || 0), team2_score: Number(score[2] || 0) }),
         played_at: new Date(playedAt).toISOString(),
         players: [1, 2].flatMap((team) => slots[team].slice(0, size).map((id) => ({ team, [idField]: id }))),
       });
@@ -73,7 +75,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
         <div key={team} className="bg-navy-900 rounded-lg p-3">
           <div className="flex items-center justify-between gap-3 mb-2">
             <span className="text-white font-semibold text-sm whitespace-nowrap">{t(`matches.team${team}`)}</span>
-            <div className="w-20 shrink-0">
+            {!badminton && <div className="w-20 shrink-0">
             <input
               className="input text-center text-lg font-bold"
               type="number"
@@ -86,7 +88,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
               value={score[team]}
               onChange={(e) => setScore({ ...score, [team]: e.target.value })}
             />
-            </div>
+            </div>}
           </div>
           <div className="flex flex-col gap-2">
             {Array.from({ length: size }, (_, i) => (
@@ -103,6 +105,12 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
           </div>
         </div>
       ))}
+
+      {badminton && (
+        <div className="bg-navy-900 rounded-lg p-3">
+          <GamesInput value={games} onChange={setGames} />
+        </div>
+      )}
 
       <div>
         <label className="text-xs text-gray-400">{t('matches.playedAt')}</label>

@@ -1,5 +1,6 @@
 const { supabase } = require('../supabase');
 const { pick } = require('../utils/respond');
+const { clubSport, badmintonResult } = require('./sport');
 
 const TEAM_SIZE = { singles: 1, doubles: 2, mixed: 2 };
 const PLAYER_SELECT = '*, match_players(*, club_members(full_name, gender), event_participants(full_name))';
@@ -54,13 +55,32 @@ async function playerBelongsToParent(player, parent) {
   return false;
 }
 
+// The sport of a match's club (or of the club running its session).
+async function parentSport(parent) {
+  if (parent.club_id) return clubSport(parent.club_id);
+  if (!parent.event_id) return 'pickleball';
+  const { data } = await supabase.from('events').select('club_id').eq('id', parent.event_id).maybeSingle();
+  return clubSport(data?.club_id);
+}
+
+// Badminton: the games (e.g. [[21,18],[19,21],[21,15]]) give the result; the team scores
+// hold the games won. Pickleball: the two scores as typed.
+function badmintonScores(body) {
+  try {
+    return badmintonResult(body.games);
+  } catch (err) {
+    throw badRequest(err.message);
+  }
+}
+
 // Validates and stores a match. `parent` = { club_id } or { event_id } — ownership
 // (host or staff) must already have been checked by the caller.
 async function createMatch(parent, body) {
   const players = body.players;
   const match_type = TEAM_SIZE[body.match_type] ? body.match_type : 'doubles';
-  const team1_score = cleanScore(body.team1_score);
-  const team2_score = cleanScore(body.team2_score);
+  const badminton = (await parentSport(parent)) === 'badminton';
+  const result = badminton ? badmintonScores(body) : { team1_score: cleanScore(body.team1_score), team2_score: cleanScore(body.team2_score) };
+  const { team1_score, team2_score } = result;
   const video_url = cleanVideoUrl(body.video_url);
   const played_at = cleanDate(body.played_at);
 
@@ -84,6 +104,7 @@ async function createMatch(parent, body) {
       match_type,
       team1_score,
       team2_score,
+      ...(badminton ? { games: result.games } : {}),
       video_url,
       played_at,
     })
@@ -112,8 +133,12 @@ async function createMatch(parent, body) {
 // Score / video / time edits. match_type is fixed: changing it would break team sizes.
 async function updateMatch(matchId, body, allowed = ['team1_score', 'team2_score', 'video_url', 'played_at']) {
   const fields = pick(body, allowed);
-  if ('team1_score' in fields) fields.team1_score = cleanScore(fields.team1_score);
-  if ('team2_score' in fields) fields.team2_score = cleanScore(fields.team2_score);
+  if (body.games !== undefined) {
+    const { data: m } = await supabase.from('matches').select('club_id, event_id').eq('id', matchId).single();
+    if ((await parentSport(m)) === 'badminton') Object.assign(fields, badmintonScores(body));
+  }
+  if ('team1_score' in fields && body.games === undefined) fields.team1_score = cleanScore(fields.team1_score);
+  if ('team2_score' in fields && body.games === undefined) fields.team2_score = cleanScore(fields.team2_score);
   if ('video_url' in fields) fields.video_url = cleanVideoUrl(fields.video_url);
   if ('played_at' in fields) fields.played_at = cleanDate(fields.played_at);
   const { data, error } = await supabase.from('matches').update(fields).eq('id', matchId).select(PLAYER_SELECT).single();

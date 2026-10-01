@@ -1,4 +1,5 @@
 'use client';
+import { levelTag } from '@/lib/levels';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -16,7 +17,7 @@ const STATUS_ORDER = { registered: 0, checked_in: 1, no_show: 2, pending: 3, wai
 // What a referee / coordinator sees for one event: check-in and scores. No money, no phones.
 export default function StaffEventPage() {
   const { eventId } = useParams();
-  const { t } = useI18n();
+  const { t, sport } = useI18n();
   const base = `/api/staff/events/${eventId}`;
   const { data: ev, loading, reload, setData } = useLoad(() => api.get(base), [eventId]);
   const [tab, setTab] = useState(null);
@@ -104,7 +105,7 @@ export default function StaffEventPage() {
                 <div className="min-w-0 flex-1">
                   <div className="text-white truncate">{p.full_name}</div>
                   <div className="text-gray-500 text-xs">
-                    {p.status === 'waitlisted' ? t('events.waitlist') : p.status === 'pending' ? t('signup.pendingShort') : p.dupr_level != null ? `DUPR ${p.dupr_level}` : ''}
+                    {p.status === 'waitlisted' ? t('events.waitlist') : p.status === 'pending' ? t('signup.pendingShort') : p.dupr_level != null ? levelTag(p.dupr_level, ev?.sport || sport, t) : ''}
                   </div>
                 </div>
                 {p.status === 'checked_in' || p.status === 'no_show' ? (
@@ -137,10 +138,10 @@ export default function StaffEventPage() {
           <div className="flex justify-end mb-3">
             <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
           </div>
-          <MatchList matches={ev.matches} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} />
+          <MatchList matches={ev.matches} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} />
           <Modal open={showMatch} title={t('matches.add')} onClose={() => setShowMatch(false)}>
             {showMatch && (
-              <MatchForm
+              <MatchForm sport={ev?.sport}
                 players={mainList.map((p) => ({ id: p.id, name: p.full_name }))}
                 idField="event_participant_id"
                 parent={{}}

@@ -18,6 +18,8 @@ const PROBES = [
   { table: 'club_members', column: 'guest_perk', migration: '20261009090000_guest_perks_survey.sql' },
   { table: 'event_surveys', column: 'wants_join', migration: '20261009090000_guest_perks_survey.sql' },
   { table: 'club_members', column: 'phone_key', migration: '20261010090000_member_phone_link.sql' },
+  { table: 'clubs', column: 'sport', migration: '20261012090000_multi_sport_badminton.sql' },
+  { table: 'matches', column: 'games', migration: '20261012090000_multi_sport_badminton.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

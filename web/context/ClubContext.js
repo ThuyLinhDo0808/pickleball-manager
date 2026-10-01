@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
+import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 
 const ClubContext = createContext(null);
@@ -66,8 +67,8 @@ export function ClubProvider({ children }) {
 
   const selectClub = useCallback((id) => setSelectedId(id), []);
 
-  const createClub = useCallback(async ({ name, description }) => {
-    const created = await api.post('/api/clubs', { name, description: description || null });
+  const createClub = useCallback(async ({ name, description, sport }) => {
+    const created = await api.post('/api/clubs', { name, description: description || null, sport: sport || 'pickleball' });
     setClubs((list) => [{ ...created, role: 'owner' }, ...list]);
     setSelectedId(created.id);
     return created;
@@ -90,6 +91,11 @@ export function ClubProvider({ children }) {
   const club = clubs.find((c) => c.id === selectedId) || null;
   // Co-admin of someone else's club: members + finance only (see backend services/clubAccess.js).
   const isCoAdmin = club?.role === 'co_admin';
+
+  // The whole app speaks the current club's sport (DUPR vs badminton levels, balls vs shuttles...).
+  const { setSport } = useI18n();
+  const sport = club?.sport || 'pickleball';
+  useEffect(() => setSport(sport), [sport, setSport]);
 
   const value = useMemo(
     () => ({ clubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub, deleteClub }),

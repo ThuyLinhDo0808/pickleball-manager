@@ -2,6 +2,24 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const T = require('../services/tournament');
+const { clubSport, badmintonResult, sportReady } = require('../services/sport');
+
+// Scores for a tournament match / sub-match: badminton by games (best of 3 to 21, the
+// scores then hold games won), pickleball as two numbers.
+async function scoresFor(t, body) {
+  if ((await clubSport(t.club_id)) === 'badminton') {
+    try {
+      const r = badmintonResult(body.games);
+      return { s1: r.team1_score, s2: r.team2_score, games: r.games };
+    } catch (err) {
+      throw badRequest(err.message);
+    }
+  }
+  const s1 = Number(body.team1_score);
+  const s2 = Number(body.team2_score);
+  if (![s1, s2].every((n) => Number.isInteger(n) && n >= 0 && n <= 99)) throw badRequest('Scores must be whole numbers 0-99.');
+  return { s1, s2, games: null };
+}
 
 const router = express.Router();
 const FORMATS = Object.keys(T.TEAM_SIZE);
@@ -419,13 +437,11 @@ router.patch('/:tournamentId/sub-matches/:subId', async (req, res) => {
 
     let patch;
     if (req.body.clear) {
-      patch = { team1_score: null, team2_score: null, played_at: null, team1_p1: null, team1_p2: null, team2_p1: null, team2_p2: null };
+      patch = { team1_score: null, team2_score: null, played_at: null, team1_p1: null, team1_p2: null, team2_p1: null, team2_p2: null, ...((await sportReady()) ? { games: null } : {}) };
     } else {
-      const s1 = Number(req.body.team1_score);
-      const s2 = Number(req.body.team2_score);
-      if (![s1, s2].every((n) => Number.isInteger(n) && n >= 0 && n <= 99)) throw badRequest('Scores must be whole numbers 0-99.');
+      const { s1, s2, games } = await scoresFor(t, req.body);
       if (s1 === s2) throw badRequest('A sub-match needs a winner (no draws).');
-      patch = { team1_score: s1, team2_score: s2, played_at: new Date().toISOString() };
+      patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), played_at: new Date().toISOString() };
       // Line-ups are optional; when given they must come from the right roster and fit the format.
       const sides = [['team1', req.body.team1_players, fixture.team1_id], ['team2', req.body.team2_players, fixture.team2_id]];
       for (const [side, ids, teamId] of sides) {
@@ -595,13 +611,11 @@ router.patch('/:tournamentId/matches/:matchId', async (req, res) => {
 
     let patch;
     if (req.body.clear) {
-      patch = { team1_score: null, team2_score: null, winner_id: null, played_at: null };
+      patch = { team1_score: null, team2_score: null, winner_id: null, played_at: null, ...((await sportReady()) ? { games: null } : {}) };
     } else {
-      const s1 = Number(req.body.team1_score);
-      const s2 = Number(req.body.team2_score);
-      if (![s1, s2].every((n) => Number.isInteger(n) && n >= 0 && n <= 99)) throw badRequest('Scores must be whole numbers 0-99.');
+      const { s1, s2, games } = await scoresFor(t, req.body);
       if (s1 === s2) throw badRequest('Tournament matches need a winner (no draws).');
-      patch = { team1_score: s1, team2_score: s2, winner_id: s1 > s2 ? m.team1_id : m.team2_id, played_at: new Date().toISOString() };
+      patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), winner_id: s1 > s2 ? m.team1_id : m.team2_id, played_at: new Date().toISOString() };
     }
 
     let next = null;

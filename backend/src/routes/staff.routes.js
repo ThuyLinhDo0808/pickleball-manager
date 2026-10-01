@@ -1,4 +1,5 @@
 const express = require('express');
+const { clubSport } = require('../services/sport');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
@@ -222,6 +223,7 @@ staff.get('/events/:eventId', async (req, res) => {
     if (mErr) throw mErr;
     res.json({
       ...STAFF_EVENT_FIELDS(req.event),
+      sport: await clubSport(req.event.club_id), // levels / scoring follow the club's sport
       role: req.staffRole,
       can: CAN[req.staffRole],
       participants: people,
