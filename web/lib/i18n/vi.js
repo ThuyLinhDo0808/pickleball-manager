@@ -182,6 +182,8 @@ export const vi = {
     notConfirmed: 'Email này chưa được xác nhận. Bấm "Gửi lại email xác nhận" và dùng email MỚI NHẤT trong hộp thư.',
     resend: 'Gửi lại email xác nhận',
     resent: 'Đã gửi email xác nhận mới tới {email}. Hãy mở email mới nhất (email cũ không dùng được nữa).',
+    emailRateLimit: 'Hệ thống đã gửi quá nhiều email xác nhận trong 1 giờ (giới hạn của Supabase). Vui lòng thử lại sau khoảng 1 giờ.',
+    rateLimit: 'Bạn thao tác quá nhanh. Vui lòng đợi một chút rồi thử lại.',
     checkEmail: 'Đã gửi email xác nhận. Mở email, bấm xác nhận rồi quay lại đăng nhập.',
     signIn: 'Đăng nhập',
     signUp: 'Đăng ký',
