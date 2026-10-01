@@ -27,16 +27,21 @@ export default function MembersPage() {
   const [selected, setSelected] = useState([]);
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState('members');
+  const [tab, setTab] = useState('fixed');
+  const [showRequests, setShowRequests] = useState(false);
   const { data: requests, reload: reloadRequests } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/member-requests`).catch(() => []) : Promise.resolve([])),
     [club?.id]
   );
   const pending = requests || [];
 
-  // New join requests live only in the "waiting" tab until the Host approves them.
-  const rows = (members || []).filter((m) => !(m.join_requested && !m.account_verified));
-  const detailMember = rows.find((m) => m.id === detailId) || null;
+  // New join requests stay out of the lists until the Host approves them.
+  const all = (members || []).filter((m) => !(m.join_requested && !m.account_verified));
+  const fixedRows = all.filter((m) => m.member_type === 'fixed');
+  const guestRows = all.filter((m) => m.member_type !== 'fixed');
+  // Two tabs: fixed members and guests. Editing a member's type moves them to the other tab.
+  const rows = tab === 'fixed' ? fixedRows : guestRows;
+  const detailMember = all.find((m) => m.id === detailId) || null;
   const allSelected = rows.length > 0 && selected.length === rows.length;
 
   function closeAdd() {
@@ -115,31 +120,29 @@ export default function MembersPage() {
       </div>
 
       <div role="tablist" className="grid grid-cols-2 sm:inline-grid sm:grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-lg p-1 mb-3 text-sm font-semibold">
-        <button role="tab" aria-selected={tab === 'members'} onClick={() => setTab('members')}
-          className={`rounded-md px-3 py-2 ${tab === 'members' ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
-          {t('requests.tabMembers')} ({rows.length})
-        </button>
-        <button role="tab" aria-selected={tab === 'pending'} onClick={() => setTab('pending')}
-          className={`rounded-md px-3 py-2 flex items-center justify-center gap-2 ${tab === 'pending' ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
-          {t('requests.tabPending')}
-          {pending.length > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs leading-5">{pending.length}</span>}
-        </button>
+        {[['fixed', fixedRows], ['guest', guestRows]].map(([k, list]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSelected([]); }}
+            className={`rounded-md px-3 py-2 ${tab === k ? 'bg-lime-400 text-navy-950' : 'text-gray-300'}`}>
+            {t(k === 'fixed' ? 'requests.tabFixed' : 'requests.tabGuest')} ({list.length})
+          </button>
+        ))}
       </div>
 
-      {tab === 'pending' && (
+      {pending.length > 0 && (
+        <button className="card mb-3 w-full text-left border-yellow-400/50 text-sm" aria-expanded={showRequests} onClick={() => setShowRequests((v) => !v)}>
+          <span className="inline-block min-w-5 h-5 px-1.5 mr-2 rounded-full bg-red-500 text-white text-xs leading-5 text-center">{pending.length}</span>
+          <span className="text-yellow-300 font-semibold">{t('requests.banner', { n: pending.length })}</span>{' '}
+          <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
+          <span className="text-lime-400 ml-1">{showRequests ? '▲' : '▼'}</span>
+        </button>
+      )}
+
+      {pending.length > 0 && showRequests && (
         <MemberRequests club={club} requests={pending} onChanged={() => { reloadRequests(); reload(); }} />
       )}
 
-      {tab === 'members' && pending.length > 0 && (
-        <button className="card mb-3 w-full text-left border-yellow-400/50 text-sm" onClick={() => setTab('pending')}>
-          <span className="text-yellow-300 font-semibold">{t('requests.banner', { n: pending.length })}</span>{' '}
-          <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
-          <span className="text-lime-400 ml-1">→</span>
-        </button>
-      )}
-
-      {tab === 'members' && (() => {
-        const bdays = rows.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
+      {(() => {
+        const bdays = all.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
         return bdays.length > 0 ? (
           <div className="card mb-3 !py-3 text-sm border-pink-400/40">
             <span className="text-pink-300 font-semibold">🎂 {t('members.birthdaysThisMonth', { n: bdays.length })}</span>{' '}
@@ -148,7 +151,7 @@ export default function MembersPage() {
         ) : null;
       })()}
 
-      <div className={`card ${tab === 'members' ? '' : 'hidden'}`}>
+      <div className="card">
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
         {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t('members.empty')}</p>}
         {!loading && rows.length > 0 && (
@@ -176,6 +179,7 @@ export default function MembersPage() {
                     <th>{t('common.level')}</th>
                     <th>{t('members.type')}</th>
                     <th>{t('members.tier')}</th>
+                    <th className="w-14 text-center">{t('members.editCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -200,19 +204,6 @@ export default function MembersPage() {
                           }}
                         >
                           {m.full_name}
-                        </button>
-                        <button
-                          type="button"
-                          title={t('members.edit')}
-                          aria-label={`${t('members.edit')}: ${m.full_name}`}
-                          className="ml-1.5 rounded px-1 text-sm opacity-70 hover:opacity-100 hover:bg-navy-700 align-middle"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditing(true);
-                            setDetailId(m.id);
-                          }}
-                        >
-                          ✏️
                         </button>
                         {m.account_email && !m.account_verified && (
                           <span className="ml-2 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>
@@ -246,6 +237,21 @@ export default function MembersPage() {
                       <td className="text-gray-300">{m.dupr_level ?? '—'}</td>
                       <td className="text-gray-300">{m.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</td>
                       <td className="text-gray-300">{m.tier ? t(`members.${m.tier}`) : '—'}</td>
+                      <td className="text-center">
+                        <button
+                          type="button"
+                          title={t('members.edit')}
+                          aria-label={`${t('members.edit')}: ${m.full_name}`}
+                          className="rounded px-1.5 py-0.5 text-sm opacity-70 hover:opacity-100 hover:bg-navy-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditing(true);
+                            setDetailId(m.id);
+                          }}
+                        >
+                          ✏️
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
