@@ -66,7 +66,16 @@ export default function SignInPage() {
         <input className="input mb-3" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
 
         <label className="text-xs text-gray-400 mb-1 block">{t('auth.password')}</label>
-        <input className="input mb-4" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          className="input mb-1"
+          type="password"
+          required
+          minLength={mode === 'signUp' ? 8 : 6}
+          autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <p className="text-gray-500 text-xs mb-4">{mode === 'signUp' ? t('auth.passwordRule') : '\u00a0'}</p>
 
         <button type="submit" disabled={busy} className="btn-primary w-full mb-3">
           {t('auth.submit')}

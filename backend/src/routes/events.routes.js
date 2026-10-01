@@ -479,7 +479,7 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
         .eq('event_id', req.event.id)
         .eq('category', 'event_fee')
         .eq('is_voided', false)
-        .ilike('note', `Fee from ${prior.full_name}`)
+        .ilike('note', `Fee from ${String(prior.full_name).replace(/[\\%_]/g, (c) => `\\${c}`)}`)
         .limit(1)
         .maybeSingle();
       if (existing) {

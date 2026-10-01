@@ -1,6 +1,14 @@
+// Database errors: data problems (constraint / bad value / trigger rule) are shown so the
+// user can fix them; anything else (schema, permissions, network) stays in the server log
+// and the client gets a generic message + request id. Outside production, full details.
+const USER_FACING = /^(22|23|P0001)/; // data exceptions, integrity violations, raise exception
 function dbError(res, error, fallback = 'Database error') {
-  console.error(error);
-  return res.status(400).json({ error: error?.message || fallback });
+  const rid = res.req?.id;
+  console.error(rid ? `[${rid}]` : '', error);
+  if (process.env.NODE_ENV !== 'production' || USER_FACING.test(String(error?.code || ''))) {
+    return res.status(400).json({ error: error?.message || fallback });
+  }
+  return res.status(500).json({ error: `${fallback}. Please try again.`, request_id: rid });
 }
 
 function notFound(res, what = 'Resource') {

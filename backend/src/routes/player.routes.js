@@ -82,7 +82,9 @@ publicRoutes.get('/tickets/:code', async (req, res) => {
 // signs each call with the secret we registered; anything else is ignored.
 publicRoutes.post('/telegram', async (req, res) => {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!secret || req.get('X-Telegram-Bot-Api-Secret-Token') !== secret) return res.status(404).json({ error: 'Not found.' });
+  const given = Buffer.from(String(req.get('X-Telegram-Bot-Api-Secret-Token') || ''));
+  const want = Buffer.from(String(secret || ''));
+  if (!secret || given.length !== want.length || !crypto.timingSafeEqual(given, want)) return res.status(404).json({ error: 'Not found.' });
   res.json({ ok: true }); // answer Telegram right away; it retries on errors
   try {
     const msg = req.body?.message;

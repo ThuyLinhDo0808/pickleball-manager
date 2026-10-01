@@ -683,7 +683,8 @@ supabase/migrations/
 ├── 20261003090000_signup_safety_member_dates.sql        # đăng ký tài khoản không bao giờ lỗi vì trigger, ngày vào CLB, ngày sinh
 ├── 20261004090000_tournament_entry_fee.sql              # lệ phí tham gia giải
 ├── 20261005090000_tournament_fee_payments.sql           # ai đã đóng lệ phí giải (ghi thu vào quỹ CLB)
-└── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
+├── 20261006090000_player_birth_date.sql                 # người chơi nhập đủ ngày tháng năm sinh
+└── 20261008090000_security_lockdown.sql                 # khoá quyền anon/authenticated, view chạy với quyền người gọi
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -725,7 +726,10 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `SUPABASE_URL` | ✅ | URL project Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Service role key — **bí mật** |
 | `PORT` | | Cổng API (mặc định `4000`; Render tự đặt) |
-| `CORS_ORIGIN` | | Domain web được phép gọi API (mặc định `*`) |
+| `CORS_ORIGIN` | ✓ (production) | Domain web được phép gọi API, ngăn bằng dấu phẩy. Bỏ trống thì dùng `PUBLIC_WEB_URL`; không có cả hai thì cho mọi domain (chỉ nên dùng khi chạy trên máy) |
+| `NODE_ENV` | ✓ (production) | Đặt `production` trên Render: ẩn chi tiết lỗi database khỏi người dùng (vẫn ghi trong log) |
+| `TRUST_PROXY_HOPS` | | Số proxy đứng trước API (mặc định 1 — đúng với Render) để rate limit thấy IP thật |
+| `RATE_LIMIT_API` | | Số request / phút / IP cho toàn API (mặc định 600) |
 | `APP_TZ` | | Múi giờ tính ngày/kỳ (mặc định `Asia/Ho_Chi_Minh`) |
 | `ALLOW_TIER_SELF_SERVE` | | `true` cho phép Host tự đổi gói dịch vụ |
 | `RESEND_API_KEY` | | Gửi góp ý qua email (Resend) |
@@ -890,6 +894,8 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 ## 17. Nguyên tắc dữ liệu & bảo mật
 
+> Chi tiết các lớp bảo vệ, checklist khi deploy và cách báo lỗ hổng: xem **[SECURITY.md](SECURITY.md)**.
+
 - **Mỗi Host chỉ thấy dữ liệu của mình.** Mọi route backend lọc theo `host_id` lấy từ token. Database cũng bật **Row Level Security** làm lớp bảo vệ thứ hai.
 - **Service role key chỉ ở backend.** Web chỉ giữ anon key và dùng nó để đăng nhập.
 - **Quyền nhân sự theo email đã xác nhận.** Chỉ email Supabase đã xác nhận mới nhận được quyền. Trọng tài và điều phối viên không bao giờ thấy tài chính hay số điện thoại.
@@ -906,6 +912,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 | Triệu chứng | Cách xử lý |
 |---|---|
+| API trả `429 Too many requests` | Một IP gọi quá nhiều trong 1 phút (chống spam / dò mã). Đợi 1 phút. Nếu cả CLB dùng chung một wifi và bị chặn oan, tăng `RATE_LIMIT_API` trên Render. |
 | Web báo lỗi mạng / `Failed to fetch` | Kiểm tra `NEXT_PUBLIC_API_URL` và `/health` của backend. Kiểm tra `CORS_ORIGIN` có đúng domain web không. |
 | Lần mở đầu tiên trong ngày rất chậm (30–60 giây) | Render free đang "ngủ". Cài cron-job.org gọi `/health` mỗi 10 phút (xem [11.1](#111-giữ-backend-render-luôn-thức-miễn-phí)). |
 | `401 Invalid or expired session` | Đăng xuất rồi đăng nhập lại. Kiểm tra backend và web dùng **cùng** project Supabase. |

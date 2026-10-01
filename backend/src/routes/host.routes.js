@@ -1,4 +1,5 @@
 const express = require('express');
+const { webhookUrlProblem } = require('../services/safeUrl');
 const { supabase } = require('../supabase');
 const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
@@ -61,18 +62,9 @@ router.post('/feedback', async (req, res) => {
 function cleanWebhookUrl(v) {
   const raw = String(v || '').trim();
   if (!raw) return { url: null };
-  let u;
-  try {
-    u = new URL(raw);
-  } catch {
-    return { error: 'Not a valid URL.' };
-  }
-  const host = u.hostname.toLowerCase();
-  const privateHost =
-    host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal') || host === '[::1]' ||
-    /^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host);
-  if (u.protocol !== 'https:' || privateHost) return { error: 'Use a public https:// URL.' };
-  return { url: u.toString() };
+  if (raw.length > 500) return { error: 'Webhook URL is too long.' };
+  const problem = webhookUrlProblem(raw);
+  return problem ? { error: problem } : { url: raw };
 }
 
 router.get('/notifications', async (req, res) => {

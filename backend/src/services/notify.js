@@ -9,6 +9,7 @@
 //   Host webhook: users.notify_webhook_url (set on the Account page). Receives JSON,
 //     so Make / Zapier / n8n can forward it to Zalo ZNS, SMS, a Telegram group...
 const { supabase } = require('../supabase');
+const { assertPublicUrl } = require('./safeUrl');
 const { APP_TZ } = require('./stats');
 
 const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -77,10 +78,18 @@ async function sendToPlayer(participant, text) {
 }
 
 async function postWebhook(url, payload) {
+  // SSRF guard: public https only, re-checked against DNS right before sending.
+  try {
+    await assertPublicUrl(url);
+  } catch (err) {
+    console.warn('webhook blocked:', err.message);
+    return 'blocked_url';
+  }
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    redirect: 'manual', // a redirect could point at an internal address
     signal: AbortSignal.timeout(8000),
   });
   return r.ok ? 'sent' : `failed_${r.status}`;

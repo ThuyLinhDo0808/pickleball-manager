@@ -128,6 +128,7 @@ export const en = {
     created: 'Created {date}',
   },
   auth: {
+    passwordRule: 'At least 8 characters; mix letters and numbers.',
     linkExpired: 'The confirmation link has expired or was already used. Try signing in; if that fails, sign up again to get a new email.',
     checkEmail: 'We sent you a confirmation email. Confirm it, then come back and sign in.',
     signIn: 'Sign in',
