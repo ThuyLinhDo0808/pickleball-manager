@@ -46,6 +46,17 @@ export const en = {
     stars2: 'VIP quarterly plan',
     stars3: 'VIP yearly plan',
   },
+  welcome: {
+    title: 'Congratulations, you are signed up!',
+    subtitle: 'Your email is confirmed and your account is ready.',
+    step1: 'Press "Go to sign in" below.',
+    step2: 'Enter the email and password you just signed up with.',
+    step3: 'Fill in your player profile or create a club to get started.',
+    toSignIn: 'Go to sign in',
+    toSignUp: 'Sign up another account',
+    failTitle: 'Could not confirm your email',
+    signUpAgain: 'Sign up again to get a new email',
+  },
   mode: {
     label: 'Mode',
     manage: 'Manage',

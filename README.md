@@ -609,7 +609,10 @@ Host tạo buổi lặp lại hằng tuần, đặt phí khách (ví dụ 130.00
    - `Project URL`
    - `anon public` key (cho web)
    - `service_role` key (cho backend — **giữ bí mật**, không bao giờ để ở frontend)
-4. (Khuyến nghị) Vào **Authentication → URL Configuration** và đặt *Site URL* là địa chỉ web của bạn, để link trong email xác nhận trỏ đúng.
+4. **Bắt buộc khi deploy:** vào **Authentication → URL Configuration**:
+   - *Site URL*: địa chỉ web thật, ví dụ `https://ten-app.vercel.app` (nếu để `http://localhost:3000`, link trong email xác nhận sẽ mở localhost).
+   - *Redirect URLs*: thêm `https://ten-app.vercel.app/**` (và `http://localhost:3000/**` nếu chạy trên máy).
+   Bấm link trong email sẽ mở trang **/welcome** ("Chúc mừng bạn đã đăng ký thành công") có nút về trang đăng nhập. Có thể đặt thêm biến `NEXT_PUBLIC_SITE_URL` cho web để cố định địa chỉ này.
 
 ### Bước 2 — Backend
 ```bash

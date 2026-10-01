@@ -25,6 +25,11 @@ export default function SignInPage() {
     if (!loading && user) router.replace(nextPath());
   }, [loading, user, router]);
 
+  // /sign-in?mode=signUp opens the sign-up form (link on the welcome page).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('mode') === 'signUp') setMode('signUp');
+  }, []);
+
   // Coming back from an expired / already-used confirmation link (#error_code=otp_expired…).
   useEffect(() => {
     const h = new URLSearchParams(window.location.hash.slice(1));

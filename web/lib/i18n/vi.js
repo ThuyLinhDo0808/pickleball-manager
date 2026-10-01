@@ -46,6 +46,17 @@ export const vi = {
     stars2: 'VIP gói quý',
     stars3: 'VIP gói năm',
   },
+  welcome: {
+    title: 'Chúc mừng bạn đã đăng ký thành công!',
+    subtitle: 'Email của bạn đã được xác nhận. Tài khoản đã sẵn sàng sử dụng.',
+    step1: 'Bấm nút "Về trang đăng nhập" bên dưới.',
+    step2: 'Nhập email và mật khẩu bạn vừa đăng ký.',
+    step3: 'Hoàn thiện hồ sơ người chơi hoặc tạo CLB để bắt đầu.',
+    toSignIn: 'Về trang đăng nhập',
+    toSignUp: 'Đăng ký tài khoản khác',
+    failTitle: 'Không xác nhận được email',
+    signUpAgain: 'Đăng ký lại để nhận email mới',
+  },
   mode: {
     label: 'Chế độ',
     manage: 'Quản lý',
