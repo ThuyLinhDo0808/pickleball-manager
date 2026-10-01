@@ -31,7 +31,9 @@ export const STATUS_DOT = {
 // Icon per kind of activity (tournaments come from their own table).
 export const KIND_ICON = { weekly: '🗓', game: '🏓', training: '🎯', meeting: '👥', challenge: '⚔️', tournament: '🏆' };
 export const hrefOf = (e) => e.href || `/events/${e.id}`;
-const Kind = ({ e }) => (KIND_ICON[e.kind] ? <span aria-hidden="true">{KIND_ICON[e.kind]} </span> : null);
+// A badminton club's games show a shuttlecock instead of the paddle.
+const kindIcon = (e) => (e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]);
+const Kind = ({ e }) => (kindIcon(e) ? <span aria-hidden="true">{kindIcon(e)} </span> : null);
 
 const HOUR_PX = 48; // height of one hour in week/day views
 
@@ -204,7 +206,10 @@ function DayActions({ e, onChanged }) {
   const [busy, setBusy] = useState(false);
   if (e.kind === 'tournament') return null;
   const people = Number(e.main_count || 0) + Number(e.waitlist_count || 0);
-  const canDelete = people === 0;
+  // Past sessions (done, cancelled or dated before today) can always be deleted — after a
+  // second confirmation listing what goes with them. Upcoming ones with sign-ups: cancel.
+  const past = e.status === 'completed' || e.status === 'cancelled' || e.event_date < todayYmd();
+  const canDelete = people === 0 || past;
   const canCancel = !canDelete && e.status !== 'cancelled' && e.status !== 'completed';
 
   async function run(fn, ask) {
@@ -214,7 +219,14 @@ function DayActions({ e, onChanged }) {
       await fn();
       onChanged?.();
     } catch (err) {
-      if (err.payload?.code === 'has_activity' && window.confirm(t('manage.deleteForceAsk', { people: 0, money: err.payload.transactions }))) {
+      const p = err.payload || {};
+      const again =
+        p.code === 'past_has_data'
+          ? t('manage.deletePastAsk', { title: e.title, people: p.participants, matches: p.matches, money: p.transactions })
+          : p.code === 'has_activity'
+            ? t('manage.deleteForceAsk', { people: p.participants, money: p.transactions })
+            : null;
+      if (again && window.confirm(again)) {
         try {
           await api.del(`/api/events/${e.id}?force=1`);
           onChanged?.();
@@ -277,6 +289,7 @@ function DayView({ date, events, onPickDay, onChanged }) {
                 {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : t('cal.allDay')}
               </div>
               <Link href={hrefOf(e)} className="text-white font-medium hover:text-lime-400"><Kind e={e} />{e.title}</Link>
+              {e.club_name && <div className="text-sky-300 text-xs">{e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}</div>}
               <div className="text-gray-400 text-xs">
                 {[e.location || '—', e.courts && `${e.courts} ${t('events.courts').toLowerCase()}`, e.kind && t(`kind.${e.kind}`), t(`events.status_${e.status}`)].filter(Boolean).join(' · ')}
               </div>

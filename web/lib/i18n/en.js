@@ -662,6 +662,7 @@ export const en = {
     balance: 'Balance',
   },
   cal: {
+    allClubs: 'All clubs',
     list: 'List',
     month: 'Month',
     week: 'Week',
@@ -1122,6 +1123,7 @@ export const en = {
     hint: 'The backend is newer than the database. Open Supabase → SQL Editor, paste the file below and press Run (README section 11.2). Until then event sign-up may fail.',
   },
   manage: {
+    deletePastAsk: 'Please confirm again: "{title}" is over and still has data — {people} sign-ups, {matches} matches, {money} money records. Deleting removes all of it (money records leave the fund). Delete anyway?',
     cancelAskN: 'Cancel "{title}"? The {n} people signed up will be notified (Telegram/webhook). The list and money records are kept; refund paid guests.',
     cancelHint: '{n} people have signed up, so it can’t be deleted: cancel it to notify them.',
     hasSignups: 'People have signed up, so it can’t be deleted. Press "Cancel": they are notified and the history is kept.',

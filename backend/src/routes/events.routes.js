@@ -3,7 +3,7 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
-const { normalizePhone, findClubMemberByPhone } = require('../services/memberships');
+const { normalizePhone, findClubMemberByPhone, todayYmd } = require('../services/memberships');
 const {
   ATTENDANCE_ACTIONS,
   setAttendance,
@@ -327,18 +327,29 @@ router.patch('/:eventId', async (req, res) => {
 
 // Deleting wipes the event's participants and money records too. When there are any,
 // the Host must confirm (?force=1); "Cancelled" is the way to keep the history.
-// Anyone signed up (paid or not): never deleted — cancel it so they are told and the
-// history stays. Only money records (e.g. a court expense) can be deleted with ?force=1.
+// Upcoming session with people signed up: never deleted — cancel it so they are told.
+// A past session (completed / cancelled / its date gone) can be deleted to tidy up the
+// history, but only once the Host confirmed (?force=1) after seeing what goes with it.
+// Otherwise money records alone also need ?force=1.
 router.delete('/:eventId', async (req, res) => {
-  const [{ count: people }, { count: money }] = await Promise.all([
+  const [{ count: people }, { count: money }, { count: matches }] = await Promise.all([
     supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).neq('status', 'cancelled'),
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false),
+    supabase.from('matches').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id),
   ]);
-  if (people > 0) {
+  const past = ['completed', 'cancelled'].includes(req.event.status) || req.event.event_date < todayYmd();
+  const force = req.query.force === '1';
+  if (people > 0 && !past) {
     return res.status(409).json({ error: 'People have signed up for this event: cancel it instead (they will be notified).', code: 'has_signups', participants: people });
   }
-  if (money > 0 && req.query.force !== '1') {
-    return res.status(409).json({ error: 'This event has money records.', code: 'has_activity', participants: 0, transactions: money });
+  if (people + money + matches > 0 && !force) {
+    return res.status(409).json({
+      error: 'This event has sign-ups, matches or money records: confirm to delete them too.',
+      code: past ? 'past_has_data' : 'has_activity',
+      participants: people || 0,
+      transactions: money || 0,
+      matches: matches || 0,
+    });
   }
   const { error } = await supabase.from('events').delete().eq('id', req.event.id);
   if (error) return dbError(res, error);

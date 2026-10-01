@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import EventShareCard from '@/components/EventShareCard';
@@ -17,6 +17,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
+import { useClubs } from '@/context/ClubContext';
 import { exportEventFinance } from '@/lib/exportExcel';
 
 export default function EventDetailPage() {
@@ -27,6 +28,12 @@ export default function EventDetailPage() {
   const [showQr, setShowQr] = useState(false);
 
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
+  // Opened from the all-clubs calendar: switch to the event's club so the page speaks its
+  // sport (levels, scoring, shuttles) and imports from the right member list.
+  const { clubs, selectClub } = useClubs();
+  useEffect(() => {
+    if (event?.club_id && club?.id !== event.club_id && clubs.some((c) => c.id === event.club_id)) selectClub(event.club_id);
+  }, [event?.club_id, club?.id, clubs, selectClub]);
   const { data: participants, reload: reloadParticipants } = useLoad(
     () => api.get(`/api/events/${eventId}/participants`),
     [eventId]
