@@ -179,6 +179,9 @@ export const vi = {
   },
   auth: {
     linkExpired: 'Link xác nhận đã hết hạn hoặc đã được dùng. Hãy thử đăng nhập; nếu chưa được, bấm Đăng ký lại để nhận email mới.',
+    notConfirmed: 'Email này chưa được xác nhận. Bấm "Gửi lại email xác nhận" và dùng email MỚI NHẤT trong hộp thư.',
+    resend: 'Gửi lại email xác nhận',
+    resent: 'Đã gửi email xác nhận mới tới {email}. Hãy mở email mới nhất (email cũ không dùng được nữa).',
     checkEmail: 'Đã gửi email xác nhận. Mở email, bấm xác nhận rồi quay lại đăng nhập.',
     signIn: 'Đăng nhập',
     signUp: 'Đăng ký',
