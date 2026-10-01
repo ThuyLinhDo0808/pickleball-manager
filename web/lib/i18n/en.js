@@ -179,6 +179,9 @@ export const en = {
   },
   auth: {
     linkExpired: 'The confirmation link has expired or was already used. Try signing in; if that fails, sign up again to get a new email.',
+    notConfirmed: 'This email is not confirmed yet. Press "Resend confirmation email" and use the NEWEST email in your inbox.',
+    resend: 'Resend confirmation email',
+    resent: 'A new confirmation email was sent to {email}. Open the newest one (older links no longer work).',
     checkEmail: 'We sent you a confirmation email. Confirm it, then come back and sign in.',
     signIn: 'Sign in',
     signUp: 'Sign up',

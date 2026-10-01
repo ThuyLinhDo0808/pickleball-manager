@@ -11,7 +11,8 @@ function nextPath() {
 }
 
 export default function SignInPage() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, resendConfirmation } = useAuth();
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const { t } = useI18n();
   const router = useRouter();
   const [mode, setMode] = useState('signIn');
@@ -50,13 +51,35 @@ export default function SignInPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function resend() {
+    setBusy(true);
+    setError('');
+    try {
+      const { error: err } = await resendConfirmation(email);
+      if (err) throw err;
+      setUnconfirmed(false);
+      setInfo(t('auth.resent', { email }));
+    } catch (err) {
+      setError(err.message || t('common.error'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
+    setUnconfirmed(false);
     setBusy(true);
     try {
       const { data, error: authErr } = mode === 'signIn' ? await signIn(email, password) : await signUp(email, password);
-      if (authErr) throw authErr;
+      if (authErr) {
+        if (authErr.code === 'email_not_confirmed' || /not confirmed/i.test(authErr.message || '')) {
+          setUnconfirmed(true);
+          throw new Error(t('auth.notConfirmed'));
+        }
+        throw authErr;
+      }
       if (mode === 'signUp' && !data?.session) {
         setInfo(t('auth.checkEmail'));
         return;
@@ -77,6 +100,11 @@ export default function SignInPage() {
 
         {info && <div className="bg-lime-400/10 border border-lime-400/40 text-lime-200 text-sm rounded-lg p-2 mb-3">{info}</div>}
         {error && <div className="bg-red-900/40 border border-red-700 text-red-200 text-sm rounded-lg p-2 mb-3">{error}</div>}
+        {(unconfirmed || info === t('auth.checkEmail')) && (
+          <button type="button" className="text-sm text-lime-400 underline mb-3" disabled={busy || !email} onClick={resend}>
+            {t('auth.resend')}
+          </button>
+        )}
 
         <label className="text-xs text-gray-400 mb-1 block">{t('auth.email')}</label>
         <input className="input mb-3" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

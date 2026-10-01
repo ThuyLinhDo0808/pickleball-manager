@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabaseClient';
 
 const AuthContext = createContext(null);
 
+const welcomeUrl = () => `${(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/+$/, '')}/welcome`;
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
 
@@ -22,12 +24,9 @@ export function AuthProvider({ children }) {
     // follows it when the URL is in Authentication → URL Configuration → Redirect URLs;
     // otherwise it falls back to the Site URL (e.g. localhost). NEXT_PUBLIC_SITE_URL can pin
     // the public address.
-    signUp: (email, password) =>
-      supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/+$/, '')}/welcome` },
-      }),
+    signUp: (email, password) => supabase.auth.signUp({ email, password, options: { emailRedirectTo: welcomeUrl() } }),
+    // A fresh confirmation email (the old link may be used up, expired or point elsewhere).
+    resendConfirmation: (email) => supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: welcomeUrl() } }),
     signOut: () => supabase.auth.signOut(),
   };
 
