@@ -44,7 +44,16 @@ router.get('/', async (req, res) => {
   const { club_id, event_id } = req.query;
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), 1000);
   let query = supabase.from('matches').select(PLAYER_SELECT).order('played_at', { ascending: false }).limit(limit);
-  if (club_id) {
+  if (req.query.scope === 'xeve') {
+    // Xé Vé: matches of the host's own games (events outside any club), with their game.
+    query = supabase
+      .from('matches')
+      .select(`${PLAYER_SELECT}, events!inner(id, title, event_date, start_time, location, host_id, club_id)`)
+      .eq('events.host_id', req.hostId)
+      .is('events.club_id', null)
+      .order('played_at', { ascending: false })
+      .limit(limit);
+  } else if (club_id) {
     if (!isUuid(club_id)) return res.status(400).json({ error: 'invalid club_id' });
     if (!(await ownsParent(req.hostId, { club_id }))) return notFound(res, 'Club');
     // Include matches recorded inside this club's sessions (they count in rankings too).
