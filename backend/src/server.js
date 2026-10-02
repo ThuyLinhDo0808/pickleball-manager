@@ -10,6 +10,7 @@ const transactionsRoutes = require('./routes/transactions.routes');
 const hostRoutes = require('./routes/host.routes');
 const { staffGrantsRoutes, staffRoutes } = require('./routes/staff.routes');
 const tournamentsRoutes = require('./routes/tournaments.routes');
+const leaderboardRoutes = require('./routes/leaderboard.routes');
 const { publicRoutes, playerRoutes } = require('./routes/player.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const { schemaStatus } = require('./services/schemaCheck');
@@ -40,6 +41,7 @@ app.use('/api/host', requireAuth, hostRoutes);
 app.use('/api/staff-grants', requireAuth, staffGrantsRoutes);
 app.use('/api/staff', requireAuth, staffRoutes);
 app.use('/api/tournaments', requireAuth, tournamentsRoutes);
+app.use('/api/leaderboard', requireAuth, leaderboardRoutes);
 app.use('/api/player', requireAuth, playerRoutes);
 app.use('/api/analytics', requireAuth, analyticsRoutes);
 app.use('/api/public', publicRoutes); // no login: club join pages

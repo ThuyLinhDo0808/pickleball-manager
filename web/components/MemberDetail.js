@@ -90,7 +90,7 @@ function RegisterForm({ club, member, plans, onDone }) {
       <p className="col-span-2 text-gray-500 text-xs -mt-2">{t('membership.countHint')}</p>
       <div className="col-span-2">
         <label className="text-xs text-gray-400">{t('membership.amount')}</label>
-        <input className="input" type="number" inputMode="numeric" min="0" step="1000" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+        <input className="input" type="number" inputMode="numeric" min="0" step="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
       </div>
       <label className="col-span-2 flex items-center gap-2 text-sm text-gray-200">
         <input type="checkbox" checked={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.checked })} />

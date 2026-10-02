@@ -59,7 +59,6 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
         { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
-        { href: '/club/matches', key: 'nav.matches', icon: 'matches' },
         { href: '/analytics', key: 'nav.analyticsCharts', icon: 'chart' },
       ],
     },
@@ -86,6 +85,8 @@ const NAV_BY_WORKSPACE = {
   xeve: [
     { href: '/events', key: 'nav.kevents', icon: 'ticket', exclude: ['/events/create'] },
     { href: '/events/create', key: 'nav.createGame', icon: 'plans', exact: true },
+    { href: '/xeve/matches', key: 'nav.matches', icon: 'matches' },
+    { href: '/leaderboard', key: 'nav.globalRank', icon: 'rankings' },
     { href: '/analytics', key: 'nav.analytics', icon: 'chart' },
     {
       key: 'nav.groupFinance',

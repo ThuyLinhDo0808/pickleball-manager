@@ -70,7 +70,7 @@ function MoveForm({ club, item, kind, onDone, onCancel }) {
         <>
           <div className="col-span-2">
             <label className="text-xs text-gray-400">{t('inventory.unitCost')}</label>
-            <input className="input" type="number" inputMode="numeric" required min="0" step="1000" value={f.unit_cost} onChange={set('unit_cost')} />
+            <input className="input" type="number" inputMode="numeric" required min="0" step="1" value={f.unit_cost} onChange={set('unit_cost')} />
           </div>
           {f.quantity && f.unit_cost && (
             <p className="col-span-2 text-gray-300 text-sm">= {formatVnd(Number(f.quantity) * Number(f.unit_cost))}</p>

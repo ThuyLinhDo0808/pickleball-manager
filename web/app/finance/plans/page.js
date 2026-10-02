@@ -87,7 +87,7 @@ export default function PlansPage() {
               </div>
               <div className="min-w-0">
                 <label htmlFor="pe-price" className="text-xs text-gray-400">{t('plans.price')}</label>
-                <input id="pe-price" className="input" required type="number" inputMode="numeric" min="0" step="1000" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value })} />
+                <input id="pe-price" className="input" required type="number" inputMode="numeric" min="0" step="1" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value })} />
               </div>
               <div className="min-w-0">
                 <label htmlFor="pe-sessions" className="text-xs text-gray-400">{t('plans.sessions')}</label>
@@ -119,7 +119,7 @@ export default function PlansPage() {
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('plans.price')}</label>
-          <input className="input" required type="number" inputMode="numeric" min="0" step="1000" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+          <input className="input" required type="number" inputMode="numeric" min="0" step="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('plans.sessions')}</label>

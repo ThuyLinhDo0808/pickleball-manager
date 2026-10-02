@@ -79,7 +79,7 @@ function AddEntry({ club, onDone }) {
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('fin.amount')}</label>
-        <input className="input" type="number" inputMode="numeric" min="1" step="1000" required value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+        <input className="input" type="number" inputMode="numeric" min="1" step="1" required value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('fin.date')}</label>
