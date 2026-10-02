@@ -8,6 +8,7 @@ import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
 import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
 import VipBadge from '@/components/VipBadge';
+import { MemberExtraFields, RankBadge, playDurationText } from '@/components/MemberExtras';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -15,7 +16,7 @@ import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
 import { dmy, isBirthdayMonth, my, tenureLabel } from '@/lib/memberDates';
 
-const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '' });
+const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '', real_rank: '' });
 
 export default function MembersPage() {
   const { t, sport } = useI18n();
@@ -184,6 +185,9 @@ export default function MembersPage() {
                     <th>{t('members.birthDate')}</th>
                     <th>{t('members.joined')}</th>
                     <th>{t('common.level')}</th>
+                    <th>{t('memberX.district')}</th>
+                    <th>{t('memberX.playDuration')}</th>
+                    <th>{t('memberX.realRank')}</th>
                     {isGuestTab ? (
                       <>
                         <th>{t('guests.played')}</th>
@@ -254,6 +258,9 @@ export default function MembersPage() {
                         ) : '—'}
                       </td>
                       <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
+                      <td className="text-gray-300 whitespace-nowrap">{m.district || '—'}</td>
+                      <td className="text-gray-300 whitespace-nowrap">{playDurationText(m.play_duration, t) || '—'}</td>
+                      <td className="text-center"><RankBadge rank={m.real_rank} /></td>
                       {isGuestTab ? (
                         <>
                           <td className="text-gray-300 whitespace-nowrap">
@@ -344,6 +351,7 @@ export default function MembersPage() {
               <option value="standard">{t('members.standard')}</option>
             </select>
           </div>
+          <MemberExtraFields idPrefix="add" value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
           {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
           <div className="col-span-2 flex gap-2 pt-2">
             <button type="button" className="btn-secondary flex-1" onClick={closeAdd}>{t('common.cancel')}</button>
