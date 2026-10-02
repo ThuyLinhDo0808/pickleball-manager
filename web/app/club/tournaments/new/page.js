@@ -131,7 +131,7 @@ export default function NewTournamentPage() {
           <div className="col-span-2 md:col-span-4 rounded-lg border border-lime-400/30 bg-lime-400/5 p-3 grid grid-cols-1 sm:grid-cols-[14rem_1fr] gap-x-4 gap-y-1 items-center">
             <div className="min-w-0">
               <label className="text-xs text-lime-300 font-semibold">💰 {t('tournaments.entryFee')}</label>
-              <input className="input" type="number" inputMode="numeric" min="0" step="10000" placeholder="0" value={info.entry_fee} onChange={(e) => setI({ entry_fee: e.target.value })} />
+              <input className="input" type="number" inputMode="numeric" min="0" step="1" placeholder="0" value={info.entry_fee} onChange={(e) => setI({ entry_fee: e.target.value })} />
             </div>
             <p className="text-gray-400 text-xs">{t('tournaments.entryFeeHint')}</p>
           </div>

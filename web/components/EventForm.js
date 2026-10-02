@@ -194,7 +194,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <input className="input" type="number" inputMode="numeric" min="1" max="500" value={f.slots} onChange={(e) => set({ slots: e.target.value })} />
           </Field>
           <Field label={t('create.fee')}>
-            <input className="input" type="number" inputMode="numeric" min="0" step="1000" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
+            <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
           </Field>
           <Field label={t('events.levelMin')}>
             <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
