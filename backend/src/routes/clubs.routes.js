@@ -692,10 +692,15 @@ router.get('/:clubId/stats', async (req, res) => {
   const bounds = periodBounds(period, date);
   const inRange = (ymd) => !bounds || (ymd >= bounds.from && ymd <= bounds.to);
 
+  // Two leaderboards: the club community (fixed members) and the guests. No group = all.
+  const group = ['club', 'guest'].includes(req.query.group) ? req.query.group : null;
   try {
-    const members = await fetchAll(() =>
-      supabase.from('club_members').select('id, full_name, gender').eq('club_id', req.club.id).order('id')
+    const allMembers = await fetchAll(() =>
+      supabase.from('club_members').select('id, full_name, gender, member_type').eq('club_id', req.club.id).order('id')
     );
+    const members = allMembers.filter((m) => !group || (group === 'club' ? m.member_type === 'fixed' : m.member_type !== 'fixed'));
+    const linkGuests = await guestsReady(); // guests in sessions are linked by guest_member_id
+    const personOf = (p) => p?.source_club_member_id || (linkGuests ? p?.guest_member_id : null) || null;
 
     // Pad the UTC window by a day each side, then filter exactly on the local date.
     const matches = (
@@ -716,7 +721,7 @@ router.get('/:clubId/stats', async (req, res) => {
       await fetchAll(() => {
         let q = supabase
           .from('matches')
-          .select('id, played_at, team1_score, team2_score, events!inner(club_id), match_players(team, event_participants(source_club_member_id))')
+          .select(`id, played_at, team1_score, team2_score, events!inner(club_id), match_players(team, event_participants(source_club_member_id${linkGuests ? ', guest_member_id' : ''}))`)
           .eq('events.club_id', req.club.id)
           .order('id');
         if (bounds) q = q.gte('played_at', `${shiftDay(bounds.from, -1)}T00:00:00Z`).lte('played_at', `${shiftDay(bounds.to, 1)}T23:59:59Z`);
@@ -726,16 +731,15 @@ router.get('/:clubId/stats', async (req, res) => {
       .filter((m) => inRange(localDate(m.played_at)))
       .map((m) => ({
         ...m,
-        match_players: m.match_players.map((p) => ({ team: p.team, club_member_id: p.event_participants?.source_club_member_id })),
+        match_players: m.match_players.map((p) => ({ team: p.team, club_member_id: personOf(p.event_participants) })),
       }));
     matches.push(...sessionMatches);
 
     const checkIns = await fetchAll(() => {
       let q = supabase
         .from('event_participants')
-        .select('source_club_member_id, event_id, events!inner(club_id, event_date)')
+        .select(`source_club_member_id${linkGuests ? ', guest_member_id' : ''}, event_id, events!inner(club_id, event_date)`)
         .eq('status', 'checked_in')
-        .not('source_club_member_id', 'is', null)
         .eq('events.club_id', req.club.id)
         .order('id');
       if (bounds) q = q.gte('events.event_date', bounds.from).lte('events.event_date', bounds.to);
@@ -744,18 +748,23 @@ router.get('/:clubId/stats', async (req, res) => {
     const attendance = {};
     const seen = new Set();
     for (const c of checkIns) {
-      const key = `${c.source_club_member_id}:${c.event_id}`;
+      const who = personOf(c);
+      if (!who) continue;
+      const key = `${who}:${c.event_id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      attendance[c.source_club_member_id] = (attendance[c.source_club_member_id] || 0) + 1;
+      attendance[who] = (attendance[who] || 0) + 1;
     }
 
     const rankings = aggregate(matches, members);
+    const ids = new Set(members.map((m) => m.id));
     res.json({
       period,
       date,
+      group,
       range: bounds,
-      match_count: matches.length,
+      // matches with a score that someone of this leaderboard played
+      match_count: matches.filter((m) => isScored(m) && m.match_players.some((p) => ids.has(p.club_member_id))).length,
       rankings,
       awards: awards(rankings, attendance, members, minMatches),
     });
@@ -1097,10 +1106,11 @@ router.get('/:clubId/attendance', async (req, res) => {
     const isFixed = member?.member_type === 'fixed';
     const key = member ? `m:${member.id}` : `p:${String(p.phone || '').replace(/\D/g, '').slice(-9) || p.full_name.trim().toLowerCase()}`;
     if (!isFixed) participantGuest.set(p.id, key);
-    // Cancelled in time doesn't count at all; a late cancel counts as absent.
+    // Cancelled in time doesn't count at all. A late cancel counts as a session (red, and
+    // it used a pass session); a no-show is marked absent but not counted.
     if (p.status === 'cancelled' && !p.late_cancel) continue;
-    const state = p.status === 'checked_in' ? 'attended' : p.status === 'registered' ? 'registered' : 'absent';
-    const locked = p.status === 'cancelled'; // a late cancel stays "absent"
+    const state = p.status === 'checked_in' ? 'attended' : p.status === 'registered' ? 'registered' : p.status === 'cancelled' ? 'late' : 'absent';
+    const locked = p.status === 'cancelled'; // a late cancel stays as it is
     if (isFixed) {
       cells.push({ event_id: p.event_id, club_member_id: memberId, state, participant_id: p.id, locked });
       continue;
@@ -1126,7 +1136,8 @@ router.get('/:clubId/attendance', async (req, res) => {
       g.participants[p.event_id] = { participant_id: p.id, locked };
     }
   }
-  for (const g of guestRows.values()) g.sessions = Object.values(g.events).filter((s) => s === 'attended').length;
+  // Sessions = checked in + cancelled too late (both count).
+  for (const g of guestRows.values()) g.sessions = Object.values(g.events).filter((s) => s === 'attended' || s === 'late').length;
 
   // Matches the guests played: inside the period's sessions, and club matches in the period.
   const pids = [...participantGuest.keys()];

@@ -48,11 +48,37 @@ function EditCell({ info, state, changed, onToggle }) {
   );
 }
 
+// Green ✓ = checked in, red ✓ = cancelled too late (both count as a session);
+// grey v = marked absent (not counted); · = signed up, not checked in yet.
+// A cancel in time leaves the cell empty.
 function Mark({ state }) {
-  if (state === 'attended') return <span className="text-lime-400 font-bold">x</span>;
-  if (state === 'absent') return <span className="text-red-400 font-bold" title="vắng / hủy muộn">x</span>;
+  const { t } = useI18n();
+  if (state === 'attended') return <span className="inline-block w-4 h-4 rounded-sm bg-lime-400 text-navy-950 text-[11px] leading-4 font-bold" title={t('stats.state_attended')}>✓</span>;
+  if (state === 'late') return <span className="inline-block w-4 h-4 rounded-sm bg-red-500 text-white text-[11px] leading-4 font-bold" title={t('stats.state_late')}>✓</span>;
+  if (state === 'absent') return <span className="text-gray-400 text-xs" title={t('stats.state_absent')}>v</span>;
   if (state === 'registered') return <span className="text-gray-500">·</span>;
   return null;
+}
+
+// Sessions as a bar split into one part per session of the period: green parts for
+// check-ins, red for late cancels, the rest empty. Many sessions (a year) shrink the
+// parts into one continuous bar.
+function SessionBar({ attended = 0, late = 0, total }) {
+  const { t } = useI18n();
+  const n = Math.max(total, attended + late, 1);
+  const parts = Array.from({ length: n }, (_, i) => (i < attended ? 'bg-lime-400' : i < attended + late ? 'bg-red-500' : 'bg-navy-600'));
+  return (
+    <div className="flex items-center gap-2" title={t('stats.barTitle', { n: attended + late, total: n, late })}>
+      <span className="tabular-nums text-white font-semibold w-12 text-right whitespace-nowrap">
+        {attended + late}<span className="text-gray-500 font-normal">/{n}</span>
+      </span>
+      <span className={`flex h-2.5 w-32 shrink-0 ${n <= 31 ? 'gap-0.5' : ''}`}>
+        {parts.map((c, i) => (
+          <span key={i} className={`flex-1 first:rounded-l last:rounded-r ${n <= 31 ? 'rounded-sm' : ''} ${c}`} />
+        ))}
+      </span>
+    </div>
+  );
 }
 
 // Excel-friendly CSV (UTF-8 with BOM so Vietnamese names open correctly).
@@ -95,11 +121,15 @@ export default function AttendancePage() {
     const cell = new Map(data.cells.map((c) => [`${c.club_member_id}|${c.event_id}`, c.state]));
     const cellInfo = new Map(data.cells.map((c) => [`${c.club_member_id}|${c.event_id}`, c]));
     const evDate = new Map(data.events.map((e) => [e.id, e.event_date]));
+    // Sessions that count: checked in, or cancelled too late.
+    const counts = (st) => st === 'attended' || st === 'late';
     const attended = {};
+    const late = {};
     const perMonth = {};
     for (const c of data.cells) {
-      if (c.state !== 'attended') continue;
+      if (!counts(c.state)) continue;
       attended[c.club_member_id] = (attended[c.club_member_id] || 0) + 1;
+      if (c.state === 'late') late[c.club_member_id] = (late[c.club_member_id] || 0) + 1;
       const k = `${c.club_member_id}|${monthKey(evDate.get(c.event_id))}`;
       perMonth[k] = (perMonth[k] || 0) + 1;
     }
@@ -108,7 +138,8 @@ export default function AttendancePage() {
     if (onlyActive) members = members.filter((m) => m.is_active || withCells.has(m.id));
     members.sort((a, b) => (sort === 'count' ? (attended[b.id] || 0) - (attended[a.id] || 0) : 0) || a.full_name.localeCompare(b.full_name, 'vi'));
     const months = [...new Set(data.events.map((e) => monthKey(e.event_date)))];
-    const guestMonth = (g, k) => Object.entries(g.events).filter(([id, st]) => st === 'attended' && monthKey(evDate.get(id)) === k).length;
+    const guestMonth = (g, k) => Object.entries(g.events).filter(([id, st]) => counts(st) && monthKey(evDate.get(id)) === k).length;
+    const guestLate = (g) => Object.values(g.events).filter((st) => st === 'late').length;
 
     // Guests: one row per person (the server merges by guest record / phone), each with
     // sessions played, matches played and won with the club.
@@ -135,7 +166,7 @@ export default function AttendancePage() {
       .sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi') || a.starts_on.localeCompare(b.starts_on));
     const carry = passes.filter((p) => p.ended && p.sessions_included > 0 && p.status === 'paid').reduce((s, p) => s + p.sessions_remaining, 0);
 
-    return { missed, cell, cellInfo, attended, perMonth, members, months, guestMonth, guests, guestsByCount, guestEvents, perEvent, maxCount, passes, carry };
+    return { late, guestLate, missed, cell, cellInfo, attended, perMonth, members, months, guestMonth, guests, guestsByCount, guestEvents, perEvent, maxCount, passes, carry };
   }, [data, sort, onlyActive]);
 
   const evDay = (id) => dm(data.events.find((e) => e.id === id)?.event_date || '');
@@ -185,13 +216,13 @@ export default function AttendancePage() {
             ...view.members.map((m, i) => [
               i + 1,
               m.full_name,
-              ...ev.map((e) => ({ attended: 'x', absent: 'vắng', registered: 'đăng ký' })[view.cell.get(`${m.id}|${e.id}`)] || ''),
+              ...ev.map((e) => ({ attended: 'x', late: 'hủy muộn', absent: 'vắng', registered: 'đăng ký' })[view.cell.get(`${m.id}|${e.id}`)] || ''),
               view.attended[m.id] || 0,
             ]),
             ...view.guests.map((g) => [
               '',
               `${g.full_name} (${t('members.guest')})`,
-              ...ev.map((e) => ({ attended: 'x', absent: 'vắng', registered: 'đăng ký' })[g.events[e.id]] || ''),
+              ...ev.map((e) => ({ attended: 'x', late: 'hủy muộn', absent: 'vắng', registered: 'đăng ký' })[g.events[e.id]] || ''),
               g.sessions,
             ]),
             ['', t('stats.membersRow'), ...ev.map((e) => view.perEvent(e.id).members), ''],
@@ -320,10 +351,7 @@ export default function AttendancePage() {
                             <td key={k} className="text-center tabular-nums text-gray-200">{view.perMonth[`${m.id}|${k}`] || ''}</td>
                           ))}
                       <td>
-                        <div className="flex items-center gap-2">
-                          <span className="tabular-nums text-white font-semibold w-6 text-right">{view.attended[m.id] || 0}</span>
-                          <span className="h-2 rounded bg-lime-400/70" style={{ width: `${((view.attended[m.id] || 0) / view.maxCount) * 5}rem` }} />
-                        </div>
+                        <SessionBar attended={(view.attended[m.id] || 0) - (view.late[m.id] || 0)} late={view.late[m.id] || 0} total={data.events.length} />
                       </td>
                     </tr>
                   ))}
@@ -359,10 +387,7 @@ export default function AttendancePage() {
                             <td key={k} className="text-center tabular-nums text-gray-200">{view.guestMonth(g, k) || ''}</td>
                           ))}
                       <td>
-                        <div className="flex items-center gap-2">
-                          <span className="tabular-nums text-white font-semibold w-6 text-right">{g.sessions}</span>
-                          <span className="h-2 rounded bg-sky-400/70" style={{ width: `${(g.sessions / view.maxCount) * 5}rem` }} />
-                        </div>
+                        <SessionBar attended={g.sessions - view.guestLate(g)} late={view.guestLate(g)} total={data.events.length} />
                       </td>
                     </tr>
                   ))}
