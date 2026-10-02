@@ -4,7 +4,17 @@ import { supabase } from '@/lib/supabaseClient';
 
 const AuthContext = createContext(null);
 
-const welcomeUrl = () => `${(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/+$/, '')}/welcome`;
+// Only the origin of NEXT_PUBLIC_SITE_URL is used, so a value copied from Supabase's
+// Redirect URLs (".../**") or with a trailing path still gives a valid link.
+function siteOrigin() {
+  try {
+    if (process.env.NEXT_PUBLIC_SITE_URL) return new URL(process.env.NEXT_PUBLIC_SITE_URL).origin;
+  } catch {
+    /* fall back to this site */
+  }
+  return window.location.origin;
+}
+const welcomeUrl = () => `${siteOrigin()}/welcome`;
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out

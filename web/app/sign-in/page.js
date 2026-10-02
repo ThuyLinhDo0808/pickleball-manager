@@ -4,6 +4,15 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 
+// Supabase's sign-up / resend errors people actually hit, in plain words.
+function authMessage(err, t) {
+  const code = err?.code || '';
+  const msg = String(err?.message || '');
+  if (code === 'over_email_send_rate_limit' || /email rate limit/i.test(msg)) return t('auth.emailRateLimit');
+  if (code === 'over_request_rate_limit' || /rate limit/i.test(msg)) return t('auth.rateLimit');
+  return msg || t('common.error');
+}
+
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
   const next = new URLSearchParams(window.location.search).get('next') || '';
@@ -60,7 +69,7 @@ export default function SignInPage() {
       setUnconfirmed(false);
       setInfo(t('auth.resent', { email }));
     } catch (err) {
-      setError(err.message || t('common.error'));
+      setError(authMessage(err, t));
     } finally {
       setBusy(false);
     }
@@ -86,7 +95,7 @@ export default function SignInPage() {
       }
       router.replace(nextPath());
     } catch (err) {
-      setError(err.message || t('common.error'));
+      setError(authMessage(err, t));
     } finally {
       setBusy(false);
     }

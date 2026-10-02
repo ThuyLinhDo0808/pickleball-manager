@@ -70,6 +70,10 @@ export const en = {
     confirm: 'Delete forever',
     done: 'Your account has been deleted. Thanks for using the app!',
   },
+  notFound: {
+    title: 'Page not found.',
+    home: 'Go home',
+  },
   mode: {
     label: 'Mode',
     manage: 'Manage',
@@ -182,6 +186,8 @@ export const en = {
     notConfirmed: 'This email is not confirmed yet. Press "Resend confirmation email" and use the NEWEST email in your inbox.',
     resend: 'Resend confirmation email',
     resent: 'A new confirmation email was sent to {email}. Open the newest one (older links no longer work).',
+    emailRateLimit: 'Too many confirmation emails were sent in the last hour (Supabase limit). Please try again in about an hour.',
+    rateLimit: 'Too many attempts. Please wait a moment and try again.',
     checkEmail: 'We sent you a confirmation email. Confirm it, then come back and sign in.',
     signIn: 'Sign in',
     signUp: 'Sign up',
