@@ -4,7 +4,7 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, normalizePhone } = require('../services/memberships');
-const { localDate, winnerTeam } = require('../services/stats');
+const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, cancelParticipant } = require('../services/attendance');
 const { telegramSend } = require('../services/notify');
@@ -445,7 +445,7 @@ player.get('/me', async (req, res) => {
     const months = {};
     for (const row of mp) {
       const m = row.matches;
-      if (!m) continue;
+      if (!isScored(m)) continue;
       const key = localDate(m.played_at).slice(0, 7);
       const s = (months[key] = months[key] || { month: key, matches: 0, wins: 0, points_for: 0, points_against: 0 });
       s.matches++;

@@ -370,9 +370,61 @@ router.get('/:eventId/participants', async (req, res) => {
     .eq('event_id', req.event.id)
     .order('joined_at', { ascending: true });
   if (error) return dbError(res, error);
+  let cards;
+  try {
+    cards = await playerCards(req.event, data);
+  } catch (err) {
+    return dbError(res, err);
+  }
   // screenshots are fetched one at a time (they are large)
-  res.json(data.map(({ payment_proof, ...p }) => ({ ...p, has_proof: !!payment_proof })));
+  res.json(
+    data.map(({ payment_proof, ...p }) => {
+      const card = cards.get(p.id) || null;
+      // Fixed members pay through their membership plan: their place is always paid.
+      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: card?.member_type === 'fixed' };
+    })
+  );
 });
+
+// What the participant list shows about each player (avatar, level, the Host's rank…)
+// and the profile pop-up: their club record and their own player profile.
+async function playerCards(event, rows) {
+  const memberIds = [...new Set(rows.map((p) => p.source_club_member_id || p.guest_member_id).filter(Boolean))];
+  const { data: members, error } = memberIds.length
+    ? await supabase.from('club_members').select('*').in('id', memberIds)
+    : { data: [] };
+  if (error) throw error;
+  const byMember = new Map((members || []).map((m) => [m.id, m]));
+  const userIds = [...new Set(rows.map((p) => p.user_id || byMember.get(p.source_club_member_id || p.guest_member_id)?.user_id).filter(Boolean))];
+  const { data: profiles, error: pErr } = userIds.length
+    ? await supabase.from('player_profiles').select('*').in('user_id', userIds)
+    : { data: [] };
+  if (pErr) throw pErr;
+  const byUser = new Map((profiles || []).map((x) => [x.user_id, x]));
+  const cards = new Map();
+  for (const p of rows) {
+    const m = byMember.get(p.source_club_member_id || p.guest_member_id) || null;
+    const prof = byUser.get(p.user_id || m?.user_id) || null;
+    cards.set(p.id, {
+      member_id: m?.id || null,
+      member_type: m?.member_type || null,
+      tier: m?.tier || null,
+      avatar: prof?.avatar || null,
+      level: m?.dupr_level ?? p.dupr_level ?? null,
+      dupr: prof?.dupr_level ?? null,
+      real_rank: m?.real_rank || null,
+      district: m?.district || null,
+      play_duration: m?.play_duration || null,
+      gender: m?.gender || prof?.gender || null,
+      birth_date: m?.birth_date || prof?.birth_date || null,
+      birth_year: m?.birth_year || prof?.birth_year || null,
+      joined_on: m?.joined_on || null,
+      phone: m?.phone || p.phone || prof?.phone || null,
+      guest_perk: m?.guest_perk || null,
+    });
+  }
+  return cards;
+}
 
 router.get('/:eventId/participants/:participantId/proof', (req, res) => {
   if (!req.participant.payment_proof) return notFound(res, 'Screenshot');

@@ -8,7 +8,7 @@ export function exportEventFinance(event, participants, transactions) {
   // Sheet 1: participants + fee status
   const pRows = [['Full name', 'Phone', 'Status', 'Fee', 'Paid']];
   participants.forEach((p) => {
-    pRows.push([p.full_name, p.phone || '', p.status, p.fee_amount ?? event.fee_amount ?? 0, p.fee_paid ? 'Yes' : 'No']);
+    pRows.push([p.full_name, p.phone || '', p.status, p.fee_amount ?? event.fee_amount ?? 0, p.paid_by_plan ? 'Plan' : p.fee_paid ? 'Yes' : 'No']);
   });
   const wsParticipants = XLSX.utils.aoa_to_sheet(pRows);
   XLSX.utils.book_append_sheet(wb, wsParticipants, 'Participants');

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
 import VipBadge from '@/components/VipBadge';
+import { MemberExtraFields } from '@/components/MemberExtras';
 import { GuestPerkBadge } from '@/components/GuestColumns';
 import MemberHistory from '@/components/MemberHistory';
 import { dmy, my, tenureLabel } from '@/lib/memberDates';
@@ -115,6 +116,9 @@ const fromMember = (m) => ({
   birth_date: m.birth_date || '',
   joined: m.joined_on ? m.joined_on.slice(0, 7) : '',
   is_active: m.is_active !== false,
+  district: m.district || '',
+  play_duration: m.play_duration || '',
+  real_rank: m.real_rank || '',
 });
 
 function MemberEdit({ member, busy, onSave, autoEdit = false }) {
@@ -154,6 +158,9 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       birth_date: f.birth_date || null,
       joined_on: f.joined ? `${f.joined}-01` : null,
       is_active: f.is_active,
+      district: f.district,
+      play_duration: f.play_duration,
+      real_rank: f.real_rank,
     });
     if (ok !== false) setOpen(false);
   }
@@ -248,6 +255,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
           <p className="text-gray-500 text-xs mt-1">{t('guests.discountHint')}</p>
         </div>
       )}
+      <MemberExtraFields idPrefix="md" value={f} onChange={set} />
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('members.joinedMonth')}</label>
         <input className="input" type="month" value={f.joined} onChange={(e) => set({ joined: e.target.value })} />

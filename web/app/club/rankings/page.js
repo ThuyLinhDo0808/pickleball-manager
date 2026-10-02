@@ -74,13 +74,16 @@ export default function RankingsPage() {
   const [period, setPeriod] = useState('month');
   const [date, setDate] = useState(todayYmd);
   const [sort, setSort] = useState({ key: null, dir: -1 });
+  // Two leaderboards: the club community (fixed members) and the guests.
+  const [group, setGroup] = useState('club');
 
   const { data: stats, loading } = useLoad(
-    () => (club ? api.get(`/api/clubs/${club.id}/stats?period=${period}&date=${date}`) : Promise.resolve(null)),
-    [club?.id, period, date]
+    () => (club ? api.get(`/api/clubs/${club.id}/stats?period=${period}&date=${date}&group=${group}`) : Promise.resolve(null)),
+    [club?.id, period, date, group]
   );
 
-  const label = periodLabel(period, date, t, lang);
+  const periodText = periodLabel(period, date, t, lang);
+  const label = `${periodText} · ${t(`rankings.group_${group}`)}`; // for the Excel file
   const rows = [...(stats?.rankings || [])];
   if (sort.key) rows.sort((a, b) => sort.dir * (a[sort.key] - b[sort.key]) || a.full_name.localeCompare(b.full_name));
   const a = stats?.awards;
@@ -96,6 +99,21 @@ export default function RankingsPage() {
         >
           {t('common.exportExcel')}
         </button>
+      </div>
+
+      <div role="tablist" className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-3">
+        {['club', 'guest'].map((g) => (
+          <button
+            key={g}
+            role="tab"
+            aria-selected={group === g}
+            onClick={() => setGroup(g)}
+            className={`rounded-lg py-2 text-sm font-semibold ${group === g ? (g === 'club' ? 'bg-lime-400 text-navy-950' : 'bg-sky-400 text-navy-950') : 'text-gray-400 hover:text-white'}`}
+          >
+            {g === 'club' ? '🏠 ' : '🤝 '}
+            {t(`rankings.group_${g}`)}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-5 bg-navy-900 rounded-lg p-1 text-sm mb-3">
@@ -117,7 +135,7 @@ export default function RankingsPage() {
           <span />
         )}
         <div className="text-center">
-          <div className="text-white font-semibold capitalize">{label}</div>
+          <div className="text-white font-semibold capitalize">{periodText}</div>
           {stats && <div className="text-gray-400 text-xs">{t('rankings.matchesCount', { n: stats.match_count })}</div>}
         </div>
         {period !== 'all' ? (

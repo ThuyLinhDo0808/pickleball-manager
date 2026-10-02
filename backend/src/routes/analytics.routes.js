@@ -2,7 +2,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
-const { localDate, winnerTeam } = require('../services/stats');
+const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { clubAccess } = require('../services/clubAccess');
 
 const router = express.Router();
@@ -198,7 +198,7 @@ router.get('/player-form', async (req, res) => {
     const months = new Map();
     for (const row of [...direct, ...viaEvents]) {
       const mt = row.matches;
-      if (!mt) continue;
+      if (!isScored(mt)) continue;
       const key = localDate(mt.played_at).slice(0, 7);
       const s = months.get(key) || { month: key, matches: 0, wins: 0, points_for: 0, points_against: 0 };
       s.matches++;

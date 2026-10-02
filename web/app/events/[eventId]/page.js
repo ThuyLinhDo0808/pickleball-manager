@@ -11,6 +11,8 @@ import PaymentReview from '@/components/PaymentReview';
 import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
 import EventShuttles from '@/components/EventShuttles';
+import PlayerChip from '@/components/PlayerChip';
+import { exportMatchesJpg } from '@/lib/matchImage';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
@@ -24,7 +26,8 @@ export default function EventDetailPage() {
   const { eventId } = useParams();
   const { t, lang, sport } = useI18n();
   const { club } = useDefaultClub();
-  const [tab, setTab] = useState('participants');
+  // Four tabs: details (status, sign-up link, deadlines), players, matches, money.
+  const [tab, setTab] = useState('details');
   const [showQr, setShowQr] = useState(false);
 
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
@@ -169,20 +172,26 @@ export default function EventDetailPage() {
         {showQr && <QrCheckinPanel endpoint={`/api/events/${eventId}/checkin-code`} onCheckedIn={refresh} />}
       </Modal>
 
-      <EventControls event={event} onChanged={setEvent} />
-      <EventShareCard event={event} onSaved={setEvent} />
-
-      <div className="flex gap-2 mb-4">
-        {['participants', 'matches', 'finance'].map((tb) => (
+      <div role="tablist" className="grid grid-cols-4 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4">
+        {['details', 'participants', 'matches', 'finance'].map((tb) => (
           <button
             key={tb}
+            role="tab"
+            aria-selected={tab === tb}
             onClick={() => setTab(tb)}
-            className={`px-3 py-1.5 rounded-lg text-sm ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-800 text-gray-300'}`}
+            className={`px-2 py-2 rounded-lg text-sm truncate ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
           >
-            {tb === 'participants' ? t('nav.members') : tb === 'matches' ? t('matches.title') : t('nav.finance')}
+            {tb === 'details' ? t('events.tabDetails') : tb === 'participants' ? `${t('nav.members')} (${main.length})` : tb === 'matches' ? `${t('matches.title')} (${(matches || []).length})` : t('nav.finance')}
           </button>
         ))}
       </div>
+
+      {tab === 'details' && (
+        <>
+          <EventControls event={event} onChanged={setEvent} />
+          <EventShareCard event={event} onSaved={setEvent} />
+        </>
+      )}
 
       {tab === 'participants' && (
         <>
@@ -255,7 +264,14 @@ export default function EventDetailPage() {
 
       {tab === 'matches' && (
         <>
-          <div className="flex justify-end mb-3">
+          <div className="flex flex-wrap justify-end gap-2 mb-3">
+            <button
+              className="btn-secondary text-sm"
+              disabled={!(matches || []).length}
+              onClick={() => exportMatchesJpg({ event, matches: matches || [], t, lang })}
+            >
+              🖼 {t('matches.exportJpg')}
+            </button>
             <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
           </div>
           <MatchList matches={matches || []} onChanged={reloadMatches} />
@@ -336,28 +352,37 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
         <tbody>
           {rows.map((p) => (
             <tr key={p.id} className="border-b border-navy-800">
-              <td className="py-2 text-white">
-                {p.full_name}
-                {p.source_club_member_id && (
-                  <span className="ml-2 text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">{t('events.member')}</span>
-                )}
-                {!p.source_club_member_id && p.user_id && (
-                  <span className="ml-2 text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t('review.kind_guest')}</span>
-                )}
-                {p.priority && (
-                  <span className="ml-2 text-[10px] rounded border border-sky-400/60 text-sky-300 px-1" title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>
-                )}
-                {p.late_cancel && (
-                  <span className="ml-2 text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>
-                )}
-                {kind === 'cancelled' && p.fee_paid && !p.late_cancel && (
-                  <span className="ml-2 text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">{t('slot.refundDue')}</span>
-                )}
-                {p.transferred_from && <div className="text-gray-500 text-[11px]">{t('slot.from', { name: p.transferred_from })}</div>}
+              <td className="py-2">
+                <PlayerChip
+                  name={p.full_name}
+                  card={p.card}
+                  badges={
+                    <>
+                      {p.card?.member_type === 'fixed' && (
+                        <span className="text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">{t('events.fixedMember')}</span>
+                      )}
+                      {p.card?.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || p.card?.member_type) && (
+                        <span className="text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t('review.kind_guest')}</span>
+                      )}
+                      {p.priority && (
+                        <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1" title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>
+                      )}
+                      {p.late_cancel && (
+                        <span className="text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>
+                      )}
+                      {kind === 'cancelled' && p.fee_paid && !p.late_cancel && (
+                        <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">{t('slot.refundDue')}</span>
+                      )}
+                    </>
+                  }
+                />
+                {p.transferred_from && <div className="text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</div>}
               </td>
               <td className={`text-xs ${STATUS_TONE[p.status]}`}>{t(`player.status_${p.status}`)}</td>
               <td>
-                {(kind !== 'cancelled' || p.late_cancel || p.fee_paid) && (
+                {p.paid_by_plan && kind !== 'cancelled' ? (
+                  <span className="text-xs text-lime-400" title={t('events.paidByPlanHint')}>{t('events.paidByPlan')}</span>
+                ) : (kind !== 'cancelled' || p.late_cancel || p.fee_paid) && (
                   <button className={`text-xs mr-2 ${p.fee_paid ? 'text-lime-400' : 'text-gray-300'}`} onClick={() => onFee(p)}>
                     {kind === 'cancelled' && p.fee_paid && !p.late_cancel ? t('slot.markRefunded') : p.fee_paid ? t('common.paid') : t('common.unpaid')}
                     {kind === 'cancelled' && !p.fee_paid && Number(p.fee_amount ?? fee) > 0 && ` · ${formatVnd(p.fee_amount ?? fee)}`}
