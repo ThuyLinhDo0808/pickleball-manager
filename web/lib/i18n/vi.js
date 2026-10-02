@@ -70,6 +70,10 @@ export const vi = {
     confirm: 'Xóa vĩnh viễn',
     done: 'Tài khoản đã được xóa. Cảm ơn bạn đã sử dụng!',
   },
+  notFound: {
+    title: 'Không tìm thấy trang này.',
+    home: 'Về trang chủ',
+  },
   mode: {
     label: 'Chế độ',
     manage: 'Quản lý',

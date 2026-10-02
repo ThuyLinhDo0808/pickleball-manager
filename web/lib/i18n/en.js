@@ -70,6 +70,10 @@ export const en = {
     confirm: 'Delete forever',
     done: 'Your account has been deleted. Thanks for using the app!',
   },
+  notFound: {
+    title: 'Page not found.',
+    home: 'Go home',
+  },
   mode: {
     label: 'Mode',
     manage: 'Manage',
