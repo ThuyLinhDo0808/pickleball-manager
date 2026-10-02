@@ -7,6 +7,7 @@ const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../serv
 const { itemMetrics } = require('../services/inventory');
 const birthdays = require('../services/birthdays');
 const { guestsReady, discountReady, guestStats, PERKS } = require('../services/guests');
+const { extrasReady, cleanExtras } = require('../services/memberExtras');
 const { phoneLinkReady } = require('../services/phoneLink');
 const { completeFinished } = require('../services/eventStatus');
 const { setAttendance } = require('../services/attendance');
@@ -20,6 +21,7 @@ const {
   aggregate,
   awards,
   winnerTeam,
+  isScored,
 } = require('../services/stats');
 
 const router = express.Router();
@@ -269,11 +271,13 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
   const nextType = member_type === 'guest' ? 'guest' : 'fixed';
   if (tier && nextType !== 'fixed') tier = null; // guests are never tiered
   let dates;
+  let extras;
   try {
     dates = memberDates(req.body);
     if (!dates.joined_on) delete dates.joined_on; // defaults to today
+    extras = (await extrasReady()) ? cleanExtras(req.body) : {};
   } catch (err) {
-    return res.status(400).json({ error: err.message });
+    return res.status(err.status || 400).json({ error: err.message });
   }
 
   const { data, error } = await supabase
@@ -289,6 +293,7 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
       birth_year: cleanBirthYear(req.body.birth_year),
       notes: req.body.notes || null,
       ...dates,
+      ...extras,
     })
     .select()
     .single();
@@ -361,8 +366,9 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   if ('birth_year' in fields) fields.birth_year = cleanBirthYear(fields.birth_year);
   try {
     Object.assign(fields, memberDates(req.body));
+    if (await extrasReady()) Object.assign(fields, cleanExtras(req.body));
   } catch (err) {
-    return res.status(400).json({ error: err.message });
+    return res.status(err.status || 400).json({ error: err.message });
   }
 
   if (fields.tier && !TIERS.includes(fields.tier)) {
@@ -1135,7 +1141,7 @@ router.get('/:clubId/attendance', async (req, res) => {
   ]);
   const count = (key, row) => {
     const g = guestRows.get(key);
-    if (!g || !row.matches) return;
+    if (!g || !isScored(row.matches)) return;
     g.matches++;
     if (winnerTeam(row.matches) === row.team) g.wins++;
   };

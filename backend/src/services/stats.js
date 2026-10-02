@@ -26,7 +26,13 @@ function periodBounds(period, ymd) {
   throw new Error('Unknown period');
 }
 
+// A match set up but not scored yet counts nowhere (no winner, no points).
+function isScored(match) {
+  return !!match && match.team1_score != null && match.team2_score != null;
+}
+
 function winnerTeam(match) {
+  if (!isScored(match)) return 0;
   if (match.team1_score > match.team2_score) return 1;
   if (match.team2_score > match.team1_score) return 2;
   return 0; // draw
@@ -47,6 +53,7 @@ function aggregate(matches, members) {
   }]));
 
   for (const match of matches) {
+    if (!isScored(match)) continue;
     const winner = winnerTeam(match);
     for (const p of match.match_players || []) {
       const row = byId.get(p.club_member_id);
@@ -98,4 +105,4 @@ function awards(rankings, attendance, members, minMatches = DEFAULT_MIN_MATCHES)
   };
 }
 
-module.exports = { APP_TZ, PERIODS, DEFAULT_MIN_MATCHES, localDate, periodBounds, aggregate, awards, winnerTeam };
+module.exports = { isScored, APP_TZ, PERIODS, DEFAULT_MIN_MATCHES, localDate, periodBounds, aggregate, awards, winnerTeam };

@@ -1,6 +1,7 @@
 const { supabase } = require('../supabase');
 const { pick } = require('../utils/respond');
 const { clubSport, badmintonResult } = require('./sport');
+const { extrasReady } = require('./memberExtras');
 
 const TEAM_SIZE = { singles: 1, doubles: 2, mixed: 2 };
 const PLAYER_SELECT = '*, match_players(*, club_members(full_name, gender), event_participants(full_name))';
@@ -73,23 +74,44 @@ function badmintonScores(body) {
   }
 }
 
+const blank = (v) => v === undefined || v === null || v === '';
+
+// No score sent: the match is set up now (who plays whom) and scored later.
+function noScore(body, badminton) {
+  if (badminton) return blank(body.games) || (Array.isArray(body.games) && body.games.every((g) => !g || (blank(g[0]) && blank(g[1]))));
+  return blank(body.team1_score) && blank(body.team2_score);
+}
+
+// Singles or doubles follows from the players: 1 per team = singles, 2 = doubles
+// ('mixed' is kept when the caller says so).
+function matchTypeFor(players, asked) {
+  const n1 = players.filter((p) => p.team === 1).length;
+  const n2 = players.filter((p) => p.team === 2).length;
+  if (n1 !== n2 || ![1, 2].includes(n1)) throw badRequest('Each team needs the same number of players: 1 (singles) or 2 (doubles).');
+  if (n1 === 1) return 'singles';
+  return asked === 'mixed' ? 'mixed' : 'doubles';
+}
+
 // Validates and stores a match. `parent` = { club_id } or { event_id } — ownership
 // (host or staff) must already have been checked by the caller.
 async function createMatch(parent, body) {
   const players = body.players;
-  const match_type = TEAM_SIZE[body.match_type] ? body.match_type : 'doubles';
+  if (!Array.isArray(players)) throw badRequest('players[] is required.');
+  if (players.some((p) => ![1, 2].includes(p.team))) throw badRequest('each player needs team 1 or 2.');
+  const match_type = matchTypeFor(players, body.match_type);
   const badminton = (await parentSport(parent)) === 'badminton';
-  const result = badminton ? badmintonScores(body) : { team1_score: cleanScore(body.team1_score), team2_score: cleanScore(body.team2_score) };
+  // Not scored yet: both scores stay empty (needs migration 20261014090000; before it,
+  // an unscored match is saved as 0-0 like it always was).
+  const later = noScore(body, badminton) && (await extrasReady());
+  const result = later
+    ? { team1_score: null, team2_score: null }
+    : badminton
+      ? badmintonScores(body)
+      : { team1_score: cleanScore(body.team1_score), team2_score: cleanScore(body.team2_score) };
   const { team1_score, team2_score } = result;
   const video_url = cleanVideoUrl(body.video_url);
   const played_at = cleanDate(body.played_at);
 
-  if (!Array.isArray(players)) throw badRequest('players[] is required.');
-  const size = TEAM_SIZE[match_type];
-  for (const team of [1, 2]) {
-    if (players.filter((p) => p.team === team).length !== size) throw badRequest(`${match_type} needs ${size} player(s) per team.`);
-  }
-  if (players.some((p) => ![1, 2].includes(p.team))) throw badRequest('each player needs team 1 or 2.');
   const keys = players.map((p) => p.club_member_id || p.event_participant_id);
   if (new Set(keys).size !== keys.length) throw badRequest('a player cannot appear twice in a match.');
   for (const p of players) {
@@ -104,7 +126,7 @@ async function createMatch(parent, body) {
       match_type,
       team1_score,
       team2_score,
-      ...(badminton ? { games: result.games } : {}),
+      ...(badminton && result.games ? { games: result.games } : {}),
       video_url,
       played_at,
     })

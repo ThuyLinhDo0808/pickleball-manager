@@ -21,6 +21,7 @@ const PROBES = [
   { table: 'clubs', column: 'sport', migration: '20261012090000_multi_sport_badminton.sql' },
   { table: 'matches', column: 'games', migration: '20261012090000_multi_sport_badminton.sql' },
   { table: 'club_members', column: 'guest_discount_pct', migration: '20261013090000_guest_priority_discount.sql' },
+  { table: 'club_members', column: 'real_rank', migration: '20261014090000_member_area_rank_unscored_matches.sql' },
 ];
 
 const TTL_MS = 60 * 1000;
