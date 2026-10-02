@@ -376,7 +376,8 @@ export const vi = {
     noPlayers: 'Chưa có người chơi để chọn.',
   },
   rankings: {
-    group_club: 'Cộng đồng thành viên CLB',
+    group_all: 'Toàn CLB',
+    group_club: 'Thành viên CLB',
     group_guest: 'Người giao lưu',
     day: 'Ngày',
     month: 'Tháng',

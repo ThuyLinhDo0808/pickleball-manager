@@ -74,11 +74,11 @@ export default function RankingsPage() {
   const [period, setPeriod] = useState('month');
   const [date, setDate] = useState(todayYmd);
   const [sort, setSort] = useState({ key: null, dir: -1 });
-  // Two leaderboards: the club community (fixed members) and the guests.
-  const [group, setGroup] = useState('club');
+  // Three leaderboards: everyone in the club, the fixed members only, the guests only.
+  const [group, setGroup] = useState('all');
 
   const { data: stats, loading } = useLoad(
-    () => (club ? api.get(`/api/clubs/${club.id}/stats?period=${period}&date=${date}&group=${group}`) : Promise.resolve(null)),
+    () => (club ? api.get(`/api/clubs/${club.id}/stats?period=${period}&date=${date}${group === 'all' ? '' : `&group=${group}`}`) : Promise.resolve(null)),
     [club?.id, period, date, group]
   );
 
@@ -101,16 +101,16 @@ export default function RankingsPage() {
         </button>
       </div>
 
-      <div role="tablist" className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-3">
-        {['club', 'guest'].map((g) => (
+      <div role="tablist" className="grid grid-cols-3 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-3">
+        {['all', 'club', 'guest'].map((g) => (
           <button
             key={g}
             role="tab"
             aria-selected={group === g}
             onClick={() => setGroup(g)}
-            className={`rounded-lg py-2 text-sm font-semibold ${group === g ? (g === 'club' ? 'bg-lime-400 text-navy-950' : 'bg-sky-400 text-navy-950') : 'text-gray-400 hover:text-white'}`}
+            className={`rounded-lg py-2 px-1 text-sm font-semibold truncate ${group === g ? (g === 'guest' ? 'bg-sky-400 text-navy-950' : g === 'club' ? 'bg-lime-400 text-navy-950' : 'bg-amber-300 text-navy-950') : 'text-gray-400 hover:text-white'}`}
           >
-            {g === 'club' ? '🏠 ' : '🤝 '}
+            {g === 'all' ? '🌐 ' : g === 'club' ? '🏠 ' : '🤝 '}
             {t(`rankings.group_${g}`)}
           </button>
         ))}

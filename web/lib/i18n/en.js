@@ -376,7 +376,8 @@ export const en = {
     noPlayers: 'No players to choose from yet.',
   },
   rankings: {
-    group_club: 'Club community',
+    group_all: 'Whole club',
+    group_club: 'Club members',
     group_guest: 'Guests',
     day: 'Day',
     month: 'Month',
