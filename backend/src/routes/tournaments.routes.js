@@ -465,64 +465,71 @@ router.patch('/:tournamentId', async (req, res) => {
 
 // Team league: players + score of one sub-match (or { clear: true }). The fixture result,
 // league table and champion follow from all sub-matches.
+// Store (or clear) a team-league sub-match result { s1, s2, games }, optionally with the
+// line-ups; then the fixture's result and the tournament status. Returns the full view.
+async function recordSub(t, subId, result, lineups = {}) {
+  if (t.kind !== 'team') throw badRequest('Not a team tournament.');
+  if (!isUuid(subId)) throw badRequest('Sub-match not found.', 404);
+  const { data: sub, error } = await supabase
+    .from('tournament_sub_matches')
+    .select('*, tournament_matches!inner(id, tournament_id, team1_id, team2_id)')
+    .eq('id', subId)
+    .eq('tournament_matches.tournament_id', t.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!sub) throw badRequest('Sub-match not found.', 404);
+  const fixture = sub.tournament_matches;
+
+  let patch;
+  if (result.clear) {
+    patch = { team1_score: null, team2_score: null, played_at: null, team1_p1: null, team1_p2: null, team2_p1: null, team2_p2: null, ...((await sportReady()) ? { games: null } : {}) };
+  } else {
+    const { s1, s2, games } = result;
+    if (s1 === s2) throw badRequest('A sub-match needs a winner (no draws).');
+    patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), played_at: new Date().toISOString() };
+    // Line-ups are optional; when given they must come from the right roster and fit the format.
+    const sides = [['team1', lineups.team1_players, fixture.team1_id], ['team2', lineups.team2_players, fixture.team2_id]];
+    for (const [side, ids, teamId] of sides) {
+      if (!Array.isArray(ids) || !ids.filter(Boolean).length) continue;
+      const clean = ids.filter(Boolean);
+      if (!clean.every(isUuid) || new Set(clean).size !== clean.length) throw badRequest('Pick different players.');
+      const { data: rows } = await supabase.from('tournament_team_members').select('club_members(id, full_name, gender)').eq('team_id', teamId).in('club_member_id', clean);
+      const players = (rows || []).map((r) => r.club_members);
+      if (players.length !== clean.length) throw badRequest('A player is not in that team.');
+      if (!T.sideFits(sub.format, players)) throw badRequest(`Line-up doesn't fit ${sub.format} (check players' gender).`);
+      patch[`${side}_p1`] = clean[0];
+      patch[`${side}_p2`] = clean[1] || null;
+    }
+  }
+  const { error: uErr } = await supabase.from('tournament_sub_matches').update(patch).eq('id', sub.id);
+  if (uErr) throw uErr;
+
+  // Store the fixture's result (sub-matches won) and winner, then the tournament status.
+  const { data: subs } = await supabase.from('tournament_sub_matches').select('*').eq('fixture_id', fixture.id);
+  const r = T.fixtureResult(subs, t.win_rule);
+  await supabase
+    .from('tournament_matches')
+    .update({
+      team1_score: r.played ? r.sub_wins[0] : null,
+      team2_score: r.played ? r.sub_wins[1] : null,
+      winner_id: r.done ? (r.winner === 1 ? fixture.team1_id : r.winner === 2 ? fixture.team2_id : null) : null,
+      played_at: r.done ? new Date().toISOString() : null,
+    })
+    .eq('id', fixture.id);
+  const full = await loadFull(t);
+  const status = full.champion_id ? 'completed' : 'groups';
+  if (status !== t.status) {
+    await supabase.from('tournaments').update({ status }).eq('id', t.id);
+    full.status = status;
+  }
+  return full;
+}
+
 router.patch('/:tournamentId/sub-matches/:subId', async (req, res) => {
   const t = req.tournament;
   try {
-    if (t.kind !== 'team') throw badRequest('Not a team tournament.');
-    if (!isUuid(req.params.subId)) throw badRequest('Sub-match not found.', 404);
-    const { data: sub, error } = await supabase
-      .from('tournament_sub_matches')
-      .select('*, tournament_matches!inner(id, tournament_id, team1_id, team2_id)')
-      .eq('id', req.params.subId)
-      .eq('tournament_matches.tournament_id', t.id)
-      .maybeSingle();
-    if (error) throw error;
-    if (!sub) throw badRequest('Sub-match not found.', 404);
-    const fixture = sub.tournament_matches;
-
-    let patch;
-    if (req.body.clear) {
-      patch = { team1_score: null, team2_score: null, played_at: null, team1_p1: null, team1_p2: null, team2_p1: null, team2_p2: null, ...((await sportReady()) ? { games: null } : {}) };
-    } else {
-      const { s1, s2, games } = await scoresFor(t, req.body);
-      if (s1 === s2) throw badRequest('A sub-match needs a winner (no draws).');
-      patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), played_at: new Date().toISOString() };
-      // Line-ups are optional; when given they must come from the right roster and fit the format.
-      const sides = [['team1', req.body.team1_players, fixture.team1_id], ['team2', req.body.team2_players, fixture.team2_id]];
-      for (const [side, ids, teamId] of sides) {
-        if (!Array.isArray(ids) || !ids.filter(Boolean).length) continue;
-        const clean = ids.filter(Boolean);
-        if (!clean.every(isUuid) || new Set(clean).size !== clean.length) throw badRequest('Pick different players.');
-        const { data: rows } = await supabase.from('tournament_team_members').select('club_members(id, full_name, gender)').eq('team_id', teamId).in('club_member_id', clean);
-        const players = (rows || []).map((r) => r.club_members);
-        if (players.length !== clean.length) throw badRequest('A player is not in that team.');
-        if (!T.sideFits(sub.format, players)) throw badRequest(`Line-up doesn't fit ${sub.format} (check players' gender).`);
-        patch[`${side}_p1`] = clean[0];
-        patch[`${side}_p2`] = clean[1] || null;
-      }
-    }
-    const { error: uErr } = await supabase.from('tournament_sub_matches').update(patch).eq('id', sub.id);
-    if (uErr) throw uErr;
-
-    // Store the fixture's result (sub-matches won) and winner, then the tournament status.
-    const { data: subs } = await supabase.from('tournament_sub_matches').select('*').eq('fixture_id', fixture.id);
-    const r = T.fixtureResult(subs, t.win_rule);
-    await supabase
-      .from('tournament_matches')
-      .update({
-        team1_score: r.played ? r.sub_wins[0] : null,
-        team2_score: r.played ? r.sub_wins[1] : null,
-        winner_id: r.done ? (r.winner === 1 ? fixture.team1_id : r.winner === 2 ? fixture.team2_id : null) : null,
-        played_at: r.done ? new Date().toISOString() : null,
-      })
-      .eq('id', fixture.id);
-    const full = await loadFull(t);
-    const status = full.champion_id ? 'completed' : 'groups';
-    if (status !== t.status) {
-      await supabase.from('tournaments').update({ status }).eq('id', t.id);
-      full.status = status;
-    }
-    res.json(full);
+    const result = req.body.clear ? { clear: true } : await scoresFor(t, req.body);
+    res.json(await recordSub(t, req.params.subId, result, req.body));
   } catch (err) {
     fail(res, err);
   }
@@ -637,62 +644,68 @@ router.delete('/:tournamentId', async (req, res) => {
   res.status(204).end();
 });
 
-// Enter (or clear, with { clear: true }) a score. Knockout winners move on automatically.
+// Store (or clear, with { clear: true }) a match result { s1, s2, games }. Knockout
+// winners move on automatically. Shared by score entry and live scoring.
+async function recordMatch(t, matchId, result) {
+  if (!isUuid(matchId)) throw badRequest('Match not found.', 404);
+  const { data: m, error } = await supabase
+    .from('tournament_matches')
+    .select('*')
+    .eq('id', matchId)
+    .eq('tournament_id', t.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!m) throw badRequest('Match not found.', 404);
+  if (t.kind === 'team') throw badRequest('Enter team results per sub-match.');
+  if (m.is_bye || !m.team1_id || !m.team2_id) throw badRequest('This match has no opponent yet.');
+  if (m.stage === 'group' && t.status !== 'groups') throw badRequest('The knockout has started; reset it to change group results.', 409);
+
+  let patch;
+  if (result.clear) {
+    patch = { team1_score: null, team2_score: null, winner_id: null, played_at: null, ...((await sportReady()) ? { games: null } : {}) };
+  } else {
+    const { s1, s2, games } = result;
+    if (s1 === s2) throw badRequest('Tournament matches need a winner (no draws).');
+    patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), winner_id: s1 > s2 ? m.team1_id : m.team2_id, played_at: new Date().toISOString() };
+  }
+
+  let next = null;
+  if (m.stage === 'knockout') {
+    const { data } = await supabase
+      .from('tournament_matches')
+      .select('*')
+      .eq('tournament_id', t.id)
+      .eq('stage', 'knockout')
+      .eq('round', m.round + 1)
+      .eq('slot', Math.floor(m.slot / 2))
+      .maybeSingle();
+    next = data;
+    if (next && T.isPlayed(next) && next.winner_id && patch.winner_id !== m.winner_id) {
+      throw badRequest('The next round is already played; clear that result first.', 409);
+    }
+  }
+
+  const { error: uErr } = await supabase.from('tournament_matches').update(patch).eq('id', m.id);
+  if (uErr) throw uErr;
+
+  if (m.stage === 'knockout') {
+    if (next) {
+      const side = m.slot % 2 === 0 ? 'team1_id' : 'team2_id';
+      const { error: nErr } = await supabase.from('tournament_matches').update({ [side]: patch.winner_id }).eq('id', next.id);
+      if (nErr) throw nErr;
+    }
+    const status = !next && patch.winner_id ? 'completed' : 'knockout';
+    if (status !== t.status) await supabase.from('tournaments').update({ status }).eq('id', t.id);
+    t.status = status;
+  }
+
+}
+
+// Enter (or clear, with { clear: true }) a score.
 router.patch('/:tournamentId/matches/:matchId', async (req, res) => {
   const t = req.tournament;
   try {
-    if (!isUuid(req.params.matchId)) throw badRequest('Match not found.', 404);
-    const { data: m, error } = await supabase
-      .from('tournament_matches')
-      .select('*')
-      .eq('id', req.params.matchId)
-      .eq('tournament_id', t.id)
-      .maybeSingle();
-    if (error) throw error;
-    if (!m) throw badRequest('Match not found.', 404);
-    if (t.kind === 'team') throw badRequest('Enter team results per sub-match.');
-    if (m.is_bye || !m.team1_id || !m.team2_id) throw badRequest('This match has no opponent yet.');
-    if (m.stage === 'group' && t.status !== 'groups') throw badRequest('The knockout has started; reset it to change group results.', 409);
-
-    let patch;
-    if (req.body.clear) {
-      patch = { team1_score: null, team2_score: null, winner_id: null, played_at: null, ...((await sportReady()) ? { games: null } : {}) };
-    } else {
-      const { s1, s2, games } = await scoresFor(t, req.body);
-      if (s1 === s2) throw badRequest('Tournament matches need a winner (no draws).');
-      patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), winner_id: s1 > s2 ? m.team1_id : m.team2_id, played_at: new Date().toISOString() };
-    }
-
-    let next = null;
-    if (m.stage === 'knockout') {
-      const { data } = await supabase
-        .from('tournament_matches')
-        .select('*')
-        .eq('tournament_id', t.id)
-        .eq('stage', 'knockout')
-        .eq('round', m.round + 1)
-        .eq('slot', Math.floor(m.slot / 2))
-        .maybeSingle();
-      next = data;
-      if (next && T.isPlayed(next) && next.winner_id && patch.winner_id !== m.winner_id) {
-        throw badRequest('The next round is already played; clear that result first.', 409);
-      }
-    }
-
-    const { error: uErr } = await supabase.from('tournament_matches').update(patch).eq('id', m.id);
-    if (uErr) throw uErr;
-
-    if (m.stage === 'knockout') {
-      if (next) {
-        const side = m.slot % 2 === 0 ? 'team1_id' : 'team2_id';
-        const { error: nErr } = await supabase.from('tournament_matches').update({ [side]: patch.winner_id }).eq('id', next.id);
-        if (nErr) throw nErr;
-      }
-      const status = !next && patch.winner_id ? 'completed' : 'knockout';
-      if (status !== t.status) await supabase.from('tournaments').update({ status }).eq('id', t.id);
-      t.status = status;
-    }
-
+    await recordMatch(t, req.params.matchId, req.body.clear ? { clear: true } : await scoresFor(t, req.body));
     res.json(await loadFull(t));
   } catch (err) {
     fail(res, err);
@@ -733,3 +746,6 @@ router.delete('/:tournamentId/knockout', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.recordMatch = recordMatch;
+module.exports.recordSub = recordSub;
+module.exports.loadFull = loadFull;

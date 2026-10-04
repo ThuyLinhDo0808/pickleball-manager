@@ -164,7 +164,12 @@ export default function TournamentPage() {
           )}
           {Number(tour.entry_fee) > 0 && <p className="text-gray-300 text-sm">{t('tournaments.entryFeeShow', { fee: formatVnd(tour.entry_fee) })}</p>}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
+          {tour.status !== 'completed' && (
+            <Link href={`/live/${tour.id}`} className="rounded-lg px-3 py-1.5 text-sm font-semibold bg-red-500 text-white hover:bg-red-400">
+              ● {t('live.open')}
+            </Link>
+          )}
           <button className="btn-secondary !py-1.5 text-sm" onClick={edit}>✏️ {t('tournaments.edit')}</button>
           <button className="text-red-400 text-sm" onClick={remove}>{t('common.delete')}</button>
         </div>
