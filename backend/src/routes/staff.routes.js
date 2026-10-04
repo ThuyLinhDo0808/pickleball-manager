@@ -5,6 +5,7 @@ const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
 const { setAttendance, checkInByCode } = require('../services/attendance');
 const { PLAYER_SELECT, createMatch, updateMatch } = require('../services/matches');
+const { schemaStatus } = require('../services/schemaCheck');
 
 const EVENT_ROLES = ['referee', 'coordinator'];
 // co_admin: co-owner of one club (members + finance); handled by services/clubAccess.js, not here.
@@ -18,6 +19,44 @@ const CAN = {
 
 function fail(res, err) {
   return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+}
+
+const SCOPES = ['all', 'clubs', 'xeve'];
+const GRANT_MIGRATION = '20261015090000_staff_grant_scope.sql';
+
+async function scopesReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes(GRANT_MIGRATION);
+}
+
+// A grant is active today when today is inside its (optional) validity window.
+function activeToday(g, today = todayYmd()) {
+  return (!g.valid_from || g.valid_from <= today) && (!g.valid_until || g.valid_until >= today);
+}
+
+// Does this grant cover the event? One event, one club's sessions, or a broad scope.
+function covers(g, event) {
+  if (g.event_id) return g.event_id === event.id;
+  if (g.club_id) return g.club_id === event.club_id;
+  const scope = g.scope || 'all';
+  if (scope === 'clubs') return !!event.club_id;
+  if (scope === 'xeve') return !event.club_id;
+  return true;
+}
+
+// Validity dates from the body ('' clears). Throws a 400 message.
+function cleanWindow(body) {
+  const out = {};
+  for (const k of ['valid_from', 'valid_until']) {
+    if (!(k in body)) continue;
+    const v = body[k] || null;
+    if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw Object.assign(new Error(`${k} must be YYYY-MM-DD.`), { status: 400 });
+    out[k] = v;
+  }
+  if (out.valid_from && out.valid_until && out.valid_until < out.valid_from) {
+    throw Object.assign(new Error('The end date is before the start date.'), { status: 400, code: 'bad_window' });
+  }
+  return out;
 }
 
 function cleanEmail(v) {
@@ -54,6 +93,16 @@ grants.post('/', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'A valid email is required.' });
   if (!ROLES.includes(role)) return res.status(400).json({ error: 'role must be referee, coordinator or co_admin.' });
   if (club_id && event_id) return res.status(400).json({ error: 'Choose one club or one event, not both.' });
+  const ready = await scopesReady();
+  const scope = club_id || event_id ? 'all' : req.body.scope || 'all';
+  if (!SCOPES.includes(scope)) return res.status(400).json({ error: 'scope must be all, clubs or xeve.' });
+  if (scope !== 'all' && !ready) return res.status(409).json({ error: `Run migration ${GRANT_MIGRATION} first.` });
+  let window = {};
+  try {
+    window = ready ? cleanWindow(req.body) : {};
+  } catch (err) {
+    return res.status(err.status).json({ error: err.message, code: err.code });
+  }
   if (role === 'co_admin' && !club_id) return res.status(400).json({ error: 'A co-admin is always for one club.', code: 'co_admin_needs_club' });
   if (email === String(req.hostEmail || '').toLowerCase()) {
     return res.status(400).json({ error: 'You already have full access to your own events.' });
@@ -72,7 +121,7 @@ grants.post('/', async (req, res) => {
 
   const { data, error } = await supabase
     .from('staff_grants')
-    .insert({ host_id: req.hostId, email, full_name: String(req.body.full_name || '').trim() || null, role, club_id, event_id })
+    .insert({ host_id: req.hostId, email, full_name: String(req.body.full_name || '').trim() || null, role, club_id, event_id, ...(ready ? { scope, ...window } : {}) })
     .select('*, clubs(name), events(title, event_date)')
     .single();
   if (error?.code === '23505') return res.status(409).json({ error: 'This person already has access for that scope.' });
@@ -82,14 +131,27 @@ grants.post('/', async (req, res) => {
 
 grants.patch('/:grantId', async (req, res) => {
   if (!isUuid(req.params.grantId)) return notFound(res, 'Grant');
-  if (!ROLES.includes(req.body.role)) return res.status(400).json({ error: 'role must be referee, coordinator or co_admin.' });
-  if (req.body.role === 'co_admin') {
+  const patch = {};
+  if ('role' in req.body) {
+    if (!ROLES.includes(req.body.role)) return res.status(400).json({ error: 'role must be referee, coordinator or co_admin.' });
+    patch.role = req.body.role;
+  }
+  if ('valid_from' in req.body || 'valid_until' in req.body) {
+    if (!(await scopesReady())) return res.status(409).json({ error: `Run migration ${GRANT_MIGRATION} first.` });
+    try {
+      Object.assign(patch, cleanWindow(req.body));
+    } catch (err) {
+      return res.status(err.status).json({ error: err.message, code: err.code });
+    }
+  }
+  if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nothing to change.' });
+  if (patch.role === 'co_admin') {
     const { data: g } = await supabase.from('staff_grants').select('club_id').eq('id', req.params.grantId).eq('host_id', req.hostId).maybeSingle();
     if (g && !g.club_id) return res.status(400).json({ error: 'A co-admin is always for one club.', code: 'co_admin_needs_club' });
   }
   const { data, error } = await supabase
     .from('staff_grants')
-    .update({ role: req.body.role })
+    .update(patch)
     .eq('id', req.params.grantId)
     .eq('host_id', req.hostId)
     .select('*, clubs(name), events(title, event_date)')
@@ -129,9 +191,8 @@ async function myGrants(req) {
 function roleFor(grantList, event) {
   let best = null;
   for (const g of grantList) {
-    if (g.host_id !== event.host_id) continue;
-    const covers = g.event_id ? g.event_id === event.id : g.club_id ? g.club_id === event.club_id : true;
-    if (covers && (!best || RANK[g.role] > RANK[best])) best = g.role;
+    if (g.host_id !== event.host_id || !activeToday(g)) continue;
+    if (covers(g, event) && (!best || RANK[g.role] > RANK[best])) best = g.role;
   }
   return best;
 }
