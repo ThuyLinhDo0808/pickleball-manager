@@ -173,8 +173,18 @@ export default function LiveHubPage() {
 function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, tid }) {
   const { t } = useI18n();
   const [court, setCourt] = useState('');
-  const [points, setPoints] = useState(11);
-  const [bestOf, setBestOf] = useState(sport === 'badminton' ? 3 : 1);
+  const badminton = sport === 'badminton';
+  const [scoring, setScoring] = useState(badminton ? 'rally' : 'sideout');
+  const [points, setPoints] = useState(badminton ? 21 : 11);
+  const [bestOf, setBestOf] = useState(badminton ? 3 : 1);
+  const [winBy, setWinBy] = useState(2);
+  const [freeze, setFreeze] = useState(false);
+  // The modal stays mounted between matches: follow the club's sport.
+  useEffect(() => {
+    setScoring(badminton ? 'rally' : 'sideout');
+    setPoints(badminton ? 21 : 11);
+    setBestOf(badminton ? 3 : 1);
+  }, [badminton]);
   const [first, setFirst] = useState(1);
   const [lineup, setLineup] = useState({ 1: ['', ''], 2: ['', ''] });
   const [busy, setBusy] = useState(false);
@@ -188,7 +198,7 @@ function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, ti
     setError('');
     try {
       const players = pickLineup ? { 1: lineup[1].slice(0, size).filter(Boolean), 2: lineup[2].slice(0, size).filter(Boolean) } : undefined;
-      const live = await api.post(`/api/live/${tid}/start`, { match_id: match.match_id, sub_match_id: match.sub_match_id, court, points, best_of: bestOf, first_server: first, players });
+      const live = await api.post(`/api/live/${tid}/start`, { match_id: match.match_id, sub_match_id: match.sub_match_id, court, scoring, points, best_of: bestOf, win_by: winBy, freeze: scoring === 'rally' && freeze, first_server: first, players });
       onStarted(live);
     } catch (err) {
       setError(err.message);
@@ -208,17 +218,60 @@ function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, ti
           <label className="text-xs text-gray-400" htmlFor="live-court">{t('live.court')}</label>
           <input id="live-court" className="input" placeholder={t('live.courtPh')} value={court} maxLength={40} onChange={(e) => setCourt(e.target.value)} />
         </div>
-        {sport === 'pickleball' && (
+        {!badminton && (
           <div>
-            <label className="text-xs text-gray-400">{t('live.points')}</label>
-            <Segmented full items={[11, 15, 21]} value={points} onChange={setPoints} label={(n) => t('live.pointsN', { n })} />
+            <label className="text-xs text-gray-400">{t('live.scoring')}</label>
+            <div className="grid gap-1.5 mt-1">
+              {['sideout', 'sideout_single', 'rally'].map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={scoring === k}
+                  onClick={() => {
+                    setScoring(k);
+                    if (k === 'rally' && points === 11) setPoints(21);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-left ${scoring === k ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
+                >
+                  <span className="block text-white font-semibold">{t(`live.scoring_${k}`)}</span>
+                  <span className="block text-gray-400 text-xs">{t(`live.scoringDesc_${k}`)}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <div>
-          <label className="text-xs text-gray-400">{t('live.bestOf')}</label>
-          <Segmented full items={[1, 3]} value={bestOf} onChange={setBestOf} label={(n) => (n === 1 ? t('live.bo1') : t('live.bo3'))} />
-          {sport === 'badminton' && <p className="text-gray-500 text-xs mt-1">{t('live.badmintonRule')}</p>}
+          <label className="text-xs text-gray-400">{t('live.points')}</label>
+          <Segmented full items={badminton ? [21, 15, 11] : [11, 15, 21]} value={points} onChange={setPoints} label={(n) => t('live.pointsN', { n })} />
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-400">{t('live.winBy')}</label>
+            <Segmented full items={[2, 1]} value={winBy} onChange={setWinBy} label={(n) => t(`live.winBy_${n}`)} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">{t('live.bestOf')}</label>
+            <Segmented full items={[1, 3, 5]} value={bestOf} onChange={setBestOf} label={(n) => t(`live.bo${n}`)} />
+          </div>
+        </div>
+        {!badminton && scoring === 'rally' && (
+          <label className="flex items-start gap-2 text-gray-200">
+            <input type="checkbox" className="mt-1" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} />
+            <span>
+              {t('live.freeze')}
+              <span className="block text-gray-500 text-xs">{t('live.freezeHint')}</span>
+            </span>
+          </label>
+        )}
+        <p className="rounded-lg bg-navy-900 border border-navy-700 px-3 py-2 text-xs text-gray-300">
+          📋 {t('live.summary', {
+            scoring: t(`live.scoring_${scoring}`),
+            points,
+            win: t(`live.winBy_${winBy}`).toLowerCase(),
+            cap: badminton && winBy === 2 ? t('live.capN', { n: { 21: 30, 15: 21, 11: 15 }[points] }) : '',
+            games: t(`live.bo${bestOf}`).toLowerCase(),
+          })}
+        </p>
         <div>
           <label className="text-xs text-gray-400">{t('live.firstServer')}</label>
           <Segmented full items={[1, 2]} value={first} onChange={setFirst} label={(s) => teamName(s)} />

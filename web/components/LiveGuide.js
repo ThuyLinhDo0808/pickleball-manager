@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
 
 // How to score live: for whoever holds the phone at the court (Host, co-admin, referee).
@@ -13,8 +14,12 @@ const STEPS = {
   tap: ['tap1', 'tap2', 'tap3', 'tap4', 'tap5'],
   fix: ['fix1', 'fix2', 'fix3'],
   end: ['end1', 'end2', 'end3'],
-  pickleball: ['pb1', 'pb2', 'pb3', 'pb4', 'pb5', 'pb6', 'pb7'],
+  sideout: ['pb1', 'pb2', 'pb3', 'pb4', 'pb5', 'pb6', 'pb7'],
+  sideout_single: ['ps1', 'ps2', 'ps3', 'ps4'],
+  rally: ['pr1', 'pr2', 'pr3', 'pr4', 'pr5'],
+  pbFormats: ['pf1', 'pf2', 'pf3'],
   badminton: ['bm1', 'bm2', 'bm3', 'bm4', 'bm5', 'bm6'],
+  bmFormats: ['bf1', 'bf2', 'bf3', 'bf4'],
 };
 
 function Steps({ title, icon, keys, t }) {
@@ -37,15 +42,15 @@ function Steps({ title, icon, keys, t }) {
 }
 
 // "4-2-1": what each number of the pickleball call means.
-function CallExample({ t }) {
+function CallExample({ t, three = true }) {
   const parts = [
     ['4', 'callServing', 'text-lime-300'],
     ['2', 'callReceiving', 'text-sky-300'],
-    ['1', 'callServer', 'text-amber-300'],
+    ...(three ? [['1', 'callServer', 'text-amber-300']] : []),
   ];
   return (
     <div className="rounded-xl border border-navy-700 bg-navy-950 p-3 mb-4">
-      <p className="text-gray-400 text-xs mb-2">{t('liveGuide.callTitle')}</p>
+      <p className="text-gray-400 text-xs mb-2">{t(three ? 'liveGuide.callTitle' : 'liveGuide.callTitle2')}</p>
       <div className="flex items-start justify-center gap-1.5">
         {parts.map(([n, k, tone], i) => (
           <div key={k} className="flex items-start gap-1.5">
@@ -83,8 +88,23 @@ function CourtExample({ t }) {
   );
 }
 
-function Body({ sport, t }) {
+function Example({ titleKey, textKey, t }) {
+  return (
+    <div className="rounded-xl border border-sky-400/30 bg-sky-400/5 p-3 text-sm text-sky-100 mb-4">
+      <p className="font-semibold mb-1">{t(`liveGuide.${titleKey}`)}</p>
+      <p className="text-gray-300">{t(`liveGuide.${textKey}`)}</p>
+    </div>
+  );
+}
+
+const PB_SYSTEMS = ['sideout', 'sideout_single', 'rally'];
+
+function Body({ sport, scoring, t }) {
   const [tab, setTab] = useState('use');
+  const [pb, setPb] = useState(PB_SYSTEMS.includes(scoring) ? scoring : 'sideout');
+  useEffect(() => {
+    if (PB_SYSTEMS.includes(scoring)) setPb(scoring);
+  }, [scoring]);
   const other = sport === 'badminton' ? 'pickleball' : 'badminton';
   return (
     <>
@@ -107,22 +127,36 @@ function Body({ sport, t }) {
       )}
       {tab === 'pickleball' && (
         <>
-          <CallExample t={t} />
-          <Steps title="pbTitle" icon="🏓" keys={STEPS.pickleball} t={t} />
-          <div className="rounded-xl border border-sky-400/30 bg-sky-400/5 p-3 text-sm text-sky-100">
-            <p className="font-semibold mb-1">{t('liveGuide.pbExampleTitle')}</p>
-            <p className="text-gray-300">{t('liveGuide.pbExample')}</p>
-          </div>
+          <p className="text-gray-400 text-xs mb-1.5">{t('liveGuide.pickSystem')}</p>
+          <Segmented full className="mb-4" items={PB_SYSTEMS} value={pb} onChange={setPb} label={(k) => t(`live.scoring_${k}`)} />
+          <CallExample t={t} three={pb === 'sideout'} />
+          {pb === 'sideout' && (
+            <>
+              <Steps title="pbTitle" icon="🏓" keys={STEPS.sideout} t={t} />
+              <Example titleKey="pbExampleTitle" textKey="pbExample" t={t} />
+            </>
+          )}
+          {pb === 'sideout_single' && (
+            <>
+              <Steps title="psTitle" icon="🏓" keys={STEPS.sideout_single} t={t} />
+              <Example titleKey="pbExampleTitle" textKey="psExample" t={t} />
+            </>
+          )}
+          {pb === 'rally' && (
+            <>
+              <Steps title="prTitle" icon="🏓" keys={STEPS.rally} t={t} />
+              <Example titleKey="pbExampleTitle" textKey="prExample" t={t} />
+            </>
+          )}
+          <Steps title="pfTitle" icon="⚙️" keys={STEPS.pbFormats} t={t} />
         </>
       )}
       {tab === 'badminton' && (
         <>
           <CourtExample t={t} />
           <Steps title="bmTitle" icon="🏸" keys={STEPS.badminton} t={t} />
-          <div className="rounded-xl border border-sky-400/30 bg-sky-400/5 p-3 text-sm text-sky-100">
-            <p className="font-semibold mb-1">{t('liveGuide.bmExampleTitle')}</p>
-            <p className="text-gray-300">{t('liveGuide.bmExample')}</p>
-          </div>
+          <Example titleKey="bmExampleTitle" textKey="bmExample" t={t} />
+          <Steps title="bfTitle" icon="⚙️" keys={STEPS.bmFormats} t={t} />
         </>
       )}
     </>
@@ -131,7 +165,7 @@ function Body({ sport, t }) {
 
 // variant 'button': a "? Guide" button opening the guide (opens by itself the first time
 // on this device when `autoOpen`). variant 'card': a collapsible card for the match list.
-export default function LiveGuide({ sport = 'pickleball', variant = 'button', autoOpen = false }) {
+export default function LiveGuide({ sport = 'pickleball', scoring = null, variant = 'button', autoOpen = false }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
@@ -165,7 +199,7 @@ export default function LiveGuide({ sport = 'pickleball', variant = 'button', au
         </button>
         {open && (
           <div className="px-4 pb-4 border-t border-navy-700 pt-3">
-            <Body sport={sport} t={t} />
+            <Body sport={sport} scoring={scoring} t={t} />
           </div>
         )}
       </section>
@@ -178,7 +212,7 @@ export default function LiveGuide({ sport = 'pickleball', variant = 'button', au
         ❓ {t('liveGuide.button')}
       </button>
       <Modal open={open} title={`📖 ${t('liveGuide.title')}`} onClose={close}>
-        <Body sport={sport} t={t} />
+        <Body sport={sport} scoring={scoring} t={t} />
         <button type="button" className="btn-primary w-full mt-2" onClick={close}>{t('liveGuide.gotIt')}</button>
       </Modal>
     </>

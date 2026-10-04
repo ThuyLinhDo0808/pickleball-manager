@@ -87,6 +87,8 @@ export default function ScorerPage() {
 
   const s = live.state;
   const cfg = live.config;
+  // Rows started before scoring systems existed: pickleball side-out, badminton rally.
+  const scoring = cfg.scoring || (sport === 'badminton' ? 'rally' : 'sideout');
   const icon = sportIcon(sport);
   const name = (id) => live.names[id] || '?';
   const teamLabel = (side) => (side === 1 ? live.team1 : live.team2);
@@ -134,7 +136,7 @@ export default function ScorerPage() {
         {serving && !s.finished && (
           <span className="absolute -top-2.5 left-4 rounded-full bg-lime-400 text-navy-950 text-[11px] font-bold px-2 py-0.5">
             {icon} {t('live.serving')}{s.server_side ? ` · ${t(`live.${s.server_side}`)}` : ''}
-            {sport === 'pickleball' && cfg.doubles ? ` · ${t('live.serverNo', { n: s.server_no })}` : ''}
+            {s.two_servers ? ` · ${t('live.serverNo', { n: s.server_no })}` : ''}
           </span>
         )}
       </button>
@@ -148,7 +150,7 @@ export default function ScorerPage() {
           <Link href={`/live/${tid}`} className="text-gray-400 text-sm hover:text-white">← {t('live.back')}</Link>
           <span className="flex items-center gap-2 min-w-0">
             <span className="text-gray-400 text-xs truncate">{tourName}</span>
-            <LiveGuide sport={sport} autoOpen />
+            <LiveGuide sport={sport} scoring={live?.config?.scoring} autoOpen />
           </span>
         </div>
 
@@ -170,7 +172,7 @@ export default function ScorerPage() {
             </button>
           )}
           <span className="text-gray-300 text-sm">
-            {t('live.gameN', { n: s?.game_no || 1 })} · {cfg.best_of === 1 ? t('live.bo1') : t('live.bo3')} · {t('live.pointsN', { n: cfg.points })}
+            {t('live.gameN', { n: s?.game_no || 1 })} · {t(`live.scoring_${scoring}`)} · {t('live.pointsN', { n: cfg.points })}{cfg.win_by === 1 ? ` · ${t('live.winBy_1').toLowerCase()}` : ''} · {t(`live.bo${cfg.best_of}`)}{cfg.freeze ? ' · ❄️' : ''}
           </span>
         </div>
 
@@ -238,7 +240,7 @@ export default function ScorerPage() {
             <button type="button" className="rounded-lg px-3 py-2 font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/10" disabled={busy} onClick={stop}>■ {t('live.stop')}</button>
           )}
         </div>
-        <p className="text-gray-500 text-xs mt-3">{sport === 'pickleball' ? t('live.rulePickleball') : t('live.ruleBadminton')}</p>
+        <p className="text-gray-500 text-xs mt-3">{t(`live.rule_${sport === 'badminton' ? 'badminton' : scoring}`)}</p>
       </div>
     </AppShell>
   );

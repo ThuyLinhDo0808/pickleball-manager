@@ -269,11 +269,18 @@ Nút đỏ **● Tính điểm trực tiếp** trên trang giải (khi giải ch
 
 **Ai được bấm điểm:** chủ CLB, đồng quản trị, và **trọng tài / điều phối viên** có quyền phủ CLB đó (quyền *một CLB*, *mọi CLB* hoặc *tất cả* — quyền chỉ cho một kèo hay chỉ Xé Vé thì không). Nhân viên thấy các giải này ở mục *Giải đấu được giao bấm điểm* trong trang **Kèo được giao**.
 
-**Bắt đầu một trận:** đặt tên sân (VD *Sân 1*), số điểm mỗi ván (pickleball 11 / 15 / 21; cầu lông luôn 21), số ván (1 ván hoặc thắng 2/3), đội giao trước; giải Đồng đội chọn thêm đội hình trận phụ (người đứng phải / trái).
+**Bắt đầu một trận:** đặt tên sân (VD *Sân 1*), chọn **cách tính điểm** và **thể thức ván**, đội giao trước; giải Đồng đội chọn thêm đội hình trận phụ (người đứng phải / trái). Hộp thoại tóm tắt lại thể thức đã chọn trước khi bấm *Bắt đầu*.
+
+| Môn | Cách tính điểm | Thể thức ván |
+|---|---|---|
+| Pickleball | **Side-out 2 tay** (truyền thống, 0-0-2, đọc 3 số) · **Side-out 1 tay** (chỉ đội giao được điểm, thua pha đổi giao ngay, không có tay 2) · **Tính điểm trực tiếp / rally** (pha nào cũng có điểm, không có tay 2; tuỳ chọn luật *đóng băng* — chỉ được ghi điểm thắng ván khi đang giao) | Ván 11 / 15 / 21 điểm · *cách 2 điểm* hoặc *chạm là thắng* · 1 ván, thắng 2/3 hoặc 3/5 |
+| Cầu lông | Rally | 21 điểm (tối đa 30) · 15 điểm (tối đa 21) · 11 điểm (tối đa 15) · *cách 2* hoặc *chạm là thắng* · 1, 3 hoặc 5 ván |
 
 **Màn hình bấm điểm** (dùng tốt trên điện thoại): hai nửa lớn cho 2 đội — **bấm vào đội thắng pha bóng**. App tự theo luật:
-- **Pickleball** (tính điểm khi giao — side-out): chỉ đội đang giao được điểm; đánh đôi mỗi đội có *tay 1, tay 2*, riêng lượt đầu ván chỉ 1 tay (**0-0-2**); đội giao thắng thì 2 người đổi chỗ; mất giao thì đổi quyền, người đứng **bên phải** giao trước. Đổi sân ở ván quyết định khi một đội chạm nửa số điểm (6 với ván 11).
-- **Cầu lông** (rally): pha nào cũng có điểm, đội thắng pha giao tiếp; điểm chẵn giao từ **phải**, lẻ từ **trái**; 21 điểm, cách 2, tối đa 30; nghỉ ở 11 điểm, ván 3 đổi sân ở 11; ván sau đội thắng ván trước giao.
+- **Pickleball side-out 2 tay**: chỉ đội đang giao được điểm; đánh đôi mỗi đội có *tay 1, tay 2*, riêng lượt đầu ván chỉ 1 tay (**0-0-2**); đội giao thắng thì 2 người đổi chỗ; mất giao thì đổi quyền, người đứng **bên phải** giao trước. Đổi sân ở ván quyết định khi một đội chạm nửa số điểm (6 với ván 11).
+- **Pickleball side-out 1 tay**: như trên nhưng đội giao thua pha là đổi giao ngay; đọc điểm 2 số.
+- **Pickleball tính điểm trực tiếp (rally)**: pha nào cũng có điểm, đội thắng pha giao tiếp; điểm chẵn giao ô phải, lẻ ô trái; nếu bật *đóng băng*, đội nhận ở game point thắng pha chỉ giành quyền giao (nhắc "Freeze").
+- **Cầu lông** (rally): pha nào cũng có điểm, đội thắng pha giao tiếp; điểm chẵn giao từ **phải**, lẻ từ **trái**; theo thể thức đã chọn (21/15/11 điểm, tối đa 30/21/15); nghỉ ở nửa ván, ván quyết định đổi sân ở nửa ván; ván sau đội thắng ván trước giao.
 - Luôn hiện: điểm, số ván đã thắng, **ai đang giao + đứng bên nào + tay mấy**, câu **đọc điểm** (VD `4-2-1`), nhãn *Game point / Match point*, nhắc *Đổi quyền giao / Đổi sân / Nghỉ giữa ván / Hết ván*.
 - Trước pha đầu tiên của mỗi ván có thể đổi đội giao trước và đổi vị trí phải/trái. **Hoàn tác** lùi từng pha. **Dừng** bỏ trận đang bấm (không lưu gì).
 - Hết trận → **Lưu kết quả vào giải**: tỷ số vào bảng đấu / nhánh đấu như nhập tay (pickleball 1 ván lưu điểm, nhiều ván lưu số ván thắng + điểm từng ván), đội thắng tự vào vòng sau.
@@ -281,8 +288,8 @@ Nút đỏ **● Tính điểm trực tiếp** trên trang giải (khi giải ch
 
 **Hướng dẫn bấm điểm ngay trên trang:** màn hình bấm điểm có nút **❓ Hướng dẫn** (tự mở lần đầu trên mỗi máy), trang danh sách trận có thẻ **📖 Hướng dẫn bấm điểm** thu gọn được. Gồm 3 tab:
 - *Cách bấm*: chuẩn bị trước trận, bấm vào đội **thắng pha bóng**, đọc điểm, làm theo nhắc, hoàn tác khi bấm nhầm, lưu kết quả.
-- *Luật pickleball*: giải thích câu đọc điểm `4-2-1` (điểm đội giao – điểm đội nhận – tay giao), luật side-out, 0-0-2, đổi sân, kèm ví dụ từng pha.
-- *Luật cầu lông*: hình sân chỉ ô giao (chẵn phải / lẻ trái), luật rally 21 điểm, deuce đến 30, nghỉ / đổi sân, kèm ví dụ.
+- *Luật pickleball*: chọn 1 trong 3 cách tính điểm (side-out 2 tay / 1 tay / rally) để xem luật riêng, câu đọc điểm (`4-2-1` hoặc `4-2`), ví dụ từng pha, và phần thể thức ván (11/15/21, cách 2 / chạm là thắng, số ván).
+- *Luật cầu lông*: hình sân chỉ ô giao (chẵn phải / lẻ trái), luật rally, ví dụ, và các thể thức 21×3, 15×3, 11×5, chạm là thắng.
 
 **Bảng điểm công khai** (`/l/<mã>`): chủ CLB / đồng quản trị bấm **Bật link xem trực tiếp** để có link gửi nhóm Zalo hoặc mở trên TV ở sân. Không cần đăng nhập, không hiện SĐT; hiện các trận đang đánh (sân, tỷ số, người giao, game/match point), trận vừa kết thúc (30 phút gần nhất) và trận sắp đánh, tự cập nhật mỗi 4 giây. *Tắt link* thì link cũ hết hiệu lực.
 
@@ -947,7 +954,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
-| Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, points, best_of, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` |
+| Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, scoring (sideout / sideout_single / rally), points, win_by (1/2), best_of (1/3/5), freeze, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` |
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
