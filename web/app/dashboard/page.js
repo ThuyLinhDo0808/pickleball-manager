@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { todayYmd, hhmm } from '@/lib/dates';
 import { isBirthdayMonth } from '@/lib/memberDates';
+import { levelText } from '@/lib/levels';
 
 const safe = (p) => p.catch(() => null);
 
@@ -18,7 +19,7 @@ function greeting(t) {
   return t(h < 11 ? 'home.morning' : h < 14 ? 'home.noon' : h < 18 ? 'home.afternoon' : 'home.evening');
 }
 
-function Kpi({ icon, label, value, sub, href, tone = 'text-white' }) {
+function Kpi({ icon, label, value, sub, href, tone = 'text-white', lines = null }) {
   const body = (
     <div className="card h-full !p-4 flex flex-col gap-1 hover:border-navy-500 transition">
       <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
@@ -27,6 +28,16 @@ function Kpi({ icon, label, value, sub, href, tone = 'text-white' }) {
       </div>
       <div className={`text-xl sm:text-2xl font-bold tabular-nums whitespace-nowrap ${tone}`}>{value}</div>
       {sub && <div className="text-gray-400 text-xs">{sub}</div>}
+      {lines && (
+        <dl className="mt-1.5 pt-1.5 border-t border-navy-700 grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-xs">
+          {lines.map(([k, v, tone2]) => (
+            <div key={k} className="contents">
+              <dt className="text-gray-400 truncate">{k}</dt>
+              <dd className={`text-right tabular-nums font-semibold ${tone2 || 'text-gray-100'}`}>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </div>
   );
   return href ? <Link href={href} className="block">{body}</Link> : body;
@@ -58,6 +69,8 @@ export default function DashboardPage() {
   const { data: members } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/members`)) : Promise.resolve([])), [cid]);
   const { data: fund } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/fund`)) : Promise.resolve(null)), [cid]);
   const { data: requests } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/member-requests`)) : Promise.resolve([])), [cid]);
+  const { data: fin } = useLoad(() => (cid ? safe(api.get(`/api/analytics/finance?club_id=${cid}&months=3`)) : Promise.resolve(null)), [cid]);
+  const { data: tours } = useLoad(() => (cid ? safe(api.get(`/api/tournaments?club_id=${cid}`)) : Promise.resolve([])), [cid]);
   const { data: stats } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/stats?period=month&date=${today}&group=club`)) : Promise.resolve(null)), [cid]);
 
   const ev = (events || []).filter((e) => e.status !== 'cancelled');
@@ -68,16 +81,47 @@ export default function DashboardPage() {
   const fixed = all.filter((m) => m.member_type === 'fixed');
   const guests = all.filter((m) => m.member_type !== 'fixed');
   const newThisMonth = fixed.filter((m) => (m.joined_on || '').startsWith(month)).length;
-  const income = (fund?.transactions || [])
-    .filter((x) => !x.is_voided && x.type === 'income' && String(x.occurred_on || '').startsWith(month))
-    .reduce((s, x) => s + Number(x.amount || 0), 0);
-  const debtors = fixed.filter((m) => Number(m.debt) > 0);
+  // Money this month (club fund + the club's sessions), and what is still to collect.
+  const thisMonth = (fin?.months || []).find((r) => r.month === month) || { income: 0, expense: 0 };
+  const debtors = fixed.filter((m) => Number(m.debt) > 0).sort((a, b) => Number(b.debt) - Number(a.debt));
+  const owed = debtors.reduce((s, m) => s + Number(m.debt || 0), 0);
+  // Who is who: VIP plans and priority guests.
+  const vip = fixed.filter((m) => m.vip_stars > 0 || m.tier === 'vip').length;
+  const priority = guests.filter((m) => m.guest_perk).length;
+  // The year's schedule: regular sessions played / planned, tournaments, games (kèo).
+  const year = today.slice(0, 4);
+  const yearEv = ev.filter((e) => e.event_date.startsWith(year));
+  const weeklyYear = yearEv.filter((e) => e.kind === 'weekly');
+  const weeklyDone = weeklyYear.filter((e) => e.event_date < today || e.status === 'completed').length;
+  const toursYear = (tours || []).filter((x) => String(x.event_date || x.created_at || '').startsWith(year)).length;
+  const gamesYear = yearEv.filter((e) => e.kind && e.kind !== 'weekly').length;
+  // Ranks and average level by gender.
+  const ranks = ['A', 'B', 'C', 'D'].map((r) => [r, all.filter((m) => m.real_rank === r).length]);
+  const avg = (g) => {
+    const xs = all.filter((m) => m.gender === g && m.dupr_level != null && m.dupr_level !== '').map((m) => Number(m.dupr_level));
+    return xs.length ? { v: Math.round((100 * xs.reduce((s, x) => s + x, 0)) / xs.length) / 100, n: xs.length } : null;
+  };
+  const avgM = avg('male');
+  const avgF = avg('female');
+  const sport = club?.sport || 'pickleball';
+  const next = upcoming[0];
+  const free = (e) => (e.slots ? Math.max(0, e.slots - (e.main_count || 0)) : null);
   const birthdays = all.filter((m) => isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
   const usage = me?.usage;
   const name = me?.full_name || user?.email?.split('@')[0] || '';
   const todos = [
+    // The nearest session: how full it is, and how many guests to find.
+    next && next.slots
+      ? {
+          href: `/events/${next.id}`,
+          icon: free(next) > 0 ? '🎯' : '✅',
+          text: t(free(next) > 0 ? 'home.todoFill' : 'home.todoFull', { title: next.title, n: next.main_count || 0, slots: next.slots, free: free(next) }),
+        }
+      : null,
     requests?.length ? { href: '/club/members', icon: '📝', text: t('home.todoRequests', { n: requests.length }) } : null,
-    debtors.length ? { href: '/club/members', icon: '💸', text: t('home.todoDebt', { n: debtors.length }) } : null,
+    debtors.length
+      ? { href: '/club/members', icon: '💸', text: t('home.todoDebtNames', { names: debtors.slice(0, 4).map((m) => m.full_name).join(', '), more: debtors.length > 4 ? ` +${debtors.length - 4}` : '' }) }
+      : null,
     upcoming.some((e) => e.pending_count > 0) ? { href: `/events/${upcoming.find((e) => e.pending_count > 0).id}`, icon: '🧾', text: t('home.todoTransfers') } : null,
   ].filter(Boolean);
   const top = stats?.awards;
@@ -108,12 +152,53 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* Club at a glance */}
+      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowClub')}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <Kpi
+          icon="👥"
+          label={t('home.kpiMembers')}
+          value={fixed.length}
+          sub={t('home.kpiMembersSub', { guests: guests.length, n: newThisMonth })}
+          href="/club/members"
+          lines={[
+            [`⭐ ${t('home.vip')}`, vip, 'text-amber-300'],
+            [`⚡ ${t('home.priorityGuests')}`, priority, 'text-sky-300'],
+          ]}
+        />
+        <Kpi
+          icon="📅"
+          label={t('home.kpiSessions')}
+          value={monthEvents.length}
+          sub={t('home.kpiSessionsSub', { done: doneThisMonth, left: monthEvents.length - doneThisMonth })}
+          href="/events"
+          lines={[
+            [t('home.weeklyYear', { y: year }), `${weeklyDone}/${weeklyYear.length}`],
+            [t('home.toursYear'), toursYear, toursYear ? 'text-gray-100' : 'text-amber-300'],
+            [t('home.gamesYear'), gamesYear],
+          ]}
+        />
+        <Kpi
+          icon="🎚️"
+          label={t('home.kpiRanks')}
+          value={t('home.rankedN', { n: ranks.reduce((s, [, n]) => s + n, 0) })}
+          sub={t('home.rankedSub', { n: all.length })}
+          href="/club/members"
+          lines={[
+            ...ranks.filter(([r, n]) => r !== 'D' || n > 0).map(([r, n]) => [t('home.rankN', { r }), n]),
+            [t(sport === 'badminton' ? 'home.avgMaleB' : 'home.avgMale'), avgM ? t('home.avgOf', { v: levelText(avgM.v, sport, t) ?? avgM.v, n: avgM.n }) : '—'],
+            [t(sport === 'badminton' ? 'home.avgFemaleB' : 'home.avgFemale'), avgF ? t('home.avgOf', { v: levelText(avgF.v, sport, t) ?? avgF.v, n: avgF.n }) : '—'],
+          ]}
+        />
+      </div>
+
+      {/* Money */}
+      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowMoney')}</h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Kpi icon="👥" label={t('home.kpiMembers')} value={fixed.length} sub={t('home.kpiMembersSub', { guests: guests.length, n: newThisMonth })} href="/club/members" />
-        <Kpi icon="📅" label={t('home.kpiSessions')} value={monthEvents.length} sub={t('home.kpiSessionsSub', { done: doneThisMonth, left: monthEvents.length - doneThisMonth })} href="/events" />
-        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(income)} tone="text-lime-400" sub={t('home.kpiIncomeSub')} href="/finance" />
-        <Kpi icon="🏦" label={t('home.kpiFund')} value={formatVnd(fund?.balance || 0)} sub={debtors.length ? t('home.kpiDebt', { n: debtors.length }) : t('home.kpiNoDebt')} href="/finance/ledger" />
+        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(thisMonth.income)} tone="text-lime-400" sub={t('home.kpiMonthSub')} href="/finance" />
+        <Kpi icon="🧾" label={t('home.kpiExpense')} value={formatVnd(thisMonth.expense)} tone="text-red-300" sub={t('home.kpiNet', { v: formatVnd(thisMonth.income - thisMonth.expense) })} href="/finance/ledger" />
+        <Kpi icon="🏦" label={t('home.kpiFund')} value={formatVnd(fund?.balance || 0)} tone={Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white'} sub={t('home.kpiFundSub')} href="/finance/ledger" />
+        <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} sub={debtors.length ? t('home.kpiDebt', { n: debtors.length }) : t('home.kpiNoDebt')} href="/club/members" />
       </div>
 
       <PendingPayments club={club} />
@@ -121,7 +206,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Upcoming sessions */}
         <div className="lg:col-span-2 flex flex-col gap-4">
-          <Section title={t('home.upcoming')} action={<Link href="/events" className="text-lime-400 text-sm">{t('nav.schedule')} →</Link>}>
+          <Section title={t('home.upcomingEvents')} action={<Link href="/events" className="text-lime-400 text-sm">{t('nav.schedule')} →</Link>}>
             {upcoming.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-gray-400 text-sm mb-3">{t('home.noUpcoming')}</p>
@@ -132,6 +217,15 @@ export default function DashboardPage() {
                 {upcoming.map((e) => {
                   const d = new Date(`${e.event_date}T00:00:00`);
                   const pct = e.slots ? Math.min(100, Math.round((100 * (e.main_count || 0)) / e.slots)) : 0;
+                  const left = free(e);
+                  const isToday = e.event_date === today;
+                  const state = isToday
+                    ? ['home.stToday', 'bg-lime-400 text-navy-950']
+                    : left === 0
+                      ? ['home.stFull', 'bg-red-500/20 text-red-300 border border-red-500/40']
+                      : e.allow_public_registration
+                        ? ['home.stOpen', 'bg-sky-400/15 text-sky-300 border border-sky-400/40']
+                        : ['home.stSoon', 'bg-navy-700 text-gray-200'];
                   return (
                     <li key={e.id}>
                       <Link href={`/events/${e.id}`} className="flex items-center gap-4 py-3 group">
@@ -141,7 +235,10 @@ export default function DashboardPage() {
                           <div className="text-[10px] opacity-80">{t('home.monthShort', { m: d.getMonth() + 1 })}</div>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-white font-semibold truncate group-hover:text-lime-300">{e.title}</div>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-white font-semibold truncate group-hover:text-lime-300">{e.title}</span>
+                            <span className={`shrink-0 text-[10px] font-semibold rounded-full px-2 py-0.5 ${state[1]}`}>{t(state[0])}</span>
+                          </div>
                           <div className="text-gray-400 text-xs truncate">
                             {e.start_time ? hhmm(e.start_time) : ''}
                             {e.end_time ? `–${hhmm(e.end_time)}` : ''}
@@ -152,6 +249,7 @@ export default function DashboardPage() {
                               <span className="block h-full bg-lime-400" style={{ width: `${pct}%` }} />
                             </span>
                             <span className="text-gray-300 text-xs tabular-nums">{e.main_count || 0}/{e.slots || '∞'}</span>
+                            {left != null && left > 0 && <span className="text-lime-300 text-xs">{t('home.slotsLeft', { n: left })}</span>}
                             {e.waitlist_count > 0 && <span className="text-sky-300 text-xs">+{e.waitlist_count} {t('home.waiting')}</span>}
                           </div>
                         </div>
