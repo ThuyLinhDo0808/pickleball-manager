@@ -6,7 +6,7 @@ import { resizeImage } from '@/lib/image';
 
 // Host: where guests transfer event fees — bank details (for the auto VietQR) and/or
 // the Host's own bank QR image. Club sessions use the club's account first when it has one.
-export default function HostPaymentSettings() {
+export default function HostPaymentSettings({ bare = false } = {}) {
   const { t } = useI18n();
   const file = useRef(null);
   const [f, setF] = useState(null);
@@ -53,11 +53,13 @@ export default function HostPaymentSettings() {
   if (!f) return null;
   const dirty = JSON.stringify(f) !== JSON.stringify(saved);
   return (
-    <form onSubmit={save} className="card mb-4 flex flex-col gap-3">
-      <div>
-        <h2 className="text-white font-semibold">{t('paySet.title')}</h2>
-        <p className="text-gray-400 text-sm">{t('paySet.hint')}</p>
-      </div>
+    <form onSubmit={save} className={`flex flex-col gap-3 ${bare ? '' : 'card mb-4'}`}>
+      {!bare && (
+        <div>
+          <h2 className="text-white font-semibold">{t('paySet.title')}</h2>
+          <p className="text-gray-400 text-sm">{t('paySet.hint')}</p>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="text-xs text-gray-400">{t('payments.bankCode')}</label>

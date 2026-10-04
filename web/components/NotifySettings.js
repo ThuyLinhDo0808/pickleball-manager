@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 // Host: where "moved up from the waitlist" notices go. Players who connected Telegram
 // in the portal get a DM automatically; this webhook is for everything else
 // (Make / Zapier / n8n -> Zalo ZNS, SMS, a Telegram group, Slack...).
-export default function NotifySettings() {
+export default function NotifySettings({ bare = false } = {}) {
   const { t } = useI18n();
   const [url, setUrl] = useState('');
   const [saved, setSaved] = useState('');
@@ -52,10 +52,14 @@ export default function NotifySettings() {
   }
 
   return (
-    <div className="card mb-4">
-      <h2 className="text-white font-semibold mb-1">{t('notify.title')}</h2>
-      <p className="text-gray-400 text-sm mb-3">{t('notify.hint')}</p>
-      <p className="text-sm mb-3">
+    <div className={bare ? '' : 'card mb-4'}>
+      {!bare && (
+        <>
+          <h2 className="text-white font-semibold mb-1">{t('notify.title')}</h2>
+          <p className="text-gray-400 text-sm mb-3">{t('notify.hint')}</p>
+        </>
+      )}
+      <p className="text-sm mb-3 rounded-lg bg-navy-900 px-3 py-2">
         <span className="text-gray-400">Telegram: </span>
         {bot ? <span className="text-lime-400">@{bot.replace(/^@/, '')} — {t('notify.tgOn')}</span> : <span className="text-gray-500">{t('notify.tgOff')}</span>}
       </p>
