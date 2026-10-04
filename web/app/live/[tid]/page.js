@@ -11,7 +11,9 @@ import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import { matchLabel, sportIcon } from '@/lib/live';
+import { clock, elapsed, matchLabel, minutesText, sportIcon } from '@/lib/live';
+import { useNow } from '@/lib/useNow';
+import ScoreEntry from '@/components/ScoreEntry';
 import LiveGuide from '@/components/LiveGuide';
 
 // Live scoring hub of one tournament: matches being played (tap to keep scoring), the
@@ -22,6 +24,8 @@ export default function LiveHubPage() {
   const { t } = useI18n();
   const { data, loading, error, reload, setData } = useLoad(() => api.get(`/api/live/${tid}`), [tid]);
   const [starting, setStarting] = useState(null);
+  const [entering, setEntering] = useState(null);
+  const now = useNow(1000);
   const [filter, setFilter] = useState('todo');
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -114,7 +118,10 @@ export default function LiveHubPage() {
                 <Link key={l.id} href={`/live/${tid}/${l.id}`} className="card !p-0 overflow-hidden hover:border-red-400 transition">
                   <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-xs">
                     <span className="text-red-200 font-semibold">● {l.court || t('live.noCourt')}</span>
-                    <span className="text-gray-300">{m ? matchLabel(m, matches, t) : ''} · {t('live.gameN', { n: l.state?.game_no || 1 })}</span>
+                    <span className="text-gray-300 truncate ml-2">
+                      {m ? matchLabel(m, matches, t) : ''} · {t('live.gameN', { n: l.state?.game_no || 1 })}
+                      {l.state?.timing?.started_at && <span className="text-white tabular-nums"> · ⏱ {clock(elapsed(l.state.timing, now).match)}</span>}
+                    </span>
                   </div>
                   {[1, 2].map((side) => (
                     <div key={side} className="flex items-center justify-between gap-2 px-4 py-2">
@@ -139,21 +146,45 @@ export default function LiveHubPage() {
       <div className="flex items-center gap-2 mb-3">
         <Segmented items={['todo', 'done']} value={filter} onChange={setFilter} label={(k) => (k === 'todo' ? `${t('live.notStarted')} (${todo.length})` : `${t('live.played')} (${done.length})`)} />
       </div>
+      <p className="text-gray-500 text-xs mb-2">{t('live.twoWays')}</p>
       {shown.length === 0 && <p className="text-gray-400 text-sm card">{filter === 'todo' ? t('live.none') : '—'}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {shown.map((m) => (
-          <div key={m.match_id || m.sub_match_id} className="card !p-3 flex items-center gap-3">
+          <div key={m.match_id || m.sub_match_id} className="card !p-3 flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="min-w-0 flex-1">
               <div className="text-gray-400 text-xs">{matchLabel(m, matches, t)}</div>
               <div className="text-white text-sm truncate">{m.team1} <span className="text-gray-500">vs</span> {m.team2}</div>
-              {m.played && <div className="text-lime-300 text-xs tabular-nums">{m.score?.join(' - ')}{m.games ? ` (${m.games.map((g) => g.join('-')).join(', ')})` : ''}</div>}
+              {m.played && (
+                <div className="text-lime-300 text-xs tabular-nums">
+                  {m.score?.join(' - ')}
+                  {m.games ? ` (${m.games.map((g) => g.join('-')).join(', ')})` : ''}
+                  {m.duration_sec != null && <span className="text-gray-400"> · ⏱ {minutesText(m.duration_sec, t)}</span>}
+                </div>
+              )}
             </div>
-            {!m.played && (
-              <button type="button" className="btn-primary text-sm shrink-0" onClick={() => setStarting(m)}>▶ {t('live.score')}</button>
-            )}
+            <div className="flex gap-2 shrink-0">
+              {!m.played && (
+                <button type="button" className="btn-primary !px-3 text-sm" onClick={() => setStarting(m)}>▶ {t('live.scoreLive')}</button>
+              )}
+              {!m.locked && (
+                <button type="button" className="btn-secondary !px-3 text-sm" onClick={() => setEntering(m)}>✏️ {m.played ? t('live.editResult') : t('live.enterResult')}</button>
+              )}
+            </div>
           </div>
         ))}
       </div>
+
+      <ResultModal
+        match={entering}
+        sport={tour.sport}
+        label={entering ? matchLabel(entering, matches, t) : ''}
+        tid={tid}
+        onClose={() => setEntering(null)}
+        onSaved={(b) => {
+          setData({ ...data, ...b });
+          setEntering(null);
+        }}
+      />
 
       <StartModal
         match={starting}
@@ -308,6 +339,59 @@ function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, ti
           <button type="button" className="btn-primary" disabled={busy} onClick={start}>▶ {t('live.start')}</button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+// Typing the result once the match is over (no live scoring), or fixing a saved one.
+function ResultModal({ match, sport, label, tid, onClose, onSaved }) {
+  const { t } = useI18n();
+  const [body, setBody] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    setError('');
+    setBusy(false);
+  }, [match]);
+  if (!match) return null;
+  const key = match.match_id ? { match_id: match.match_id } : { sub_match_id: match.sub_match_id };
+
+  async function send(extra) {
+    setBusy(true);
+    setError('');
+    try {
+      onSaved(await api.post(`/api/live/${tid}/result`, { ...key, ...extra }));
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={!!match} title={`✏️ ${match.played ? t('live.editResult') : t('live.enterResult')}`} onClose={() => !busy && onClose()}>
+      <form
+        className="flex flex-col gap-3 text-sm"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (body) send(body);
+        }}
+      >
+        <div className="rounded-lg bg-navy-900 border border-navy-700 px-3 py-2">
+          <div className="text-gray-400 text-xs">{label}</div>
+          <div className="text-white font-semibold">{match.team1} <span className="text-gray-500 font-normal">vs</span> {match.team2}</div>
+        </div>
+        <ScoreEntry key={match.match_id || match.sub_match_id} sport={sport} labels={[match.team1, match.team2]} initial={{ team1_score: match.score?.[0], team2_score: match.score?.[1], games: match.games, score_format: match.score_format, duration_sec: match.duration_sec }} onChange={setBody} />
+        {error && <p className="text-red-400">{error}</p>}
+        <div className="flex gap-2">
+          {match.played && (
+            <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => window.confirm(t('live.clearConfirm')) && send({ clear: true })}>
+              {t('tournaments.clear')}
+            </button>
+          )}
+          <button type="button" className="btn-secondary flex-1" disabled={busy} onClick={onClose}>{t('common.cancel')}</button>
+          <button className="btn-primary flex-1" disabled={busy}>{t('common.save')}</button>
+        </div>
+      </form>
     </Modal>
   );
 }

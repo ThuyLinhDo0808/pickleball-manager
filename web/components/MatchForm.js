@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import GamesInput, { blankGames, gamesPayload } from '@/components/GamesInput';
+import GamesInput, { blankGames, defaultFormat, gamesPayload } from '@/components/GamesInput';
 
 function nowLocalInput() {
   const d = new Date();
@@ -16,6 +16,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
   const { t, sport: clubSport } = useI18n();
   const badminton = (sportProp || clubSport) === 'badminton'; // badminton: games to 21, best of 3
   const [games, setGames] = useState(blankGames);
+  const [format, setFormat] = useState(() => defaultFormat('badminton'));
   const [slots, setSlots] = useState({ 1: ['', ''], 2: ['', ''] });
   const [score, setScore] = useState({ 1: '', 2: '' });
   const [playedAt, setPlayedAt] = useState(nowLocalInput);
@@ -43,7 +44,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
     try {
       const saved = await api.post(endpoint, {
         ...parent,
-        ...(hasScore ? (badminton ? { games: filled } : { team1_score: Number(score[1] || 0), team2_score: Number(score[2] || 0) }) : {}),
+        ...(hasScore ? (badminton ? { games: filled, format } : { team1_score: Number(score[1] || 0), team2_score: Number(score[2] || 0) }) : {}),
         played_at: new Date(playedAt).toISOString(),
         players: [1, 2].flatMap((team) => picked[team].map((id) => ({ team, [idField]: id }))),
       });
@@ -102,7 +103,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
 
       {badminton && (
         <div className="bg-navy-900 rounded-lg p-3">
-          <GamesInput value={games} onChange={setGames} />
+          <GamesInput value={games} onChange={setGames} format={format} onFormatChange={setFormat} />
         </div>
       )}
       <p className="text-gray-500 text-xs -mt-2">{t('matches.scoreLaterHint')}</p>

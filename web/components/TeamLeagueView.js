@@ -1,5 +1,5 @@
 'use client';
-import GamesInput, { gamesPayload } from '@/components/GamesInput';
+import ScoreEntry from '@/components/ScoreEntry';
 import { levelText } from '@/lib/levels';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
@@ -16,12 +16,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
   const size = SIZE[sub.format];
   const [p1, setP1] = useState([sub.team1_p1 || '', sub.team1_p2 || ''].slice(0, size));
   const [p2, setP2] = useState([sub.team2_p1 || '', sub.team2_p2 || ''].slice(0, size));
-  const [s1, setS1] = useState(sub.team1_score ?? '');
-  const [s2, setS2] = useState(sub.team2_score ?? '');
-  const badminton = sport === 'badminton'; // games to 21, best of 3
-  const [games, setGames] = useState(() =>
-    Array.isArray(sub.games) && sub.games.length ? sub.games.map(([a, b]) => [String(a), String(b)]) : [['', ''], ['', '']]
-  );
+  const [score, setScore] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,28 +42,15 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
 
   function submit(e) {
     e.preventDefault();
-    const score = badminton ? { games: gamesPayload(games) } : { team1_score: Number(s1), team2_score: Number(s2) };
     send({ ...score, team1_players: p1.filter(Boolean), team2_players: p2.filter(Boolean) });
   }
 
-  const side = (tid, ids, setIds, score, setScore, i) => {
+  const side = (tid, ids, setIds) => {
     const roster = team(tid)?.players || [];
     return (
       <div className="rounded-lg bg-navy-900 p-3">
         <div className="flex items-center gap-3 mb-2">
           <span className="flex-1 text-white font-semibold truncate">{team(tid)?.name}</span>
-          {!badminton && <input
-            className="input !w-20 text-center text-lg font-bold"
-            type="number"
-            inputMode="numeric"
-            min="0"
-            max="99"
-            required
-            autoFocus={i === 0}
-            aria-label={t('league.score')}
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-          />}
         </div>
         <div className={`grid gap-2 ${size === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {ids.map((id, k) => (
@@ -89,9 +71,11 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <p className="text-lime-400 text-sm font-semibold">{t(`league.sub_${sub.format}`)}</p>
-      {side(fixture.team1_id, p1, setP1, s1, setS1, 0)}
-      {side(fixture.team2_id, p2, setP2, s2, setS2, 1)}
-      {badminton && <GamesInput value={games} onChange={setGames} labels={[team(fixture.team1_id)?.name, team(fixture.team2_id)?.name]} />}
+      {side(fixture.team1_id, p1, setP1)}
+      {side(fixture.team2_id, p2, setP2)}
+      <div className="rounded-lg bg-navy-900 p-3">
+        <ScoreEntry sport={sport} labels={[team(fixture.team1_id)?.name, team(fixture.team2_id)?.name]} initial={sub} onChange={setScore} />
+      </div>
       <p className="text-gray-500 text-xs">{t('league.lineupHint')}</p>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex gap-2">

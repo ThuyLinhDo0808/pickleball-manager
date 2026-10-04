@@ -4,10 +4,10 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { actingHost } = require('../services/clubAccess');
 const { todayYmd } = require('../services/memberships');
-const { clubSport } = require('../services/sport');
+const { clubSport, timingReady } = require('../services/sport');
 const L = require('../services/liveScore');
 const T = require('../services/tournament');
-const { recordMatch, recordSub, loadFull } = require('./tournaments.routes');
+const { recordMatch, recordSub, loadFull, scoresFor } = require('./tournaments.routes');
 
 // Live (point-by-point) scoring of tournament matches  —  /api/live
 // Who may score: the club's owner and co-admins, and referees / coordinators whose grant
@@ -84,6 +84,8 @@ function scoreables(full) {
           played: sub.team1_score != null,
           score: sub.team1_score != null ? [sub.team1_score, sub.team2_score] : null,
           games: sub.games || null,
+          duration_sec: sub.duration_sec ?? null,
+          score_format: sub.score_format || null,
         });
       }
     }
@@ -106,6 +108,8 @@ function scoreables(full) {
         played: m.team1_score != null,
         score: m.team1_score != null ? [m.team1_score, m.team2_score] : null,
         games: m.games || null,
+        duration_sec: m.duration_sec ?? null,
+        score_format: m.score_format || null,
         // Group results are locked once the knockout exists.
         locked: m.stage === 'group' && full.status !== 'groups',
       });
@@ -118,7 +122,7 @@ function scoreables(full) {
 function liveView(row, item, names) {
   let state;
   try {
-    state = L.replay(row.config, row.players, row.log || []);
+    state = L.replay(row.config, row.players, row.log || [], row.stamps || null);
   } catch {
     state = null;
   }
@@ -295,6 +299,7 @@ router.post('/:tournamentId/start', async (req, res) => {
       config,
       players,
       log: [],
+      ...((await timingReady()) ? { stamps: [] } : {}),
       status: 'live',
       scorer_name: req.hostEmail || null,
       started_at: new Date().toISOString(),
@@ -328,9 +333,13 @@ async function writeLog(t, row, log, version) {
   } catch (err) {
     throw badRequest(err.message);
   }
+  // Event times follow the log: a new event gets "now", undo drops the last one.
+  const timed = await timingReady();
+  const old = (row.stamps || []).slice(0, log.length);
+  while (old.length < log.length) old.push(Date.now());
   const { data, error } = await supabase
     .from('tournament_live')
-    .update({ log, updated_at: new Date().toISOString() })
+    .update({ log, ...(timed ? { stamps: old } : {}), updated_at: new Date().toISOString() })
     .eq('id', row.id)
     .eq('updated_at', row.updated_at)
     .select();
@@ -397,7 +406,7 @@ router.post('/:tournamentId/:liveId/save', async (req, res) => {
   try {
     const row = await liveRow(t, req.params.liveId);
     if (row.status !== 'live') throw badRequest('Already saved.', 409);
-    const state = L.replay(row.config, row.players, row.log || []);
+    const state = L.replay(row.config, row.players, row.log || [], row.stamps || null);
     const result = L.resultOf(row.config, state);
     if (!result) throw badRequest('The match is not over yet.');
     if (row.match_id) {
@@ -410,6 +419,29 @@ router.post('/:tournamentId/:liveId/save', async (req, res) => {
     const { error } = await supabase.from('tournament_live').update({ status: 'saved', updated_at: new Date().toISOString() }).eq('id', row.id);
     if (error) throw error;
     res.json(await viewOf(t, row.id));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Enter the result after the match (no live scoring): same checks as the tournament page,
+// open to the same people as live scoring (owners, co-admins, club referees / coordinators).
+router.post('/:tournamentId/result', async (req, res) => {
+  const t = req.tournament;
+  try {
+    const { match_id, sub_match_id } = req.body;
+    if (!!match_id === !!sub_match_id) throw badRequest('Pick one match.');
+    if (!isUuid(match_id || sub_match_id)) throw badRequest('Match not found.', 404);
+    const { data: running } = await supabase
+      .from('tournament_live')
+      .select('id, status')
+      .eq(match_id ? 'match_id' : 'sub_match_id', match_id || sub_match_id)
+      .maybeSingle();
+    if (running?.status === 'live') throw badRequest('This match is being scored live — finish or stop it first.', 409, 'live');
+    const result = req.body.clear ? { clear: true } : await scoresFor(t, req.body);
+    if (match_id) await recordMatch(t, match_id, result);
+    else await recordSub(t, sub_match_id, result, req.body.clear ? {} : { team1_players: req.body.team1_players, team2_players: req.body.team2_players });
+    res.json(await board(t));
   } catch (err) {
     fail(res, err);
   }

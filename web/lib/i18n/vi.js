@@ -349,6 +349,11 @@ export const vi = {
     matches: 'Trận',
   },
   live: {
+    scoreLive: 'Bấm trực tiếp',
+    enterResult: 'Nhập kết quả',
+    editResult: 'Sửa kết quả',
+    twoWays: 'Mỗi trận chọn 1 trong 2 cách: ▶ Bấm trực tiếp từng pha trong lúc đánh (có bấm giờ), hoặc ✏️ Nhập kết quả sau khi trận đã xong.',
+    clearConfirm: 'Xoá kết quả trận này? Bảng đấu / nhánh đấu sẽ tính lại.',
     scoring: 'Cách tính điểm',
     scoring_sideout: 'Side-out 2 tay',
     scoring_sideout_single: 'Side-out 1 tay',
@@ -440,6 +445,8 @@ export const vi = {
     notFound: 'Bảng điểm không tồn tại hoặc đã được tắt.',
   },
   liveGuide: {
+    start5: 'Không có người bấm trực tiếp? Chọn ✏️ Nhập kết quả sau khi trận xong: nhập điểm từng ván theo đúng thể thức (21/15/11 điểm, cách 2 hay chạm là thắng) và thời gian trận nếu có.',
+    tap6: 'Đồng hồ ⏱ trên đầu tự chạy từ pha bóng đầu tiên: thời gian cả trận và ván đang đánh; mỗi ván xong hiện thời gian của ván đó. Tổng thời gian được lưu cùng kết quả.',
     pickSystem: 'Chọn cách tính điểm đang dùng:',
     callTitle2: 'Câu đọc điểm (2 số):',
     psTitle: 'Side-out 1 tay (không có tay 2)',
@@ -520,6 +527,20 @@ export const vi = {
     bm6: 'Đội thắng ván trước giao trước ở ván sau. Trận thắng 2/3 ván.',
     bmExampleTitle: 'Ví dụ',
     bmExample: 'A giao 0-0 từ ô phải. A thắng → 1-0, người giao A đổi sang ô trái, giao tiếp. B thắng → 1-1, B giao; điểm B lẻ (1) nên người đứng ô TRÁI của B giao. B thắng → 2-1 (B), người giao đổi sang ô phải.',
+  },
+  scoreEntry: {
+    mode_single: '1 ván (nhập 2 số)',
+    mode_games: 'Nhiều ván',
+    duration: 'Thời gian trận',
+    durationHint: 'Không bắt buộc — số phút trận đấu diễn ra.',
+    min: 'phút',
+  },
+  timer: {
+    match: 'Thời gian trận',
+    total: 'Tổng thời gian trận',
+    startsHint: 'Đồng hồ chạy từ pha bóng đầu tiên được bấm.',
+    min: '{m} phút',
+    hoursMin: '{h} giờ {m} phút',
   },
   mode: {
     label: 'Chế độ',
@@ -1705,11 +1726,14 @@ export const vi = {
     pickleballProfile: 'DUPR (pickleball)',
   },
   games: {
+    hintFirstTo: 'Ván {n} điểm, ai đủ {n} điểm trước thắng (không cần cách 2).',
+    hintFmt: 'Ván {n} điểm, cách 2 điểm, tối đa {cap}.',
+    hintFmtNoCap: 'Ván {n} điểm, phải cách 2 điểm.',
     label: 'Tỷ số từng ván',
     game: 'Ván {n}',
     hint: 'Mỗi ván 21 điểm, hơn 2 điểm (tối đa 30). Thắng 2 ván là thắng trận; đánh 1 ván cũng được.',
-    addGame: '+ Ván 3',
-    removeGame: 'Bỏ ván 3',
+    addGame: '+ Thêm ván',
+    removeGame: 'Bỏ ván cuối',
   },
   shuttles: {
     title: 'Cầu dùng trong buổi',

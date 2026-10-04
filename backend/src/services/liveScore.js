@@ -91,7 +91,7 @@ function lineup(cfg, players) {
   return { 1: side(1), 2: side(2) };
 }
 
-function replay(cfg, players, log = []) {
+function replay(cfg, players, log = [], stamps = null) {
   const scoring = scoringOf(cfg);
   const rally = scoring === 'rally';
   const pos = lineup(cfg, players);
@@ -107,6 +107,13 @@ function replay(cfg, players, log = []) {
   let finished = false;
   let winner = null;
   let note = null;
+  // Timing (when `stamps` — epoch ms per event — is given): a game starts at its first
+  // rally, the match at the first rally of game 1, and each ends at its last rally.
+  const at = (i) => (Array.isArray(stamps) && Number.isFinite(Number(stamps[i])) ? Number(stamps[i]) : null);
+  const gameTimes = [];
+  let gameStart = null;
+  let matchStart = null;
+  let matchEnd = null;
   const atStart = () => score[0] === 0 && score[1] === 0 && gameRallies === 0;
   const deciding = () => games.length === cfg.best_of - 1;
   const half = Math.ceil(cfg.points / 2);
@@ -125,7 +132,8 @@ function replay(cfg, players, log = []) {
     note = 'side_out';
   };
 
-  for (const ev of log) {
+  for (let i = 0; i < log.length; i++) {
+    const ev = log[i];
     if (!EVENTS.has(ev)) throw new Error(`Bad event ${ev}.`);
     if (finished) throw new Error('The match is over.');
     const team = Number(ev[1]);
@@ -142,6 +150,10 @@ function replay(cfg, players, log = []) {
       continue;
     }
 
+    if (gameRallies === 0) {
+      gameStart = at(i);
+      if (matchStart == null) matchStart = gameStart;
+    }
     rallies += 1;
     gameRallies += 1;
     const before = Math.max(...score);
@@ -175,10 +187,12 @@ function replay(cfg, players, log = []) {
     if (gameOver(cfg, score[0], score[1])) {
       const w = score[0] > score[1] ? 1 : 2;
       games.push(score);
+      gameTimes.push({ start: gameStart, end: at(i) });
       won[w - 1] += 1;
       if (won[w - 1] > cfg.best_of / 2) {
         finished = true;
         winner = w;
+        matchEnd = at(i);
         note = 'match_over';
       } else {
         note = 'game_over';
@@ -227,6 +241,12 @@ function replay(cfg, players, log = []) {
     at_start: !finished && atStart(),
     finished,
     winner,
+    timing: {
+      started_at: matchStart,
+      ended_at: matchEnd,
+      game_started_at: finished || gameRallies === 0 ? null : gameStart,
+      games: gameTimes,
+    },
   };
 }
 
@@ -234,11 +254,14 @@ function replay(cfg, players, log = []) {
 // games won plus the games themselves.
 function resultOf(cfg, state) {
   if (!state.finished) return null;
+  const t = state.timing || {};
+  const duration_sec = t.started_at && t.ended_at ? Math.max(0, Math.round((t.ended_at - t.started_at) / 1000)) : null;
+  const format = { points: cfg.points, win_by: cfg.win_by, best_of: cfg.best_of, scoring: scoringOf(cfg), ...(cfg.freeze ? { freeze: true } : {}) };
   if (cfg.sport === 'pickleball' && cfg.best_of === 1) {
     const [a, b] = state.games[0];
-    return { s1: a, s2: b, games: null };
+    return { s1: a, s2: b, games: null, format, duration_sec };
   }
-  return { s1: state.games_won[0], s2: state.games_won[1], games: state.games };
+  return { s1: state.games_won[0], s2: state.games_won[1], games: state.games, format, duration_sec };
 }
 
 module.exports = { DEFAULTS, EVENTS, SCORINGS, POINTS, BADMINTON_CAP, cleanConfig, replay, resultOf, gameOver, scoringOf };

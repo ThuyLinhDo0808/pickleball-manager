@@ -19,6 +19,12 @@ async function sportReady() {
   return !s.missing_migrations.includes(MIGRATION);
 }
 
+// Match timing + stored score format (migration 20261017): written only once it is run.
+async function timingReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes('20261017090000_match_timing_formats.sql');
+}
+
 // The club's sport (cached briefly; clubs never change sport).
 const cache = new Map();
 async function clubSport(clubId) {
@@ -49,27 +55,65 @@ function cleanLevel(value, sport) {
   return n;
 }
 
-// Badminton result: 1-3 games, each to 21 (win by 2, capped at 30), no draws.
-// Returns { games, team1_score, team2_score } with the games won, or throws a message.
-function badmintonResult(games) {
-  if (!Array.isArray(games) || games.length < 1 || games.length > 3) throw new Error('Enter 1 to 3 games.');
+// Game formats a result can be checked against. Badminton: 21 (max 30), 15 (max 21) or
+// 11 (max 15) points; pickleball: 11, 15 or 21 with no maximum. Win by 2, or "first to the
+// points" (win_by 1). best_of 1, 3 or 5 (unknown → 3 for up to 3 games, else 5).
+const FORMAT_POINTS = { badminton: [21, 15, 11], pickleball: [11, 15, 21] };
+const BADMINTON_CAP = { 21: 30, 15: 21, 11: 15 };
+
+function cleanFormat(sport, f = {}) {
+  const list = FORMAT_POINTS[sport] || FORMAT_POINTS.pickleball;
+  const points = Number(f?.points ?? list[0]);
+  if (!list.includes(points)) throw new Error(`Games go to ${list.join(', ')} points.`);
+  const winBy = Number(f?.win_by ?? 2);
+  if (![1, 2].includes(winBy)) throw new Error('win_by must be 1 or 2.');
+  const bestOf = f?.best_of == null ? null : Number(f.best_of);
+  if (bestOf != null && ![1, 3, 5].includes(bestOf)) throw new Error('Best of 1, 3 or 5 games.');
+  return { points, win_by: winBy, cap: sport === 'badminton' && winBy === 2 ? BADMINTON_CAP[points] : null, ...(bestOf ? { best_of: bestOf } : {}) };
+}
+
+// Is a-b a finished game under this format?
+function gameFinished(a, b, fmt) {
+  const [hi, lo] = a > b ? [a, b] : [b, a];
+  if (fmt.win_by === 1) return hi === fmt.points && lo < hi;
+  if (fmt.cap && hi === fmt.cap) return lo === hi - 1 || lo === hi - 2;
+  if (hi === fmt.points) return lo <= hi - 2;
+  return hi > fmt.points && hi - lo === 2;
+}
+
+function formatText(fmt) {
+  const tail = fmt.win_by === 1 ? 'first to the points' : `win by 2${fmt.cap ? `, max ${fmt.cap}` : ''}`;
+  return `${fmt.points} points, ${tail}`;
+}
+
+// Result from games under a format: 1-5 games, each finished, no draws. Returns
+// { games, team1_score, team2_score } with the games won, or throws a message.
+function gamesResult(games, fmt) {
+  const maxGames = fmt.best_of || 5;
+  if (!Array.isArray(games) || games.length < 1 || games.length > maxGames) throw new Error(`Enter 1 to ${maxGames} games.`);
+  const top = fmt.cap || (fmt.win_by === 1 ? fmt.points : 99);
   let won1 = 0;
   let won2 = 0;
   const clean = games.map((g, i) => {
     const a = Number(g?.[0]);
     const b = Number(g?.[1]);
-    if (![a, b].every((x) => Number.isInteger(x) && x >= 0 && x <= 30)) throw new Error(`Game ${i + 1}: scores must be 0-30.`);
+    if (![a, b].every((x) => Number.isInteger(x) && x >= 0 && x <= top)) throw new Error(`Game ${i + 1}: scores must be 0-${top}.`);
     if (a === b) throw new Error(`Game ${i + 1}: a game can't end level.`);
-    const [hi, lo] = a > b ? [a, b] : [b, a];
-    const ok = (hi === 21 && lo <= 19) || (hi > 21 && hi < 30 && hi - lo === 2) || (hi === 30 && (lo === 28 || lo === 29));
-    if (!ok) throw new Error(`Game ${i + 1}: ${a}-${b} isn't a finished game (21 points, win by 2, max 30).`);
+    if (!gameFinished(a, b, fmt)) throw new Error(`Game ${i + 1}: ${a}-${b} isn't a finished game (${formatText(fmt)}).`);
     if (a > b) won1++;
     else won2++;
     return [a, b];
   });
   if (won1 === won2) throw new Error('The games are level: add the deciding game.');
-  if (Math.max(won1, won2) > 2) throw new Error('Best of 3: the match ends at 2 games.');
+  const bestOf = fmt.best_of || (games.length <= 3 ? 3 : 5);
+  const need = Math.ceil(bestOf / 2);
+  if (Math.max(won1, won2) > need) throw new Error(`Best of ${bestOf}: the match ends at ${need} games.`);
   return { games: clean, team1_score: won1, team2_score: won2 };
 }
 
-module.exports = { SPORTS, BADMINTON_LEVEL_MAX, sportReady, clubSport, profileLevel, cleanLevel, badmintonResult };
+// Badminton result (format optional: 21 points, win by 2, max 30 by default).
+function badmintonResult(games, format) {
+  return gamesResult(games, cleanFormat('badminton', format || {}));
+}
+
+module.exports = { SPORTS, BADMINTON_LEVEL_MAX, sportReady, timingReady, clubSport, profileLevel, cleanLevel, badmintonResult, gamesResult, cleanFormat, gameFinished };

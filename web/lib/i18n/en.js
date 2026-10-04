@@ -349,6 +349,11 @@ export const en = {
     matches: 'Matches',
   },
   live: {
+    scoreLive: 'Score live',
+    enterResult: 'Enter result',
+    editResult: 'Edit result',
+    twoWays: 'For each match pick one: ▶ Score live rally by rally while it is played (timed), or ✏️ Enter the result once the match is over.',
+    clearConfirm: 'Clear this result? Groups / bracket are recalculated.',
     scoring: 'Scoring system',
     scoring_sideout: 'Side-out, 2 servers',
     scoring_sideout_single: 'Side-out, 1 server',
@@ -440,6 +445,8 @@ export const en = {
     notFound: "This scoreboard doesn't exist or was turned off.",
   },
   liveGuide: {
+    start5: 'No one to score live? Use ✏️ Enter result after the match: type each game under the right format (21/15/11 points, win by 2 or first to the points) and the match time if you have it.',
+    tap6: 'The ⏱ clock at the top runs from the first rally: whole match and current game; each finished game shows its own time. The total is saved with the result.',
     pickSystem: 'Pick the scoring system in use:',
     callTitle2: 'The call (two numbers):',
     psTitle: 'Side-out with one server',
@@ -520,6 +527,20 @@ export const en = {
     bm6: 'The winner of a game serves first in the next. Matches are best of 3.',
     bmExampleTitle: 'Example',
     bmExample: 'A serves at 0-0 from the right. A wins → 1-0, A server moves to the left and serves again. B wins → 1-1, B serves; B is on 1 (odd) so B player in the LEFT court serves. B wins → 2-1 (B), the server moves to the right.',
+  },
+  scoreEntry: {
+    mode_single: 'One game (two scores)',
+    mode_games: 'Several games',
+    duration: 'Match time',
+    durationHint: 'Optional — how many minutes the match took.',
+    min: 'min',
+  },
+  timer: {
+    match: 'Match time',
+    total: 'Total match time',
+    startsHint: 'The clock starts at the first rally you tap.',
+    min: '{m} min',
+    hoursMin: '{h} h {m} min',
   },
   mode: {
     label: 'Mode',
@@ -1705,11 +1726,14 @@ export const en = {
     pickleballProfile: 'DUPR (pickleball)',
   },
   games: {
+    hintFirstTo: 'Games to {n}, first to {n} wins (no 2-point lead needed).',
+    hintFmt: 'Games to {n}, win by 2, max {cap}.',
+    hintFmtNoCap: 'Games to {n}, win by 2.',
     label: 'Score by game',
     game: 'Game {n}',
     hint: 'Games to 21, win by 2 (max 30). Two games win the match; a single game is fine too.',
-    addGame: '+ Game 3',
-    removeGame: 'Remove game 3',
+    addGame: '+ Add game',
+    removeGame: 'Remove last game',
   },
   shuttles: {
     title: 'Shuttles used this session',

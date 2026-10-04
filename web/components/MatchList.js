@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import GamesInput, { gamesPayload, gamesText } from '@/components/GamesInput';
+import GamesInput, { gamesPayload, gamesText, inferFormat } from '@/components/GamesInput';
 
 function playerName(mp) {
   return mp.club_members?.full_name || mp.event_participants?.full_name || '?';
@@ -16,6 +16,7 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
   const { t } = useI18n();
   const [form, setForm] = useState({ team1_score: match.team1_score ?? '', team2_score: match.team2_score ?? '' });
   const names = [teamNames(match, 1) || t('matches.team1'), teamNames(match, 2) || t('matches.team2')];
+  const [format, setFormat] = useState(() => inferFormat(match.games, 'badminton'));
   const [games, setGames] = useState(() =>
     Array.isArray(match.games) && match.games.length ? match.games.map(([a, b]) => [String(a), String(b)]) : [['', ''], ['', '']]
   );
@@ -29,7 +30,7 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
     try {
       await api.patch(
         `${basePath}/${match.id}`,
-        badminton ? { games: gamesPayload(games) } : { team1_score: Number(form.team1_score || 0), team2_score: Number(form.team2_score || 0) }
+        badminton ? { games: gamesPayload(games), format } : { team1_score: Number(form.team1_score || 0), team2_score: Number(form.team2_score || 0) }
       );
       onSaved();
     } catch (err) {
@@ -41,7 +42,7 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      {badminton ? <GamesInput value={games} onChange={setGames} labels={names} /> : (
+      {badminton ? <GamesInput value={games} onChange={setGames} labels={names} format={format} onFormatChange={setFormat} /> : (
       <div className="grid grid-cols-2 gap-3">
         {[1, 2].map((team) => (
           <div key={team} className="min-w-0">

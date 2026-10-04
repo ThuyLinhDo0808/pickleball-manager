@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import { matchLabel, sportIcon } from '@/lib/live';
+import { clock, elapsed, matchLabel, minutesText, sportIcon } from '@/lib/live';
+import { useNow } from '@/lib/useNow';
 
 // Public live scoreboard (no login): the matches on court now, refreshed every few
 // seconds, plus just-finished results and what's next. Works on a phone or a TV at the venue.
@@ -13,6 +14,7 @@ export default function LiveBoardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [at, setAt] = useState(null);
+  const now = useNow(1000);
 
   useEffect(() => {
     let alive = true;
@@ -93,7 +95,10 @@ export default function LiveBoardPage() {
               <article key={l.id} className="rounded-2xl border border-navy-700 bg-navy-900 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-xs">
                   <span className="text-red-200 font-semibold">● {l.court || t('live.noCourt')}</span>
-                  <span className="text-gray-300 truncate ml-2">{label(l)} · {t('live.gameN', { n: s?.game_no || 1 })}</span>
+                  <span className="text-gray-300 truncate ml-2">
+                    {label(l)} · {t('live.gameN', { n: s?.game_no || 1 })}
+                    {s?.timing?.started_at && <span className="text-white tabular-nums"> · ⏱ {clock(elapsed(s.timing, now).match)}</span>}
+                  </span>
                 </div>
                 {[1, 2].map((side) => {
                   const serving = s?.serving === side;
@@ -138,7 +143,11 @@ export default function LiveBoardPage() {
             <ul className="divide-y divide-navy-700">
               {recent.map((l) => (
                 <li key={l.id} className="py-2 text-sm">
-                  <div className="text-gray-500 text-xs">{label(l)}{l.court ? ` · ${l.court}` : ''}</div>
+                  <div className="text-gray-500 text-xs">
+                    {label(l)}
+                    {l.court ? ` · ${l.court}` : ''}
+                    {l.state?.timing?.started_at && l.state?.timing?.ended_at ? ` · ⏱ ${minutesText((l.state.timing.ended_at - l.state.timing.started_at) / 1000, t)}` : ''}
+                  </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className={`truncate ${l.state?.winner === 1 ? 'text-white font-semibold' : 'text-gray-400'}`}>{l.team1}</span>
                     <span className="tabular-nums text-gray-300 shrink-0">{(l.state?.games || []).map(([a, b]) => `${a}-${b}`).join(', ')}</span>

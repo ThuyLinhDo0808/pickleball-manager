@@ -68,7 +68,7 @@ async function parentSport(parent) {
 // hold the games won. Pickleball: the two scores as typed.
 function badmintonScores(body) {
   try {
-    return badmintonResult(body.games);
+    return badmintonResult(body.games, body.format);
   } catch (err) {
     throw badRequest(err.message);
   }

@@ -10,8 +10,8 @@ import { useI18n } from '@/context/I18nContext';
 const SEEN_KEY = 'pb_live_guide_seen';
 
 const STEPS = {
-  start: ['start1', 'start2', 'start3', 'start4'],
-  tap: ['tap1', 'tap2', 'tap3', 'tap4', 'tap5'],
+  start: ['start1', 'start2', 'start3', 'start4', 'start5'],
+  tap: ['tap1', 'tap2', 'tap3', 'tap4', 'tap5', 'tap6'],
   fix: ['fix1', 'fix2', 'fix3'],
   end: ['end1', 'end2', 'end3'],
   sideout: ['pb1', 'pb2', 'pb3', 'pb4', 'pb5', 'pb6', 'pb7'],

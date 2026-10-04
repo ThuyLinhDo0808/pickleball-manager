@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import { sportIcon } from '@/lib/live';
+import { clock, elapsed, sportIcon } from '@/lib/live';
+import { useNow } from '@/lib/useNow';
 import LiveGuide from '@/components/LiveGuide';
 
 // The scorer's pad: tap the side that won the rally. The server keeps the rules (who
@@ -21,6 +22,7 @@ export default function ScorerPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editingCourt, setEditingCourt] = useState(false);
+  const now = useNow(1000);
   const busyRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -86,6 +88,7 @@ export default function ScorerPage() {
   }
 
   const s = live.state;
+  const times = elapsed(s?.timing, now);
   const cfg = live.config;
   // Rows started before scoring systems existed: pickleball side-out, badminton rally.
   const scoring = cfg.scoring || (sport === 'badminton' ? 'rally' : 'sideout');
@@ -180,13 +183,29 @@ export default function ScorerPage() {
           <p className="card text-red-400">{t('live.broken')}</p>
         ) : (
           <>
+            <div className="flex items-center justify-between gap-2 mb-3 rounded-xl border border-navy-700 bg-navy-900/60 px-3 py-2">
+              <span className="text-gray-400 text-xs">⏱ {s.finished ? t('timer.total') : t('timer.match')}</span>
+              <span className={`font-mono text-xl font-bold tabular-nums ${s.finished ? 'text-lime-300' : 'text-white'}`}>{times.match == null ? '—' : clock(times.match)}</span>
+              {!s.finished && (
+                <span className="text-gray-400 text-xs tabular-nums">
+                  {t('live.gameN', { n: s.game_no })}: <span className="text-gray-200 font-mono">{times.game == null ? '—' : clock(times.game)}</span>
+                </span>
+              )}
+            </div>
+            {!s.timing?.started_at && !s.finished && <p className="text-gray-500 text-xs -mt-2 mb-3">{t('timer.startsHint')}</p>}
+
             {s.games.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3 text-xs">
-                {s.games.map(([a, b], i) => (
-                  <span key={i} className="rounded-full bg-navy-900 border border-navy-700 px-2.5 py-1 text-gray-300 tabular-nums">
-                    {t('live.gameN', { n: i + 1 })}: <span className={a > b ? 'text-sky-300 font-semibold' : ''}>{a}</span>-<span className={b > a ? 'text-amber-300 font-semibold' : ''}>{b}</span>
-                  </span>
-                ))}
+                {s.games.map(([a, b], i) => {
+                  const g = s.timing?.games?.[i];
+                  const sec = g?.start && g?.end ? (g.end - g.start) / 1000 : null;
+                  return (
+                    <span key={i} className="rounded-full bg-navy-900 border border-navy-700 px-2.5 py-1 text-gray-300 tabular-nums">
+                      {t('live.gameN', { n: i + 1 })}: <span className={a > b ? 'text-sky-300 font-semibold' : ''}>{a}</span>-<span className={b > a ? 'text-amber-300 font-semibold' : ''}>{b}</span>
+                      {sec != null && <span className="text-gray-500"> · {clock(sec)}</span>}
+                    </span>
+                  );
+                })}
               </div>
             )}
 
