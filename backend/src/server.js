@@ -13,6 +13,7 @@ const tournamentsRoutes = require('./routes/tournaments.routes');
 const leaderboardRoutes = require('./routes/leaderboard.routes');
 const { publicRoutes, playerRoutes } = require('./routes/player.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const liveRoutes = require('./routes/live.routes');
 const { schemaStatus } = require('./services/schemaCheck');
 const { startSurveySweeper } = require('./services/survey');
 
@@ -44,6 +45,8 @@ app.use('/api/tournaments', requireAuth, tournamentsRoutes);
 app.use('/api/leaderboard', requireAuth, leaderboardRoutes);
 app.use('/api/player', requireAuth, playerRoutes);
 app.use('/api/analytics', requireAuth, analyticsRoutes);
+app.use('/api/live', requireAuth, liveRoutes);
+app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
 app.use('/api/public', publicRoutes); // no login: club join pages
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));

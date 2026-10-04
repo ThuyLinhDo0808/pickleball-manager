@@ -264,6 +264,23 @@ Các đội 4–8 người đá **vòng tròn**, mỗi lần hai đội gặp nh
 - **Theo vòng** (mặc định trên điện thoại): mỗi lần hiện một vòng dạng danh sách. Các nút vòng *Tứ kết → Bán kết → Chung kết* kèm số trận đã xong (vd `2/4`). App tự mở vòng còn trận chưa nhập, và có nút chuyển sang vòng trước/sau.
 - **Sơ đồ** (mặc định trên máy tính): cây nhánh đấu đầy đủ. Trên điện thoại **vuốt ngang**, mỗi lần dừng đúng ở một vòng.
 
+#### Tính điểm trực tiếp (`/live/<id giải>`)
+Nút đỏ **● Tính điểm trực tiếp** trên trang giải (khi giải chưa kết thúc) mở trang điều khiển: số trận *đang đánh / chưa đánh / đã có kết quả*, các trận đang đánh (bấm để tiếp tục) và danh sách trận chưa đánh với nút **▶ Bấm điểm**.
+
+**Ai được bấm điểm:** chủ CLB, đồng quản trị, và **trọng tài / điều phối viên** có quyền phủ CLB đó (quyền *một CLB*, *mọi CLB* hoặc *tất cả* — quyền chỉ cho một kèo hay chỉ Xé Vé thì không). Nhân viên thấy các giải này ở mục *Giải đấu được giao bấm điểm* trong trang **Kèo được giao**.
+
+**Bắt đầu một trận:** đặt tên sân (VD *Sân 1*), số điểm mỗi ván (pickleball 11 / 15 / 21; cầu lông luôn 21), số ván (1 ván hoặc thắng 2/3), đội giao trước; giải Đồng đội chọn thêm đội hình trận phụ (người đứng phải / trái).
+
+**Màn hình bấm điểm** (dùng tốt trên điện thoại): hai nửa lớn cho 2 đội — **bấm vào đội thắng pha bóng**. App tự theo luật:
+- **Pickleball** (tính điểm khi giao — side-out): chỉ đội đang giao được điểm; đánh đôi mỗi đội có *tay 1, tay 2*, riêng lượt đầu ván chỉ 1 tay (**0-0-2**); đội giao thắng thì 2 người đổi chỗ; mất giao thì đổi quyền, người đứng **bên phải** giao trước. Đổi sân ở ván quyết định khi một đội chạm nửa số điểm (6 với ván 11).
+- **Cầu lông** (rally): pha nào cũng có điểm, đội thắng pha giao tiếp; điểm chẵn giao từ **phải**, lẻ từ **trái**; 21 điểm, cách 2, tối đa 30; nghỉ ở 11 điểm, ván 3 đổi sân ở 11; ván sau đội thắng ván trước giao.
+- Luôn hiện: điểm, số ván đã thắng, **ai đang giao + đứng bên nào + tay mấy**, câu **đọc điểm** (VD `4-2-1`), nhãn *Game point / Match point*, nhắc *Đổi quyền giao / Đổi sân / Nghỉ giữa ván / Hết ván*.
+- Trước pha đầu tiên của mỗi ván có thể đổi đội giao trước và đổi vị trí phải/trái. **Hoàn tác** lùi từng pha. **Dừng** bỏ trận đang bấm (không lưu gì).
+- Hết trận → **Lưu kết quả vào giải**: tỷ số vào bảng đấu / nhánh đấu như nhập tay (pickleball 1 ván lưu điểm, nhiều ván lưu số ván thắng + điểm từng ván), đội thắng tự vào vòng sau.
+- Nhiều người cùng bấm một trận (2 điện thoại) không bị cộng trùng: mỗi lần bấm kèm phiên bản điểm đang thấy; nếu người khác vừa bấm, app tải lại điểm mới nhất và báo.
+
+**Bảng điểm công khai** (`/l/<mã>`): chủ CLB / đồng quản trị bấm **Bật link xem trực tiếp** để có link gửi nhóm Zalo hoặc mở trên TV ở sân. Không cần đăng nhập, không hiện SĐT; hiện các trận đang đánh (sân, tỷ số, người giao, game/match point), trận vừa kết thúc (30 phút gần nhất) và trận sắp đánh, tự cập nhật mỗi 4 giây. *Tắt link* thì link cũ hết hiệu lực.
+
 ### 4.9. Tài chính (`/finance`) — mọi thứ về tiền ở một chỗ
 
 Mục Tài chính có các tab:
@@ -473,6 +490,7 @@ Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai 
 3. Trong từng kèo có hai tab:
    - **Check-in**: tìm tên, bấm *Đã đến* hoặc *Vắng*, hoàn tác được, có đếm "x/y đã đến".
    - **Tỷ số**: nhập hoặc sửa trận.
+4. Mục **Giải đấu được giao bấm điểm** (nếu quyền phủ CLB): mở trang tính điểm trực tiếp của giải (xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments)).
 
 Họ **không bao giờ thấy tài chính hay số điện thoại**. Nhân viên vẫn có nút **Quản lý / Người chơi** để sang Cổng người chơi của chính mình. Check-in của điều phối viên cũng tự trừ buổi trong gói hội viên như khi Host check-in.
 
@@ -737,7 +755,8 @@ supabase/migrations/
 ├── 20261012090000_multi_sport_badminton.sql           # nhiều môn: CLB cầu lông (trình độ 6 cấp, tỷ số theo ván, cầu dùng mỗi buổi)
 ├── 20261013090000_guest_priority_discount.sql         # khách: chỉ còn Ưu tiên + % giảm giá vé (bỏ VIP/gói cho khách)
 ├── 20261014090000_member_area_rank_unscored_matches.sql # khu vực, thời gian chơi, hạng A–D; trận chưa có tỷ số
-└── 20261015090000_staff_grant_scope.sql               # phạm vi quyền (all/clubs/xeve) + thời hạn từ–đến
+├── 20261015090000_staff_grant_scope.sql               # phạm vi quyền (all/clubs/xeve) + thời hạn từ–đến
+└── 20261016090000_tournament_live_scoring.sql         # tính điểm trực tiếp giải đấu + link bảng điểm công khai
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -859,6 +878,7 @@ pickleball-manager/
 ├── backend/
 │   ├── render.yaml             # cấu hình deploy Render
 │   ├── scripts/telegram-webhook.js  # đăng ký webhook cho bot Telegram (một lần)
+│   ├── test/                   # unit test (npm test): luật tính điểm trực tiếp
 │   └── src/
 │       ├── server.js           # khởi tạo Express, gắn các route
 │       ├── supabase.js         # client Supabase (service role)
@@ -866,7 +886,7 @@ pickleball-manager/
 │       │   ├── auth.js         # requireAuth / optionalAuth (Bearer token Supabase)
 │       │   └── checkCapacity.js# giới hạn số người theo gói
 │       ├── routes/             # clubs, events, matches, transactions, host,
-│       │                       # staff, tournaments, player, analytics
+│       │                       # staff, tournaments, live (tính điểm trực tiếp), player, analytics
 │       ├── services/           # nghiệp vụ dùng chung:
 │       │   ├── memberships.js  #   gói hội viên, trừ/hoàn buổi, ngày theo APP_TZ
 │       │   ├── attendance.js   #   check-in / vắng / hoàn tác, chính sách huỷ, đẩy DS chờ, check-in QR
@@ -875,6 +895,7 @@ pickleball-manager/
 │       │   ├── matches.js      #   kiểm tra & lưu trận đấu
 │       │   ├── stats.js        #   xếp hạng theo kỳ, vinh danh
 │       │   ├── tournament.js   #   ghép cặp, chia bảng, vòng tròn, nhánh đấu
+│       │   ├── liveScore.js    #   luật tính điểm trực tiếp (pickleball side-out, cầu lông rally)
 │       │   ├── payment.js      #   mã thanh toán, link VietQR
 │       │   ├── inventory.js    #   tồn kho, độ bền, chi phí/quả/buổi
 │       │   └── feedback.js     #   gửi góp ý qua Resend / webhook
@@ -888,6 +909,8 @@ pickleball-manager/
     │   ├── finance/  (tổng quan) ledger/ plans/ inventory/
     │   ├── analytics/
     │   ├── staff/    (trọng tài/điều phối)
+    │   ├── live/[tid]/    # tính điểm trực tiếp: danh sách trận + [liveId]/ màn hình bấm điểm
+    │   ├── l/[token]/     # bảng điểm trực tiếp công khai
     │   ├── p/        (cổng người chơi) profile/
     │   ├── e/[token]/     # trang đăng ký kèo công khai
     │   └── join/[token]/  # trang tham gia CLB
@@ -915,10 +938,11 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = toàn CLB, `club`, `guest`) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
 | Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge`; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
-| Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) |
+| Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) · `GET /api/public/live/:token` (bảng điểm trực tiếp) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
+| Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, points, best_of, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` |
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
@@ -937,7 +961,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
 | Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo; tỷ số có thể null = chưa nhập; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
-| Giải đấu | `tournaments` (`kind` pairs/team, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams`, `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ) |
+| Giải đấu | `tournaments` (`kind` pairs/team, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams`, `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log`; điểm được tính lại từ nhật ký), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items`, `inventory_moves` |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |
@@ -956,7 +980,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ). Bot Telegram chỉ nhận cập nhật có đúng secret.
 - **Sổ thu chi chỉ thêm.** Không sửa số tiền, chỉ huỷ kèm lý do. Các khoản tự động gắn với nguồn tạo ra chúng.
 - **Lịch sử không ghi đè.** Thay đổi quan trọng được lưu theo dòng thời gian (SCD2).
-- **Link công khai** (`/e/…`, `/join/…`) dùng token ngẫu nhiên, có thể tắt hoặc tạo mới. Trang công khai không lộ số điện thoại.
+- **Link công khai** (`/e/…`, `/join/…`, `/l/…` bảng điểm) dùng token ngẫu nhiên, có thể tắt hoặc tạo mới. Trang công khai không lộ số điện thoại.
 
 ---
 
@@ -980,6 +1004,8 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Bấm link xác nhận email bị đưa về `localhost` | Supabase → Authentication → URL Configuration: đặt *Site URL* là địa chỉ Vercel và thêm `https://<web>/welcome` vào *Redirect URLs*. |
 | `Capacity limit reached` | Đã chạm giới hạn gói (xem [8.4](#84-gói-dịch-vụ--giới-hạn)). Nâng gói hoặc cho thành viên cũ ngừng hoạt động. |
 | Đăng ký xong không đăng nhập được | Mở email và bấm link xác nhận. Kiểm tra *Site URL* trong Supabase Auth. |
+| Trọng tài không thấy giải để bấm điểm | Quyền phải phủ CLB của giải (*một CLB*, *mọi CLB* hoặc *tất cả*); quyền cho một kèo hay *chỉ Xé Vé* không áp dụng cho giải. Giải đã kết thúc không còn hiện. |
+| Bấm điểm báo "Có người khác vừa bấm điểm" | Hai máy cùng bấm một trận: app đã tải điểm mới nhất, bấm lại pha vừa rồi nếu cần. |
 | Trọng tài không thấy kèo được giao | Người đó phải đăng nhập bằng **đúng email** được cấp, **xác nhận email**, rồi chọn workspace *Trọng tài / Điều phối*. |
 | Người chơi không thấy mã QR **chuyển khoản** | Host chưa nhập mã ngân hàng và số tài khoản trong *CLB của tôi → Thanh toán & link tham gia*. |
 | Không nhận được email góp ý | Với `onboarding@resend.dev`, `FEEDBACK_TO_EMAIL` phải là email tài khoản Resend. Xem log Render. Hoặc dùng cách webhook. |
