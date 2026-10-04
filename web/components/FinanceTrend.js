@@ -10,10 +10,10 @@ const monthLabel = (ym) => `${Number(ym.slice(5))}/${ym.slice(2, 4)}`;
 const kVnd = (v) => (Math.abs(v) >= 1e6 ? `${Math.round(v / 1e5) / 10}tr` : `${Math.round(v / 1000)}k`);
 
 // Income vs expenses per month + breakdown by category (from /api/analytics/finance).
-export default function FinanceTrend({ fin }) {
+export default function FinanceTrend({ fin, compact = false }) {
   const { t } = useI18n();
   return (
-    <section className="card mb-4">
+    <section className={compact ? 'card !p-5' : 'card mb-4'}>
       <h2 className="text-white font-semibold mb-2">{t('analytics.finance')}</h2>
       <div className="h-64" role="img" aria-label={t('analytics.finance')}>
         <ResponsiveContainer width="100%" height="100%">
@@ -48,7 +48,7 @@ export default function FinanceTrend({ fin }) {
           ))}
         </tbody>
       </table>
-      {fin.categories.length > 0 && (
+      {!compact && fin.categories.length > 0 && (
         <div className="mt-4">
           <h3 className="text-gray-300 text-sm font-semibold mb-1">{t('analytics.categories')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">

@@ -47,7 +47,8 @@ function AddEntry({ club, onDone }) {
   }
 
   return (
-    <form onSubmit={submit} className="card mb-4 grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+    <form onSubmit={submit} className="card !p-5 mb-4 grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+      <h2 className="col-span-2 md:col-span-6 text-white font-semibold -mb-1">✍️ {t('finX.addEntry')}</h2>
       <div className="col-span-2 md:col-span-1">
         <label className="text-xs text-gray-400">{t('fin.type')}</label>
         <div className="grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
@@ -140,9 +141,28 @@ export default function LedgerPage() {
 
   return (
     <>
-      {isClub ? club && <AddEntry club={club} onDone={reload} /> : <p className="text-gray-400 text-sm mb-4">{t('fin.ledgerXeve')}</p>}
+      <div className={`grid gap-3 mb-4 grid-cols-2 ${isClub ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+        {[
+          ['💚', t('analytics.income'), formatVnd(tin), 'text-lime-400'],
+          ['🧾', t('analytics.expense'), formatVnd(tout), 'text-orange-300'],
+          ['⚖️', t('finX.difference'), formatVnd(tin - tout), tin - tout < 0 ? 'text-red-400' : 'text-white'],
+          ...(isClub && data ? [['🏦', t('fin.balance'), formatVnd(data.balance), Number(data.balance) < 0 ? 'text-red-400' : 'text-lime-400']] : []),
+        ].map(([icon, k, v, tone]) => (
+          <div key={k} className="card !p-4">
+            <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
+              <span>{k}</span>
+              <span aria-hidden="true">{icon}</span>
+            </div>
+            <div className={`text-xl font-bold tabular-nums mt-1 whitespace-nowrap ${tone}`}>{v}</div>
+            <div className="text-gray-500 text-[11px] mt-0.5">{k === t('fin.balance') ? t('finX.balanceNow') : t('finX.inFilter', { n: live.length })}</div>
+          </div>
+        ))}
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+      {isClub ? club && <AddEntry club={club} onDone={reload} /> : <p className="card text-gray-400 text-sm mb-4">{t('fin.ledgerXeve')}</p>}
+
+      <div className="card !p-3 flex flex-wrap items-center gap-2 mb-3">
+        <span className="text-gray-400 text-sm px-1">🔎 {t('finX.filter')}</span>
         <select className="input !w-auto text-sm" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="all">{t('fin.all')}</option>
           <option value="income">{t('analytics.income')}</option>
@@ -160,17 +180,12 @@ export default function LedgerPage() {
           <input type="checkbox" checked={showVoided} onChange={(e) => setShowVoided(e.target.checked)} />
           {t('fin.showVoided')}
         </label>
-        {isClub && data && (
-          <span className="ml-auto text-sm text-gray-400">
-            {t('fin.balance')}: <span className={`font-bold ${Number(data.balance) >= 0 ? 'text-lime-400' : 'text-red-400'}`}>{formatVnd(data.balance)}</span>
-          </span>
-        )}
       </div>
 
-      <p className="text-gray-300 text-sm mb-2">{t('fin.totalShown', { in: formatVnd(tin), out: formatVnd(tout), net: formatVnd(tin - tout) })}</p>
       {error && <p className="card text-yellow-300 text-sm mb-3">{error}</p>}
 
-      <div className="card">
+      <div className="card !p-5">
+        <h2 className="text-white font-semibold mb-3">📒 {t('finX.entries', { n: shown.length })}</h2>
         {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
         {!loading && shown.length === 0 && <p className="text-gray-400 text-sm">{t('fin.noEntries')}</p>}
         {shown.length > 0 && (
@@ -189,7 +204,8 @@ export default function LedgerPage() {
                 {shown.map((r) => (
                   <tr key={r.id} className={r.is_voided ? 'opacity-40 line-through' : ''}>
                     <td className="text-gray-300">{new Date(`${r.occurred_on}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')}</td>
-                    <td className="text-gray-200">
+                    <td className="text-gray-200 whitespace-nowrap">
+                      <span className={`inline-block h-2 w-2 rounded-full mr-2 align-middle ${r.type === 'income' ? 'bg-lime-400' : 'bg-orange-400'}`} aria-hidden="true" />
                       {categoryLabel(r.category, t)}
                       {AUTO.has(r.category) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{t('fin.auto')}</span>}
                     </td>

@@ -102,6 +102,9 @@ function MoveForm({ club, item, kind, onDone, onCancel }) {
   );
 }
 
+// At or below this many left, an item shows as running low.
+const LOW = 6;
+
 export default function InventoryPage() {
   const { t, lang, sport } = useI18n();
   const badminton = sport === 'badminton';
@@ -136,11 +139,30 @@ export default function InventoryPage() {
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-        <p className="text-gray-400 text-sm">{t('inventory.hint')}</p>
+        <p className="text-gray-400 text-sm max-w-2xl">{t('inventory.hint')}</p>
         <button className="btn-primary text-sm shrink-0" onClick={() => setAdding(true)} disabled={!club}>+ {t('inventory.addItem')}</button>
       </div>
 
-      <section className="card mb-4">
+      {(items || []).length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {[
+            ['📦', t('finX.invItems'), (items || []).length, 'text-white'],
+            [badminton ? '🏸' : '🎾', t('finX.invStock'), (items || []).reduce((s, i) => s + (i.stock || 0), 0), 'text-lime-400'],
+            ['💸', t('inventory.spent'), formatVnd((items || []).reduce((s, i) => s + Number(i.total_spent || 0), 0)), 'text-orange-300'],
+            ['⚠️', t('finX.invLow'), (items || []).filter((i) => (i.stock || 0) <= LOW).length, (items || []).some((i) => (i.stock || 0) <= LOW) ? 'text-amber-300' : 'text-white'],
+          ].map(([icon, k, v, tone]) => (
+            <div key={k} className="card !p-4">
+              <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
+                <span>{k}</span>
+                <span aria-hidden="true">{icon}</span>
+              </div>
+              <div className={`text-xl font-bold tabular-nums mt-1 ${tone}`}>{v}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <section className="card !p-5 mb-4">
         <h2 className="text-white font-semibold">{t('inventory.compare')}</h2>
         <p className="text-gray-500 text-xs mb-2">{t('inventory.compareHint')}</p>
         {compare.length === 0 ? (
@@ -175,11 +197,20 @@ export default function InventoryPage() {
       {!loading && (items || []).length === 0 && <p className="text-gray-400 text-sm">{t('inventory.none')}</p>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {(items || []).map((i) => (
-          <div key={i.id} className="card">
+          <div key={i.id} className="card !p-5">
             <div className="flex items-start justify-between gap-2 mb-3">
-              <div className="text-white font-semibold">
-                {badminton ? '🏸' : '🎾'} {i.name}
-                {!badminton && i.holes && <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-navy-700 text-gray-300">{i.holes} {t('inventory.holes').toLowerCase()}</span>}
+              <div className="min-w-0">
+                <div className="text-white font-semibold">
+                  {badminton ? '🏸' : '🎾'} {i.name}
+                  {!badminton && i.holes && <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-navy-700 text-gray-300">{i.holes} {t('inventory.holes').toLowerCase()}</span>}
+                </div>
+                <span
+                  className={`inline-block mt-1 text-[11px] font-semibold rounded-full border px-2 py-0.5 ${
+                    (i.stock || 0) <= 0 ? 'border-red-500/50 text-red-300' : i.stock <= LOW ? 'border-amber-400/50 text-amber-300' : 'border-lime-400/50 text-lime-300'
+                  }`}
+                >
+                  {(i.stock || 0) <= 0 ? t('finX.stockOut') : i.stock <= LOW ? t('finX.stockLow') : t('finX.stockOk')}
+                </span>
               </div>
               <div className="text-right">
                 <div className={`text-2xl font-bold tabular-nums ${i.stock > 0 ? 'text-lime-400' : 'text-red-400'}`}>{i.stock}</div>
