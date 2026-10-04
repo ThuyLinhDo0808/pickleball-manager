@@ -3,6 +3,12 @@ import { useMemo, useState } from 'react';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import DatePopover from '@/components/DatePopover';
+import PageHeader from '@/components/ui/PageHeader';
+import SectionTabs from '@/components/ui/SectionTabs';
+import StatTile from '@/components/ui/StatTile';
+import KpiRow from '@/components/ui/KpiRow';
+import Segmented from '@/components/ui/Segmented';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
@@ -204,6 +210,22 @@ export default function AttendancePage() {
     }
   }
   const nChanges = Object.keys(changes).length;
+  const summary = useMemo(() => {
+    if (!view || !data) return null;
+    const today = todayYmd();
+    const past = data.events.filter((e) => e.event_date < today || e.status === 'completed').length;
+    const memberCheckins = Object.values(view.attended).reduce((a, b) => a + b, 0);
+    const guestVisits = view.guests.reduce((n, g) => n + g.sessions, 0);
+    const checkins = memberCheckins + guestVisits;
+    const half = Math.max(1, Math.ceil(past / 2));
+    return {
+      past,
+      checkins,
+      guestVisits,
+      avg: past ? Math.round((10 * checkins) / past) / 10 : 0,
+      regulars: past ? view.members.filter((m) => (view.attended[m.id] || 0) >= half).length : 0,
+    };
+  }, [view, data]);
   const stateLabel = (st) => t(`stats.state_${st}`);
 
   function exportCsv() {
@@ -236,22 +258,18 @@ export default function AttendancePage() {
     downloadCsv(`diem-danh_${from}_${to}.csv`, rows);
   }
 
-  const seg = (items, value, onPick, label) => (
-    <div className="inline-flex flex-wrap gap-1 rounded-lg bg-navy-900 border border-navy-700 p-1 text-sm max-w-full" role="tablist">
-      {items.map((k) => (
-        <button key={k} type="button" role="tab" aria-selected={value === k} onClick={() => onPick(k)} className={`flex-auto whitespace-nowrap rounded-md px-2.5 py-1.5 ${value === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:text-white'}`}>
-          {label(k)}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <AppShell>
-      <h1 className="text-white text-2xl font-bold mb-4">{t('nav.memberStats')}</h1>
+      <PageHeader
+        icon="📋"
+        title={t('nav.memberStats')}
+        subtitle={club?.name}
+        actions={tab === 'attendance' && view ? <button type="button" className="btn-secondary text-sm" onClick={exportCsv}>⬇ {t('stats.exportCsv')}</button> : null}
+      />
+      <SectionTabs group="stats" />
 
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        {seg(PERIODS, period, setPeriod, (k) => t(`stats.p_${k}`))}
+      <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
+        <Segmented items={PERIODS} value={period} onChange={setPeriod} label={(k) => t(`stats.p_${k}`)} />
         {period !== 'custom' ? (
           <div className="flex items-center gap-1">
             <button type="button" className="btn-secondary !px-3" onClick={() => setAnchor(addMonths(anchor, -step))} aria-label={t('cal.prev')}>‹</button>
@@ -267,7 +285,21 @@ export default function AttendancePage() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">{seg(TABS, tab, setTab, (k) => t(`stats.tab_${k}`))}</div>
+      {view && (
+        <KpiRow cols={5}>
+          <StatTile icon="📅" label={t('statx.sessions')} value={data.events.length} sub={t('statx.sessionsSub', { n: summary.past })} />
+          <StatTile icon="✅" label={t('statx.checkins')} value={summary.checkins} tone="text-lime-300" sub={summary.past ? t('statx.perSession', { n: summary.avg }) : t('statx.noneYet')} />
+          <StatTile icon="🔥" label={t('statx.regulars')} value={summary.regulars} tone="text-amber-300" sub={t('statx.regularsSub')} />
+          <StatTile icon="🤝" label={t('statx.guests')} value={view.guests.length} tone="text-sky-300" sub={t('statx.guestVisits', { n: summary.guestVisits })} />
+          <StatTile icon="🎫" label={t('statx.carry')} value={view.carry} tone="text-pink-300" sub={t('statx.carrySub')} />
+        </KpiRow>
+      )}
+
+      <UnderlineTabs
+        value={tab}
+        onChange={setTab}
+        tabs={TABS.map((k) => ({ key: k, label: t(`stats.tab_${k}`), icon: { attendance: '✅', passes: '🎫', guests: '🤝' }[k] }))}
+      />
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {error && <p className="text-red-400 text-sm">{error.message}</p>}
@@ -275,8 +307,8 @@ export default function AttendancePage() {
       {view && tab === 'attendance' && (
         <div className="card">
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            {seg(['session', 'month'], by, setBy, (k) => t(`stats.by_${k}`))}
-            {seg(['name', 'count'], sort, setSort, (k) => t(`stats.sort_${k}`))}
+            <Segmented items={['session', 'month']} value={by} onChange={setBy} label={(k) => t(`stats.by_${k}`)} />
+            <Segmented items={['name', 'count']} value={sort} onChange={setSort} label={(k) => t(`stats.sort_${k}`)} />
             <label className="flex items-center gap-2 text-sm text-gray-300">
               <input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
               {t('stats.onlyActive')}
@@ -285,7 +317,6 @@ export default function AttendancePage() {
               {by === 'session' && !editing && (
                 <button type="button" className="btn-secondary text-sm" onClick={() => setEditing(true)}>✏️ {t('stats.editGrid')}</button>
               )}
-              <button type="button" className="btn-secondary text-sm" onClick={exportCsv}>⬇ {t('stats.exportCsv')}</button>
             </div>
           </div>
           {!editing && view.missed > 0 && (

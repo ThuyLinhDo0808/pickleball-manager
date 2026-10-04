@@ -1,6 +1,11 @@
 'use client';
 import { useState } from 'react';
 import AppShell from '@/components/AppShell';
+import { Avatar } from '@/components/PlayerChip';
+import PageHeader from '@/components/ui/PageHeader';
+import SectionTabs from '@/components/ui/SectionTabs';
+import Segmented from '@/components/ui/Segmented';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -48,7 +53,7 @@ const COLUMNS = [
 
 function AwardCard({ title, icon, rows, fmt, hint }) {
   return (
-    <div className="card">
+    <div className="card !p-4">
       <div className="text-gray-300 text-xs font-semibold uppercase tracking-wide mb-2">
         {icon} {title}
       </div>
@@ -88,64 +93,59 @@ export default function RankingsPage() {
   if (sort.key) rows.sort((a, b) => sort.dir * (a[sort.key] - b[sort.key]) || a.full_name.localeCompare(b.full_name));
   const a = stats?.awards;
 
+  const top3 = !sort.key ? rows.slice(0, 3) : [];
+  const groupIcon = { all: '🌐', club: '🏠', guest: '🤝' };
+
   return (
     <AppShell>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h1 className="text-white text-2xl font-bold">{t('nav.rankings')}</h1>
-        <button
-          className="btn-secondary text-sm"
-          disabled={!stats?.rankings?.length}
-          onClick={() => exportRankings(club?.name || '', label, stats, t)}
-        >
-          {t('common.exportExcel')}
-        </button>
-      </div>
-
-      <div role="tablist" className="grid grid-cols-3 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-3">
-        {['all', 'club', 'guest'].map((g) => (
-          <button
-            key={g}
-            role="tab"
-            aria-selected={group === g}
-            onClick={() => setGroup(g)}
-            className={`rounded-lg py-2 px-1 text-sm font-semibold truncate ${group === g ? (g === 'guest' ? 'bg-sky-400 text-navy-950' : g === 'club' ? 'bg-lime-400 text-navy-950' : 'bg-amber-300 text-navy-950') : 'text-gray-400 hover:text-white'}`}
-          >
-            {g === 'all' ? '🌐 ' : g === 'club' ? '🏠 ' : '🤝 '}
-            {t(`rankings.group_${g}`)}
+      <PageHeader
+        icon="🏅"
+        title={t('nav.rankings')}
+        subtitle={club?.name}
+        actions={
+          <button className="btn-secondary text-sm" disabled={!stats?.rankings?.length} onClick={() => exportRankings(club?.name || '', label, stats, t)}>
+            ⬇ {t('common.exportExcel')}
           </button>
-        ))}
-      </div>
+        }
+      />
+      <SectionTabs group="stats" />
 
-      <div className="grid grid-cols-5 bg-navy-900 rounded-lg p-1 text-sm mb-3">
-        {PERIODS.map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`rounded-md py-1.5 ${period === p ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400 hover:text-white'}`}
-          >
-            {t(`rankings.${p}`)}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs value={group} onChange={setGroup} tabs={['all', 'club', 'guest'].map((g) => ({ key: g, label: t(`rankings.group_${g}`), icon: groupIcon[g] }))} />
 
-      <div className="flex items-center justify-between gap-2 mb-4">
-        {period !== 'all' ? (
-          <button className="btn-secondary !px-3" aria-label={t('rankings.prev')} onClick={() => setDate(shift(period, date, -1))}>‹</button>
-        ) : (
-          <span />
-        )}
-        <div className="text-center">
-          <div className="text-white font-semibold capitalize">{periodText}</div>
-          {stats && <div className="text-gray-400 text-xs">{t('rankings.matchesCount', { n: stats.match_count })}</div>}
+      <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
+        <Segmented items={PERIODS} value={period} onChange={setPeriod} label={(p) => t(`rankings.${p}`)} />
+        <div className="flex items-center gap-1 sm:ml-auto">
+          {period !== 'all' && <button className="btn-secondary !px-3" aria-label={t('rankings.prev')} onClick={() => setDate(shift(period, date, -1))}>‹</button>}
+          <div className="text-center px-2 min-w-[9rem]">
+            <div className="text-white font-semibold capitalize text-sm">{periodText}</div>
+            {stats && <div className="text-gray-400 text-xs">{t('rankings.matchesCount', { n: stats.match_count })}</div>}
+          </div>
+          {period !== 'all' && <button className="btn-secondary !px-3" aria-label={t('rankings.next')} onClick={() => setDate(shift(period, date, 1))}>›</button>}
         </div>
-        {period !== 'all' ? (
-          <button className="btn-secondary !px-3" aria-label={t('rankings.next')} onClick={() => setDate(shift(period, date, 1))}>›</button>
-        ) : (
-          <span />
-        )}
       </div>
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
+
+      {!loading && top3.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 items-end">
+          {[1, 0, 2].map((idx) => {
+            const r = top3[idx];
+            if (!r) return <div key={idx} />;
+            const h = ['pt-8 sm:pt-10', 'pt-4 sm:pt-6', 'pt-1 sm:pt-2'][idx];
+            const ring = ['ring-amber-300', 'ring-gray-300', 'ring-orange-400'][idx];
+            return (
+              <div key={r.club_member_id} className={`card !p-3 text-center flex flex-col items-center ${idx === 0 ? 'border-amber-300/60 bg-amber-300/5' : ''}`}>
+                <div className={h} />
+                <div className={`rounded-full ring-2 ${ring}`}><Avatar name={r.full_name} size={idx === 0 ? 52 : 42} /></div>
+                <div className="text-2xl -mt-2" aria-hidden="true">{MEDALS[idx]}</div>
+                <div className="text-white font-semibold text-sm truncate max-w-full">{r.full_name}</div>
+                <div className="text-lime-300 text-sm font-bold tabular-nums">{r.win_rate}%</div>
+                <div className="text-gray-400 text-[11px] tabular-nums">{r.wins}-{r.losses} · {r.point_diff > 0 ? `+${r.point_diff}` : r.point_diff}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {!loading && a && (stats.rankings.length > 0 || a.top_attendance.length > 0) && (
         <>
@@ -153,22 +153,23 @@ export default function RankingsPage() {
             <AwardCard title={t('rankings.topWinRate')} icon="🏆" rows={a.top_win_rate} fmt={(v) => `${v}%`} />
             <AwardCard title={t('rankings.topDiff')} icon="📈" rows={a.top_point_diff} fmt={(v) => (v > 0 ? `+${v}` : v)} />
             <AwardCard title={t('rankings.topAttendance')} icon="💪" rows={a.top_attendance} fmt={(v) => t('rankings.sessions', { n: v })} />
-            <AwardCard
-              title={t('rankings.lowest')}
-              icon="🍚"
-              rows={a.lowest_win_rate ? [a.lowest_win_rate] : []}
-              fmt={(v) => `${v}%`}
-              hint={t('rankings.lowestHint')}
-            />
+            <AwardCard title={t('rankings.lowest')} icon="🍚" rows={a.lowest_win_rate ? [a.lowest_win_rate] : []} fmt={(v) => `${v}%`} hint={t('rankings.lowestHint')} />
           </div>
           <p className="text-gray-500 text-xs mb-4">{t('rankings.minNote', { n: a.min_matches })}</p>
         </>
       )}
 
       {!loading && stats && (
-        <div className="card">
+        <section className="card !p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-navy-700 flex items-center justify-between gap-2">
+            <h2 className="text-white font-semibold">{groupIcon[group]} {t(`rankings.group_${group}`)}</h2>
+            <span className="text-gray-400 text-xs">{t('rankx.players', { n: rows.length })}</span>
+          </div>
           {rows.length === 0 ? (
-            <p className="text-gray-400 text-sm">{t('rankings.noData')}</p>
+            <div className="p-8 text-center">
+              <div className="text-4xl mb-2" aria-hidden="true">🏓</div>
+              <p className="text-gray-400 text-sm">{t('rankings.noData')}</p>
+            </div>
           ) : (
             <div className="table-wrap">
               <table className="w-full text-sm grid-table">
@@ -178,10 +179,7 @@ export default function RankingsPage() {
                     <th>{t('common.name')}</th>
                     {COLUMNS.map((c) => (
                       <th key={c.key} className="text-right">
-                        <button
-                          className={`hover:text-lime-400 ${sort.key === c.key ? 'text-lime-400' : ''}`}
-                          onClick={() => setSort((s) => ({ key: c.key, dir: s.key === c.key ? -s.dir : -1 }))}
-                        >
+                        <button className={`hover:text-lime-400 ${sort.key === c.key ? 'text-lime-400' : ''}`} onClick={() => setSort((s) => ({ key: c.key, dir: s.key === c.key ? -s.dir : -1 }))}>
                           {t(c.label)}
                           {sort.key === c.key ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}
                         </button>
@@ -191,17 +189,24 @@ export default function RankingsPage() {
                 </thead>
                 <tbody>
                   {rows.map((r, i) => (
-                    <tr key={r.club_member_id}>
+                    <tr key={r.club_member_id} className={!sort.key && i < 3 ? 'bg-amber-300/[0.04]' : ''}>
                       <td className="text-center text-gray-400">{!sort.key && i < 3 ? MEDALS[i] : i + 1}</td>
-                      <td className="text-white">{r.full_name}</td>
+                      <td>
+                        <span className="flex items-center gap-2">
+                          <Avatar name={r.full_name} size={26} />
+                          <span className="text-white">{r.full_name}</span>
+                        </span>
+                      </td>
                       {COLUMNS.map((c) => (
-                        <td
-                          key={c.key}
-                          className={`text-right tabular-nums ${
-                            c.key === 'point_diff' ? (r.point_diff > 0 ? 'text-lime-400' : r.point_diff < 0 ? 'text-red-400' : 'text-gray-300') : 'text-gray-300'
-                          }`}
-                        >
-                          {c.fmt ? c.fmt(r[c.key]) : r[c.key]}
+                        <td key={c.key} className={`text-right tabular-nums ${c.key === 'point_diff' ? (r.point_diff > 0 ? 'text-lime-400' : r.point_diff < 0 ? 'text-red-400' : 'text-gray-300') : 'text-gray-300'}`}>
+                          {c.key === 'win_rate' ? (
+                            <span className="inline-flex items-center gap-2 justify-end">
+                              <span className="hidden sm:inline-block w-14 h-1.5 rounded-full bg-navy-900 overflow-hidden">
+                                <span className="block h-full bg-lime-400 rounded-full" style={{ width: `${r.win_rate}%` }} />
+                              </span>
+                              {r.win_rate}%
+                            </span>
+                          ) : c.fmt ? c.fmt(r[c.key]) : r[c.key]}
                         </td>
                       ))}
                     </tr>
@@ -210,7 +215,7 @@ export default function RankingsPage() {
               </table>
             </div>
           )}
-        </div>
+        </section>
       )}
     </AppShell>
   );

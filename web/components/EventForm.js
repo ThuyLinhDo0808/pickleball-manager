@@ -109,8 +109,8 @@ export function eventPayload(f) {
 
 // The event form in 4 groups: basic info, rules & finance, notes, status.
 // `kinds`: the activity types the Host may pick here (none → the kind is fixed by the page).
-export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false }) {
-  const { t } = useI18n();
+export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null }) {
+  const { t, lang } = useI18n();
   const [f, setF] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -132,7 +132,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   }
 
   return (
-      <form onSubmit={submit} className="w-full">
+      <form onSubmit={submit} className="w-full lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-4 lg:items-start">
+        <div className="min-w-0">
         <Section n={1} title={t('create.basic')}>
           {kinds && kinds.length > 1 && (
             <Field label={t('kind.label')} span={4} hint={t(`kind.hint_${f.kind}`)}>
@@ -241,11 +242,56 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         )}
 
         {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">⚠️ {warning}</p>}
-        {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-        <div className="flex gap-3">
+        {error && <p className="text-red-400 text-sm mb-3 lg:hidden">{error}</p>}
+        <div className="flex gap-3 lg:hidden">
           <button className="btn-primary" disabled={busy || disabled}>{busy ? '…' : submitLabel}</button>
           <Link href={cancelHref} className="btn-secondary">{t('common.cancel')}</Link>
         </div>
+        </div>
+
+        <aside className="hidden lg:block sticky top-4">
+          <div className="card !p-0 overflow-hidden">
+            <div className="px-4 py-3 border-b border-navy-700 bg-navy-900/50">
+              <p className="text-gray-400 text-[11px] uppercase tracking-wide font-semibold">{t('createx.preview')}</p>
+              <p className="text-white font-semibold truncate mt-0.5">
+                {KIND_ICON[f.kind] && <span className="mr-1">{KIND_ICON[f.kind]}</span>}
+                {f.title || <span className="text-gray-500">{t('createx.untitled')}</span>}
+              </p>
+            </div>
+            <dl className="px-4 py-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+              <dt className="text-gray-400">📅</dt>
+              <dd className="text-gray-100">
+                {sessions != null
+                  ? t('createx.sessionsN', { n: sessions })
+                  : f.event_date
+                    ? new Date(`${f.event_date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })
+                    : '—'}
+              </dd>
+              <dt className="text-gray-400">🕒</dt>
+              <dd className="text-gray-100 tabular-nums">{f.start_time || '—'}{f.end_time ? ` – ${f.end_time}` : ''}</dd>
+              <dt className="text-gray-400">📍</dt>
+              <dd className="text-gray-100 truncate">{f.location || '—'}{f.courts ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
+              <dt className="text-gray-400">👥</dt>
+              <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>
+              <dt className="text-gray-400">💰</dt>
+              <dd className="text-gray-100 tabular-nums">{Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')}</dd>
+              <dt className="text-gray-400">⏳</dt>
+              <dd className="text-gray-100">{f.cancel_deadline_hours === '' ? t('policy.none') : t('policy.hours', { h: f.cancel_deadline_hours })}</dd>
+              <dt className="text-gray-400">🔗</dt>
+              <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('createx.linkOn') : t('createx.linkOff')}</dd>
+            </dl>
+            {Number(f.fee_amount) > 0 && Number(f.slots) > 0 && (
+              <div className="mx-4 mb-3 rounded-lg bg-lime-400/10 border border-lime-400/30 px-3 py-2 text-xs text-lime-100">
+                {t('createx.maxIncome', { v: (Number(f.fee_amount) * Number(f.slots) * (sessions || 1)).toLocaleString('vi-VN') })}
+              </div>
+            )}
+            <div className="p-4 border-t border-navy-700 flex flex-col gap-2">
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+              <button className="btn-primary w-full" disabled={busy || disabled}>{busy ? '…' : submitLabel}</button>
+              <Link href={cancelHref} className="btn-secondary w-full text-center">{t('common.cancel')}</Link>
+            </div>
+          </div>
+        </aside>
       </form>
   );
 }
