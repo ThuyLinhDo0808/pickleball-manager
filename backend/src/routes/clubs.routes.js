@@ -160,7 +160,7 @@ router.post('/', async (req, res) => {
 
 router.get('/:clubId', (req, res) => res.json({ ...req.club, role: req.coAdmin ? 'co_admin' : 'owner' }));
 
-router.patch('/:clubId', ownerOnly, async (req, res) => {
+router.patch('/:clubId', async (req, res) => {
   const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount']);
   if ('guest_vip_discount' in fields && !(await guestsReady())) {
     return res.status(409).json({ error: 'Run migration 20261009090000_guest_perks_survey.sql first.' });
@@ -774,7 +774,7 @@ router.get('/:clubId/stats', async (req, res) => {
 });
 
 // ---- Player self-service: join link + payments to confirm -------------------
-router.post('/:clubId/join-token/rotate', ownerOnly, async (req, res) => {
+router.post('/:clubId/join-token/rotate', async (req, res) => {
   const { data, error } = await supabase
     .from('clubs')
     .update({ join_token: crypto.randomUUID() })

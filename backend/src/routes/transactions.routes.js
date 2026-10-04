@@ -1,16 +1,17 @@
 const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
-const { clubAccess } = require('../services/clubAccess');
+const { clubAccess, eventAccess } = require('../services/clubAccess');
 
 const router = express.Router();
 
-// Whose ledger an entry goes into: a club I own or co-admin (-> its owner), or an event I own (-> me).
+// Whose ledger an entry goes into: a club I own or co-admin (-> its owner), or an event I
+// own or whose club I co-admin (-> the event's host).
 async function ledgerOwner(req, { club_id, event_id }) {
   if (club_id) return (await clubAccess(req, club_id))?.club.host_id || null;
   if (event_id && isUuid(event_id)) {
-    const { data } = await supabase.from('events').select('id').eq('id', event_id).eq('host_id', req.hostId).maybeSingle();
-    return data ? req.hostId : null;
+    const { data } = await supabase.from('events').select('id, host_id, club_id').eq('id', event_id).maybeSingle();
+    return (await eventAccess(req, data))?.hostId || null;
   }
   return null;
 }
@@ -36,7 +37,9 @@ router.get('/', async (req, res) => {
       .order('occurred_on', { ascending: false });
   } else if (event_id) {
     if (!isUuid(event_id)) return res.status(400).json({ error: 'invalid event_id' });
-    query = query.eq('owner_type', 'event').eq('event_id', event_id);
+    const host = await ledgerOwner(req, { event_id });
+    if (!host) return notFound(res, 'Event');
+    query = supabase.from('transactions').select('*, events(title, event_date)').eq('host_id', host).eq('owner_type', 'event').eq('event_id', event_id).order('occurred_on', { ascending: false });
   }
   const { data, error } = await query;
   if (error) return dbError(res, error);
@@ -80,7 +83,11 @@ router.post('/:id/void', async (req, res) => {
     .eq('id', req.params.id)
     .maybeSingle();
   if (fErr) return dbError(res, fErr);
-  const allowed = txn && (txn.host_id === req.hostId || (txn.owner_type === 'club' && (await clubAccess(req, txn.club_id))));
+  const allowed =
+    txn &&
+    (txn.host_id === req.hostId ||
+      (txn.owner_type === 'club' && (await clubAccess(req, txn.club_id))) ||
+      (txn.owner_type === 'event' && (await ledgerOwner(req, { event_id: txn.event_id })) === txn.host_id));
   if (!allowed) return notFound(res, 'Transaction');
   if (txn.is_voided) return res.status(400).json({ error: 'Already voided.' });
 

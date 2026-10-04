@@ -17,10 +17,12 @@ const ROLE_STYLE = {
 };
 // What each role can do (rows) — shown as a small table.
 const CAN = [
-  ['checkIn', { coordinator: true, referee: false, co_admin: false }],
-  ['scores', { coordinator: true, referee: true, co_admin: false }],
+  ['checkIn', { coordinator: true, referee: false, co_admin: true }],
+  ['scores', { coordinator: true, referee: true, co_admin: true }],
+  ['schedule', { coordinator: false, referee: false, co_admin: true }],
   ['members', { coordinator: false, referee: false, co_admin: true }],
   ['finance', { coordinator: false, referee: false, co_admin: true }],
+  ['settings', { coordinator: false, referee: false, co_admin: true }],
   ['deleteClub', { coordinator: false, referee: false, co_admin: false }],
 ];
 // Where the access applies.

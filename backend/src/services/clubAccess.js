@@ -49,10 +49,32 @@ async function coAdminClubs(req) {
   return clubs.map((c) => ({ ...c, role: 'co_admin', owner_email: (owners || []).find((u) => u.id === c.host_id)?.email || null }));
 }
 
+// The club owner's id when this account may work on the club (owner or co-admin), else null.
+async function actingHost(req, clubId) {
+  const access = await clubAccess(req, clubId);
+  return access ? access.club.host_id : null;
+}
+
+// May this account work on the event? Its host, or a co-admin of its club.
+// -> { hostId, coAdmin } or null.
+async function eventAccess(req, event) {
+  if (!event) return null;
+  const me = req.userId || req.hostId;
+  if (event.host_id === me) return { hostId: me, coAdmin: false };
+  if (!event.club_id) return null;
+  const access = await clubAccess(req, event.club_id);
+  return access && access.club.host_id === event.host_id ? { hostId: event.host_id, coAdmin: true } : null;
+}
+
+// Ids of the clubs this account co-administers.
+async function coAdminClubIds(req) {
+  return (await coAdminClubs(req)).map((c) => c.id);
+}
+
 // Route guard for owner-only actions inside a router whose :clubId param may admit co-admins.
 function ownerOnly(req, res, next) {
   if (req.coAdmin) return res.status(403).json({ error: 'Only the club owner can do this.', code: 'owner_only' });
   next();
 }
 
-module.exports = { clubAccess, coAdminClubs, ownerOnly };
+module.exports = { clubAccess, coAdminClubs, coAdminClubIds, actingHost, eventAccess, ownerOnly };

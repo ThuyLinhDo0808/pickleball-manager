@@ -1,6 +1,7 @@
 const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
+const { actingHost } = require('../services/clubAccess');
 const T = require('../services/tournament');
 const { clubSport, badmintonResult, sportReady } = require('../services/sport');
 
@@ -57,10 +58,14 @@ function fail(res, err) {
   return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
 }
 
-async function ownedClub(hostId, clubId) {
+// The club, when the signed-in account owns or co-administers it. A co-admin then acts
+// as the club's owner (tournaments are stored under the owner).
+async function ownedClub(req, clubId) {
   if (!isUuid(clubId)) return null;
-  const { data } = await supabase.from('clubs').select('id').eq('id', clubId).eq('host_id', hostId).maybeSingle();
-  return data;
+  const host = await actingHost(req, clubId);
+  if (!host) return null;
+  req.hostId = host;
+  return { id: clubId };
 }
 
 async function clubMembers(clubId, ids) {
@@ -160,15 +165,18 @@ async function loadTeamLeague(t) {
 // Guard for :tournamentId — must belong to the signed-in host.
 router.param('tournamentId', async (req, res, next, id) => {
   if (!isUuid(id)) return notFound(res, 'Tournament');
-  const { data, error } = await supabase.from('tournaments').select('*').eq('id', id).eq('host_id', req.hostId).maybeSingle();
+  const { data, error } = await supabase.from('tournaments').select('*').eq('id', id).maybeSingle();
   if (error) return dbError(res, error);
-  if (!data) return notFound(res, 'Tournament');
+  const me = req.userId || req.hostId;
+  const allowed = data && (data.host_id === me || (data.club_id && (await actingHost(req, data.club_id).catch(() => null)) === data.host_id));
+  if (!allowed) return notFound(res, 'Tournament');
+  req.hostId = data.host_id;
   req.tournament = data;
   next();
 });
 
 router.get('/', async (req, res) => {
-  if (!(await ownedClub(req.hostId, req.query.club_id))) return notFound(res, 'Club');
+  if (!(await ownedClub(req, req.query.club_id))) return notFound(res, 'Club');
   const { data, error } = await supabase
     .from('tournaments')
     .select('*, tournament_teams(count)')
@@ -193,7 +201,7 @@ router.get('/', async (req, res) => {
 router.post('/pairing', async (req, res) => {
   const { club_id, format, mode } = req.body;
   const ids = Array.isArray(req.body.player_ids) ? [...new Set(req.body.player_ids)] : [];
-  if (!(await ownedClub(req.hostId, club_id))) return notFound(res, 'Club');
+  if (!(await ownedClub(req, club_id))) return notFound(res, 'Club');
   if (!FORMATS.includes(format)) return res.status(400).json({ error: 'format must be singles, doubles or mixed.' });
   if (!ids.every(isUuid)) return res.status(400).json({ error: 'invalid player id.' });
   try {
@@ -209,7 +217,7 @@ router.post('/team-builder', async (req, res) => {
   const { club_id } = req.body;
   const ids = Array.isArray(req.body.player_ids) ? [...new Set(req.body.player_ids)] : [];
   const count = parseInt(req.body.team_count, 10);
-  if (!(await ownedClub(req.hostId, club_id))) return notFound(res, 'Club');
+  if (!(await ownedClub(req, club_id))) return notFound(res, 'Club');
   if (!ids.every(isUuid)) return res.status(400).json({ error: 'invalid player id.' });
   if (!(count >= 2 && count <= 16)) return res.status(400).json({ error: 'team_count must be 2-16.' });
   if (ids.length < count * 2) return res.status(400).json({ error: 'Each team needs at least 2 players.' });
@@ -231,7 +239,7 @@ router.post('/', async (req, res) => {
   const teamsIn = Array.isArray(req.body.teams) ? req.body.teams : [];
 
   try {
-    if (!(await ownedClub(req.hostId, club_id))) throw badRequest('Club not found.', 404);
+    if (!(await ownedClub(req, club_id))) throw badRequest('Club not found.', 404);
     if (!name) throw badRequest('name is required.');
     if (!FORMATS.includes(format)) throw badRequest('format must be singles, doubles or mixed.');
     if (teamsIn.length < 2) throw badRequest('At least 2 teams are needed.');
@@ -339,7 +347,7 @@ async function createTeamLeague(req, res) {
   const subFormats = Array.isArray(req.body.sub_formats) ? req.body.sub_formats : [];
   const winRule = req.body.win_rule === 'points' ? 'points' : 'sub_wins';
   try {
-    if (!(await ownedClub(req.hostId, club_id))) throw badRequest('Club not found.', 404);
+    if (!(await ownedClub(req, club_id))) throw badRequest('Club not found.', 404);
     if (!name) throw badRequest('name is required.');
     if (teamsIn.length < 2) throw badRequest('At least 2 teams are needed.');
     if (!subFormats.length || subFormats.length > 7 || !subFormats.every((f) => T.SUB_FORMATS.includes(f))) {

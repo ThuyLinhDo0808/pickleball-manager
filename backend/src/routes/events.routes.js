@@ -1,6 +1,7 @@
 const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
+const { actingHost, eventAccess, coAdminClubIds } = require('../services/clubAccess');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
 const { normalizePhone, findClubMemberByPhone, todayYmd } = require('../services/memberships');
@@ -163,14 +164,13 @@ router.use(requireAuth);
 // ---- ownership guard for :eventId -----------------------------------------
 router.param('eventId', async (req, res, next, eventId) => {
   if (!isUuid(eventId)) return notFound(res, 'Event');
-  const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .eq('id', eventId)
-    .eq('host_id', req.hostId)
-    .maybeSingle();
+  const { data, error } = await supabase.from('events').select('*').eq('id', eventId).maybeSingle();
   if (error) return dbError(res, error);
-  if (!data) return notFound(res, 'Event');
+  // The event's host, or a co-admin of its club (who then acts as the owner).
+  const access = await eventAccess(req, data).catch(() => null);
+  if (!access) return notFound(res, 'Event');
+  req.hostId = access.hostId;
+  req.coAdmin = access.coAdmin;
   req.event = await completeIfFinished(data);
   next();
 });
@@ -190,11 +190,12 @@ router.param('participantId', async (req, res, next, participantId) => {
 });
 
 // ---- Events CRUD (schedule) -------------------------------------------------
-async function ownsClub(hostId, clubId) {
-  if (!clubId) return true; // standalone (Xé Vé) event
-  if (!isUuid(clubId)) return false;
-  const { data } = await supabase.from('clubs').select('id').eq('id', clubId).eq('host_id', hostId).maybeSingle();
-  return !!data;
+// The host the event belongs to: the club's owner (also for its co-admins), or the
+// signed-in account for a standalone Xé Vé event. null = not allowed.
+async function hostForClub(req, clubId) {
+  if (!clubId) return req.userId || req.hostId; // standalone (Xé Vé) event
+  if (!isUuid(clubId)) return null;
+  return actingHost(req, clubId);
 }
 
 const EVENT_KINDS = ['weekly', 'game', 'training', 'meeting', 'challenge'];
@@ -223,10 +224,9 @@ function addDays(ymd, days) {
 
 // Transfer screenshots waiting for the Host, across all their upcoming events.
 router.get('/pending-payments', async (req, res) => {
-  const { data: events, error } = await supabase
-    .from('events')
-    .select('id, title, event_date, start_time, fee_amount, club_id')
-    .eq('host_id', req.hostId)
+  const shared = await coAdminClubIds(req).catch(() => []);
+  const base = supabase.from('events').select('id, title, event_date, start_time, fee_amount, club_id');
+  const { data: events, error } = await (shared.length ? base.or(`host_id.eq.${req.hostId},club_id.in.(${shared.join(',')})`) : base.eq('host_id', req.hostId))
     .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10));
   if (error) return dbError(res, error);
   if (!events.length) return res.json([]);
@@ -248,7 +248,10 @@ router.get('/pending-payments', async (req, res) => {
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
 router.get('/', async (req, res) => {
   await completeFinished({ hostId: req.hostId });
-  let query = supabase.from('v_event_summary').select('*').eq('host_id', req.hostId);
+  let query = supabase.from('v_event_summary').select('*');
+  // My own events, plus the sessions of clubs I co-administer (not for Xé Vé).
+  const shared = req.query.scope === 'standalone' ? [] : await coAdminClubIds(req).catch(() => []);
+  query = shared.length ? query.or(`host_id.eq.${req.hostId},club_id.in.(${shared.join(',')})`) : query.eq('host_id', req.hostId);
   if (req.query.scope === 'standalone') query = query.is('club_id', null);
   const { data, error } = await query.order('event_date', { ascending: true });
   if (error) return dbError(res, error);
@@ -278,14 +281,15 @@ router.post('/', async (req, res) => {
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
-  if (!(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
+  const hostId = await hostForClub(req, fields.club_id);
+  if (!hostId) return notFound(res, 'Club');
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
   const days = dates || Array.from({ length: weeks }, (_, i) => addDays(event_date, 7 * i));
   // The registration deadline keeps the same distance to each session as to the first.
   const dayMs = (d) => Date.parse(`${d}T00:00:00Z`);
   const rows = days.map((d) => ({
-    host_id: req.hostId,
+    host_id: hostId,
     title,
     ...fields,
     status: fields.status || 'open',
@@ -313,7 +317,7 @@ router.patch('/:eventId', async (req, res) => {
   if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }
-  if ('club_id' in fields && !(await ownsClub(req.hostId, fields.club_id))) return notFound(res, 'Club');
+  if ('club_id' in fields && (await hostForClub(req, fields.club_id)) !== req.event.host_id) return notFound(res, 'Club');
   const { data, error } = await supabase
     .from('events')
     .update(fields)

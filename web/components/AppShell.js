@@ -124,26 +124,6 @@ const TABS_BY_WORKSPACE = {
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
 };
 
-// Co-admin of someone else's club (granted by its owner): members + finance only.
-const FINANCE_GROUP = NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance');
-const CO_ADMIN_NAV = [
-  { href: '/club/members', key: 'nav.members', icon: 'members', badge: 'memberRequests' },
-  FINANCE_GROUP,
-  {
-    key: 'nav.groupSettings',
-    icon: 'clubs',
-    children: [
-      { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
-      { href: '/account', key: 'nav.account', icon: 'account' },
-    ],
-  },
-];
-const CO_ADMIN_TABS = [
-  { href: '/club/members', key: 'nav.members', icon: 'members', badge: 'memberRequests' },
-  { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
-];
-const CO_ADMIN_OK = ['/club/members', '/finance', '/clubs', '/account'];
-
 const GROUPS_KEY = 'pickleball_nav_groups';
 
 const WORKSPACE_ICON = { club: 'clubs', xeve: 'ticket', staff: 'whistle' };
@@ -387,9 +367,10 @@ export default function AppShell({ children }) {
     (item.also || []).some((p) => isActive(p));
   const itemActive = (item) => (item.children ? item.children.some(navActive) : navActive(item));
   const coAdmin = workspace === 'club' && isCoAdmin;
-  const NAV = coAdmin ? CO_ADMIN_NAV : NAV_BY_WORKSPACE[workspace] || [];
-  const tabs = coAdmin ? CO_ADMIN_TABS : TABS_BY_WORKSPACE[workspace] || [];
-  const coAdminBlocked = coAdmin && !CO_ADMIN_OK.some((p) => isActive(p));
+  // A co-admin works on the owner's club with the full menu (only deleting the club is
+  // left to the owner).
+  const NAV = NAV_BY_WORKSPACE[workspace] || [];
+  const tabs = TABS_BY_WORKSPACE[workspace] || [];
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p));
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
@@ -425,7 +406,7 @@ export default function AppShell({ children }) {
         </div>
         {workspace && (
           <div className="mb-3 px-1 flex flex-col gap-2">
-            {workspace !== 'staff' && <RoleSwitch current="manage" compact={collapsed} />}
+            <RoleSwitch current="manage" compact={collapsed} />
             <WorkspaceSwitch compact={collapsed} />
             {!collapsed && workspace === 'club' && <ClubSwitcher />}
           </div>
@@ -532,15 +513,6 @@ export default function AppShell({ children }) {
             <h1 className="text-white text-xl font-bold mb-1">{t('clubs.createFirst')}</h1>
             <p className="text-gray-400 text-sm mb-4">{t('clubs.createFirstHint')}</p>
             <CreateClubForm autoFocus />
-          </div>
-        ) : coAdminBlocked ? (
-          <div className="max-w-md mx-auto card mt-4">
-            <h1 className="text-white text-xl font-bold mb-1">{t('coadmin.title', { name: club?.name || '' })}</h1>
-            <p className="text-gray-400 text-sm mb-4">{t('coadmin.limited', { owner: club?.owner_email || '—' })}</p>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/club/members" className="btn-primary">{t('nav.members')}</Link>
-              <Link href="/finance" className="btn-secondary">{t('nav.groupFinance')}</Link>
-            </div>
           </div>
         ) : (
           <>

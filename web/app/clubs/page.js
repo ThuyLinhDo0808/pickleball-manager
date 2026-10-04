@@ -228,13 +228,10 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
           ) : (
             <button className="btn-primary text-sm" onClick={onSelect}>{t('clubs.switchTo')}</button>
           )}
-          {owner && (
-            <>
-              <button className="btn-secondary text-sm" onClick={onSettings}>💳 {t('payments.settings')}</button>
-              <button className="btn-secondary text-sm" onClick={onRename}>✏️ {t('clubs.rename')}</button>
-              <button className="text-red-400 hover:text-red-300 text-sm px-2 ml-auto" onClick={onDelete}>🗑 {t('common.delete')}</button>
-            </>
-          )}
+          {/* Co-admins can do everything but delete the club. */}
+          <button className="btn-secondary text-sm" onClick={onSettings}>💳 {t('payments.settings')}</button>
+          <button className="btn-secondary text-sm" onClick={onRename}>✏️ {t('clubs.rename')}</button>
+          {owner && <button className="text-red-400 hover:text-red-300 text-sm px-2 ml-auto" onClick={onDelete}>🗑 {t('common.delete')}</button>}
         </div>
       </div>
     </div>
