@@ -6,6 +6,7 @@ import AppShell from '@/components/AppShell';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { sportIcon } from '@/lib/live';
+import LiveGuide from '@/components/LiveGuide';
 
 // The scorer's pad: tap the side that won the rally. The server keeps the rules (who
 // serves, from which side, game / match end); this page shows them and the call to read
@@ -145,7 +146,10 @@ export default function ScorerPage() {
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between gap-2 mb-3">
           <Link href={`/live/${tid}`} className="text-gray-400 text-sm hover:text-white">← {t('live.back')}</Link>
-          <span className="text-gray-400 text-xs truncate">{tourName}</span>
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="text-gray-400 text-xs truncate">{tourName}</span>
+            <LiveGuide sport={sport} autoOpen />
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">

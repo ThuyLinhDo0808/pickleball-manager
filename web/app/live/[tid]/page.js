@@ -12,6 +12,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { matchLabel, sportIcon } from '@/lib/live';
+import LiveGuide from '@/components/LiveGuide';
 
 // Live scoring hub of one tournament: matches being played (tap to keep scoring), the
 // ones still to play (start one), and — for the club managers — the public board link.
@@ -65,6 +66,8 @@ export default function LiveHubPage() {
         <StatTile icon="✅" label={t('live.played')} value={done.length} tone="text-lime-300" />
         <StatTile icon="🏆" label={t('tournaments.champion')} value={data.champion || '—'} tone="text-amber-300" />
       </KpiRow>
+
+      <LiveGuide sport={tour.sport} variant="card" />
 
       {role === 'manager' && (
         <section className="card mb-4">

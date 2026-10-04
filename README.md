@@ -279,6 +279,11 @@ Nút đỏ **● Tính điểm trực tiếp** trên trang giải (khi giải ch
 - Hết trận → **Lưu kết quả vào giải**: tỷ số vào bảng đấu / nhánh đấu như nhập tay (pickleball 1 ván lưu điểm, nhiều ván lưu số ván thắng + điểm từng ván), đội thắng tự vào vòng sau.
 - Nhiều người cùng bấm một trận (2 điện thoại) không bị cộng trùng: mỗi lần bấm kèm phiên bản điểm đang thấy; nếu người khác vừa bấm, app tải lại điểm mới nhất và báo.
 
+**Hướng dẫn bấm điểm ngay trên trang:** màn hình bấm điểm có nút **❓ Hướng dẫn** (tự mở lần đầu trên mỗi máy), trang danh sách trận có thẻ **📖 Hướng dẫn bấm điểm** thu gọn được. Gồm 3 tab:
+- *Cách bấm*: chuẩn bị trước trận, bấm vào đội **thắng pha bóng**, đọc điểm, làm theo nhắc, hoàn tác khi bấm nhầm, lưu kết quả.
+- *Luật pickleball*: giải thích câu đọc điểm `4-2-1` (điểm đội giao – điểm đội nhận – tay giao), luật side-out, 0-0-2, đổi sân, kèm ví dụ từng pha.
+- *Luật cầu lông*: hình sân chỉ ô giao (chẵn phải / lẻ trái), luật rally 21 điểm, deuce đến 30, nghỉ / đổi sân, kèm ví dụ.
+
 **Bảng điểm công khai** (`/l/<mã>`): chủ CLB / đồng quản trị bấm **Bật link xem trực tiếp** để có link gửi nhóm Zalo hoặc mở trên TV ở sân. Không cần đăng nhập, không hiện SĐT; hiện các trận đang đánh (sân, tỷ số, người giao, game/match point), trận vừa kết thúc (30 phút gần nhất) và trận sắp đánh, tự cập nhật mỗi 4 giây. *Tắt link* thì link cũ hết hiệu lực.
 
 ### 4.9. Tài chính (`/finance`) — mọi thứ về tiền ở một chỗ
