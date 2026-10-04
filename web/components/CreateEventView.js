@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import PageHeader from '@/components/ui/PageHeader';
+import SectionTabs from '@/components/ui/SectionTabs';
 import EventForm, { GAME_KINDS, blankEvent, eventPayload } from '@/components/EventForm';
 import WeeklyDates, { MAX_SESSIONS, blankWeekly, weeklyDates } from '@/components/WeeklyDates';
 import { useI18n } from '@/context/I18nContext';
@@ -54,14 +56,14 @@ export default function CreateEventView({ weekly = false }) {
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <h1 className="text-white text-2xl font-bold">{weekly ? t('nav.createWeekly') : t('nav.createGame')}</h1>
-        <Link href="/events" className="text-gray-400 text-sm hover:text-white shrink-0">← {isClub ? t('nav.schedule') : t('nav.kevents')}</Link>
-      </div>
-      <p className="text-gray-400 text-sm mb-4">
-        {weekly ? t('weekly.intro') : t('create.gameIntro')}
-        {isClub && club && <> · {t('create.forClub', { name: club.name })}</>}
-      </p>
+      <PageHeader
+        icon={weekly ? '🔁' : '🏓'}
+        title={weekly ? t('nav.createWeekly') : t('nav.createGame')}
+        subtitle={isClub && club ? t('create.forClub', { name: club.name }) : t('finX.scopeXeve')}
+        actions={<Link href="/events" className="btn-secondary text-sm">🗓 {isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
+      />
+      <SectionTabs group="activities" />
+      <p className="text-gray-400 text-sm mb-4 rounded-xl border border-navy-700 bg-navy-900/40 px-4 py-2.5">💡 {weekly ? t('weekly.intro') : t('create.gameIntro')}</p>
       {initial && (
         <EventForm
           initial={initial}
@@ -72,6 +74,7 @@ export default function CreateEventView({ weekly = false }) {
           kinds={weekly ? null : GAME_KINDS}
           disabled={isClub && !club}
           lockTitle={weekly}
+          sessions={weekly ? weeklyDates(plan).length : null}
         />
       )}
     </AppShell>

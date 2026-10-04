@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import PageHeader from '@/components/ui/PageHeader';
+import SectionTabs from '@/components/ui/SectionTabs';
 import DatePopover from '@/components/DatePopover';
 import TeamLeagueSetup from '@/components/TeamLeagueSetup';
 import Section from '@/components/NumberedSection';
@@ -84,12 +86,17 @@ export default function NewTournamentPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h1 className="text-white text-2xl font-bold">{from ? t('tournaments.editTitle') : t('nav.createTournament')}</h1>
-        <Link href={from ? `/club/tournaments/${from.id}` : '/club/tournaments'} className="text-gray-400 text-sm hover:text-white shrink-0">
-          {from ? `← ${from.name}` : `${t('tournaments.allList')} →`}
-        </Link>
-      </div>
+      <PageHeader
+        icon="🏆"
+        title={from ? t('tournaments.editTitle') : t('nav.createTournament')}
+        subtitle={club?.name}
+        actions={
+          <Link href={from ? `/club/tournaments/${from.id}` : '/club/tournaments'} className="btn-secondary text-sm">
+            {from ? `← ${from.name}` : `📋 ${t('tournaments.allList')}`}
+          </Link>
+        }
+      />
+      <SectionTabs group="activities" />
       {from && <p className="card !py-3 mb-4 border-yellow-400/50 text-yellow-200 text-sm">✏️ {t('tournaments.editHint')}</p>}
       {loadingFrom && <p className="text-gray-400 text-sm mb-4">{t('common.loading')}</p>}
 
@@ -101,9 +108,15 @@ export default function NewTournamentPage() {
               type="button"
               aria-pressed={kind === k}
               onClick={() => setKind(k)}
-              className={`rounded-xl border p-3 text-left transition ${kind === k ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
+              className={`rounded-xl border p-4 text-left transition flex gap-3 items-start ${kind === k ? 'border-lime-400 bg-lime-400/10 ring-1 ring-lime-400/40' : 'border-navy-600 hover:border-navy-500'}`}
             >
-              <div className="text-white font-semibold">{k === 'pairs' ? (sport === 'badminton' ? '🏸' : '🏓') : '👥'} {t(`tournaments.kind_${k}`)}</div>
+              <span className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center text-xl ${kind === k ? 'bg-lime-400/20' : 'bg-navy-900'}`} aria-hidden="true">
+                {k === 'pairs' ? (sport === 'badminton' ? '🏸' : '🏓') : '👥'}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-white font-semibold">{t(`tournaments.kind_${k}`)}</span>
+                <span className="block text-gray-400 text-xs mt-0.5">{t(`tourx.kindDesc_${k}`)}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -264,16 +277,27 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial }
         </Section>
       )}
       <Section n={badminton ? 3 : 2} title={t('tournaments.players', { n: picked.length })}>
-        <button type="button" className="text-lime-400 text-sm mb-2" onClick={() => setPicked(active.map((m) => m.id))}>
-          {t('tournaments.selectAll')}
-        </button>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 max-h-72 overflow-y-auto">
-          {active.map((m) => (
-            <label key={m.id} className="flex items-center gap-2 text-sm text-gray-200 py-1">
-              <input type="checkbox" checked={picked.includes(m.id)} onChange={() => togglePlayer(m.id)} />
-              <span className="truncate">{label(m)}</span>
-            </label>
-          ))}
+        <div className="flex flex-wrap items-center gap-3 mb-2 text-sm">
+          <button type="button" className="text-lime-400" onClick={() => setPicked(active.map((m) => m.id))}>
+            {t('tournaments.selectAll')}
+          </button>
+          {picked.length > 0 && (
+            <button type="button" className="text-gray-400 hover:text-white" onClick={() => { setPicked([]); setTeams([]); }}>
+              {t('memx.clearSel')}
+            </button>
+          )}
+          <span className="ml-auto text-gray-400 text-xs">{t('tourx.pickedOf', { n: picked.length, total: active.length })}</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-80 overflow-y-auto pr-1">
+          {active.map((m) => {
+            const on = picked.includes(m.id);
+            return (
+              <label key={m.id} className={`flex items-center gap-2 text-sm rounded-lg border px-2.5 py-1.5 cursor-pointer transition ${on ? 'border-lime-400/70 bg-lime-400/10 text-white' : 'border-navy-700 text-gray-300 hover:border-navy-500'}`}>
+                <input type="checkbox" checked={on} onChange={() => togglePlayer(m.id)} />
+                <span className="truncate">{label(m)}</span>
+              </label>
+            );
+          })}
         </div>
       </Section>
 

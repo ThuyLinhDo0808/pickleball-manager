@@ -2,6 +2,10 @@
 import { useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AppShell from '@/components/AppShell';
+import PageHeader from '@/components/ui/PageHeader';
+import SectionTabs from '@/components/ui/SectionTabs';
+import StatTile from '@/components/ui/StatTile';
+import KpiRow from '@/components/ui/KpiRow';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
@@ -42,15 +46,40 @@ export default function AnalyticsPage() {
     [club?.id, memberId]
   );
   const days = t('analytics.days').split(',');
+  // Busiest / calmest slot by no-show rate (only slots with a few sign-ups count).
+  const rated = (ns?.cells || []).filter((c) => c.rate != null && c.total >= 3);
+  const slotInfo = {
+    worst: rated.slice().sort((a, b) => b.rate - a.rate)[0] || null,
+    best: rated.slice().sort((a, b) => a.rate - b.rate)[0] || null,
+  };
+  const formSum = form?.length
+    ? (() => {
+        const matches = form.reduce((n, m) => n + m.matches, 0);
+        const wins = form.reduce((n, m) => n + m.wins, 0);
+        return { matches, rate: matches ? Math.round((100 * wins) / matches) : 0, diff: form.reduce((n, m) => n + (m.diff || 0), 0) };
+      })()
+    : null;
 
   return (
     <AppShell>
-      <h1 className="text-white text-2xl font-bold mb-4">{t('nav.analytics')}</h1>
+      <PageHeader icon="📈" title={isClub ? t('nav.analyticsCharts') : t('nav.analytics')} subtitle={isClub ? club?.name : t('finX.scopeXeve')} />
+      <SectionTabs group="stats" />
 
       {ns && (
-        <section className="card mb-4">
+        <KpiRow cols={4}>
+          <StatTile icon="📅" label={t('anx.sessions')} value={ns.sessions} sub={t('anx.lastMonths', { n: 6 })} />
+          <StatTile icon="🚫" label={t('anx.noShowRate')} value={ns.overall_rate == null ? '—' : `${ns.overall_rate}%`} tone={ns.overall_rate >= 20 ? 'text-red-300' : 'text-lime-300'} sub={t('anx.noShowSub')} />
+          <StatTile icon="⚠️" label={t('anx.worst')} value={slotInfo.worst ? `${days[slotInfo.worst.weekday]} ${slotInfo.worst.slot}h` : '—'} tone="text-amber-300" sub={slotInfo.worst ? t('anx.rate', { r: Math.round(slotInfo.worst.rate) }) : t('analytics.noData')} />
+          <StatTile icon="✨" label={t('anx.best')} value={slotInfo.best ? `${days[slotInfo.best.weekday]} ${slotInfo.best.slot}h` : '—'} tone="text-sky-300" sub={slotInfo.best ? t('anx.rate', { r: Math.round(slotInfo.best.rate) }) : t('analytics.noData')} />
+        </KpiRow>
+      )}
+
+      <div className={`grid gap-4 ${isClub ? 'xl:grid-cols-2' : ''} items-start`}>
+
+      {ns && (
+        <section className="card">
           <div className="flex items-baseline justify-between gap-2 mb-1">
-            <h2 className="text-white font-semibold">{t('analytics.noShows')}</h2>
+            <h2 className="text-white font-semibold">🗓 {t('analytics.noShows')}</h2>
             {ns.overall_rate != null && <span className="text-gray-300 text-sm">{t('analytics.overall', { rate: `${ns.overall_rate}%` })}</span>}
           </div>
           <p className="text-gray-500 text-xs mb-3">{t('analytics.noShowsHint', { n: 6 })}</p>
@@ -103,13 +132,28 @@ export default function AnalyticsPage() {
       {isClub && (
         <section className="card">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h2 className="text-white font-semibold">{t('analytics.playerForm')}</h2>
+            <h2 className="text-white font-semibold">🎯 {t('analytics.playerForm')}</h2>
             <select className="input !w-auto text-sm" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
               <option value="">{t('analytics.pickPlayer')}</option>
               {(members || []).map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
             </select>
           </div>
+          {!memberId && <p className="text-gray-500 text-sm py-8 text-center">👆 {t('anx.pickHint')}</p>}
           {memberId && form && form.length === 0 && <p className="text-gray-400 text-sm">{t('analytics.noData')}</p>}
+          {formSum && (
+            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+              {[
+                [t('anx.matches'), formSum.matches, 'text-white'],
+                [t('analytics.winRate'), `${formSum.rate}%`, 'text-lime-300'],
+                [t('analytics.diff'), formSum.diff > 0 ? `+${formSum.diff}` : formSum.diff, formSum.diff < 0 ? 'text-red-300' : 'text-sky-300'],
+              ].map(([k, v, tone]) => (
+                <div key={k} className="rounded-lg bg-navy-900 border border-navy-700 py-2">
+                  <div className="text-gray-400 text-[11px] uppercase tracking-wide">{k}</div>
+                  <div className={`text-lg font-bold tabular-nums ${tone}`}>{v}</div>
+                </div>
+              ))}
+            </div>
+          )}
           {form?.length > 0 && (
             <div className="h-56" role="img" aria-label={t('analytics.playerForm')}>
               <ResponsiveContainer width="100%" height="100%">
@@ -136,6 +180,7 @@ export default function AnalyticsPage() {
           )}
         </section>
       )}
+      </div>
     </AppShell>
   );
 }

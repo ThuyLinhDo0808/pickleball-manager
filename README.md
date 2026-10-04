@@ -112,6 +112,10 @@ Club và Xé Vé tách dữ liệu rõ ràng:
 
 ### 4.3. Thành viên (`/club/members`)
 
+**Đầu trang** có 5 ô số liệu (trên điện thoại vuốt ngang): *Thành viên cố định* (số đang hoạt động), *VIP*, *Thành viên giao lưu* (số khách ưu tiên), *Chờ duyệt* và *Sinh nhật tháng này*. Bấm ô Cố định / Giao lưu / Chờ duyệt để mở đúng tab. Ba tab nằm ngay dưới, có số đếm từng tab.
+
+**Thanh công cụ** của danh sách: ô **tìm kiếm** (tên, SĐT, khu vực), lọc **giới tính**, lọc **hạng thực tế A–D**, **sắp xếp** (mặc định / tên A→Z / trình độ cao→thấp / vào CLB lâu nhất) và nút hiện/ẩn người ngừng hoạt động. Khi tick chọn người, một **thanh xoá** màu đỏ hiện lên (đếm số người đã chọn, nút *Bỏ chọn*, nút *Xoá*). Trên **điện thoại** danh sách hiện dạng thẻ (ảnh/chữ cái đầu, trình độ, khu vực, thâm niên, cờ nội bộ); trên máy tính là bảng đầy đủ.
+
 **Bảng thành viên:**
 - Có kẻ ô ngang/dọc.
 - Các cột: **STT · Họ tên · Giới tính · Năm sinh · DUPR · Loại · Hạng**, cùng **Khu vực (quận)**, **Thời gian chơi** (đã chơi bao lâu) và **Hạng thực tế A–D** (Host tự đánh giá), trạng thái gói và số buổi còn lại.
@@ -167,7 +171,10 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 - Xoá gói cũng huỷ khoản thu đi kèm.
 
 ### 4.5. Tạo hoạt động: lịch sự kiện, lịch hàng tuần, giải đấu, kèo
-Menu **Tạo hoạt động** gồm 4 mục:
+Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh tab ở đầu trang** (*Lịch sự kiện · Tạo lịch chơi hàng tuần · Giải đấu · Tạo kèo*) để chuyển qua lại một chạm.
+
+- **Lịch sự kiện** có 4 ô số liệu: *buổi tháng này* (bao nhiêu buổi đã diễn ra), *7 ngày tới* (kèm buổi gần nhất), *giải sắp tới* và *tỷ lệ lấp đầy* chỗ của các buổi sắp tới. Thanh công cụ (Danh sách / Tháng / Tuần / Ngày, ‹ Hôm nay ›, lịch nhỏ) nằm trong một khung riêng; nút *Tạo lịch chơi hàng tuần* và *＋ Tạo kèo* ở góc phải. Ở chế độ **Danh sách**, mỗi buổi là thẻ có ô ngày bên trái, giờ, địa điểm, CLB và **thanh lấp đầy** số chỗ.
+- **Tạo kèo / Tạo lịch hàng tuần / Sửa buổi**: trên máy tính, bên phải form có khung **Xem trước** luôn hiện khi cuộn: tên, ngày (hoặc *số buổi* sẽ tạo của lịch hàng tuần), giờ, địa điểm + số sân, số chỗ, phí, hạn huỷ, có mở link đăng ký không, và **thu tối đa nếu kín chỗ**. Nút *Tạo* / *Huỷ* nằm trong khung này.
 
 | Mục | Đường dẫn | Dùng để |
 |---|---|---|
@@ -197,6 +204,7 @@ Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trậ
 - **3 tab**: **Toàn CLB** (mọi người), **Thành viên CLB** (chỉ thành viên cố định) và **Người giao lưu** (khách).
 - **Bục vinh quang** cho giải đấu: Vô địch, Á quân và **đồng hạng Ba** (2 đội thua bán kết).
 - Xếp hạng theo kỳ **Ngày / Tháng / Quý / Năm / Tất cả**, có nút chuyển kỳ trước/kỳ sau.
+- **Top 3 của kỳ** hiện dạng bục (ảnh/chữ cái đầu, huy chương, tỷ lệ thắng, thắng–thua, hiệu số). Bảng xếp hạng có cột tỷ lệ thắng kèm thanh biểu đồ nhỏ.
 - Các cột: trận, thắng, thua, tỷ lệ thắng, điểm ghi, điểm thua, hiệu số, số buổi đã chơi.
 - **Vinh danh** mỗi kỳ:
   - Top tỷ lệ thắng
@@ -208,7 +216,9 @@ Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trậ
 
 ### 4.8. Giải đấu nội bộ (`/club/tournaments`)
 
-Trang **Tạo giải đấu** bắt đầu bằng mục **1. Thể thức**: chọn 1 trong 2 kiểu, đặt tên giải, ngày, giờ và địa điểm (giải hiện trên Lịch sự kiện). Danh sách các giải đã tạo ở link *Các giải đã tạo →*.
+Tab **Giải đấu** (`/club/tournaments`) là danh sách giải: 4 ô số liệu (*tổng số giải, đang diễn ra, đã kết thúc, tổng đội/cặp*), bộ lọc *Tất cả / Đang diễn ra / Đã kết thúc*, và mỗi giải là một thẻ (thể thức, số đội, số bảng, lệ phí, ngày, địa điểm, bục vinh quang khi đã xong). Giải đang diễn ra xếp trước.
+
+Trang **Tạo giải đấu** (`/club/tournaments/new`) bắt đầu bằng mục **1. Thể thức**: chọn 1 trong 2 kiểu (thẻ có mô tả ngắn), đặt tên giải, ngày, giờ và địa điểm (giải hiện trên Lịch sự kiện). Danh sách chọn người chơi dạng ô bấm, có *Chọn tất cả*, *Bỏ chọn* và đếm "Đã chọn x/y".
 
 #### Thể thức 1 — Đánh theo bảng
 Giải trong CLB luôn là **đánh đôi**: cặp nam, nữ hay nam nữ đều được, không chia nội dung đơn / đôi nam / đôi nam nữ (đánh đơn nằm trong giải Đồng đội). Mục 1 có ô **💰 Lệ phí / người**.
@@ -319,14 +329,17 @@ Khi người chơi đăng ký gói qua link:
 3. Nhận được tiền thì Host bấm **Đã nhận tiền**. Gói chuyển sang *Đã đóng* và app ghi khoản thu vào quỹ.
 
 ### 4.13. Thống kê thành viên (`/club/attendance`)
-Menu **Thống kê → Thống kê thành viên**. Chọn kỳ *Tháng / Quý / Năm* (nút ‹ ›) hoặc *Tùy chọn* từ ngày – đến ngày. Ba tab:
+Nhóm **Thống kê** (*Thống kê thành viên · Bảng xếp hạng · Phân tích*) cũng có thanh tab ở đầu trang.
+
+Menu **Thống kê → Thống kê thành viên**. Đầu trang có 5 ô số liệu của kỳ: *số buổi* (đã diễn ra bao nhiêu), *lượt tham gia* (trung bình người/buổi), *đi đều* (thành viên đi ≥ 50% số buổi đã diễn ra), *khách giao lưu* (số lượt đến) và *buổi bảo lưu*. Nút **Xuất Excel (CSV)** ở góc phải. Chọn kỳ *Tháng / Quý / Năm* (nút ‹ ›) hoặc *Tùy chọn* từ ngày – đến ngày. Ba tab:
 - **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). **✓ xanh** = có mặt (đã check-in), **✓ đỏ** = huỷ muộn (vẫn tính buổi), **v** = vắng không báo (không tính), `·` = đã đăng ký chưa check-in. Cột **Tổng số buổi** có thanh chia **từng ô theo buổi** (xanh/đỏ). Xem *Theo buổi* hoặc *Theo tháng*, sắp xếp A→Z hoặc *Chơi nhiều*, hàng cuối đếm thành viên và khách mỗi buổi. **Xuất Excel (CSV)**.
 - **Buổi còn lại & bảo lưu**: mỗi gói hội viên trong kỳ — số buổi của gói, đã dùng, còn lại. Gói đã hết kỳ, đã đóng tiền mà còn buổi = số buổi cần **bảo lưu** sang kỳ sau (có tổng).
 - **Khách giao lưu**: người ngoài CLB đã đến các buổi (gộp theo SĐT), đánh dấu từng buổi và tổng số lần đến.
 
 ### 4.14. Thống kê (`/analytics`)
+- 4 ô số liệu: *số buổi đã phân tích* (6 tháng), *tỷ lệ bùng kèo* chung, *khung giờ hay bùng nhất* và *khung giờ ổn định nhất* (chỉ xét khung có từ 3 lượt đăng ký).
 - **Tỷ lệ vắng mặt theo khung giờ**: heatmap *thứ trong tuần × khung giờ bắt đầu*, tính trên các buổi đã qua trong những tháng gần đây. Ô càng sáng thì khung giờ đó càng hay bị "bùng" kèo, giúp chọn giờ mở kèo.
-- **Phong độ theo thời gian** của một thành viên: tỷ lệ thắng và hiệu số theo từng tháng.
+- **Phong độ theo thời gian** của một thành viên: tỷ lệ thắng và hiệu số theo từng tháng, kèm 3 số tổng (số trận, tỷ lệ thắng, hiệu số). Trên máy tính hai khung nằm cạnh nhau.
 
 (Biểu đồ tiền nằm ở **Tài chính → Tổng quan**.)
 
@@ -879,7 +892,8 @@ pickleball-manager/
     │   ├── e/[token]/     # trang đăng ký kèo công khai
     │   └── join/[token]/  # trang tham gia CLB
     ├── components/         # AppShell (menu), EventCalendar, DatePopover, QrScanner, QrCheckinPanel,
-    │                       # PlayerQrCard, NotifySettings, MatchForm, FinanceTrend, ...
+    │   │                   # PlayerQrCard, NotifySettings, MatchForm, FinanceTrend, ...
+    │   └── ui/             # PageHeader, SectionTabs, StatTile, KpiRow, Segmented, UnderlineTabs (khung giao diện dùng chung)
     ├── context/            # Auth, I18n, Club, Workspace
     └── lib/                # api.js, i18n/ (vi, en), dates, exportExcel, finance, format, ...
 ```

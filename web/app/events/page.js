@@ -4,6 +4,11 @@ import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import EventCalendar, { KIND_ICON, LEGEND_STATUSES, STATUS_STYLE, hrefOf } from '@/components/EventCalendar';
 import DatePopover from '@/components/DatePopover';
+import PageHeader from '@/components/ui/PageHeader';
+import SectionTabs from '@/components/ui/SectionTabs';
+import StatTile from '@/components/ui/StatTile';
+import KpiRow from '@/components/ui/KpiRow';
+import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -38,29 +43,47 @@ function tournamentAsEvent(tr, club) {
 
 function EventCard({ e }) {
   const { t, lang } = useI18n();
+  const full = e.slots != null && e.slots > 0 && (e.main_count || 0) >= e.slots;
+  const pct = e.slots ? Math.min(100, Math.round((100 * (e.main_count || 0)) / e.slots)) : 0;
   return (
-    <Link href={hrefOf(e)} className="card hover:border-lime-400 transition flex gap-3">
-      <div className={`w-1 shrink-0 rounded-full border ${e.tone ? `${e.tone.chip} ${STATUS_MOD[e.status] || ''}` : STATUS_STYLE[e.status]}`} />
-      <div className="min-w-0 flex-1">
+    <Link href={hrefOf(e)} className={`card !p-0 overflow-hidden hover:border-lime-400 transition flex ${e.status === 'cancelled' ? 'opacity-60' : ''}`}>
+      <div className={`w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 py-3 ${e.tone ? e.tone.chip : 'bg-navy-900'}`}>
+        <span className="text-[11px] uppercase text-gray-300">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
+        <span className="text-white text-2xl font-bold leading-none tabular-nums">{Number(e.event_date.slice(8, 10))}</span>
+        <span className="text-[11px] text-gray-400">{Number(e.event_date.slice(5, 7))}/{e.event_date.slice(2, 4)}</span>
+      </div>
+      <div className="min-w-0 flex-1 p-3">
         <div className="flex justify-between gap-2">
-          <span className="text-white font-semibold truncate">{KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}{e.title}</span>
-          <span className="text-gray-400 text-xs uppercase shrink-0">{e.kind === 'tournament' ? (e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)) : t(`events.status_${e.status}`)}</span>
+          <span className={`text-white font-semibold truncate ${e.status === 'cancelled' ? 'line-through' : ''}`}>
+            {KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}
+            {e.title}
+          </span>
+          <span className={`text-[11px] rounded-full border px-2 py-0.5 shrink-0 ${STATUS_STYLE[e.status] || 'border-navy-600 text-gray-300'}`}>
+            {e.kind === 'tournament' ? (e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)) : t(`events.status_${e.status}`)}
+          </span>
         </div>
-        <div className="text-gray-400 text-sm">
-          {formatDay(e.event_date, lang)} {e.start_time ? `· ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''} · {e.location || '—'}
+        <div className="text-gray-400 text-sm truncate">
+          {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
         </div>
-        <div className="text-gray-300 text-sm mt-1">
-          {e.club_name && <span className="text-sky-300">{e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name} · </span>}
-          {e.kind && <span className="text-gray-400">{t(`kind.${e.kind}`)} · </span>}
-          {e.slots != null ? (
-            <>
-              {e.main_count}/{e.slots} {t('events.mainList').toLowerCase()}
-              {e.waitlist_count > 0 && ` · ${e.waitlist_count} ${t('events.waitlist').toLowerCase()}`}
-            </>
-          ) : (
-            t('tournaments.teamsN', { n: e.team_count })
-          )}
-        </div>
+        {e.club_name && (
+          <div className="text-sky-300 text-xs mt-0.5 truncate">
+            {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}
+            {e.kind && <span className="text-gray-500"> · {t(`kind.${e.kind}`)}</span>}
+          </div>
+        )}
+        {e.slots != null ? (
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <span className="flex-1 h-1.5 rounded-full bg-navy-900 overflow-hidden">
+              <span className={`block h-full rounded-full ${full ? 'bg-amber-400' : 'bg-lime-400'}`} style={{ width: `${pct}%` }} />
+            </span>
+            <span className="text-gray-300 tabular-nums whitespace-nowrap">
+              {e.main_count || 0}/{e.slots}
+              {e.waitlist_count > 0 && <span className="text-gray-500"> · +{e.waitlist_count} {t('events.waitlist').toLowerCase()}</span>}
+            </span>
+          </div>
+        ) : (
+          <div className="text-gray-300 text-xs mt-1">{t('tournaments.teamsN', { n: e.team_count })}</div>
+        )}
       </div>
     </Link>
   );
@@ -110,6 +133,26 @@ export default function EventsPage() {
   const sorted = [...all].sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
   const upcoming = sorted.filter((e) => e.event_date >= today);
   const past = sorted.filter((e) => e.event_date < today).reverse();
+  const kpi = useMemo(() => {
+    const live = all.filter((e) => e.status !== 'cancelled');
+    const games = live.filter((e) => e.kind !== 'tournament');
+    const inMonth = games.filter((e) => e.event_date.slice(0, 7) === today.slice(0, 7));
+    const week = addDays(today, 7);
+    const soon = games.filter((e) => e.event_date >= today && e.event_date <= week).sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
+    const ahead = games.filter((e) => e.event_date >= today && e.slots);
+    const main = ahead.reduce((n, e) => n + (e.main_count || 0), 0);
+    const slots = ahead.reduce((n, e) => n + (e.slots || 0), 0);
+    return {
+      month: inMonth.length,
+      monthDone: inMonth.filter((e) => e.status === 'completed' || e.event_date < today).length,
+      week: soon.length,
+      next: soon[0] || null,
+      tours: live.filter((e) => e.kind === 'tournament' && e.event_date >= today).length,
+      main,
+      slots,
+      fill: slots ? Math.round((100 * main) / slots) : null,
+    };
+  }, [all, today]);
 
   const step = { month: (n) => addMonths(date, n), week: (n) => addDays(date, 7 * n), day: (n) => addDays(date, n) }[view];
   const week = weekDays(date);
@@ -128,23 +171,32 @@ export default function EventsPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-white text-2xl font-bold">{isClub ? t('nav.schedule') : t('nav.kevents')}</h1>
-        {!isClub && (
-          <Link href={`/events/create${view === 'day' ? `?date=${date}` : ''}`} className="btn-primary">
-            ＋ {t('events.addEvent')}
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        icon={isClub ? '🗓' : '🎟'}
+        title={isClub ? t('nav.schedule') : t('nav.kevents')}
+        subtitle={isClub ? (manyClubs ? t('calx.allYourClubs', { n: clubs.length }) : club?.name) : t('finX.scopeXeve')}
+        actions={
+          isClub ? (
+            <>
+              <Link href="/events/create/weekly" className="btn-secondary text-sm">🔁 {t('nav.createWeekly')}</Link>
+              <Link href={`/events/create${view === 'day' ? `?date=${date}` : ''}`} className="btn-primary text-sm">＋ {t('nav.createGame')}</Link>
+            </>
+          ) : (
+            <Link href={`/events/create${view === 'day' ? `?date=${date}` : ''}`} className="btn-primary text-sm">＋ {t('events.addEvent')}</Link>
+          )
+        }
+      />
+      <SectionTabs group="activities" />
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="grid grid-cols-4 rounded-lg bg-navy-900 border border-navy-700 p-1 text-sm" role="tablist">
-          {VIEWS.map((v) => (
-            <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => pickView(v)} className={`whitespace-nowrap rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm ${view === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:text-white'}`}>
-              {t(`cal.${v}`)}
-            </button>
-          ))}
-        </div>
+      <KpiRow cols={4}>
+        <StatTile icon="📅" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
+        <StatTile icon="⏭" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
+        <StatTile icon="🏆" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
+        <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
+      </KpiRow>
+
+      <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
+        <Segmented items={VIEWS} value={view} onChange={pickView} label={(v) => t(`cal.${v}`)} />
         {view !== 'list' && (
           <>
             <div className="flex items-center gap-1">
