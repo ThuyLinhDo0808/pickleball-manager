@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 
 // Danger zone: delete this account for good. Shows what goes with it and asks for the
 // account email before deleting.
-export default function DeleteAccount() {
+export default function DeleteAccount({ bare = false } = {}) {
   const { t } = useI18n();
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -55,9 +55,14 @@ export default function DeleteAccount() {
 
   const matches = typed.trim().toLowerCase() === email.toLowerCase() && !!email;
   return (
-    <div className="card mt-4 border-red-500/40">
-      <h2 className="text-red-300 font-semibold mb-1">{t('deleteAccount.title')}</h2>
-      <p className="text-gray-400 text-sm mb-3">{t('deleteAccount.intro')}</p>
+    <div className={bare ? '' : 'card mt-4 border-red-500/40'}>
+      {!bare && (
+        <>
+          <h2 className="text-red-300 font-semibold mb-1">{t('deleteAccount.title')}</h2>
+          <p className="text-gray-400 text-sm mb-3">{t('deleteAccount.intro')}</p>
+        </>
+      )}
+      {bare && <p className="text-gray-300 text-sm mb-3">{t('deleteAccount.bareHint')}</p>}
       <button type="button" className="rounded-lg px-3 py-2 text-sm font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/10" onClick={start}>
         🗑 {t('deleteAccount.button')}
       </button>

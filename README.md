@@ -38,7 +38,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 | **Chủ nhiệm CLB** | Quản lý thành viên, bán gói tháng/quý/năm và trừ buổi tự động khi check-in. Xếp lịch chơi định kỳ trên lịch tháng/tuần/ngày, nhập trận đấu, xếp hạng và vinh danh, tổ chức giải nội bộ, quản lý quỹ, kho bóng và thống kê. |
 | **Người mở kèo lẻ (Xé Vé)** | Tạo kèo và gửi link đăng ký vào nhóm Zalo/Telegram. App tự xếp danh sách chính / danh sách chờ, tự đẩy người chờ lên khi có người huỷ và nhắn tin báo họ. Áp dụng hạn chót huỷ kèo, check-in bằng quét QR, đánh dấu vắng, thu phí, tính lãi/lỗ từng kèo và xuất Excel. |
 | **Trọng tài / điều phối viên** | Đăng nhập bằng tài khoản riêng để check-in người chơi (bấm tay hoặc quét QR) và nhập tỷ số của các kèo được giao. Không thấy tài chính hay số điện thoại. |
-| **Đồng quản trị (người cùng góp vốn)** | Dùng email riêng để cùng xem và quản lý Thành viên + Tài chính của một CLB. Không xoá được CLB. |
+| **Đồng quản trị (người cùng góp vốn)** | Dùng email riêng để quản lý một CLB với **đầy đủ quyền như chủ CLB** (thành viên, lịch, trận đấu, giải, tài chính, cài đặt). Chỉ không xoá được CLB. |
 | **Người chơi** | Đăng nhập rồi đăng ký kèo qua link, chuyển khoản và gửi ảnh xác nhận, nhận vé QR check-in, chuyển nhượng slot cho bạn, tự huỷ kèo, tham gia CLB, nhận tin Telegram khi được lên danh sách chính. Xem số buổi còn lại, công nợ, lịch sử tham gia, phong độ và biến động DUPR. |
 
 ---
@@ -74,8 +74,8 @@ Sau khi đăng nhập, bạn chọn **không gian làm việc** (workspace). Có
 
 | Workspace | Dành cho | Menu |
 |---|---|---|
-| **Club Manager** | Cộng đồng chơi lâu dài | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Bảng xếp hạng, Trận đấu, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
-| **Xé Vé Manager** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Thống kê · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
+| **Club Manager** | Cộng đồng chơi lâu dài | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Bảng xếp hạng, Thống kê thành viên, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
+| **Xé Vé Manager** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Thống kê · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
 | **Trọng tài / Điều phối** | Người được Host giao việc | Kèo được giao |
 | **Tôi là người chơi** | Người chơi | Của tôi · Hồ sơ |
 
@@ -84,7 +84,9 @@ Sau khi đăng nhập, bạn chọn **không gian làm việc** (workspace). Có
 - Nút mũi tên thu menu lại thành dải icon.
 - Trên điện thoại có thanh dưới: *Tổng quan · Thành viên · Lịch · Tài chính · Thêm*. Nút **Thêm** mở toàn bộ menu theo nhóm.
 
-**Đồng quản trị** của CLB người khác (xem [6.4](#64-người-được-cấp-quyền-đồng-quản-trị)): khi chọn CLB được chia sẻ trong workspace Club, menu chỉ còn *Thành viên · Tài chính ▸ · Cài đặt ▸*.
+**Đồng quản trị** của CLB người khác (xem [6.4](#64-người-được-cấp-quyền-đồng-quản-trị)): khi chọn CLB được chia sẻ trong workspace Club, menu **đầy đủ như chủ CLB**, kèm dải nhắc "Bạn đang quản lý CLB của <chủ CLB>".
+
+**Nút chuyển "Quản lý / Người chơi"** (RoleSwitch) ở đầu menu: một chạm để sang **Cổng người chơi** (`/p`) và quay lại. Nút này có ở mọi workspace, **kể cả tài khoản nhân viên** (trọng tài / điều phối / đồng quản trị), vì nhân viên vẫn có thể là thành viên của CLB khác.
 
 Club và Xé Vé tách dữ liệu rõ ràng:
 - **Club:** các buổi (event) gắn với CLB đang chọn.
@@ -95,21 +97,29 @@ Club và Xé Vé tách dữ liệu rõ ràng:
 ## 4. Tính năng chi tiết — Club Manager
 
 ### 4.1. CLB của tôi (`/clubs`)
-- Tạo, đổi tên, xoá CLB. Một tài khoản có thể quản lý nhiều CLB.
+- Tạo, đổi tên, xoá CLB. Một tài khoản có thể quản lý nhiều CLB. Mỗi CLB hiện dạng thẻ: môn chơi, số thành viên, vai trò (*Chủ CLB* / *Đồng quản trị*), nút chọn làm CLB hiện tại và *Cài đặt*.
 - Chọn **CLB hiện tại** bằng bộ chuyển CLB. Mọi trang Club hiển thị dữ liệu của CLB đang chọn.
-- Xoá CLB sẽ xoá toàn bộ thành viên, gói hội viên và quỹ của CLB đó (app hỏi xác nhận trước).
+- **Xoá CLB** (chỉ chủ CLB): app hiện trước những gì sẽ mất (số thành viên, buổi, giải, gói, khoản thu chi…) và bắt **gõ đúng tên CLB** mới cho xoá. Đồng quản trị không thấy nút xoá.
 - Phần **Thanh toán & link tham gia** (xem [4.12](#412-link-tham-gia-clb--thanh-toán-vietqr)).
 
 ### 4.2. Tổng quan (`/dashboard`)
-Tóm tắt CLB đang chọn và các buổi sắp tới, kèm lối tắt tạo buổi mới và quản lý CLB.
+- **Chỉ số chính**: thành viên đang hoạt động, số **VIP** (⭐) và **khách ưu tiên**, yêu cầu vào CLB đang chờ.
+- **Hàng tiền**: thu · chi · số dư quỹ · **còn phải thu** (gói chưa đóng, phí kèo chưa thu).
+- **Lịch năm nay**: số buổi chơi hàng tuần đã chơi / dự kiến, số giải đấu, số kèo.
+- **Tổng quan trình độ**: số người hạng A/B/C và DUPR (hoặc cấp) trung bình của nam, nữ.
+- **Sự kiện sắp tới**: mỗi buổi có chip trạng thái và **số chỗ còn trống**.
+- **Cần xử lý**: danh sách việc cần làm (buổi tới còn trống chỗ / đã kín, người xin vào CLB, thành viên chưa đóng tiền, chuyển khoản chờ xác nhận…), bấm là tới đúng trang.
 
 ### 4.3. Thành viên (`/club/members`)
 
 **Bảng thành viên:**
 - Có kẻ ô ngang/dọc.
-- Các cột: **STT · Họ tên · Giới tính · Năm sinh · DUPR · Loại · Hạng**, cùng trạng thái gói và số buổi còn lại.
+- Các cột: **STT · Họ tên · Giới tính · Năm sinh · DUPR · Loại · Hạng**, cùng **Khu vực (quận)**, **Thời gian chơi** (đã chơi bao lâu) và **Hạng thực tế A–D** (Host tự đánh giá), trạng thái gói và số buổi còn lại.
 - Loại: *Cố định* hoặc *Vãng lai/Giao lưu*.
-- Hạng: *VIP* hoặc *Thường*. Chỉ thành viên cố định mới có hạng.
+- **VIP theo gói**: thành viên cố định có gói đang hiệu lực được gắn sao — gói tháng ⭐, quý ⭐⭐, năm ⭐⭐⭐.
+- **Khách giao lưu** không có gói và không có VIP. Đặc quyền duy nhất của khách là **Ưu tiên** kèm **% giảm giá vé** (Host đặt % trong chi tiết người đó).
+- Thành viên cố định đóng theo gói hiện **"Đã thu (gói)"** ở cột thu phí của từng buổi, không bị tính phí lẻ.
+- Bấm vào avatar/tên ở bất kỳ đâu (buổi, trận, xếp hạng) mở **thẻ hồ sơ nhanh**: ảnh, trình độ, hạng, loại, số buổi.
 
 **Thêm và xoá:**
 - Nút **＋** mở popup thêm thành viên.
@@ -128,12 +138,12 @@ Tóm tắt CLB đang chọn và các buổi sắp tới, kèm lối tắt tạo 
 - **Nhắc sinh nhật trên web:** ở đầu mọi trang của Host (Club) hiện khung 🎂 khi có thành viên đang hoạt động sinh nhật **hôm nay** (kèm "tròn N tuổi") hoặc **trong 3 ngày tới** ("ngày mai", "còn 2/3 ngày" + ngày). Bấm × để ẩn đến hết hôm nay. Chỉ tính thành viên đã có ngày sinh đầy đủ.
 - Bảng thành viên chỉ để xem thông tin; số buổi còn lại xem ở **Thống kê → Thống kê thành viên**.
 
-**Hai tab: "Đã là thành viên" và "Chờ xác nhận":**
+**Hai tab: "Đã là thành viên" và "Danh sách xin gia nhập CLB":**
 - Khi người chơi bấm *Tôi là thành viên CLB* trên trang đăng ký kèo, app tìm thành viên có cùng SĐT:
   - **Khớp SĐT** → tài khoản được gắn vào thành viên đó, chờ Host xác nhận.
   - **Không khớp** → tạo một **yêu cầu vào CLB** mới (chưa hiện trong danh sách chính).
 - Host nhận thông báo qua webhook (loại `member_request`), menu **Thành viên** hiện **số đỏ** đếm người đang chờ, và trang Thành viên có dòng nhắc.
-- Tab **Chờ xác nhận** hiện tên tài khoản, email, SĐT, DUPR và loại yêu cầu:
+- Tab **Danh sách xin gia nhập CLB** hiện tên tài khoản, email, SĐT, DUPR và loại yêu cầu:
   - **Duyệt** → thành viên đã xác thực, đăng ký kèo như thành viên (dùng buổi trong gói, không trả phí).
   - **Từ chối** → yêu cầu mới bị xoá; nếu là khớp SĐT thì chỉ gỡ liên kết tài khoản (thành viên vẫn giữ). Người đó đăng ký như khách.
 
@@ -143,7 +153,9 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 
 **Tạo gói:**
 - Mỗi gói có tên, **chu kỳ** (tháng / quý / năm), giá và **số buổi mỗi kỳ** (0 = không giới hạn).
+- **Sửa gói** (tên, giá, số buổi) bất cứ lúc nào; gói đã bán giữ nguyên giá lúc bán.
 - Gói có thể *Ngừng bán* hoặc *Bán lại*.
+- Gói chỉ dành cho **thành viên cố định**. Khách giao lưu không đăng ký gói (xem 4.3).
 
 **Đăng ký gói cho thành viên** (trong chi tiết thành viên):
 - Chọn gói, tháng bắt đầu và số kỳ. Ví dụ: gói tháng, bắt đầu tháng 8, 3 kỳ → tạo gói cho tháng 8, 9 và 10.
@@ -169,16 +181,21 @@ Loại hoạt động sửa được ở trang *Sửa* của buổi.
 Trang chi tiết buổi:
 - Trang chi tiết buổi giống kèo Xé Vé (xem [mục 5](#5-tính-năng-chi-tiết--xé-vé-manager)), cộng thêm:
   - **Nhập từ CLB**: chọn thành viên đưa vào buổi.
+  - Trang chia **4 tab**: **Chi tiết** · **Thành viên** · **Trận đấu** · **Tài chính**.
   - **Check-in một hội viên sẽ tự trừ 1 buổi** trong gói còn hiệu lực. App báo "đã trừ 1 buổi, còn n buổi", hoặc "gói không giới hạn", hoặc "không có gói còn hiệu lực". Huỷ check-in thì buổi được hoàn lại. Mỗi buổi chỉ trừ tối đa 1 lần.
 
-### 4.6. Trận đấu (`/club/matches`)
-Nằm trong menu **Thống kê** (cùng Bảng xếp hạng và Phân tích).
-- **Nhập trận** theo thể thức Đơn, Đôi hoặc Đôi nam nữ (mỗi đội 1 nam + 1 nữ). Mỗi trận gồm người chơi 2 đội, tỷ số và thời gian.
-- Sửa tỷ số hoặc xoá trận. Bảng xếp hạng tự tính lại.
+### 4.6. Trận đấu (tab *Trận đấu* của buổi · `/xeve/matches`)
+Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trận nhập trong tab **Trận đấu** của từng buổi; danh sách mọi trận Xé Vé nằm ở **Xé Vé → Trận đấu** (`/xeve/matches`). Link cũ `/club/matches` vẫn mở được.
+- **Nhập trận**: chọn người 2 đội. App **tự biết đánh đơn hay đánh đôi** theo số người mỗi bên (1–1 hay 2–2).
+- **Nhập tỷ số sau**: tạo trận trước (ghép cặp), tỷ số để trống; trận chưa có tỷ số hiện *Chưa nhập tỷ số* và không tính vào xếp hạng.
+- Nút **Sửa tỷ số** mở hộp thoại có sẵn tên người chơi từng đội. Xoá trận được. Bảng xếp hạng tự tính lại.
+- **Xuất ảnh JPG** danh sách trận (tên, tỷ số, đội thắng) để gửi vào nhóm chat.
 - (Phần gắn link video YouTube tạm thời đã bỏ khỏi app.)
 - Trận nhập trong trang của một buổi cũng được tính.
 
 ### 4.7. Bảng xếp hạng & vinh danh (`/club/rankings`)
+- **3 tab**: **Toàn CLB** (mọi người), **Thành viên CLB** (chỉ thành viên cố định) và **Người giao lưu** (khách).
+- **Bục vinh quang** cho giải đấu: Vô địch, Á quân và **đồng hạng Ba** (2 đội thua bán kết).
 - Xếp hạng theo kỳ **Ngày / Tháng / Quý / Năm / Tất cả**, có nút chuyển kỳ trước/kỳ sau.
 - Các cột: trận, thắng, thua, tỷ lệ thắng, điểm ghi, điểm thua, hiệu số, số buổi đã chơi.
 - **Vinh danh** mỗi kỳ:
@@ -260,6 +277,8 @@ Mục Tài chính có các tab:
 
 Các khoản tự động **không huỷ được từ Sổ thu chi**. Muốn sửa thì sửa tại nơi tạo ra nó, để sổ luôn khớp với gói, kho và danh sách kèo.
 
+Giao diện Tài chính dạng thẻ: khối **Số dư quỹ** + thu/chi/lãi **tháng này**, 3 ô 12 tháng (kèm trung bình/tháng, số tháng có lãi), biểu đồ xu hướng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng lãi/lỗ từng kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
+
 **Sổ thu chi chỉ thêm, không sửa.** Số tiền, loại và chủ sở hữu của một khoản không bao giờ bị ghi đè (database chặn bằng trigger). Muốn sửa thì huỷ khoản cũ rồi tạo khoản mới, nhờ vậy luôn truy vết được.
 
 Link cũ `/club/fund`, `/club/plans`, `/club/inventory` tự chuyển sang trang mới.
@@ -301,7 +320,7 @@ Khi người chơi đăng ký gói qua link:
 
 ### 4.13. Thống kê thành viên (`/club/attendance`)
 Menu **Thống kê → Thống kê thành viên**. Chọn kỳ *Tháng / Quý / Năm* (nút ‹ ›) hoặc *Tùy chọn* từ ngày – đến ngày. Ba tab:
-- **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). `x` xanh = có mặt (đã check-in), `x` đỏ = vắng / huỷ muộn, `·` = đã đăng ký chưa check-in. Cột **Số buổi** có thanh biểu đồ. Xem *Theo buổi* hoặc *Theo tháng*, sắp xếp A→Z hoặc *Chơi nhiều*, hàng cuối đếm thành viên và khách mỗi buổi. **Xuất Excel (CSV)**.
+- **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). **✓ xanh** = có mặt (đã check-in), **✓ đỏ** = huỷ muộn (vẫn tính buổi), **v** = vắng không báo (không tính), `·` = đã đăng ký chưa check-in. Cột **Tổng số buổi** có thanh chia **từng ô theo buổi** (xanh/đỏ). Xem *Theo buổi* hoặc *Theo tháng*, sắp xếp A→Z hoặc *Chơi nhiều*, hàng cuối đếm thành viên và khách mỗi buổi. **Xuất Excel (CSV)**.
 - **Buổi còn lại & bảo lưu**: mỗi gói hội viên trong kỳ — số buổi của gói, đã dùng, còn lại. Gói đã hết kỳ, đã đóng tiền mà còn buổi = số buổi cần **bảo lưu** sang kỳ sau (có tổng).
 - **Khách giao lưu**: người ngoài CLB đã đến các buổi (gộp theo SĐT), đánh dấu từng buổi và tổng số lần đến.
 
@@ -413,22 +432,27 @@ Mỗi kèo có thể đặt **Hạn chót huỷ kèo**: *Không giới hạn*, h
 - **Xuất Excel** gồm 2 sheet: *Participants* (người chơi + trạng thái phí) và *Transactions* (thu chi, có **công thức SUM sống**, sửa trong Excel/Sheets thì tổng tự tính lại).
 - Tổng hợp mọi kèo: **Tài chính → Tổng quan** (lãi/lỗ từng kèo) và **Sổ thu chi** (mọi khoản của các kèo lẻ, có link về kèo).
 
+### 5.7. Trận đấu & xếp hạng toàn hệ thống
+- **Trận đấu** (`/xeve/matches`): mọi trận của các kèo Xé Vé, sửa tỷ số, xuất JPG (xem [4.6](#46-trận-đấu-tab-trận-đấu-của-buổi--xevematches)).
+- **Xếp hạng toàn hệ thống** (`/leaderboard`): bảng xếp hạng chung của mọi người chơi trên app theo môn (pickleball / cầu lông) và kỳ (tháng / quý / năm / tất cả).
+
 ---
 
 ## 6. Phân quyền: Trọng tài, Điều phối viên, Đồng quản trị
 
 ### 6.1. Host cấp quyền (`/staff-access`)
-Nhập **email** của người đó, tên (để dễ nhận ra), rồi chọn **vai trò**:
+Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai trò**, **phạm vi** và (tuỳ chọn) **thời hạn hiệu lực** *từ ngày – đến ngày*. Trang có **bảng so sánh quyền** từng vai trò và danh sách quyền đã cấp (đang hiệu lực / chưa bắt đầu / đã hết hạn).
 
 | Vai trò | Được làm | Phạm vi |
 |---|---|---|
-| **Trọng tài** | Chỉ nhập tỷ số trận đấu | Một kèo · mọi buổi của một CLB · tất cả kèo |
-| **Điều phối viên** | Check-in (tay hoặc **quét QR**) + nhập tỷ số | Một kèo · mọi buổi của một CLB · tất cả kèo |
-| **Đồng quản trị** (Co-Admin) | Xem & quản lý **Thành viên** và **Tài chính** (tổng quan, sổ thu chi, gói hội viên, kho bóng, xác nhận thanh toán) của **một CLB** | Luôn là **một CLB cụ thể** |
+| **Trọng tài** | Chỉ nhập tỷ số trận đấu | Một kèo · một CLB · **mọi CLB** · **mọi kèo Xé Vé** · tất cả |
+| **Điều phối viên** | Check-in (tay hoặc **quét QR**) + nhập tỷ số | Một kèo · một CLB · **mọi CLB** · **mọi kèo Xé Vé** · tất cả |
+| **Đồng quản trị** (Co-Admin) | **Mọi quyền như chủ CLB**: thành viên, gói, lịch/buổi, trận đấu, giải đấu, tài chính, kho, cài đặt CLB (đổi tên, tài khoản nhận tiền, link tham gia) | Luôn là **một CLB cụ thể** |
 
 - Trọng tài và điều phối viên **không bao giờ thấy tài chính hay số điện thoại**.
-- Đồng quản trị **không** được: xoá CLB, đổi tên, đổi tài khoản ngân hàng nhận tiền hay link tham gia, phân quyền cho người khác, quản lý lịch/trận đấu/giải đấu. Server chặn các thao tác này và trả về lỗi 403.
-- Đổi vai trò hoặc thu hồi quyền bất cứ lúc nào.
+- Đồng quản trị **chỉ không được xoá CLB** (server trả `403 owner_only`). Mọi thứ họ tạo/ghi đều thuộc về chủ CLB.
+- Quyền có thời hạn: ngoài khoảng *từ – đến* thì server coi như chưa cấp.
+- Đổi vai trò, sửa thời hạn hoặc thu hồi quyền bất cứ lúc nào.
 
 ### 6.2. Người được cấp quyền (`/staff`)
 1. Đăng nhập (hoặc đăng ký) bằng **đúng email** được cấp và **xác nhận email**.
@@ -437,7 +461,7 @@ Nhập **email** của người đó, tên (để dễ nhận ra), rồi chọn 
    - **Check-in**: tìm tên, bấm *Đã đến* hoặc *Vắng*, hoàn tác được, có đếm "x/y đã đến".
    - **Tỷ số**: nhập hoặc sửa trận.
 
-Họ **không bao giờ thấy tài chính hay số điện thoại**. Check-in của điều phối viên cũng tự trừ buổi trong gói hội viên như khi Host check-in.
+Họ **không bao giờ thấy tài chính hay số điện thoại**. Nhân viên vẫn có nút **Quản lý / Người chơi** để sang Cổng người chơi của chính mình. Check-in của điều phối viên cũng tự trừ buổi trong gói hội viên như khi Host check-in.
 
 ### 6.3. Check-in bằng mã QR
 Thay vì lướt tìm tên, làm như sau:
@@ -454,7 +478,7 @@ Thay vì lướt tìm tên, làm như sau:
 ### 6.4. Người được cấp quyền đồng quản trị
 1. Đăng nhập (hoặc đăng ký) bằng **đúng email** được cấp và **xác nhận email**.
 2. Chọn workspace **Club**. CLB được chia sẻ hiện trong danh sách CLB, có nhãn *Đồng quản trị · Được chia sẻ bởi <email chủ CLB>*.
-3. Menu chỉ còn **Thành viên**, **Tài chính ▸** và **Cài đặt ▸** (CLB, Tài khoản). Mọi khoản thu/chi họ ghi đều vào **quỹ của chủ CLB**, nên cả hai cùng thấy một sổ.
+3. Menu **đầy đủ như chủ CLB** (trừ nút xoá CLB). Mọi buổi, trận, giải và khoản thu/chi họ tạo đều thuộc **CLB của chủ**, nên cả hai cùng thấy một dữ liệu.
 
 ---
 
@@ -492,6 +516,11 @@ Người chơi dùng chung app, chọn workspace **Tôi là người chơi** (`/
 
 ### 8.1. Đăng nhập (`/sign-in`)
 Email + mật khẩu qua Supabase Auth. Người đăng ký mới nhận **email xác nhận** và phải bấm xác nhận rồi mới đăng nhập được.
+- Bấm link xác nhận → trang **`/welcome`** ("Chúc mừng bạn đã đăng ký thành công") với nút về đăng nhập. Link có lỡ trỏ về đường dẫn lạ (`…/welcome`, trang chủ kèm mã xác nhận) cũng được chuyển về `/welcome`.
+- Chưa nhận email? Nút **Gửi lại email xác nhận** ngay ở trang đăng nhập. Khi Supabase chặn vì gửi quá nhiều, app báo lỗi dễ hiểu (đợi vài phút).
+
+### 8.1b. Xoá tài khoản (`/account`)
+Mục **Vùng nguy hiểm → Xoá tài khoản**: app liệt kê những gì sẽ bị xoá (các CLB bạn sở hữu, kèo Xé Vé, hồ sơ người chơi; liên kết thành viên ở CLB khác được gỡ) và bắt **gõ đúng email tài khoản**. Xoá xong app đăng xuất và về trang đăng nhập.
 
 ### 8.2. Ngôn ngữ
 Tiếng Việt (mặc định) và tiếng Anh, đổi trong menu.
@@ -511,7 +540,9 @@ Mỗi Host có một gói, giới hạn **số người đang được quản l�
 
 Khi hết chỗ, app chặn thêm người và báo lỗi. Trang **Tài khoản** hiển thị gói và mức đã dùng (`used/limit`). Nếu backend đặt `ALLOW_TIER_SELF_SERVE=true`, Host tự đổi gói được (tiện cho giai đoạn thử nghiệm). Tắt đi khi có thanh toán thật.
 
-### 8.5. Sao lưu (`/account`)
+### 8.5. Tài khoản & sao lưu (`/account`)
+Trang Tài khoản chia thẻ: hồ sơ, gói dịch vụ (mức đã dùng), tài khoản nhận tiền, thông báo, sao lưu và vùng nguy hiểm.
+
 **Club backup** xuất một file Excel gồm Thành viên, Lịch buổi và Xếp hạng của CLB đang chọn.
 
 ### 8.6. Thông báo khi được đẩy từ danh sách chờ
@@ -587,7 +618,7 @@ Host tạo buổi lặp lại hằng tuần, đặt phí khách (ví dụ 130.00
 - **Người không có smartphone / quên ảnh vé:** Host thêm tay hoặc bấm *Check-in* trong danh sách, hoặc gõ mã vé.
 
 ### Mời người cùng góp vốn quản lý CLB
-**Cài đặt → Phân quyền** → nhập email của họ → chọn **Đồng quản trị** → chọn CLB → *Cấp quyền*. Họ đăng nhập bằng email đó, chọn workspace **Club**, và cùng xem/ghi Thành viên, Tài chính với bạn. Họ không xoá được CLB.
+**Cài đặt → Phân quyền** → nhập email của họ → chọn **Đồng quản trị** → chọn CLB → *Cấp quyền*. Có thể đặt thời hạn *từ – đến*. Họ đăng nhập bằng email đó, chọn workspace **Club**, và quản lý CLB với đầy đủ quyền như bạn. Họ chỉ không xoá được CLB.
 
 ### Tổ chức giải nội bộ
 - **Cá nhân & Đôi**: **Tạo hoạt động → Tạo giải đấu** → *Cá nhân & Đôi* → tên, ngày → Đôi + hạng mục (ví dụ Đôi nam) → chọn người chơi → *Ghép cặp cân bằng* → 2 bảng, mỗi bảng 2 đội đi tiếp → *Tạo giải & xếp lịch* → nhập tỷ số vòng bảng → *Tạo vòng loại trực tiếp* → nhập tỷ số đến chung kết.
@@ -690,7 +721,10 @@ supabase/migrations/
 ├── 20261009090000_guest_perks_survey.sql                # khách giao lưu: tự vào danh sách, đặc quyền VIP/Ưu tiên, khảo sát sau buổi, DS chờ
 ├── 20261010090000_member_phone_link.sql                 # tài khoản tự nhận là thành viên CLB khi SĐT trùng (bỏ nút "Tôi là thành viên")
 ├── 20261011090000_event_status_simplify.sql            # trạng thái chỉ còn Đang mở / Đã xong (tự động) / Đã hủy
-└── 20261012090000_multi_sport_badminton.sql           # nhiều môn: CLB cầu lông (trình độ 6 cấp, tỷ số theo ván, cầu dùng mỗi buổi)
+├── 20261012090000_multi_sport_badminton.sql           # nhiều môn: CLB cầu lông (trình độ 6 cấp, tỷ số theo ván, cầu dùng mỗi buổi)
+├── 20261013090000_guest_priority_discount.sql         # khách: chỉ còn Ưu tiên + % giảm giá vé (bỏ VIP/gói cho khách)
+├── 20261014090000_member_area_rank_unscored_matches.sql # khu vực, thời gian chơi, hạng A–D; trận chưa có tỷ số
+└── 20261015090000_staff_grant_scope.sql               # phạm vi quyền (all/clubs/xeve) + thời hạn từ–đến
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -755,6 +789,7 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `NEXT_PUBLIC_SUPABASE_URL` | URL project Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon public key (an toàn để ở frontend) |
 | `NEXT_PUBLIC_API_URL` | URL backend, ví dụ `http://localhost:4000` hoặc `https://pickleball-api.onrender.com` |
+| `NEXT_PUBLIC_SITE_URL` | Tuỳ chọn: địa chỉ web (chỉ lấy phần origin, vd `https://pickleball-manager.vercel.app`) dùng làm link trong email xác nhận → `/welcome`. Bỏ trống thì dùng địa chỉ đang mở. Nhớ thêm `<địa chỉ>/welcome` vào *Redirect URLs* của Supabase Auth. |
 
 > ⚠️ **Không bao giờ commit key thật.** `.env` và `.env.local` đã nằm trong `.gitignore`, chỉ các file `*.example` được commit.
 
@@ -858,22 +893,22 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Route chính |
 |---|---|
 | Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
-| Host | `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
-| CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH/DELETE /api/clubs/:id` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. `PATCH`, `DELETE` và `rotate` chỉ chủ CLB được gọi (co-admin nhận `403 owner_only`). |
+| Host | `GET /api/host/account/delete-preview` · `DELETE /api/host/account?confirm=<email>` · `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
+| CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH /api/clubs/:id` · `GET /api/clubs/:id/delete-preview` · `DELETE /api/clubs/:id?confirm=<tên CLB>` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. Chỉ `delete-preview` và `DELETE` là riêng chủ CLB (co-admin nhận `403 owner_only`). |
 | Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `GET /api/clubs/:id/birthdays?days=3` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
-| Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=` · `GET /api/clubs/:id/fund` |
+| Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = toàn CLB, `club`, `guest`) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
 | Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge`; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
-| Trận đấu | `GET/POST /api/matches` · `PATCH/DELETE /api/matches/:id` |
+| Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
-| Phân quyền | `GET/POST /api/staff-grants` · `PATCH/DELETE /api/staff-grants/:id` |
+| Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` · `GET /api/staff/events` · `GET /api/staff/events/:id` · `POST …/participants/:pid/:action` · `POST …/checkin-code` · `POST/PATCH …/matches` |
 | Người chơi | `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
 
@@ -884,10 +919,10 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Bảng / View |
 |---|---|
 | Tài khoản | `users` (có `notify_webhook_url`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký), view `v_host_capacity_usage` |
-| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
+| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, `district`, `play_duration`, `real_rank` A–D, `priority` + `discount_pct` cho khách, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
-| Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`), view `v_event_summary`, `v_player_reliability` |
-| Thi đấu | `matches` (thuộc CLB **hoặc** kèo; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
+| Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
+| Thi đấu | `matches` (thuộc CLB **hoặc** kèo; tỷ số có thể null = chưa nhập; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
 | Giải đấu | `tournaments` (`kind` pairs/team, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams`, `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items`, `inventory_moves` |
@@ -902,7 +937,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **Mỗi Host chỉ thấy dữ liệu của mình.** Mọi route backend lọc theo `host_id` lấy từ token. Database cũng bật **Row Level Security** làm lớp bảo vệ thứ hai.
 - **Service role key chỉ ở backend.** Web chỉ giữ anon key và dùng nó để đăng nhập.
 - **Quyền nhân sự theo email đã xác nhận.** Chỉ email Supabase đã xác nhận mới nhận được quyền. Trọng tài và điều phối viên không bao giờ thấy tài chính hay số điện thoại.
-- **Đồng quản trị bị giới hạn ở server**, không chỉ ẩn trên giao diện. Họ chỉ truy cập được Thành viên + Tài chính của đúng CLB được cấp. Server chặn xoá CLB, đổi tài khoản nhận tiền, đổi link tham gia và phân quyền. Mọi khoản họ ghi đều nằm trong sổ của chủ CLB.
+- **Đồng quản trị kiểm soát ở server**, không chỉ ẩn trên giao diện. Họ chỉ truy cập được đúng CLB được cấp (trong thời hạn hiệu lực), với quyền như chủ CLB trừ xoá CLB. Server tự gắn dữ liệu họ tạo vào chủ CLB, nên mọi khoản nằm trong sổ của chủ. Họ không thấy kèo Xé Vé riêng của chủ.
 - **Mã QR check-in** là một token ngẫu nhiên, không chứa thông tin cá nhân. Chỉ Host hoặc điều phối viên của đúng kèo mới dùng được để check-in, và người chơi đổi mã mới bất cứ lúc nào.
 - **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ). Bot Telegram chỉ nhận cập nhật có đúng secret.
 - **Sổ thu chi chỉ thêm.** Không sửa số tiền, chỉ huỷ kèm lý do. Các khoản tự động gắn với nguồn tạo ra chúng.
@@ -927,7 +962,8 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số trong danh sách thành viên thì nút "Tôi là thành viên" mới tìm được. |
 | Khách chuyển khoản rồi nhưng chỗ bị huỷ | Quá 30 phút (hoặc 2 giờ sau khi bị từ chối) mà chưa gửi ảnh thì chỗ tự nhả. Host thêm tay người đó rồi bấm *Đã thu tiền mặt* / *đã thu phí*. |
 | Trang thanh toán không hiện VietQR | Chưa cài tài khoản nhận tiền: **Tài khoản → Tài khoản nhận tiền (kèo)**, hoặc tài khoản của CLB trong *CLB của tôi → Thanh toán*. |
-| Đồng quản trị không thấy CLB | Họ phải đăng nhập bằng **đúng email** được cấp, **xác nhận email**, rồi chọn workspace **Club**. |
+| Đồng quản trị không thấy CLB | Họ phải đăng nhập bằng **đúng email** được cấp, **xác nhận email**, rồi chọn workspace **Club**. Kiểm tra quyền còn trong thời hạn *từ – đến*. |
+| Bấm link xác nhận email bị đưa về `localhost` | Supabase → Authentication → URL Configuration: đặt *Site URL* là địa chỉ Vercel và thêm `https://<web>/welcome` vào *Redirect URLs*. |
 | `Capacity limit reached` | Đã chạm giới hạn gói (xem [8.4](#84-gói-dịch-vụ--giới-hạn)). Nâng gói hoặc cho thành viên cũ ngừng hoạt động. |
 | Đăng ký xong không đăng nhập được | Mở email và bấm link xác nhận. Kiểm tra *Site URL* trong Supabase Auth. |
 | Trọng tài không thấy kèo được giao | Người đó phải đăng nhập bằng **đúng email** được cấp, **xác nhận email**, rồi chọn workspace *Trọng tài / Điều phối*. |

@@ -104,7 +104,11 @@ export default function PlansPage() {
         )}
       </Modal>
 
-      <form onSubmit={create} className="card mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+      <form onSubmit={create} className="card !p-5 mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+        <div className="col-span-2 md:col-span-5 -mb-1">
+          <h2 className="text-white font-semibold">✨ {t('finX.newPlan')}</h2>
+          <p className="text-gray-400 text-xs">{t('finX.newPlanHint')}</p>
+        </div>
         <div className="col-span-2">
           <label className="text-xs text-gray-400">{t('plans.name')}</label>
           <input className="input" required placeholder={t('plans.namePh')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -134,23 +138,38 @@ export default function PlansPage() {
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {!loading && (plans || []).length === 0 && <p className="text-gray-400 text-sm">{t('plans.none')}</p>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(plans || []).map((p) => (
-          <div key={p.id} className={`card ${p.is_active ? '' : 'opacity-50'}`}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="text-white font-semibold truncate">{p.name}</div>
-                <div className="text-gray-400 text-xs">{t(`plans.${p.period}`)}</div>
+      {(plans || []).length > 0 && (
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-white font-semibold">🎫 {t('finX.plansList', { n: (plans || []).filter((p) => p.is_active).length })}</h2>
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {(plans || []).map((p) => {
+          const stars = { month: 1, quarter: 2, year: 3 }[p.period] || 1;
+          const months = { month: 1, quarter: 3, year: 12 }[p.period] || 1;
+          const perSession = p.sessions_included ? Math.round(Number(p.price) / p.sessions_included) : null;
+          return (
+          <div key={p.id} className={`card !p-0 overflow-hidden flex flex-col ${p.is_active ? '' : 'opacity-50'}`}>
+            <div className={`px-5 pt-5 pb-4 bg-gradient-to-br ${stars === 3 ? 'from-amber-400/20' : stars === 2 ? 'from-sky-400/20' : 'from-lime-400/15'} to-transparent`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-amber-300 text-xs" aria-hidden="true">{'⭐'.repeat(stars)} VIP</div>
+                  <div className="text-white font-semibold text-lg truncate">{p.name}</div>
+                  <div className="text-gray-400 text-xs">{t(`plans.${p.period}`)}</div>
+                </div>
+                <span className={`text-[11px] rounded-full px-2 py-0.5 shrink-0 ${p.is_active ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-700 text-gray-300'}`}>
+                  {p.is_active ? t('plans.active') : t('plans.inactive')}
+                </span>
               </div>
-              <span className={`text-xs rounded-full px-2 py-0.5 shrink-0 ${p.is_active ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-700 text-gray-300'}`}>
-                {p.is_active ? t('plans.active') : t('plans.inactive')}
-              </span>
+              <div className="text-white text-3xl font-bold mt-3 tabular-nums">{formatVnd(p.price)}</div>
+              <div className="text-gray-400 text-xs">{t('finX.perPeriod', { n: months })}</div>
             </div>
-            <div className="text-lime-400 text-2xl font-bold mt-3">{formatVnd(p.price)}</div>
-            <div className="text-gray-300 text-sm">
-              {p.sessions_included ? t('plans.sessionsN', { n: p.sessions_included }) : t('plans.unlimited')}
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-3">
+            <ul className="px-5 py-3 text-sm text-gray-200 flex flex-col gap-1.5 border-t border-navy-700">
+              <li>✅ {p.sessions_included ? t('plans.sessionsN', { n: p.sessions_included }) : t('plans.unlimited')}</li>
+              {perSession != null && <li>💵 {t('finX.perSession', { v: formatVnd(perSession) })}</li>}
+              <li>📆 {t('finX.perMonth', { v: formatVnd(Math.round(Number(p.price) / months)) })}</li>
+            </ul>
+            <div className="grid grid-cols-2 gap-2 px-5 pb-5 mt-auto">
               <button
                 type="button"
                 className="btn-secondary text-sm"
@@ -166,7 +185,8 @@ export default function PlansPage() {
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </>
   );

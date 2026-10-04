@@ -2,6 +2,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { PLAYER_SELECT, createMatch, updateMatch } = require('../services/matches');
+const { actingHost, eventAccess } = require('../services/clubAccess');
 
 const router = express.Router();
 
@@ -9,15 +10,12 @@ function fail(res, err) {
   return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
 }
 
-// Confirms club_id/event_id belongs to the authenticated host.
-async function ownsParent(hostId, { club_id, event_id }) {
-  if (club_id) {
-    const { data } = await supabase.from('clubs').select('id').eq('id', club_id).eq('host_id', hostId).maybeSingle();
-    return !!data;
-  }
+// Confirms the club / event is the signed-in host's, or belongs to a club they co-administer.
+async function ownsParent(req, { club_id, event_id }) {
+  if (club_id) return !!(await actingHost(req, club_id));
   if (event_id) {
-    const { data } = await supabase.from('events').select('id').eq('id', event_id).eq('host_id', hostId).maybeSingle();
-    return !!data;
+    const { data } = await supabase.from('events').select('id, host_id, club_id').eq('id', event_id).maybeSingle();
+    return !!(await eventAccess(req, data));
   }
   return false;
 }
@@ -33,7 +31,7 @@ async function loadOwnedMatch(req, res) {
     dbError(res, error);
     return null;
   }
-  if (!match || !(await ownsParent(req.hostId, match))) {
+  if (!match || !(await ownsParent(req, match))) {
     notFound(res, 'Match');
     return null;
   }
@@ -55,7 +53,7 @@ router.get('/', async (req, res) => {
       .limit(limit);
   } else if (club_id) {
     if (!isUuid(club_id)) return res.status(400).json({ error: 'invalid club_id' });
-    if (!(await ownsParent(req.hostId, { club_id }))) return notFound(res, 'Club');
+    if (!(await ownsParent(req, { club_id }))) return notFound(res, 'Club');
     // Include matches recorded inside this club's sessions (they count in rankings too).
     const { data: sessions, error: sErr } = await supabase.from('events').select('id').eq('club_id', club_id);
     if (sErr) return dbError(res, sErr);
@@ -63,7 +61,7 @@ router.get('/', async (req, res) => {
     query = ids.length ? query.or(`club_id.eq.${club_id},event_id.in.(${ids.join(',')})`) : query.eq('club_id', club_id);
   } else if (event_id) {
     if (!isUuid(event_id)) return res.status(400).json({ error: 'invalid event_id' });
-    if (!(await ownsParent(req.hostId, { event_id }))) return notFound(res, 'Event');
+    if (!(await ownsParent(req, { event_id }))) return notFound(res, 'Event');
     query = query.eq('event_id', event_id);
   } else {
     return res.status(400).json({ error: 'club_id or event_id query param is required.' });
@@ -78,7 +76,7 @@ router.post('/', async (req, res) => {
   if (!club_id && !event_id) return res.status(400).json({ error: 'club_id or event_id is required.' });
   if (club_id && event_id) return res.status(400).json({ error: 'match belongs to exactly one of club_id or event_id.' });
   const parent = club_id ? { club_id } : { event_id };
-  if (!(await ownsParent(req.hostId, parent))) return res.status(403).json({ error: 'You do not own this club/event.' });
+  if (!(await ownsParent(req, parent))) return res.status(403).json({ error: 'You do not own this club/event.' });
   try {
     res.status(201).json(await createMatch(parent, req.body));
   } catch (err) {

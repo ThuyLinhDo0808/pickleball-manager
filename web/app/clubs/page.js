@@ -8,6 +8,9 @@ import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { api } from '@/lib/api';
+import { useLoad } from '@/lib/useLoad';
+import { clubTones } from '@/lib/clubColors';
+import { todayYmd } from '@/lib/dates';
 
 export default function ClubsPage() {
   const { t } = useI18n();
@@ -17,6 +20,8 @@ export default function ClubsPage() {
   const [editName, setEditName] = useState('');
   const [error, setError] = useState('');
   const [settingsId, setSettingsId] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const tones = clubTones(clubs);
 
   function startRename(c) {
     setEditingId(c.id);
@@ -96,86 +101,139 @@ export default function ClubsPage() {
           </div>
         )}
       </Modal>
-      <h1 className="text-white text-2xl font-bold mb-4">{t('clubs.title')}</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-        <div className="card lg:col-span-1 lg:order-2">
-          <h2 className="text-white font-semibold mb-3">{t('clubs.create')}</h2>
-          <CreateClubForm onCreated={() => router.push('/dashboard')} autoFocus={!loading && clubs.length === 0} />
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+        <div>
+          <h1 className="text-white text-2xl font-bold">{t('clubs.title')}</h1>
+          <p className="text-gray-400 text-sm">{t('clubsX.lead', { n: clubs.length })}</p>
         </div>
-
-        <div className="lg:col-span-2 lg:order-1 flex flex-col gap-3">
-          {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
-          {!loading && clubs.length === 0 && <p className="text-gray-400 text-sm">{t('clubs.none')}</p>}
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-
-          {clubs.map((c) => {
-            const isCurrent = c.id === current?.id;
-            return (
-              <div key={c.id} className={`card ${isCurrent ? 'border-lime-400' : ''}`}>
-                {editingId === c.id ? (
-                  <form onSubmit={saveRename} className="flex flex-col sm:flex-row gap-2">
-                    <input className="input" autoFocus maxLength={80} value={editName} onChange={(e) => setEditName(e.target.value)} />
-                    <div className="flex gap-2">
-                      <button className="btn-primary flex-1 sm:flex-none">{t('common.save')}</button>
-                      <button type="button" className="btn-secondary flex-1 sm:flex-none" onClick={() => setEditingId(null)}>
-                        {t('common.cancel')}
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-white font-semibold truncate">{c.name} <span className="ml-1 align-middle text-[11px] font-normal rounded-full border border-navy-500 text-gray-300 px-2 py-0.5">{t(`clubs.sport_${c.sport || 'pickleball'}`)}</span></div>
-                        {c.description && <p className="text-gray-400 text-sm mt-0.5">{c.description}</p>}
-                        <p className="text-gray-500 text-xs mt-1">
-                          {c.role === 'co_admin'
-                            ? t('coadmin.sharedBy', { owner: c.owner_email || '—' })
-                            : t('clubs.created', { date: new Date(c.created_at).toLocaleDateString() })}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        {isCurrent && (
-                          <span className="text-xs bg-lime-400 text-navy-950 font-semibold rounded-full px-2 py-0.5">{t('clubs.current')}</span>
-                        )}
-                        {c.role === 'co_admin' && (
-                          <span className="text-xs border border-sky-400/60 text-sky-300 rounded-full px-2 py-0.5">{t('staff.co_admin')}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {!isCurrent && (
-                        <button className="btn-primary text-sm flex-1 sm:flex-none" onClick={() => selectClub(c.id)}>
-                          {t('clubs.switchTo')}
-                        </button>
-                      )}
-                      {c.role !== 'co_admin' && (
-                        <>
-                          <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => setSettingsId(c.id)}>
-                            {t('payments.settings')}
-                          </button>
-                          <button className="btn-secondary text-sm flex-1 sm:flex-none" onClick={() => startRename(c)}>
-                            {t('clubs.rename')}
-                          </button>
-                          <button className="text-red-400 text-sm px-3 py-2" onClick={() => remove(c)}>
-                            {t('common.delete')}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <button className="btn-primary" onClick={() => setCreating(true)}>+ {t('clubs.create')}</button>
       </div>
+
+      {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
+      {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+      {!loading && clubs.length === 0 && (
+        <div className="card !p-8 text-center max-w-xl mx-auto">
+          <div className="text-5xl mb-2" aria-hidden="true">🏓</div>
+          <h2 className="text-white text-lg font-semibold">{t('clubsX.emptyTitle')}</h2>
+          <p className="text-gray-400 text-sm mt-1 mb-5">{t('clubs.none')}</p>
+          <div className="text-left"><CreateClubForm onCreated={() => router.push('/dashboard')} autoFocus /></div>
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        {clubs.map((c) => (
+          <ClubCard
+            key={c.id}
+            club={c}
+            tone={tones[c.id]}
+            current={c.id === current?.id}
+            editing={editingId === c.id}
+            editName={editName}
+            setEditName={setEditName}
+            onSaveRename={saveRename}
+            onCancelRename={() => setEditingId(null)}
+            onSelect={() => selectClub(c.id)}
+            onOpen={() => {
+              selectClub(c.id);
+              router.push('/dashboard');
+            }}
+            onSettings={() => setSettingsId(c.id)}
+            onRename={() => startRename(c)}
+            onDelete={() => remove(c)}
+          />
+        ))}
+      </div>
+
+      <Modal open={creating} title={t('clubs.create')} onClose={() => setCreating(false)}>
+        {creating && <CreateClubForm onCreated={() => { setCreating(false); router.push('/dashboard'); }} autoFocus />}
+      </Modal>
       <Modal open={!!settingsId} title={t('payments.settings')} onClose={() => setSettingsId(null)}>
         {settingsId && clubs.find((c) => c.id === settingsId) && (
           <ClubPaymentSettings club={clubs.find((c) => c.id === settingsId)} onDone={() => setSettingsId(null)} />
         )}
       </Modal>
     </AppShell>
+  );
+}
+
+// One club: colour band, initial, sport, quick numbers, and what you can do with it.
+function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSaveRename, onCancelRename, onSelect, onOpen, onSettings, onRename, onDelete }) {
+  const { t, lang } = useI18n();
+  const { data: members } = useLoad(() => api.get(`/api/clubs/${c.id}/members`).catch(() => null), [c.id]);
+  const { data: events } = useLoad(() => api.get(`/api/clubs/${c.id}/events`).catch(() => null), [c.id]);
+  const today = todayYmd();
+  const fixed = (members || []).filter((m) => m.member_type === 'fixed' && m.is_active !== false).length;
+  const guests = (members || []).filter((m) => m.member_type !== 'fixed' && m.is_active !== false).length;
+  const next = (events || []).find((e) => e.event_date >= today && !['cancelled', 'completed'].includes(e.status));
+  const owner = c.role !== 'co_admin';
+  return (
+    <div className={`card !p-0 overflow-hidden flex flex-col ${current ? 'ring-2 ring-lime-400/70' : ''}`}>
+      <div className={`h-2 ${tone?.dot || 'bg-lime-400'}`} />
+      <div className="p-5 flex flex-col gap-4 flex-1">
+        <div className="flex items-start gap-3">
+          <span className={`h-12 w-12 shrink-0 rounded-xl flex items-center justify-center text-xl font-bold border ${tone?.chip || ''}`}>
+            {c.name.slice(0, 1).toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <form onSubmit={onSaveRename} className="flex flex-col gap-2">
+                <input className="input" autoFocus maxLength={80} value={editName} onChange={(e) => setEditName(e.target.value)} aria-label={t('clubs.rename')} />
+                <div className="flex gap-2">
+                  <button className="btn-primary text-sm">{t('common.save')}</button>
+                  <button type="button" className="btn-secondary text-sm" onClick={onCancelRename}>{t('common.cancel')}</button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <h2 className="text-white font-semibold text-lg truncate">{c.name}</h2>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span className="text-[11px] rounded-full border border-navy-500 text-gray-300 px-2 py-0.5">{t(`clubs.sport_${c.sport || 'pickleball'}`)}</span>
+                  {current && <span className="text-[11px] bg-lime-400 text-navy-950 font-semibold rounded-full px-2 py-0.5">{t('clubs.current')}</span>}
+                  {!owner && <span className="text-[11px] border border-sky-400/60 text-sky-300 rounded-full px-2 py-0.5">{t('staff.co_admin')}</span>}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        {c.description && <p className="text-gray-400 text-sm -mt-1 line-clamp-2">{c.description}</p>}
+
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            [members ? fixed : '…', t('clubsX.fixed')],
+            [members ? guests : '…', t('clubsX.guests')],
+            [events ? events.filter((e) => e.event_date.startsWith(today.slice(0, 7)) && e.status !== 'cancelled').length : '…', t('clubsX.sessionsMonth')],
+          ].map(([v, k]) => (
+            <div key={k} className="rounded-xl bg-navy-900 py-2">
+              <div className="text-white font-bold tabular-nums">{v}</div>
+              <div className="text-gray-400 text-[11px]">{k}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-xs text-gray-400 flex flex-col gap-1">
+          <span>
+            📅 {t('clubsX.next')}:{' '}
+            <span className="text-gray-200">
+              {next ? `${new Date(`${next.event_date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })} · ${next.title}` : t('clubsX.noNext')}
+            </span>
+          </span>
+          <span>
+            {owner ? `🗓 ${t('clubs.created', { date: new Date(c.created_at).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB') })}` : `🤝 ${t('coadmin.sharedBy', { owner: c.owner_email || '—' })}`}
+          </span>
+        </div>
+
+        <div className="mt-auto pt-3 border-t border-navy-700 flex flex-wrap items-center gap-2">
+          {current ? (
+            <button className="btn-primary text-sm" onClick={onOpen}>{t('clubsX.open')} →</button>
+          ) : (
+            <button className="btn-primary text-sm" onClick={onSelect}>{t('clubs.switchTo')}</button>
+          )}
+          {/* Co-admins can do everything but delete the club. */}
+          <button className="btn-secondary text-sm" onClick={onSettings}>💳 {t('payments.settings')}</button>
+          <button className="btn-secondary text-sm" onClick={onRename}>✏️ {t('clubs.rename')}</button>
+          {owner && <button className="text-red-400 hover:text-red-300 text-sm px-2 ml-auto" onClick={onDelete}>🗑 {t('common.delete')}</button>}
+        </div>
+      </div>
+    </div>
   );
 }
