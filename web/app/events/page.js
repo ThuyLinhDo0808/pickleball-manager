@@ -188,11 +188,15 @@ export default function EventsPage() {
       />
       <SectionTabs group="activities" />
 
-      <KpiRow cols={4}>
+      {/* Club: sessions and tournaments. Xé Vé sells places, so it shows how full the coming kèo are. */}
+      <KpiRow cols={3}>
         <StatTile icon="📅" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
         <StatTile icon="⏭" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
-        <StatTile icon="🏆" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
-        <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
+        {isClub ? (
+          <StatTile icon="🏆" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
+        ) : (
+          <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
+        )}
       </KpiRow>
 
       <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">

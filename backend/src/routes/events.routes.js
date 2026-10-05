@@ -19,6 +19,7 @@ const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember } = require('../services/guests');
 const survey = require('../services/survey');
+const votes = require('../services/votes');
 const { itemMetrics } = require('../services/inventory');
 const { clubSport } = require('../services/sport');
 const { linkByPhone } = require('../services/phoneLink');
@@ -314,6 +315,32 @@ router.post('/', async (req, res) => {
 });
 
 router.get('/:eventId', (req, res) => res.json(req.event));
+
+// Meeting votes: who comes (yes), who doesn't (no), who hasn't answered yet.
+router.get('/:eventId/votes', async (req, res) => {
+  if (req.event.kind !== 'meeting' || !req.event.club_id) return res.status(400).json({ error: 'Only club meetings have votes.' });
+  try {
+    res.json(await votes.votesFor(req.event));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// The Host marks a member's vote (e.g. told in the group chat). choice null clears it.
+router.put('/:eventId/votes/:clubMemberId', async (req, res) => {
+  const choice = req.body?.choice ?? null;
+  if (req.event.kind !== 'meeting' || !req.event.club_id) return res.status(400).json({ error: 'Only club meetings have votes.' });
+  if (choice !== null && !votes.CHOICES.includes(choice)) return res.status(400).json({ error: 'choice must be yes, no or null.' });
+  if (!isUuid(req.params.clubMemberId)) return notFound(res, 'Member');
+  const { data: m } = await supabase.from('club_members').select('id').eq('id', req.params.clubMemberId).eq('club_id', req.event.club_id).maybeSingle();
+  if (!m) return notFound(res, 'Member');
+  try {
+    await votes.castVote(req.event.id, m.id, choice, true);
+    res.json(await votes.votesFor(req.event));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
 
 router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [

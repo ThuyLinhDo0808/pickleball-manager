@@ -10,6 +10,7 @@ import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
 import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
+import EventVotes from '@/components/EventVotes';
 import EventShuttles from '@/components/EventShuttles';
 import PlayerChip from '@/components/PlayerChip';
 import { exportMatchesJpg } from '@/lib/matchImage';
@@ -159,7 +160,8 @@ export default function EventDetailPage() {
             {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
             {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`} · {event.location || '—'}
           </p>
-          <p className="text-gray-500 text-xs mt-0.5">
+          {event.notice && event.kind === 'meeting' && <p className="text-gray-300 text-sm mt-1 whitespace-pre-line">{event.notice}</p>}
+          <p className={`text-gray-500 text-xs mt-0.5 ${event.kind === 'meeting' ? 'hidden' : ''}`}>
             {event.cancel_deadline_hours == null ? t('policy.noneShort') : t('policy.short', { h: event.cancel_deadline_hours })}
           </p>
         </div>
@@ -188,8 +190,9 @@ export default function EventDetailPage() {
 
       {tab === 'details' && (
         <>
+          {event.kind === 'meeting' && event.club_id && <EventVotes event={event} />}
           <EventControls event={event} onChanged={setEvent} />
-          <EventShareCard event={event} onSaved={setEvent} />
+          {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={setEvent} />}
         </>
       )}
 

@@ -1064,6 +1064,7 @@ router.get('/:clubId/attendance', async (req, res) => {
       .gte('event_date', from)
       .lte('event_date', to)
       .neq('status', 'cancelled')
+      .neq('kind', 'meeting') // get-togethers are voted on, not play sessions
       .order('event_date')
       .order('start_time'),
     supabase
@@ -1112,8 +1113,8 @@ router.get('/:clubId/attendance', async (req, res) => {
     const isFixed = member?.member_type === 'fixed';
     const key = member ? `m:${member.id}` : `p:${String(p.phone || '').replace(/\D/g, '').slice(-9) || p.full_name.trim().toLowerCase()}`;
     if (!isFixed) participantGuest.set(p.id, key);
-    // Cancelled in time doesn't count at all. A late cancel counts as a session (red, and
-    // it used a pass session); a no-show is marked absent but not counted.
+    // Cancelled in time doesn't count at all (they told us). A late cancel or a no-show
+    // (didn't tell) counts as a session — red — and uses a pass session.
     if (p.status === 'cancelled' && !p.late_cancel) continue;
     const state = p.status === 'checked_in' ? 'attended' : p.status === 'registered' ? 'registered' : p.status === 'cancelled' ? 'late' : 'absent';
     const locked = p.status === 'cancelled'; // a late cancel stays as it is
@@ -1142,8 +1143,8 @@ router.get('/:clubId/attendance', async (req, res) => {
       g.participants[p.event_id] = { participant_id: p.id, locked };
     }
   }
-  // Sessions = checked in + cancelled too late (both count).
-  for (const g of guestRows.values()) g.sessions = Object.values(g.events).filter((s) => s === 'attended' || s === 'late').length;
+  // Sessions = checked in + cancelled too late + no-show (all count).
+  for (const g of guestRows.values()) g.sessions = Object.values(g.events).filter((s) => s === 'attended' || s === 'late' || s === 'absent').length;
 
   // Matches the guests played: inside the period's sessions, and club matches in the period.
   const pids = [...participantGuest.keys()];

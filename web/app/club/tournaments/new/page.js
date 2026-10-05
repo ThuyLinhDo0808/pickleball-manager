@@ -35,7 +35,7 @@ export default function NewTournamentPage() {
       .get(`/api/tournaments/${id}`)
       .then((tr) => {
         setFrom(tr);
-        setKind(tr.kind === 'team' ? 'team' : 'pairs');
+        setKind(tr.kind === 'team' ? 'team' : tr.group_count === 1 && tr.advance_per_group === 0 ? 'rr' : 'pairs');
         setInfo({
           name: tr.name,
           event_date: tr.event_date || todayYmd(),
@@ -101,8 +101,8 @@ export default function NewTournamentPage() {
       {loadingFrom && <p className="text-gray-400 text-sm mb-4">{t('common.loading')}</p>}
 
       <Section n={1} title={t('tournaments.kindTitle')}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {['pairs', 'team'].map((k) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          {['pairs', 'rr', 'team'].map((k) => (
             <button
               key={k}
               type="button"
@@ -111,7 +111,7 @@ export default function NewTournamentPage() {
               className={`rounded-xl border p-4 text-left transition flex gap-3 items-start ${kind === k ? 'border-lime-400 bg-lime-400/10 ring-1 ring-lime-400/40' : 'border-navy-600 hover:border-navy-500'}`}
             >
               <span className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center text-xl ${kind === k ? 'bg-lime-400/20' : 'bg-navy-900'}`} aria-hidden="true">
-                {k === 'pairs' ? (sport === 'badminton' ? '🏸' : '🏓') : '👥'}
+                {k === 'pairs' ? (sport === 'badminton' ? '🏸' : '🏓') : k === 'rr' ? '🔄' : '👥'}
               </span>
               <span className="min-w-0">
                 <span className="block text-white font-semibold">{t(`tournaments.kind_${k}`)}</span>
@@ -153,8 +153,8 @@ export default function NewTournamentPage() {
       </Section>
 
       {!loadingFrom &&
-        (kind === 'pairs' ? (
-          <PairsSetup key={`p${from?.id || ''}`} club={club} active={active} base={base} ready={ready} onCreated={done} initial={from?.kind !== 'team' ? prefill : null} />
+        (kind !== 'team' ? (
+          <PairsSetup key={`${kind}${from?.id || ''}`} roundRobin={kind === 'rr'} club={club} active={active} base={base} ready={ready} onCreated={done} initial={from?.kind !== 'team' ? prefill : null} />
         ) : (
           <TeamLeagueSetup key={`t${from?.id || ''}`} club={club} active={active} base={base} ready={ready} onCreated={done} initial={from?.kind === 'team' ? prefill : null} />
         ))}
@@ -181,7 +181,7 @@ function categoryOf(format, division) {
 }
 const GENDER_OF = { men: 'male', women: 'female' };
 
-function PairsSetup({ club, active: allActive, base, ready, onCreated, initial }) {
+function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, roundRobin = false }) {
   const { t, sport } = useI18n();
   const badminton = sport === 'badminton';
   const cats = badminton ? BADMINTON_CATS : PICKLEBALL_CATS;
@@ -279,7 +279,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial }
     return pickedPlayers.filter((m) => !inTeams.has(m.id) && (format !== 'mixed' || !mate || m.gender !== mate.gender));
   }
 
-  const groups = mode === 'groups' ? Math.max(1, Math.min(groupCount, Math.floor(complete.length / 2) || 1)) : 0;
+  const groups = roundRobin ? 1 : mode === 'groups' ? Math.max(1, Math.min(groupCount, Math.floor(complete.length / 2) || 1)) : 0;
   const perGroup = groups ? Math.floor(complete.length / groups) : 0;
   const groupMatches = groups
     ? Array.from({ length: groups }, (_, g) => {
@@ -295,6 +295,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial }
       const created = await api.post('/api/tournaments', {
         ...base,
         kind: 'pairs',
+        ...(roundRobin ? { mode: 'round_robin' } : {}),
         format,
         division,
         group_count: groups,
@@ -441,6 +442,12 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial }
         {teams.length > 0 && unpaired.length > 0 && <p className="text-yellow-300 text-sm mt-1">{t('tournaments.unpaired', { names: unpaired.map((m) => m.full_name).join(', ') })}</p>}
       </Section>
 
+      {roundRobin ? (
+        <Section n={n++} title={t('tournaments.structure')}>
+          <p className="text-gray-300 text-sm">{t('tournaments.summaryRr', { teams: complete.length, matches: (complete.length * (complete.length - 1)) / 2 })}</p>
+          <p className="text-gray-500 text-xs mt-1">{t('tournaments.rrHint')}</p>
+        </Section>
+      ) : (
       <Section n={n++} title={t('tournaments.structure')}>
         <div className="grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm mb-3">
           {['groups', 'ko'].map((k) => (
@@ -467,6 +474,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial }
             : t('tournaments.summaryKo', { teams: complete.length })}
         </p>
       </Section>
+      )}
 
       {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
       {complete.length < 2 && <p className="text-gray-500 text-xs mb-2">{t('tournaments.needTeams')}</p>}

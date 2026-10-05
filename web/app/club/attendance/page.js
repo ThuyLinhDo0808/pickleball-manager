@@ -54,20 +54,20 @@ function EditCell({ info, state, changed, onToggle }) {
   );
 }
 
-// Green ✓ = checked in, red ✓ = cancelled too late (both count as a session);
-// grey v = marked absent (not counted); · = signed up, not checked in yet.
-// A cancel in time leaves the cell empty.
+// Green ✓ = signed up and came. Red ✓ = didn't come and didn't tell: no-show or a
+// cancel after the deadline — the session is used, not carried over. Empty = didn't come
+// but told in time. · = signed up, not checked in yet.
 function Mark({ state }) {
   const { t } = useI18n();
   if (state === 'attended') return <span className="inline-block w-4 h-4 rounded-sm bg-lime-400 text-navy-950 text-[11px] leading-4 font-bold" title={t('stats.state_attended')}>✓</span>;
-  if (state === 'late') return <span className="inline-block w-4 h-4 rounded-sm bg-red-500 text-white text-[11px] leading-4 font-bold" title={t('stats.state_late')}>✓</span>;
-  if (state === 'absent') return <span className="text-gray-400 text-xs" title={t('stats.state_absent')}>v</span>;
+  if (state === 'late' || state === 'absent') return <span className="inline-block w-4 h-4 rounded-sm bg-red-500 text-white text-[11px] leading-4 font-bold" title={t(`stats.state_${state}`)}>✓</span>;
   if (state === 'registered') return <span className="text-gray-500">·</span>;
   return null;
 }
 
 // Sessions as a bar split into one part per session of the period: green parts for
-// check-ins, red for late cancels, the rest empty. Many sessions (a year) shrink the
+// sessions played, red for sessions missed without notice (no-show / late cancel), the
+// rest empty (not used). Many sessions (a year) shrink the
 // parts into one continuous bar.
 function SessionBar({ attended = 0, late = 0, total }) {
   const { t } = useI18n();
@@ -127,25 +127,27 @@ export default function AttendancePage() {
     const cell = new Map(data.cells.map((c) => [`${c.club_member_id}|${c.event_id}`, c.state]));
     const cellInfo = new Map(data.cells.map((c) => [`${c.club_member_id}|${c.event_id}`, c]));
     const evDate = new Map(data.events.map((e) => [e.id, e.event_date]));
-    // Sessions that count: checked in, or cancelled too late.
-    const counts = (st) => st === 'attended' || st === 'late';
+    // Sessions that count: came, or didn't come without telling (no-show / late cancel).
+    const missedNoNotice = (st) => st === 'late' || st === 'absent';
+    const counts = (st) => st === 'attended' || missedNoNotice(st);
     const attended = {};
     const late = {};
     const perMonth = {};
     for (const c of data.cells) {
       if (!counts(c.state)) continue;
       attended[c.club_member_id] = (attended[c.club_member_id] || 0) + 1;
-      if (c.state === 'late') late[c.club_member_id] = (late[c.club_member_id] || 0) + 1;
+      if (missedNoNotice(c.state)) late[c.club_member_id] = (late[c.club_member_id] || 0) + 1;
       const k = `${c.club_member_id}|${monthKey(evDate.get(c.event_id))}`;
       perMonth[k] = (perMonth[k] || 0) + 1;
     }
     const withCells = new Set(data.cells.map((c) => c.club_member_id));
     let members = data.members.filter((m) => withCells.has(m.id) || (m.member_type === 'fixed' && (!onlyActive || m.is_active)));
     if (onlyActive) members = members.filter((m) => m.is_active || withCells.has(m.id));
-    members.sort((a, b) => (sort === 'count' ? (attended[b.id] || 0) - (attended[a.id] || 0) : 0) || a.full_name.localeCompare(b.full_name, 'vi'));
+    const played = (id) => (attended[id] || 0) - (late[id] || 0);
+    members.sort((a, b) => (sort === 'count' ? played(b.id) - played(a.id) : 0) || a.full_name.localeCompare(b.full_name, 'vi'));
     const months = [...new Set(data.events.map((e) => monthKey(e.event_date)))];
     const guestMonth = (g, k) => Object.entries(g.events).filter(([id, st]) => counts(st) && monthKey(evDate.get(id)) === k).length;
-    const guestLate = (g) => Object.values(g.events).filter((st) => st === 'late').length;
+    const guestLate = (g) => Object.values(g.events).filter(missedNoNotice).length;
 
     // Guests: one row per person (the server merges by guest record / phone), each with
     // sessions played, matches played and won with the club.
@@ -214,8 +216,9 @@ export default function AttendancePage() {
     if (!view || !data) return null;
     const today = todayYmd();
     const past = data.events.filter((e) => e.event_date < today || e.status === 'completed').length;
-    const memberCheckins = Object.values(view.attended).reduce((a, b) => a + b, 0);
-    const guestVisits = view.guests.reduce((n, g) => n + g.sessions, 0);
+    // Who actually came (red "didn't tell" sessions are counted for passes, not here).
+    const memberCheckins = Object.entries(view.attended).reduce((a, [id, n]) => a + n - (view.late[id] || 0), 0);
+    const guestVisits = view.guests.reduce((n, g) => n + g.sessions - view.guestLate(g), 0);
     const checkins = memberCheckins + guestVisits;
     const half = Math.max(1, Math.ceil(past / 2));
     return {
@@ -223,7 +226,7 @@ export default function AttendancePage() {
       checkins,
       guestVisits,
       avg: past ? Math.round((10 * checkins) / past) / 10 : 0,
-      regulars: past ? view.members.filter((m) => (view.attended[m.id] || 0) >= half).length : 0,
+      regulars: past ? view.members.filter((m) => (view.attended[m.id] || 0) - (view.late[m.id] || 0) >= half).length : 0,
     };
   }, [view, data]);
   const stateLabel = (st) => t(`stats.state_${st}`);
@@ -238,13 +241,13 @@ export default function AttendancePage() {
             ...view.members.map((m, i) => [
               i + 1,
               m.full_name,
-              ...ev.map((e) => ({ attended: 'x', late: 'hủy muộn', absent: 'vắng', registered: 'đăng ký' })[view.cell.get(`${m.id}|${e.id}`)] || ''),
+              ...ev.map((e) => ({ attended: 'x', late: 'không báo', absent: 'không báo', registered: 'đăng ký' })[view.cell.get(`${m.id}|${e.id}`)] || ''),
               view.attended[m.id] || 0,
             ]),
             ...view.guests.map((g) => [
               '',
               `${g.full_name} (${t('members.guest')})`,
-              ...ev.map((e) => ({ attended: 'x', late: 'hủy muộn', absent: 'vắng', registered: 'đăng ký' })[g.events[e.id]] || ''),
+              ...ev.map((e) => ({ attended: 'x', late: 'không báo', absent: 'không báo', registered: 'đăng ký' })[g.events[e.id]] || ''),
               g.sessions,
             ]),
             ['', t('stats.membersRow'), ...ev.map((e) => view.perEvent(e.id).members), ''],

@@ -77,7 +77,7 @@ export default function CreateEventView({ weekly = false }) {
           submitLabel={weekly ? t('weekly.submit') : t('create.submit')}
           showRepeat={false}
           dateField={weekly ? <WeeklyDates value={plan} onChange={setPlan} /> : null}
-          kinds={weekly ? null : GAME_KINDS}
+          kinds={weekly ? null : isClub ? GAME_KINDS : GAME_KINDS.filter((k) => k !== 'meeting')}
           disabled={isClub && !club}
           lockTitle={weekly}
           sessions={weekly ? weeklyDates(plan).length : null}

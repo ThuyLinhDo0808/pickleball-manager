@@ -74,15 +74,15 @@ export default function TournamentsPage() {
             <div className={`h-1.5 ${x.status === 'completed' ? 'bg-lime-400' : x.status === 'knockout' ? 'bg-yellow-400' : 'bg-sky-400'}`} />
             <div className="p-4 flex-1 flex flex-col">
               <div className="flex items-start justify-between gap-2">
-                <span className="text-white font-semibold leading-snug">{x.kind === 'team' ? '👥' : sport === 'badminton' ? '🏸' : '🏆'} {x.name}</span>
+                <span className="text-white font-semibold leading-snug">{x.kind === 'team' ? '👥' : x.group_count === 1 && x.advance_per_group === 0 ? '🔄' : sport === 'badminton' ? '🏸' : '🏆'} {x.name}</span>
                 <span className={`text-xs rounded-full px-2 py-0.5 font-semibold shrink-0 ${STATUS_STYLE[x.status]}`}>
                   {x.kind === 'team' && x.status === 'groups' ? t('league.inProgress') : t(`tournaments.status_${x.status}`)}
                 </span>
               </div>
               <div className="flex flex-wrap gap-1.5 mt-2 text-xs">
-                <span className="rounded-full bg-navy-900 border border-navy-700 px-2 py-0.5 text-gray-300">{x.kind === 'team' ? t('tournaments.kind_team') : t('tournaments.kind_pairs')}</span>
+                <span className="rounded-full bg-navy-900 border border-navy-700 px-2 py-0.5 text-gray-300">{x.kind === 'team' ? t('tournaments.kind_team') : x.group_count === 1 && x.advance_per_group === 0 ? t('tournaments.kind_rr') : t('tournaments.kind_pairs')}</span>
                 <span className="rounded-full bg-navy-900 border border-navy-700 px-2 py-0.5 text-gray-300">{t('tournaments.teamsN', { n: x.team_count })}</span>
-                {x.kind !== 'team' && x.group_count > 0 && (
+                {x.kind !== 'team' && x.group_count > 0 && x.advance_per_group > 0 && (
                   <span className="rounded-full bg-navy-900 border border-navy-700 px-2 py-0.5 text-gray-300">{x.group_count} {t('tournaments.groupCount').toLowerCase()}</span>
                 )}
                 {Number(x.entry_fee) > 0 && <span className="rounded-full bg-lime-400/10 border border-lime-400/30 px-2 py-0.5 text-lime-200">💰 {formatVnd(x.entry_fee)}</span>}

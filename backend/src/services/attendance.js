@@ -12,7 +12,7 @@ const ATTENDANCE_ACTIONS = ['check-in', 'no-show', 'reset'];
 
 // Check-in / no-show / reset (back to registered) for one participant.
 // Shared by the Host and by staff (coordinators) so both follow the same rules:
-// checking in a club member uses one session of their pass; undoing gives it back.
+// checking in (or a no-show) uses one session of a club member's pass; undoing gives it back.
 async function setAttendance(event, prior, action) {
   const now = new Date().toISOString();
   const patch = {
@@ -31,10 +31,13 @@ async function setAttendance(event, prior, action) {
 
   let pass = null;
   const memberId = prior.source_club_member_id;
+  // A no-show (didn't come, didn't tell) uses the session like a check-in — it is not
+  // carried over ("không bảo lưu"). Back to registered gives it back.
+  const USES = ['checked_in', 'no_show'];
   if (memberId && event.club_id) {
-    if (action === 'check-in' && prior.status !== 'checked_in') {
+    if (action !== 'reset' && !USES.includes(prior.status)) {
       pass = await consumeSession(memberId, event.event_date, event.id);
-    } else if (action !== 'check-in' && prior.status === 'checked_in') {
+    } else if (action === 'reset' && USES.includes(prior.status)) {
       await releaseSession(memberId, event.id);
     }
   }

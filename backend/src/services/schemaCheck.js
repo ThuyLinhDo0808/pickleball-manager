@@ -26,6 +26,7 @@ const PROBES = [
   { table: 'tournament_live', column: 'log', migration: '20261016090000_tournament_live_scoring.sql' },
   { table: 'tournament_live', column: 'stamps', migration: '20261017090000_match_timing_formats.sql' },
   { table: 'host_subscriptions', column: 'social_manager', migration: '20261018090000_social_manager_plans.sql' },
+  { table: 'event_votes', column: 'choice', migration: '20261019090000_round_robin_meeting_votes.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

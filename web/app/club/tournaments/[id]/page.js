@@ -133,6 +133,7 @@ export default function TournamentPage() {
         <div className="min-w-0">
           <h1 className="text-white text-2xl font-bold">🏆 {tour.name}</h1>
           <p className="text-gray-400 text-sm">
+            {tour.round_robin ? `${t('tournaments.kind_rr')} · ` : ''}
             {tour.kind === 'team'
               ? t('tournaments.kind_team')
               : BADMINTON_CAT[`${tour.format}/${tour.division || 'open'}`] && sport === 'badminton'
@@ -181,7 +182,7 @@ export default function TournamentPage() {
 
       {tour.kind === 'team' && <TeamLeagueView tour={tour} onChange={setData} />}
 
-      {tour.kind !== 'team' && tour.group_count > 0 && (
+      {tour.kind !== 'team' && tour.group_count > 0 && !tour.round_robin && (
         <div className="grid grid-cols-2 bg-navy-900 rounded-lg p-1 text-sm mb-4">
           {['groups', 'ko'].map((k) => (
             <button key={k} disabled={k === 'ko' && !ko.length} onClick={() => setTab(k)} className={`rounded-md py-2 disabled:opacity-30 ${current === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
@@ -193,12 +194,12 @@ export default function TournamentPage() {
 
       {tour.kind !== 'team' && current === 'groups' && tour.group_count > 0 && (
         <>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+          <div className={`grid grid-cols-1 gap-4 mb-4 ${tour.round_robin ? '' : 'xl:grid-cols-2'}`}>
             {Object.entries(tour.groups).map(([g, rows]) => {
               const fixtures = tour.matches.filter((m) => m.stage === 'group' && m.group_no === Number(g));
               return (
                 <div key={g} className="card">
-                  <h2 className="text-white font-semibold mb-2">{t('tournaments.group', { g: String.fromCharCode(64 + Number(g)) })}</h2>
+                  <h2 className="text-white font-semibold mb-2">{tour.round_robin ? t('tournaments.rrTable') : t('tournaments.group', { g: String.fromCharCode(64 + Number(g)) })}</h2>
                   <div className="overflow-x-auto mb-3">
                     <table className="w-full text-xs sm:text-sm grid-table compact-cells">
                       <thead>
@@ -213,7 +214,7 @@ export default function TournamentPage() {
                       </thead>
                       <tbody>
                         {rows.map((r) => {
-                          const q = r.position <= tour.advance_per_group;
+                          const q = tour.round_robin ? r.position === 1 && tour.group_stage_done : r.position <= tour.advance_per_group;
                           return (
                             <tr key={r.team_id} className={q ? 'bg-lime-400/5' : ''}>
                               <td className={`text-center ${q ? 'text-lime-400 font-bold' : 'text-gray-400'}`}>{r.position}</td>
@@ -234,7 +235,7 @@ export default function TournamentPage() {
                         <div className="text-gray-500 text-xs mb-1">{t('tournaments.round', { n: rd })}</div>
                         <div className="grid grid-cols-1 gap-2">
                           {fixtures.filter((m) => m.round === rd).map((m) => (
-                            <MatchRow key={m.id} m={m} teamName={teamName} onOpen={tour.status === 'groups' ? setScoring : () => {}} />
+                            <MatchRow key={m.id} m={m} teamName={teamName} onOpen={tour.status === 'groups' || tour.round_robin ? setScoring : () => {}} />
                           ))}
                         </div>
                       </div>
@@ -244,7 +245,7 @@ export default function TournamentPage() {
               );
             })}
           </div>
-          {tour.status === 'groups' && (
+          {tour.status === 'groups' && !tour.round_robin && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <button className="btn-primary" disabled={!tour.group_stage_done} onClick={() => run(async () => {
                 const res = await api.post(`/api/tournaments/${id}/knockout`, {});

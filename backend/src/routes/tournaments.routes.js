@@ -109,6 +109,9 @@ async function clubMembers(clubId, ids) {
   return data;
 }
 
+// Round robin ("vòng tròn tính điểm"): one table, no knockout — group_count 1, advance 0.
+const isRoundRobin = (t) => t.kind !== 'team' && t.group_count === 1 && t.advance_per_group === 0;
+
 // Podium: 1st and 2nd, plus 3rd (the two losing semi-finalists share it — there is no
 // third-place match). Team leagues use the final table. Empty until there is a champion.
 function podium(full) {
@@ -117,6 +120,10 @@ function podium(full) {
   if (!full.champion_id) return null;
   if (full.kind === 'team') {
     const [a, b, c] = full.standings || [];
+    return { first: team(a?.team_id), second: team(b?.team_id), third: c ? [team(c.team_id)] : [] };
+  }
+  if (full.round_robin) {
+    const [a, b, c] = full.groups[1] || [];
     return { first: team(a?.team_id), second: team(b?.team_id), third: c ? [team(c.team_id)] : [] };
   }
   const ko = full.matches.filter((m) => m.stage === 'knockout');
@@ -149,14 +156,18 @@ async function loadBase(t) {
   const ko = matches.filter((m) => m.stage === 'knockout');
   const rounds = ko.length ? Math.max(...ko.map((m) => m.round)) : 0;
   const final = ko.find((m) => m.round === rounds);
+  const groupStageDone = matches.filter((m) => m.stage === 'group').every(T.isPlayed);
+  const rr = isRoundRobin(t);
   return {
     ...t,
     teams,
     matches,
     groups,
     rounds,
-    group_stage_done: matches.filter((m) => m.stage === 'group').every(T.isPlayed),
-    champion_id: final?.winner_id || null,
+    round_robin: rr,
+    group_stage_done: groupStageDone,
+    // Round robin: the top of the table once every match is played.
+    champion_id: rr ? (groupStageDone && matches.length ? groups[1]?.[0]?.team_id || null : null) : final?.winner_id || null,
   };
 }
 
@@ -265,8 +276,9 @@ router.post('/', async (req, res) => {
   const { club_id, format } = req.body;
   const division = DIVISIONS.includes(req.body.division) ? req.body.division : 'open';
   const name = String(req.body.name || '').trim();
-  const groupCount = parseInt(req.body.group_count, 10) || 0;
-  const advance = parseInt(req.body.advance_per_group, 10) || 2;
+  const roundRobin = req.body.mode === 'round_robin';
+  const groupCount = roundRobin ? 1 : parseInt(req.body.group_count, 10) || 0;
+  const advance = roundRobin ? 0 : parseInt(req.body.advance_per_group, 10) || 2;
   const teamsIn = Array.isArray(req.body.teams) ? req.body.teams : [];
 
   try {
@@ -304,7 +316,7 @@ router.post('/', async (req, res) => {
       return { players, open: size - players.length, strength: T.strengthOf(players) };
     });
 
-    if (groupCount > 0) {
+    if (groupCount > 0 && !roundRobin) {
       if (groupCount > Math.floor(teams.length / 2)) throw badRequest('Each group needs at least 2 teams.');
       const smallest = Math.floor(teams.length / groupCount);
       if (advance > smallest) throw badRequest(`At most ${smallest} team(s) per group can advance.`);
@@ -696,7 +708,7 @@ async function recordMatch(t, matchId, result) {
   if (!m) throw badRequest('Match not found.', 404);
   if (t.kind === 'team') throw badRequest('Enter team results per sub-match.');
   if (m.is_bye || !m.team1_id || !m.team2_id) throw badRequest('This match has no opponent yet.');
-  if (m.stage === 'group' && t.status !== 'groups') throw badRequest('The knockout has started; reset it to change group results.', 409);
+  if (m.stage === 'group' && t.status !== 'groups' && !isRoundRobin(t)) throw badRequest('The knockout has started; reset it to change group results.', 409);
 
   let patch;
   if (result.clear) {
@@ -737,6 +749,13 @@ async function recordMatch(t, matchId, result) {
     t.status = status;
   }
 
+  // Round robin: done when every match has a result (and open again if one is cleared).
+  if (isRoundRobin(t)) {
+    const full = await loadBase(t);
+    const status = full.champion_id ? 'completed' : 'groups';
+    if (status !== t.status) await supabase.from('tournaments').update({ status }).eq('id', t.id);
+    t.status = status;
+  }
 }
 
 // Enter (or clear, with { clear: true }) a score.
@@ -786,6 +805,7 @@ router.post('/:tournamentId/knockout', async (req, res) => {
   const t = req.tournament;
   try {
     if (t.kind === 'team') throw badRequest('Team leagues have no knockout.');
+    if (isRoundRobin(t)) throw badRequest('Round robin tournaments have no knockout.');
     if (t.status !== 'groups') throw badRequest('The knockout already exists.', 409);
     const full = await loadFull(t);
     if (!full.group_stage_done) throw badRequest('Enter every group match result first.');

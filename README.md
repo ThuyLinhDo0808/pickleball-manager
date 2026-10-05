@@ -194,17 +194,19 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 ### 4.5. Tạo hoạt động: lịch sự kiện, lịch hàng tuần, giải đấu, kèo
 Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh tab ở đầu trang** (*Lịch sự kiện · Tạo lịch chơi hàng tuần · Giải đấu · Tạo kèo*) để chuyển qua lại một chạm.
 
-- **Lịch sự kiện** có 4 ô số liệu: *buổi tháng này* (bao nhiêu buổi đã diễn ra), *7 ngày tới* (kèm buổi gần nhất), *giải sắp tới* và *tỷ lệ lấp đầy* chỗ của các buổi sắp tới. Thanh công cụ (Danh sách / Tháng / Tuần / Ngày, ‹ Hôm nay ›, lịch nhỏ) nằm trong một khung riêng; nút *Tạo lịch chơi hàng tuần* và *＋ Tạo kèo* ở góc phải. Ở chế độ **Danh sách**, mỗi buổi là thẻ có ô ngày bên trái, giờ, địa điểm, CLB và **thanh lấp đầy** số chỗ.
+- **Lịch sự kiện** có 3 ô số liệu: *buổi tháng này* (bao nhiêu buổi đã diễn ra), *7 ngày tới* (kèm buổi gần nhất) và *giải sắp tới*. (Ô *tỷ lệ lấp đầy* chỗ chỉ còn ở không gian Xé Vé, thay cho ô giải đấu — quy mô CLB không cần.) Thanh công cụ (Danh sách / Tháng / Tuần / Ngày, ‹ Hôm nay ›, lịch nhỏ) nằm trong một khung riêng; nút *Tạo lịch chơi hàng tuần* và *＋ Tạo kèo* ở góc phải. Ở chế độ **Danh sách**, mỗi buổi là thẻ có ô ngày bên trái, giờ, địa điểm, CLB và **thanh lấp đầy** số chỗ.
 - **Tạo kèo / Tạo lịch hàng tuần / Sửa buổi**: trên máy tính, bên phải form có khung **Xem trước** luôn hiện khi cuộn: tên, ngày (hoặc *số buổi* sẽ tạo của lịch hàng tuần), giờ, địa điểm + số sân, số chỗ, phí, hạn huỷ, có mở link đăng ký không, và **thu tối đa nếu kín chỗ**. Nút *Tạo* / *Huỷ* nằm trong khung này.
 
 | Mục | Đường dẫn | Dùng để |
 |---|---|---|
-| **Lịch sự kiện** | `/events` | **Chỉ xem** toàn bộ hoạt động của CLB: lịch chơi hàng tuần 🗓, kèo 🏓, buổi tập 🎯, họp 👥, kèo thách đấu ⚔️ và **giải đấu 🏆**. Dạng **Danh sách / Tháng / Tuần / Ngày** (xem [5.1](#51-lịch-kèo-dạng-calendar-events)). Bấm vào giải thì mở trang giải. |
+| **Lịch sự kiện** | `/events` | **Chỉ xem** toàn bộ hoạt động của CLB: lịch chơi hàng tuần 🗓, kèo 🏓, buổi tập 🎯, họp 👥, round robin 🔄 và **giải đấu 🏆**. Dạng **Danh sách / Tháng / Tuần / Ngày** (xem [5.1](#51-lịch-kèo-dạng-calendar-events)). Bấm vào giải thì mở trang giải. |
 | **Tạo lịch chơi hàng tuần** | `/events/create/weekly` | Buổi chơi cố định của CLB. Tick **các thứ trong tuần** (VD T3, T5, T7) và chọn **từ ngày – đến ngày**; lịch bên dưới tô sẵn mọi buổi, bấm vào một ngày để thêm/bỏ riêng buổi đó (nghỉ lễ, buổi bù). App tạo tất cả trong một lần (tối đa 200 buổi). |
 | **Tạo giải đấu** | `/club/tournaments/new` | Xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments). |
-| **Tạo kèo** | `/events/create` | Một buổi lẻ. Chọn **loại hoạt động**: *Kèo giao lưu*, *Buổi tập*, *Họp / gặp mặt*, hoặc *Kèo thách đấu* (kèo ăn thua giữa thành viên: bên thua trả tiền sân/nước…; ghi tỉ số ở mục Trận đấu sau khi chơi). Các ô còn lại giống [5.2](#52-tạo-kèo-eventscreate). |
+| **Tạo kèo** | `/events/create` | Một buổi lẻ. Chọn **loại hoạt động**: *Kèo giao lưu*, *Buổi tập*, *Họp / gặp mặt*, hoặc *Round robin* (thi đấu theo thể thức vòng tròn: mỗi đôi lần lượt đánh với những đôi khác). Các ô còn lại giống [5.2](#52-tạo-kèo-eventscreate), trừ *Họp / gặp mặt* (xem dưới). |
 
 Loại hoạt động sửa được ở trang *Sửa* của buổi.
+
+**Họp / gặp mặt** (ăn uống, liên hoan, hoạt động ngoài sân — chỉ có ở không gian CLB) dùng form gọn: **nội dung kèo, ngày giờ, địa điểm dự kiến, phí tham gia, mô tả thêm**; không có số sân, số chỗ, trình độ, hạn huỷ hay link đăng ký. Tạo xong, thành viên **bình chọn Tham gia / Không** ngay trên trang CLB của họ (`/c/<clubId>`, bấm lại để rút phiếu). Trang chi tiết buổi họp có thẻ **🗳 Bình chọn tham gia**: thanh tỉ lệ, lọc *Tất cả / Tham gia / Không / Chưa bình chọn*, dự kiến thu (phí × số người tham gia); Host bấm để **đánh dấu giúp** ai báo qua nhóm chat (ghi "host đánh dấu"). Buổi họp không tính vào thống kê số buổi chơi.
 
 Trang chi tiết buổi:
 - Trang chi tiết buổi giống kèo Xé Vé (xem [mục 5](#5-tính-năng-chi-tiết--xé-vé-manager)), cộng thêm:
@@ -239,7 +241,7 @@ Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trậ
 
 Tab **Giải đấu** (`/club/tournaments`) là danh sách giải: 4 ô số liệu (*tổng số giải, đang diễn ra, đã kết thúc, tổng đội/cặp*), bộ lọc *Tất cả / Đang diễn ra / Đã kết thúc*, và mỗi giải là một thẻ (thể thức, số đội, số bảng, lệ phí, ngày, địa điểm, bục vinh quang khi đã xong). Giải đang diễn ra xếp trước.
 
-Trang **Tạo giải đấu** (`/club/tournaments/new`) bắt đầu bằng mục **1. Thể thức**: chọn 1 trong 2 kiểu (thẻ có mô tả ngắn), đặt tên giải, ngày, giờ và địa điểm (giải hiện trên Lịch sự kiện). Danh sách chọn người chơi dạng ô bấm, có *Chọn tất cả*, *Bỏ chọn* và đếm "Đã chọn x/y".
+Trang **Tạo giải đấu** (`/club/tournaments/new`) bắt đầu bằng mục **1. Thể thức**: chọn 1 trong 3 kiểu — *Vòng bảng + loại trực tiếp*, **Vòng tròn tính điểm**, *Đồng đội (Team League)* — (thẻ có mô tả ngắn), đặt tên giải, ngày, giờ và địa điểm (giải hiện trên Lịch sự kiện). Danh sách chọn người chơi dạng ô bấm, có *Chọn tất cả*, *Bỏ chọn* và đếm "Đã chọn x/y".
 
 #### Thể thức 1 — Đánh theo bảng
 Mục 1 có ô **💰 Lệ phí / người**. Mục **2. Nội dung** có 3 nút: **Đôi nam · Đôi nữ · Hỗn hợp** (cầu lông thêm *Đơn nam · Đơn nữ*). Danh sách người chơi lọc theo nội dung: Đôi nam chỉ hiện nam, Đôi nữ chỉ hiện nữ, Hỗn hợp hiện mọi người có giới tính (mỗi đội 1 nam + 1 nữ). Người chưa có giới tính được liệt kê kèm nhắc cập nhật ở Thành viên. Đánh đơn pickleball nằm trong giải Đồng đội.
@@ -268,7 +270,10 @@ Mục 1 có ô **💰 Lệ phí / người**. Mục **2. Nội dung** có 3 nút
 - Nhập xong vòng bảng thì bấm **Tạo vòng loại trực tiếp**. Đội hạt giống cao được **miễn đấu** nếu số đội không tròn, người thắng tự vào vòng sau. Các vòng hiển thị là tứ kết, bán kết, chung kết, rồi đến **Vô địch**.
 - Có thể *Làm lại vòng loại trực tiếp* mà vẫn giữ kết quả vòng bảng, hoặc xoá kết quả một trận.
 
-#### Thể thức 2 — Đồng đội (Team League)
+#### Thể thức 2 — Vòng tròn tính điểm
+Ghép cặp giống Thể thức 1 (nội dung Đôi nam / Đôi nữ / Hỗn hợp, ghép cân bằng / tùy chỉnh, để trống chỗ mời sau), nhưng **không chia bảng, không có vòng loại**: mọi đội nằm trong **một bảng**, mỗi đội lần lượt đánh với tất cả các đội còn lại (n đội → n×(n−1)/2 trận). Bảng xếp hạng tính theo số trận thắng, rồi hiệu số, rồi đối đầu. Nhập đủ kết quả là giải **tự kết thúc**: đội đứng đầu vô địch, bục vinh quang lấy 3 đội đầu bảng. Vẫn sửa / xoá được kết quả sau khi xong (giải mở lại). Bấm điểm trực tiếp dùng như các giải khác.
+
+#### Thể thức 3 — Đồng đội (Team League)
 Các đội 4–8 người đá **vòng tròn**, mỗi lần hai đội gặp nhau là một **lượt đấu** gồm nhiều **trận phụ**.
 1. **Trận phụ mỗi lượt đấu**: chọn trong *Đôi nam, Đôi nữ, Đôi nam nữ, Đôi tự do, Đơn* (mặc định 3 trận: đôi nam, đôi nữ, đôi nam nữ).
 2. **Cách tính thắng lượt đấu**:
@@ -390,7 +395,7 @@ Khi người chơi đăng ký gói qua link:
 Nhóm **Thống kê** (*Thống kê thành viên · Bảng xếp hạng · Phân tích*) cũng có thanh tab ở đầu trang.
 
 Menu **Thống kê → Thống kê thành viên**. Đầu trang có 5 ô số liệu của kỳ: *số buổi* (đã diễn ra bao nhiêu), *lượt tham gia* (trung bình người/buổi), *đi đều* (thành viên đi ≥ 50% số buổi đã diễn ra), *khách giao lưu* (số lượt đến) và *buổi bảo lưu*. Nút **Xuất Excel (CSV)** ở góc phải. Chọn kỳ *Tháng / Quý / Năm* (nút ‹ ›) hoặc *Tùy chọn* từ ngày – đến ngày. Ba tab:
-- **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). **✓ xanh** = có mặt (đã check-in), **✓ đỏ** = huỷ muộn (vẫn tính buổi), **v** = vắng không báo (không tính), `·` = đã đăng ký chưa check-in. Cột **Tổng số buổi** có thanh chia **từng ô theo buổi** (xanh/đỏ). Xem *Theo buổi* hoặc *Theo tháng*, sắp xếp A→Z hoặc *Chơi nhiều*, hàng cuối đếm thành viên và khách mỗi buổi. **Xuất Excel (CSV)**.
+- **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). **✓ xanh** = đăng ký + tham gia; **✓ đỏ** = không tham gia mà **không báo** (vắng không báo, hoặc báo muộn sau hạn huỷ, VD sau 12h) — vẫn **tính 1 buổi, không được bảo lưu**; **để trống** = không tham gia (đã báo kịp); `·` = đã đăng ký, chưa điểm danh. Cột **Số buổi** có thanh chia **từng ô theo buổi** của kỳ: xanh = tham gia, đỏ = không tham gia (không bảo lưu), xám = chưa dùng — cả ở *Theo buổi* lẫn *Theo tháng* (VD: tham gia 1, báo muộn 1 → 2/9, 1 ô xanh + 1 ô đỏ). *Lượt tham gia*, *đi đều* và sắp xếp *Chơi nhiều* chỉ đếm buổi có mặt. Khi sửa điểm danh, bấm ô để chuyển *chưa điểm danh → có mặt → vắng không báo*. Xem *Theo buổi* hoặc *Theo tháng*, sắp xếp A→Z hoặc *Chơi nhiều*, hàng cuối đếm thành viên và khách mỗi buổi. **Xuất Excel (CSV)**.
 - **Buổi còn lại & bảo lưu**: mỗi gói hội viên trong kỳ — số buổi của gói, đã dùng, còn lại. Gói đã hết kỳ, đã đóng tiền mà còn buổi = số buổi cần **bảo lưu** sang kỳ sau (có tổng).
 - **Khách giao lưu**: người ngoài CLB đã đến các buổi (gộp theo SĐT), đánh dấu từng buổi và tổng số lần đến.
 
@@ -472,7 +477,7 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
   - Mọi ảnh chờ xác nhận của mọi kèo cũng hiện ở **Tài chính → Tổng quan**.
 - **Danh sách chính** (x/số chỗ), **danh sách chờ** và **đã huỷ**. Thêm tay (người không dùng smartphone), hoặc nhập từ CLB (workspace Club). Nhãn *Hội viên* / *Khách* cho từng người.
 - Thao tác từng người:
-  - **Check-in** / **Vắng mặt** / **Hoàn tác**
+  - **Check-in** / **Vắng mặt** / **Hoàn tác** (thành viên CLB: check-in và vắng không báo đều trừ 1 buổi của gói; hoàn tác về *đã đăng ký* thì trả lại buổi)
   - **Đưa lên DS chính** (người trong danh sách chờ; người đó nhận thông báo)
   - **Huỷ đăng ký** (có hỏi xác nhận, áp dụng [chính sách huỷ](#55-chính-sách-huỷ--hoàn-buổi))
   - **Miễn phạt** (người huỷ muộn)
@@ -813,6 +818,7 @@ supabase/migrations/
 ├── 20261016090000_tournament_live_scoring.sql         # tính điểm trực tiếp giải đấu + link bảng điểm công khai
 └── 20261017090000_match_timing_formats.sql            # bấm giờ trận (thời điểm từng pha), thời lượng + thể thức ván lưu cùng kết quả
 └── 20261018090000_social_manager_plans.sql            # gói Social Manager (xé vé) + yêu cầu nâng cấp gói trên host_subscriptions
+└── 20261019090000_round_robin_meeting_votes.sql       # giải vòng tròn tính điểm (advance_per_group = 0) + bảng event_votes (bình chọn buổi họp)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -995,13 +1001,13 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = toàn CLB, `club`, `guest`) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
-| Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge`; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` |
+| Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge` = round robin; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` · `GET …/votes` · `PUT …/votes/:clubMemberId` `{choice: yes | no | null}` (bình chọn buổi họp) · người chơi: `POST /api/player/events/:eventId/vote` `{choice}` |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) · `GET /api/public/live/:token` (bảng điểm trực tiếp) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
 | Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, scoring (sideout / sideout_single / rally), points, win_by (1/2), best_of (1/3/5), freeze, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` · `POST /api/live/:tid/result` `{match_id \| sub_match_id, games \| team1_score+team2_score, format {points, win_by, best_of}, duration_min, clear}` (nhập kết quả sau trận) |
-| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
+| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
@@ -1019,12 +1025,12 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
 | Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo; tỷ số có thể null = chưa nhập; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
-| Giải đấu | `tournaments` (`kind` pairs/team, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
+| Giải đấu | `tournaments` (`kind` pairs/team; vòng tròn tính điểm = `group_count` 1 + `advance_per_group` 0, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items`, `inventory_moves` |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |
 | Lịch sử | `change_history` (SCD Type 2, ghi bằng trigger) |
-| Khác | `feedback` |
+| Khác | `feedback`, `event_votes` (bình chọn tham gia buổi họp: `choice` yes/no, `by_host`) |
 
 ---
 
