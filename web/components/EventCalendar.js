@@ -34,7 +34,7 @@ const chipOf = (e) => (e.tone ? `${e.tone.chip} ${STATUS_MOD[e.status] || ''}` :
 const dotOf = (e) => (e.tone ? `${e.tone.dot} ${STATUS_MOD[e.status] || ''}` : STATUS_DOT[e.status]);
 
 // Icon per kind of activity (tournaments come from their own table).
-export const KIND_ICON = { weekly: '🗓', game: '🏓', training: '🎯', meeting: '👥', challenge: '⚔️', tournament: '🏆' };
+export const KIND_ICON = { weekly: '🗓', game: '🏓', training: '🎯', meeting: '👥', challenge: '🔄', tournament: '🏆' };
 export const hrefOf = (e) => e.href || `/events/${e.id}`;
 // A badminton club's games show a shuttlecock instead of the paddle.
 const kindIcon = (e) => (e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]);

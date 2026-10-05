@@ -27,7 +27,18 @@ const MY_TONE = {
 export default function MemberClubPage() {
   const { clubId } = useParams();
   const { t, lang } = useI18n();
-  const { data, loading, error } = useLoad(() => api.get(`/api/player/clubs/${clubId}`), [clubId]);
+  const { data, loading, error, setData } = useLoad(() => api.get(`/api/player/clubs/${clubId}`), [clubId]);
+  const [voteError, setVoteError] = useState('');
+  // Meetings: one tap to say I'm coming / not coming (tap again to take it back).
+  async function vote(e, choice) {
+    setVoteError('');
+    try {
+      const r = await api.post(`/api/player/events/${e.id}/vote`, { choice: e.my_vote === choice ? null : choice });
+      setData((d) => ({ ...d, events: d.events.map((x) => (x.id === e.id ? { ...x, ...r } : x)) }));
+    } catch (err) {
+      setVoteError(err.message);
+    }
+  }
   const [tab, setTab] = useState('schedule');
 
   if (loading && !data) return <PlayerShell><p className="text-gray-400">{t('common.loading')}</p></PlayerShell>;
@@ -91,6 +102,7 @@ export default function MemberClubPage() {
       {tab === 'schedule' && (
         <div className="flex flex-col gap-2">
           {data.events.length === 0 && <p className="card text-gray-400 text-sm">{t('hub.noClubEvents')}</p>}
+          {voteError && <p className="text-red-400 text-sm">{voteError}</p>}
           {data.events.map((e) => {
             const full = e.slots && e.main_count >= e.slots;
             return (
@@ -107,8 +119,24 @@ export default function MemberClubPage() {
                     {Number(e.fee_amount) > 0 ? ` · ${formatVnd(e.fee_amount)}` : ''}
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {e.slots ? <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${full ? 'bg-amber-400/15 text-amber-300' : 'bg-navy-700 text-gray-200'}`}>{e.main_count}/{e.slots}{e.waitlist_count ? ` · +${e.waitlist_count}` : ''}</span> : null}
-                    {e.my_status ? (
+                    {e.slots && e.kind !== 'meeting' ? <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${full ? 'bg-amber-400/15 text-amber-300' : 'bg-navy-700 text-gray-200'}`}>{e.main_count}/{e.slots}{e.waitlist_count ? ` · +${e.waitlist_count}` : ''}</span> : null}
+                    {e.kind === 'meeting' ? (
+                      <>
+                        <span className="text-gray-300 text-xs">{t('meeting.question')}</span>
+                        {['yes', 'no'].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            aria-pressed={e.my_vote === c}
+                            onClick={() => vote(e, c)}
+                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${e.my_vote === c ? (c === 'yes' ? 'bg-lime-400 text-navy-950 border-lime-400' : 'bg-red-500 text-white border-red-500') : 'border-navy-600 text-gray-300'}`}
+                          >
+                            {c === 'yes' ? `✓ ${t('meeting.yes')}` : `✗ ${t('meeting.no')}`}
+                          </button>
+                        ))}
+                        <span className="text-gray-500 text-xs">{t('meeting.counts', { yes: e.votes?.yes || 0, no: e.votes?.no || 0 })}</span>
+                      </>
+                    ) : e.my_status ? (
                       <span className={`rounded-full border px-2 py-0.5 text-xs ${MY_TONE[e.my_status] || 'border-navy-600 text-gray-300'}`}>✓ {t(`player.status_${e.my_status}`)}</span>
                     ) : e.public_token ? (
                       <Link href={`/e/${e.public_token}`} className="btn-primary !py-1 !px-3 text-xs">{full ? t('hub.joinWaitlist') : t('hub.signUp')}</Link>

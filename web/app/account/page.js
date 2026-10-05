@@ -12,6 +12,8 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { exportClubBackup } from '@/lib/exportExcel';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 
 const SECTIONS = [
   ['plan', '💎'],
@@ -30,6 +32,8 @@ export default function AccountPage() {
   const { club } = useDefaultClub();
   const { data: sub } = useLoad(() => api.get('/api/host/subscription').catch(() => null), []);
   const { data: me } = useLoad(() => api.get('/api/host/me').catch(() => null), []);
+  const { plan } = useWorkspace();
+  const [upgrading, setUpgrading] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -138,6 +142,18 @@ export default function AccountPage() {
           ) : (
             <p className="text-gray-400 text-sm">{t('common.loading')}</p>
           )}
+          {plan && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-navy-700 bg-navy-900/60 px-3 py-2.5">
+              <span className="text-sm text-gray-200">
+                🏠 {t('plan.clubUsage', { owned: plan.clubs_owned, limit: plan.club_limit ?? '∞' })}
+              </span>
+              <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => setUpgrading(true)}>💎 {t('plan.upgradeBtn')}</button>
+            </div>
+          )}
+          <div className="mt-4 rounded-xl border border-amber-300/30 bg-amber-300/5 p-4">
+            <SocialManagerPanel />
+          </div>
+          <UpgradeModal open={upgrading} onClose={() => setUpgrading(false)} />
         </SettingsSection>
 
         <SettingsSection id="payout" icon="🏦" tone="lime" title={t('paySet.title')} description={t('paySet.hint')}>

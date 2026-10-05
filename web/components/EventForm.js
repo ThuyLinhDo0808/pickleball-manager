@@ -85,8 +85,24 @@ export function formFromEvent(ev) {
   };
 }
 
-// Form values -> API body (shared by create and edit).
+// Form values -> API body (shared by create and edit). A meeting is only what, when,
+// where and the fee: members vote whether they come instead of signing up by link.
 export function eventPayload(f) {
+  if (f.kind === 'meeting') {
+    return {
+      kind: 'meeting',
+      title: f.title.trim(),
+      event_date: f.event_date,
+      start_time: f.start_time || null,
+      end_time: f.end_time || null,
+      location: f.location.trim() || null,
+      fee_amount: Number(f.fee_amount || 0),
+      notice: f.notice.trim() || null,
+      status: f.status,
+      allow_public_registration: false,
+      cancel_deadline_hours: null,
+    };
+  }
   return {
     kind: f.kind,
     title: f.title.trim(),
@@ -131,12 +147,13 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     }
   }
 
+  const meeting = f.kind === 'meeting';
   return (
       <form onSubmit={submit} className="w-full lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-4 lg:items-start">
         <div className="min-w-0">
         <Section n={1} title={t('create.basic')}>
           {kinds && kinds.length > 1 && (
-            <Field label={t('kind.label')} span={4} hint={t(`kind.hint_${f.kind}`)}>
+            <Field label={t('kind.label')} span={4} hint={t(`kind.hint_${f.kind}`) || null}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
                 {kinds.map((k) => (
                   <button
@@ -153,13 +170,13 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               </div>
             </Field>
           )}
-          <Field label={t('events.title')} span={4}>
+          <Field label={meeting ? t('meeting.content') : t('events.title')} span={4}>
             <input
               className={`input ${lockTitle ? 'opacity-70 cursor-not-allowed' : ''}`}
               required
               maxLength={120}
               readOnly={lockTitle}
-              placeholder={t('create.titlePh')}
+              placeholder={meeting ? t('meeting.contentPh') : t('create.titlePh')}
               value={f.title}
               onChange={(e) => !lockTitle && set({ title: e.target.value })}
             />
@@ -177,12 +194,25 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('create.end')}>
             <input className="input" type="time" value={f.end_time} onChange={(e) => set({ end_time: e.target.value })} />
           </Field>
-          <Field label={t('events.location')} span={2}>
-            <input className="input" placeholder={t('create.locationPh')} value={f.location} onChange={(e) => set({ location: e.target.value })} />
+          <Field label={meeting ? t('meeting.place') : t('events.location')} span={2}>
+            <input className="input" placeholder={meeting ? t('meeting.placePh') : t('create.locationPh')} value={f.location} onChange={(e) => set({ location: e.target.value })} />
           </Field>
+          {meeting && (
+            <>
+              <Field label={t('meeting.fee')} span={2}>
+                <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
+              </Field>
+              <Field label={t('meeting.details')} span={4}>
+                <textarea className="input" rows={3} placeholder={t('meeting.detailsPh')} value={f.notice} onChange={(e) => set({ notice: e.target.value })} />
+              </Field>
+              <p className="col-span-2 md:col-span-4 rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-100">🗳 {t('meeting.voteNote')}</p>
+            </>
+          )}
+          {!meeting && (
           <Field label={t('events.courts')}>
             <input className="input" type="number" inputMode="numeric" min="1" max="50" value={f.courts} onChange={(e) => set({ courts: e.target.value })} />
           </Field>
+          )}
           {showRepeat && (
             <Field label={t('events.repeatWeeks')} hint={t('events.repeatHint')}>
               <input className="input" type="number" inputMode="numeric" min="1" max="26" value={f.repeat_weeks} onChange={(e) => set({ repeat_weeks: e.target.value })} />
@@ -190,6 +220,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           )}
         </Section>
 
+        {!meeting && (
+        <>
         <Section n={2} title={t('create.rules')}>
           <Field label={t('events.slots')}>
             <input className="input" type="number" inputMode="numeric" min="1" max="500" value={f.slots} onChange={(e) => set({ slots: e.target.value })} />
@@ -222,9 +254,11 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             {t('events.allowPublic')}
           </label>
         </Section>
+        </>
+        )}
 
         {showStatus && (
-        <Section n={4} title={t('common.status')} hint={t('create.statusHint')}>
+        <Section n={meeting ? 2 : 4} title={t('common.status')} hint={t('create.statusHint')}>
           <div className="col-span-2 md:col-span-4 flex flex-wrap gap-2">
             {STATUSES.map((s) => (
               <button
@@ -270,17 +304,26 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <dt className="text-gray-400">🕒</dt>
               <dd className="text-gray-100 tabular-nums">{f.start_time || '—'}{f.end_time ? ` – ${f.end_time}` : ''}</dd>
               <dt className="text-gray-400">📍</dt>
-              <dd className="text-gray-100 truncate">{f.location || '—'}{f.courts ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
-              <dt className="text-gray-400">👥</dt>
-              <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>
+              <dd className="text-gray-100 truncate">{f.location || '—'}{f.courts && !meeting ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
+              {!meeting && <dt className="text-gray-400">👥</dt>}
+              {!meeting && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
               <dt className="text-gray-400">💰</dt>
               <dd className="text-gray-100 tabular-nums">{Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')}</dd>
-              <dt className="text-gray-400">⏳</dt>
-              <dd className="text-gray-100">{f.cancel_deadline_hours === '' ? t('policy.none') : t('policy.hours', { h: f.cancel_deadline_hours })}</dd>
-              <dt className="text-gray-400">🔗</dt>
-              <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('createx.linkOn') : t('createx.linkOff')}</dd>
+              {meeting ? (
+                <>
+                  <dt className="text-gray-400">🗳</dt>
+                  <dd className="text-sky-200">{t('meeting.votePreview')}</dd>
+                </>
+              ) : (
+                <>
+                  <dt className="text-gray-400">⏳</dt>
+                  <dd className="text-gray-100">{f.cancel_deadline_hours === '' ? t('policy.none') : t('policy.hours', { h: f.cancel_deadline_hours })}</dd>
+                  <dt className="text-gray-400">🔗</dt>
+                  <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('createx.linkOn') : t('createx.linkOff')}</dd>
+                </>
+              )}
             </dl>
-            {Number(f.fee_amount) > 0 && Number(f.slots) > 0 && (
+            {!meeting && Number(f.fee_amount) > 0 && Number(f.slots) > 0 && (
               <div className="mx-4 mb-3 rounded-lg bg-lime-400/10 border border-lime-400/30 px-3 py-2 text-xs text-lime-100">
                 {t('createx.maxIncome', { v: (Number(f.fee_amount) * Number(f.slots) * (sessions || 1)).toLocaleString('vi-VN') })}
               </div>

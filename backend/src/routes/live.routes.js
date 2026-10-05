@@ -111,7 +111,7 @@ function scoreables(full) {
         duration_sec: m.duration_sec ?? null,
         score_format: m.score_format || null,
         // Group results are locked once the knockout exists.
-        locked: m.stage === 'group' && full.status !== 'groups',
+        locked: m.stage === 'group' && full.status !== 'groups' && !full.round_robin,
       });
     }
   }

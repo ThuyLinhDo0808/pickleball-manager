@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useClubs } from '@/context/ClubContext';
 import { useI18n } from '@/context/I18nContext';
+import { UpgradeModal } from '@/components/PlanModals';
 
 export default function CreateClubForm({ onCreated, autoFocus = false }) {
   const { t } = useI18n();
@@ -11,6 +12,7 @@ export default function CreateClubForm({ onCreated, autoFocus = false }) {
   const [sport, setSport] = useState('pickleball');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [limited, setLimited] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -24,7 +26,10 @@ export default function CreateClubForm({ onCreated, autoFocus = false }) {
       setDescription('');
       onCreated?.(club);
     } catch (err) {
-      setError(err.message);
+      if (err.payload?.code === 'club_limit') {
+        setLimited(true);
+        setError(t('plan.limitReached'));
+      } else setError(err.message);
     } finally {
       setBusy(false);
     }
@@ -71,6 +76,7 @@ export default function CreateClubForm({ onCreated, autoFocus = false }) {
         </button>
         {error && <span className="text-red-400 text-sm">{error}</span>}
       </div>
+    <UpgradeModal open={limited} onClose={() => setLimited(false)} />
     </form>
   );
 }

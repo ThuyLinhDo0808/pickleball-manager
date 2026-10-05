@@ -9,8 +9,10 @@ const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, cancelParticipant } = require('../services/attendance');
 const { telegramSend } = require('../services/notify');
 const survey = require('../services/survey');
+const votes = require('../services/votes');
 const { linkByPhone } = require('../services/phoneLink');
 const { coAdminClubs } = require('../services/clubAccess');
+const { getPlan } = require('../services/plan');
 const { sportReady, clubSport, profileLevel } = require('../services/sport');
 
 function badRequest(message, status = 400, code) {
@@ -601,6 +603,7 @@ player.get('/home', async (req, res) => {
       ],
       member_clubs: memberClubs,
       xeve_events: xeve.count || 0,
+      plan: await getPlan(uid).catch(() => null),
       upcoming: upcoming.slice(0, 40),
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
     });
@@ -626,6 +629,9 @@ player.get('/clubs/:clubId', async (req, res) => {
       supabase.from('users').select('email').eq('id', me.clubs.host_id).maybeSingle(),
     ]);
     const mine = await upcomingFor(uid, [me.id], clubId);
+    // Meetings: the club votes who comes instead of signing up.
+    const meetingIds = (events || []).filter((e) => e.kind === 'meeting').map((e) => e.id);
+    const voteCounts = await votes.countsFor(meetingIds).catch(() => new Map());
     const mineIds = new Map(mine.map((x) => [x.event_id, x.status]));
     const { data: hist } = await supabase
       .from('event_participants')
@@ -645,6 +651,12 @@ player.get('/clubs/:clubId', async (req, res) => {
         ...e,
         public_token: e.allow_public_registration ? e.public_token : null,
         my_status: mineIds.get(e.id) || null,
+        ...(e.kind === 'meeting'
+          ? {
+              votes: { yes: voteCounts.get(e.id)?.yes || 0, no: voteCounts.get(e.id)?.no || 0 },
+              my_vote: voteCounts.get(e.id)?.rows.find((v) => v.club_member_id === me.id)?.choice || null,
+            }
+          : {}),
       })),
       my_upcoming: mine,
       history: history.slice(0, 30),
@@ -654,6 +666,25 @@ player.get('/clubs/:clubId', async (req, res) => {
         no_show: history.filter((h) => h.status === 'no_show').length,
       },
     });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Vote on a club meeting: am I coming? choice null takes the vote back.
+player.post('/events/:eventId/vote', async (req, res) => {
+  try {
+    const choice = req.body?.choice ?? null;
+    if (choice !== null && !votes.CHOICES.includes(choice)) throw badRequest('choice must be yes, no or null.');
+    if (!isUuid(req.params.eventId)) throw badRequest('Event not found.', 404);
+    const { data: event } = await supabase.from('events').select('id, club_id, kind, event_date, status').eq('id', req.params.eventId).maybeSingle();
+    if (!event || event.kind !== 'meeting' || !event.club_id) throw badRequest('Event not found.', 404);
+    const { data: me } = await supabase.from('club_members').select('id').eq('club_id', event.club_id).eq('user_id', req.hostId).maybeSingle();
+    if (!me) throw badRequest('Event not found.', 404);
+    if (event.status === 'cancelled' || event.event_date < todayYmd()) throw badRequest('Voting is closed.', 409, 'closed');
+    await votes.castVote(event.id, me.id, choice, false);
+    const counts = (await votes.countsFor([event.id])).get(event.id);
+    res.json({ my_vote: choice, votes: { yes: counts.yes, no: counts.no } });
   } catch (err) {
     fail(res, err);
   }

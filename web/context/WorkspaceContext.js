@@ -14,6 +14,22 @@ export function WorkspaceProvider({ children }) {
   const { user } = useAuth();
   const [workspace, setWorkspaceState] = useState(null);
   const [staffInfo, setStaffInfo] = useState(null); // { is_staff, email_verified }
+  // Plan: tier, club limit / usage, Social Manager add-on (see backend services/plan.js).
+  const [plan, setPlan] = useState(null);
+  const reloadPlan = useCallback(() => {
+    if (!user) return Promise.resolve(null);
+    return api
+      .get('/api/host/plan')
+      .then((p) => {
+        setPlan(p);
+        return p;
+      })
+      .catch(() => null);
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!user) setPlan(null);
+    else reloadPlan();
+  }, [user?.id, reloadPlan]); // eslint-disable-line react-hooks/exhaustive-deps
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -57,8 +73,8 @@ export function WorkspaceProvider({ children }) {
   const effective = workspace === 'staff' && staffInfo && !staffInfo.is_staff ? null : workspace;
 
   const value = useMemo(
-    () => ({ workspace: effective, setWorkspace, ready: ready && (effective !== 'staff' || !!staffInfo), workspaces, staffInfo }),
-    [effective, setWorkspace, ready, workspaces.length, staffInfo]
+    () => ({ workspace: effective, setWorkspace, ready: ready && (effective !== 'staff' || !!staffInfo), workspaces, staffInfo, plan, reloadPlan }),
+    [effective, setWorkspace, ready, workspaces.length, staffInfo, plan, reloadPlan]
   );
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
