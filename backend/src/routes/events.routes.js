@@ -1,4 +1,5 @@
 const express = require('express');
+const { assertSocialManager } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { actingHost, eventAccess, coAdminClubIds } = require('../services/clubAccess');
@@ -283,6 +284,14 @@ router.post('/', async (req, res) => {
   if (bad) return res.status(400).json({ error: bad });
   const hostId = await hostForClub(req, fields.club_id);
   if (!hostId) return notFound(res, 'Club');
+  // Xé Vé games (no club) need the Social Manager add-on.
+  if (!fields.club_id) {
+    try {
+      await assertSocialManager(hostId);
+    } catch (err) {
+      return res.status(err.status).json({ error: err.message, code: err.code });
+    }
+  }
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
   const days = dates || Array.from({ length: weeks }, (_, i) => addDays(event_date, 7 * i));

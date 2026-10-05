@@ -19,9 +19,12 @@ function greeting(t) {
   return t(h < 11 ? 'home.morning' : h < 14 ? 'home.noon' : h < 18 ? 'home.afternoon' : 'home.evening');
 }
 
+// A KPI card. The card itself is not a link (easy to tap by accident while scrolling);
+// a small "Chi tiết →" at the bottom opens the page behind it.
 function Kpi({ icon, label, value, sub, href, tone = 'text-white', lines = null }) {
-  const body = (
-    <div className="card h-full !p-4 flex flex-col gap-1 hover:border-navy-500 transition">
+  const { t } = useI18n();
+  return (
+    <div className="card h-full !p-4 flex flex-col gap-1">
       <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
         <span>{label}</span>
         <span className="text-base" aria-hidden="true">{icon}</span>
@@ -38,9 +41,13 @@ function Kpi({ icon, label, value, sub, href, tone = 'text-white', lines = null 
           ))}
         </dl>
       )}
+      {href && (
+        <Link href={href} className="mt-auto pt-2 self-end text-lime-400 hover:text-lime-300 text-xs font-semibold">
+          {t('home.details')} →
+        </Link>
+      )}
     </div>
   );
-  return href ? <Link href={href} className="block">{body}</Link> : body;
 }
 
 function Section({ title, action, children }) {
@@ -195,10 +202,10 @@ export default function DashboardPage() {
       {/* Money */}
       <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowMoney')}</h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(thisMonth.income)} tone="text-lime-400" sub={t('home.kpiMonthSub')} href="/finance" />
-        <Kpi icon="🧾" label={t('home.kpiExpense')} value={formatVnd(thisMonth.expense)} tone="text-red-300" sub={t('home.kpiNet', { v: formatVnd(thisMonth.income - thisMonth.expense) })} href="/finance/ledger" />
-        <Kpi icon="🏦" label={t('home.kpiFund')} value={formatVnd(fund?.balance || 0)} tone={Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white'} sub={t('home.kpiFundSub')} href="/finance/ledger" />
-        <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} sub={debtors.length ? t('home.kpiDebt', { n: debtors.length }) : t('home.kpiNoDebt')} href="/club/members" />
+        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(thisMonth.income)} tone="text-lime-400" href="/finance" />
+        <Kpi icon="🧾" label={t('home.kpiExpense')} value={formatVnd(thisMonth.expense)} tone="text-red-300" href="/finance/ledger" />
+        <Kpi icon="🏦" label={t('home.kpiFund')} value={formatVnd(fund?.balance || 0)} tone={Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white'} href="/finance/ledger" />
+        <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
       </div>
 
       <PendingPayments club={club} />

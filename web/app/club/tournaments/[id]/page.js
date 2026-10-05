@@ -177,6 +177,8 @@ export default function TournamentPage() {
 
       <TournamentFees tour={tour} />
 
+      {tour.kind !== 'team' && tour.format !== 'singles' && <OpenPlaces tour={tour} onChange={setData} />}
+
       {tour.kind === 'team' && <TeamLeagueView tour={tour} onChange={setData} />}
 
       {tour.kind !== 'team' && tour.group_count > 0 && (
@@ -344,5 +346,60 @@ export default function TournamentPage() {
         {scoring && <ScoreForm match={scoring} teamName={teamName} onSave={saveScore} onClear={clearScore} onCancel={() => setScoring(null)} />}
       </Modal>
     </AppShell>
+  );
+}
+
+// Pairs created with an empty place ("invite later"): pick the guest who takes it.
+function OpenPlaces({ tour, onChange }) {
+  const { t } = useI18n();
+  const open = tour.teams.filter((tm) => tm.player1_id && !tm.player2_id);
+  const { data: members } = useLoad(() => (open.length ? api.get(`/api/clubs/${tour.club_id}/members`) : Promise.resolve([])), [tour.club_id, open.length]);
+  const [pick, setPick] = useState({});
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState('');
+  if (!open.length) return null;
+  const taken = new Set(tour.teams.flatMap((tm) => [tm.player1_id, tm.player2_id]).filter(Boolean));
+  const byId = new Map((members || []).map((m) => [m.id, m]));
+  const want = tour.division === 'men' ? 'male' : tour.division === 'women' ? 'female' : null;
+
+  async function fill(tm) {
+    setBusy(tm.id);
+    setError('');
+    try {
+      onChange(await api.patch(`/api/tournaments/${tour.id}/teams/${tm.id}`, { player_id: pick[tm.id] }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="card mb-4 border-amber-300/50">
+      <h2 className="text-amber-200 font-semibold">⬚ {t('pairing.openTitle', { n: open.length })}</h2>
+      <p className="text-gray-400 text-xs mb-3">{t('pairing.openHint')}</p>
+      <div className="flex flex-col gap-2">
+        {open.map((tm) => {
+          const mate = byId.get(tm.player1_id);
+          const options = (members || []).filter(
+            (m) => !taken.has(m.id) && (want ? m.gender === want : tour.format !== 'mixed' || !mate?.gender || (m.gender && m.gender !== mate.gender))
+          );
+          return (
+            <div key={tm.id} className="flex flex-wrap items-center gap-2">
+              <span className="text-white text-sm min-w-[8rem] flex-1 truncate">{mate?.full_name || tm.name} &amp; <span className="text-amber-200">?</span></span>
+              <select className="input text-sm flex-1 min-w-[10rem]" value={pick[tm.id] || ''} onChange={(e) => setPick({ ...pick, [tm.id]: e.target.value })}>
+                <option value="">{t('pairing.pickGuest')}</option>
+                {options.map((m) => (
+                  <option key={m.id} value={m.id}>{m.full_name}{m.member_type === 'guest' ? ` · ${t('members.guest')}` : ''}</option>
+                ))}
+              </select>
+              <button className="btn-primary text-sm !py-1.5" disabled={!pick[tm.id] || busy === tm.id} onClick={() => fill(tm)}>{t('pairing.fill')}</button>
+            </div>
+          );
+        })}
+      </div>
+      {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+      <p className="text-gray-500 text-xs mt-2">{t('pairing.openAddGuest')}</p>
+    </section>
   );
 }

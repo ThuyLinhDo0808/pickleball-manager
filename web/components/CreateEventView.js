@@ -37,11 +37,17 @@ export default function CreateEventView({ weekly = false }) {
       if (!dates.length) throw new Error(t('weekly.needDates'));
       if (dates.length > MAX_SESSIONS) throw new Error(t('weekly.tooMany', { max: MAX_SESSIONS }));
     }
-    const created = await api.post('/api/events', {
-      ...eventPayload(f),
-      club_id: isClub ? club?.id || null : null,
-      ...(dates ? { dates } : {}),
-    });
+    let created;
+    try {
+      created = await api.post('/api/events', {
+        ...eventPayload(f),
+        club_id: isClub ? club?.id || null : null,
+        ...(dates ? { dates } : {}),
+      });
+    } catch (err) {
+      if (err.payload?.code === 'social_manager_required') throw new Error(t('plan.smRequired'));
+      throw err;
+    }
     // One event: open it so the Host can share the link. Several: back to the calendar.
     router.push(created.created_count > 1 ? '/events' : `/events/${created.id}`);
   }

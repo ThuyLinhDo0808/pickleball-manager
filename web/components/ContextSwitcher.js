@@ -6,6 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useEnter } from '@/lib/useEnter';
+import { SocialManagerModal, UpgradeModal, atClubLimit } from '@/components/PlanModals';
 
 // "Where am I": the club (or Xé Vé / staff space) the manager pages work on, with the
 // role, and a menu to jump to another space this account manages — or back to the home
@@ -14,7 +15,9 @@ import { useEnter } from '@/lib/useEnter';
 export default function ContextSwitcher({ compact = false, iconOnly = false, className = '' }) {
   const { t } = useI18n();
   const { clubs, club, selectClub } = useClubs();
-  const { workspace, staffInfo } = useWorkspace();
+  const { workspace, staffInfo, plan } = useWorkspace();
+  const [smOpen, setSmOpen] = useState(false);
+  const [upOpen, setUpOpen] = useState(false);
   const { manageClub, space } = useEnter();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -33,7 +36,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
 
   const current =
     workspace === 'xeve'
-      ? { avatar: <ClubAvatar icon="🎟" size={compact ? 32 : 40} />, name: t('hub.xeve'), role: t('hub.roleOrganizer') }
+      ? { avatar: <ClubAvatar icon="🎟" size={compact ? 32 : 40} />, name: t('hub.socialManager'), role: t('hub.roleOrganizer') }
       : workspace === 'staff'
         ? { avatar: <ClubAvatar icon="🦺" size={compact ? 32 : 40} />, name: t('hub.staff'), role: t('hub.roleStaff') }
         : club
@@ -104,7 +107,9 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
             </>
           )}
           <p className="px-2 pt-2 pb-1 text-gray-500 text-[11px] font-semibold uppercase tracking-wide">{t('hub.otherSpaces')}</p>
-          {row(workspace === 'xeve', () => pickSpace('xeve'), <ClubAvatar icon="🎟" size={32} />, t('hub.xeve'), t('hub.roleOrganizer'))}
+          {plan?.social_manager
+            ? row(workspace === 'xeve', () => pickSpace('xeve'), <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.roleOrganizer'))
+            : row(false, () => { setOpen(false); setSmOpen(true); }, <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.smSignUpShort'))}
           {staffInfo?.is_staff && row(workspace === 'staff', () => pickSpace('staff'), <ClubAvatar icon="🦺" size={32} />, t('hub.staff'), t('hub.roleStaff'))}
           <div className="border-t border-navy-700 mt-2 pt-2 grid gap-1">
             <Link href="/home" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-white">
@@ -114,13 +119,15 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
                 <span className="block text-gray-500 text-[11px]">{t('hub.backHomeHint')}</span>
               </span>
             </Link>
-            <button type="button" onClick={() => { setOpen(false); space('club', '/clubs'); }} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-gray-300 text-left">
+            <button type="button" onClick={() => { setOpen(false); if (atClubLimit(plan)) setUpOpen(true); else space('club', '/clubs'); }} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-gray-300 text-left">
               <span className="w-8 text-center" aria-hidden="true">＋</span>
               {t('hub.createClub')}
             </button>
           </div>
         </div>
       )}
+      <SocialManagerModal open={smOpen} onClose={() => setSmOpen(false)} />
+      <UpgradeModal open={upOpen} onClose={() => setUpOpen(false)} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ const { telegramSend } = require('../services/notify');
 const survey = require('../services/survey');
 const { linkByPhone } = require('../services/phoneLink');
 const { coAdminClubs } = require('../services/clubAccess');
+const { getPlan } = require('../services/plan');
 const { sportReady, clubSport, profileLevel } = require('../services/sport');
 
 function badRequest(message, status = 400, code) {
@@ -601,6 +602,7 @@ player.get('/home', async (req, res) => {
       ],
       member_clubs: memberClubs,
       xeve_events: xeve.count || 0,
+      plan: await getPlan(uid).catch(() => null),
       upcoming: upcoming.slice(0, 40),
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
     });

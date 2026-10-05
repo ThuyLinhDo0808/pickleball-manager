@@ -94,6 +94,11 @@ async function ownedClub(req, clubId) {
   return { id: clubId };
 }
 
+// "An & Bình"; a place left empty shows as "?" until the Host fills it.
+function teamLabel(names, open = 0) {
+  return [...names, ...Array(open).fill('?')].join(' & ');
+}
+
 async function clubMembers(clubId, ids) {
   const { data, error } = await supabase
     .from('club_members')
@@ -271,25 +276,32 @@ router.post('/', async (req, res) => {
     if (teamsIn.length < 2) throw badRequest('At least 2 teams are needed.');
 
     const size = T.TEAM_SIZE[format];
-    const allIds = teamsIn.flatMap((t) => t.player_ids || []);
+    // A pair may keep one place empty (null): the Host invites a guest and fills it later.
+    const allIds = teamsIn.flatMap((t) => (t.player_ids || []).filter(Boolean));
     if (!allIds.every(isUuid)) throw badRequest('invalid player id.');
     if (new Set(allIds).size !== allIds.length) throw badRequest('A player can only be in one team.');
     const members = await clubMembers(club_id, allIds);
     const byId = new Map(members.map((m) => [m.id, m]));
 
     const teams = teamsIn.map((t) => {
-      const ids = t.player_ids || [];
-      if (ids.length !== size) throw badRequest(`Each ${format} team needs ${size} player(s).`);
+      const raw = t.player_ids || [];
+      if (raw.length !== size) throw badRequest(`Each ${format} team needs ${size} player(s).`);
+      const ids = raw.filter(Boolean);
+      if (!ids.length) throw badRequest('A team needs at least one player.');
+      if (ids.length < size && size === 1) throw badRequest('Singles players cannot be left empty.');
       const players = ids.map((id) => byId.get(id));
       if (players.some((p) => !p)) throw badRequest('A player is not in this club.');
-      if (format === 'mixed' && players.map((p) => p.gender).sort().join() !== 'female,male') {
-        throw badRequest(`Mixed team "${players.map((p) => p.full_name).join(' & ')}" needs one man and one woman (set gender on the member).`);
+      const label = players.map((p) => p.full_name).join(' & ');
+      if (format === 'mixed') {
+        const genders = players.map((p) => p.gender);
+        const ok = players.length === 2 ? genders.sort().join() === 'female,male' : ['male', 'female'].includes(genders[0]);
+        if (!ok) throw badRequest(`Mixed team "${label}" needs one man and one woman (set gender on the member).`);
       }
       const want = { men: 'male', women: 'female' }[division];
       if (want && format !== 'mixed' && players.some((p) => p.gender !== want)) {
-        throw badRequest(`${division === 'men' ? "Men's" : "Women's"} event: "${players.map((p) => p.full_name).join(' & ')}" doesn't fit (set gender on the member).`);
+        throw badRequest(`${division === 'men' ? "Men's" : "Women's"} event: "${label}" doesn't fit (set gender on the member).`);
       }
-      return { players, strength: T.strengthOf(players) };
+      return { players, open: size - players.length, strength: T.strengthOf(players) };
     });
 
     if (groupCount > 0) {
@@ -327,7 +339,7 @@ router.post('/', async (req, res) => {
         .insert(
           teams.map((t, i) => ({
             tournament_id: tournament.id,
-            name: t.players.map((p) => p.full_name).join(' & '),
+            name: teamLabel(t.players.map((p) => p.full_name), t.open),
             player1_id: t.players[0].id,
             player2_id: t.players[1]?.id || null,
             strength: t.strength,
@@ -732,6 +744,37 @@ router.patch('/:tournamentId/matches/:matchId', async (req, res) => {
   const t = req.tournament;
   try {
     await recordMatch(t, req.params.matchId, req.body.clear ? { clear: true } : await scoresFor(t, req.body));
+    res.json(await loadFull(t));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Fill a pair's empty place (left blank when the tournament was made) with a club member,
+// e.g. a guest invited to complete the pair.
+router.patch('/:tournamentId/teams/:teamId', async (req, res) => {
+  const t = req.tournament;
+  try {
+    if (t.kind === 'team') throw badRequest('Team leagues edit rosters when rebuilt.');
+    if (!isUuid(req.params.teamId) || !isUuid(req.body.player_id)) throw badRequest('Pick a player.', 400);
+    const { data: teams, error } = await supabase.from('tournament_teams').select('*').eq('tournament_id', t.id);
+    if (error) throw error;
+    const team = teams.find((x) => x.id === req.params.teamId);
+    if (!team) throw badRequest('Team not found.', 404);
+    if (T.TEAM_SIZE[t.format] !== 2 || team.player2_id) throw badRequest('This team has no empty place.', 409);
+    if (teams.some((x) => x.player1_id === req.body.player_id || x.player2_id === req.body.player_id)) throw badRequest('That player is already in a team.', 409);
+    const [mate, newcomer] = await Promise.all([clubMembers(t.club_id, [team.player1_id]), clubMembers(t.club_id, [req.body.player_id])]);
+    const p = newcomer[0];
+    if (!p) throw badRequest('That player is not in this club.', 404);
+    const players = [mate[0], p].filter(Boolean);
+    if (t.format === 'mixed' && players.map((x) => x.gender).sort().join() !== 'female,male') throw badRequest('Mixed pairs need one man and one woman.');
+    const want = { men: 'male', women: 'female' }[t.division];
+    if (want && t.format !== 'mixed' && p.gender !== want) throw badRequest(`${t.division === 'men' ? "Men's" : "Women's"} event: pick a ${want === 'male' ? 'man' : 'woman'}.`);
+    const { error: uErr } = await supabase
+      .from('tournament_teams')
+      .update({ player2_id: p.id, name: teamLabel(players.map((x) => x.full_name)), strength: T.strengthOf(players) })
+      .eq('id', team.id);
+    if (uErr) throw uErr;
     res.json(await loadFull(t));
   } catch (err) {
     fail(res, err);

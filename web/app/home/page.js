@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import PlayerShell from '@/components/PlayerShell';
 import ClubAvatar from '@/components/ClubAvatar';
-import Modal from '@/components/Modal';
+import { SocialManagerModal, UpgradeModal, atClubLimit } from '@/components/PlanModals';
 import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
@@ -50,11 +50,12 @@ const STATUS_TONE = {
 export default function HomeHub() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
-  const { staffInfo } = useWorkspace();
+  const { staffInfo, plan } = useWorkspace();
   const { manageClub, space, memberClub } = useEnter();
   const { data, loading } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
-  const [creating, setCreating] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [smOpen, setSmOpen] = useState(false);
 
   const days = useMemo(() => {
     const list = (data?.upcoming || []).filter((e) => filter === 'all' || (filter === 'xeve' ? !e.club_id : e.club_id === filter));
@@ -74,7 +75,7 @@ export default function HomeHub() {
   const managed = data.managed_clubs;
   const member = data.member_clubs;
   const isStaff = !!staffInfo?.is_staff;
-  const hasAnything = managed.length || member.length || data.xeve_events || isStaff;
+  const hasAnything = managed.length || member.length;
   const today = todayYmd();
   const clubFilters = [...new Map((data.upcoming || []).filter((e) => e.club_id).map((e) => [e.club_id, e.club_name])).entries()];
   const hasXeveUpcoming = (data.upcoming || []).some((e) => !e.club_id);
@@ -99,7 +100,7 @@ export default function HomeHub() {
 
       {(!data.profile || !data.profile.birth_date) && (
         <Link href="/p/profile" className="card block mb-4 border-lime-400/50 text-lime-300 text-sm">
-          {data.profile ? t('player.needBirthDate') : t('player.completeProfile')} →
+          {data.profile ? t('player.needBirthDate') : t('player.completeProfile')}
         </Link>
       )}
 
@@ -138,13 +139,43 @@ export default function HomeHub() {
               badgeTone={ROLE_TONE.member}
             />
           ))}
-          {data.xeve_events > 0 && (
-            <SpaceTile onClick={() => space('xeve')} avatar={<ClubAvatar icon="🎟" />} label={t('hub.xeve')} badge={t('hub.roleOrganizer')} badgeTone={ROLE_TONE.xeve} />
-          )}
-          {isStaff && <SpaceTile onClick={() => space('staff')} avatar={<ClubAvatar icon="🦺" />} label={t('hub.staff')} badge={t('hub.roleStaff')} badgeTone={ROLE_TONE.staff} />}
-          <SpaceTile onClick={() => setCreating(true)} avatar={<ClubAvatar icon="＋" />} label={t('hub.create')} />
+          <SpaceTile
+            onClick={() => (atClubLimit(plan) ? setUpgrading(true) : space('club', '/clubs'))}
+            avatar={<ClubAvatar icon="＋" />}
+            label={t('hub.createClub')}
+            badge={atClubLimit(plan) ? '💎 ' + t('hub.upgrade') : null}
+            badgeTone="bg-amber-300/20 text-amber-200"
+          />
         </div>
         {!hasAnything && <p className="card text-gray-300 text-sm mt-2">{t('hub.emptySpaces')}</p>}
+        {/* Hosts: Social Manager (xé vé) is a paid add-on — enter it, or see what it offers and sign up. */}
+        {managed.some((c) => c.role === 'owner') && (
+          <button
+            type="button"
+            onClick={() => (plan?.social_manager ? space('xeve') : setSmOpen(true))}
+            className="mt-3 w-full card !py-3 flex items-center gap-3 text-left text-sm hover:border-amber-300/60"
+          >
+            <span className="text-xl" aria-hidden="true">🎟</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-white font-semibold">{t('hub.socialManager')}</span>
+              <span className="block text-gray-400 text-xs">{plan?.social_manager ? t('hub.smEnter') : plan?.social_manager_requested_at ? t('plan.smRequested') : t('hub.smSignUpShort')}</span>
+            </span>
+            {plan?.social_manager ? (
+              <span className="text-lime-400">→</span>
+            ) : plan?.social_manager_requested_at ? (
+              <span className="text-amber-300 shrink-0" aria-hidden="true">⏳</span>
+            ) : (
+              <span className="rounded-full bg-amber-300 text-navy-950 text-[11px] font-bold px-2 py-0.5 uppercase shrink-0">{t('plan.smSignUp')}</span>
+            )}
+          </button>
+        )}
+        {isStaff && (
+          <button type="button" onClick={() => space('staff')} className="mt-3 w-full card !py-3 flex items-center gap-3 text-left text-sm hover:border-orange-400/60">
+            <span className="text-xl" aria-hidden="true">🦺</span>
+            <span className="flex-1 text-gray-200">{t('hub.staffCard')}</span>
+            <span className="text-lime-400">→</span>
+          </button>
+        )}
       </section>
 
       {/* Member clubs at a glance */}
@@ -184,7 +215,7 @@ export default function HomeHub() {
               items={['all', ...clubFilters.map(([id]) => id), ...(hasXeveUpcoming ? ['xeve'] : [])]}
               value={filter}
               onChange={setFilter}
-              label={(k) => (k === 'all' ? t('hub.all') : k === 'xeve' ? t('hub.xeve') : clubFilters.find(([id]) => id === k)?.[1])}
+              label={(k) => (k === 'all' ? t('hub.all') : k === 'xeve' ? t('hub.oneOff') : clubFilters.find(([id]) => id === k)?.[1])}
             />
           )}
         </div>
@@ -208,7 +239,7 @@ export default function HomeHub() {
                       <span className="w-14 shrink-0 text-gray-300 text-lg font-bold tabular-nums">{e.start_time ? hhmm(e.start_time) : '—'}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-white font-semibold leading-snug">{e.title}</span>
-                        <span className="block text-gray-400 text-xs truncate">{[e.club_name || t('hub.xeve'), e.location].filter(Boolean).join(' · ')}</span>
+                        <span className="block text-gray-400 text-xs truncate">{[e.club_name || t('hub.oneOff'), e.location].filter(Boolean).join(' · ')}</span>
                         <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] ${STATUS_TONE[e.status] || 'border-navy-600 text-gray-300'}`}>
                           {t(`player.status_${e.status}`)}
                           {e.ticket_code ? ` · 🎟 ${t('pp.ticket')}` : ''}
@@ -227,31 +258,8 @@ export default function HomeHub() {
         </div>
       </section>
 
-      <Modal open={creating} title={t('hub.create')} onClose={() => setCreating(false)}>
-        <div className="grid gap-3">
-          <button type="button" onClick={() => space('club', '/clubs')} className="card !p-4 hover:border-lime-400 transition flex gap-3 items-start text-left">
-            <span className="text-2xl" aria-hidden="true">🏠</span>
-            <span>
-              <span className="block text-white font-semibold">{t('hub.createClub')}</span>
-              <span className="block text-gray-400 text-sm">{t('hub.createClubHint')}</span>
-            </span>
-          </button>
-          <button type="button" onClick={() => space('xeve', '/events/create')} className="card !p-4 hover:border-lime-400 transition flex gap-3 items-start text-left">
-            <span className="text-2xl" aria-hidden="true">🎟</span>
-            <span>
-              <span className="block text-white font-semibold">{t('hub.createXeve')}</span>
-              <span className="block text-gray-400 text-sm">{t('hub.createXeveHint')}</span>
-            </span>
-          </button>
-          <div className="card !p-4 flex gap-3 items-start">
-            <span className="text-2xl" aria-hidden="true">🔗</span>
-            <span>
-              <span className="block text-white font-semibold">{t('hub.joinClub')}</span>
-              <span className="block text-gray-400 text-sm">{t('hub.joinClubHint')}</span>
-            </span>
-          </div>
-        </div>
-      </Modal>
+      <SocialManagerModal open={smOpen} onClose={() => setSmOpen(false)} />
+      <UpgradeModal open={upgrading} onClose={() => setUpgrading(false)} />
     </PlayerShell>
   );
 }

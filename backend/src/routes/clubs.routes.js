@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
+const { assertCanCreateClub } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
@@ -149,6 +150,11 @@ router.post('/', async (req, res) => {
   const sport = req.body.sport || 'pickleball';
   if (!SPORTS.includes(sport)) return res.status(400).json({ error: `sport must be one of ${SPORTS.join(', ')}.` });
   if (sport !== 'pickleball' && !(await sportReady())) return res.status(409).json({ error: 'Run migration 20261012090000_multi_sport_badminton.sql first.' });
+  try {
+    await assertCanCreateClub(req.hostId);
+  } catch (err) {
+    return res.status(err.status).json({ error: err.message, code: err.code, plan: err.plan });
+  }
   const { data, error } = await supabase
     .from('clubs')
     .insert({ host_id: req.hostId, name, description: description || null, ...(sport !== 'pickleball' ? { sport } : {}) })

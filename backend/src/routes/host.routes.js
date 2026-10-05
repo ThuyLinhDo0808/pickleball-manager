@@ -3,6 +3,7 @@ const { supabase } = require('../supabase');
 const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
 const { forgetHost } = require('../middleware/auth');
+const { getPlan, plansReady, TIERS: PLAN_TIERS } = require('../services/plan');
 
 const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText } = require('../services/notify');
@@ -39,6 +40,45 @@ router.patch('/subscription', async (req, res) => {
     .single();
   if (error) return dbError(res, error);
   res.json(data);
+});
+
+// The Host's plan: tier, club limit and usage, Social Manager add-on.
+router.get('/plan', async (req, res) => {
+  try {
+    res.json(await getPlan(req.hostId));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// Ask for the Social Manager add-on or a bigger plan. With self-serve on (trials) it is
+// applied straight away; otherwise the request is stored and sent to the team (same
+// channel as feedback) so they can arrange payment and switch it on.
+router.post('/plan/request', async (req, res) => {
+  const kind = req.body.kind;
+  if (!['social_manager', 'tier'].includes(kind)) return res.status(400).json({ error: 'kind must be social_manager or tier.' });
+  const tier = req.body.tier;
+  if (kind === 'tier' && !PLAN_TIERS.includes(tier)) return res.status(400).json({ error: `tier must be one of ${PLAN_TIERS.join(', ')}` });
+  try {
+    if (!(await plansReady())) return res.status(409).json({ error: 'Run migration 20261018090000_social_manager_plans.sql first.' });
+    const now = new Date().toISOString();
+    const patch = ALLOW_SELF_SERVE
+      ? kind === 'social_manager'
+        ? { social_manager: true }
+        : { tier }
+      : kind === 'social_manager'
+        ? { social_manager_requested_at: now }
+        : { upgrade_requested_at: now, upgrade_requested_tier: tier };
+    const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', req.hostId);
+    if (error) throw error;
+    if (!ALLOW_SELF_SERVE) {
+      const what = kind === 'social_manager' ? 'Đăng ký Social Manager (Xé Vé)' : `Nâng cấp gói lên ${tier}`;
+      await notifyFeedback({ message: `[Yêu cầu gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
+    }
+    res.json({ applied: ALLOW_SELF_SERVE, plan: await getPlan(req.hostId) });
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 router.post('/feedback', async (req, res) => {

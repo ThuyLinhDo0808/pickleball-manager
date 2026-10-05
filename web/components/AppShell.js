@@ -8,6 +8,7 @@ import { useClubs } from '@/context/ClubContext';
 import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 import ContextSwitcher from '@/components/ContextSwitcher';
+import { SocialManagerPanel } from '@/components/PlanModals';
 import FeedbackButton from '@/components/FeedbackButton';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
@@ -198,7 +199,7 @@ export default function AppShell({ children }) {
       if (y) sideRef.current.scrollTop = y;
     } catch {}
   });
-  const { workspace, ready: wsReady } = useWorkspace();
+  const { workspace, ready: wsReady, plan } = useWorkspace();
   const pathname = usePathname() || '';
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -400,7 +401,11 @@ export default function AppShell({ children }) {
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
         {workspace && workspace !== 'staff' && <SchemaBanner />}
-        {!wsReady || !workspace ? null : needsClub ? (
+        {!wsReady || !workspace ? null : workspace === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
+          <div className="max-w-lg mx-auto card mt-4">
+            <SocialManagerPanel />
+          </div>
+        ) : needsClub ? (
           <div className="max-w-md mx-auto card mt-4">
             <h1 className="text-white text-xl font-bold mb-1">{t('clubs.createFirst')}</h1>
             <p className="text-gray-400 text-sm mb-4">{t('clubs.createFirstHint')}</p>
