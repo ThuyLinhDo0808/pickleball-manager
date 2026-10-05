@@ -3,7 +3,7 @@ const { supabase } = require('../supabase');
 const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
 const { forgetHost } = require('../middleware/auth');
-const { getPlan, plansReady, TIERS: PLAN_TIERS } = require('../services/plan');
+const { getPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
 
 const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText } = require('../services/notify');
@@ -62,6 +62,26 @@ router.post('/plan/request', async (req, res) => {
   try {
     if (!(await plansReady())) return res.status(409).json({ error: 'Run migration 20261018090000_social_manager_plans.sql first.' });
     const now = new Date().toISOString();
+    // Going down a plan needs no payment: it applies at once, if what the Host runs
+    // still fits the smaller plan.
+    if (kind === 'tier') {
+      const current = await getPlan(req.hostId);
+      if (tier === current.tier) return res.status(400).json({ error: 'This is already your plan.', code: 'same_tier' });
+      if (PLAN_TIERS.indexOf(tier) < PLAN_TIERS.indexOf(current.tier)) {
+        const limit = CLUB_LIMIT[tier];
+        if (limit != null && current.clubs_owned > limit) {
+          return res.status(409).json({ error: `The ${tier} plan allows ${limit} club(s); you own ${current.clubs_owned}. Delete clubs first.`, code: 'too_many_clubs', limit, owned: current.clubs_owned });
+        }
+        const usage = await getUsage(req.hostId).catch(() => null);
+        if (usage && usage.used > CAPACITY[tier]) {
+          return res.status(409).json({ error: `The ${tier} plan allows ${CAPACITY[tier]} people; you manage ${usage.used}.`, code: 'over_capacity', limit: CAPACITY[tier], used: usage.used });
+        }
+        const { error } = await supabase.from('host_subscriptions').update({ tier, upgrade_requested_at: null, upgrade_requested_tier: null }).eq('host_id', req.hostId);
+        if (error) throw error;
+        await notifyFeedback({ message: `[Gói] Hạ gói ${current.tier} → ${tier}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
+        return res.json({ applied: true, downgraded: true, plan: await getPlan(req.hostId) });
+      }
+    }
     const patch = ALLOW_SELF_SERVE
       ? kind === 'social_manager'
         ? { social_manager: true }
@@ -76,6 +96,43 @@ router.post('/plan/request', async (req, res) => {
       await notifyFeedback({ message: `[Yêu cầu gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
     }
     res.json({ applied: ALLOW_SELF_SERVE, plan: await getPlan(req.hostId) });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// Stop the Social Manager add-on, or take back a request that is still waiting.
+// kind: social_manager | social_manager_request | upgrade_request
+router.post('/plan/cancel', async (req, res) => {
+  const kind = req.body.kind;
+  if (!['social_manager', 'social_manager_request', 'upgrade_request'].includes(kind)) {
+    return res.status(400).json({ error: 'kind must be social_manager, social_manager_request or upgrade_request.' });
+  }
+  try {
+    if (!(await plansReady())) return res.status(409).json({ error: 'Run migration 20261018090000_social_manager_plans.sql first.' });
+    if (kind === 'social_manager') {
+      // Players already signed up (and maybe paid) for coming Xé Vé games: finish or
+      // cancel those first.
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+      const { count } = await supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('host_id', req.hostId)
+        .is('club_id', null)
+        .gte('event_date', today)
+        .not('status', 'in', '(cancelled,completed)');
+      if (count) return res.status(409).json({ error: `You have ${count} upcoming Xé Vé game(s). Finish or cancel them first.`, code: 'upcoming_games', count });
+    }
+    const patch = {
+      social_manager: { social_manager: false, social_manager_requested_at: null },
+      social_manager_request: { social_manager_requested_at: null },
+      upgrade_request: { upgrade_requested_at: null, upgrade_requested_tier: null },
+    }[kind];
+    const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', req.hostId);
+    if (error) throw error;
+    const what = { social_manager: 'Huỷ Social Manager', social_manager_request: 'Huỷ yêu cầu Social Manager', upgrade_request: 'Huỷ yêu cầu nâng cấp' }[kind];
+    await notifyFeedback({ message: `[Gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
+    res.json({ plan: await getPlan(req.hostId) });
   } catch (err) {
     dbError(res, err);
   }
