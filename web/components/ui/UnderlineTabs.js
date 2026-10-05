@@ -1,7 +1,7 @@
 // In-page tabs drawn like the section tabs (underline), with an optional count badge.
 export default function UnderlineTabs({ tabs, value, onChange }) {
   return (
-    <div role="tablist" className="-mx-4 px-4 md:mx-0 md:px-0 mb-4 overflow-x-auto border-b border-navy-700">
+    <div role="tablist" className="-mx-4 px-4 md:mx-0 md:px-0 mb-4 overflow-x-auto overflow-y-hidden no-scrollbar border-b border-navy-700">
       <div className="flex gap-1 min-w-max">
         {tabs.map(({ key, label, count, alert, icon }) => {
           const active = value === key;

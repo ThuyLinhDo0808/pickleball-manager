@@ -56,20 +56,22 @@ function cleanLevel(value, sport) {
 }
 
 // Game formats a result can be checked against. Badminton: 21 (max 30), 15 (max 21) or
-// 11 (max 15) points; pickleball: 11, 15 or 21 with no maximum. Win by 2, or "first to the
+// 11 (max 15) points; pickleball: 11, 15 or 21 with no maximum; or a custom target
+// (3–99, no maximum). Win by 2, or "first to the
 // points" (win_by 1). best_of 1, 3 or 5 (unknown → 3 for up to 3 games, else 5).
 const FORMAT_POINTS = { badminton: [21, 15, 11], pickleball: [11, 15, 21] };
 const BADMINTON_CAP = { 21: 30, 15: 21, 11: 15 };
 
 function cleanFormat(sport, f = {}) {
   const list = FORMAT_POINTS[sport] || FORMAT_POINTS.pickleball;
+  // The usual targets, or any other the Host types in ("+" — e.g. 7, 9, 25).
   const points = Number(f?.points ?? list[0]);
-  if (!list.includes(points)) throw new Error(`Games go to ${list.join(', ')} points.`);
+  if (!Number.isInteger(points) || points < 3 || points > 99) throw new Error('Games go to 3–99 points.');
   const winBy = Number(f?.win_by ?? 2);
   if (![1, 2].includes(winBy)) throw new Error('win_by must be 1 or 2.');
   const bestOf = f?.best_of == null ? null : Number(f.best_of);
   if (bestOf != null && ![1, 3, 5].includes(bestOf)) throw new Error('Best of 1, 3 or 5 games.');
-  return { points, win_by: winBy, cap: sport === 'badminton' && winBy === 2 ? BADMINTON_CAP[points] : null, ...(bestOf ? { best_of: bestOf } : {}) };
+  return { points, win_by: winBy, cap: sport === 'badminton' && winBy === 2 ? BADMINTON_CAP[points] ?? null : null, ...(bestOf ? { best_of: bestOf } : {}) };
 }
 
 // Is a-b a finished game under this format?

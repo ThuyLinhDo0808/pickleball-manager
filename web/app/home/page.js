@@ -118,7 +118,7 @@ export default function HomeHub() {
           <h2 className="text-white font-semibold">{t('hub.spaces')}</h2>
           <span className="text-gray-500 text-xs hidden sm:block">{t('hub.spacesHint')}</span>
         </div>
-        <div className="-mx-4 px-2 sm:mx-0 sm:px-0 flex gap-1 overflow-x-auto snap-x pb-1">
+        <div className="-mx-4 px-2 sm:mx-0 sm:px-0 flex gap-1 overflow-x-auto overflow-y-hidden no-scrollbar snap-x pb-1">
           {managed.map((c) => (
             <SpaceTile
               key={`m${c.club_id}`}

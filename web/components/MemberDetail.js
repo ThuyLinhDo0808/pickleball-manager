@@ -118,7 +118,6 @@ const fromMember = (m) => ({
   is_active: m.is_active !== false,
   district: m.district || '',
   play_duration: m.play_duration || '',
-  real_rank: m.real_rank || '',
 });
 
 function MemberEdit({ member, busy, onSave, autoEdit = false }) {
@@ -160,7 +159,6 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       is_active: f.is_active,
       district: f.district,
       play_duration: f.play_duration,
-      real_rank: f.real_rank,
     });
     if (ok !== false) setOpen(false);
   }

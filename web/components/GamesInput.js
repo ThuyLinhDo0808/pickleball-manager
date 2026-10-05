@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
 
@@ -28,7 +29,7 @@ export function inferFormat(games, sport, stored) {
 
 export function capOf(format, sport) {
   if (format.win_by === 1) return format.points;
-  return sport === 'badminton' ? BADMINTON_CAP[format.points] : 99;
+  return sport === 'badminton' ? BADMINTON_CAP[format.points] ?? 99 : 99;
 }
 
 // Filled games as numbers, e.g. [[21, 18], [19, 21], [21, 15]].
@@ -42,14 +43,55 @@ export function gamesText(games) {
 }
 
 // The format picker on its own (points + how a game is won).
+// "+" lets the Host type another target when the game isn't to 11 / 15 / 21.
 export function FormatPicker({ sport, value, onChange }) {
   const { t } = useI18n();
   const list = FORMAT_POINTS[sport === 'badminton' ? 'badminton' : 'pickleball'];
+  const isCustom = !list.includes(value.points);
+  const [typing, setTyping] = useState(isCustom ? String(value.points) : '');
+  const [open, setOpen] = useState(isCustom);
+  function pick(k) {
+    if (k === 'custom') {
+      setOpen(true);
+      if (Number(typing) >= 3) onChange({ ...value, points: Number(typing) });
+      return;
+    }
+    setOpen(false);
+    onChange({ ...value, points: k });
+  }
+  function type(v) {
+    setTyping(v);
+    const n = Number(v);
+    if (Number.isInteger(n) && n >= 3 && n <= 99) onChange({ ...value, points: n });
+  }
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div>
-        <span className="text-xs text-gray-400">{t('live.points')}</span>
-        <Segmented full items={list} value={value.points} onChange={(points) => onChange({ ...value, points })} label={(n) => t('live.pointsN', { n })} />
+        <span className="text-xs text-gray-400">{t('live.points')} ({t('games.pointsUnit')})</span>
+        <Segmented
+          full
+          items={[...list, 'custom']}
+          value={open || isCustom ? 'custom' : value.points}
+          onChange={pick}
+          label={(n) => (n === 'custom' ? (isCustom ? `${value.points} ✎` : '＋') : String(n))}
+        />
+        {open && (
+          <label className="mt-2 flex items-center gap-2 text-sm text-gray-300">
+            {t('games.customPoints')}
+            <input
+              className="input !w-20 text-center"
+              type="number"
+              inputMode="numeric"
+              min="3"
+              max="99"
+              autoFocus
+              placeholder="25"
+              value={typing}
+              onChange={(e) => type(e.target.value)}
+            />
+            {t('games.pointsUnit')}
+          </label>
+        )}
       </div>
       <div>
         <span className="text-xs text-gray-400">{t('live.winBy')}</span>

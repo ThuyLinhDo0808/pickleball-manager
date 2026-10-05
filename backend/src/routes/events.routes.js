@@ -452,7 +452,6 @@ async function playerCards(event, rows) {
       avatar: prof?.avatar || null,
       level: m?.dupr_level ?? p.dupr_level ?? null,
       dupr: prof?.dupr_level ?? null,
-      real_rank: m?.real_rank || null,
       district: m?.district || null,
       play_duration: m?.play_duration || null,
       gender: m?.gender || prof?.gender || null,

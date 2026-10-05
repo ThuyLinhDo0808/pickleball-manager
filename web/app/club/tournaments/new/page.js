@@ -50,6 +50,7 @@ export default function NewTournamentPage() {
             : {
                 teams: tr.teams.map((tm) => (tr.format === 'singles' ? [tm.player1_id] : [tm.player1_id, tm.player2_id || BLANK])),
                 category: categoryOf(tr.format, tr.division),
+                ranks: tr.player_ranks || {},
                 mode: tr.group_count > 0 ? 'groups' : 'ko',
                 groupCount: tr.group_count || 2,
                 advance: tr.advance_per_group || 2,
@@ -180,6 +181,7 @@ function categoryOf(format, division) {
   return Object.keys(CATEGORIES).find((k) => CATEGORIES[k].format === format && CATEGORIES[k].division === division) || null;
 }
 const GENDER_OF = { men: 'male', women: 'female' };
+const RANKS = ['A', 'B', 'C', 'D'];
 
 function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, roundRobin = false }) {
   const { t, sport } = useI18n();
@@ -198,6 +200,8 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
   const [picked, setPicked] = useState(() => (initial ? initial.teams.flat().filter((x) => x && x !== BLANK) : []));
   const [teams, setTeams] = useState(() => (initial ? initial.teams.map((tm) => [...tm]) : []));
   const [custom, setCustom] = useState(!!initial);
+  // Rank A–D for this tournament only (pairing / seeding); never stored on the member.
+  const [ranks, setRanks] = useState(() => initial?.ranks || {});
   const [mode, setMode] = useState(initial?.mode || 'groups');
   const [groupCount, setGroupCount] = useState(initial?.groupCount || 2);
   const [advance, setAdvance] = useState(initial?.advance || 2);
@@ -215,7 +219,24 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
   const pickedPlayers = picked.map((id) => byId.get(id)).filter(Boolean);
   const inTeams = new Set(teams.flat().filter((x) => x && x !== BLANK));
   const unpaired = pickedPlayers.filter((m) => !inTeams.has(m.id));
-  const unrated = pickedPlayers.filter((m) => m.dupr_level == null || m.dupr_level === '');
+  const hasLevel = (m) => m.dupr_level != null && m.dupr_level !== '';
+  const unrated = pickedPlayers.filter((m) => !hasLevel(m) && !ranks[m.id]);
+  const pickedRanks = Object.fromEntries(Object.entries(ranks).filter(([id]) => picked.includes(id)));
+  // Suggest ranks from levels: the strongest quarter A, next B, C, D.
+  function suggestRanks() {
+    const rated = pickedPlayers.filter(hasLevel).sort((a, b) => Number(b.dupr_level) - Number(a.dupr_level));
+    const next = { ...ranks };
+    rated.forEach((m, i) => {
+      next[m.id] = RANKS[Math.min(3, Math.floor((4 * i) / rated.length))];
+    });
+    setRanks(next);
+  }
+  const setRank = (id, r) => setRanks((x) => {
+    const copy = { ...x };
+    if (copy[id] === r) delete copy[id];
+    else copy[id] = r;
+    return copy;
+  });
   const men = pickedPlayers.filter((m) => m.gender === 'male').length;
   const women = pickedPlayers.filter((m) => m.gender === 'female').length;
   // What the chosen event is short of, so every pair is complete.
@@ -248,7 +269,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
   async function balanced() {
     setError('');
     try {
-      const res = await api.post('/api/tournaments/pairing', { club_id: club.id, format, mode: 'balanced', player_ids: picked });
+      const res = await api.post('/api/tournaments/pairing', { club_id: club.id, format, mode: 'balanced', player_ids: picked, ranks: pickedRanks });
       const made = res.teams.map((tm) => tm.players.map((p) => p.id));
       const rest = res.leftover.map((p) => p.id).filter((id) => byId.get(id) && (format !== 'mixed' || ['male', 'female'].includes(byId.get(id).gender)));
       if (size === 1) setTeams([...made, ...rest.map((id) => [id])]);
@@ -301,6 +322,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
         group_count: groups,
         advance_per_group: Math.min(advance, perGroup || advance),
         teams: complete.map((tm) => ({ player_ids: tm.map((v) => (v === BLANK ? null : v)) })),
+        player_ranks: pickedRanks,
       });
       onCreated(created);
     } catch (err) {
@@ -310,7 +332,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
   }
 
   const levelOf = (m) => (m.dupr_level != null && m.dupr_level !== '' ? levelText(m.dupr_level, sport, t) : null);
-  const label = (m) => `${m.full_name}${m.gender ? ` (${t(`members.${m.gender}`)})` : ''}${levelOf(m) ? ` · ${levelOf(m)}` : ''}`;
+  const label = (m) => `${ranks[m.id] ? `[${ranks[m.id]}] ` : ''}${m.full_name}${m.gender ? ` (${t(`members.${m.gender}`)})` : ''}${levelOf(m) ? ` · ${levelOf(m)}` : ''}`;
   const genderWord = (g) => (g === 'male' ? t('pairing.man') : g === 'female' ? t('pairing.woman') : t('pairing.player'));
 
   // One place of a pair: a name chip (× in custom mode), a dashed "empty — invite later"
@@ -386,7 +408,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
               <label key={m.id} className={`flex items-center gap-2 text-sm rounded-lg border px-2.5 py-1.5 cursor-pointer transition ${on ? 'border-lime-400/70 bg-lime-400/10 text-white' : 'border-navy-700 text-gray-300 hover:border-navy-500'}`}>
                 <input type="checkbox" checked={on} onChange={() => togglePlayer(m.id)} />
                 <span className="truncate flex-1">{label(m)}</span>
-                {levelOf(m) == null && <span className="text-[10px] rounded border border-amber-300/60 text-amber-200 px-1 shrink-0">{t('pairing.noLevel')}</span>}
+                {levelOf(m) == null && !ranks[m.id] && <span className="text-[10px] rounded border border-amber-300/60 text-amber-200 px-1 shrink-0">{t('pairing.noLevel')}</span>}
               </label>
             );
           })}
@@ -401,6 +423,42 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
           </div>
         )}
       </Section>
+
+      {pickedPlayers.length > 0 && (
+        <Section n={n++} title={t('tourRank.title')}>
+          <p className="text-gray-400 text-xs mb-2">{t('tourRank.hint')}</p>
+          <div className="flex flex-wrap items-center gap-3 mb-3 text-sm">
+            <button type="button" className="btn-secondary !py-1 text-sm" onClick={suggestRanks}>✨ {t('tourRank.suggest')}</button>
+            {Object.keys(pickedRanks).length > 0 && (
+              <button type="button" className="text-gray-400 hover:text-white" onClick={() => setRanks({})}>{t('tourRank.clear')}</button>
+            )}
+            <span className="ml-auto text-gray-400 text-xs">
+              {RANKS.map((r) => `${r}: ${Object.values(pickedRanks).filter((x) => x === r).length}`).join(' · ')}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-80 overflow-y-auto pr-1">
+            {pickedPlayers.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 rounded-lg border border-navy-700 px-2.5 py-1.5 text-sm">
+                <span className="truncate flex-1 text-gray-200">
+                  {m.full_name}
+                  {levelOf(m) && <span className="text-gray-500 text-xs"> · {levelOf(m)}</span>}
+                </span>
+                {RANKS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    aria-pressed={ranks[m.id] === r}
+                    onClick={() => setRank(m.id, r)}
+                    className={`h-7 w-7 rounded-md text-xs font-bold border ${ranks[m.id] === r ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-600 text-gray-400 hover:text-white'}`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Section n={n++} title={t('tournaments.teams', { n: complete.length })}>
         <div className="flex flex-wrap gap-2 mb-2">
