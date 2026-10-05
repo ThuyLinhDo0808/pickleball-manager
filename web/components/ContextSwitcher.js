@@ -20,7 +20,32 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   const [upOpen, setUpOpen] = useState(false);
   const { manageClub, space } = useEnter();
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
   const ref = useRef(null);
+  const btnRef = useRef(null);
+
+  // The menu floats above the page (fixed, under the button) so the narrow sidebar
+  // neither clips it nor scrolls sideways.
+  function place() {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const width = Math.min(Math.max(r.width, 256), window.innerWidth - 16);
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+    const top = r.bottom + 8;
+    setPos({ top, left, width, maxHeight: Math.max(200, window.innerHeight - top - 16) });
+  }
+  useEffect(() => {
+    if (!open) return undefined;
+    place();
+    // Scrolling the page or sidebar would leave the menu behind: close it instead.
+    const onScroll = (e) => !ref.current?.contains(e.target) && setOpen(false);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -67,6 +92,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   return (
     <div ref={ref} className={`relative ${className}`}>
       <button
+        ref={btnRef}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -88,8 +114,12 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
         )}
       </button>
 
-      {open && (
-        <div role="menu" className={`absolute z-50 mt-2 min-w-[16rem] ${iconOnly ? 'left-0 w-64' : 'left-0 right-0'} rounded-xl border border-navy-600 bg-navy-900 shadow-2xl p-2 max-h-[70vh] overflow-y-auto`}>
+      {open && pos && (
+        <div
+          role="menu"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
+          className="z-50 rounded-xl border border-navy-600 bg-navy-900 shadow-2xl p-2 overflow-y-auto overflow-x-hidden"
+        >
           {clubs.length > 0 && (
             <>
               <p className="px-2 pt-1 pb-1 text-gray-500 text-[11px] font-semibold uppercase tracking-wide">{t('hub.managing')}</p>

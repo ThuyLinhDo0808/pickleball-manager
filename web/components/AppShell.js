@@ -289,7 +289,7 @@ export default function AppShell({ children }) {
             sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(e.currentTarget.scrollTop));
           } catch {}
         }}
-        className={`hidden md:flex shrink-0 bg-navy-900 border-r border-navy-700 flex-col gap-1 sticky top-0 h-screen overflow-y-auto transition-[width] duration-200 ${
+        className={`hidden md:flex shrink-0 bg-navy-900 border-r border-navy-700 flex-col gap-1 sticky top-0 h-screen overflow-y-auto overflow-x-hidden transition-[width] duration-200 ${
           collapsed ? 'w-16 p-2' : 'w-64 p-4'
         }`}
       >
