@@ -102,6 +102,9 @@ export const en = {
     where: 'Played at',
   },
   home: {
+    kpiLevels: "Levels",
+    ratedN: "{n} rated",
+    unratedN: "No level yet",
     details: "Details",
     todoFull: 'Next session · {title}: {n}/{slots} — full',
     avgOf: '{v} ({n} players)',
@@ -660,8 +663,8 @@ export const en = {
     noLevel: "no level",
     short: "{cat} is short of {n} {g}.",
     shortHint: "You can leave a place empty (⬚), invite a guest later and fill it on the tournament page.",
-    unrated: "{n} player(s) have no level — balanced pairing is not possible.",
-    unratedHint: "Enter their level under Members, or use Custom to pair them yourself.",
+    unrated: "{n} player(s) have no level or rank — balanced pairing is not possible yet.",
+    unratedHint: "Enter their level under Members, give them a rank A–D above, or use Custom to pair them yourself.",
     custom: "Custom",
     customDone: "Done editing",
     balancedHint: "Balanced: the app pairs stronger with weaker players so teams are even. Anyone left over gets an empty place.",
@@ -698,6 +701,12 @@ export const en = {
     feeTotal: "{n} coming · expected {v}đ",
     question: "Coming?",
     counts: "{yes} coming · {no} not",
+  },
+  tourRank: {
+    title: "Rank A–D for this tournament",
+    hint: "Ranks are only for this tournament, to pair players evenly (A strongest). They are not saved on the member and do not affect the rankings. Players with no level can be paired once they have a rank here.",
+    suggest: "Suggest from levels",
+    clear: "Clear ranks",
   },
   mode: {
     label: 'Mode',

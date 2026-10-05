@@ -3,6 +3,7 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { actingHost } = require('../services/clubAccess');
 const T = require('../services/tournament');
+const { schemaStatus } = require('../services/schemaCheck');
 const { clubSport, sportReady, timingReady, gamesResult, cleanFormat } = require('../services/sport');
 
 // Scores for a tournament match / sub-match, checked against the game format chosen
@@ -97,6 +98,23 @@ async function ownedClub(req, clubId) {
 // "An & Bình"; a place left empty shows as "?" until the Host fills it.
 function teamLabel(names, open = 0) {
   return [...names, ...Array(open).fill('?')].join(' & ');
+}
+
+// Rank A–D set for one tournament (to pair players evenly). It stands in for the level
+// when pairing and seeding; players without a rank keep their level.
+const RANKS = ['A', 'B', 'C', 'D'];
+const RANK_LEVEL = { A: 4.5, B: 4.0, C: 3.5, D: 3.0 };
+function cleanRanks(raw) {
+  const out = {};
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [id, r] of Object.entries(raw)) if (isUuid(id) && RANKS.includes(String(r).toUpperCase())) out[id] = String(r).toUpperCase();
+  }
+  return out;
+}
+const withRanks = (players, ranks) => players.map((p) => (p && ranks?.[p.id] ? { ...p, dupr_level: RANK_LEVEL[ranks[p.id]] } : p));
+async function ranksReady() {
+  const st = await schemaStatus();
+  return !st.missing_migrations.includes('20261020090000_tournament_player_ranks.sql');
 }
 
 async function clubMembers(clubId, ids) {
@@ -247,7 +265,7 @@ router.post('/pairing', async (req, res) => {
   if (!FORMATS.includes(format)) return res.status(400).json({ error: 'format must be singles, doubles or mixed.' });
   if (!ids.every(isUuid)) return res.status(400).json({ error: 'invalid player id.' });
   try {
-    const players = await clubMembers(club_id, ids);
+    const players = withRanks(await clubMembers(club_id, ids), cleanRanks(req.body.ranks));
     res.json(T.pairTeams(players, format, mode === 'random' ? 'random' : 'balanced'));
   } catch (err) {
     fail(res, err);
@@ -264,7 +282,7 @@ router.post('/team-builder', async (req, res) => {
   if (!(count >= 2 && count <= 16)) return res.status(400).json({ error: 'team_count must be 2-16.' });
   if (ids.length < count * 2) return res.status(400).json({ error: 'Each team needs at least 2 players.' });
   try {
-    const players = await clubMembers(club_id, ids);
+    const players = withRanks(await clubMembers(club_id, ids), cleanRanks(req.body.ranks));
     res.json({ teams: T.buildTeams(players, count, req.body.mode === 'random' ? 'random' : 'balanced') });
   } catch (err) {
     fail(res, err);
@@ -292,8 +310,10 @@ router.post('/', async (req, res) => {
     const allIds = teamsIn.flatMap((t) => (t.player_ids || []).filter(Boolean));
     if (!allIds.every(isUuid)) throw badRequest('invalid player id.');
     if (new Set(allIds).size !== allIds.length) throw badRequest('A player can only be in one team.');
+    const ranks = Object.fromEntries(Object.entries(cleanRanks(req.body.player_ranks)).filter(([id]) => allIds.includes(id)));
     const members = await clubMembers(club_id, allIds);
     const byId = new Map(members.map((m) => [m.id, m]));
+    const ranked = (ps) => withRanks(ps, ranks);
 
     const teams = teamsIn.map((t) => {
       const raw = t.player_ids || [];
@@ -313,7 +333,7 @@ router.post('/', async (req, res) => {
       if (want && format !== 'mixed' && players.some((p) => p.gender !== want)) {
         throw badRequest(`${division === 'men' ? "Men's" : "Women's"} event: "${label}" doesn't fit (set gender on the member).`);
       }
-      return { players, open: size - players.length, strength: T.strengthOf(players) };
+      return { players, open: size - players.length, strength: T.strengthOf(ranked(players)) };
     });
 
     if (groupCount > 0 && !roundRobin) {
@@ -339,6 +359,7 @@ router.post('/', async (req, res) => {
         group_count: groupCount,
         advance_per_group: advance,
         status: groupCount > 0 ? 'groups' : 'knockout',
+        ...((await ranksReady()) ? { player_ranks: ranks } : {}),
         ...scheduleFields(req.body),
       })
       .select()
@@ -791,7 +812,7 @@ router.patch('/:tournamentId/teams/:teamId', async (req, res) => {
     if (want && t.format !== 'mixed' && p.gender !== want) throw badRequest(`${t.division === 'men' ? "Men's" : "Women's"} event: pick a ${want === 'male' ? 'man' : 'woman'}.`);
     const { error: uErr } = await supabase
       .from('tournament_teams')
-      .update({ player2_id: p.id, name: teamLabel(players.map((x) => x.full_name)), strength: T.strengthOf(players) })
+      .update({ player2_id: p.id, name: teamLabel(players.map((x) => x.full_name)), strength: T.strengthOf(withRanks(players, t.player_ranks)) })
       .eq('id', team.id);
     if (uErr) throw uErr;
     res.json(await loadFull(t));

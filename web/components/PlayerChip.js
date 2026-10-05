@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useI18n } from '@/context/I18nContext';
 import { levelTag } from '@/lib/levels';
 import { dmy, my } from '@/lib/memberDates';
-import { RankBadge, playDurationText } from '@/components/MemberExtras';
+import { playDurationText } from '@/components/MemberExtras';
 
 function initials(name) {
   const parts = String(name || '?').trim().split(/\s+/);
@@ -43,7 +43,6 @@ function ProfileCard({ name, card, sport, t }) {
           <div className="text-white font-semibold truncate">{name}</div>
           <div className="text-gray-400 text-xs flex items-center gap-1.5 mt-0.5">
             <span>{kind}</span>
-            {c.real_rank && <RankBadge rank={c.real_rank} />}
           </div>
         </div>
       </div>
@@ -120,11 +119,9 @@ export default function PlayerChip({ name, card, badges = null }) {
             <span className="text-white group-hover:text-lime-300 underline decoration-navy-600 underline-offset-4">{name}</span>
             {badges}
           </span>
-          {(level || card?.real_rank) && (
+          {level && (
             <span className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
-              {level && <span>{level}</span>}
-              {level && card?.real_rank && <span aria-hidden="true">·</span>}
-              {card?.real_rank && <span>{t('memberX.realRank')} {card.real_rank}</span>}
+              <span>{level}</span>
             </span>
           )}
         </span>

@@ -102,8 +102,9 @@ export default function DashboardPage() {
   const weeklyDone = weeklyYear.filter((e) => e.event_date < today || e.status === 'completed').length;
   const toursYear = (tours || []).filter((x) => String(x.event_date || x.created_at || '').startsWith(year)).length;
   const gamesYear = yearEv.filter((e) => e.kind && e.kind !== 'weekly').length;
-  // Ranks and average level by gender.
-  const ranks = ['A', 'B', 'C', 'D'].map((r) => [r, all.filter((m) => m.real_rank === r).length]);
+  // Levels: how many have one, and the average by gender. (Rank A–D lives in each
+  // tournament, not on the member.)
+  const rated = all.filter((m) => m.dupr_level != null && m.dupr_level !== '').length;
   const avg = (g) => {
     const xs = all.filter((m) => m.gender === g && m.dupr_level != null && m.dupr_level !== '').map((m) => Number(m.dupr_level));
     return xs.length ? { v: Math.round((100 * xs.reduce((s, x) => s + x, 0)) / xs.length) / 100, n: xs.length } : null;
@@ -187,14 +188,14 @@ export default function DashboardPage() {
         />
         <Kpi
           icon="🎚️"
-          label={t('home.kpiRanks')}
-          value={t('home.rankedN', { n: ranks.reduce((s, [, n]) => s + n, 0) })}
+          label={t('home.kpiLevels')}
+          value={t('home.ratedN', { n: rated })}
           sub={t('home.rankedSub', { n: all.length })}
           href="/club/members"
           lines={[
-            ...ranks.filter(([r, n]) => r !== 'D' || n > 0).map(([r, n]) => [t('home.rankN', { r }), n]),
             [t(sport === 'badminton' ? 'home.avgMaleB' : 'home.avgMale'), avgM ? t('home.avgOf', { v: levelText(avgM.v, sport, t) ?? avgM.v, n: avgM.n }) : '—'],
             [t(sport === 'badminton' ? 'home.avgFemaleB' : 'home.avgFemale'), avgF ? t('home.avgOf', { v: levelText(avgF.v, sport, t) ?? avgF.v, n: avgF.n }) : '—'],
+            [t('home.unratedN'), all.length - rated, all.length - rated ? 'text-amber-300' : 'text-gray-100'],
           ]}
         />
       </div>

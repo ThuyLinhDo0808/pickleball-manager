@@ -8,7 +8,7 @@ import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
 import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
 import VipBadge from '@/components/VipBadge';
-import { MemberExtraFields, RANKS, RankBadge, playDurationText } from '@/components/MemberExtras';
+import { MemberExtraFields, playDurationText } from '@/components/MemberExtras';
 import { Avatar } from '@/components/PlayerChip';
 import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
@@ -22,7 +22,7 @@ import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
 import { dmy, isBirthdayMonth, my, tenureLabel } from '@/lib/memberDates';
 
-const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '', real_rank: '' });
+const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '' });
 
 export default function MembersPage() {
   const { t, sport } = useI18n();
@@ -41,7 +41,6 @@ export default function MembersPage() {
   const [tab, setTab] = useState('fixed');
   const [query, setQuery] = useState('');
   const [gender, setGender] = useState('all');
-  const [rank, setRank] = useState('all');
   const [sortBy, setSortBy] = useState('default');
   const [showInactive, setShowInactive] = useState(true);
   const { data: requests, reload: reloadRequests } = useLoad(
@@ -113,7 +112,6 @@ export default function MembersPage() {
   const q = query.trim().toLowerCase();
   const shownRows = rows
     .filter((m) => (gender === 'all' ? true : m.gender === gender))
-    .filter((m) => (rank === 'all' ? true : m.real_rank === rank))
     .filter((m) => showInactive || m.is_active)
     .filter((m) => !q || [m.full_name, m.phone, m.district].some((v) => String(v || '').toLowerCase().includes(q)));
   if (sortBy === 'name') shownRows.sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
@@ -184,10 +182,6 @@ export default function MembersPage() {
               <input className="input !pl-9" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
             </div>
             <Segmented items={['all', 'male', 'female']} value={gender} onChange={setGender} label={(k) => (k === 'all' ? t('memx.allGenders') : t(`members.${k}`))} />
-            <select className="input !w-auto text-sm" value={rank} onChange={(e) => setRank(e.target.value)} aria-label={t('memberX.realRank')}>
-              <option value="all">{t('memberX.realRank')}: {t('memx.any')}</option>
-              {RANKS.map((r) => <option key={r} value={r}>{t('memberX.realRank')}: {r}</option>)}
-            </select>
             <select className="input !w-auto text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t('memx.sort')}>
               {['default', 'name', 'level', 'joined'].map((k) => <option key={k} value={k}>{t(`memx.sort_${k}`)}</option>)}
             </select>
@@ -232,11 +226,10 @@ export default function MembersPage() {
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-white font-semibold truncate">{m.full_name}</span>
                           {m.member_type === 'fixed' && <VipBadge stars={m.vip_stars} />}
-                          {m.real_rank && <RankBadge rank={m.real_rank} />}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
-                          {[m.gender ? t(`members.${m.gender}`) : null, levelText(m.dupr_level, sport, t), m.district, playDurationText(m.play_duration, t)].filter(Boolean).join(' · ') || '—'}
+                          {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), levelText(m.dupr_level, sport, t)].filter(Boolean).join(' · ') || '—'}
                         </span>
                         <span className="block text-gray-500 text-xs mt-0.5">
                           {isGuestTab
@@ -269,10 +262,9 @@ export default function MembersPage() {
                       <th>{t('members.gender')}</th>
                       <th>{t('members.birthDate')}</th>
                       <th>{t('members.joined')}</th>
-                      <th>{t('common.level')}</th>
                       <th>{t('memberX.district')}</th>
                       <th>{t('memberX.playDuration')}</th>
-                      <th>{t('memberX.realRank')}</th>
+                      <th>{t('common.level')}</th>
                       {isGuestTab ? (
                         <>
                           <th>{t('guests.played')}</th>
@@ -339,10 +331,9 @@ export default function MembersPage() {
                             </>
                           ) : '—'}
                         </td>
-                        <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
                         <td className="text-gray-300 whitespace-nowrap">{m.district || '—'}</td>
                         <td className="text-gray-300 whitespace-nowrap">{playDurationText(m.play_duration, t) || '—'}</td>
-                        <td className="text-center"><RankBadge rank={m.real_rank} /></td>
+                        <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
                         {isGuestTab ? (
                           <>
                             <td className="text-gray-300 whitespace-nowrap">

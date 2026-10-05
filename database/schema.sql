@@ -1329,5 +1329,13 @@ drop policy if exists p_event_votes_owner on public.event_votes;
 create policy p_event_votes_owner on public.event_votes for select
   using (exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()));
 
+-- ----------------------------------------------------------------------------
+-- RANKS PER TOURNAMENT  (migration 20261020090000)
+-- ----------------------------------------------------------------------------
+-- Rank A–D is set for each tournament (only to pair players evenly), not kept on the
+-- member: who is "A" changes as the club grows. { "<club_member_id>": "A" | "B" | "C" | "D" }
+alter table public.tournaments add column if not exists player_ranks jsonb not null default '{}'::jsonb;
+-- club_members.real_rank is no longer shown or edited (kept so nothing is lost).
+
 select 1; -- done
 notify pgrst, 'reload schema';

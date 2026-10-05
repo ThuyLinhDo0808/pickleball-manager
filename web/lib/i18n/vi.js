@@ -102,6 +102,9 @@ export const vi = {
     where: 'Chơi tại',
   },
   home: {
+    kpiLevels: "Trình độ",
+    ratedN: "{n} có trình",
+    unratedN: "Chưa có trình",
     details: "Chi tiết",
     todoFull: 'Lịch gần nhất · {title}: {n}/{slots} — đã đủ người',
     avgOf: '{v} ({n} người)',
@@ -660,8 +663,8 @@ export const vi = {
     noLevel: "chưa có trình",
     short: "Nội dung {cat} đang thiếu {n} {g}.",
     shortHint: "Có thể để trống 1 vị trí (⬚) và mời thành viên giao lưu vào chơi sau, rồi thay vào chỗ trống trên trang giải.",
-    unrated: "{n} người chưa có trình độ — không ghép cặp cân bằng được.",
-    unratedHint: "Nhập điểm trình cho họ trong Thành viên, hoặc dùng Tùy chỉnh để tự ghép cặp.",
+    unrated: "{n} người chưa có trình độ hoặc hạng — chưa ghép cặp cân bằng được.",
+    unratedHint: "Nhập trình độ ở Thành viên, xếp hạng A–D cho họ ở mục trên, hoặc dùng Tùy chỉnh để tự ghép cặp.",
     custom: "Tùy chỉnh",
     customDone: "Xong tùy chỉnh",
     balancedHint: "Ghép cặp cân bằng: hệ thống tự ghép người mạnh với người yếu hơn để các đội đều sức. Người dư được xếp cùng một chỗ trống.",
@@ -698,6 +701,12 @@ export const vi = {
     feeTotal: "{n} người tham gia · dự kiến thu {v}đ",
     question: "Bạn tham gia?",
     counts: "{yes} tham gia · {no} không",
+  },
+  tourRank: {
+    title: "Xếp hạng A–D cho giải",
+    hint: "Hạng chỉ dùng cho giải này để ghép cặp cân bằng (A mạnh nhất). Không lưu vào hồ sơ thành viên, không ảnh hưởng bảng xếp hạng. Người chưa có trình độ thì xếp hạng ở đây là ghép được.",
+    suggest: "Gợi ý theo trình độ",
+    clear: "Xoá hạng",
   },
   mode: {
     label: 'Chế độ',

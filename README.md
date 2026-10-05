@@ -127,7 +127,7 @@ Club và Xé Vé tách dữ liệu rõ ràng:
 - **Chỉ số chính**: thành viên đang hoạt động, số **VIP** (⭐) và **khách ưu tiên**, yêu cầu vào CLB đang chờ.
 - **Hàng tiền**: thu · chi · số dư quỹ · **còn phải thu** (gói chưa đóng, phí kèo chưa thu).
 - **Lịch năm nay**: số buổi chơi hàng tuần đã chơi / dự kiến, số giải đấu, số kèo.
-- **Tổng quan trình độ**: số người hạng A/B/C và DUPR (hoặc cấp) trung bình của nam, nữ.
+- **Trình độ**: số người đã có trình độ, DUPR (hoặc cấp) trung bình của nam, nữ và số người **chưa có trình**.
 - **Sự kiện sắp tới**: mỗi buổi có chip trạng thái và **số chỗ còn trống**.
 - **Cần xử lý**: danh sách việc cần làm (buổi tới còn trống chỗ / đã kín, người xin vào CLB, thành viên chưa đóng tiền, chuyển khoản chờ xác nhận…), bấm là tới đúng trang.
 
@@ -135,11 +135,11 @@ Club và Xé Vé tách dữ liệu rõ ràng:
 
 **Đầu trang** có 5 ô số liệu (trên điện thoại vuốt ngang): *Thành viên cố định* (số đang hoạt động), *VIP*, *Thành viên giao lưu* (số khách ưu tiên), *Chờ duyệt* và *Sinh nhật tháng này*. Bấm ô Cố định / Giao lưu / Chờ duyệt để mở đúng tab. Ba tab nằm ngay dưới, có số đếm từng tab.
 
-**Thanh công cụ** của danh sách: ô **tìm kiếm** (tên, SĐT, khu vực), lọc **giới tính**, lọc **hạng thực tế A–D**, **sắp xếp** (mặc định / tên A→Z / trình độ cao→thấp / vào CLB lâu nhất) và nút hiện/ẩn người ngừng hoạt động. Khi tick chọn người, một **thanh xoá** màu đỏ hiện lên (đếm số người đã chọn, nút *Bỏ chọn*, nút *Xoá*). Trên **điện thoại** danh sách hiện dạng thẻ (ảnh/chữ cái đầu, trình độ, khu vực, thâm niên, cờ nội bộ); trên máy tính là bảng đầy đủ.
+**Thanh công cụ** của danh sách: ô **tìm kiếm** (tên, SĐT, khu vực), lọc **giới tính**, **sắp xếp** (mặc định / tên A→Z / trình độ cao→thấp / vào CLB lâu nhất) và nút hiện/ẩn người ngừng hoạt động. Khi tick chọn người, một **thanh xoá** màu đỏ hiện lên (đếm số người đã chọn, nút *Bỏ chọn*, nút *Xoá*). Trên **điện thoại** danh sách hiện dạng thẻ (ảnh/chữ cái đầu, khu vực, thời gian chơi, trình độ, thâm niên, cờ nội bộ); trên máy tính là bảng đầy đủ.
 
 **Bảng thành viên:**
 - Có kẻ ô ngang/dọc.
-- Các cột: **STT · Họ tên · Giới tính · Năm sinh · DUPR · Loại · Hạng**, cùng **Khu vực (quận)**, **Thời gian chơi** (đã chơi bao lâu) và **Hạng thực tế A–D** (Host tự đánh giá), trạng thái gói và số buổi còn lại.
+- Các cột: **STT · Họ tên · Giới tính · Năm sinh · DUPR · Loại · Hạng**, cùng **Khu vực (quận) → Thời gian chơi (đã chơi bao lâu) → Trình độ (DUPR)** theo đúng thứ tự này, trạng thái gói và số buổi còn lại. **Không còn cột "Hạng thực tế A–D"**: hạng A–D thay đổi liên tục khi CLB có thêm người (người hạng A hôm nay có thể thành B khi có người giỏi hơn vào), nên hạng giờ chỉ xếp **riêng cho từng giải** (xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments)). Bảng xếp hạng chỉ dựa trên trình độ DUPR / trình Host chấm.
 - Loại: *Cố định* hoặc *Vãng lai/Giao lưu*.
 - **VIP theo gói**: thành viên cố định có gói đang hiệu lực được gắn sao — gói tháng ⭐, quý ⭐⭐, năm ⭐⭐⭐.
 - **Khách giao lưu** không có gói và không có VIP. Đặc quyền duy nhất của khách là **Ưu tiên** kèm **% giảm giá vé** (Host đặt % trong chi tiết người đó).
@@ -250,7 +250,7 @@ Mục 1 có ô **💰 Lệ phí / người**. Mục **2. Nội dung** có 3 nút
 1. Chọn người chơi.
 
    - **Cảnh báo thiếu người**: nếu số người không đủ ghép trọn các cặp, app báo *"Nội dung Hỗn hợp đang thiếu 1 nữ"* / *"…thiếu 2 nam"* (Đôi nam/nữ lẻ người: *thiếu 1 nam/nữ*). Có thể để **1 vị trí trống** (⬚ *Trống — mời sau*): chủ CLB mời thành viên giao lưu vào chơi rồi điền vào chỗ trống sau.
-   - **Cảnh báo chưa có trình độ**: người được chọn mà chưa có DUPR/cấp được gắn nhãn *chưa có trình*; app báo **không ghép cặp cân bằng được** (nút bị khoá) và đề nghị nhập điểm trình ở Thành viên, hoặc dùng *Tùy chỉnh* để tự ghép.
+   - **Cảnh báo chưa có trình độ**: người được chọn mà chưa có DUPR/cấp **và chưa có hạng A–D của giải** được gắn nhãn *chưa có trình*; app báo **chưa ghép cặp cân bằng được** (nút bị khoá) và đề nghị nhập trình độ ở Thành viên, xếp hạng A–D cho họ, hoặc dùng *Tùy chỉnh* để tự ghép.
 3. **Ghép cặp** — 2 nút:
    - **Ghép cặp cân bằng**: app tự ghép người trình độ cao với người thấp hơn để các đội đều sức (Hỗn hợp: 1 nam + 1 nữ). Người dư được xếp cùng một chỗ trống.
    - **Tùy chỉnh**: cạnh mỗi tên có dấu **×** để bỏ tên đó; ô vừa trống có danh sách chọn người khác (chỉ người đã chọn mà chưa có cặp; Hỗn hợp chỉ hiện người khác giới với bạn cùng cặp) hoặc **Để trống — mời sau**. Thêm/bỏ đội tuỳ ý. Bấm *Xong tùy chỉnh* để khoá lại.
@@ -258,6 +258,8 @@ Mục 1 có ô **💰 Lệ phí / người**. Mục **2. Nội dung** có 3 nút
    - **Vòng bảng → loại trực tiếp**: chọn số bảng và số đội mỗi bảng đi tiếp. Các đội được chia bảng theo kiểu "rắn" để các bảng cân sức.
    - **Chỉ loại trực tiếp**.
 5. Bấm **Tạo giải & xếp lịch**. App tự sinh lịch vòng tròn trong mỗi bảng.
+
+**Xếp hạng A–D cho giải** (mục ngay sau *Chọn người chơi*): mỗi người được chọn có 4 nút **A B C D** (A mạnh nhất; bấm lại để bỏ). Nút **✨ Gợi ý theo trình độ** tự chia theo DUPR/cấp (¼ mạnh nhất là A, rồi B, C, D), Host chỉnh lại tuỳ ý; *Xoá hạng* để làm lại; góc phải đếm số người mỗi hạng. Hạng **chỉ lưu trong giải này** — không ghi vào hồ sơ thành viên, không ảnh hưởng bảng xếp hạng hay thống kê tháng. Khi ghép cặp cân bằng và chia hạt giống, hạng được dùng thay cho trình độ (A ghép với D, B với C…); người **chưa có trình độ nhưng đã có hạng** vẫn ghép cân bằng được. Tên người chơi hiện kèm hạng, VD *[A] Minh*. Sửa giải thì hạng được điền lại.
 
 **Ghép cặp phải đủ:** vị trí nào còn *Chưa chọn* sẽ báo đỏ và nút *Tạo giải* bị khoá — chọn người hoặc chủ động *Để trống — mời sau*. Người được chọn mà chưa có cặp được liệt kê màu vàng.
 
@@ -813,12 +815,13 @@ supabase/migrations/
 ├── 20261011090000_event_status_simplify.sql            # trạng thái chỉ còn Đang mở / Đã xong (tự động) / Đã hủy
 ├── 20261012090000_multi_sport_badminton.sql           # nhiều môn: CLB cầu lông (trình độ 6 cấp, tỷ số theo ván, cầu dùng mỗi buổi)
 ├── 20261013090000_guest_priority_discount.sql         # khách: chỉ còn Ưu tiên + % giảm giá vé (bỏ VIP/gói cho khách)
-├── 20261014090000_member_area_rank_unscored_matches.sql # khu vực, thời gian chơi, hạng A–D; trận chưa có tỷ số
+├── 20261014090000_member_area_rank_unscored_matches.sql # khu vực, thời gian chơi, hạng A–D (cột cũ, không còn dùng); trận chưa có tỷ số
 ├── 20261015090000_staff_grant_scope.sql               # phạm vi quyền (all/clubs/xeve) + thời hạn từ–đến
 ├── 20261016090000_tournament_live_scoring.sql         # tính điểm trực tiếp giải đấu + link bảng điểm công khai
 └── 20261017090000_match_timing_formats.sql            # bấm giờ trận (thời điểm từng pha), thời lượng + thể thức ván lưu cùng kết quả
 └── 20261018090000_social_manager_plans.sql            # gói Social Manager (xé vé) + yêu cầu nâng cấp gói trên host_subscriptions
 └── 20261019090000_round_robin_meeting_votes.sql       # giải vòng tròn tính điểm (advance_per_group = 0) + bảng event_votes (bình chọn buổi họp)
+└── 20261020090000_tournament_player_ranks.sql         # hạng A–D xếp riêng cho từng giải (tournaments.player_ranks)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1007,7 +1010,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
 | Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, scoring (sideout / sideout_single / rally), points, win_by (1/2), best_of (1/3/5), freeze, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` · `POST /api/live/:tid/result` `{match_id \| sub_match_id, games \| team1_score+team2_score, format {points, win_by, best_of}, duration_min, clear}` (nhập kết quả sau trận) |
-| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
+| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` (nhận `ranks` `{memberId: A–D}`; khi tạo giải gửi `player_ranks`) · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` (dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
@@ -1021,11 +1024,11 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Bảng / View |
 |---|---|
 | Tài khoản | `users` (có `notify_webhook_url`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký; `social_manager`, `social_manager_requested_at`, `upgrade_requested_at`, `upgrade_requested_tier`), view `v_host_capacity_usage` |
-| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, `district`, `play_duration`, `real_rank` A–D, `priority` + `discount_pct` cho khách, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
+| CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, `district`, `play_duration`, `real_rank` (cũ, không còn hiển thị), `priority` + `discount_pct` cho khách, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
 | Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo; tỷ số có thể null = chưa nhập; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
-| Giải đấu | `tournaments` (`kind` pairs/team; vòng tròn tính điểm = `group_count` 1 + `advance_per_group` 0, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
+| Giải đấu | `tournaments` (`player_ranks` = hạng A–D của từng người trong giải; `kind` pairs/team; vòng tròn tính điểm = `group_count` 1 + `advance_per_group` 0, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items`, `inventory_moves` |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |

@@ -644,7 +644,7 @@ player.get('/clubs/:clubId', async (req, res) => {
       .sort((a, b) => b.event_date.localeCompare(a.event_date));
     res.json({
       club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', description: me.clubs.description || null, contact: owner?.email || null },
-      member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on, real_rank: me.real_rank || null },
+      member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on },
       ...summarize(passes || [], today),
       memberships: (passes || []).slice(0, 8).map((p) => ({ period_label: p.period_label, status: p.status, sessions_included: p.sessions_included, sessions_used: p.sessions_used, sessions_remaining: p.sessions_remaining })),
       events: (events || []).map((e) => ({

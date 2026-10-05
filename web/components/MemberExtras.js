@@ -1,7 +1,8 @@
 'use client';
 import { useI18n } from '@/context/I18nContext';
 
-// Where the member lives, how long they have played, and the Host's own A-D rank.
+// Where the member lives and how long they have played. (Rank A–D is set per
+// tournament, not on the member — RankBadge is used there.)
 export const PLAY_DURATIONS = ['lt6', '6_12', '12_18', 'gt18'];
 export const RANKS = ['A', 'B', 'C', 'D'];
 
@@ -26,8 +27,8 @@ export function playDurationText(v, t) {
   return v ? t(`memberX.dur_${v}`) : null;
 }
 
-// The three inputs, for the add / edit member forms. `value` holds district,
-// play_duration and real_rank; `onChange(patch)`.
+// The two inputs, for the add / edit member forms. `value` holds district and
+// play_duration; `onChange(patch)`.
 export function MemberExtraFields({ value, onChange, idPrefix = 'mx' }) {
   const { t } = useI18n();
   return (
@@ -49,15 +50,6 @@ export function MemberExtraFields({ value, onChange, idPrefix = 'mx' }) {
           <option value="">—</option>
           {PLAY_DURATIONS.map((d) => (
             <option key={d} value={d}>{t(`memberX.dur_${d}`)}</option>
-          ))}
-        </select>
-      </div>
-      <div className="min-w-0">
-        <label htmlFor={`${idPrefix}-rank`} className="text-xs text-gray-400">{t('memberX.realRank')}</label>
-        <select id={`${idPrefix}-rank`} className="input" value={value.real_rank || ''} onChange={(e) => onChange({ real_rank: e.target.value })}>
-          <option value="">—</option>
-          {RANKS.map((r) => (
-            <option key={r} value={r}>{t('memberX.rankOption', { rank: r })}</option>
           ))}
         </select>
       </div>
