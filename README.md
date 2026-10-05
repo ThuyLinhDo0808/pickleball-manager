@@ -12,7 +12,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 
 1. [App dùng để làm gì?](#1-app-dùng-để-làm-gì)
 2. [Kiến trúc](#2-kiến-trúc)
-3. [Bốn không gian làm việc](#3-bốn-không-gian-làm-việc)
+3. [Trang chủ & các không gian làm việc](#3-trang-chủ--các-không-gian-làm-việc)
 4. [Tính năng chi tiết — Club Manager](#4-tính-năng-chi-tiết--club-manager)
 5. [Tính năng chi tiết — Xé Vé Manager](#5-tính-năng-chi-tiết--xé-vé-manager)
 6. [Phân quyền: Trọng tài, Điều phối viên, Đồng quản trị](#6-phân-quyền-trọng-tài-điều-phối-viên-đồng-quản-trị)
@@ -68,25 +68,44 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 
 ---
 
-## 3. Bốn không gian làm việc
+## 3. Trang chủ & các không gian làm việc
 
-Sau khi đăng nhập, bạn chọn **không gian làm việc** (workspace). Có thể đổi bất cứ lúc nào ở đầu menu.
+### 3.1. Trang chủ (`/home`) — mọi vai trò ở một chỗ
+Đăng nhập xong (và khi mở địa chỉ gốc `/`) app luôn mở **Trang chủ**. Một tài khoản có thể vừa quản lý CLB này, vừa là thành viên CLB khác, vừa mở kèo Xé Vé hay làm trọng tài — trang chủ tách các vai trò đó ra rõ ràng thay vì phải bật/tắt nút chuyển:
 
-| Workspace | Dành cho | Menu |
+- **CLB & không gian của bạn**: dải avatar (vuốt ngang trên điện thoại), mỗi ô có nhãn vai trò:
+  - CLB bạn **quản lý** (nhãn *Quản lý*, viền xanh) hoặc **đồng quản trị** → bấm vào là mở **trang quản lý** của CLB đó (Tổng quan, Thành viên, Lịch, Tài chính…).
+  - CLB bạn là **thành viên** (nhãn *Thành viên*) → bấm vào là mở **trang thành viên** của CLB (`/c/<id>`, xem 3.2).
+  - **Kèo Xé Vé** (nếu bạn đã mở kèo) → trang quản lý kèo Xé Vé; **Kèo được giao** (nếu bạn là trọng tài / điều phối viên).
+  - **＋ Tạo mới**: tạo CLB, mở kèo Xé Vé, hoặc hướng dẫn tham gia CLB bằng link.
+  - Một CLB vừa quản lý vừa là thành viên chỉ hiện ở vai trò quản lý.
+- **Gói hội viên của tôi**: số buổi còn lại ở từng CLB bạn là thành viên.
+- **Lịch sắp tới của tôi**: mọi buổi bạn đã đăng ký (mọi CLB + Xé Vé), **nhóm theo ngày**: giờ, tên buổi, CLB, trạng thái (đã đăng ký / danh sách chờ / chờ thanh toán), số chỗ `x/y`, vé QR. Lọc theo từng CLB hoặc Xé Vé.
+- Nhắc hoàn thiện hồ sơ, khảo sát sau buổi.
+
+Thanh điều hướng cá nhân: **Trang chủ · Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, Telegram) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới.
+
+### 3.2. Trang CLB cho thành viên (`/c/<clubId>`)
+Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được. Gồm: ảnh/tên CLB, nhãn *Thành viên* (+ *chờ xác thực* nếu CLB chưa duyệt), liên hệ; 4 ô số liệu (buổi còn lại, buổi đã đăng ký, buổi đã chơi, công nợ) và 3 tab:
+- **Lịch CLB**: các buổi sắp tới của CLB, số chỗ, trạng thái của bạn (✓ đã đăng ký…), nút **Đăng ký** / **Vào danh sách chờ** (mở trang đăng ký `/e/…`). Buổi CLB không mở đăng ký qua link hiện "CLB tự xếp danh sách".
+- **Gói của tôi**: các kỳ gói, đã đóng / chưa đóng, đã dùng x/y buổi.
+- **Lịch sử**: các buổi đã qua (đã chơi / vắng / huỷ muộn) kèm tổng.
+
+### 3.3. Không gian quản lý
+| Không gian | Dành cho | Menu |
 |---|---|---|
-| **Club Manager** | Cộng đồng chơi lâu dài | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Bảng xếp hạng, Thống kê thành viên, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
-| **Xé Vé Manager** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Thống kê · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
-| **Trọng tài / Điều phối** | Người được Host giao việc | Kèo được giao |
-| **Tôi là người chơi** | Người chơi | Của tôi · Hồ sơ |
+| **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Bảng xếp hạng, Thống kê thành viên, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
+| **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Thống kê · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
+| **Kèo được giao** | Trọng tài / điều phối viên | Kèo được giao (+ giải được giao bấm điểm) |
+
+**Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Trọng tài*). Bấm vào để đổi sang CLB khác bạn quản lý, sang Kèo Xé Vé / Kèo được giao, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc tạo CLB mới. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
 
 **Menu:**
 - Trên máy tính, menu bên trái chia theo **nhóm (segment)**. Mỗi nhóm thu gọn/mở rộng được, app nhớ trạng thái. Nhóm chứa trang đang mở tự bung ra.
 - Nút mũi tên thu menu lại thành dải icon.
-- Trên điện thoại có thanh dưới: *Tổng quan · Thành viên · Lịch · Tài chính · Thêm*. Nút **Thêm** mở toàn bộ menu theo nhóm.
+- Trên điện thoại có thanh dưới: *Tổng quan · Thành viên · Lịch · Tài chính · Thêm*. Nút **Thêm** mở toàn bộ menu theo nhóm (kèm *Về trang chủ*).
 
-**Đồng quản trị** của CLB người khác (xem [6.4](#64-người-được-cấp-quyền-đồng-quản-trị)): khi chọn CLB được chia sẻ trong workspace Club, menu **đầy đủ như chủ CLB**, kèm dải nhắc "Bạn đang quản lý CLB của <chủ CLB>".
-
-**Nút chuyển "Quản lý / Người chơi"** (RoleSwitch) ở đầu menu: một chạm để sang **Cổng người chơi** (`/p`) và quay lại. Nút này có ở mọi workspace, **kể cả tài khoản nhân viên** (trọng tài / điều phối / đồng quản trị), vì nhân viên vẫn có thể là thành viên của CLB khác.
+**Đồng quản trị** của CLB người khác (xem [6.4](#64-người-được-cấp-quyền-đồng-quản-trị)): CLB được chia sẻ hiện trên Trang chủ với nhãn *Đồng quản trị*; vào đó menu **đầy đủ như chủ CLB**, kèm dải nhắc "Bạn đang quản lý CLB của <chủ CLB>".
 
 Club và Xé Vé tách dữ liệu rõ ràng:
 - **Club:** các buổi (event) gắn với CLB đang chọn.
@@ -509,7 +528,7 @@ Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai 
    - **Tỷ số**: nhập hoặc sửa trận.
 4. Mục **Giải đấu được giao bấm điểm** (nếu quyền phủ CLB): mở trang tính điểm trực tiếp của giải (xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments)).
 
-Họ **không bao giờ thấy tài chính hay số điện thoại**. Nhân viên vẫn có nút **Quản lý / Người chơi** để sang Cổng người chơi của chính mình. Check-in của điều phối viên cũng tự trừ buổi trong gói hội viên như khi Host check-in.
+Họ **không bao giờ thấy tài chính hay số điện thoại**. Nhân viên dùng **Trang chủ** (bộ chuyển ngữ cảnh → *Về trang chủ*) để sang các CLB họ là thành viên và hoạt động cá nhân. Check-in của điều phối viên cũng tự trừ buổi trong gói hội viên như khi Host check-in.
 
 ### 6.3. Check-in bằng mã QR
 Thay vì lướt tìm tên, làm như sau:
@@ -532,7 +551,7 @@ Thay vì lướt tìm tên, làm như sau:
 
 ## 7. Cổng người chơi
 
-Người chơi dùng chung app, chọn workspace **Tôi là người chơi** (`/p`).
+Người chơi dùng chung app: **Trang chủ** (`/home`, xem [3.1](#31-trang-chủ-home--mọi-vai-trò-ở-một-chỗ)) liệt kê CLB họ tham gia và lịch sắp tới; mỗi CLB có **trang thành viên** `/c/<id>`; tab **Hoạt động** (`/p`) chứa các mục dưới đây.
 
 - **Hồ sơ** (`/p/profile`): ảnh đại diện, họ tên, số điện thoại, DUPR, giới tính, năm sinh.
 - **Mã check-in của tôi**: mã QR cá nhân để Host / điều phối viên quét khi đến sân (*Phóng to*, *Đổi mã mới*).
@@ -929,7 +948,9 @@ pickleball-manager/
     │   ├── staff/    (trọng tài/điều phối)
     │   ├── live/[tid]/    # tính điểm trực tiếp: danh sách trận + [liveId]/ màn hình bấm điểm
     │   ├── l/[token]/     # bảng điểm trực tiếp công khai
-    │   ├── p/        (cổng người chơi) profile/
+    │   ├── home/     # trang chủ: mọi CLB & vai trò, lịch sắp tới
+    │   ├── c/[clubId]/    # trang CLB cho thành viên
+    │   ├── p/        (hoạt động cá nhân: QR, lịch sử, phong độ) profile/
     │   ├── e/[token]/     # trang đăng ký kèo công khai
     │   └── join/[token]/  # trang tham gia CLB
     ├── components/         # AppShell (menu), EventCalendar, DatePopover, QrScanner, QrCheckinPanel,
@@ -966,7 +987,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` · `GET /api/staff/events` · `GET /api/staff/events/:id` · `POST …/participants/:pid/:action` · `POST …/checkin-code` · `POST/PATCH …/matches` |
-| Người chơi | `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
+| Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
 
 ---
 

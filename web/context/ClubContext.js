@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
@@ -94,9 +95,14 @@ export function ClubProvider({ children }) {
   const isCoAdmin = club?.role === 'co_admin';
 
   // The whole app speaks the current club's sport (DUPR vs badminton levels, balls vs shuttles...).
+  // Personal pages (home hub, member club page, my activity) set their own sport.
   const { setSport } = useI18n();
+  const pathname = usePathname() || '';
+  const personal = pathname === '/home' || pathname.startsWith('/c/') || pathname === '/p' || pathname.startsWith('/p/');
   const sport = club?.sport || 'pickleball';
-  useEffect(() => setSport(sport), [sport, setSport]);
+  useEffect(() => {
+    if (!personal) setSport(sport);
+  }, [sport, setSport, personal]);
 
   const value = useMemo(
     () => ({ clubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub, deleteClub }),

@@ -10,6 +10,7 @@ const { cancelDeadline, cancelParticipant } = require('../services/attendance');
 const { telegramSend } = require('../services/notify');
 const survey = require('../services/survey');
 const { linkByPhone } = require('../services/phoneLink');
+const { coAdminClubs } = require('../services/clubAccess');
 const { sportReady, clubSport, profileLevel } = require('../services/sport');
 
 function badRequest(message, status = 400, code) {
@@ -491,6 +492,166 @@ player.get('/me', async (req, res) => {
         wins: form.reduce((s, x) => s + x.wins, 0),
         debt: clubs.reduce((s, c) => s + c.debt, 0) + eventDebts.reduce((s, d) => s + d.amount, 0),
         events: history.filter((h) => h.status === 'checked_in').length,
+      },
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Home hub (/home): every role of the account in one place — clubs it runs (owner /
+// co-admin), clubs it plays in, Xé Vé games it organises, staff access — plus the
+// player's upcoming sessions across all of them.
+// ---------------------------------------------------------------------------
+const LIVE_STATUSES = ['registered', 'checked_in', 'pending', 'waitlisted'];
+
+async function myMemberRows(uid) {
+  const { data, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, host_id, description)').eq('user_id', uid);
+  if (error) throw error;
+  return data || [];
+}
+
+// My sign-ups for events from today on (any club or Xé Vé), with the event's numbers.
+async function upcomingFor(uid, memberIds, clubId = null) {
+  const today = todayYmd();
+  const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
+  const { data: regs, error } = await supabase
+    .from('event_participants')
+    .select('id, status, event_id, ticket_code, payment_status, events!inner(id, title, event_date, start_time, end_time, location, status, club_id, public_token, allow_public_registration, cancel_deadline_hours)')
+    .or(orFilter)
+    .gte('events.event_date', today)
+    .limit(300);
+  if (error) throw error;
+  const order = { checked_in: 0, registered: 1, pending: 2, waitlisted: 3 };
+  const seen = new Set();
+  const rows = (regs || [])
+    .filter((r) => LIVE_STATUSES.includes(r.status) && r.events.status !== 'cancelled' && (!clubId || r.events.club_id === clubId))
+    .sort((a, b) => order[a.status] - order[b.status])
+    .filter((r) => (seen.has(r.event_id) ? false : seen.add(r.event_id)));
+  const ids = rows.map((r) => r.event_id);
+  const { data: sums } = ids.length ? await supabase.from('v_event_summary').select('id, main_count, waitlist_count, slots, club_name').in('id', ids) : { data: [] };
+  const clubIds = [...new Set(rows.map((r) => r.events.club_id).filter(Boolean))];
+  const { data: clubs } = clubIds.length ? await supabase.from('clubs').select('id, name, sport').in('id', clubIds) : { data: [] };
+  return rows
+    .map((r) => {
+      const e = r.events;
+      const sum = (sums || []).find((x) => x.id === e.id) || {};
+      const club = (clubs || []).find((c) => c.id === e.club_id) || null;
+      const deadline = cancelDeadline(e);
+      return {
+        participant_id: r.id,
+        event_id: e.id,
+        title: e.title,
+        event_date: e.event_date,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        location: e.location,
+        status: r.status,
+        payment_status: r.payment_status,
+        ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null,
+        link: e.allow_public_registration ? e.public_token : null,
+        club_id: club?.id || null,
+        club_name: club?.name || null,
+        sport: club?.sport || 'pickleball',
+        main_count: sum.main_count ?? null,
+        slots: sum.slots ?? null,
+        can_cancel: ['registered', 'waitlisted', 'pending'].includes(r.status),
+        cancel_deadline: deadline ? deadline.toISOString() : null,
+      };
+    })
+    .sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
+}
+
+player.get('/home', async (req, res) => {
+  try {
+    const uid = req.hostId;
+    const profile = await getProfile(uid);
+    await linkByPhone(uid, profile);
+    const [members, managed, coAdmin, xeve] = await Promise.all([
+      myMemberRows(uid),
+      supabase.from('clubs').select('id, name, sport').eq('host_id', uid).order('created_at'),
+      coAdminClubs(req).catch(() => []),
+      supabase.from('events').select('id', { count: 'exact', head: true }).eq('host_id', uid).is('club_id', null),
+    ]);
+    if (managed.error) throw managed.error;
+    const managedIds = new Set([...(managed.data || []).map((c) => c.id), ...coAdmin.map((c) => c.id)]);
+    const memberIds = members.map((m) => m.id);
+    const { data: passes } = memberIds.length
+      ? await supabase.from('v_membership_status').select('*').in('club_member_id', memberIds)
+      : { data: [] };
+    const today = todayYmd();
+    const memberClubs = members
+      .filter((m) => m.clubs && !managedIds.has(m.club_id))
+      .map((m) => ({
+        club_id: m.club_id,
+        name: m.clubs.name,
+        sport: m.clubs.sport || 'pickleball',
+        member_type: m.member_type,
+        account_verified: m.account_verified,
+        ...summarize((passes || []).filter((p) => p.club_member_id === m.id), today),
+      }));
+    const upcoming = await upcomingFor(uid, memberIds);
+    res.json({
+      email: req.hostEmail,
+      profile: profile ? { full_name: profile.full_name, avatar: profile.avatar, dupr_level: profile.dupr_level, birth_date: profile.birth_date } : null,
+      managed_clubs: [
+        ...(managed.data || []).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: 'owner' })),
+        ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: 'co_admin' })),
+      ],
+      member_clubs: memberClubs,
+      xeve_events: xeve.count || 0,
+      upcoming: upcoming.slice(0, 40),
+      surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// One club seen as a member (/c/<clubId>): my membership there, the club's upcoming
+// sessions I can sign up for, my sign-ups and recent history in that club.
+player.get('/clubs/:clubId', async (req, res) => {
+  try {
+    const uid = req.hostId;
+    const { clubId } = req.params;
+    if (!isUuid(clubId)) return notFound(res, 'Club');
+    const { data: me, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, description, host_id, bank_code, bank_account, bank_holder)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
+    if (error) throw error;
+    if (!me || !me.clubs) return notFound(res, 'Club');
+    const today = todayYmd();
+    const [{ data: passes }, { data: events }, { data: owner }] = await Promise.all([
+      supabase.from('v_membership_status').select('*').eq('club_member_id', me.id).order('starts_on', { ascending: false }),
+      supabase.from('v_event_summary').select('id, title, kind, event_date, start_time, end_time, location, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration').eq('club_id', clubId).gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(30),
+      supabase.from('users').select('email').eq('id', me.clubs.host_id).maybeSingle(),
+    ]);
+    const mine = await upcomingFor(uid, [me.id], clubId);
+    const mineIds = new Map(mine.map((x) => [x.event_id, x.status]));
+    const { data: hist } = await supabase
+      .from('event_participants')
+      .select('status, late_cancel, events!inner(id, title, event_date, club_id)')
+      .eq('source_club_member_id', me.id)
+      .lt('events.event_date', today)
+      .limit(200);
+    const history = (hist || [])
+      .map((h) => ({ event_id: h.events.id, title: h.events.title, event_date: h.events.event_date, status: h.status, late_cancel: h.late_cancel }))
+      .sort((a, b) => b.event_date.localeCompare(a.event_date));
+    res.json({
+      club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', description: me.clubs.description || null, contact: owner?.email || null },
+      member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on, real_rank: me.real_rank || null },
+      ...summarize(passes || [], today),
+      memberships: (passes || []).slice(0, 8).map((p) => ({ period_label: p.period_label, status: p.status, sessions_included: p.sessions_included, sessions_used: p.sessions_used, sessions_remaining: p.sessions_remaining })),
+      events: (events || []).map((e) => ({
+        ...e,
+        public_token: e.allow_public_registration ? e.public_token : null,
+        my_status: mineIds.get(e.id) || null,
+      })),
+      my_upcoming: mine,
+      history: history.slice(0, 30),
+      stats: {
+        played: history.filter((h) => h.status === 'checked_in').length,
+        late: history.filter((h) => h.late_cancel).length,
+        no_show: history.filter((h) => h.status === 'no_show').length,
       },
     });
   } catch (err) {

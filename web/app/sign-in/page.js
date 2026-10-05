@@ -16,7 +16,7 @@ function authMessage(err, t) {
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
   const next = new URLSearchParams(window.location.search).get('next') || '';
-  return next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+  return next.startsWith('/') && !next.startsWith('//') ? next : '/home';
 }
 
 export default function SignInPage() {
