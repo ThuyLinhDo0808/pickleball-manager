@@ -25,7 +25,7 @@ export default function SectionTabs({ group }) {
   const pathname = usePathname() || '';
   if (workspace !== 'club') return null;
   return (
-    <nav className="-mx-4 px-4 md:mx-0 md:px-0 mb-5 overflow-x-auto border-b border-navy-700">
+    <nav className="-mx-4 px-4 md:mx-0 md:px-0 mb-5 overflow-x-auto overflow-y-hidden no-scrollbar border-b border-navy-700">
       <div className="flex gap-1 min-w-max">
         {GROUPS[group].map((tab) => {
           const active = tab.match(pathname);

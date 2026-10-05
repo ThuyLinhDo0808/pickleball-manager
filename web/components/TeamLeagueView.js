@@ -147,7 +147,7 @@ export default function TeamLeagueView({ tour, onChange }) {
       </div>
 
       <h2 className="text-white font-semibold mb-2">{t('league.fixtures')}</h2>
-      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 mb-2">
+      <div className="flex gap-2 overflow-x-auto overflow-y-hidden no-scrollbar -mx-4 px-4 pb-2 mb-2">
         {rounds.map((rd) => {
           const list = tour.matches.filter((f) => f.round === rd);
           const done = list.filter((f) => f.result.done).length;

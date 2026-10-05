@@ -1896,6 +1896,8 @@ export const en = {
     pickleballProfile: 'DUPR (pickleball)',
   },
   games: {
+    customPoints: "Game to",
+    pointsUnit: "points",
     hintFirstTo: 'Games to {n}, first to {n} wins (no 2-point lead needed).',
     hintFmt: 'Games to {n}, win by 2, max {cap}.',
     hintFmtNoCap: 'Games to {n}, win by 2.',

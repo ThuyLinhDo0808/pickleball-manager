@@ -101,6 +101,8 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 
 **Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Trọng tài*). Bấm vào để đổi sang CLB khác bạn quản lý, sang **Social Manager (Xé vé)** (chưa có gói thì mở phần đăng ký) / Kèo được giao, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc **tạo CLB mới** (đủ giới hạn gói thì hiện bảng nâng cấp). Mở trang Xé Vé khi chưa có Social Manager sẽ thấy phần giới thiệu + nút đăng ký thay cho nội dung. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
 
+**Thanh cuộn:** thanh cuộn của menu và bảng mảnh, màu tối theo nền (không còn thanh trắng có mũi tên); các hàng tab (*Thống kê thành viên · Bảng xếp hạng*, *Số buổi chơi · Buổi còn lại…*, tab Thành viên…) và hàng thẻ số liệu không hiện thanh cuộn — trên điện thoại vẫn vuốt ngang được.
+
 **Menu:**
 - Trên máy tính, menu bên trái chia theo **nhóm (segment)**. Mỗi nhóm thu gọn/mở rộng được, app nhớ trạng thái. Nhóm chứa trang đang mở tự bung ra.
 - Nút mũi tên thu menu lại thành dải icon.
@@ -269,6 +271,7 @@ Mục 1 có ô **💰 Lệ phí / người**. Mục **2. Nội dung** có 3 nút
 
 **Trong giải:**
 - Nhập tỷ số từng trận. Bảng xếp hạng vòng bảng tính theo thắng và hiệu số.
+- Hộp **Nhập tỷ số**: *Mỗi ván đến (điểm)* chọn **11 · 15 · 21** hoặc bấm **＋** để gõ số điểm khác (3–99, VD 7, 9, 25) khi không chắc đánh đến bao nhiêu; ô ＋ hiện số đã chọn kèm ✎. *Điểm thắng ván*: cách 2 điểm (không giới hạn trần với số điểm tự gõ) hoặc chạm là thắng.
 - Nhập xong vòng bảng thì bấm **Tạo vòng loại trực tiếp**. Đội hạt giống cao được **miễn đấu** nếu số đội không tròn, người thắng tự vào vòng sau. Các vòng hiển thị là tứ kết, bán kết, chung kết, rồi đến **Vô địch**.
 - Có thể *Làm lại vòng loại trực tiếp* mà vẫn giữ kết quả vòng bảng, hoặc xoá kết quả một trận.
 
@@ -308,7 +311,7 @@ Nút đỏ **● Tính điểm trực tiếp** trên trang giải (khi giải ch
 
 | Môn | Cách tính điểm | Thể thức ván |
 |---|---|---|
-| Pickleball | **Side-out 2 tay** (truyền thống, 0-0-2, đọc 3 số) · **Side-out 1 tay** (chỉ đội giao được điểm, thua pha đổi giao ngay, không có tay 2) · **Tính điểm trực tiếp / rally** (pha nào cũng có điểm, không có tay 2; tuỳ chọn luật *đóng băng* — chỉ được ghi điểm thắng ván khi đang giao) | Ván 11 / 15 / 21 điểm · *cách 2 điểm* hoặc *chạm là thắng* · 1 ván, thắng 2/3 hoặc 3/5 |
+| Pickleball | **Side-out 2 tay** (truyền thống, 0-0-2, đọc 3 số) · **Side-out 1 tay** (chỉ đội giao được điểm, thua pha đổi giao ngay, không có tay 2) · **Tính điểm trực tiếp / rally** (pha nào cũng có điểm, không có tay 2; tuỳ chọn luật *đóng băng* — chỉ được ghi điểm thắng ván khi đang giao) | Ván 11 / 15 / 21 điểm (nhập tỷ số sau trận còn có ＋ để gõ số điểm khác) · *cách 2 điểm* hoặc *chạm là thắng* · 1 ván, thắng 2/3 hoặc 3/5 |
 | Cầu lông | Rally | 21 điểm (tối đa 30) · 15 điểm (tối đa 21) · 11 điểm (tối đa 15) · *cách 2* hoặc *chạm là thắng* · 1, 3 hoặc 5 ván |
 
 **Màn hình bấm điểm** (dùng tốt trên điện thoại): hai nửa lớn cho 2 đội — **bấm vào đội thắng pha bóng**. App tự theo luật:

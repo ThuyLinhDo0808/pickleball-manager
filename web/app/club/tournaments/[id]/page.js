@@ -141,7 +141,7 @@ export default function TournamentPage() {
               : tour.format === 'doubles' && (!tour.division || tour.division === 'open')
                 ? t('tournaments.kind_pairs')
                 : `${t(`matches.${tour.format}`)}${tour.division && tour.division !== 'open' && tour.format !== 'mixed' ? ` · ${t(`tournaments.div_${tour.division}${tour.format === 'singles' ? 'S' : ''}`)}` : ''}`}
-            {' · '}{t('tournaments.teamsN', { n: tour.teams.length })} · {tour.kind === 'team' && tour.status !== 'completed' ? t('league.inProgress') : t(`tournaments.status_${tour.status}`)}
+            {' · '}{t('tournaments.teamsN', { n: tour.teams.length })} · {(tour.kind === 'team' || tour.round_robin) && tour.status !== 'completed' ? t('league.inProgress') : t(`tournaments.status_${tour.status}`)}
           </p>
           {tour.event_date && (
             <p className="text-lime-400 text-sm capitalize">
@@ -279,7 +279,7 @@ export default function TournamentPage() {
 
           {koView === 'list' ? (
             <>
-              <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 mb-2">
+              <div className="flex gap-2 overflow-x-auto overflow-y-hidden no-scrollbar -mx-4 px-4 pb-2 mb-2">
                 {rounds.map((rd) => {
                   const total = ko.filter((m) => m.round === rd && !m.is_bye).length;
                   const left = pending(rd);

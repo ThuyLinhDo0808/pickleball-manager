@@ -30,5 +30,10 @@ test('first to the points (win by 1) and pickleball games', () => {
   const p = cleanFormat('pickleball', { points: 11 });
   assert.equal(gamesResult([[11, 9], [8, 11], [13, 11]], p).team1_score, 2);
   assert.throws(() => gamesResult([[11, 10]], p), /finished/);
-  assert.throws(() => cleanFormat('pickleball', { points: 30 }), /11, 15, 21/);
+  // Custom target ("+"): any 3–99, win by 2 with no maximum.
+  const c = cleanFormat('pickleball', { points: 25 });
+  assert.equal(gamesResult([[25, 20], [27, 25]], c).team1_score, 2);
+  assert.throws(() => gamesResult([[25, 24]], c), /finished/);
+  assert.throws(() => cleanFormat('pickleball', { points: 2 }), /3–99/);
+  assert.throws(() => cleanFormat('pickleball', { points: 150 }), /3–99/);
 });

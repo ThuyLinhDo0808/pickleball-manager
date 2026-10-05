@@ -108,7 +108,7 @@ export default function AccountPage() {
       </div>
 
       {/* Section links */}
-      <nav aria-label={t('acct.jump')} className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 bg-navy-950/90 backdrop-blur flex gap-2 overflow-x-auto">
+      <nav aria-label={t('acct.jump')} className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 bg-navy-950/90 backdrop-blur flex gap-2 overflow-x-auto overflow-y-hidden no-scrollbar">
         {SECTIONS.map(([id, icon]) => (
           <a
             key={id}

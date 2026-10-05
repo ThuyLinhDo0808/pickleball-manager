@@ -1896,6 +1896,8 @@ export const vi = {
     pickleballProfile: 'DUPR (pickleball)',
   },
   games: {
+    customPoints: "Đánh đến",
+    pointsUnit: "điểm",
     hintFirstTo: 'Ván {n} điểm, ai đủ {n} điểm trước thắng (không cần cách 2).',
     hintFmt: 'Ván {n} điểm, cách 2 điểm, tối đa {cap}.',
     hintFmtNoCap: 'Ván {n} điểm, phải cách 2 điểm.',
