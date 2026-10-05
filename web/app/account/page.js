@@ -147,7 +147,7 @@ export default function AccountPage() {
               <span className="text-sm text-gray-200">
                 🏠 {t('plan.clubUsage', { owned: plan.clubs_owned, limit: plan.club_limit ?? '∞' })}
               </span>
-              <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => setUpgrading(true)}>💎 {t('plan.upgradeBtn')}</button>
+              <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => setUpgrading(true)}>💎 {t('plan.changeBtn')}</button>
             </div>
           )}
           <div className="mt-4 rounded-xl border border-amber-300/30 bg-amber-300/5 p-4">

@@ -8,6 +8,8 @@ const MIGRATION = '20261018090000_social_manager_plans.sql';
 const TIERS = ['free', 'basic', 'standard', 'pro'];
 // Clubs a Host may own on each tier (null = unlimited).
 const CLUB_LIMIT = { free: 1, basic: 3, standard: 10, pro: null };
+// People under management on each tier (kept in step with public.tier_capacity()).
+const CAPACITY = { free: 30, basic: 100, standard: 300, pro: 1000 };
 
 async function plansReady() {
   const s = await schemaStatus();
@@ -50,4 +52,4 @@ async function assertSocialManager(hostId) {
   }
 }
 
-module.exports = { TIERS, CLUB_LIMIT, plansReady, getPlan, assertCanCreateClub, assertSocialManager };
+module.exports = { TIERS, CLUB_LIMIT, CAPACITY, plansReady, getPlan, assertCanCreateClub, assertSocialManager };
