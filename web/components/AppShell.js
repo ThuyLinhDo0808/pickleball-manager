@@ -1,5 +1,4 @@
 'use client';
-import RoleSwitch, { rememberMode } from '@/components/RoleSwitch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -8,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
+import ContextSwitcher from '@/components/ContextSwitcher';
 import FeedbackButton from '@/components/FeedbackButton';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
@@ -126,9 +126,6 @@ const TABS_BY_WORKSPACE = {
 
 const GROUPS_KEY = 'pickleball_nav_groups';
 
-const WORKSPACE_ICON = { club: 'clubs', xeve: 'ticket', staff: 'whistle' };
-const WORKSPACE_ABBR = { club: 'CLB', xeve: 'XV', staff: 'TT' };
-
 const COLLAPSE_KEY = 'pickleball_nav_collapsed';
 
 // Pages that work without a club; everything else prompts to create one first.
@@ -175,102 +172,6 @@ function Icon({ name, className = 'w-5 h-5' }) {
   );
 }
 
-function ClubSwitcher({ className = '' }) {
-  const { t } = useI18n();
-  const { clubs, club, selectClub } = useClubs();
-  const router = useRouter();
-  if (!clubs.length) return null;
-  return (
-    <select
-      aria-label={t('clubs.switcher')}
-      value={club?.id || ''}
-      onChange={(e) => (e.target.value === '__new' ? router.push('/clubs') : selectClub(e.target.value))}
-      className={`input text-sm truncate ${className}`}
-    >
-      {clubs.map((c) => (
-        <option key={c.id} value={c.id}>{c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}</option>
-      ))}
-      <option value="__new">+ {t('clubs.create')}</option>
-    </select>
-  );
-}
-
-function WorkspaceSwitch({ compact = false }) {
-  const { t } = useI18n();
-  const { workspace, setWorkspace, workspaces } = useWorkspace();
-  const router = useRouter();
-  function go(ws) {
-    if (ws === workspace) return;
-    setWorkspace(ws);
-    router.push(WORKSPACE_HOME[ws]);
-  }
-  if (compact) {
-    const other = workspaces[(workspaces.indexOf(workspace) + 1) % workspaces.length];
-    return (
-      <button
-        onClick={() => go(other)}
-        title={`${t('nav.workspace')}: ${t(`workspace.${workspace}`)}`}
-        className="h-10 flex items-center justify-center rounded-lg text-[10px] font-bold text-lime-400 bg-navy-800 hover:bg-navy-700"
-      >
-        {WORKSPACE_ABBR[workspace]}
-      </button>
-    );
-  }
-  return (
-    <div
-      role="tablist"
-      aria-label={t('nav.workspace')}
-      className="grid bg-navy-950 rounded-lg p-1 text-xs font-semibold"
-      style={{ gridTemplateColumns: `repeat(${workspaces.length}, minmax(0, 1fr))` }}
-    >
-      {workspaces.map((ws) => (
-        <button
-          key={ws}
-          role="tab"
-          aria-selected={workspace === ws}
-          onClick={() => go(ws)}
-          className={`rounded-md py-1.5 px-1 whitespace-nowrap transition ${workspace === ws ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}
-        >
-          {t(`workspace.${ws}Short`)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function WorkspacePicker() {
-  const { t } = useI18n();
-  const { setWorkspace, workspaces } = useWorkspace();
-  const router = useRouter();
-  const pathname = usePathname() || '';
-  function pick(ws) {
-    setWorkspace(ws);
-    if (pathname === '/dashboard' || pathname === '/') router.push(WORKSPACE_HOME[ws]);
-  }
-  return (
-    <div className="max-w-2xl mx-auto mt-4">
-      <h1 className="text-white text-2xl font-bold mb-1">{t('workspace.choose')}</h1>
-      <p className="text-gray-400 text-sm mb-5">{t('workspace.chooseHint')}</p>
-      <div className={`grid grid-cols-1 gap-4 ${workspaces.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-        {workspaces.map((ws) => (
-          <button key={ws} onClick={() => pick(ws)} className="card text-left hover:border-lime-400 transition p-5">
-            <Icon name={WORKSPACE_ICON[ws]} className="w-8 h-8 text-lime-400 mb-3" />
-            <div className="text-white text-lg font-bold">{t(`workspace.${ws}`)}</div>
-            <p className="text-gray-400 text-sm mt-1">{t(`workspace.${ws}Desc`)}</p>
-          </button>
-        ))}
-      </div>
-      <Link href="/p" className="card mt-4 flex items-center justify-between gap-3 hover:border-lime-400 transition">
-        <span>
-          <span className="text-white font-semibold block">{t('workspace.player')}</span>
-          <span className="text-gray-400 text-sm">{t('workspace.playerDesc')}</span>
-        </span>
-        <span className="text-lime-400 text-xl">→</span>
-      </Link>
-    </div>
-  );
-}
-
 function LangSelect() {
   const { lang, setLang, t } = useI18n();
   return (
@@ -297,7 +198,7 @@ export default function AppShell({ children }) {
       if (y) sideRef.current.scrollTop = y;
     } catch {}
   });
-  const { workspace, ready: wsReady, workspaces } = useWorkspace();
+  const { workspace, ready: wsReady } = useWorkspace();
   const pathname = usePathname() || '';
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -306,10 +207,10 @@ export default function AppShell({ children }) {
   const requestCount = useMemberRequestCount(club?.id, !!user && workspace === 'club', pathname);
   const badges = { memberRequests: requestCount };
 
-  // Using the manager side makes it the mode the app reopens in (see RoleSwitch).
+  // No space chosen yet (first visit, or the saved one is gone): the home hub lists them.
   useEffect(() => {
-    if (user && (workspace === 'club' || workspace === 'xeve')) rememberMode('manage');
-  }, [user, workspace]);
+    if (user && wsReady && !workspace) router.replace('/home');
+  }, [user, wsReady, workspace, router]);
 
   useEffect(() => {
     try {
@@ -406,9 +307,13 @@ export default function AppShell({ children }) {
         </div>
         {workspace && (
           <div className="mb-3 px-1 flex flex-col gap-2">
-            <RoleSwitch current="manage" compact={collapsed} />
-            <WorkspaceSwitch compact={collapsed} />
-            {!collapsed && workspace === 'club' && <ClubSwitcher />}
+            <ContextSwitcher iconOnly={collapsed} />
+            {!collapsed && (
+              <Link href="/home" className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-navy-800">
+                <Icon name="dashboard" className="w-3.5 h-3.5" />
+                {t('hub.backHomeShort')}
+              </Link>
+            )}
           </div>
         )}
         {NAV.map((item) => {
@@ -486,29 +391,16 @@ export default function AppShell({ children }) {
       {/* Mobile top bar */}
       <header className="md:hidden sticky top-0 z-30 bg-navy-900/95 backdrop-blur border-b border-navy-700 pt-safe">
         <div className="flex items-center gap-3 px-4 h-14">
-          <span className="text-lime-400 font-bold shrink-0">PB</span>
-          <div className="flex-1 min-w-0">
-            {workspace === 'club' && clubs.length > 0 ? (
-              <ClubSwitcher className="py-1.5" />
-            ) : (
-              <span className="text-white text-sm font-semibold truncate block">
-                {workspace ? t(`workspace.${workspace}`) : t('appName')}
-              </span>
-            )}
-          </div>
-          {workspace && (
-            <div className={`shrink-0 ${workspaces.length === 3 ? 'w-52' : 'w-32'}`}>
-              <WorkspaceSwitch />
-            </div>
-          )}
+          <Link href="/home" aria-label={t('hub.backHome')} className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-lime-400 bg-navy-800">
+            <Icon name="dashboard" className="w-5 h-5" />
+          </Link>
+          <div className="flex-1 min-w-0">{workspace && <ContextSwitcher compact />}</div>
         </div>
       </header>
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
         {workspace && workspace !== 'staff' && <SchemaBanner />}
-        {!wsReady ? null : !workspace ? (
-          <WorkspacePicker />
-        ) : needsClub ? (
+        {!wsReady || !workspace ? null : needsClub ? (
           <div className="max-w-md mx-auto card mt-4">
             <h1 className="text-white text-xl font-bold mb-1">{t('clubs.createFirst')}</h1>
             <p className="text-gray-400 text-sm mb-4">{t('clubs.createFirstHint')}</p>
@@ -568,9 +460,10 @@ export default function AppShell({ children }) {
               <Icon name="chat" />
               {t('feedback.button')}
             </FeedbackButton>
-            <div className="pt-2">
-              <RoleSwitch current="manage" />
-            </div>
+            <Link href="/home" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200">
+              <Icon name="dashboard" />
+              {t('hub.backHome')}
+            </Link>
             <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-navy-700">
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">

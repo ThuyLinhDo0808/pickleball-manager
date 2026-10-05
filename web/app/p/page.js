@@ -293,7 +293,7 @@ export default function PlayerHome() {
       </section>
 
       <p className="text-center mt-6">
-        <Link href="/dashboard" className="text-gray-500 text-xs underline">{t('player.hostApp')} →</Link>
+        <Link href="/home" className="text-gray-500 text-xs underline">← {t('hub.navHome')}</Link>
       </p>
 
       <Modal open={!!qr} title={t('join.payTitle')} onClose={() => setQr(null)}>
