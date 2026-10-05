@@ -95,8 +95,8 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 ### 3.3. Không gian quản lý
 | Không gian | Dành cho | Menu |
 |---|---|---|
-| **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Bảng xếp hạng, Thống kê thành viên, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
-| **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Thống kê · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
+| **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
+| **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Tạo kèo · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
 | **Kèo được giao** | Trọng tài / điều phối viên | Kèo được giao (+ giải được giao bấm điểm) |
 
 **Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Trọng tài*). Bấm vào để đổi sang CLB khác bạn quản lý, sang **Social Manager (Xé vé)** (chưa có gói thì mở phần đăng ký) / Kèo được giao, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc **tạo CLB mới** (đủ giới hạn gói thì hiện bảng nâng cấp). Mở trang Xé Vé khi chưa có Social Manager sẽ thấy phần giới thiệu + nút đăng ký thay cho nội dung. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
@@ -392,17 +392,15 @@ Khi người chơi đăng ký gói qua link:
 3. Nhận được tiền thì Host bấm **Đã nhận tiền**. Gói chuyển sang *Đã đóng* và app ghi khoản thu vào quỹ.
 
 ### 4.13. Thống kê thành viên (`/club/attendance`)
-Nhóm **Thống kê** (*Thống kê thành viên · Bảng xếp hạng · Phân tích*) cũng có thanh tab ở đầu trang.
+Nhóm **Thống kê** (*Thống kê thành viên · Bảng xếp hạng*) cũng có thanh tab ở đầu trang.
 
 Menu **Thống kê → Thống kê thành viên**. Đầu trang có 5 ô số liệu của kỳ: *số buổi* (đã diễn ra bao nhiêu), *lượt tham gia* (trung bình người/buổi), *đi đều* (thành viên đi ≥ 50% số buổi đã diễn ra), *khách giao lưu* (số lượt đến) và *buổi bảo lưu*. Nút **Xuất Excel (CSV)** ở góc phải. Chọn kỳ *Tháng / Quý / Năm* (nút ‹ ›) hoặc *Tùy chọn* từ ngày – đến ngày. Ba tab:
 - **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). **✓ xanh** = đăng ký + tham gia; **✓ đỏ** = không tham gia mà **không báo** (vắng không báo, hoặc báo muộn sau hạn huỷ, VD sau 12h) — vẫn **tính 1 buổi, không được bảo lưu**; **để trống** = không tham gia (đã báo kịp); `·` = đã đăng ký, chưa điểm danh. Cột **Số buổi** có thanh chia **từng ô theo buổi** của kỳ: xanh = tham gia, đỏ = không tham gia (không bảo lưu), xám = chưa dùng — cả ở *Theo buổi* lẫn *Theo tháng* (VD: tham gia 1, báo muộn 1 → 2/9, 1 ô xanh + 1 ô đỏ). *Lượt tham gia*, *đi đều* và sắp xếp *Chơi nhiều* chỉ đếm buổi có mặt. Khi sửa điểm danh, bấm ô để chuyển *chưa điểm danh → có mặt → vắng không báo*. Xem *Theo buổi* hoặc *Theo tháng*, sắp xếp A→Z hoặc *Chơi nhiều*, hàng cuối đếm thành viên và khách mỗi buổi. **Xuất Excel (CSV)**.
 - **Buổi còn lại & bảo lưu**: mỗi gói hội viên trong kỳ — số buổi của gói, đã dùng, còn lại. Gói đã hết kỳ, đã đóng tiền mà còn buổi = số buổi cần **bảo lưu** sang kỳ sau (có tổng).
 - **Khách giao lưu**: người ngoài CLB đã đến các buổi (gộp theo SĐT), đánh dấu từng buổi và tổng số lần đến.
 
-### 4.14. Thống kê (`/analytics`)
-- 4 ô số liệu: *số buổi đã phân tích* (6 tháng), *tỷ lệ bùng kèo* chung, *khung giờ hay bùng nhất* và *khung giờ ổn định nhất* (chỉ xét khung có từ 3 lượt đăng ký).
-- **Tỷ lệ vắng mặt theo khung giờ**: heatmap *thứ trong tuần × khung giờ bắt đầu*, tính trên các buổi đã qua trong những tháng gần đây. Ô càng sáng thì khung giờ đó càng hay bị "bùng" kèo, giúp chọn giờ mở kèo.
-- **Phong độ theo thời gian** của một thành viên: tỷ lệ thắng và hiệu số theo từng tháng, kèm 3 số tổng (số trận, tỷ lệ thắng, hiệu số). Trên máy tính hai khung nằm cạnh nhau.
+### 4.14. Trang Phân tích (đã bỏ)
+Trang **Phân tích** (`/analytics`: tỷ lệ vắng theo khung giờ, phong độ theo thời gian) đã được gỡ khỏi menu vì không cần thiết; link cũ tự chuyển sang *Thống kê thành viên* (CLB) hoặc *Kèo Xé Vé*. Tỷ lệ có mặt / vắng không báo của từng người xem ở **Thống kê thành viên**.
 
 (Biểu đồ tiền nằm ở **Tài chính → Tổng quan**.)
 
@@ -1009,7 +1007,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, scoring (sideout / sideout_single / rally), points, win_by (1/2), best_of (1/3/5), freeze, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` · `POST /api/live/:tid/result` `{match_id \| sub_match_id, games \| team1_score+team2_score, format {points, win_by, best_of}, duration_min, clear}` (nhập kết quả sau trận) |
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
-| Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
+| Thống kê | `GET /api/analytics/finance` · `/events-pnl` (dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` · `GET /api/staff/events` · `GET /api/staff/events/:id` · `POST …/participants/:pid/:action` · `POST …/checkin-code` · `POST/PATCH …/matches` |
 | Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
