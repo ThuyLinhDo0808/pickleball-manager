@@ -3,23 +3,49 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { actingHost } = require('../services/clubAccess');
 const T = require('../services/tournament');
-const { clubSport, badmintonResult, sportReady } = require('../services/sport');
+const { clubSport, sportReady, timingReady, gamesResult, cleanFormat } = require('../services/sport');
 
-// Scores for a tournament match / sub-match: badminton by games (best of 3 to 21, the
-// scores then hold games won), pickleball as two numbers.
+// Scores for a tournament match / sub-match, checked against the game format chosen
+// (body.format: { points, win_by, best_of }). Badminton always by games; pickleball by
+// games when several were played, else the two numbers. Optional duration_min (typed in
+// after the match). Returns { s1, s2, games, format, duration_sec }.
 async function scoresFor(t, body) {
-  if ((await clubSport(t.club_id)) === 'badminton') {
+  const sport = await clubSport(t.club_id);
+  let fmt;
+  try {
+    fmt = cleanFormat(sport, body.format || {});
+  } catch (err) {
+    throw badRequest(err.message);
+  }
+  const format = { points: fmt.points, win_by: fmt.win_by, ...(fmt.best_of ? { best_of: fmt.best_of } : {}), ...(body.format?.scoring ? { scoring: String(body.format.scoring).slice(0, 20) } : {}) };
+  let duration_sec = null;
+  if (body.duration_min !== undefined && body.duration_min !== null && body.duration_min !== '') {
+    const m = Number(body.duration_min);
+    if (!Number.isFinite(m) || m < 0 || m > 600) throw badRequest('Match time must be 0-600 minutes.');
+    duration_sec = Math.round(m * 60);
+  }
+  if (sport === 'badminton' || (Array.isArray(body.games) && body.games.length)) {
+    let r;
     try {
-      const r = badmintonResult(body.games);
-      return { s1: r.team1_score, s2: r.team2_score, games: r.games };
+      r = gamesResult(body.games, fmt);
     } catch (err) {
       throw badRequest(err.message);
     }
+    // Pickleball, one game: the points are the score.
+    if (sport === 'pickleball' && r.games.length === 1) return { s1: r.games[0][0], s2: r.games[0][1], games: null, format, duration_sec };
+    return { s1: r.team1_score, s2: r.team2_score, games: r.games, format, duration_sec };
   }
   const s1 = Number(body.team1_score);
   const s2 = Number(body.team2_score);
   if (![s1, s2].every((n) => Number.isInteger(n) && n >= 0 && n <= 99)) throw badRequest('Scores must be whole numbers 0-99.');
-  return { s1, s2, games: null };
+  return { s1, s2, games: null, format: body.format ? format : null, duration_sec };
+}
+
+// Timing / format columns for a stored result (only once the migration has run).
+async function extraFields(result) {
+  if (!(await timingReady())) return {};
+  if (result.clear) return { duration_sec: null, score_format: null };
+  return { duration_sec: result.duration_sec ?? null, score_format: result.format ?? null };
 }
 
 const router = express.Router();
@@ -482,11 +508,11 @@ async function recordSub(t, subId, result, lineups = {}) {
 
   let patch;
   if (result.clear) {
-    patch = { team1_score: null, team2_score: null, played_at: null, team1_p1: null, team1_p2: null, team2_p1: null, team2_p2: null, ...((await sportReady()) ? { games: null } : {}) };
+    patch = { team1_score: null, team2_score: null, played_at: null, team1_p1: null, team1_p2: null, team2_p1: null, team2_p2: null, ...((await sportReady()) ? { games: null } : {}), ...(await extraFields(result)) };
   } else {
     const { s1, s2, games } = result;
     if (s1 === s2) throw badRequest('A sub-match needs a winner (no draws).');
-    patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), played_at: new Date().toISOString() };
+    patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : (await sportReady()) ? { games: null } : {}), played_at: new Date().toISOString(), ...(await extraFields(result)) };
     // Line-ups are optional; when given they must come from the right roster and fit the format.
     const sides = [['team1', lineups.team1_players, fixture.team1_id], ['team2', lineups.team2_players, fixture.team2_id]];
     for (const [side, ids, teamId] of sides) {
@@ -666,7 +692,7 @@ async function recordMatch(t, matchId, result) {
   } else {
     const { s1, s2, games } = result;
     if (s1 === s2) throw badRequest('Tournament matches need a winner (no draws).');
-    patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : {}), winner_id: s1 > s2 ? m.team1_id : m.team2_id, played_at: new Date().toISOString() };
+    patch = { team1_score: s1, team2_score: s2, ...(games ? { games } : (await sportReady()) ? { games: null } : {}), winner_id: s1 > s2 ? m.team1_id : m.team2_id, played_at: new Date().toISOString(), ...(await extraFields(result)) };
   }
 
   let next = null;
@@ -749,3 +775,4 @@ module.exports = router;
 module.exports.recordMatch = recordMatch;
 module.exports.recordSub = recordSub;
 module.exports.loadFull = loadFull;
+module.exports.scoresFor = scoresFor;

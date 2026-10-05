@@ -5,7 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import { sportIcon } from '@/lib/live';
+import { clock, elapsed, sportIcon } from '@/lib/live';
+import { useNow } from '@/lib/useNow';
+import LiveGuide from '@/components/LiveGuide';
 
 // The scorer's pad: tap the side that won the rally. The server keeps the rules (who
 // serves, from which side, game / match end); this page shows them and the call to read
@@ -20,6 +22,7 @@ export default function ScorerPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editingCourt, setEditingCourt] = useState(false);
+  const now = useNow(1000);
   const busyRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -85,7 +88,10 @@ export default function ScorerPage() {
   }
 
   const s = live.state;
+  const times = elapsed(s?.timing, now);
   const cfg = live.config;
+  // Rows started before scoring systems existed: pickleball side-out, badminton rally.
+  const scoring = cfg.scoring || (sport === 'badminton' ? 'rally' : 'sideout');
   const icon = sportIcon(sport);
   const name = (id) => live.names[id] || '?';
   const teamLabel = (side) => (side === 1 ? live.team1 : live.team2);
@@ -133,7 +139,7 @@ export default function ScorerPage() {
         {serving && !s.finished && (
           <span className="absolute -top-2.5 left-4 rounded-full bg-lime-400 text-navy-950 text-[11px] font-bold px-2 py-0.5">
             {icon} {t('live.serving')}{s.server_side ? ` · ${t(`live.${s.server_side}`)}` : ''}
-            {sport === 'pickleball' && cfg.doubles ? ` · ${t('live.serverNo', { n: s.server_no })}` : ''}
+            {s.two_servers ? ` · ${t('live.serverNo', { n: s.server_no })}` : ''}
           </span>
         )}
       </button>
@@ -145,7 +151,10 @@ export default function ScorerPage() {
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between gap-2 mb-3">
           <Link href={`/live/${tid}`} className="text-gray-400 text-sm hover:text-white">← {t('live.back')}</Link>
-          <span className="text-gray-400 text-xs truncate">{tourName}</span>
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="text-gray-400 text-xs truncate">{tourName}</span>
+            <LiveGuide sport={sport} scoring={live?.config?.scoring} autoOpen />
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -166,7 +175,7 @@ export default function ScorerPage() {
             </button>
           )}
           <span className="text-gray-300 text-sm">
-            {t('live.gameN', { n: s?.game_no || 1 })} · {cfg.best_of === 1 ? t('live.bo1') : t('live.bo3')} · {t('live.pointsN', { n: cfg.points })}
+            {t('live.gameN', { n: s?.game_no || 1 })} · {t(`live.scoring_${scoring}`)} · {t('live.pointsN', { n: cfg.points })}{cfg.win_by === 1 ? ` · ${t('live.winBy_1').toLowerCase()}` : ''} · {t(`live.bo${cfg.best_of}`)}{cfg.freeze ? ' · ❄️' : ''}
           </span>
         </div>
 
@@ -174,13 +183,29 @@ export default function ScorerPage() {
           <p className="card text-red-400">{t('live.broken')}</p>
         ) : (
           <>
+            <div className="flex items-center justify-between gap-2 mb-3 rounded-xl border border-navy-700 bg-navy-900/60 px-3 py-2">
+              <span className="text-gray-400 text-xs">⏱ {s.finished ? t('timer.total') : t('timer.match')}</span>
+              <span className={`font-mono text-xl font-bold tabular-nums ${s.finished ? 'text-lime-300' : 'text-white'}`}>{times.match == null ? '—' : clock(times.match)}</span>
+              {!s.finished && (
+                <span className="text-gray-400 text-xs tabular-nums">
+                  {t('live.gameN', { n: s.game_no })}: <span className="text-gray-200 font-mono">{times.game == null ? '—' : clock(times.game)}</span>
+                </span>
+              )}
+            </div>
+            {!s.timing?.started_at && !s.finished && <p className="text-gray-500 text-xs -mt-2 mb-3">{t('timer.startsHint')}</p>}
+
             {s.games.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3 text-xs">
-                {s.games.map(([a, b], i) => (
-                  <span key={i} className="rounded-full bg-navy-900 border border-navy-700 px-2.5 py-1 text-gray-300 tabular-nums">
-                    {t('live.gameN', { n: i + 1 })}: <span className={a > b ? 'text-sky-300 font-semibold' : ''}>{a}</span>-<span className={b > a ? 'text-amber-300 font-semibold' : ''}>{b}</span>
-                  </span>
-                ))}
+                {s.games.map(([a, b], i) => {
+                  const g = s.timing?.games?.[i];
+                  const sec = g?.start && g?.end ? (g.end - g.start) / 1000 : null;
+                  return (
+                    <span key={i} className="rounded-full bg-navy-900 border border-navy-700 px-2.5 py-1 text-gray-300 tabular-nums">
+                      {t('live.gameN', { n: i + 1 })}: <span className={a > b ? 'text-sky-300 font-semibold' : ''}>{a}</span>-<span className={b > a ? 'text-amber-300 font-semibold' : ''}>{b}</span>
+                      {sec != null && <span className="text-gray-500"> · {clock(sec)}</span>}
+                    </span>
+                  );
+                })}
               </div>
             )}
 
@@ -234,7 +259,7 @@ export default function ScorerPage() {
             <button type="button" className="rounded-lg px-3 py-2 font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/10" disabled={busy} onClick={stop}>■ {t('live.stop')}</button>
           )}
         </div>
-        <p className="text-gray-500 text-xs mt-3">{sport === 'pickleball' ? t('live.rulePickleball') : t('live.ruleBadminton')}</p>
+        <p className="text-gray-500 text-xs mt-3">{t(`live.rule_${sport === 'badminton' ? 'badminton' : scoring}`)}</p>
       </div>
     </AppShell>
   );

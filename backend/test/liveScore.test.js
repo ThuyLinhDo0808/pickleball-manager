@@ -5,6 +5,7 @@ const { cleanConfig, replay, resultOf } = require('../src/services/liveScore');
 const dbl = { 1: ['A', 'B'], 2: ['C', 'D'] };
 const sgl = { 1: ['A'], 2: ['C'] };
 const rep = (s, n) => Array(n).fill(s);
+const pick = (r) => ({ s1: r.s1, s2: r.s2, games: r.games });
 
 test('pickleball doubles starts 0-0-2 and sides out after one fault', () => {
   const cfg = cleanConfig('pickleball', {}, dbl);
@@ -39,7 +40,7 @@ test('pickleball game to 11 win by 2, result as points', () => {
   const s = replay(cfg, sgl, rep('r1', 11));
   assert.equal(s.finished, true);
   assert.equal(s.winner, 1);
-  assert.deepEqual(resultOf(cfg, s), { s1: 11, s2: 0, games: null });
+  assert.deepEqual(pick(resultOf(cfg, s)), { s1: 11, s2: 0, games: null });
   // Game point shows for the server only.
   const p = replay(cfg, sgl, rep('r1', 10));
   assert.deepEqual(p.point, { team: 1, match: true });
@@ -71,7 +72,7 @@ test('pickleball best of 3: switch ends at 6 in the deciding game, other team se
   assert.equal(s.note, 'switch_ends');
   s = replay(cfg, sgl, [...rep('r1', 11), ...rep('r2', 11), ...rep('r1', 11)]);
   assert.equal(s.finished, true);
-  assert.deepEqual(resultOf(cfg, s), { s1: 2, s2: 1, games: [[11, 0], [0, 11], [11, 0]] });
+  assert.deepEqual(pick(resultOf(cfg, s)), { s1: 2, s2: 1, games: [[11, 0], [0, 11], [11, 0]] });
   assert.ok(g2);
 });
 
@@ -110,5 +111,105 @@ test('badminton result is games won + games', () => {
   const cfg = cleanConfig('badminton', {}, sgl);
   const s = replay(cfg, sgl, [...rep('r1', 21), ...rep('r1', 21)]);
   assert.equal(s.finished, true);
-  assert.deepEqual(resultOf(cfg, s), { s1: 2, s2: 0, games: [[21, 0], [21, 0]] });
+  assert.deepEqual(pick(resultOf(cfg, s)), { s1: 2, s2: 0, games: [[21, 0], [21, 0]] });
+});
+
+test('pickleball rally scoring: every rally scores, no second server, serve by score parity', () => {
+  const cfg = cleanConfig('pickleball', { scoring: 'rally', points: 21 }, dbl);
+  let s = replay(cfg, dbl, []);
+  assert.equal(s.call, '0-0');
+  assert.equal(s.two_servers, false);
+  s = replay(cfg, dbl, ['r2']); // receivers score AND take the serve; B on 1 (odd) → left player
+  assert.deepEqual(s.score, [0, 1]);
+  assert.equal(s.serving, 2);
+  assert.equal(s.server_id, 'D');
+  assert.equal(s.server_side, 'left');
+  assert.equal(s.call, '1-0');
+  s = replay(cfg, dbl, ['r2', 'r2']); // server wins → swap, serves from the right
+  assert.equal(s.server_id, 'D');
+  assert.equal(s.server_side, 'right');
+  s = replay(cfg, dbl, rep('r1', 21));
+  assert.equal(s.finished, true);
+  assert.deepEqual(pick(resultOf(cfg, s)), { s1: 21, s2: 0, games: null });
+});
+
+test('pickleball rally with freeze: the receivers cannot win the last point', () => {
+  const cfg = cleanConfig('pickleball', { scoring: 'rally', points: 21, freeze: true }, sgl);
+  // 20-0 for team 2 with team 1 serving: team 2 wins the rally but only gets the serve.
+  const log = ['s2', ...rep('r2', 20), 'r1', 'r2']; // 0-20, T1 takes serve (1-20), T2 wins rally
+  let s = replay(cfg, sgl, log.slice(0, -1));
+  assert.equal(s.serving, 1);
+  assert.equal(s.point, null, 'team 2 cannot win on team 1 serve');
+  s = replay(cfg, sgl, log);
+  assert.equal(s.note, 'freeze');
+  assert.deepEqual(s.score, [1, 20]);
+  assert.equal(s.serving, 2);
+  assert.deepEqual(s.point, { team: 2, match: true });
+  s = replay(cfg, sgl, [...log, 'r2']);
+  assert.equal(s.finished, true);
+});
+
+test('pickleball one-serve side-out: lost rally = side out, call has 2 numbers', () => {
+  const cfg = cleanConfig('pickleball', { scoring: 'sideout_single' }, dbl);
+  let s = replay(cfg, dbl, []);
+  assert.equal(s.call, '0-0');
+  s = replay(cfg, dbl, ['r1', 'r2']);
+  assert.equal(s.note, 'side_out');
+  assert.equal(s.serving, 2);
+  assert.equal(s.call, '0-1');
+  assert.equal(s.server_id, 'C');
+  s = replay(cfg, dbl, ['r1', 'r2', 'r1']); // straight back, no second server
+  assert.equal(s.serving, 1);
+  assert.equal(s.server_id, 'B');
+});
+
+test('win by 1: first to the points wins', () => {
+  const cfg = cleanConfig('pickleball', { scoring: 'rally', points: 11, win_by: 1 }, sgl);
+  const log = [];
+  for (let i = 0; i < 10; i++) log.push('r1', 'r2');
+  const s = replay(cfg, sgl, [...log, 'r1']);
+  assert.equal(s.finished, true);
+  assert.deepEqual(s.games, [[11, 10]]);
+});
+
+test('badminton 15 points: cap 21, interval at 8; 11 points best of 5, cap 15', () => {
+  const c15 = cleanConfig('badminton', { points: 15 }, sgl);
+  assert.equal(c15.cap, 21);
+  assert.equal(replay(c15, sgl, rep('r1', 8)).note, 'interval');
+  const deuce = [];
+  for (let i = 0; i < 20; i++) deuce.push('r1', 'r2');
+  assert.deepEqual(replay(c15, sgl, [...deuce, 'r1']).games, [[21, 20]]);
+  const c11 = cleanConfig('badminton', { points: 11, best_of: 5 }, sgl);
+  assert.equal(c11.cap, 15);
+  const s = replay(c11, sgl, rep('r1', 33));
+  assert.equal(s.finished, true);
+  assert.deepEqual(s.games_won, [3, 0]);
+  assert.throws(() => cleanConfig('badminton', { scoring: 'sideout' }, sgl), /Scoring/);
+});
+
+test('older rows without scoring keep their system', () => {
+  const old = { sport: 'pickleball', points: 11, win_by: 2, cap: null, best_of: 1, first_server: 1, doubles: true };
+  assert.equal(replay(old, dbl, []).call, '0-0-2');
+});
+
+test('timing: match and game times from event stamps; result carries format + duration', () => {
+  const cfg = cleanConfig('badminton', { best_of: 3, points: 11 }, sgl);
+  const log = ['s1', ...rep('r1', 11), ...rep('r1', 11)];
+  const t0 = 1_700_000_000_000;
+  const stamps = log.map((_, i) => t0 + i * 10_000); // 10 s per event
+  const s = replay(cfg, sgl, log, stamps);
+  assert.equal(s.timing.started_at, t0 + 10_000, 'the first rally, not the serve choice');
+  assert.equal(s.timing.ended_at, t0 + 22 * 10_000);
+  assert.equal(s.timing.games.length, 2);
+  assert.deepEqual(s.timing.games[1], { start: t0 + 12 * 10_000, end: t0 + 22 * 10_000 });
+  const r = resultOf(cfg, s);
+  assert.equal(r.duration_sec, 210);
+  assert.deepEqual(r.format, { points: 11, win_by: 2, best_of: 3, scoring: 'rally' });
+  // Running game: its start is known, the match has no end yet
+  const mid = replay(cfg, sgl, log.slice(0, 15), stamps.slice(0, 15));
+  assert.equal(mid.timing.game_started_at, t0 + 12 * 10_000);
+  assert.equal(mid.timing.ended_at, null);
+  // No stamps (older rows): no times, no crash
+  assert.equal(replay(cfg, sgl, log).timing.started_at, null);
+  assert.equal(resultOf(cfg, replay(cfg, sgl, log)).duration_sec, null);
 });

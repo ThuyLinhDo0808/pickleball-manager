@@ -9,7 +9,7 @@ export default function Segmented({ items, value, onChange, label = (k) => k, cl
           role="tab"
           aria-selected={value === k}
           onClick={() => onChange(k)}
-          className={`whitespace-nowrap rounded-md px-2.5 py-1.5 truncate ${full ? '' : 'flex-auto'} ${value === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:text-white'}`}
+          className={`rounded-md px-2.5 py-1.5 ${full ? 'leading-tight' : 'whitespace-nowrap flex-auto'} ${value === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:text-white'}`}
         >
           {label(k)}
         </button>

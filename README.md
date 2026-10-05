@@ -265,19 +265,36 @@ Các đội 4–8 người đá **vòng tròn**, mỗi lần hai đội gặp nh
 - **Sơ đồ** (mặc định trên máy tính): cây nhánh đấu đầy đủ. Trên điện thoại **vuốt ngang**, mỗi lần dừng đúng ở một vòng.
 
 #### Tính điểm trực tiếp (`/live/<id giải>`)
-Nút đỏ **● Tính điểm trực tiếp** trên trang giải (khi giải chưa kết thúc) mở trang điều khiển: số trận *đang đánh / chưa đánh / đã có kết quả*, các trận đang đánh (bấm để tiếp tục) và danh sách trận chưa đánh với nút **▶ Bấm điểm**.
+Nút đỏ **● Tính điểm trực tiếp** trên trang giải (khi giải chưa kết thúc) mở trang điều khiển: số trận *đang đánh / chưa đánh / đã có kết quả*, các trận đang đánh (bấm để tiếp tục, kèm đồng hồ) và danh sách trận. **Mỗi trận chọn 1 trong 2 cách:**
+- **▶ Bấm trực tiếp**: bấm từng pha trong lúc đánh (bên dưới), app tự bấm giờ.
+- **✏️ Nhập kết quả**: khi trận đã xong (không có người bấm trực tiếp). Chọn thể thức ván (pickleball 11/15/21; cầu lông 21/15/11 điểm), *cách 2 điểm* hoặc *chạm là thắng*; pickleball chọn *1 ván (nhập 2 số)* hoặc *nhiều ván*; nhập điểm từng ván (tối đa 5 ván) và **thời gian trận (phút)** nếu có. Trận đã có kết quả có nút **✏️ Sửa kết quả** / *Xoá kết quả*. Trận đang bấm trực tiếp thì không nhập tay được (phải lưu hoặc dừng trước).
+
+**Thể thức ván được lưu cùng kết quả** (`score_format`), nên khi sửa tay sau này ô nhập tự chọn đúng thể thức (VD trận cầu lông 15 điểm). Ô nhập tỷ số theo ván ở trang giải, giải Đồng đội và trận đấu CLB cũng có chọn thể thức, không còn chỉ nhận ván 21 điểm.
 
 **Ai được bấm điểm:** chủ CLB, đồng quản trị, và **trọng tài / điều phối viên** có quyền phủ CLB đó (quyền *một CLB*, *mọi CLB* hoặc *tất cả* — quyền chỉ cho một kèo hay chỉ Xé Vé thì không). Nhân viên thấy các giải này ở mục *Giải đấu được giao bấm điểm* trong trang **Kèo được giao**.
 
-**Bắt đầu một trận:** đặt tên sân (VD *Sân 1*), số điểm mỗi ván (pickleball 11 / 15 / 21; cầu lông luôn 21), số ván (1 ván hoặc thắng 2/3), đội giao trước; giải Đồng đội chọn thêm đội hình trận phụ (người đứng phải / trái).
+**Bắt đầu một trận:** đặt tên sân (VD *Sân 1*), chọn **cách tính điểm** và **thể thức ván**, đội giao trước; giải Đồng đội chọn thêm đội hình trận phụ (người đứng phải / trái). Hộp thoại tóm tắt lại thể thức đã chọn trước khi bấm *Bắt đầu*.
+
+| Môn | Cách tính điểm | Thể thức ván |
+|---|---|---|
+| Pickleball | **Side-out 2 tay** (truyền thống, 0-0-2, đọc 3 số) · **Side-out 1 tay** (chỉ đội giao được điểm, thua pha đổi giao ngay, không có tay 2) · **Tính điểm trực tiếp / rally** (pha nào cũng có điểm, không có tay 2; tuỳ chọn luật *đóng băng* — chỉ được ghi điểm thắng ván khi đang giao) | Ván 11 / 15 / 21 điểm · *cách 2 điểm* hoặc *chạm là thắng* · 1 ván, thắng 2/3 hoặc 3/5 |
+| Cầu lông | Rally | 21 điểm (tối đa 30) · 15 điểm (tối đa 21) · 11 điểm (tối đa 15) · *cách 2* hoặc *chạm là thắng* · 1, 3 hoặc 5 ván |
 
 **Màn hình bấm điểm** (dùng tốt trên điện thoại): hai nửa lớn cho 2 đội — **bấm vào đội thắng pha bóng**. App tự theo luật:
-- **Pickleball** (tính điểm khi giao — side-out): chỉ đội đang giao được điểm; đánh đôi mỗi đội có *tay 1, tay 2*, riêng lượt đầu ván chỉ 1 tay (**0-0-2**); đội giao thắng thì 2 người đổi chỗ; mất giao thì đổi quyền, người đứng **bên phải** giao trước. Đổi sân ở ván quyết định khi một đội chạm nửa số điểm (6 với ván 11).
-- **Cầu lông** (rally): pha nào cũng có điểm, đội thắng pha giao tiếp; điểm chẵn giao từ **phải**, lẻ từ **trái**; 21 điểm, cách 2, tối đa 30; nghỉ ở 11 điểm, ván 3 đổi sân ở 11; ván sau đội thắng ván trước giao.
+- **Pickleball side-out 2 tay**: chỉ đội đang giao được điểm; đánh đôi mỗi đội có *tay 1, tay 2*, riêng lượt đầu ván chỉ 1 tay (**0-0-2**); đội giao thắng thì 2 người đổi chỗ; mất giao thì đổi quyền, người đứng **bên phải** giao trước. Đổi sân ở ván quyết định khi một đội chạm nửa số điểm (6 với ván 11).
+- **Pickleball side-out 1 tay**: như trên nhưng đội giao thua pha là đổi giao ngay; đọc điểm 2 số.
+- **Pickleball tính điểm trực tiếp (rally)**: pha nào cũng có điểm, đội thắng pha giao tiếp; điểm chẵn giao ô phải, lẻ ô trái; nếu bật *đóng băng*, đội nhận ở game point thắng pha chỉ giành quyền giao (nhắc "Freeze").
+- **Cầu lông** (rally): pha nào cũng có điểm, đội thắng pha giao tiếp; điểm chẵn giao từ **phải**, lẻ từ **trái**; theo thể thức đã chọn (21/15/11 điểm, tối đa 30/21/15); nghỉ ở nửa ván, ván quyết định đổi sân ở nửa ván; ván sau đội thắng ván trước giao.
 - Luôn hiện: điểm, số ván đã thắng, **ai đang giao + đứng bên nào + tay mấy**, câu **đọc điểm** (VD `4-2-1`), nhãn *Game point / Match point*, nhắc *Đổi quyền giao / Đổi sân / Nghỉ giữa ván / Hết ván*.
 - Trước pha đầu tiên của mỗi ván có thể đổi đội giao trước và đổi vị trí phải/trái. **Hoàn tác** lùi từng pha. **Dừng** bỏ trận đang bấm (không lưu gì).
-- Hết trận → **Lưu kết quả vào giải**: tỷ số vào bảng đấu / nhánh đấu như nhập tay (pickleball 1 ván lưu điểm, nhiều ván lưu số ván thắng + điểm từng ván), đội thắng tự vào vòng sau.
+- **Bấm giờ**: đồng hồ ⏱ chạy từ pha bóng đầu tiên được bấm: thời gian cả trận và ván đang đánh; mỗi ván xong hiện thời gian ván đó (VD `Ván 1: 21-15 · 12:40`). App lưu thời điểm từng pha nên *Hoàn tác* cũng lùi đúng thời gian. Bảng điểm công khai và trang điều khiển cũng hiện đồng hồ trận đang đánh.
+- Hết trận → **Lưu kết quả vào giải** (kèm **tổng thời gian trận** và thể thức; trang giải hiện `⏱ 32 phút` cạnh tỷ số): tỷ số vào bảng đấu / nhánh đấu như nhập tay (pickleball 1 ván lưu điểm, nhiều ván lưu số ván thắng + điểm từng ván), đội thắng tự vào vòng sau.
 - Nhiều người cùng bấm một trận (2 điện thoại) không bị cộng trùng: mỗi lần bấm kèm phiên bản điểm đang thấy; nếu người khác vừa bấm, app tải lại điểm mới nhất và báo.
+
+**Hướng dẫn bấm điểm ngay trên trang:** màn hình bấm điểm có nút **❓ Hướng dẫn** (tự mở lần đầu trên mỗi máy), trang danh sách trận có thẻ **📖 Hướng dẫn bấm điểm** thu gọn được. Gồm 3 tab:
+- *Cách bấm*: chuẩn bị trước trận, bấm vào đội **thắng pha bóng**, đọc điểm, làm theo nhắc, hoàn tác khi bấm nhầm, lưu kết quả.
+- *Luật pickleball*: chọn 1 trong 3 cách tính điểm (side-out 2 tay / 1 tay / rally) để xem luật riêng, câu đọc điểm (`4-2-1` hoặc `4-2`), ví dụ từng pha, và phần thể thức ván (11/15/21, cách 2 / chạm là thắng, số ván).
+- *Luật cầu lông*: hình sân chỉ ô giao (chẵn phải / lẻ trái), luật rally, ví dụ, và các thể thức 21×3, 15×3, 11×5, chạm là thắng.
 
 **Bảng điểm công khai** (`/l/<mã>`): chủ CLB / đồng quản trị bấm **Bật link xem trực tiếp** để có link gửi nhóm Zalo hoặc mở trên TV ở sân. Không cần đăng nhập, không hiện SĐT; hiện các trận đang đánh (sân, tỷ số, người giao, game/match point), trận vừa kết thúc (30 phút gần nhất) và trận sắp đánh, tự cập nhật mỗi 4 giây. *Tắt link* thì link cũ hết hiệu lực.
 
@@ -756,7 +773,8 @@ supabase/migrations/
 ├── 20261013090000_guest_priority_discount.sql         # khách: chỉ còn Ưu tiên + % giảm giá vé (bỏ VIP/gói cho khách)
 ├── 20261014090000_member_area_rank_unscored_matches.sql # khu vực, thời gian chơi, hạng A–D; trận chưa có tỷ số
 ├── 20261015090000_staff_grant_scope.sql               # phạm vi quyền (all/clubs/xeve) + thời hạn từ–đến
-└── 20261016090000_tournament_live_scoring.sql         # tính điểm trực tiếp giải đấu + link bảng điểm công khai
+├── 20261016090000_tournament_live_scoring.sql         # tính điểm trực tiếp giải đấu + link bảng điểm công khai
+└── 20261017090000_match_timing_formats.sql            # bấm giờ trận (thời điểm từng pha), thời lượng + thể thức ván lưu cùng kết quả
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -942,8 +960,8 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
-| Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, points, best_of, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` |
-| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
+| Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, scoring (sideout / sideout_single / rally), points, win_by (1/2), best_of (1/3/5), freeze, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` · `POST /api/live/:tid/result` `{match_id \| sub_match_id, games \| team1_score+team2_score, format {points, win_by, best_of}, duration_min, clear}` (nhập kết quả sau trận) |
+| Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` · `/no-shows` · `/player-form` (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
@@ -961,7 +979,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
 | Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo; tỷ số có thể null = chưa nhập; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
-| Giải đấu | `tournaments` (`kind` pairs/team, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams`, `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log`; điểm được tính lại từ nhật ký), `tournaments.live_token` (link bảng điểm công khai) |
+| Giải đấu | `tournaments` (`kind` pairs/team, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams`, `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items`, `inventory_moves` |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |

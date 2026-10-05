@@ -1,6 +1,8 @@
 'use client';
 import Podium from '@/components/Podium';
-import GamesInput, { gamesPayload, gamesText } from '@/components/GamesInput';
+import { gamesText } from '@/components/GamesInput';
+import ScoreEntry from '@/components/ScoreEntry';
+import { minutesText } from '@/lib/live';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -27,32 +29,16 @@ function roundLabel(round, rounds, t) {
 
 function ScoreForm({ match, teamName, onSave, onClear, onCancel }) {
   const { t, sport } = useI18n();
-  const badminton = sport === 'badminton'; // games to 21, best of 3
-  const [s1, setS1] = useState(match.team1_score ?? '');
-  const [s2, setS2] = useState(match.team2_score ?? '');
-  const [games, setGames] = useState(() =>
-    Array.isArray(match.games) && match.games.length ? match.games.map(([a, b]) => [String(a), String(b)]) : [['', ''], ['', '']]
-  );
+  const [body, setBody] = useState(null);
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSave(badminton ? { games: gamesPayload(games) } : { team1_score: Number(s1), team2_score: Number(s2) });
+        if (body) onSave(body);
       }}
       className="flex flex-col gap-3"
     >
-      {badminton && <GamesInput value={games} onChange={setGames} labels={[teamName(match.team1_id), teamName(match.team2_id)]} />}
-      {!badminton && [
-        [match.team1_id, s1, setS1],
-        [match.team2_id, s2, setS2],
-      ].map(([id, v, set], i) => (
-        <div key={i} className="flex items-center gap-3">
-          <span className="flex-1 text-white truncate">{teamName(id)}</span>
-          <div className="w-20 shrink-0">
-            <input className="input text-center text-lg font-bold" type="number" inputMode="numeric" min="0" max="99" required autoFocus={i === 0} value={v} onChange={(e) => set(e.target.value)} />
-          </div>
-        </div>
-      ))}
+      <ScoreEntry sport={sport} labels={[teamName(match.team1_id), teamName(match.team2_id)]} initial={match} onChange={setBody} />
       <div className="flex gap-2 pt-1">
         {match.winner_id && (
           <button type="button" className="btn-secondary text-sm" onClick={onClear}>{t('tournaments.clear')}</button>
@@ -79,6 +65,7 @@ function MatchRow({ m, teamName, onOpen }) {
       {side(m.team1_id, m.team1_score)}
       {side(m.team2_id, m.team2_score)}
       {played && gamesText(m.games) && <span className="text-gray-500 text-[11px] tabular-nums">{gamesText(m.games)}</span>}
+      {played && m.duration_sec != null && <span className="text-gray-500 text-[11px] tabular-nums">⏱ {minutesText(m.duration_sec, t)}</span>}
     </button>
   );
 }
