@@ -101,7 +101,7 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 
 **Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Trọng tài*). Bấm vào để đổi sang CLB khác bạn quản lý, sang **Social Manager (Xé vé)** (chưa có gói thì mở phần đăng ký) / Kèo được giao, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc **tạo CLB mới** (đủ giới hạn gói thì hiện bảng nâng cấp). Mở trang Xé Vé khi chưa có Social Manager sẽ thấy phần giới thiệu + nút đăng ký thay cho nội dung. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
 
-**Thanh cuộn:** thanh cuộn của menu và bảng mảnh, màu tối theo nền (không còn thanh trắng có mũi tên); các hàng tab (*Thống kê thành viên · Bảng xếp hạng*, *Số buổi chơi · Buổi còn lại…*, tab Thành viên…) và hàng thẻ số liệu không hiện thanh cuộn — trên điện thoại vẫn vuốt ngang được.
+**Bộ chuyển ngữ cảnh** mở thành một bảng nổi ngay dưới nút (không bị thanh menu cắt mép, kể cả khi menu thu gọn); menu bên trái chỉ cuộn dọc, không cuộn ngang. **Thanh cuộn:** thanh cuộn của menu và bảng mảnh, màu tối theo nền (không còn thanh trắng có mũi tên); các hàng tab (*Thống kê thành viên · Bảng xếp hạng*, *Số buổi chơi · Buổi còn lại…*, tab Thành viên…) và hàng thẻ số liệu không hiện thanh cuộn — trên điện thoại vẫn vuốt ngang được.
 
 **Menu:**
 - Trên máy tính, menu bên trái chia theo **nhóm (segment)**. Mỗi nhóm thu gọn/mở rộng được, app nhớ trạng thái. Nhóm chứa trang đang mở tự bung ra.
