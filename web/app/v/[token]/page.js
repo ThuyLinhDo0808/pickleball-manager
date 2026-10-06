@@ -71,7 +71,12 @@ export default function MeetingVotePage() {
         </p>
         {ev.location && <p className="text-gray-300 text-sm mt-1">📍 {ev.location}</p>}
         <p className="text-gray-300 text-sm mt-1">💰 {Number(ev.fee_amount) > 0 ? `${formatVnd(ev.fee_amount)} / ${t('vote.perPerson')}` : t('public.free')}</p>
-        {ev.notice && <p className="text-gray-200 text-sm mt-3 whitespace-pre-line rounded-lg bg-navy-900 px-3 py-2">{ev.notice}</p>}
+        {ev.notice && (
+          <div className="mt-3 rounded-lg bg-navy-900 px-3 py-2">
+            <div className="text-gray-400 text-xs">📋 {t('mtg.agenda')}</div>
+            <p className="text-gray-200 text-sm whitespace-pre-line">{ev.notice}</p>
+          </div>
+        )}
       </section>
 
       <section className="card mb-4">

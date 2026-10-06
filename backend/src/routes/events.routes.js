@@ -20,6 +20,7 @@ const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember, memberForUser, findClubPerson } = require('../services/guests');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
+const meeting = require('../services/meetingMoney');
 const { itemMetrics } = require('../services/inventory');
 const { clubSport } = require('../services/sport');
 const { linkByPhone } = require('../services/phoneLink');
@@ -401,6 +402,152 @@ router.post('/', async (req, res) => {
 });
 
 router.get('/:eventId', (req, res) => res.json(req.event));
+
+// ---- Meeting money (kind = 'meeting') ---------------------------------------------
+function meetingOnly(req, res) {
+  if (req.event.kind !== 'meeting' || !req.event.club_id) {
+    res.status(400).json({ error: 'Only club meetings have this.' });
+    return false;
+  }
+  return true;
+}
+const money = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 1e10 ? Math.round(n) : null;
+};
+async function meetingReply(req, res) {
+  const { data } = await supabase.from('events').select('*').eq('id', req.event.id).single();
+  res.json(await meeting.summary(data));
+}
+async function clubMember(req, id) {
+  if (!isUuid(id)) return null;
+  const { data } = await supabase.from('club_members').select('id').eq('id', id).eq('club_id', req.event.club_id).maybeSingle();
+  return data;
+}
+
+router.get('/:eventId/meeting', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    res.json(await meeting.summary(req.event));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// What one person transferred / sponsored.
+router.put('/:eventId/meeting/money/:clubMemberId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!(await clubMember(req, req.params.clubMemberId))) return notFound(res, 'Member');
+    const patch = {};
+    for (const k of ['paid_amount', 'sponsor_amount']) {
+      if (k in (req.body || {})) {
+        const v = money(req.body[k] === '' || req.body[k] == null ? 0 : req.body[k]);
+        if (v == null) return res.status(400).json({ error: `${k} must be a non-negative amount.` });
+        patch[k] = v;
+      }
+    }
+    await meeting.setMoney(req.event.id, req.params.clubMemberId, patch);
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Guests a member brings: one more share of the fee each, charged to the inviter.
+router.post('/:eventId/meeting/guests', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  const name = String(req.body?.full_name || '').trim().slice(0, 120);
+  try {
+    if (!name) return res.status(400).json({ error: 'full_name is required.' });
+    if (!(await clubMember(req, req.body?.invited_by))) return res.status(400).json({ error: 'Pick who invited the guest.', code: 'inviter_required' });
+    const { error } = await supabase.from('meeting_guests').insert({ event_id: req.event.id, full_name: name, invited_by: req.body.invited_by });
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.delete('/:eventId/meeting/guests/:guestId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!isUuid(req.params.guestId)) return notFound(res, 'Guest');
+    const { error } = await supabase.from('meeting_guests').delete().eq('id', req.params.guestId).eq('event_id', req.event.id);
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/:eventId/meeting/expenses', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  const label = String(req.body?.label || '').trim().slice(0, 200);
+  const amount = money(req.body?.amount);
+  try {
+    if (!label || amount == null) return res.status(400).json({ error: 'label and amount are required.' });
+    const { error } = await supabase.from('meeting_expenses').insert({ event_id: req.event.id, label, amount });
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.patch('/:eventId/meeting/expenses/:expenseId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!isUuid(req.params.expenseId)) return notFound(res, 'Expense');
+    const patch = {};
+    if ('label' in req.body) {
+      patch.label = String(req.body.label || '').trim().slice(0, 200);
+      if (!patch.label) return res.status(400).json({ error: 'label is required.' });
+    }
+    if ('amount' in req.body) {
+      patch.amount = money(req.body.amount);
+      if (patch.amount == null) return res.status(400).json({ error: 'amount must be a non-negative amount.' });
+    }
+    const { error } = await supabase.from('meeting_expenses').update(patch).eq('id', req.params.expenseId).eq('event_id', req.event.id);
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.delete('/:eventId/meeting/expenses/:expenseId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!isUuid(req.params.expenseId)) return notFound(res, 'Expense');
+    const { error } = await supabase.from('meeting_expenses').delete().eq('id', req.params.expenseId).eq('event_id', req.event.id);
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Settle the result (surplus -> fund; deficit -> sponsor / fund / split), or undo it.
+router.post('/:eventId/meeting/settle', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    await meeting.settle(req.event, req.hostId, req.body || {});
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.delete('/:eventId/meeting/settle', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    await meeting.undoSettle(req.event);
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
 
 // Meeting votes: who comes (yes), who doesn't (no), who hasn't answered yet.
 router.get('/:eventId/votes', async (req, res) => {
