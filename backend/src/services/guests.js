@@ -129,6 +129,41 @@ async function ensureGuestMember(event, p) {
   }
 }
 
+// The club record for a signed-in player who acts on a club event (e.g. votes on a
+// meeting): their own record, else one with their phone, else a new guest record made
+// from their profile. Returns null when the profile has no name/phone to go on.
+async function memberForUser(event, userId) {
+  const { data: profile } = await supabase.from('player_profiles').select('*').eq('user_id', userId).maybeSingle();
+  const found = await findClubPerson(event.club_id, { userId, phone: profile?.phone });
+  if (found) {
+    if (!found.user_id && found.unlinked_user_id !== userId) await supabase.from('club_members').update({ user_id: userId, account_verified: true }).eq('id', found.id).is('user_id', null);
+    return found;
+  }
+  if (!profile?.full_name || normalizePhone(profile.phone).length < 9) return null;
+  const { data, error } = await supabase
+    .from('club_members')
+    .insert({
+      club_id: event.club_id,
+      user_id: userId,
+      account_verified: true,
+      full_name: profile.full_name,
+      phone: profile.phone,
+      dupr_level: profileLevel(profile, await clubSport(event.club_id)) ?? null,
+      gender: profile.gender ?? null,
+      birth_date: profile.birth_date ?? null,
+      birth_year: profile.birth_year ?? null,
+      member_type: 'guest',
+      joined_on: monthStart(event.event_date),
+    })
+    .select()
+    .single();
+  if (error) {
+    if (error.code !== '23505') throw error;
+    return findClubPerson(event.club_id, { userId, phone: profile.phone });
+  }
+  return data;
+}
+
 // Per guest record: sessions played, cancellations after a confirmed (paid / late) place.
 async function guestStats(memberIds) {
   const out = {};
@@ -153,4 +188,4 @@ async function guestStats(memberIds) {
   return out;
 }
 
-module.exports = { MIGRATION, PERKS, guestsReady, discountReady, discountedFee, findClubPerson, perksFor, ensureGuestMember, guestStats };
+module.exports = { MIGRATION, PERKS, memberForUser, guestsReady, discountReady, discountedFee, findClubPerson, perksFor, ensureGuestMember, guestStats };

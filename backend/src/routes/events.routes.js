@@ -17,7 +17,7 @@ const {
 const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
-const { perksFor, ensureGuestMember } = require('../services/guests');
+const { perksFor, ensureGuestMember, memberForUser, findClubPerson } = require('../services/guests');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
 const { itemMetrics } = require('../services/inventory');
@@ -78,6 +78,92 @@ router.get('/public/:publicToken', async (req, res) => {
     closed_code: closedCode,
     participants: people.map(({ joined_at, ...p }) => p),
   });
+});
+
+// ---- Meeting vote link (/v/<token>) ---------------------------------------------
+// A club meeting / get-together shared by link: anyone sees what, when, where, the fee
+// and who is coming; signed-in players (members or not) vote Coming / Not coming. A
+// voter from outside the club joins its guest list.
+async function meetingByToken(req, res) {
+  if (!isUuid(req.params.publicToken)) {
+    notFound(res, 'Event');
+    return null;
+  }
+  const { data: event, error } = await supabase.from('events').select('*, clubs(name)').eq('public_token', req.params.publicToken).maybeSingle();
+  if (error) {
+    dbError(res, error);
+    return null;
+  }
+  if (!event || event.kind !== 'meeting' || !event.club_id) {
+    notFound(res, 'Event');
+    return null;
+  }
+  return event;
+}
+const votingClosed = (e) => e.status === 'cancelled' || e.event_date < new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+
+async function meetingView(event) {
+  const { data: rows, error } = await supabase.from('event_votes').select('choice, updated_at, club_members(full_name)').eq('event_id', event.id).order('updated_at');
+  if (error) throw error;
+  const yes = (rows || []).filter((r) => r.choice === 'yes');
+  return {
+    title: event.title,
+    event_date: event.event_date,
+    start_time: event.start_time,
+    end_time: event.end_time,
+    location: event.location,
+    fee_amount: event.fee_amount,
+    notice: event.notice,
+    status: event.status,
+    club_name: event.clubs?.name || null,
+    closed: votingClosed(event),
+    yes: yes.length,
+    no: (rows || []).length - yes.length,
+    coming: yes.map((r) => r.club_members?.full_name).filter(Boolean),
+  };
+}
+
+router.get('/public/:publicToken/vote', async (req, res) => {
+  const event = await meetingByToken(req, res);
+  if (!event) return;
+  try {
+    res.json(await meetingView(event));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+router.get('/public/:publicToken/vote/me', requireAuth, async (req, res) => {
+  const event = await meetingByToken(req, res);
+  if (!event) return;
+  try {
+    const profile = await playerProfile(req.userId);
+    const member = await findClubPerson(event.club_id, { userId: req.userId, phone: profile?.phone });
+    let myVote = null;
+    if (member) {
+      const { data } = await supabase.from('event_votes').select('choice').eq('event_id', event.id).eq('club_member_id', member.id).maybeSingle();
+      myVote = data?.choice || null;
+    }
+    res.json({ profile, in_club: !!member, member_type: member?.member_type || null, my_vote: myVote });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/public/:publicToken/vote', requireAuth, async (req, res) => {
+  const event = await meetingByToken(req, res);
+  if (!event) return;
+  const choice = req.body?.choice ?? null;
+  if (choice !== null && !votes.CHOICES.includes(choice)) return res.status(400).json({ error: 'choice must be yes, no or null.' });
+  try {
+    if (votingClosed(event)) return res.status(409).json({ error: 'Voting is closed.', code: 'closed' });
+    const member = await memberForUser(event, req.userId);
+    if (!member) return res.status(400).json({ error: 'Add your name and phone to your profile first.', code: 'profile_required' });
+    await votes.castVote(event.id, member.id, choice, false);
+    res.json({ my_vote: choice, ...(await meetingView(event)) });
+  } catch (err) {
+    fail(res, err);
+  }
 });
 
 // ---- Signed-in player on the public page ------------------------------------
