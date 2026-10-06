@@ -10,7 +10,7 @@ import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
 import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
-import EventVotes from '@/components/EventVotes';
+import MeetingEvent from '@/components/MeetingEvent';
 import EventShuttles from '@/components/EventShuttles';
 import PlayerChip from '@/components/PlayerChip';
 import { exportMatchesJpg } from '@/lib/matchImage';
@@ -151,6 +151,15 @@ export default function EventDetailPage() {
     reloadEvent();
   };
 
+  // Meetings / get-togethers have their own page: details + votes, who comes, cash box.
+  if (event.kind === 'meeting' && event.club_id) {
+    return (
+      <AppShell>
+        <MeetingEvent event={event} onChanged={setEvent} />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="flex justify-between items-start gap-3 mb-4">
@@ -190,7 +199,6 @@ export default function EventDetailPage() {
 
       {tab === 'details' && (
         <>
-          {event.kind === 'meeting' && event.club_id && <EventVotes event={event} />}
           <EventControls event={event} onChanged={setEvent} />
           {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={setEvent} />}
         </>

@@ -38,7 +38,7 @@ function minutesLeft(iso) {
   return iso ? Math.max(Math.ceil((new Date(iso) - Date.now()) / 60000), 0) : null;
 }
 
-function ProfileForm({ profile, onSaved, sport = 'pickleball' }) {
+export function ProfileForm({ profile, onSaved, sport = 'pickleball' }) {
   const { t } = useI18n();
   const levelKey = sport === 'badminton' ? 'badminton_level' : 'dupr_level'; // the level for this event's sport
   const [f, setF] = useState({

@@ -67,18 +67,24 @@ router.get('/finance', async (req, res) => {
     }
     const byMonth = new Map(months.map((m) => [m, { month: m, income: 0, expense: 0 }]));
     const byCategory = new Map();
+    const byMonthCategory = new Map(months.map((m) => [m, new Map()])); // most clubs collect / spend month by month
     for (const t of txns) {
-      const row = byMonth.get(t.occurred_on.slice(0, 7));
+      const ym = t.occurred_on.slice(0, 7);
+      const row = byMonth.get(ym);
       if (!row) continue;
       row[t.type] += Number(t.amount);
       const key = `${t.type}:${t.category || 'other'}`;
       byCategory.set(key, (byCategory.get(key) || 0) + Number(t.amount));
+      const mc = byMonthCategory.get(ym);
+      mc.set(key, (mc.get(key) || 0) + Number(t.amount));
     }
+    const asList = (m) => [...m].map(([k, amount]) => ({ type: k.split(':')[0], category: k.split(':')[1], amount })).sort((a, b) => b.amount - a.amount);
     const rows = [...byMonth.values()].map((r) => ({ ...r, net: r.income - r.expense }));
     res.json({
       months: rows,
       totals: rows.reduce((a, r) => ({ income: a.income + r.income, expense: a.expense + r.expense, net: a.net + r.net }), { income: 0, expense: 0, net: 0 }),
-      categories: [...byCategory].map(([k, amount]) => ({ type: k.split(':')[0], category: k.split(':')[1], amount })).sort((a, b) => b.amount - a.amount),
+      categories: asList(byCategory),
+      month_categories: Object.fromEntries([...byMonthCategory].map(([m, c]) => [m, asList(c)])),
     });
   } catch (err) {
     dbError(res, err);

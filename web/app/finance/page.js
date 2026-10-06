@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
 import FinanceTrend from '@/components/FinanceTrend';
 import PendingPayments from '@/components/PendingPayments';
@@ -71,8 +72,19 @@ export default function FinanceOverview() {
 
   const month = fin?.months[fin.months.length - 1];
 
-  const income = (fin?.categories || []).filter((c) => c.type === 'income');
-  const expense = (fin?.categories || []).filter((c) => c.type === 'expense');
+  // Most clubs collect and spend month by month: the breakdown and the per-event table
+  // show one month (‹ ›), or the last 12 months together.
+  const [pick, setPick] = useState(null); // 'YYYY-MM' | 'year' | null = this month
+  const monthsList = (fin?.months || []).map((m) => m.month);
+  const period = pick || month?.month || null;
+  const periodCats = period === 'year' ? fin?.categories || [] : fin?.month_categories?.[period] || [];
+  const income = periodCats.filter((c) => c.type === 'income');
+  const expense = periodCats.filter((c) => c.type === 'expense');
+  const periodTotal = (type) => periodCats.filter((c) => c.type === type).reduce((a, c) => a + c.amount, 0);
+  const pnlShown = (pnl || []).filter((e) => period === 'year' || !period || e.event_date.startsWith(period));
+  const at = monthsList.indexOf(period);
+  const step = (d) => setPick(monthsList[Math.min(monthsList.length - 1, Math.max(0, at + d))]);
+  const periodLabel = period === 'year' ? t('fin.last12') : period ? `${Number(period.slice(5))}/${period.slice(0, 4)}` : '';
   const bal = Number(fund?.balance || 0);
   const ym = (m) => (m ? `${Number(m.month.slice(5))}/${m.month.slice(0, 4)}` : '');
 
@@ -120,9 +132,20 @@ export default function FinanceOverview() {
         </div>
       </div>
 
+      <div className="card !p-3 mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-gray-400 text-sm">{t('finX.viewing')}</span>
+        <div className="flex items-center gap-1">
+          <button type="button" className="btn-secondary !px-3 !py-1" disabled={period === 'year' || at <= 0} onClick={() => step(-1)} aria-label={t('cal.prev')}>‹</button>
+          <span className="text-white font-semibold text-sm px-2 tabular-nums min-w-[5.5rem] text-center">{periodLabel}</span>
+          <button type="button" className="btn-secondary !px-3 !py-1" disabled={period === 'year' || at >= monthsList.length - 1} onClick={() => step(1)} aria-label={t('cal.next')}>›</button>
+        </div>
+        <button type="button" onClick={() => setPick(period === 'year' ? null : 'year')} className={`rounded-full border px-3 py-1 text-sm ${period === 'year' ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300'}`}>
+          {t('fin.last12')}
+        </button>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 mb-4">
-        <Breakdown title={`💚 ${t('finX.incomeBy')}`} rows={income} total={fin?.totals.income || 0} color={INCOME_COLOR} t={t} />
-        <Breakdown title={`🧾 ${t('finX.expenseBy')}`} rows={expense} total={fin?.totals.expense || 0} color={EXPENSE_COLOR} t={t} />
+        <Breakdown title={`💚 ${t('finX.incomeByP', { p: periodLabel })}`} rows={income} total={periodTotal('income')} color={INCOME_COLOR} t={t} />
+        <Breakdown title={`🧾 ${t('finX.expenseByP', { p: periodLabel })}`} rows={expense} total={periodTotal('expense')} color={EXPENSE_COLOR} t={t} />
       </div>
 
       <EventPaymentsPending />
@@ -130,15 +153,15 @@ export default function FinanceOverview() {
 
       <section className="card !p-5">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h2 className="text-white font-semibold">🏓 {t('fin.eventPnl')}</h2>
-          {pnl?.length > 0 && (
+          <h2 className="text-white font-semibold">🏓 {t('fin.eventPnl')} · {periodLabel}</h2>
+          {pnlShown.length > 0 && (
             <span className="text-xs text-gray-400">
-              {t('finX.pnlSummary', { win: pnl.filter((e) => e.net >= 0).length, lose: pnl.filter((e) => e.net < 0).length })}
+              {t('finX.pnlSummary', { win: pnlShown.filter((e) => e.net >= 0).length, lose: pnlShown.filter((e) => e.net < 0).length })}
             </span>
           )}
         </div>
-        {pnl && pnl.length === 0 && <p className="text-gray-400 text-sm">{t('fin.eventPnlNone')}</p>}
-        {pnl?.length > 0 && (
+        {pnl && pnlShown.length === 0 && <p className="text-gray-400 text-sm">{t('fin.eventPnlNone')}</p>}
+        {pnlShown.length > 0 && (
           <div className="table-wrap">
             <table className="w-full text-sm grid-table">
               <thead>
@@ -152,7 +175,7 @@ export default function FinanceOverview() {
                 </tr>
               </thead>
               <tbody>
-                {pnl.map((e) => (
+                {pnlShown.map((e) => (
                   <tr key={e.event_id}>
                     <td>
                       <Link href={`/events/${e.event_id}`} className="text-white hover:text-lime-400">{e.title}</Link>

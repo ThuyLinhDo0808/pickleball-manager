@@ -66,7 +66,9 @@ export default function EventControls({ event, onChanged }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-md border-l-4 px-2 py-1 text-xs font-semibold ${STATUS_STYLE[status]}`}>{t(`events.status_${status}`)}</span>
         <span className={`text-xs ${takingSignups ? 'text-lime-400' : 'text-gray-400'}`}>
-          {takingSignups
+          {event.kind === 'meeting'
+            ? live ? t('vote.openShort') : t('vote.closedShort')
+            : takingSignups
             ? t('events.registrationOpen')
             : live && deadlinePassed
               ? t('manage.lockedDeadline')

@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
@@ -9,7 +10,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { categoryLabel, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/lib/finance';
 
-const AUTO = new Set(['membership', 'event_fee', 'tournament_fee']);
+const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
 
 function todayYmd() {
   const d = new Date();
@@ -96,6 +97,65 @@ function AddEntry({ club, onDone }) {
   );
 }
 
+// Fix an entry. A new amount or type is saved as a corrected entry (the old one is voided,
+// so the ledger keeps its history); category, date and note change in place.
+function EditEntry({ entry, onClose, onSaved }) {
+  const { t } = useI18n();
+  const [f, setF] = useState(() => ({ type: entry.type, category: entry.category || '', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '' }));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const presets = f.type === 'income' ? INCOME_CATEGORIES.filter((c) => !AUTO.has(c)) : EXPENSE_CATEGORIES;
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(`/api/transactions/${entry.id}`, { type: f.type, category: f.category.trim() || null, amount: Number(f.amount), occurred_on: f.occurred_on, note: f.note.trim() || null });
+      onSaved();
+    } catch (err) {
+      setError(err.payload?.code?.startsWith('linked_') ? t('fin.autoHint') : err.message);
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal open title={`✏️ ${t('fin.editTitle')}`} onClose={onClose}>
+      <form onSubmit={save} className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
+          {['income', 'expense'].map((ty) => (
+            <button key={ty} type="button" onClick={() => setF({ ...f, type: ty })} className={`rounded-md py-1.5 ${f.type === ty ? (ty === 'income' ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-orange-500 text-white font-semibold') : 'text-gray-400'}`}>
+              {t(`analytics.${ty}`)}
+            </button>
+          ))}
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <label className="text-xs text-gray-400">{t('fin.category')}</label>
+          <select className="input" value={presets.includes(f.category) ? f.category : '__custom'} onChange={(e) => setF({ ...f, category: e.target.value === '__custom' ? '' : e.target.value })}>
+            {presets.filter((c) => c !== 'other').map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
+            <option value="__custom">{t('fin.customCategory')}</option>
+          </select>
+          {!presets.includes(f.category) && <input className="input mt-2" placeholder={t('fin.categoryPh')} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />}
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <label className="text-xs text-gray-400">{t('fin.amount')}</label>
+          <input className="input" type="number" inputMode="numeric" min="0" step="1" required value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <label className="text-xs text-gray-400">{t('fin.date')}</label>
+          <input className="input" type="date" required value={f.occurred_on} onChange={(e) => setF({ ...f, occurred_on: e.target.value })} />
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <label className="text-xs text-gray-400">{t('fin.note')}</label>
+          <input className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
+        </div>
+        <p className="col-span-2 text-gray-500 text-xs">{t('fin.editHint')}</p>
+        {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
+        <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
+        <button className="btn-primary" disabled={busy}>{t('common.save')}</button>
+      </form>
+    </Modal>
+  );
+}
+
 // Sổ thu chi: every income/expense entry, filterable. Entries are never deleted, only voided.
 export default function LedgerPage() {
   const { t, lang } = useI18n();
@@ -112,6 +172,7 @@ export default function LedgerPage() {
   const [category, setCategory] = useState('all');
   const [showVoided, setShowVoided] = useState(false);
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(null);
 
   const rows = data?.transactions || [];
   const months = useMemo(() => [...new Set(rows.map((r) => r.occurred_on.slice(0, 7)))].sort().reverse(), [rows]);
@@ -220,7 +281,10 @@ export default function LedgerPage() {
                     </td>
                     <td className="text-right">
                       {!r.is_voided && isClub && !AUTO.has(r.category) && (
-                        <button className="text-red-400/80 text-xs" onClick={() => voidEntry(r)}>{t('fin.void')}</button>
+                        <span className="inline-flex gap-3 whitespace-nowrap">
+                          <button className="text-gray-300 hover:text-white text-xs" onClick={() => setEditing(r)}>✏️ {t('fin.edit')}</button>
+                          <button className="text-red-400/80 text-xs" onClick={() => voidEntry(r)}>{t('fin.void')}</button>
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -230,6 +294,7 @@ export default function LedgerPage() {
           </div>
         )}
       </div>
+      {editing && <EditEntry entry={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}
     </>
   );
 }

@@ -208,7 +208,18 @@ Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh
 
 Loại hoạt động sửa được ở trang *Sửa* của buổi.
 
-**Họp / gặp mặt** (ăn uống, liên hoan, hoạt động ngoài sân — chỉ có ở không gian CLB) dùng form gọn: **nội dung kèo, ngày giờ, địa điểm dự kiến, phí tham gia, mô tả thêm**; không có số sân, số chỗ, trình độ, hạn huỷ hay link đăng ký. Tạo xong, thành viên **bình chọn Tham gia / Không** ngay trên trang CLB của họ (`/c/<clubId>`, bấm lại để rút phiếu). Trang chi tiết buổi họp có thẻ **🗳 Bình chọn tham gia**: thanh tỉ lệ, lọc *Tất cả / Tham gia / Không / Chưa bình chọn*, dự kiến thu (phí × số người tham gia); Host bấm để **đánh dấu giúp** ai báo qua nhóm chat (ghi "host đánh dấu"). Buổi họp không tính vào thống kê số buổi chơi.
+**Họp / gặp mặt** (ăn uống, liên hoan, hoạt động ngoài sân — chỉ có ở không gian CLB) dùng form gọn: **nội dung kèo, ngày giờ, địa điểm dự kiến, phí tham gia, agenda sự kiện**; không có số sân, số chỗ, trình độ, hạn huỷ hay link đăng ký. Tạo xong, trang chi tiết buổi họp có nút **🔗 Sao chép link bình chọn** (`/v/<mã>`) để gửi vào nhóm Zalo/Telegram. Ai mở link cũng xem được nội dung, thời gian, địa điểm, phí và **danh sách ai tham gia**; muốn bình chọn **Tham gia / Không** thì đăng nhập (chưa có tên + SĐT trong hồ sơ thì điền ngay trên trang). **Người ngoài CLB cũng bình chọn được**: bình chọn xong họ được thêm vào danh sách *Thành viên giao lưu* của CLB (nhận ra người cũ theo tài khoản / SĐT, không tạo trùng). Bấm lại lựa chọn để rút phiếu; buổi đã qua hoặc đã huỷ thì khoá bình chọn. Thành viên cũng bình chọn được ngay trên trang CLB của họ (`/c/<clubId>`). Trang chi tiết buổi họp có thẻ **🗳 Bình chọn tham gia**: thanh tỉ lệ, lọc *Tất cả / Tham gia / Không / Chưa bình chọn*, dự kiến thu (phí × số người tham gia); Host bấm để **đánh dấu giúp** ai báo qua nhóm chat (ghi "host đánh dấu"). Buổi họp không tính vào thống kê số buổi chơi.
+
+Trang chi tiết buổi họp có **3 tab** (không có *Trận đấu*):
+- **Chi tiết**: *Thời gian dự kiến · Địa điểm dự kiến · Phí tham gia · Agenda sự kiện*, thẻ bình chọn (kèm link), rồi trạng thái / Sửa thông tin / Huỷ lịch / Xoá.
+- **Thành viên tham gia**: danh sách người đã đăng ký (bình chọn Tham gia) kèm số tiền cần đóng; mục **Khách mời**: nhập *tên khách* + *khách mời của ai* — mỗi khách tính thêm **1 suất phí** vào phần cần đóng của người mời; xoá khách bằng ×.
+- **Tài chính** (đơn giản, tách riêng khỏi quỹ CLB cho tới khi kết toán):
+  - Bảng *Tên thành viên · Tình trạng (Đã đăng ký / Chưa đăng ký / Không tham gia) · Cần đóng · **Đã chuyển khoản** · **Tài trợ*** — gõ số tiền thẳng vào ô (tự lưu khi rời ô). Mặc định hiện người đã đăng ký và ai đã có tiền; tick *Hiện tất cả thành viên* để ghi tài trợ của người không đi. Dòng tổng + nhắc số tiền còn chưa chuyển.
+  - **Chi**: thêm khoản chi (tiền ăn, nước, quà…), sửa / xoá từng khoản.
+  - **Tổng kết**: *Tổng chuyển khoản · Tổng tài trợ · Đã thu · Chi · Còn lại* (dương / âm).
+  - **Còn lại dương** → nút **Chuyển số dư vào quỹ CLB** (ghi khoản thu hạng mục *Họp mặt / liên hoan* vào Sổ thu chi).
+  - **Còn lại âm** → chọn 1 trong 3: **Một người tài trợ thêm** (chọn người, cộng phần thiếu vào cột Tài trợ của họ) · **Trích từ quỹ CLB** (ghi khoản chi vào Sổ thu chi) · **Mỗi người đóng thêm** (chia đều phần thiếu cho số suất — người tham gia + khách mời —, làm tròn lên 1.000đ, cộng vào cột Cần đóng; ghi tiền họ chuyển thêm vào cột Đã chuyển khoản).
+  - Mọi cách kết toán đều có **Hoàn tác** (khoản trong Sổ thu chi được huỷ, phần tài trợ thêm được trả lại). Khoản kết toán trong Sổ thu chi chỉ huỷ được từ trang buổi họp.
 
 Trang chi tiết buổi:
 - Trang chi tiết buổi giống kèo Xé Vé (xem [mục 5](#5-tính-năng-chi-tiết--xé-vé-manager)), cộng thêm:
@@ -338,8 +349,8 @@ Mục Tài chính có các tab:
 
 | Tab | Nội dung |
 |---|---|
-| **Tổng quan** (`/finance`) | Số dư quỹ CLB · Thu, chi, lợi nhuận **12 tháng** và **tháng này** · Yêu cầu thanh toán chờ xác nhận · Biểu đồ thu–chi theo tháng và theo hạng mục · Bảng **lãi/lỗ từng buổi/kèo** (số người chơi, thu, chi, lãi) |
-| **Sổ thu chi** (`/finance/ledger`) | Thêm khoản **Thu/Chi** · Lọc theo loại, tháng, hạng mục · Tổng thu/chi/chênh lệch của phần đang lọc · **Huỷ** khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
+| **Tổng quan** (`/finance`) | Số dư quỹ CLB · Thu, chi, **còn lại** **12 tháng** và **tháng này** · Yêu cầu thanh toán chờ xác nhận · Biểu đồ thu–chi theo tháng · **Xem theo tháng** (‹ 10/2026 ›, hoặc *12 tháng*): thu/chi theo hạng mục và bảng **lãi/lỗ từng buổi/kèo** của tháng đang chọn — phù hợp CLB thu/chi theo từng tháng |
+| **Sổ thu chi** (`/finance/ledger`) | Thêm khoản **Thu/Chi** · Lọc theo loại, tháng, hạng mục · Tổng thu/chi/chênh lệch của phần đang lọc · **✏️ Sửa** (đổi loại, hạng mục, số tiền, ngày, ghi chú) và **Huỷ** khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
 
@@ -355,9 +366,9 @@ Mục Tài chính có các tab:
 
 Các khoản tự động **không huỷ được từ Sổ thu chi**. Muốn sửa thì sửa tại nơi tạo ra nó, để sổ luôn khớp với gói, kho và danh sách kèo.
 
-Giao diện Tài chính dạng thẻ: khối **Số dư quỹ** + thu/chi/lãi **tháng này**, 3 ô 12 tháng (kèm trung bình/tháng, số tháng có lãi), biểu đồ xu hướng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng lãi/lỗ từng kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
+Giao diện Tài chính dạng thẻ: khối **Số dư quỹ** + thu/chi/**còn lại** **tháng này**, 3 ô 12 tháng (kèm trung bình/tháng, số tháng có lãi), biểu đồ xu hướng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng lãi/lỗ từng kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
 
-**Sổ thu chi chỉ thêm, không sửa.** Số tiền, loại và chủ sở hữu của một khoản không bao giờ bị ghi đè (database chặn bằng trigger). Muốn sửa thì huỷ khoản cũ rồi tạo khoản mới, nhờ vậy luôn truy vết được.
+**Sổ thu chi chỉ thêm.** Số tiền, loại và chủ sở hữu của một khoản không bao giờ bị ghi đè (database chặn bằng trigger). Nút **Sửa**: đổi hạng mục, ngày, ghi chú thì sửa trực tiếp; đổi **số tiền hoặc loại** thì app tự huỷ dòng cũ (ghi "edited", trỏ tới dòng mới) và ghi dòng mới thay thế — luôn truy vết được.
 
 Link cũ `/club/fund`, `/club/plans`, `/club/inventory` tự chuyển sang trang mới.
 
@@ -825,6 +836,7 @@ supabase/migrations/
 └── 20261018090000_social_manager_plans.sql            # gói Social Manager (xé vé) + yêu cầu nâng cấp gói trên host_subscriptions
 └── 20261019090000_round_robin_meeting_votes.sql       # giải vòng tròn tính điểm (advance_per_group = 0) + bảng event_votes (bình chọn buổi họp)
 └── 20261020090000_tournament_player_ranks.sql         # hạng A–D xếp riêng cho từng giải (tournaments.player_ranks)
+└── 20261021090000_meeting_money.sql                   # tài chính buổi họp: meeting_money, meeting_guests, meeting_expenses, events.meeting_settlement
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1007,14 +1019,14 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = toàn CLB, `club`, `guest`) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
-| Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge` = round robin; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` · `GET …/votes` · `PUT …/votes/:clubMemberId` `{choice: yes | no | null}` (bình chọn buổi họp) · người chơi: `POST /api/player/events/:eventId/vote` `{choice}` |
+| Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge` = round robin; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` · `GET …/votes` · `PUT …/votes/:clubMemberId` `{choice: yes | no | null}` (bình chọn buổi họp) · người chơi: `POST /api/player/events/:eventId/vote` `{choice}` · buổi họp: `GET …/:id/meeting` · `PUT …/meeting/money/:memberId` `{paid_amount, sponsor_amount}` · `POST/DELETE …/meeting/guests` · `POST/PATCH/DELETE …/meeting/expenses` · `POST …/meeting/settle` `{mode: to_fund | from_fund | sponsor | split, member_id}` · `DELETE …/meeting/settle` (hoàn tác) · link bình chọn: `GET /api/events/public/:token/vote` (không cần đăng nhập) · `GET …/vote/me` · `POST …/vote` `{choice}` (đăng nhập; người ngoài CLB được thêm làm khách, `400 profile_required` nếu hồ sơ thiếu tên/SĐT) |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) · `GET /api/public/live/:token` (bảng điểm trực tiếp) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
 | Tính điểm trực tiếp | `GET /api/live/tournaments` (giải nhân viên được bấm điểm) · `GET /api/live/:tid` · `POST /api/live/:tid/public` `{on}` · `POST /api/live/:tid/start` `{match_id \| sub_match_id, court, scoring (sideout / sideout_single / rally), points, win_by (1/2), best_of (1/3/5), freeze, first_server, players}` · `POST /api/live/:tid/:liveId/event` `{ev: r1/r2/s1/s2/x1/x2, version}` · `POST …/undo` · `PATCH …` `{court}` · `POST …/save` · `DELETE …` · `POST /api/live/:tid/result` `{match_id \| sub_match_id, games \| team1_score+team2_score, format {points, win_by, best_of}, duration_min, clear}` (nhập kết quả sau trận) |
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` (nhận `ranks` `{memberId: A–D}`; khi tạo giải gửi `player_ranks`) · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
-| Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `POST /api/transactions/:id/void` |
+| Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `PATCH /api/transactions/:id` (sửa; đổi số tiền/loại = huỷ + ghi dòng thay thế) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance` · `/events-pnl` (dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` · `GET /api/staff/events` · `GET /api/staff/events/:id` · `POST …/participants/:pid/:action` · `POST …/checkin-code` · `POST/PATCH …/matches` |
@@ -1036,6 +1048,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Kho | `inventory_items`, `inventory_moves` |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |
 | Lịch sử | `change_history` (SCD Type 2, ghi bằng trigger) |
+| Họp mặt | `meeting_money` (đã chuyển khoản / tài trợ từng người), `meeting_guests` (khách mời + người mời), `meeting_expenses` (khoản chi), `events.meeting_settlement` (cách kết toán) |
 | Khác | `feedback`, `event_votes` (bình chọn tham gia buổi họp: `choice` yes/no, `by_host`) |
 
 ---
@@ -1049,7 +1062,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **Đồng quản trị kiểm soát ở server**, không chỉ ẩn trên giao diện. Họ chỉ truy cập được đúng CLB được cấp (trong thời hạn hiệu lực), với quyền như chủ CLB trừ xoá CLB. Server tự gắn dữ liệu họ tạo vào chủ CLB, nên mọi khoản nằm trong sổ của chủ. Họ không thấy kèo Xé Vé riêng của chủ.
 - **Mã QR check-in** là một token ngẫu nhiên, không chứa thông tin cá nhân. Chỉ Host hoặc điều phối viên của đúng kèo mới dùng được để check-in, và người chơi đổi mã mới bất cứ lúc nào.
 - **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ). Bot Telegram chỉ nhận cập nhật có đúng secret.
-- **Sổ thu chi chỉ thêm.** Không sửa số tiền, chỉ huỷ kèm lý do. Các khoản tự động gắn với nguồn tạo ra chúng.
+- **Sổ thu chi chỉ thêm.** Sửa số tiền = huỷ dòng cũ + ghi dòng thay thế (server làm, có liên kết `replaced_by`). Các khoản tự động gắn với nguồn tạo ra chúng.
 - **Lịch sử không ghi đè.** Thay đổi quan trọng được lưu theo dòng thời gian (SCD2).
 - **Link công khai** (`/e/…`, `/join/…`, `/l/…` bảng điểm) dùng token ngẫu nhiên, có thể tắt hoặc tạo mới. Trang công khai không lộ số điện thoại.
 

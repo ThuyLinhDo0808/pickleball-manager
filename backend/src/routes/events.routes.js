@@ -17,9 +17,10 @@ const {
 const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
 const { HOLDS_PLACE } = require('../services/fees');
-const { perksFor, ensureGuestMember } = require('../services/guests');
+const { perksFor, ensureGuestMember, memberForUser, findClubPerson } = require('../services/guests');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
+const meeting = require('../services/meetingMoney');
 const { itemMetrics } = require('../services/inventory');
 const { clubSport } = require('../services/sport');
 const { linkByPhone } = require('../services/phoneLink');
@@ -78,6 +79,92 @@ router.get('/public/:publicToken', async (req, res) => {
     closed_code: closedCode,
     participants: people.map(({ joined_at, ...p }) => p),
   });
+});
+
+// ---- Meeting vote link (/v/<token>) ---------------------------------------------
+// A club meeting / get-together shared by link: anyone sees what, when, where, the fee
+// and who is coming; signed-in players (members or not) vote Coming / Not coming. A
+// voter from outside the club joins its guest list.
+async function meetingByToken(req, res) {
+  if (!isUuid(req.params.publicToken)) {
+    notFound(res, 'Event');
+    return null;
+  }
+  const { data: event, error } = await supabase.from('events').select('*, clubs(name)').eq('public_token', req.params.publicToken).maybeSingle();
+  if (error) {
+    dbError(res, error);
+    return null;
+  }
+  if (!event || event.kind !== 'meeting' || !event.club_id) {
+    notFound(res, 'Event');
+    return null;
+  }
+  return event;
+}
+const votingClosed = (e) => e.status === 'cancelled' || e.event_date < new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+
+async function meetingView(event) {
+  const { data: rows, error } = await supabase.from('event_votes').select('choice, updated_at, club_members(full_name)').eq('event_id', event.id).order('updated_at');
+  if (error) throw error;
+  const yes = (rows || []).filter((r) => r.choice === 'yes');
+  return {
+    title: event.title,
+    event_date: event.event_date,
+    start_time: event.start_time,
+    end_time: event.end_time,
+    location: event.location,
+    fee_amount: event.fee_amount,
+    notice: event.notice,
+    status: event.status,
+    club_name: event.clubs?.name || null,
+    closed: votingClosed(event),
+    yes: yes.length,
+    no: (rows || []).length - yes.length,
+    coming: yes.map((r) => r.club_members?.full_name).filter(Boolean),
+  };
+}
+
+router.get('/public/:publicToken/vote', async (req, res) => {
+  const event = await meetingByToken(req, res);
+  if (!event) return;
+  try {
+    res.json(await meetingView(event));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+router.get('/public/:publicToken/vote/me', requireAuth, async (req, res) => {
+  const event = await meetingByToken(req, res);
+  if (!event) return;
+  try {
+    const profile = await playerProfile(req.userId);
+    const member = await findClubPerson(event.club_id, { userId: req.userId, phone: profile?.phone });
+    let myVote = null;
+    if (member) {
+      const { data } = await supabase.from('event_votes').select('choice').eq('event_id', event.id).eq('club_member_id', member.id).maybeSingle();
+      myVote = data?.choice || null;
+    }
+    res.json({ profile, in_club: !!member, member_type: member?.member_type || null, my_vote: myVote });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/public/:publicToken/vote', requireAuth, async (req, res) => {
+  const event = await meetingByToken(req, res);
+  if (!event) return;
+  const choice = req.body?.choice ?? null;
+  if (choice !== null && !votes.CHOICES.includes(choice)) return res.status(400).json({ error: 'choice must be yes, no or null.' });
+  try {
+    if (votingClosed(event)) return res.status(409).json({ error: 'Voting is closed.', code: 'closed' });
+    const member = await memberForUser(event, req.userId);
+    if (!member) return res.status(400).json({ error: 'Add your name and phone to your profile first.', code: 'profile_required' });
+    await votes.castVote(event.id, member.id, choice, false);
+    res.json({ my_vote: choice, ...(await meetingView(event)) });
+  } catch (err) {
+    fail(res, err);
+  }
 });
 
 // ---- Signed-in player on the public page ------------------------------------
@@ -315,6 +402,152 @@ router.post('/', async (req, res) => {
 });
 
 router.get('/:eventId', (req, res) => res.json(req.event));
+
+// ---- Meeting money (kind = 'meeting') ---------------------------------------------
+function meetingOnly(req, res) {
+  if (req.event.kind !== 'meeting' || !req.event.club_id) {
+    res.status(400).json({ error: 'Only club meetings have this.' });
+    return false;
+  }
+  return true;
+}
+const money = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 1e10 ? Math.round(n) : null;
+};
+async function meetingReply(req, res) {
+  const { data } = await supabase.from('events').select('*').eq('id', req.event.id).single();
+  res.json(await meeting.summary(data));
+}
+async function clubMember(req, id) {
+  if (!isUuid(id)) return null;
+  const { data } = await supabase.from('club_members').select('id').eq('id', id).eq('club_id', req.event.club_id).maybeSingle();
+  return data;
+}
+
+router.get('/:eventId/meeting', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    res.json(await meeting.summary(req.event));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// What one person transferred / sponsored.
+router.put('/:eventId/meeting/money/:clubMemberId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!(await clubMember(req, req.params.clubMemberId))) return notFound(res, 'Member');
+    const patch = {};
+    for (const k of ['paid_amount', 'sponsor_amount']) {
+      if (k in (req.body || {})) {
+        const v = money(req.body[k] === '' || req.body[k] == null ? 0 : req.body[k]);
+        if (v == null) return res.status(400).json({ error: `${k} must be a non-negative amount.` });
+        patch[k] = v;
+      }
+    }
+    await meeting.setMoney(req.event.id, req.params.clubMemberId, patch);
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Guests a member brings: one more share of the fee each, charged to the inviter.
+router.post('/:eventId/meeting/guests', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  const name = String(req.body?.full_name || '').trim().slice(0, 120);
+  try {
+    if (!name) return res.status(400).json({ error: 'full_name is required.' });
+    if (!(await clubMember(req, req.body?.invited_by))) return res.status(400).json({ error: 'Pick who invited the guest.', code: 'inviter_required' });
+    const { error } = await supabase.from('meeting_guests').insert({ event_id: req.event.id, full_name: name, invited_by: req.body.invited_by });
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.delete('/:eventId/meeting/guests/:guestId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!isUuid(req.params.guestId)) return notFound(res, 'Guest');
+    const { error } = await supabase.from('meeting_guests').delete().eq('id', req.params.guestId).eq('event_id', req.event.id);
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/:eventId/meeting/expenses', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  const label = String(req.body?.label || '').trim().slice(0, 200);
+  const amount = money(req.body?.amount);
+  try {
+    if (!label || amount == null) return res.status(400).json({ error: 'label and amount are required.' });
+    const { error } = await supabase.from('meeting_expenses').insert({ event_id: req.event.id, label, amount });
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.patch('/:eventId/meeting/expenses/:expenseId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!isUuid(req.params.expenseId)) return notFound(res, 'Expense');
+    const patch = {};
+    if ('label' in req.body) {
+      patch.label = String(req.body.label || '').trim().slice(0, 200);
+      if (!patch.label) return res.status(400).json({ error: 'label is required.' });
+    }
+    if ('amount' in req.body) {
+      patch.amount = money(req.body.amount);
+      if (patch.amount == null) return res.status(400).json({ error: 'amount must be a non-negative amount.' });
+    }
+    const { error } = await supabase.from('meeting_expenses').update(patch).eq('id', req.params.expenseId).eq('event_id', req.event.id);
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.delete('/:eventId/meeting/expenses/:expenseId', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    if (!isUuid(req.params.expenseId)) return notFound(res, 'Expense');
+    const { error } = await supabase.from('meeting_expenses').delete().eq('id', req.params.expenseId).eq('event_id', req.event.id);
+    if (error) throw error;
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Settle the result (surplus -> fund; deficit -> sponsor / fund / split), or undo it.
+router.post('/:eventId/meeting/settle', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    await meeting.settle(req.event, req.hostId, req.body || {});
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.delete('/:eventId/meeting/settle', async (req, res) => {
+  if (!meetingOnly(req, res)) return;
+  try {
+    await meeting.undoSettle(req.event);
+    await meetingReply(req, res);
+  } catch (err) {
+    fail(res, err);
+  }
+});
 
 // Meeting votes: who comes (yes), who doesn't (no), who hasn't answered yet.
 router.get('/:eventId/votes', async (req, res) => {

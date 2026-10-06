@@ -75,31 +75,81 @@ router.post('/', async (req, res) => {
   res.status(201).json(data);
 });
 
-router.post('/:id/void', async (req, res) => {
-  if (!isUuid(req.params.id)) return notFound(res, 'Transaction');
-  const { data: txn, error: fErr } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('id', req.params.id)
-    .maybeSingle();
-  if (fErr) return dbError(res, fErr);
+// An entry I may change (my ledger, or a club I co-admin), or null.
+async function ownTxn(req) {
+  if (!isUuid(req.params.id)) return null;
+  const { data: txn, error } = await supabase.from('transactions').select('*').eq('id', req.params.id).maybeSingle();
+  if (error) throw error;
   const allowed =
     txn &&
     (txn.host_id === req.hostId ||
       (txn.owner_type === 'club' && (await clubAccess(req, txn.club_id))) ||
       (txn.owner_type === 'event' && (await ledgerOwner(req, { event_id: txn.event_id })) === txn.host_id));
-  if (!allowed) return notFound(res, 'Transaction');
-  if (txn.is_voided) return res.status(400).json({ error: 'Already voided.' });
+  return allowed ? txn : null;
+}
 
-  // Entries created from somewhere else must be changed there, or the two would disagree.
+// Entries created from somewhere else must be changed there, or the two would disagree.
+async function linkedSource(txn) {
   const [{ data: ms }, { data: moves }] = await Promise.all([
     supabase.from('memberships').select('id').eq('transaction_id', txn.id).limit(1),
     supabase.from('inventory_moves').select('id').eq('transaction_id', txn.id).limit(1),
   ]);
-  const source = ms?.length ? 'membership' : moves?.length ? 'inventory' : txn.category === 'event_fee' ? 'event_fee' : null;
-  if (source) {
-    return res.status(409).json({ error: `This entry comes from a ${source.replace('_', ' ')}; change it there instead.`, code: `linked_${source}` });
+  return ms?.length ? 'membership' : moves?.length ? 'inventory' : txn.category === 'event_fee' ? 'event_fee' : txn.category === 'meeting' ? 'meeting' : null;
+}
+const linkedError = (res, source) =>
+  res.status(409).json({ error: `This entry comes from a ${source.replace('_', ' ')}; change it there instead.`, code: `linked_${source}` });
+
+// Fix an entry. Category, note and date change in place; a new amount or type voids the
+// entry and writes the corrected one (the ledger only grows, so the history stays).
+router.patch('/:id', async (req, res) => {
+  let txn;
+  try {
+    txn = await ownTxn(req);
+  } catch (err) {
+    return dbError(res, err);
   }
+  if (!txn) return notFound(res, 'Transaction');
+  if (txn.is_voided) return res.status(400).json({ error: 'This entry was voided.' });
+  const source = await linkedSource(txn);
+  if (source) return linkedError(res, source);
+  const b = req.body || {};
+  const type = b.type ?? txn.type;
+  const amount = b.amount != null && b.amount !== '' ? Number(b.amount) : Number(txn.amount);
+  if (!['income', 'expense'].includes(type)) return res.status(400).json({ error: 'type must be income or expense.' });
+  if (!(amount >= 0)) return res.status(400).json({ error: 'amount must be >= 0.' });
+  if (b.occurred_on && !/^\d{4}-\d{2}-\d{2}$/.test(b.occurred_on)) return res.status(400).json({ error: 'occurred_on must be YYYY-MM-DD.' });
+  const soft = {
+    category: 'category' in b ? b.category || null : txn.category,
+    note: 'note' in b ? (b.note ? String(b.note).slice(0, 500) : null) : txn.note,
+    occurred_on: b.occurred_on || txn.occurred_on,
+  };
+  if (type === txn.type && amount === Number(txn.amount)) {
+    const { data, error } = await supabase.from('transactions').update(soft).eq('id', txn.id).select().single();
+    if (error) return dbError(res, error);
+    return res.json(data);
+  }
+  const { id, created_at, is_voided, voided_at, void_reason, replaced_by, ...rest } = txn;
+  const { data: next, error: iErr } = await supabase.from('transactions').insert({ ...rest, ...soft, type, amount }).select().single();
+  if (iErr) return dbError(res, iErr);
+  const { error: vErr } = await supabase
+    .from('transactions')
+    .update({ is_voided: true, voided_at: new Date().toISOString(), void_reason: 'edited', replaced_by: next.id })
+    .eq('id', txn.id);
+  if (vErr) return dbError(res, vErr);
+  res.json(next);
+});
+
+router.post('/:id/void', async (req, res) => {
+  let txn;
+  try {
+    txn = await ownTxn(req);
+  } catch (err) {
+    return dbError(res, err);
+  }
+  if (!txn) return notFound(res, 'Transaction');
+  if (txn.is_voided) return res.status(400).json({ error: 'Already voided.' });
+  const source = await linkedSource(txn);
+  if (source) return linkedError(res, source);
 
   const { data, error } = await supabase
     .from('transactions')
