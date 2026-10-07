@@ -97,7 +97,7 @@ export default function StaffEventsPage() {
       <PageHeader
         icon="🦺"
         title={t('staffView.title')}
-        subtitle={staffInfo?.role ? t('staffX.youAre', { role: t(`staff.${staffInfo.role}`) }) : null}
+        subtitle={staffInfo?.role ? t(`staffX.youAre_${staffInfo.role}`) : null}
       />
       {staffInfo && staffInfo.email_verified === false && <p className="card text-yellow-300 text-sm mb-4">{t('staffView.unverified')}</p>}
 
@@ -141,9 +141,9 @@ export default function StaffEventsPage() {
                       <Link href={`/staff/${e.id}?tab=courts`} className="btn-secondary !py-2 text-sm text-center">🏟 {t('staffX.courtsTab')}</Link>
                     </>
                   ) : (
-                    <span className="col-span-2 text-gray-500 text-xs self-center">{t('staffView.refereeOnly')}</span>
+                    <Link href={`/staff/${e.id}?tab=board`} className="col-span-2 btn-secondary !py-2 text-sm text-center">📊 {t('staffX.boardTab')}</Link>
                   )}
-                  <Link href={`/staff/${e.id}?tab=scores`} className="btn-secondary !py-2 text-sm text-center">🎾 {t('staffView.scoresTab')}</Link>
+                  <Link href={`/staff/${e.id}?tab=scores`} className={`${e.role === 'coordinator' ? 'btn-secondary' : 'btn-primary'} !py-2 text-sm text-center`}>🎾 {t('staffView.scoresTab')}</Link>
                 </div>
               </div>
             ))}

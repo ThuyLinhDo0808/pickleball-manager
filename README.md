@@ -108,7 +108,7 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 - Nút mũi tên thu menu lại thành dải icon.
 - Trên điện thoại có thanh dưới: *Tổng quan · Thành viên · Lịch · Tài chính · Thêm*. Nút **Thêm** mở toàn bộ menu theo nhóm (kèm *Về trang chủ*).
 
-**Đồng quản trị** của CLB người khác (xem [6.4](#64-người-được-cấp-quyền-đồng-quản-trị)): CLB được chia sẻ hiện trên Trang chủ với nhãn *Đồng quản trị*; vào đó menu **đầy đủ như chủ CLB**, kèm dải nhắc "Bạn đang quản lý CLB của <chủ CLB>".
+**Đồng quản trị** của CLB người khác (xem [6.4](#64-người-được-cấp-quyền-đồng-quản-trị)): CLB được chia sẻ hiện trên Trang chủ với nhãn *Đồng quản trị*; vào đó menu **đầy đủ như chủ CLB** (trừ *Phân quyền*), kèm thẻ nhắc 🤝 "Bạn là đồng quản trị · <tên CLB>" ghi email chủ CLB và giới hạn quyền.
 
 Club và Xé Vé tách dữ liệu rõ ràng:
 - **Club:** các buổi (event) gắn với CLB đang chọn.
@@ -540,7 +540,7 @@ Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai 
 | **Đồng quản trị** (Co-Admin) | **Mọi quyền như chủ CLB**: thành viên, gói, lịch/buổi, trận đấu, giải đấu, tài chính, kho, cài đặt CLB (đổi tên, tài khoản nhận tiền, link tham gia) | Luôn là **một CLB cụ thể** |
 
 - Trọng tài và điều phối viên **không bao giờ thấy tài chính hay số điện thoại**.
-- Đồng quản trị **chỉ không được xoá CLB** (server trả `403 owner_only`). Mọi thứ họ tạo/ghi đều thuộc về chủ CLB.
+- Đồng quản trị **không được xoá CLB** (server trả `403 owner_only`) và **không phân quyền cho người khác** (menu *Phân quyền* bị ẩn). Mọi thứ họ tạo/ghi đều thuộc về chủ CLB.
 - Quyền có thời hạn: ngoài khoảng *từ – đến* thì server coi như chưa cấp.
 - Đổi vai trò, sửa thời hạn hoặc thu hồi quyền bất cứ lúc nào.
 
@@ -555,9 +555,11 @@ Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai 
    - **Check-in** (điều phối viên): tìm tên, quét QR, lọc *Chưa đến / Đã đến / Vắng / Tất cả*, bấm *Đã đến* hoặc *Vắng*, hoàn tác được. Người trong danh sách chờ có nút **⬆ Đôn vào**. Ô **Thêm khách vãng lai** để thêm người đến không đăng ký và check-in luôn (hết chỗ thì vào danh sách chờ; vẫn tính giới hạn gói của Host).
    - **Xếp sân** (điều phối viên): nhập số sân, bấm *Xếp lượt đầu / Xếp lượt mới* — app ưu tiên người chơi ít trận nhất, ghép người cùng trình độ chung sân (mạnh nhất + yếu nhất đấu hai người giữa), hiện danh sách nghỉ kèm số trận đã chơi. Nhập tỷ số từng sân rồi *Lưu tỷ số* là thành trận của buổi.
    - **Tỷ số** (cả trọng tài): nhập hoặc sửa trận.
+   - **Bảng xếp hạng buổi** (cả trọng tài): ai đang dẫn đầu buổi — số trận, thắng, thua, hiệu số (cầu lông cộng điểm các game), tính từ các trận đã có tỷ số.
+   - Với **trọng tài**, 4 ô đầu trang là *Trận đã ghi · Người chơi có mặt · Dẫn đầu buổi · Trận gần nhất*; thẻ *Hôm nay* có nút *Tỷ số* và *Bảng xếp hạng buổi*.
 5. Mục **Giải đấu được giao bấm điểm** (nếu quyền phủ CLB): mở trang tính điểm trực tiếp của giải (xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments)).
 
-Trọng tài chỉ nhập tỷ số; điều phối viên làm được check-in, khách vãng lai, đôn danh sách chờ, xếp sân và tỷ số. Họ **không bao giờ thấy tài chính hay số điện thoại**. Nhân viên dùng **Trang chủ** (bộ chuyển ngữ cảnh → *Về trang chủ*) để sang các CLB họ là thành viên và hoạt động cá nhân. Check-in của điều phối viên cũng tự trừ buổi trong gói hội viên như khi Host check-in.
+Trọng tài nhập tỷ số và xem bảng xếp hạng buổi; điều phối viên làm được check-in, khách vãng lai, đôn danh sách chờ, xếp sân và tỷ số. Họ **không bao giờ thấy tài chính hay số điện thoại**. Nhân viên dùng **Trang chủ** (bộ chuyển ngữ cảnh → *Về trang chủ*) để sang các CLB họ là thành viên và hoạt động cá nhân. Check-in của điều phối viên cũng tự trừ buổi trong gói hội viên như khi Host check-in.
 
 ### 6.3. Check-in bằng mã QR
 Thay vì lướt tìm tên, làm như sau:
@@ -573,8 +575,8 @@ Thay vì lướt tìm tên, làm như sau:
 
 ### 6.4. Người được cấp quyền đồng quản trị
 1. Đăng nhập (hoặc đăng ký) bằng **đúng email** được cấp và **xác nhận email**.
-2. Chọn workspace **Club**. CLB được chia sẻ hiện trong danh sách CLB, có nhãn *Đồng quản trị · Được chia sẻ bởi <email chủ CLB>*.
-3. Menu **đầy đủ như chủ CLB** (trừ nút xoá CLB). Mọi buổi, trận, giải và khoản thu/chi họ tạo đều thuộc **CLB của chủ**, nên cả hai cùng thấy một dữ liệu.
+2. Trên **Trang chủ**, bấm vào CLB có nhãn *Đồng quản trị* (hoặc chọn trong bộ chuyển ngữ cảnh). CLB được chia sẻ cũng hiện trong *CLB của tôi*, có nhãn *Đồng quản trị · Được chia sẻ bởi <email chủ CLB>*. Quyền được cấp **khi bạn đang đăng nhập** vẫn mở được ngay: app tải lại danh sách CLB khi bạn bấm vào CLB, khi quay lại tab, và trước khi hiện màn "Tạo CLB đầu tiên".
+3. Menu **đầy đủ như chủ CLB** (trừ nút xoá CLB và mục *Phân quyền*), đầu trang có thẻ 🤝 nhắc bạn đang là đồng quản trị. Mọi buổi, trận, giải và khoản thu/chi họ tạo đều thuộc **CLB của chủ**, nên cả hai cùng thấy một dữ liệu.
 
 ---
 
@@ -1089,7 +1091,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số trong danh sách thành viên thì nút "Tôi là thành viên" mới tìm được. |
 | Khách chuyển khoản rồi nhưng chỗ bị huỷ | Quá 30 phút (hoặc 2 giờ sau khi bị từ chối) mà chưa gửi ảnh thì chỗ tự nhả. Host thêm tay người đó rồi bấm *Đã thu tiền mặt* / *đã thu phí*. |
 | Trang thanh toán không hiện VietQR | Chưa cài tài khoản nhận tiền: **Tài khoản → Tài khoản nhận tiền (kèo)**, hoặc tài khoản của CLB trong *CLB của tôi → Thanh toán*. |
-| Đồng quản trị không thấy CLB | Họ phải đăng nhập bằng **đúng email** được cấp, **xác nhận email**, rồi chọn workspace **Club**. Kiểm tra quyền còn trong thời hạn *từ – đến*. |
+| Đồng quản trị không thấy CLB, hoặc bấm vào CLB lại ra "Tạo CLB đầu tiên" / "Chưa có CLB" | Họ phải đăng nhập bằng **đúng email** được cấp và **xác nhận email**. Kiểm tra quyền còn trong thời hạn *từ – đến*. Bản cũ chỉ tải danh sách CLB lúc đăng nhập nên quyền cấp sau đó chưa hiện — bản mới tự tải lại; nếu vẫn chưa thấy, tải lại trang. |
 | Bấm link xác nhận email bị đưa về `localhost` | Supabase → Authentication → URL Configuration: đặt *Site URL* là địa chỉ Vercel và thêm `https://<web>/welcome` vào *Redirect URLs*. |
 | `Capacity limit reached` | Đã chạm giới hạn gói (xem [8.4](#84-gói-dịch-vụ--giới-hạn)). Nâng gói hoặc cho thành viên cũ ngừng hoạt động. |
 | Đăng ký xong không đăng nhập được | Mở email và bấm link xác nhận. Kiểm tra *Site URL* trong Supabase Auth. |

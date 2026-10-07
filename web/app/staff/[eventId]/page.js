@@ -9,6 +9,7 @@ import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
 import CourtRotation from '@/components/CourtRotation';
+import SessionStandings, { standings } from '@/components/SessionStandings';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
@@ -22,7 +23,7 @@ const FILTERS = ['todo', 'here', 'absent', 'all'];
 
 // What a referee / coordinator sees for one event — never money or phone numbers.
 // Coordinator: check-in (search, QR, walk-ins, the waitlist), courts (rounds + scores),
-// scores. Referee: scores.
+// scores, the session board. Referee: scores and the session board.
 export default function StaffEventPage() {
   const { eventId } = useParams();
   const { t, lang, sport } = useI18n();
@@ -44,7 +45,7 @@ export default function StaffEventPage() {
   if (loading && !ev) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
   if (!ev) return <AppShell><p className="text-gray-400">{t('staffView.none')}</p></AppShell>;
 
-  const tabs = [...(ev.can.checkIn ? ['checkin'] : []), ...(ev.can.courts ? ['courts'] : []), 'scores'];
+  const tabs = [...(ev.can.checkIn ? ['checkin'] : []), ...(ev.can.courts ? ['courts'] : []), 'scores', 'board'];
   const current = tabs.includes(tab) ? tab : tabs[0];
   const mainList = ev.participants.filter((p) => p.status !== 'waitlisted');
   const arrived = mainList.filter((p) => p.status === 'checked_in');
@@ -96,7 +97,11 @@ export default function StaffEventPage() {
     checkin: `✅ ${t('staffView.checkInTab')}`,
     courts: `🏟 ${t('staffX.courtsTab')}`,
     scores: `🎾 ${t('staffView.scoresTab')} (${ev.matches.length})`,
+    board: `📊 ${t('staffX.boardTab')}`,
   };
+  const isCoord = ev.role === 'coordinator';
+  const leader = isCoord ? null : standings(ev.participants, ev.matches)[0];
+  const lastMatch = ev.matches[0]?.played_at ? new Date(ev.matches[0].played_at) : null;
 
   return (
     <AppShell>
@@ -117,12 +122,22 @@ export default function StaffEventPage() {
         </div>
       </div>
 
-      <KpiRow cols={4}>
-        <StatTile icon="✅" label={t('staffX.kpiArrived')} value={`${arrived.length}/${mainList.length}`} tone="text-lime-300" sub={t('staffX.kpiArrivedSub', { n: todo.length })} />
-        <StatTile icon="🚫" label={t('staffX.kpiAbsent')} value={absent.length} tone={absent.length ? 'text-yellow-300' : 'text-white'} />
-        <StatTile icon="⏳" label={t('staffX.kpiWaitlist')} value={waiting.length} tone="text-sky-300" />
-        <StatTile icon="🎾" label={t('staffX.kpiMatches')} value={ev.matches.length} />
-      </KpiRow>
+      {isCoord ? (
+        <KpiRow cols={4}>
+          <StatTile icon="✅" label={t('staffX.kpiArrived')} value={`${arrived.length}/${mainList.length}`} tone="text-lime-300" sub={t('staffX.kpiArrivedSub', { n: todo.length })} />
+          <StatTile icon="🚫" label={t('staffX.kpiAbsent')} value={absent.length} tone={absent.length ? 'text-yellow-300' : 'text-white'} />
+          <StatTile icon="⏳" label={t('staffX.kpiWaitlist')} value={waiting.length} tone="text-sky-300" />
+          <StatTile icon="🎾" label={t('staffX.kpiMatches')} value={ev.matches.length} />
+        </KpiRow>
+      ) : (
+        // Referee: the match side of the session.
+        <KpiRow cols={4}>
+          <StatTile icon="🎾" label={t('staffX.kpiMatches')} value={ev.matches.length} tone="text-lime-300" />
+          <StatTile icon="👥" label={t('staffX.kpiPlayersHere')} value={`${arrived.length}/${mainList.length}`} tone="text-sky-300" />
+          <StatTile icon="🏆" label={t('staffX.kpiLeader')} value={leader ? <span className="block truncate text-base sm:text-lg">{leader.name}</span> : '—'} sub={leader ? t('staffX.kpiLeaderSub', { won: leader.won, played: leader.played }) : null} />
+          <StatTile icon="⏱" label={t('staffX.kpiLastMatch')} value={lastMatch ? lastMatch.toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'} />
+        </KpiRow>
+      )}
 
       <div role="tablist" className="grid gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((k) => (
@@ -203,6 +218,8 @@ export default function StaffEventPage() {
       {current === 'courts' && ev.can.courts && (
         <CourtRotation players={arrived} matches={ev.matches} defaultCourts={ev.courts} endpoint={`${base}/matches`} sport={ev.sport} onSaved={reload} />
       )}
+
+      {current === 'board' && <SessionStandings participants={ev.participants} matches={ev.matches} />}
 
       {current === 'scores' && (
         <>
