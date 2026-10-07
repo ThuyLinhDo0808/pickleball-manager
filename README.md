@@ -237,7 +237,8 @@ Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trậ
 - Trận nhập trong trang của một buổi cũng được tính.
 
 ### 4.7. Bảng xếp hạng & vinh danh (`/club/rankings`)
-- **3 tab**: **Toàn CLB** (mọi người), **Thành viên CLB** (chỉ thành viên cố định) và **Người giao lưu** (khách).
+- **3 tab**: **Tất cả** (mọi người), **Thành viên cố định** và **Thành viên giao lưu** (khách).
+- **👑 Số tuần giữ Top 1** (theo tab đang xem): mỗi tuần (thứ 2 – chủ nhật) có trận được tính một bảng xếp hạng riêng của tuần đó; ai đứng đầu tuần được tính **1 tuần Top 1** (bằng nhau hoàn toàn về số trận thắng, tỷ lệ thắng và hiệu số thì cùng được tính). Tính từ trận đầu tiên của CLB, không phụ thuộc kỳ đang chọn; tuần không có trận không tính. Hiện 6 người nhiều tuần nhất, **chuỗi dài nhất** (số tuần liên tiếp) và nhãn *Đang giữ* cho người đứng đầu tuần gần nhất; bảng xếp hạng có thêm cột *Tuần Top 1*, file Excel có thêm sheet *Weeks at No. 1*.
 - **Bục vinh quang** cho giải đấu: Vô địch, Á quân và **đồng hạng Ba** (2 đội thua bán kết).
 - Xếp hạng theo kỳ **Ngày / Tháng / Quý / Năm / Tất cả**, có nút chuyển kỳ trước/kỳ sau.
 - **Top 3 của kỳ** hiện dạng bục (ảnh/chữ cái đầu, huy chương, tỷ lệ thắng, thắng–thua, hiệu số). Bảng xếp hạng có cột tỷ lệ thắng kèm thanh biểu đồ nhỏ.
@@ -349,7 +350,7 @@ Mục Tài chính có các tab:
 
 | Tab | Nội dung |
 |---|---|
-| **Tổng quan** (`/finance`) | Số dư quỹ CLB · Thu, chi, **còn lại** của **năm** (VD *Năm 2026*, tính từ tháng 1 đến tháng hiện tại) và **tháng này** · Yêu cầu thanh toán chờ xác nhận · Biểu đồ thu–chi theo tháng của năm · Nút **Theo tháng / Theo năm**: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) — thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn — phù hợp CLB thu/chi theo từng tháng |
+| **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 3 ô **Thu – Chi – Còn lại** của đúng kỳ đang chọn · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
 | **Sổ thu chi** (`/finance/ledger`) | Thêm khoản **Thu/Chi** · Lọc theo loại, tháng, hạng mục · Tổng thu/chi/chênh lệch của phần đang lọc · **✏️ Sửa** (đổi loại, hạng mục, số tiền, ngày, ghi chú) và **Huỷ** khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
@@ -366,7 +367,7 @@ Mục Tài chính có các tab:
 
 Các khoản tự động **không huỷ được từ Sổ thu chi**. Muốn sửa thì sửa tại nơi tạo ra nó, để sổ luôn khớp với gói, kho và danh sách kèo.
 
-Giao diện Tài chính dạng thẻ: khối **Số dư quỹ** + thu/chi/**còn lại** **tháng này**, 3 ô của năm (*· Năm 2026*, kèm trung bình/tháng, số tháng thu nhiều hơn chi), biểu đồ xu hướng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng thu chi từng buổi / kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
+Giao diện Tài chính dạng thẻ, gọn: khối **Số dư quỹ**, **một** bộ 3 ô thu – chi – còn lại theo kỳ đang chọn (không lặp lại số tháng này / cả năm), biểu đồ thu, chi theo tháng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng thu chi từng buổi / kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
 
 **Sổ thu chi chỉ thêm.** Số tiền, loại và chủ sở hữu của một khoản không bao giờ bị ghi đè (database chặn bằng trigger). Nút **Sửa**: đổi hạng mục, ngày, ghi chú thì sửa trực tiếp; đổi **số tiền hoặc loại** thì app tự huỷ dòng cũ (ghi "edited", trỏ tới dòng mới) và ghi dòng mới thay thế — luôn truy vết được.
 
@@ -1024,7 +1025,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `GET /api/clubs/:id/birthdays?days=3` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
-| Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = toàn CLB, `club`, `guest`) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
+| Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = tất cả, `club`, `guest`; kèm `weeks_at_top`: số tuần giữ Top 1 của bảng đó) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
 | Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge` = round robin; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` · `GET …/votes` · `PUT …/votes/:clubMemberId` `{choice: yes | no | null}` (bình chọn buổi họp) · người chơi: `POST /api/player/events/:eventId/vote` `{choice}` · buổi họp: `GET …/:id/meeting` · `PUT …/meeting/money/:memberId` `{paid_amount, sponsor_amount}` · `POST/DELETE …/meeting/guests` · `POST/PATCH/DELETE …/meeting/expenses` · `POST …/meeting/settle` `{mode: to_fund | from_fund | sponsor | split, member_id}` · `DELETE …/meeting/settle` (hoàn tác) · link bình chọn: `GET /api/events/public/:token/vote` (không cần đăng nhập) · `GET …/vote/me` · `POST …/vote` `{choice}` (đăng nhập; người ngoài CLB được thêm làm khách, `400 profile_required` nếu hồ sơ thiếu tên/SĐT) |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) · `GET /api/public/live/:token` (bảng điểm trực tiếp) |

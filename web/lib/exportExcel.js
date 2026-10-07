@@ -94,6 +94,12 @@ export function exportRankings(clubName, label, stats, t) {
   if (a.lowest_win_rate) awardRows.push([t('rankings.lowest'), 1, a.lowest_win_rate.full_name, `${a.lowest_win_rate.value}%`]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(awardRows), 'Awards');
 
+  if (stats.weeks_at_top?.length) {
+    const weekRows = [['#', t('common.name'), t('rankings.weeksCol'), t('rankings.weeksStreak', { n: '' }).trim()]];
+    stats.weeks_at_top.forEach((w, i) => weekRows.push([i + 1, w.full_name, w.weeks, w.streak]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(weekRows), 'Weeks at No. 1');
+  }
+
   const safe = `${clubName}-${label}`.replace(/[^\p{L}\p{N}-]+/gu, '_');
   XLSX.writeFile(wb, `rankings-${safe}.xlsx`);
 }

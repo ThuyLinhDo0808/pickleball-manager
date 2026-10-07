@@ -92,6 +92,8 @@ export default function RankingsPage() {
   const rows = [...(stats?.rankings || [])];
   if (sort.key) rows.sort((a, b) => sort.dir * (a[sort.key] - b[sort.key]) || a.full_name.localeCompare(b.full_name));
   const a = stats?.awards;
+  const weeksAtTop = stats?.weeks_at_top || [];
+  const weeksOf = new Map(weeksAtTop.map((w) => [w.club_member_id, w.weeks]));
 
   const top3 = !sort.key ? rows.slice(0, 3) : [];
   const groupIcon = { all: '🌐', club: '🏠', guest: '🤝' };
@@ -159,6 +161,31 @@ export default function RankingsPage() {
         </>
       )}
 
+      {!loading && weeksAtTop.length > 0 && (
+        <section className="card mb-4 border-amber-300/30">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+            <h2 className="text-white font-semibold">👑 {t('rankings.weeksTitle')}</h2>
+            <span className="text-gray-500 text-xs">{t('rankings.weeksHint', { group: t(`rankings.group_${group}`) })}</span>
+          </div>
+          <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {weeksAtTop.slice(0, 6).map((w, i) => (
+              <li key={w.club_member_id} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${i === 0 ? 'border-amber-300/50 bg-amber-300/5' : 'border-navy-700 bg-navy-900'}`}>
+                <span className="w-6 text-center">{i < 3 ? MEDALS[i] : <span className="text-gray-400 text-sm">{i + 1}</span>}</span>
+                <Avatar name={w.full_name} size={30} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-white text-sm font-semibold truncate">
+                    {w.full_name}
+                    {w.current && <span className="ml-1.5 text-[10px] rounded-full bg-amber-300/20 text-amber-200 px-1.5 py-0.5 align-middle">{t('rankings.weeksCurrent')}</span>}
+                  </div>
+                  <div className="text-gray-400 text-xs">{t('rankings.weeksStreak', { n: w.streak })}</div>
+                </div>
+                <span className="text-amber-300 font-bold tabular-nums shrink-0">{t('rankings.weeksN', { n: w.weeks })}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {!loading && stats && (
         <section className="card !p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-navy-700 flex items-center justify-between gap-2">
@@ -185,6 +212,7 @@ export default function RankingsPage() {
                         </button>
                       </th>
                     ))}
+                    <th className="text-right whitespace-nowrap" title={t('rankings.weeksTitle')}>👑 {t('rankings.weeksCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -209,6 +237,7 @@ export default function RankingsPage() {
                           ) : c.fmt ? c.fmt(r[c.key]) : r[c.key]}
                         </td>
                       ))}
+                      <td className="text-right tabular-nums text-amber-300">{weeksOf.get(r.club_member_id) || ''}</td>
                     </tr>
                   ))}
                 </tbody>

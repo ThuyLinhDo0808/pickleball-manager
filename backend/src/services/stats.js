@@ -105,4 +105,49 @@ function awards(rankings, attendance, members, minMatches = DEFAULT_MIN_MATCHES)
   };
 }
 
-module.exports = { isScored, APP_TZ, PERIODS, DEFAULT_MIN_MATCHES, localDate, periodBounds, aggregate, awards, winnerTeam };
+// Monday (YYYY-MM-DD) of the week containing a local date.
+function weekStart(ymd) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+// "Weeks at No. 1": every week (Mon–Sun) with scored matches has its own leaderboard;
+// whoever tops it holds No. 1 that week (equal wins, win rate and point diff = shared).
+// matches carry `day` (local date). -> [{ club_member_id, full_name, weeks, streak,
+// current, last_week }] most weeks first; `streak` = their longest run of weeks in a row
+// at No. 1, `current` = they top the latest week.
+function weeksAtTop(matches, members) {
+  const byWeek = new Map();
+  for (const m of matches) {
+    if (!isScored(m) || !m.day) continue;
+    const k = weekStart(m.day);
+    if (!byWeek.has(k)) byWeek.set(k, []);
+    byWeek.get(k).push(m);
+  }
+  const weeks = [...byWeek.keys()].sort();
+  const out = new Map();
+  let prevTop = new Set();
+  const run = new Map();
+  for (const k of weeks) {
+    const board = aggregate(byWeek.get(k), members);
+    const lead = board[0];
+    const tops = lead ? board.filter((r) => r.wins === lead.wins && r.win_rate === lead.win_rate && r.point_diff === lead.point_diff) : [];
+    const now = new Set();
+    for (const r of tops) {
+      const o = out.get(r.club_member_id) || { club_member_id: r.club_member_id, full_name: r.full_name, weeks: 0, streak: 0, current: false, last_week: null };
+      o.weeks += 1;
+      o.last_week = k;
+      const n = (prevTop.has(r.club_member_id) ? run.get(r.club_member_id) || 0 : 0) + 1;
+      run.set(r.club_member_id, n);
+      o.streak = Math.max(o.streak, n);
+      out.set(r.club_member_id, o);
+      now.add(r.club_member_id);
+    }
+    prevTop = now;
+  }
+  for (const id of prevTop) out.get(id).current = true;
+  return [...out.values()].sort((a, b) => b.weeks - a.weeks || b.streak - a.streak || (b.last_week || '').localeCompare(a.last_week || '') || a.full_name.localeCompare(b.full_name));
+}
+
+module.exports = { weekStart, weeksAtTop, isScored, APP_TZ, PERIODS, DEFAULT_MIN_MATCHES, localDate, periodBounds, aggregate, awards, winnerTeam };
