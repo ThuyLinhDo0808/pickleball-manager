@@ -16,20 +16,25 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { addDays, addMonths, todayYmd } from '@/lib/dates';
 
-const PERIODS = ['month', 'quarter', 'year', 'custom'];
+// Month = detail (one column per session), year = overview (one column per month).
+const PERIODS = ['month', 'year', 'custom'];
 const TABS = ['attendance', 'passes', 'guests'];
 
-// First/last day of the month / quarter / year containing `anchor`.
+// First/last day of the month / year containing `anchor`.
 function rangeOf(period, anchor) {
-  const [y, m] = anchor.split('-').map(Number);
-  if (period === 'month') return [`${anchor.slice(0, 7)}-01`, addDays(addMonths(anchor, 1), -1)];
-  if (period === 'quarter') {
-    const q = Math.floor((m - 1) / 3) * 3 + 1;
-    const start = `${y}-${String(q).padStart(2, '0')}-01`;
-    return [start, addDays(addMonths(start, 3), -1)];
-  }
-  return [`${y}-01-01`, `${y}-12-31`];
+  if (period === 'month') return [`${anchor.slice(0, 7)}-01`, addDays(addMonths(`${anchor.slice(0, 7)}-01`, 1), -1)];
+  return [`${anchor.slice(0, 4)}-01-01`, `${anchor.slice(0, 4)}-12-31`];
 }
+
+// Every month from `from` to `to` (YYYY-MM), so a year shows all 12 columns.
+function monthsBetween(from, to) {
+  const out = [];
+  for (let k = from.slice(0, 7); k <= to.slice(0, 7); k = addMonths(`${k}-01`, 1).slice(0, 7)) out.push(k);
+  return out;
+}
+
+// Up to about two months the grid has a column per session; longer, a column per month.
+const SESSION_COLUMNS_MAX_DAYS = 62;
 
 const dm = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const monthKey = (d) => d.slice(0, 7);
@@ -105,12 +110,13 @@ export default function AttendancePage() {
   const [anchor, setAnchor] = useState(todayYmd());
   const [custom, setCustom] = useState(() => [addMonths(todayYmd(), -2), todayYmd()]);
   const [tab, setTab] = useState('attendance');
-  const [by, setBy] = useState('session'); // session | month
   const [sort, setSort] = useState('name'); // name | count
   const [onlyActive, setOnlyActive] = useState(true);
 
   const [from, to] = period === 'custom' ? custom : rangeOf(period, anchor);
-  const step = { month: 1, quarter: 3, year: 12 }[period];
+  const step = { month: 1, year: 12 }[period];
+  // Columns follow the period: sessions for a month, months for a year (no separate switch).
+  const by = period === 'month' || (period === 'custom' && (Date.parse(to) - Date.parse(from)) / 86400000 <= SESSION_COLUMNS_MAX_DAYS) ? 'session' : 'month';
   const [editing, setEditing] = useState(false);
   const [changes, setChanges] = useState({}); // participant_id -> { state, from, name, date }
   const [confirming, setConfirming] = useState(false);
@@ -145,7 +151,8 @@ export default function AttendancePage() {
     if (onlyActive) members = members.filter((m) => m.is_active || withCells.has(m.id));
     const played = (id) => (attended[id] || 0) - (late[id] || 0);
     members.sort((a, b) => (sort === 'count' ? played(b.id) - played(a.id) : 0) || a.full_name.localeCompare(b.full_name, 'vi'));
-    const months = [...new Set(data.events.map((e) => monthKey(e.event_date)))];
+    const months = monthsBetween(data.from, data.to);
+    const sessionsInMonth = (k) => data.events.filter((e) => monthKey(e.event_date) === k).length;
     const guestMonth = (g, k) => Object.entries(g.events).filter(([id, st]) => counts(st) && monthKey(evDate.get(id)) === k).length;
     const guestLate = (g) => Object.values(g.events).filter(missedNoNotice).length;
 
@@ -162,6 +169,10 @@ export default function AttendancePage() {
       guests: guests.filter((g) => g.events[id] === 'attended').length,
     });
     const pastIds = new Set(data.events.filter((e) => e.event_date < today || e.status === 'completed').map((e) => e.id));
+    const missedDates = [
+      ...data.cells.filter((c) => c.state === 'registered' && pastIds.has(c.event_id)).map((c) => evDate.get(c.event_id)),
+      ...guests.flatMap((g) => Object.entries(g.events).filter(([id, st]) => st === 'registered' && pastIds.has(id)).map(([id]) => evDate.get(id))),
+    ].sort();
     const missed =
       data.cells.filter((c) => c.state === 'registered' && pastIds.has(c.event_id)).length +
       guests.reduce((n, g) => n + Object.entries(g.events).filter(([id, st]) => st === 'registered' && pastIds.has(id)).length, 0);
@@ -174,7 +185,13 @@ export default function AttendancePage() {
       .sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi') || a.starts_on.localeCompare(b.starts_on));
     const carry = passes.filter((p) => p.ended && p.sessions_included > 0 && p.status === 'paid').reduce((s, p) => s + p.sessions_remaining, 0);
 
-    return { late, guestLate, missed, cell, cellInfo, attended, perMonth, members, months, guestMonth, guests, guestsByCount, guestEvents, perEvent, maxCount, passes, carry };
+    // Per month, everyone who came (members / guests) — the year view's footer.
+    const monthCame = (k) => ({
+      members: data.cells.filter((c) => c.state === 'attended' && monthKey(evDate.get(c.event_id)) === k).length,
+      guests: guests.reduce((n, g) => n + Object.entries(g.events).filter(([id, st]) => st === 'attended' && monthKey(evDate.get(id)) === k).length, 0),
+    });
+
+    return { late, guestLate, missed, missedFirst: missedDates[0] || null, monthCame, sessionsInMonth, cell, cellInfo, attended, perMonth, members, months, guestMonth, guests, guestsByCount, guestEvents, perEvent, maxCount, passes, carry };
   }, [data, sort, onlyActive]);
 
   const evDay = (id) => dm(data.events.find((e) => e.id === id)?.event_date || '');
@@ -310,7 +327,6 @@ export default function AttendancePage() {
       {view && tab === 'attendance' && (
         <div className="card">
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Segmented items={['session', 'month']} value={by} onChange={setBy} label={(k) => t(`stats.by_${k}`)} />
             <Segmented items={['name', 'count']} value={sort} onChange={setSort} label={(k) => t(`stats.sort_${k}`)} />
             <label className="flex items-center gap-2 text-sm text-gray-300">
               <input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
@@ -323,7 +339,14 @@ export default function AttendancePage() {
             </div>
           </div>
           {!editing && view.missed > 0 && (
-            <button type="button" className="w-full text-left rounded-lg border border-amber-400/50 bg-amber-400/5 px-3 py-2 text-sm mb-3" onClick={() => { setBy('session'); setEditing(true); }}>
+            <button type="button" className="w-full text-left rounded-lg border border-amber-400/50 bg-amber-400/5 px-3 py-2 text-sm mb-3" onClick={() => {
+                // Fixing ticks happens on the session grid: open the month of the first one.
+                if (by !== 'session') {
+                  setPeriod('month');
+                  setAnchor(view.missedFirst || anchor);
+                }
+                setEditing(true);
+              }}>
               <span className="text-amber-300 font-semibold">⚠️ {t('stats.missed', { n: view.missed })}</span>{' '}
               <span className="text-lime-400">{t('stats.missedCta')} →</span>
             </button>
@@ -355,7 +378,13 @@ export default function AttendancePage() {
                             {dm(e.event_date)}
                           </th>
                         ))
-                      : view.months.map((k) => <th key={k} className="text-center whitespace-nowrap">{monthLabel(k)}</th>)}
+                      : view.months.map((k) => (
+                          <th key={k} className="text-center whitespace-nowrap font-normal min-w-[3rem]">
+                            {/* One year: "T1".."T12"; across years keep the year. */}
+                            {from.slice(0, 4) === to.slice(0, 4) ? t('stats.monthShort', { m: Number(k.slice(5, 7)) }) : monthLabel(k)}
+                            <div className="text-[10px] leading-none text-gray-500">{view.sessionsInMonth(k) ? t('stats.monthSessions', { n: view.sessionsInMonth(k) }) : '–'}</div>
+                          </th>
+                        ))}
                     <th className="text-left min-w-[8rem]">{t('stats.sessionsCol')}</th>
                   </tr>
                 </thead>
@@ -426,6 +455,22 @@ export default function AttendancePage() {
                     </tr>
                   ))}
                 </tbody>
+                {by === 'month' && (
+                  <tfoot>
+                    <tr className="bg-navy-900 text-gray-300">
+                      <td className="sticky left-0 bg-navy-900" />
+                      <td className="sticky left-10 bg-navy-900 text-xs">{t('stats.membersRow')}</td>
+                      {view.months.map((k) => <td key={k} className="text-center tabular-nums">{view.monthCame(k).members || ''}</td>)}
+                      <td />
+                    </tr>
+                    <tr className="bg-navy-900 text-gray-300">
+                      <td className="sticky left-0 bg-navy-900" />
+                      <td className="sticky left-10 bg-navy-900 text-xs">{t('stats.guestsRow')}</td>
+                      {view.months.map((k) => <td key={k} className="text-center tabular-nums text-sky-300">{view.monthCame(k).guests || ''}</td>)}
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
                 {by === 'session' && (
                   <tfoot>
                     <tr className="bg-navy-900 text-gray-300">
