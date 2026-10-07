@@ -3,7 +3,9 @@ const { clubSport } = require('../services/sport');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
-const { setAttendance, checkInByCode } = require('../services/attendance');
+const { setAttendance, checkInByCode, promoteParticipant } = require('../services/attendance');
+const { getUsage } = require('../middleware/checkCapacity');
+const { HOLDS_PLACE } = require('../services/fees');
 const { PLAYER_SELECT, createMatch, updateMatch } = require('../services/matches');
 const { schemaStatus } = require('../services/schemaCheck');
 
@@ -13,8 +15,9 @@ const ROLES = [...EVENT_ROLES, 'co_admin'];
 const RANK = { referee: 1, coordinator: 2 };
 // What each role may do. Neither ever sees phones, fees or any finance data.
 const CAN = {
-  referee: { checkIn: false, scores: true },
-  coordinator: { checkIn: true, scores: true },
+  referee: { checkIn: false, scores: true, walkIn: false, promote: false, courts: false },
+  // Coordinators run the session at the court: check-in, walk-ins, the waitlist, courts.
+  coordinator: { checkIn: true, scores: true, walkIn: true, promote: true, courts: true },
 };
 
 function fail(res, err) {
@@ -233,8 +236,12 @@ staff.get('/me', async (req, res) => {
   try {
     const all = await allMyGrants(req);
     const list = all.filter((g) => EVENT_ROLES.includes(g.role));
+    // The strongest role held (shown in the space switcher: coordinator over referee).
+    const role = list.reduce((best, g) => (!best || RANK[g.role] > RANK[best] ? g.role : best), null);
     res.json({
       is_staff: list.length > 0,
+      role,
+      roles: [...new Set(list.map((g) => g.role))],
       grants: list.length,
       co_admin_clubs: all.filter((g) => g.role === 'co_admin').length,
       email_verified: req.emailVerified,
@@ -259,11 +266,14 @@ staff.get('/events', async (req, res) => {
       .order('event_date', { ascending: true })
       .limit(200);
     if (error) throw error;
-    res.json(
-      events
-        .map((e) => ({ ...STAFF_EVENT_FIELDS(e), role: roleFor(list, e) }))
-        .filter((e) => e.role)
-    );
+    const mine = events.map((e) => ({ ...STAFF_EVENT_FIELDS(e), kind: e.kind || null, role: roleFor(list, e) })).filter((e) => e.role);
+    // Who has arrived so far (check-in progress on each card).
+    const arrived = new Map();
+    if (mine.length) {
+      const { data: rows } = await supabase.from('event_participants').select('event_id').in('event_id', mine.map((e) => e.id)).eq('status', 'checked_in');
+      for (const r of rows || []) arrived.set(r.event_id, (arrived.get(r.event_id) || 0) + 1);
+    }
+    res.json(mine.map((e) => ({ ...e, arrived: arrived.get(e.id) || 0 })));
   } catch (err) {
     fail(res, err);
   }
@@ -295,9 +305,36 @@ staff.get('/events/:eventId', async (req, res) => {
   }
 });
 
+// Walk-in: someone turns up at the court without signing up. The coordinator adds them
+// (name only — staff never handle phones or money) and, by default, checks them in.
+staff.post('/events/:eventId/participants', async (req, res) => {
+  if (!CAN[req.staffRole].walkIn) return res.status(403).json({ error: 'Only coordinators can add players.' });
+  const name = String(req.body?.full_name || '').trim().slice(0, 120);
+  if (!name) return res.status(400).json({ error: 'full_name is required.' });
+  try {
+    const usage = await getUsage(req.event.host_id).catch(() => null);
+    if (usage && usage.remaining <= 0) return res.status(402).json({ error: "The host's plan is full.", code: 'capacity' });
+    const { count } = await supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).in('status', HOLDS_PLACE);
+    const full = (count || 0) >= req.event.slots;
+    const { data: p, error } = await supabase
+      .from('event_participants')
+      .insert({ event_id: req.event.id, full_name: name, status: full ? 'waitlisted' : 'registered', kind: 'guest' })
+      .select()
+      .single();
+    if (error) throw error;
+    const done = req.body?.check_in !== false && !full ? await setAttendance(req.event, p, 'check-in') : p;
+    res.status(201).json({ id: done.id, full_name: done.full_name, status: done.status, dupr_level: null, waitlisted: full });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 staff.post('/events/:eventId/participants/:participantId/:action', async (req, res) => {
-  if (!CAN[req.staffRole].checkIn) return res.status(403).json({ error: 'Referees cannot check players in.' });
-  if (!['check-in', 'no-show', 'reset'].includes(req.params.action)) return res.status(400).json({ error: 'Unknown action.' });
+  const action = req.params.action;
+  if (action === 'promote' ? !CAN[req.staffRole].promote : !CAN[req.staffRole].checkIn) {
+    return res.status(403).json({ error: 'Referees cannot check players in.' });
+  }
+  if (!['check-in', 'no-show', 'reset', 'promote'].includes(action)) return res.status(400).json({ error: 'Unknown action.' });
   if (!isUuid(req.params.participantId)) return notFound(res, 'Participant');
   try {
     const { data: prior, error } = await supabase
@@ -311,7 +348,13 @@ staff.post('/events/:eventId/participants/:participantId/:action', async (req, r
     if (prior.status === 'pending' && req.params.action === 'check-in') {
       return res.status(409).json({ error: "This player's payment hasn't been confirmed by the host yet.", code: 'unpaid' });
     }
-    const updated = await setAttendance(req.event, prior, req.params.action);
+    if (action === 'promote') {
+      // Waitlist -> main list (e.g. someone on the list didn't come).
+      const { data: ev } = await supabase.from('events').select('*').eq('id', req.event.id).single();
+      const r = await promoteParticipant(ev, prior);
+      return res.json({ id: prior.id, full_name: prior.full_name, status: r.status || r.participant?.status || 'registered' });
+    }
+    const updated = await setAttendance(req.event, prior, action);
     res.json({ id: updated.id, full_name: updated.full_name, status: updated.status, pass: updated.pass });
   } catch (err) {
     fail(res, err);

@@ -26,6 +26,23 @@ function lastMonths(n) {
   });
 }
 
+// The months of a calendar year (?year=2026): January to December, or to this month
+// for the year in progress.
+function yearMonths(year) {
+  const [cy, cm] = todayYmd().split('-').map(Number);
+  const last = year < cy ? 12 : year === cy ? cm : 1;
+  return Array.from({ length: last }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+}
+// '2026-02' -> '2026-03-01' (end bound, exclusive).
+function nextMonthStart(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+}
+const cleanYear = (v) => {
+  const y = parseInt(v, 10);
+  return y >= 2000 && y <= 2100 ? y : null;
+};
+
 // Scope = a club I own or co-admin (?club_id=), or my standalone Xé Vé events (?scope=standalone).
 // hostId is whose data it is: the club's owner (also for a co-admin), or me.
 async function resolveScope(req) {
@@ -47,7 +64,8 @@ router.get('/finance', async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope) return notFound(res, 'Club');
-    const months = lastMonths(Math.min(Math.max(parseInt(req.query.months, 10) || 12, 3), 36));
+    const year = cleanYear(req.query.year);
+    const months = year ? yearMonths(year) : lastMonths(Math.min(Math.max(parseInt(req.query.months, 10) || 12, 3), 36));
     const from = `${months[0]}-01`;
     const events = await scopeEvents(scope.hostId, scope.clubId, 'id');
     const filters = [];
@@ -61,6 +79,7 @@ router.get('/finance', async (req, res) => {
         .eq('host_id', scope.hostId)
         .eq('is_voided', false)
         .gte('occurred_on', from)
+        .lt('occurred_on', nextMonthStart(months[months.length - 1]))
         .or(filters.join(','));
       if (error) throw error;
       txns = data;
@@ -96,10 +115,12 @@ router.get('/events-pnl', async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope) return notFound(res, 'Club');
+    const year = cleanYear(req.query.year);
     const months = Math.min(Math.max(parseInt(req.query.months, 10) || 12, 1), 36);
     const [y, m] = todayYmd().split('-').map(Number);
-    const since = new Date(Date.UTC(y, m - 1 - months, 1)).toISOString().slice(0, 10);
-    const events = (await scopeEvents(scope.hostId, scope.clubId, 'id, title, event_date, start_time, status')).filter((e) => e.event_date >= since);
+    const since = year ? `${year}-01-01` : new Date(Date.UTC(y, m - 1 - months, 1)).toISOString().slice(0, 10);
+    const until = year ? `${year}-12-31` : '9999-12-31';
+    const events = (await scopeEvents(scope.hostId, scope.clubId, 'id, title, event_date, start_time, status')).filter((e) => e.event_date >= since && e.event_date <= until);
     if (!events.length) return res.json([]);
     const ids = events.map((e) => e.id);
     const [{ data: fin, error: fErr }, { data: parts, error: pErr }] = await Promise.all([

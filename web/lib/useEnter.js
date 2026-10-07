@@ -9,16 +9,19 @@ import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 // assigned events. Clubs it only plays in open the member page /c/<id> instead.
 export function useEnter() {
   const router = useRouter();
-  const { selectClub, reload } = useClubs();
+  const { clubs, selectClub, reload } = useClubs();
   const { setWorkspace } = useWorkspace();
 
   const manageClub = useCallback(
-    (clubId, path = '/dashboard') => {
+    async (clubId, path = '/dashboard') => {
+      // The club list is loaded once at sign-in; a club shared since then (co-admin)
+      // isn't in it yet, so fetch it again before opening.
+      if (!clubs.some((c) => c.id === clubId)) await reload();
       selectClub(clubId);
       setWorkspace('club');
       router.push(path);
     },
-    [router, selectClub, setWorkspace]
+    [router, clubs, selectClub, reload, setWorkspace]
   );
   const space = useCallback(
     (ws, path) => {

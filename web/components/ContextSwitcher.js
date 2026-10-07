@@ -16,6 +16,8 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   const { t } = useI18n();
   const { clubs, club, selectClub } = useClubs();
   const { workspace, staffInfo, plan } = useWorkspace();
+  // Coordinator or referee: the strongest role this account holds.
+  const staffRole = t(staffInfo?.role === 'coordinator' ? 'staff.coordinator' : 'staff.referee');
   const [smOpen, setSmOpen] = useState(false);
   const [upOpen, setUpOpen] = useState(false);
   const { manageClub, space } = useEnter();
@@ -63,7 +65,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
     workspace === 'xeve'
       ? { avatar: <ClubAvatar icon="🎟" size={compact ? 32 : 40} />, name: t('hub.socialManager'), role: t('hub.roleOrganizer') }
       : workspace === 'staff'
-        ? { avatar: <ClubAvatar icon="🦺" size={compact ? 32 : 40} />, name: t('hub.staff'), role: t('hub.roleStaff') }
+        ? { avatar: <ClubAvatar icon="🦺" size={compact ? 32 : 40} />, name: t('hub.staff'), role: staffRole }
         : club
           ? { avatar: <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={compact ? 32 : 40} />, name: club.name, role: t(club.role === 'co_admin' ? 'hub.roleCoAdmin' : 'hub.roleOwner') }
           : { avatar: <ClubAvatar icon="🏠" size={compact ? 32 : 40} />, name: t('hub.noClubYet'), role: '' };
@@ -140,7 +142,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
           {plan?.social_manager
             ? row(workspace === 'xeve', () => pickSpace('xeve'), <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.roleOrganizer'))
             : row(false, () => { setOpen(false); setSmOpen(true); }, <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.smSignUpShort'))}
-          {staffInfo?.is_staff && row(workspace === 'staff', () => pickSpace('staff'), <ClubAvatar icon="🦺" size={32} />, t('hub.staff'), t('hub.roleStaff'))}
+          {staffInfo?.is_staff && row(workspace === 'staff', () => pickSpace('staff'), <ClubAvatar icon="🦺" size={32} />, t('hub.staff'), staffRole)}
           <div className="border-t border-navy-700 mt-2 pt-2 grid gap-1">
             <Link href="/home" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-white">
               <span className="w-8 text-center" aria-hidden="true">🏠</span>

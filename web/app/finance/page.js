@@ -10,6 +10,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import { todayYmd } from '@/lib/dates';
 
 import { categoryLabel, EXPENSE_COLOR, INCOME_COLOR } from '@/lib/finance';
 
@@ -58,7 +59,7 @@ function Breakdown({ title, rows, total, color, t }) {
   );
 }
 
-// Finance overview: fund balance, 12-month trend, payments to confirm, profit per event.
+// Finance overview: fund balance, the year's trend, payments to confirm, money per event.
 export default function FinanceOverview() {
   const { t, lang } = useI18n();
   const { workspace } = useWorkspace();
@@ -66,25 +67,47 @@ export default function FinanceOverview() {
   const isClub = workspace === 'club';
   const scope = isClub ? (club ? `club_id=${club.id}` : null) : 'scope=standalone';
 
-  const { data: fin } = useLoad(() => (scope ? api.get(`/api/analytics/finance?${scope}&months=12`) : Promise.resolve(null)), [scope]);
-  const { data: pnl } = useLoad(() => (scope ? api.get(`/api/analytics/events-pnl?${scope}&months=12`) : Promise.resolve(null)), [scope]);
+  // Views follow the calendar: one month (‹ ›), or a whole year ("Năm 2026").
+  const today = todayYmd();
+  const thisYear = Number(today.slice(0, 4));
+  const thisMonth = today.slice(0, 7);
+  const [year, setYear] = useState(thisYear);
+  const [view, setView] = useState('month'); // 'month' | 'year'
+  const [ymPick, setYmPick] = useState(thisMonth);
+  const { data: finNow } = useLoad(() => (scope ? api.get(`/api/analytics/finance?${scope}&year=${thisYear}`) : Promise.resolve(null)), [scope, thisYear]);
+  const { data: finYear } = useLoad(() => (scope && year !== thisYear ? api.get(`/api/analytics/finance?${scope}&year=${year}`) : Promise.resolve(null)), [scope, year, thisYear]);
+  const fin = year === thisYear ? finNow : finYear;
+  const { data: pnl } = useLoad(() => (scope ? api.get(`/api/analytics/events-pnl?${scope}&year=${year}`) : Promise.resolve(null)), [scope, year]);
   const { data: fund } = useLoad(() => (isClub && club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null)), [isClub, club?.id]);
 
-  const month = fin?.months[fin.months.length - 1];
+  const month = finNow?.months[finNow.months.length - 1];
 
-  // Most clubs collect and spend month by month: the breakdown and the per-event table
-  // show one month (‹ ›), or the last 12 months together.
-  const [pick, setPick] = useState(null); // 'YYYY-MM' | 'year' | null = this month
-  const monthsList = (fin?.months || []).map((m) => m.month);
-  const period = pick || month?.month || null;
-  const periodCats = period === 'year' ? fin?.categories || [] : fin?.month_categories?.[period] || [];
+  const isYear = view === 'year';
+  const periodCats = isYear ? fin?.categories || [] : fin?.month_categories?.[ymPick] || [];
   const income = periodCats.filter((c) => c.type === 'income');
   const expense = periodCats.filter((c) => c.type === 'expense');
   const periodTotal = (type) => periodCats.filter((c) => c.type === type).reduce((a, c) => a + c.amount, 0);
-  const pnlShown = (pnl || []).filter((e) => period === 'year' || !period || e.event_date.startsWith(period));
-  const at = monthsList.indexOf(period);
-  const step = (d) => setPick(monthsList[Math.min(monthsList.length - 1, Math.max(0, at + d))]);
-  const periodLabel = period === 'year' ? t('fin.last12') : period ? `${Number(period.slice(5))}/${period.slice(0, 4)}` : '';
+  const pnlShown = (pnl || []).filter((e) => isYear || e.event_date.startsWith(ymPick));
+  const yearLabel = t('fin.yearN', { y: year });
+  const periodLabel = isYear ? yearLabel : `${Number(ymPick.slice(5))}/${ymPick.slice(0, 4)}`;
+  const canNext = isYear ? year < thisYear : ymPick < thisMonth;
+  function step(d) {
+    if (isYear) return setYear(year + d);
+    const [y, m] = ymPick.split('-').map(Number);
+    const next = new Date(Date.UTC(y, m - 1 + d, 1)).toISOString().slice(0, 7);
+    setYmPick(next);
+    setYear(Number(next.slice(0, 4)));
+  }
+  function toggleYear() {
+    if (isYear) {
+      // Back to months: the latest month of the year shown.
+      const ym = year === thisYear ? thisMonth : `${year}-12`;
+      setYmPick(ym);
+      setView('month');
+    } else {
+      setView('year');
+    }
+  }
   const bal = Number(fund?.balance || 0);
   const ym = (m) => (m ? `${Number(m.month.slice(5))}/${m.month.slice(0, 4)}` : '');
 
@@ -119,11 +142,11 @@ export default function FinanceOverview() {
 
         {/* Last 12 months */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 content-start">
-          <Tile icon="📈" label={`${t('analytics.income')} · ${t('fin.last12')}`} value={fin ? formatVnd(fin.totals.income) : '—'} tone="text-lime-400" sub={t('finX.avgMonth', { v: fin ? formatVnd(Math.round(fin.totals.income / fin.months.length)) : '—' })} />
-          <Tile icon="📉" label={`${t('analytics.expense')} · ${t('fin.last12')}`} value={fin ? formatVnd(fin.totals.expense) : '—'} tone="text-orange-300" sub={t('finX.avgMonth', { v: fin ? formatVnd(Math.round(fin.totals.expense / fin.months.length)) : '—' })} />
+          <Tile icon="📈" label={`${t('analytics.income')} · ${yearLabel}`} value={fin ? formatVnd(fin.totals.income) : '—'} tone="text-lime-400" sub={t('finX.avgMonth', { v: fin ? formatVnd(Math.round(fin.totals.income / fin.months.length)) : '—' })} />
+          <Tile icon="📉" label={`${t('analytics.expense')} · ${yearLabel}`} value={fin ? formatVnd(fin.totals.expense) : '—'} tone="text-orange-300" sub={t('finX.avgMonth', { v: fin ? formatVnd(Math.round(fin.totals.expense / fin.months.length)) : '—' })} />
           <Tile
             icon="⚖️"
-            label={`${t('analytics.net')} · ${t('fin.last12')}`}
+            label={`${t('analytics.net')} · ${yearLabel}`}
             value={fin ? formatVnd(fin.totals.net) : '—'}
             tone={fin && fin.totals.net < 0 ? 'text-red-400' : 'text-white'}
             sub={fin ? t('finX.goodMonths', { n: fin.months.filter((m) => m.net > 0).length, total: fin.months.length }) : null}
@@ -135,13 +158,17 @@ export default function FinanceOverview() {
       <div className="card !p-3 mb-3 flex flex-wrap items-center gap-2">
         <span className="text-gray-400 text-sm">{t('finX.viewing')}</span>
         <div className="flex items-center gap-1">
-          <button type="button" className="btn-secondary !px-3 !py-1" disabled={period === 'year' || at <= 0} onClick={() => step(-1)} aria-label={t('cal.prev')}>‹</button>
+          <button type="button" className="btn-secondary !px-3 !py-1" onClick={() => step(-1)} aria-label={t('cal.prev')}>‹</button>
           <span className="text-white font-semibold text-sm px-2 tabular-nums min-w-[5.5rem] text-center">{periodLabel}</span>
-          <button type="button" className="btn-secondary !px-3 !py-1" disabled={period === 'year' || at >= monthsList.length - 1} onClick={() => step(1)} aria-label={t('cal.next')}>›</button>
+          <button type="button" className="btn-secondary !px-3 !py-1" disabled={!canNext} onClick={() => step(1)} aria-label={t('cal.next')}>›</button>
         </div>
-        <button type="button" onClick={() => setPick(period === 'year' ? null : 'year')} className={`rounded-full border px-3 py-1 text-sm ${period === 'year' ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300'}`}>
-          {t('fin.last12')}
-        </button>
+        <div className="grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
+          {['month', 'year'].map((k) => (
+            <button key={k} type="button" onClick={() => (k === view ? null : toggleYear())} className={`rounded-md px-3 py-1 ${view === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
+              {k === 'month' ? t('fin.byMonth') : t('fin.byYear')}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 mb-4">
         <Breakdown title={`💚 ${t('finX.incomeByP', { p: periodLabel })}`} rows={income} total={periodTotal('income')} color={INCOME_COLOR} t={t} />

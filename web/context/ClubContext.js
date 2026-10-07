@@ -34,9 +34,10 @@ export function ClubProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const reload = useCallback(async () => {
+  // `silent`: refresh in the background (tab focus) without the loading state.
+  const reload = useCallback(async ({ silent = false } = {}) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const list = await api.get('/api/clubs');
@@ -46,11 +47,20 @@ export function ClubProvider({ children }) {
         return list.some((c) => c.id === wanted) ? wanted : list[0]?.id || null;
       });
     } catch (err) {
-      setError(err);
+      if (!silent) setError(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [user?.id]);
+
+  // Clubs shared with this account (co-admin) can appear any time: refresh when the tab
+  // comes back into view, so the list never stays stuck on the sign-in snapshot.
+  useEffect(() => {
+    if (!user) return undefined;
+    const onFocus = () => document.visibilityState === 'visible' && reload({ silent: true });
+    document.addEventListener('visibilitychange', onFocus);
+    return () => document.removeEventListener('visibilitychange', onFocus);
+  }, [user?.id, reload]);
 
   useEffect(() => {
     if (!user) {

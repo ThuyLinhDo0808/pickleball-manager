@@ -186,7 +186,7 @@ const SIDEBAR_SCROLL_KEY = 'pickleball_sidebar_scroll';
 export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
   const { t } = useI18n();
-  const { clubs, club, isCoAdmin, loading: clubsLoading } = useClubs();
+  const { clubs, club, isCoAdmin, loading: clubsLoading, reload: reloadClubs } = useClubs();
   // Each page mounts its own shell: put the sidebar back where it was scrolled to,
   // instead of jumping to the top after every click.
   const sideRef = useRef(null);
@@ -256,6 +256,14 @@ export default function AppShell({ children }) {
 
   useEffect(() => setMoreOpen(false), [pathname]);
 
+  // Before saying "create your first club", ask the server once more: a club shared
+  // with this account (co-admin) after sign-in is not in the first list.
+  const [clubsChecked, setClubsChecked] = useState(false);
+  useEffect(() => {
+    if (workspace !== 'club' || clubsLoading || clubs.length || clubsChecked) return;
+    reloadClubs().finally(() => setClubsChecked(true));
+  }, [workspace, clubsLoading, clubs.length, clubsChecked, reloadClubs]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white">{t('common.loading')}</div>;
   if (!user) return null;
 
@@ -267,11 +275,11 @@ export default function AppShell({ children }) {
     (item.also || []).some((p) => isActive(p));
   const itemActive = (item) => (item.children ? item.children.some(navActive) : navActive(item));
   const coAdmin = workspace === 'club' && isCoAdmin;
-  // A co-admin works on the owner's club with the full menu (only deleting the club is
-  // left to the owner).
-  const NAV = NAV_BY_WORKSPACE[workspace] || [];
+  // A co-admin works on the owner's club with the full menu, except granting access to
+  // others (and deleting the club), which stay with the owner.
+  const NAV = (NAV_BY_WORKSPACE[workspace] || []).map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g));
   const tabs = TABS_BY_WORKSPACE[workspace] || [];
-  const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p));
+  const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
@@ -412,9 +420,13 @@ export default function AppShell({ children }) {
         ) : (
           <>
             {coAdmin && (
-              <p className="mb-3 text-xs text-sky-300">
-                {t('coadmin.banner', { name: club?.name || '', owner: club?.owner_email || '—' })}
-              </p>
+              <div className="mb-4 flex items-center gap-3 rounded-xl border border-sky-400/30 bg-sky-400/5 px-3 py-2">
+                <span className="text-lg" aria-hidden="true">🤝</span>
+                <div className="min-w-0 text-sm">
+                  <div className="text-sky-200 font-semibold truncate">{t('coadmin.banner', { name: club?.name || '' })}</div>
+                  <div className="text-gray-400 text-xs truncate">{t('coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
+                </div>
+              </div>
             )}
             {workspace === 'club' && <BirthdayBanner clubId={club?.id} />}
             {children}
