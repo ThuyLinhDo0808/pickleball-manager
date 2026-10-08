@@ -353,7 +353,7 @@ Mục Tài chính có các tab:
 | Tab | Nội dung |
 |---|---|
 | **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 2 ô **Thu – Chi** của đúng kỳ đang chọn (không còn ô *Còn lại*) · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
-| **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Thêm khoản **Thu/Chi**, nút **🧮 Bảng tính quỹ tháng** · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
+| **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Khung **Ghi khoản thu / chi**: một hàng ô nhập cùng cỡ (Loại · Hạng mục · Số tiền · Ngày · Ghi chú), dòng dưới xem trước khoản sắp ghi (VD *−1.500.000 đ · Thuê sân*) và nút **+ Thêm khoản**; nút **🧮 Bảng tính quỹ tháng** ở góc · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
 

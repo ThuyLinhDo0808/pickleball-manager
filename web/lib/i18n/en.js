@@ -1519,6 +1519,8 @@ export const en = {
     toPlans: 'Set as the monthly plan price',
   },
   fin: {
+    addBtn: 'Add entry',
+    notePh: 'e.g. October court rent',
     ballsHint: 'Buying balls → record it in the ball store (goes into the ledger)',
     otherNotePh: 'Say what it was — e.g. coach, prizes',
     byMonth: "By month",

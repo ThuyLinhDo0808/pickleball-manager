@@ -1519,6 +1519,8 @@ export const vi = {
     toPlans: 'Đặt làm giá gói tháng',
   },
   fin: {
+    addBtn: 'Thêm khoản',
+    notePh: 'VD: Tiền sân tháng 10',
     ballsHint: 'Mua bóng → nhập ở Kho bóng (tự ghi vào sổ)',
     otherNotePh: 'Ghi rõ khoản gì — VD thuê HLV, mua giải thưởng',
     byMonth: "Theo tháng",
