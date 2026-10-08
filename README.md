@@ -87,16 +87,17 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 Thanh điều hướng cá nhân: **Trang chủ · Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, Telegram) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới.
 
 ### 3.2. Trang CLB cho thành viên (`/c/<clubId>`)
-Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được. Gồm: ảnh/tên CLB, nhãn *Thành viên* (+ *chờ xác thực* nếu CLB chưa duyệt), liên hệ; 4 ô số liệu (buổi còn lại, buổi đã đăng ký, buổi đã chơi, công nợ) và 3 tab:
+Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được. Gồm: ảnh/tên CLB, nhãn *Thành viên* (+ *chờ xác thực* nếu CLB chưa duyệt), liên hệ; 4 ô số liệu (buổi còn lại, buổi đã đăng ký, buổi đã chơi, công nợ) và 4 tab:
 - **Lịch CLB**: các buổi sắp tới của CLB, số chỗ, trạng thái của bạn (✓ đã đăng ký…), nút **Đăng ký** / **Vào danh sách chờ** (mở trang đăng ký `/e/…`). Buổi CLB không mở đăng ký qua link hiện "CLB tự xếp danh sách".
 - **Gói của tôi**: các kỳ gói, đã đóng / chưa đóng, đã dùng x/y buổi.
 - **Lịch sử**: các buổi đã qua (đã chơi / vắng / huỷ muộn) kèm tổng.
+- **Bảng xếp hạng**: giống trang Bảng xếp hạng của quản lý (chỉ xem) — 3 bảng *Tất cả / Thành viên cố định / Thành viên giao lưu*, kỳ *Ngày / Tháng / Quý / Năm / Tất cả*, bục top 3, các giải (tỷ lệ thắng, hiệu số, chăm chỉ, mâm xôi), **Số tuần giữ Top 1** và bảng đầy đủ; dòng của bạn có nhãn *Bạn*.
 
 ### 3.3. Không gian quản lý
 | Không gian | Dành cho | Menu |
 |---|---|---|
 | **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, Tài khoản) |
-| **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Tạo kèo · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
+| **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Tạo kèo · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi, **Kho bóng** riêng của kèo Xé Vé) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
 | **Sự kiện của tôi** | Điều phối viên / Trọng tài | Sự kiện được giao (+ giải được giao bấm điểm) |
 
 **Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Điều phối viên* / *Trọng tài* — đúng vai trò mạnh nhất bạn đang được cấp). Bấm vào để đổi sang CLB khác bạn quản lý, sang **Social Manager (Xé vé)** (chưa có gói thì mở phần đăng ký) / Sự kiện của tôi, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc **tạo CLB mới** (đủ giới hạn gói thì hiện bảng nâng cấp). Mở trang Xé Vé khi chưa có Social Manager sẽ thấy phần giới thiệu + nút đăng ký thay cho nội dung. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
@@ -356,18 +357,19 @@ Mục Tài chính có các tab:
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
 
 **Hạng mục có sẵn:**
-- Thu (ghi tay): **Quỹ tháng**, **Khác**. (Hội viên, Phí kèo, Lệ phí giải do app tự ghi.)
-- Chi: **Thuê sân**, **Mua bóng** (CLB cầu lông: *Mua cầu*), **Mua nước**, **Khác**.
-- Đa số CLB thu quỹ theo tháng cho tiền sân + bóng + nước; chi phí phát sinh khác ghi vào **Khác** (bắt buộc ghi chú khoản gì) và thu riêng. Khoản cũ có hạng mục khác (VD *HLV / Coach*) vẫn giữ nguyên tên.
+- Thu (ghi tay): **Quỹ tháng**, **Thu tiền bóng** (CLB cầu lông: *Thu tiền cầu*), **Khác**. (Hội viên, Phí kèo, Lệ phí giải do app tự ghi.)
+- Chi (ghi tay): **Thuê sân**, **Mua nước**, **Khác**. **Mua bóng** không ghi tay ở đây mà nhập ở **Kho bóng** (*Nhập bóng* tự ghi khoản chi *Mua bóng* vào sổ) — để không bị ghi trùng hai lần.
+- Quỹ tháng chỉ thu tiền sân + nước. **Tiền bóng thu riêng**, chỉ thu lại khi hết bóng. Chi phí phát sinh khác ghi vào **Khác** (bắt buộc ghi chú khoản gì) và thu riêng. Khoản cũ có hạng mục khác (VD *HLV / Coach*) vẫn giữ nguyên tên.
 
 **🧮 Bảng tính quỹ tháng** (nút trong khung *Ghi khoản thu / chi*): bảng giống file Excel để Host tính số tiền thu mỗi thành viên mỗi tháng.
-- **Cố định**: tiền thuê sân/giờ × số giờ/buổi × số buổi/tháng = *thành tiền sân*; trừ **% giảm khi thuê cố định**; cộng tiền bóng, tiền nước/tháng = *tổng chi cần thu*; chia **số thành viên** (mặc định = số thành viên cố định đang hoạt động) = *số tiền/người/tháng*; **làm tròn lên** (1.000 / 5.000 / 10.000 / 50.000 / 100.000đ) = số thu mỗi người (ô vàng). Ví dụ 350.000đ × 5 giờ × 5 buổi = 8.750.000đ, giảm 10% còn 7.875.000đ, 16 người → 492.188đ → làm tròn **500.000đ**. Thêm dòng *số buổi được bảo lưu/tháng* để ghi nhớ.
+- **Cố định**: tiền thuê sân/giờ × số giờ/buổi × số buổi/tháng = *thành tiền sân*; trừ **% giảm khi thuê cố định**; cộng tiền nước/tháng = *tổng chi cần thu*; chia **số thành viên** (mặc định = số thành viên cố định đang hoạt động) = *số tiền/người/tháng*; **làm tròn lên** (1.000 / 5.000 / 10.000 / 50.000 / 100.000đ) = số thu mỗi người (ô vàng). Ví dụ 350.000đ × 5 giờ × 5 buổi = 8.750.000đ, giảm 10% còn 7.875.000đ, 16 người → 492.188đ → làm tròn **500.000đ**. Thêm dòng *số buổi được bảo lưu/tháng* để ghi nhớ.
+- **Tiền bóng (thu riêng, khi hết bóng mới thu tiếp)**: số buổi/tháng × **số bóng dùng/buổi** = *số bóng cần mua* (VD 12 buổi × 4 bóng = 48 quả); × **giá 1 quả** = *tiền mua bóng*; chia số thành viên rồi làm tròn = **tiền bóng mỗi người** (ô cam). Nút *Dùng …* điền vào khoản thu *Thu tiền bóng*.
 - **Giao lưu**: các khung giờ và giá một buổi (VD 17h – 20h: 120.000đ), thêm/xoá tuỳ ý.
-- **Lưu bảng tính** để lần sau mở lại vẫn còn số liệu (lưu theo CLB). Nút *Dùng … / người* hoặc *Dùng tổng …* điền sẵn số tiền vào khoản thu *Quỹ tháng*; link *Đặt làm giá gói tháng* mở **Gói hội viên**.
+- **Lưu bảng tính** để lần sau mở lại vẫn còn số liệu (lưu theo CLB). Nút *Dùng … / người* hoặc *Dùng tổng …* (ngay dưới từng phần) điền sẵn số tiền vào khoản thu *Quỹ tháng* hoặc *Thu tiền bóng*; link *Đặt làm giá gói tháng* mở **Gói hội viên**.
 
 **Khoản tự động** (có nhãn *tự động*) được app ghi khi:
 - gói hội viên được đánh dấu đã đóng;
-- nhập bóng có tick "Ghi vào chi quỹ";
+- nhập bóng ở Kho bóng của CLB có tick "Ghi vào sổ thu chi (Mua bóng)";
 - đánh dấu người chơi **đã thu phí** trong một kèo.
 
 Các khoản tự động **không huỷ được từ Sổ thu chi**. Muốn sửa thì sửa tại nơi tạo ra nó, để sổ luôn khớp với gói, kho và danh sách kèo.
@@ -379,20 +381,14 @@ Giao diện Tài chính dạng thẻ, gọn: khối **Số dư quỹ**, **một*
 Link cũ `/club/fund`, `/club/plans`, `/club/inventory` tự chuyển sang trang mới.
 
 ### 4.10. Kho bóng (`/finance/inventory`)
+Có ở cả **CLB** và **Kèo Xé Vé** (kho riêng của người tổ chức, không thuộc CLB nào).
 - **Thêm loại bóng** gồm tên (ví dụ Franklin X-40), số lỗ (40 lỗ ngoài trời, 26 lỗ trong nhà…) và đơn vị.
-- Ghi các lần xuất/nhập:
-  - **Nhập hàng**: số lượng và đơn giá. Có thể tick "Ghi vào chi quỹ CLB" để tự tạo khoản chi.
-  - **Bóng hỏng/thay**: số lượng và *dùng được khoảng bao nhiêu buổi*.
-  - **Điều chỉnh tồn**: dùng số âm khi kiểm kho thiếu.
-- App tính cho mỗi loại:
-  - **tồn kho**
-  - **giá trung bình / quả**
-  - **độ bền (buổi/quả)**
-  - **chi phí / quả / buổi**
-  - tổng đã chi
-- Biểu đồ **so sánh chi phí mỗi quả mỗi buổi** giữa các loại (thấp hơn = tiết kiệm hơn).
-- App không cho tồn kho âm, dù là khi ghi bóng hỏng, điều chỉnh âm hay xoá một lần nhập.
-- Xoá một dòng nhập hàng cũng huỷ khoản chi quỹ đi kèm.
+- **Nhập bóng**: số lượng và đơn giá. Ở CLB có thể tick "Ghi vào sổ thu chi (Mua bóng)" để tự tạo khoản chi. **Điều chỉnh tồn**: số âm khi kiểm kho thiếu.
+- **Ghi buổi chơi** (sau mỗi buổi): *bóng hỏng buổi này* (trong số bóng đang dùng) và *bóng mới lấy ra* từ kho. Bóng lấy ra hôm trước mà hôm nay vẫn dùng được là **bóng cũ** — không cần ghi lại; bóng cũ không dùng được nữa thì ghi vào *bóng hỏng* và lấy bóng mới.
+- **Bảng bóng** của mỗi loại, mỗi cột là một buổi (các buổi CLB / kèo đã diễn ra từ lần đầu lấy bóng, cộng các ngày có ghi): **Bóng mới · Bóng cũ · Bóng hỏng** (cộng dồn) **· Bóng đã dùng** (đã lấy ra khỏi kho, cộng dồn) **· Số bóng đã mua · Còn lại** (trong kho). Luôn đúng: *mới + cũ + hỏng + còn lại = đã mua*. Ví dụ kho 48 quả: 4/10 lấy 2 quả mới → còn 46; 6/10 vẫn chơi 2 quả đó (bóng cũ) → còn 46; 8/10 hai quả cũ hỏng, lấy 2 quả mới → hỏng 2, đã dùng 4, còn 44. Bấm vào ngày ở đầu cột để sửa buổi đó.
+- Ô tổng: còn lại trong kho, đang dùng, bóng hỏng, đã chi. Không còn phần độ bền / so sánh chi phí mỗi quả mỗi buổi (không cần ở quy mô CLB).
+- App không cho tồn kho âm, không cho lấy bóng mới nhiều hơn số đang có trong kho ở ngày đó, và không cho ghi hỏng nhiều hơn số bóng đang dùng.
+- Xoá một dòng nhập bóng cũng huỷ khoản chi đi kèm trong sổ.
 
 ### 4.11. Lịch sử thay đổi (SCD Type 2)
 Mọi thay đổi của các thuộc tính quan trọng được lưu thành **dòng thời gian** (từ ngày A → ngày B), không ghi đè dữ liệu cũ:
@@ -744,7 +740,7 @@ Host tạo buổi lặp lại hằng tuần, đặt phí khách (ví dụ 130.00
 - **Team League**: **Tạo giải đấu** → *Đồng đội* → giữ 3 trận phụ đôi nam / đôi nữ / đôi nam nữ, luật *thắng 2/3* → *Chọn tất cả* → số đội = 3 → *Chia đội cân bằng* → đổi tên đội → *Tạo giải & xếp lịch* → mỗi lượt đấu bấm từng trận phụ để chọn người và nhập tỷ số.
 
 ### Theo dõi chi phí bóng
-**Tài chính → Kho bóng** → thêm loại bóng → *Nhập hàng* (tick ghi vào chi quỹ) → mỗi lần bỏ bóng thì ghi *Bóng hỏng/thay* kèm số buổi đã dùng → xem bảng so sánh **chi phí / quả / buổi**.
+**Tài chính → Kho bóng** → thêm loại bóng → *Nhập bóng* (tick ghi vào sổ thu chi) → sau mỗi buổi bấm *Ghi buổi chơi* (bóng hỏng, bóng mới lấy ra) → xem bảng bóng: mới / cũ / hỏng / đã dùng / đã mua / còn lại.
 
 ---
 
@@ -850,7 +846,8 @@ supabase/migrations/
 └── 20261019090000_round_robin_meeting_votes.sql       # giải vòng tròn tính điểm (advance_per_group = 0) + bảng event_votes (bình chọn buổi họp)
 └── 20261020090000_tournament_player_ranks.sql         # hạng A–D xếp riêng cho từng giải (tournaments.player_ranks)
 ├── 20261021090000_meeting_money.sql                   # tài chính buổi họp: meeting_money, meeting_guests, meeting_expenses, events.meeting_settlement
-└── 20261022090000_club_fund_calculator.sql           # bảng tính quỹ tháng của CLB: clubs.fund_calc
+├── 20261022090000_club_fund_calculator.sql           # bảng tính quỹ tháng của CLB: clubs.fund_calc
+└── 20261023090000_ball_log_xeve_inventory.sql        # kho bóng Xé Vé (inventory_items.host_id) + ghi bóng hỏng từng buổi
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -991,7 +988,9 @@ pickleball-manager/
 │       │   ├── tournament.js   #   ghép cặp, chia bảng, vòng tròn, nhánh đấu
 │       │   ├── liveScore.js    #   luật tính điểm trực tiếp (pickleball side-out, cầu lông rally)
 │       │   ├── payment.js      #   mã thanh toán, link VietQR
-│       │   ├── inventory.js    #   tồn kho, độ bền, chi phí/quả/buổi
+│       │   ├── inventory.js    #   tồn kho, bảng bóng từng buổi (mới / cũ / hỏng / còn lại)
+│       │   ├── inventoryStore.js #  kho bóng của CLB hoặc Xé Vé (route dùng chung)
+│       │   ├── clubStats.js    #   bảng xếp hạng CLB (quản lý + thành viên)
 │       │   └── feedback.js     #   gửi góp ý qua Resend / webhook
 │       └── utils/respond.js
 └── web/
@@ -1032,7 +1031,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = tất cả, `club`, `guest`; kèm `weeks_at_top`: số tuần giữ Top 1 của bảng đó) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
-| Kho bóng | `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` · `DELETE …/:itemId/moves/:moveId` |
+| Kho bóng | CLB: `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` (`kind`: `purchase` / `use` / `broken` / `adjust`, `event_id` tuỳ chọn) · `POST …/:itemId/sessions` (`occurred_on`, `new_out`, `broken` — ghi/sửa một buổi) · `DELETE …/:itemId/moves/:moveId`. Xé Vé: cùng các đường dẫn dưới `/api/inventory`. Danh sách trả thêm `in_play`, `broken`, `log` (bảng bóng từng buổi). |
 | Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge` = round robin; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` · `GET …/votes` · `PUT …/votes/:clubMemberId` `{choice: yes | no | null}` (bình chọn buổi họp) · người chơi: `POST /api/player/events/:eventId/vote` `{choice}` · buổi họp: `GET …/:id/meeting` · `PUT …/meeting/money/:memberId` `{paid_amount, sponsor_amount}` · `POST/DELETE …/meeting/guests` · `POST/PATCH/DELETE …/meeting/expenses` · `POST …/meeting/settle` `{mode: to_fund | from_fund | sponsor | split, member_id}` · `DELETE …/meeting/settle` (hoàn tác) · link bình chọn: `GET /api/events/public/:token/vote` (không cần đăng nhập) · `GET …/vote/me` · `POST …/vote` `{choice}` (đăng nhập; người ngoài CLB được thêm làm khách, `400 profile_required` nếu hồ sơ thiếu tên/SĐT) |
 | Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) · `GET /api/public/live/:token` (bảng điểm trực tiếp) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
@@ -1044,7 +1043,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thống kê | `GET /api/analytics/finance?year=` · `/events-pnl?year=` (theo năm dương lịch; mặc định năm nay; dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` (kèm `role` mạnh nhất) · `GET /api/staff/events` (kèm `kind`, `arrived`) · `GET /api/staff/events/:id` · `POST …/participants` (điều phối viên thêm khách vãng lai + check-in; hết chỗ thì vào danh sách chờ) · `POST …/participants/:pid/:action` (`checkin` / `no_show` / `undo` / `promote`) · `POST …/checkin-code` · `POST/PATCH …/matches` |
-| Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
+| Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
 
 ---
 
@@ -1059,7 +1058,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo; tỷ số có thể null = chưa nhập; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
 | Giải đấu | `tournaments` (`player_ranks` = hạng A–D của từng người trong giải; `kind` pairs/team; vòng tròn tính điểm = `group_count` 1 + `advance_per_group` 0, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
-| Kho | `inventory_items`, `inventory_moves` |
+| Kho | `inventory_items` (`club_id` hoặc `host_id` cho kho Xé Vé), `inventory_moves` (`purchase`, `use` = lấy bóng mới ra, `broken` = bóng đang dùng bị hỏng, `adjust`, `retire` cũ) |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |
 | Lịch sử | `change_history` (SCD Type 2, ghi bằng trigger) |
 | Bảng tính quỹ | `clubs.fund_calc` (jsonb: giá sân/giờ, giờ/buổi, buổi/tháng, % giảm, bóng, nước, số thành viên, làm tròn, buổi bảo lưu, khung giờ giao lưu) |

@@ -4,6 +4,7 @@ const cors = require('cors');
 
 const { requireAuth } = require('./middleware/auth');
 const clubsRoutes = require('./routes/clubs.routes');
+const inventoryRoutes = require('./routes/inventory.routes');
 const eventsRoutes = require('./routes/events.routes');
 const matchesRoutes = require('./routes/matches.routes');
 const transactionsRoutes = require('./routes/transactions.routes');
@@ -46,6 +47,7 @@ app.use('/api/leaderboard', requireAuth, leaderboardRoutes);
 app.use('/api/player', requireAuth, playerRoutes);
 app.use('/api/analytics', requireAuth, analyticsRoutes);
 app.use('/api/live', requireAuth, liveRoutes);
+app.use('/api/inventory', requireAuth, inventoryRoutes);
 app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
 app.use('/api/public', publicRoutes); // no login: club join pages
 

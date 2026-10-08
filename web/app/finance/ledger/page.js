@@ -9,14 +9,14 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { categoryLabel, EXPENSE_CATEGORIES, MANUAL_INCOME } from '@/lib/finance';
+import { categoryLabel, MANUAL_EXPENSE, MANUAL_INCOME } from '@/lib/finance';
 
 const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
 
 // The categories a Host picks from; an older entry keeps its own as an extra choice.
 function CategorySelect({ type, value, onChange }) {
   const { t } = useI18n();
-  const presets = type === 'income' ? MANUAL_INCOME : EXPENSE_CATEGORIES;
+  const presets = type === 'income' ? MANUAL_INCOME : MANUAL_EXPENSE;
   const choices = value && !presets.includes(value) ? [...presets, value] : presets;
   return (
     <select className="input" value={value} onChange={(e) => onChange(e.target.value)}>
@@ -84,6 +84,9 @@ function AddEntry({ club, onDone }) {
       <div>
         <label className="text-xs text-gray-400">{t('fin.category')}</label>
         <CategorySelect type={f.type} value={f.category} onChange={(category) => setF({ ...f, category })} />
+        {f.type === 'expense' && (
+          <Link href="/finance/inventory" className="block text-[11px] text-gray-500 hover:text-lime-400 mt-1">{t('fin.ballsHint')}</Link>
+        )}
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('fin.amount')}</label>
@@ -103,8 +106,8 @@ function AddEntry({ club, onDone }) {
         {calc && (
           <FundCalculator
             club={club}
-            onUse={(amount) => {
-              setF((x) => ({ ...x, type: 'income', category: 'monthly_fund', amount: String(amount) }));
+            onUse={(amount, category) => {
+              setF((x) => ({ ...x, type: 'income', category, amount: String(amount) }));
               setCalc(false);
             }}
           />

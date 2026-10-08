@@ -1,9 +1,11 @@
-// Ledger categories, sized for a club: it collects a monthly fund for court + balls +
-// water; anything else is "Khác" (with a note) and collected separately.
-export const INCOME_CATEGORIES = ['membership', 'event_fee', 'tournament_fee', 'monthly_fund', 'other'];
+// Ledger categories, sized for a club: a monthly fund for court + water, ball money
+// collected on its own when the balls run out; anything else is "Khác" (with a note).
+export const INCOME_CATEGORIES = ['membership', 'event_fee', 'tournament_fee', 'monthly_fund', 'ball_fund', 'other'];
 export const EXPENSE_CATEGORIES = ['court', 'balls', 'water', 'other'];
-// What the Host picks by hand (the rest are written by the app: plans, event fees…).
-export const MANUAL_INCOME = ['monthly_fund', 'other'];
+// What the Host picks by hand (the rest are written by the app: plans, event fees, ball
+// purchases from the ball store…).
+export const MANUAL_INCOME = ['monthly_fund', 'ball_fund', 'other'];
+export const MANUAL_EXPENSE = ['court', 'water', 'other'];
 // 'meeting': a get-together's surplus moved into the fund / a shortfall it paid.
 // 'coach', 'prize': older entries keep their label.
 const KNOWN = new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, 'meeting', 'coach', 'prize']);

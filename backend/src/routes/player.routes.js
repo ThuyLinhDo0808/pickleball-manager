@@ -13,6 +13,7 @@ const votes = require('../services/votes');
 const { linkByPhone } = require('../services/phoneLink');
 const { coAdminClubs } = require('../services/clubAccess');
 const { getPlan } = require('../services/plan');
+const { clubStats } = require('../services/clubStats');
 const { sportReady, clubSport, profileLevel } = require('../services/sport');
 
 function badRequest(message, status = 400, code) {
@@ -666,6 +667,21 @@ player.get('/clubs/:clubId', async (req, res) => {
         no_show: history.filter((h) => h.status === 'no_show').length,
       },
     });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// The club's leaderboard as a member sees it (same as the managers' page, read-only),
+// with my own row marked.
+player.get('/clubs/:clubId/rankings', async (req, res) => {
+  try {
+    const { clubId } = req.params;
+    if (!isUuid(clubId)) return notFound(res, 'Club');
+    const { data: me, error } = await supabase.from('club_members').select('id, clubs(id)').eq('club_id', clubId).eq('user_id', req.hostId).maybeSingle();
+    if (error) throw error;
+    if (!me || !me.clubs) return notFound(res, 'Club');
+    res.json({ ...(await clubStats({ id: clubId }, req.query)), me: me.id });
   } catch (err) {
     fail(res, err);
   }

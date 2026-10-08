@@ -7,23 +7,36 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 
 const ROUND_STEPS = [1000, 5000, 10000, 50000, 100000];
-const EMPTY = { rate_per_hour: '', hours_per_session: '', sessions_per_month: '', discount_pct: '', balls: '', water: '', members: '', round_to: 10000, carry_sessions: '', guest_slots: [] };
+const EMPTY = { rate_per_hour: '', hours_per_session: '', sessions_per_month: '', discount_pct: '', water: '', members: '', round_to: 10000, carry_sessions: '', balls_per_session: '', ball_price: '', guest_slots: [] };
 
 const num = (v) => (v === '' || v == null ? 0 : Number(v) || 0);
 
-// What each member pays a month: court (rent/hour × hours × sessions, less the
-// fixed-booking discount) + balls + water, shared by the members, rounded up.
-// Anything else the club spends is collected separately ("Khác").
-export function fundMath(c) {
-  const court = num(c.rate_per_hour) * num(c.hours_per_session) * num(c.sessions_per_month);
-  const discount = Math.round((court * num(c.discount_pct)) / 100);
-  const courtNet = court - discount;
-  const total = courtNet + num(c.balls) + num(c.water);
+// Shared by the members, rounded up to the club's step.
+function share(total, c) {
   const members = num(c.members);
   const perPerson = members ? Math.round(total / members) : 0;
   const step = num(c.round_to) || 1000;
   const rounded = perPerson ? Math.ceil(perPerson / step) * step : 0;
-  return { court, discount, courtNet, total, perPerson, rounded, collected: rounded * members };
+  return { perPerson, rounded, collected: rounded * members };
+}
+
+// What each member pays a month: court (rent/hour × hours × sessions, less the
+// fixed-booking discount) + water, shared by the members, rounded up.
+// Balls are collected on their own (ballMath), anything else under "Khác".
+export function fundMath(c) {
+  const court = num(c.rate_per_hour) * num(c.hours_per_session) * num(c.sessions_per_month);
+  const discount = Math.round((court * num(c.discount_pct)) / 100);
+  const courtNet = court - discount;
+  const total = courtNet + num(c.water);
+  return { court, discount, courtNet, total, ...share(total, c) };
+}
+
+// Balls for a month of play (sessions × balls a session), bought in one go and
+// shared by the members — collected again only when the club runs out.
+export function ballMath(c) {
+  const needed = num(c.sessions_per_month) * num(c.balls_per_session);
+  const total = needed * num(c.ball_price);
+  return { needed, total, ...share(total, c) };
 }
 
 function Row({ label, children, strong, tone }) {
@@ -45,7 +58,7 @@ function NumIn({ value, onChange, step = 1, suffix }) {
 }
 
 // The Host's monthly fund worksheet (like the club's Excel sheet), saved with the club.
-// `onUse(amount)` (optional) puts a figure into the entry form.
+// `onUse(amount, category)` (optional) puts a figure into the entry form.
 export default function FundCalculator({ club, onUse }) {
   const { t } = useI18n();
   const { updateClub } = useClubs();
@@ -64,6 +77,7 @@ export default function FundCalculator({ club, onUse }) {
   }, [club?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const m = fundMath(c);
+  const bm = ballMath(c);
   const slots = c.guest_slots || [];
   const setSlot = (i, k, v) => setC((x) => ({ ...x, guest_slots: x.guest_slots.map((g, j) => (j === i ? { ...g, [k]: v } : g)) }));
 
@@ -99,7 +113,6 @@ export default function FundCalculator({ club, onUse }) {
               </span>
             </Row>
             <Row label={t('calc.courtNet')}>{formatVnd(m.courtNet)}</Row>
-            <Row label={t('calc.balls')}><NumIn value={c.balls} onChange={set('balls')} suffix="đ" /></Row>
             <Row label={t('calc.water')}><NumIn value={c.water} onChange={set('water')} suffix="đ" /></Row>
             <Row label={t('calc.total')} strong>{formatVnd(m.total)}</Row>
             <Row label={t('calc.members')}><NumIn value={c.members} onChange={set('members')} /></Row>
@@ -113,6 +126,39 @@ export default function FundCalculator({ club, onUse }) {
               </span>
             </Row>
             <Row label={t('calc.carry')}><NumIn value={c.carry_sessions} onChange={set('carry_sessions')} /></Row>
+            {onUse && m.rounded > 0 && (
+              <tr>
+                <td colSpan={2} className="px-3 py-2 text-right">
+                  <span className="inline-flex flex-wrap gap-2 justify-end">
+                    <button type="button" className="btn-primary text-xs !py-1" onClick={() => onUse(m.rounded, 'monthly_fund')}>{t('calc.usePerPerson', { v: formatVnd(m.rounded) })}</button>
+                    {m.collected > 0 && <button type="button" className="btn-secondary text-xs !py-1" onClick={() => onUse(m.collected, 'monthly_fund')}>{t('calc.useTotal', { v: formatVnd(m.collected) })}</button>}
+                  </span>
+                </td>
+              </tr>
+            )}
+
+            <tr className="bg-navy-900">
+              <td colSpan={2} className="px-3 py-2 text-orange-300 font-semibold">🎾 {t('calc.ballsTitle')}</td>
+            </tr>
+            <Row label={t('calc.sessions')}><span className="text-gray-300">{num(c.sessions_per_month) || '—'}</span></Row>
+            <Row label={t('calc.ballsPerSession')}><NumIn value={c.balls_per_session} onChange={set('balls_per_session')} /></Row>
+            <Row label={t('calc.ballsNeeded')}>{t('calc.ballsN', { n: bm.needed })}</Row>
+            <Row label={t('calc.ballPrice')}><NumIn value={c.ball_price} onChange={set('ball_price')} suffix="đ" /></Row>
+            <Row label={t('calc.ballsTotal')} strong>{formatVnd(bm.total)}</Row>
+            <Row label={t('calc.ballsPerPerson')}>{formatVnd(bm.perPerson)}</Row>
+            <Row label={t('calc.ballsRounded')} strong tone="bg-orange-400/10 text-orange-200">
+              <span className="text-orange-200 font-bold text-base">{formatVnd(bm.rounded)}</span>
+            </Row>
+            {onUse && bm.rounded > 0 && (
+              <tr>
+                <td colSpan={2} className="px-3 py-2 text-right">
+                  <span className="inline-flex flex-wrap gap-2 justify-end">
+                    <button type="button" className="btn-primary text-xs !py-1" onClick={() => onUse(bm.rounded, 'ball_fund')}>{t('calc.usePerPerson', { v: formatVnd(bm.rounded) })}</button>
+                    {bm.collected > 0 && <button type="button" className="btn-secondary text-xs !py-1" onClick={() => onUse(bm.collected, 'ball_fund')}>{t('calc.useTotal', { v: formatVnd(bm.collected) })}</button>}
+                  </span>
+                </td>
+              </tr>
+            )}
 
             <tr className="bg-navy-900">
               <td colSpan={2} className="px-3 py-2 text-sky-300 font-semibold">🤝 {t('calc.guests')}</td>
@@ -146,12 +192,6 @@ export default function FundCalculator({ club, onUse }) {
       <p className="text-gray-500 text-xs mt-2">{t('calc.hint')}</p>
       <div className="flex flex-wrap items-center gap-2 mt-3">
         <button type="button" className="btn-secondary text-sm" disabled={saving} onClick={save}>💾 {t('calc.save')}</button>
-        {onUse && m.rounded > 0 && (
-          <>
-            <button type="button" className="btn-primary text-sm" onClick={() => onUse(m.rounded)}>{t('calc.usePerPerson', { v: formatVnd(m.rounded) })}</button>
-            {m.collected > 0 && <button type="button" className="btn-secondary text-sm" onClick={() => onUse(m.collected)}>{t('calc.useTotal', { v: formatVnd(m.collected) })}</button>}
-          </>
-        )}
         <Link href="/finance/plans" className="text-lime-400 text-sm ml-auto">{t('calc.toPlans')} →</Link>
       </div>
       {msg && <p className="text-sm text-lime-300 mt-2">{msg}</p>}
