@@ -1407,7 +1407,7 @@ export const en = {
   inventory: {
     kind_use: 'Taken out',
     title: 'Balls & supplies',
-    hint: 'Add balls when you buy them. After each session press "Log session": balls that broke and new balls taken out — the table works out old balls, balls taken out and what\'s left in the box.',
+    hint: 'Add balls when you buy them. At the end of each day of play press "End-of-day ball count": balls that broke and new balls taken out — the table works out old balls, balls taken out and what\'s left in the box.',
     addItem: 'Add ball type',
     name: 'Name',
     namePh: 'e.g. Franklin X-40',
@@ -1430,8 +1430,8 @@ export const en = {
     kind_retire: 'Retired',
     kind_adjust: 'Adjustment',
     deleteConfirm: 'Delete this entry? Its club-fund expense (if any) will be voided.',
-    logSession: 'Log session',
-    editSession: 'Edit session {d}',
+    logSession: 'End-of-day ball count',
+    editSession: 'Edit the count of {d}',
     newOut: 'New balls taken out',
     brokenNow: 'Broken this session',
     brokenHint: '{n} old balls in play — new balls taken out today that broke count here too',
@@ -1444,7 +1444,7 @@ export const en = {
     row_bought: 'Bought',
     row_left: 'Left',
     inPlay: 'In play',
-    noLog: 'No session logged yet — press "Log session" after each one.',
+    noLog: 'No ball count yet — press "End-of-day ball count" after each day of play.',
     invariant: 'New + old + broken + left = bought. Click a date to edit that session.',
     kind_broken: 'Broken',
     brokenTooMany: 'Only {n} balls were played this session ({old} old + {fresh} new) — broken can\'t be more.',
@@ -2062,6 +2062,7 @@ export const en = {
   // Words that change in a badminton club (see lib/i18n/core.js).
   sport: {
     badminton: {
+      'inventory.logSession': 'End-of-day shuttle count',
       'inventory.recordExpense': 'Record in the ledger (Shuttles)',
       'inventory.row_bought': 'Shuttles bought',
       'inventory.row_used': 'Taken out',
