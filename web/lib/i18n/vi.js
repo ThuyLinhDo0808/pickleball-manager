@@ -1577,6 +1577,7 @@ export const vi = {
     balance: 'Số dư',
   },
   cal: {
+    noneMonth: 'Tháng này chưa có lịch nào.',
     upcoming: 'Sắp diễn ra',
     allClubs: 'Tất cả CLB',
     list: 'Danh sách',

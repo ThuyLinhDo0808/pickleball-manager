@@ -1577,6 +1577,7 @@ export const en = {
     balance: 'Balance',
   },
   cal: {
+    noneMonth: 'Nothing scheduled this month.',
     upcoming: 'Upcoming',
     allClubs: 'All clubs',
     list: 'List',

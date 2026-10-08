@@ -198,6 +198,7 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh tab ở đầu trang** (*Lịch sự kiện · Tạo lịch chơi hàng tuần · Giải đấu · Tạo kèo*) để chuyển qua lại một chạm.
 
 - **Lịch sự kiện** có 3 ô số liệu: *buổi tháng này* (bao nhiêu buổi đã diễn ra), *7 ngày tới* (kèm buổi gần nhất) và *giải sắp tới*. (Ô *tỷ lệ lấp đầy* chỗ chỉ còn ở không gian Xé Vé, thay cho ô giải đấu — quy mô CLB không cần.) Thanh công cụ (Danh sách / Tháng / Tuần / Ngày, ‹ Hôm nay ›, lịch nhỏ) nằm trong một khung riêng; nút *Tạo lịch chơi hàng tuần* và *＋ Tạo kèo* ở góc phải. Ở chế độ **Danh sách**, mỗi buổi là thẻ có ô ngày bên trái, giờ, địa điểm, CLB và **thanh lấp đầy** số chỗ.
+- **Trên điện thoại**, chế độ **Tháng** không còn là lưới 7 cột: chỉ liệt kê **những ngày có lịch** — ô ngày bên trái (thứ, ngày; *Hôm nay* tô xanh, ngày đã qua mờ đi), bên phải từng buổi (giờ, địa điểm, số chỗ x/y), bấm vào để mở buổi; bấm ô ngày để xem dòng thời gian của ngày đó. Ẩn chế độ *Tuần* và phần chú thích màu trên điện thoại. Máy tính giữ nguyên lưới tháng.
 - **Tạo kèo / Tạo lịch hàng tuần / Sửa buổi**: trên máy tính, bên phải form có khung **Xem trước** luôn hiện khi cuộn: tên, ngày (hoặc *số buổi* sẽ tạo của lịch hàng tuần), giờ, địa điểm + số sân, số chỗ, phí, hạn huỷ, có mở link đăng ký không, và **thu tối đa nếu kín chỗ**. Nút *Tạo* / *Huỷ* nằm trong khung này.
 
 | Mục | Đường dẫn | Dùng để |
@@ -351,7 +352,7 @@ Mục Tài chính có các tab:
 
 | Tab | Nội dung |
 |---|---|
-| **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 3 ô **Thu – Chi – Còn lại** của đúng kỳ đang chọn · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
+| **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 2 ô **Thu – Chi** của đúng kỳ đang chọn (không còn ô *Còn lại*) · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
 | **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Thêm khoản **Thu/Chi**, nút **🧮 Bảng tính quỹ tháng** · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
@@ -374,7 +375,7 @@ Mục Tài chính có các tab:
 
 Các khoản tự động **không huỷ được từ Sổ thu chi**. Muốn sửa thì sửa tại nơi tạo ra nó, để sổ luôn khớp với gói, kho và danh sách kèo.
 
-Giao diện Tài chính dạng thẻ, gọn: khối **Số dư quỹ**, **một** bộ 3 ô thu – chi – còn lại theo kỳ đang chọn (không lặp lại số tháng này / cả năm), biểu đồ thu, chi theo tháng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng thu chi từng buổi / kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
+Giao diện Tài chính dạng thẻ, gọn: khối **Số dư quỹ**, **một** cặp ô thu – chi theo kỳ đang chọn (trên điện thoại nằm cạnh nhau), biểu đồ thu, chi theo tháng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng thu chi từng buổi / kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
 
 **Sổ thu chi chỉ thêm.** Số tiền, loại và chủ sở hữu của một khoản không bao giờ bị ghi đè (database chặn bằng trigger). Nút **Sửa**: đổi hạng mục, ngày, ghi chú thì sửa trực tiếp; đổi **số tiền hoặc loại** thì app tự huỷ dòng cũ (ghi "edited", trỏ tới dòng mới) và ghi dòng mới thay thế — luôn truy vết được.
 

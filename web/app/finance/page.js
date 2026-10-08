@@ -108,9 +108,8 @@ export default function FinanceOverview() {
   }
   const bal = Number(fund?.balance || 0);
 
-  // One set of Thu / Chi / Còn lại, for the month or year picked above.
+  // Thu / Chi for the month or year picked above (the fund balance sits beside them).
   const picked = isYear ? fin?.totals : fin?.months.find((m) => m.month === ymPick);
-  const net = picked ? picked.net : null;
 
   return (
     <>
@@ -141,10 +140,9 @@ export default function FinanceOverview() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 content-start">
+        <div className="grid grid-cols-2 gap-3 content-start">
           <Tile icon="📈" label={`${t('analytics.income')} · ${periodLabel}`} value={picked ? formatVnd(picked.income) : '—'} tone="text-lime-400" />
           <Tile icon="📉" label={`${t('analytics.expense')} · ${periodLabel}`} value={picked ? formatVnd(picked.expense) : '—'} tone="text-orange-300" />
-          <Tile icon="⚖️" label={`${t('analytics.net')} · ${periodLabel}`} value={net == null ? '—' : formatVnd(net)} tone={net < 0 ? 'text-red-400' : 'text-white'} />
         </div>
       </div>
 

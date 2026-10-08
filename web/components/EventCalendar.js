@@ -73,6 +73,57 @@ function Fill({ e }) {
   );
 }
 
+// ---- Month on a phone: only the days that have something, as a list ----------
+function MonthAgenda({ month, map, onPickDay }) {
+  const { t, lang } = useI18n();
+  const today = todayYmd();
+  const days = Object.keys(map).filter((d) => d.startsWith(month)).sort();
+  if (!days.length) return <p className="card text-gray-400 text-sm text-center py-8">{t('cal.noneMonth')}</p>;
+  return (
+    <ol className="flex flex-col gap-2">
+      {days.map((d) => {
+        const past = d < today;
+        const isToday = d === today;
+        return (
+          <li key={d} className={`card !p-0 overflow-hidden flex ${isToday ? '!border-lime-400/60' : ''} ${past ? 'opacity-60' : ''}`}>
+            <button
+              type="button"
+              onClick={() => onPickDay(d)}
+              className={`w-14 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 py-2 ${isToday ? 'bg-lime-400 text-navy-950' : 'bg-navy-900 text-white'}`}
+              aria-label={formatDay(d, lang, { weekday: 'long', day: '2-digit', month: '2-digit' })}
+            >
+              <span className={`text-[10px] uppercase ${isToday ? 'text-navy-900' : 'text-gray-400'}`}>{formatDay(d, lang, { weekday: 'short' })}</span>
+              <span className="text-xl font-bold leading-none tabular-nums">{Number(d.slice(8))}</span>
+              {isToday && <span className="text-[9px] font-semibold mt-0.5">{t('cal.today')}</span>}
+            </button>
+            <ul className="flex-1 min-w-0 divide-y divide-navy-700">
+              {map[d].map((e) => (
+                <li key={e.id}>
+                  <Link href={hrefOf(e)} className="flex items-center gap-2 px-3 py-2.5 active:bg-navy-700/60">
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${dotOf(e)}`} aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-sm font-semibold truncate ${e.status === 'cancelled' ? 'line-through text-gray-400' : 'text-white'}`}>
+                        <Kind e={e} />
+                        {e.title}
+                      </span>
+                      <span className="block text-xs text-gray-400 truncate">
+                        {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : t('cal.allDay')}
+                        {e.location ? ` · ${e.location}` : ''}
+                      </span>
+                    </span>
+                    {e.slots != null && <span className="text-xs shrink-0"><Fill e={e} /></span>}
+                    <span className="text-gray-500 shrink-0" aria-hidden="true">›</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 // ---- Month ----------------------------------------------------------------
 function MonthView({ date, events, onPickDay }) {
   const { t, lang } = useI18n();
@@ -80,7 +131,11 @@ function MonthView({ date, events, onPickDay }) {
   const month = date.slice(0, 7);
   const today = todayYmd();
   return (
-    <div className="card !p-0 overflow-hidden">
+    <>
+    <div className="sm:hidden">
+      <MonthAgenda month={month} map={map} onPickDay={onPickDay} />
+    </div>
+    <div className="card !p-0 overflow-hidden hidden sm:block">
       <div className="grid grid-cols-7 border-b border-navy-700 text-center text-xs text-gray-400">
         {weekdayLabels(lang).map((d) => <div key={d} className="py-2">{d}</div>)}
       </div>
@@ -93,16 +148,12 @@ function MonthView({ date, events, onPickDay }) {
               type="button"
               key={d}
               onClick={() => onPickDay(d)}
-              className={`min-h-[4.5rem] sm:min-h-[6.5rem] border-b border-r border-navy-700 p-1 text-left align-top hover:bg-navy-700/60 transition ${other ? 'bg-navy-900/60' : ''}`}
+              className={`min-h-[6.5rem] border-b border-r border-navy-700 p-1 text-left align-top hover:bg-navy-700/60 transition ${other ? 'bg-navy-900/60' : ''}`}
             >
               <div className={`text-xs mb-1 tabular-nums ${d === today ? 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-lime-400 text-navy-950 font-bold' : other ? 'text-gray-600' : 'text-gray-300'}`}>
                 {Number(d.slice(8))}
               </div>
-              {/* phone: dots; wider screens: chips */}
-              <div className="flex flex-wrap gap-0.5 sm:hidden">
-                {list.slice(0, 4).map((e) => <span key={e.id} className={`h-1.5 w-1.5 rounded-full ${dotOf(e)}`} />)}
-              </div>
-              <div className="hidden sm:block space-y-0.5">
+              <div className="space-y-0.5">
                 {list.slice(0, 3).map((e) => (
                   <div key={e.id} className={`truncate rounded border-l-2 px-1 text-[11px] ${chipOf(e)}`}>
                     {hhmm(e.start_time)} <Kind e={e} />{e.title}
@@ -115,6 +166,7 @@ function MonthView({ date, events, onPickDay }) {
         })}
       </div>
     </div>
+    </>
   );
 }
 
