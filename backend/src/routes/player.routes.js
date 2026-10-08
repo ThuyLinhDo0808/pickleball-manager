@@ -12,7 +12,7 @@ const survey = require('../services/survey');
 const votes = require('../services/votes');
 const { linkByPhone } = require('../services/phoneLink');
 const { coAdminClubs } = require('../services/clubAccess');
-const { getPlan } = require('../services/plan');
+const { getPlan, hasMemberRoom } = require('../services/plan');
 const { clubStats } = require('../services/clubStats');
 const { sportReady, clubSport, profileLevel } = require('../services/sport');
 
@@ -249,6 +249,7 @@ player.post('/join/:token', async (req, res) => {
     if (!member) {
       const { willExceed } = await limitBody(club.host_id, 1);
       if (willExceed) throw badRequest('This club is full right now. Please contact the host.', 403);
+      if (!(await hasMemberRoom(club, 'fixed'))) throw badRequest('This club is full right now. Please contact the host.', 403, 'member_limit');
       const { data: created, error } = await supabase
         .from('club_members')
         .insert({
@@ -683,6 +684,10 @@ player.get('/clubs/:clubId/rankings', async (req, res) => {
     const { data: me, error } = await supabase.from('club_members').select('id, clubs(id)').eq('club_id', clubId).eq('user_id', req.hostId).maybeSingle();
     if (error) throw error;
     if (!me || !me.clubs) return notFound(res, 'Club');
+    // The club's plan decides whether rankings are on (Advanced+).
+    const { data: owner } = await supabase.from('clubs').select('host_id').eq('id', clubId).single();
+    const plan = await getPlan(owner.host_id);
+    if (plan.features_enforced && !plan.features.rankings) return res.status(402).json({ error: 'Rankings are not on for this club.', code: 'feature_locked', feature: 'rankings', min_tier: 'advanced' });
     res.json({ ...(await clubStats({ id: clubId }, req.query)), me: me.id });
   } catch (err) {
     fail(res, err);

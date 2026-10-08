@@ -31,6 +31,10 @@ export default function MembersPage() {
     () => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])),
     [club?.id]
   );
+  // Official / guest places on the club's plan (GET /api/clubs/:id -> member_room).
+  const { data: clubInfo } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}`).catch(() => null) : Promise.resolve(null)), [club?.id, members?.length]);
+  const room = clubInfo?.member_room;
+  const placeText = (r) => (r && r.limit != null ? t('plan.places', { used: r.used, limit: r.limit }) : null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [busy, setBusy] = useState(false);
@@ -145,9 +149,9 @@ export default function MembersPage() {
       />
 
       <KpiRow cols={5}>
-        <StatTile icon="🏠" label={t('requests.tabFixed')} value={fixedRows.length} sub={t('memx.activeN', { n: activeFixed.length })} onClick={() => pickTab('fixed')} active={tab === 'fixed'} />
+        <StatTile icon="🏠" label={t('requests.tabFixed')} value={fixedRows.length} sub={placeText(room?.fixed) || t('memx.activeN', { n: activeFixed.length })} onClick={() => pickTab('fixed')} active={tab === 'fixed'} />
         <StatTile icon="⭐" label="VIP" value={vipCount} tone="text-amber-300" sub={t('memx.vipSub')} />
-        <StatTile icon="🤝" label={t('requests.tabGuest')} value={guestRows.length} tone="text-sky-300" sub={t('memx.priorityN', { n: guestRows.filter((m) => m.guest_perk).length })} onClick={() => pickTab('guest')} active={tab === 'guest'} />
+        <StatTile icon="🤝" label={t('requests.tabGuest')} value={guestRows.length} tone="text-sky-300" sub={placeText(room?.guest) || t('memx.priorityN', { n: guestRows.filter((m) => m.guest_perk).length })} onClick={() => pickTab('guest')} active={tab === 'guest'} />
         <StatTile icon="📝" label={t('memx.waiting')} value={pending.length} tone={pending.length ? 'text-yellow-300' : 'text-white'} sub={pending.length ? t('memx.needReview') : t('memx.nothing')} onClick={() => pickTab('waiting')} active={tab === 'waiting'} />
         <StatTile icon="🎂" label={t('memx.birthdays')} value={bdays.length} tone="text-pink-300" sub={bdays.slice(0, 2).map((m) => `${m.full_name.split(' ').pop()} ${m.birth_date.slice(8, 10)}/${m.birth_date.slice(5, 7)}`).join(', ') || '—'} />
       </KpiRow>

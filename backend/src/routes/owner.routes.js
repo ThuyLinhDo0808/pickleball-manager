@@ -4,7 +4,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, isUuid } = require('../utils/respond');
 const { fetchAll } = require('../services/clubStats');
-const { TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
+const { TIERS, CLUB_LIMIT, CAPACITY, forgetPlan } = require('../services/plan');
 const billing = require('../services/billing');
 const owner = require('../services/owner');
 const S = require('../services/ownerStats');
@@ -281,6 +281,7 @@ router.patch('/hosts/:id/subscription', wrap(async (req, res) => {
   if (patch.social_manager) patch.social_manager_requested_at = null;
   const { data: after, error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', u.id).select().single();
   if (error) throw error;
+  forgetPlan(u.id);
   const entry = await owner.audit(req, { action: 'subscription.update', host: u, oldValue: pickSub(before), newValue: pickSub(after), note: String(b.note || '').trim() || null });
   res.json({ subscription: pickSub(after), audit_id: entry?.id || null });
 }));
@@ -433,6 +434,7 @@ router.post('/audit/:id/undo', wrap(async (req, res) => {
     : same(now, entry.new_value);
   if (!unchanged) throw fail(409, 'Changed again since — undo the newer change first, or edit by hand.', 'changed_since');
   await how.restore(entry.target_host_id, entry.old_value);
+  forgetPlan(entry.target_host_id);
   const { error } = await supabase.from('owner_audit_logs').update({ undone_at: new Date().toISOString() }).eq('id', entry.id);
   if (error) throw error;
   const u = await loadHost(entry.target_host_id).catch(() => ({ id: entry.target_host_id, email: entry.target_email }));

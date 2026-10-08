@@ -187,6 +187,7 @@ async function joinFromSurvey(token, body) {
     if (error) throw error;
     member = data;
   } else {
+    await require('./plan').assertMemberRoom({ id: event.club_id, host_id: event.host_id }, 'guest');
     const { data, error } = await supabase
       .from('club_members')
       .insert({

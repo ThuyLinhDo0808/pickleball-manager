@@ -6,9 +6,12 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 
-// Clubs each plan may own (kept in step with backend services/plan.js).
-export const CLUB_LIMIT = { free: 1, basic: 3, standard: 10, pro: null };
-const TIERS = ['free', 'basic', 'standard', 'pro'];
+import { HIGHLIGHTS } from '@/lib/planFeatures';
+
+// Fallback before the plan has loaded; the real catalog comes from GET /api/host/plan.
+const DEFAULT_TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
+const DEFAULT_LIMITS = { free: { clubs: 1, fixed: 8, guest: 10 }, basic: { clubs: 1, fixed: 16, guest: 20 }, standard: { clubs: 2, fixed: 50, guest: 100 }, advanced: { clubs: 3, fixed: 100, guest: 200 }, pro: { clubs: null, fixed: null, guest: null } };
+export const CLUB_LIMIT = Object.fromEntries(DEFAULT_TIERS.map((t) => [t, DEFAULT_LIMITS[t].clubs]));
 
 export const atClubLimit = (plan) => !!plan?.enforced && plan.club_limit != null && plan.clubs_owned >= plan.club_limit;
 
@@ -156,8 +159,10 @@ export function UpgradeModal({ open, onClose }) {
   const paid = !plan?.self_serve; // upgrades go through a bank transfer
   const pending = plan?.pending_payments?.tier;
   const close = () => { req.reset(); setPicking(null); onClose(); };
+  const TIERS = plan?.catalog?.tiers || DEFAULT_TIERS;
+  const LIMITS = plan?.catalog?.limits || DEFAULT_LIMITS;
   function downgrade(tier) {
-    if (window.confirm(t('plan.downConfirm', { tier: tier.toUpperCase(), n: CLUB_LIMIT[tier] ?? '∞' }))) req.send({ tier });
+    if (window.confirm(t('plan.downConfirm', { tier: tier.toUpperCase(), n: LIMITS[tier]?.clubs ?? '∞' }))) req.send({ tier });
   }
   return (
     <Modal open={open} title={`💎 ${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`} onClose={close}>
@@ -173,36 +178,46 @@ export function UpgradeModal({ open, onClose }) {
       {paid && pending && req.done !== 'downgraded' && (
         <div className="mb-3"><PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => { setPicking(null); req.cancel('upgrade_request'); }} /></div>
       )}
-      <div className="grid grid-cols-2 gap-2 mb-3">
+      <div className="grid sm:grid-cols-2 gap-2 mb-3">
         {TIERS.map((tier) => {
           const isCurrent = tier === current;
           const higher = TIERS.indexOf(tier) > TIERS.indexOf(current);
+          const lim = LIMITS[tier] || {};
+          const n = (v) => (v == null ? '∞' : v);
           return (
-            <div key={tier} className={`rounded-xl border p-3 ${isCurrent ? 'border-lime-400 bg-lime-400/5' : 'border-navy-600'}`}>
-              <div className="text-white font-bold uppercase">{tier}</div>
-              <div className="text-gray-300 text-sm">{CLUB_LIMIT[tier] == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: CLUB_LIMIT[tier] })}</div>
-              {paid && tier !== 'free' && plan?.prices?.[tier] != null && (
-                <div className="text-amber-200 text-xs">{t('plan.perMonth', { price: formatVnd(plan.prices[tier]) })}</div>
-              )}
-              {isCurrent ? (
-                <>
-                  <div className="text-lime-300 text-xs mt-2">✓ {t('plan.current')}</div>
-                  {plan?.tier_paid_until && <div className="text-gray-400 text-[11px]">{t('plan.paidUntil', { date: fmtDate(plan.tier_paid_until) })}</div>}
-                  {paid && tier !== 'free' && (
-                    <button type="button" className="btn-secondary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{t('plan.renew')}</button>
-                  )}
-                </>
-              ) : higher ? (
-                <button type="button" className="btn-primary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => (paid ? setPicking(tier) : req.send({ tier }))}>
-                  {plan?.self_serve ? t('plan.switchTo') : t('plan.requestTo')}
-                </button>
-              ) : CLUB_LIMIT[tier] != null && (plan?.clubs_owned ?? 0) > CLUB_LIMIT[tier] ? (
-                <p className="text-gray-500 text-[11px] mt-2 leading-snug">{t('plan.downBlocked', { owned: plan?.clubs_owned ?? 0, n: CLUB_LIMIT[tier] })}</p>
-              ) : (
-                <button type="button" className="btn-secondary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => downgrade(tier)}>
-                  ↓ {t('plan.downTo')}
-                </button>
-              )}
+            <div key={tier} className={`relative rounded-xl border p-3 flex flex-col ${isCurrent ? 'border-lime-400 bg-lime-400/5' : tier === 'standard' ? 'border-amber-300/60' : 'border-navy-600'}`}>
+              {tier === 'standard' && !isCurrent && <span className="absolute -top-2 right-2 rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-bold text-navy-950">{t('plan.popular')}</span>}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-white font-bold uppercase">{tier}</span>
+                <span className="text-amber-200 text-xs font-semibold">{tier === 'free' ? t('plan.freeLabel') : plan?.prices?.[tier] != null ? t('plan.perMonth', { price: formatVnd(plan.prices[tier]) }) : ''}</span>
+              </div>
+              <div className="text-gray-400 text-xs mt-0.5">{t(`plan.for_${tier}`)}</div>
+              <ul className="text-gray-200 text-xs mt-2 space-y-0.5">
+                <li>🏠 {lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</li>
+                <li>👥 {lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: n(lim.fixed), guest: n(lim.guest) })}</li>
+                {(HIGHLIGHTS[tier] || []).map((k) => <li key={k} className="text-gray-300">✓ {t(`plan.${k}`)}</li>)}
+              </ul>
+              <div className="mt-auto pt-2">
+                {isCurrent ? (
+                  <>
+                    <div className="text-lime-300 text-xs">✓ {plan?.trial ? t('plan.trialCurrent', { date: fmtDate(plan.trial.ends_on) }) : t('plan.current')}</div>
+                    {!plan?.trial && plan?.tier_paid_until && <div className="text-gray-400 text-[11px]">{t('plan.paidUntil', { date: fmtDate(plan.tier_paid_until) })}</div>}
+                    {paid && tier !== 'free' && (
+                      <button type="button" className="btn-secondary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{plan?.trial ? t('plan.buyThis') : t('plan.renew')}</button>
+                    )}
+                  </>
+                ) : higher ? (
+                  <button type="button" className="btn-primary !py-1 !px-2 text-xs w-full" disabled={req.busy} onClick={() => (paid ? setPicking(tier) : req.send({ tier }))}>
+                    {plan?.self_serve ? t('plan.switchTo') : t('plan.requestTo')}
+                  </button>
+                ) : lim.clubs != null && (plan?.clubs_owned ?? 0) > lim.clubs ? (
+                  <p className="text-gray-500 text-[11px] leading-snug">{t('plan.downBlocked', { owned: plan?.clubs_owned ?? 0, n: lim.clubs })}</p>
+                ) : (
+                  <button type="button" className="btn-secondary !py-1 !px-2 text-xs w-full" disabled={req.busy} onClick={() => downgrade(tier)}>
+                    ↓ {t('plan.downTo')}
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

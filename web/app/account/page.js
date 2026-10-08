@@ -13,6 +13,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { exportClubBackup } from '@/lib/exportExcel';
+import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 
@@ -48,6 +49,7 @@ export default function AccountPage() {
 
   async function onBackup() {
     if (!club) return;
+    if (!hasFeature(planFor(club, plan), 'full_export')) return lockedNotice('full_export');
     setBackupBusy(true);
     try {
       const [members, events, rankings] = await Promise.all([
@@ -123,22 +125,27 @@ export default function AccountPage() {
 
       <div className="flex flex-col">
         <SettingsSection id="plan" icon="💎" tone="amber" title={t('acct.s_plan')} description={t('acct.planHint')}>
-          {usage ? (
+          {plan ? (
             <>
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
                   <div className="text-gray-400 text-xs uppercase tracking-wide">{t('acct.currentPlan')}</div>
-                  <div className="text-white text-2xl font-bold uppercase">{sub.tier}</div>
+                  <div className="text-white text-2xl font-bold uppercase">{plan.tier}</div>
                 </div>
-                <div className="text-right">
-                  <div className="text-white font-semibold tabular-nums">{usage.used}/{usage.capacity_limit}</div>
-                  <div className="text-gray-400 text-xs">{t('acct.usageLabel')}</div>
+                <div className="text-right text-sm">
+                  <div className="text-white font-semibold">
+                    {plan.limits?.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: plan.limits.fixed, guest: plan.limits.guest })}
+                  </div>
+                  <div className="text-gray-400 text-xs">{t('plan.perClub')}</div>
                 </div>
               </div>
-              <div className="w-full bg-navy-900 rounded-full h-2.5 mt-3 overflow-hidden">
-                <div className={`h-2.5 rounded-full ${pct > 85 ? 'bg-red-400' : pct > 60 ? 'bg-amber-300' : 'bg-lime-400'}`} style={{ width: `${pct}%` }} />
-              </div>
-              <p className="text-gray-400 text-xs mt-2">{t('acct.usageLeft', { n: usage.remaining, pct })}</p>
+              {plan.trial ? (
+                <p className="mt-3 rounded-lg border border-amber-300/40 bg-amber-300/5 px-3 py-2 text-amber-200 text-sm">
+                  🎁 {t('plan.trialBanner', { tier: plan.trial.tier.toUpperCase(), date: plan.trial.ends_on.split('-').reverse().join('/') })}
+                </p>
+              ) : plan.tier_paid_until ? (
+                <p className="text-gray-400 text-xs mt-2">{t('plan.paidUntil', { date: plan.tier_paid_until.split('-').reverse().join('/') })}</p>
+              ) : null}
             </>
           ) : (
             <p className="text-gray-400 text-sm">{t('common.loading')}</p>

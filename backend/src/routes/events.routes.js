@@ -1,5 +1,5 @@
 const express = require('express');
-const { assertSocialManager } = require('../services/plan');
+const { assertSocialManager, assertFeature } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { actingHost, eventAccess, coAdminClubIds } = require('../services/clubAccess');
@@ -386,6 +386,14 @@ router.post('/', async (req, res) => {
   }
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
+  // Many club sessions at once (weekly schedule) is a Standard feature.
+  if (fields.club_id && ((dates && dates.length > 1) || weeks > 1)) {
+    try {
+      await assertFeature(hostId, 'weekly_schedule');
+    } catch (err) {
+      return res.status(err.status || 500).json({ error: err.message, code: err.code, feature: err.feature, min_tier: err.min_tier });
+    }
+  }
   const days = dates || Array.from({ length: weeks }, (_, i) => addDays(event_date, 7 * i));
   // The registration deadline keeps the same distance to each session as to the first.
   const dayMs = (d) => Date.parse(`${d}T00:00:00Z`);

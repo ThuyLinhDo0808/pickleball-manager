@@ -73,5 +73,6 @@ export const TIER_BADGE = {
   free: 'bg-navy-700 text-gray-300',
   basic: 'bg-sky-400/20 text-sky-200',
   standard: 'bg-violet-400/20 text-violet-200',
+  advanced: 'bg-emerald-400/20 text-emerald-200',
   pro: 'bg-amber-300 text-navy-950',
 };

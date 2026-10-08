@@ -77,7 +77,7 @@ export default function FinanceOverview() {
   const { data: finNow } = useLoad(() => (scope ? api.get(`/api/analytics/finance?${scope}&year=${thisYear}`) : Promise.resolve(null)), [scope, thisYear]);
   const { data: finYear } = useLoad(() => (scope && year !== thisYear ? api.get(`/api/analytics/finance?${scope}&year=${year}`) : Promise.resolve(null)), [scope, year, thisYear]);
   const fin = year === thisYear ? finNow : finYear;
-  const { data: pnl } = useLoad(() => (scope ? api.get(`/api/analytics/events-pnl?${scope}&year=${year}`) : Promise.resolve(null)), [scope, year]);
+  const { data: pnl } = useLoad(() => (scope ? api.get(`/api/analytics/events-pnl?${scope}&year=${year}`).catch((e) => (e.status === 402 ? 'locked' : Promise.reject(e))) : Promise.resolve(null)), [scope, year]);
   const { data: fund } = useLoad(() => (isClub && club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null)), [isClub, club?.id]);
 
   const isYear = view === 'year';
@@ -85,7 +85,8 @@ export default function FinanceOverview() {
   const income = periodCats.filter((c) => c.type === 'income');
   const expense = periodCats.filter((c) => c.type === 'expense');
   const periodTotal = (type) => periodCats.filter((c) => c.type === type).reduce((a, c) => a + c.amount, 0);
-  const pnlShown = (pnl || []).filter((e) => isYear || e.event_date.startsWith(ymPick));
+  const pnlLocked = pnl === 'locked';
+  const pnlShown = (Array.isArray(pnl) ? pnl : []).filter((e) => isYear || e.event_date.startsWith(ymPick));
   const yearLabel = t('fin.yearN', { y: year });
   const periodLabel = isYear ? yearLabel : `${Number(ymPick.slice(5))}/${ymPick.slice(0, 4)}`;
   const canNext = isYear ? year < thisYear : ymPick < thisMonth;
@@ -165,7 +166,8 @@ export default function FinanceOverview() {
             </span>
           )}
         </div>
-        {pnl && pnlShown.length === 0 && <p className="text-gray-400 text-sm">{t('fin.eventPnlNone')}</p>}
+        {pnlLocked && <LockedFeature feature="finance_reports" compact />}
+        {Array.isArray(pnl) && pnlShown.length === 0 && <p className="text-gray-400 text-sm">{t('fin.eventPnlNone')}</p>}
         {pnlShown.length > 0 && (
           <div className="table-wrap">
             <table className="w-full text-sm grid-table">

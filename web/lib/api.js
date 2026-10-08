@@ -28,6 +28,11 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
 
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
+  // An action ran into the plan (member limit, locked feature): explain it and offer the
+  // plans (components/PlanLimitNotice). Page loads (GET) handle 402 themselves.
+  if (res.status === 402 && method !== 'GET' && ['member_limit', 'feature_locked'].includes(data.code) && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pb:plan-limit', { detail: data }));
+  }
   // The app owner suspended this account: the shell shows a notice instead of the app.
   if (res.status === 423 && data.code === 'account_suspended' && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pb:suspended', { detail: { reason: data.reason, since: data.since } }));

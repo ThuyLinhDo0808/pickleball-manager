@@ -9,7 +9,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 
-const TIERS = ['free', 'basic', 'standard', 'pro'];
+const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
 
 // Plan, end dates, Social Manager and gift months, in one form.
 function PlanEditor({ host, onSaved }) {

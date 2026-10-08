@@ -80,7 +80,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null }) 
   // Three leaderboards: everyone in the club, the fixed members only, the guests only.
   const [group, setGroup] = useState('all');
 
-  const { data: stats, loading } = useLoad(
+  const { data: stats, loading, error } = useLoad(
     () => (statsUrl ? api.get(`${statsUrl}?period=${period}&date=${date}${group === 'all' ? '' : `&group=${group}`}`) : Promise.resolve(null)),
     [statsUrl, period, date, group]
   );
@@ -118,6 +118,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null }) 
       </div>
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
+      {error?.status === 402 && <p className="card text-gray-300 text-sm">💎 {t('plan.rankingsOff')}</p>}
 
       {!loading && top3.length > 0 && (
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 items-end">

@@ -3,7 +3,8 @@ const { supabase } = require('../supabase');
 const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
 const { forgetHost } = require('../middleware/auth');
-const { getPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
+const { getPlan, forgetPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
+const { LIMITS } = require('../services/planFeatures');
 
 const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText, emailReady } = require('../services/notify');
@@ -14,9 +15,22 @@ const { schemaStatus } = require('../services/schemaCheck');
 const BILLING_MIGRATION = '20261025090000_plan_payments.sql';
 const billingReady = async () => !(await schemaStatus()).missing_migrations.includes(BILLING_MIGRATION);
 
+// The first club with more active members of a type than `limits` allow, or null.
+async function clubsOverLimits(hostId, limits) {
+  const { data: clubs } = await supabase.from('clubs').select('id, name').eq('host_id', hostId);
+  for (const c of clubs || []) {
+    for (const type of ['fixed', 'guest']) {
+      if (limits[type] == null) continue;
+      const { count } = await supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('club_id', c.id).eq('is_active', true).eq('member_type', type);
+      if ((count || 0) > limits[type]) return { name: c.name, type, used: count };
+    }
+  }
+  return null;
+}
+
 const router = express.Router();
 const ALLOW_SELF_SERVE = process.env.ALLOW_TIER_SELF_SERVE === 'true';
-const TIERS = ['free', 'basic', 'standard', 'pro'];
+const TIERS = PLAN_TIERS;
 
 router.get('/me', async (req, res) => {
   const { data: user, error: uErr } = await supabase.from('users').select('*').eq('id', req.hostId).single();
@@ -51,7 +65,7 @@ router.patch('/subscription', async (req, res) => {
 // The Host's plan: tier, club limit and usage, Social Manager add-on.
 router.get('/plan', async (req, res) => {
   try {
-    res.json({ ...(await getPlan(req.hostId)), is_owner: billing.isAdmin(req.hostEmail) });
+    res.json({ ...(await getPlan(req.hostId, { fresh: true })), is_owner: billing.isAdmin(req.hostEmail) });
   } catch (err) {
     dbError(res, err);
   }
@@ -79,14 +93,20 @@ router.post('/plan/request', async (req, res) => {
         if (limit != null && current.clubs_owned > limit) {
           return res.status(409).json({ error: `The ${tier} plan allows ${limit} club(s); you own ${current.clubs_owned}. Delete clubs first.`, code: 'too_many_clubs', limit, owned: current.clubs_owned });
         }
+        // Every club must fit the smaller plan's member limits too.
+        const tooBig = await clubsOverLimits(req.hostId, LIMITS[tier]);
+        if (tooBig) {
+          return res.status(409).json({ error: `The ${tier} plan allows ${LIMITS[tier][tooBig.type]} ${tooBig.type === 'guest' ? 'guest' : 'official'} members per club; "${tooBig.name}" has ${tooBig.used}.`, code: 'too_many_members', club: tooBig.name, member_type: tooBig.type, limit: LIMITS[tier][tooBig.type], used: tooBig.used });
+        }
         const usage = await getUsage(req.hostId).catch(() => null);
         if (usage && usage.used > CAPACITY[tier]) {
           return res.status(409).json({ error: `The ${tier} plan allows ${CAPACITY[tier]} people; you manage ${usage.used}.`, code: 'over_capacity', limit: CAPACITY[tier], used: usage.used });
         }
         const { error } = await supabase.from('host_subscriptions').update({ tier, upgrade_requested_at: null, upgrade_requested_tier: null }).eq('host_id', req.hostId);
         if (error) throw error;
+        forgetPlan(req.hostId);
         await notifyFeedback({ message: `[Gói] Hạ gói ${current.tier} → ${tier}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
-        return res.json({ applied: true, downgraded: true, plan: await getPlan(req.hostId) });
+        return res.json({ applied: true, downgraded: true, plan: await getPlan(req.hostId, { fresh: true }) });
       }
     }
     // Paid upgrades: an order with a transfer code; the plan switches on once the
@@ -110,7 +130,7 @@ router.post('/plan/request', async (req, res) => {
       const money = `${payment.months} tháng · ${payment.amount.toLocaleString('vi-VN')}đ · nội dung CK ${payment.ref}`;
       await notifyFeedback({ message: `[Yêu cầu gói] ${what} — ${money}. Khi nhận được tiền, vào trang Quản trị → Thanh toán gói để xác nhận.`, contact: req.hostEmail, page: '/admin/payments', userEmail: req.hostEmail }).catch(() => {});
     }
-    res.json({ applied: ALLOW_SELF_SERVE, payment, plan: await getPlan(req.hostId) });
+    res.json({ applied: ALLOW_SELF_SERVE, payment, plan: await getPlan(req.hostId, { fresh: true }) });
   } catch (err) {
     dbError(res, err);
   }
@@ -149,7 +169,7 @@ router.post('/plan/cancel', async (req, res) => {
     if (kind !== 'social_manager' && (await billingReady())) await billing.cancelOrders(req.hostId, kind === 'upgrade_request' ? 'tier' : 'social_manager');
     const what = { social_manager: 'Huỷ Social Manager', social_manager_request: 'Huỷ yêu cầu Social Manager', upgrade_request: 'Huỷ yêu cầu nâng cấp' }[kind];
     await notifyFeedback({ message: `[Gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
-    res.json({ plan: await getPlan(req.hostId) });
+    res.json({ plan: await getPlan(req.hostId, { fresh: true }) });
   } catch (err) {
     dbError(res, err);
   }

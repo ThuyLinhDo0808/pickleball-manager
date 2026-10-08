@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
+const { requireFeature } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { actingHost } = require('../services/clubAccess');
@@ -242,7 +243,7 @@ router.post('/:tournamentId/public', async (req, res) => {
 });
 
 // Start scoring a match live (or pick up the one already running).
-router.post('/:tournamentId/start', async (req, res) => {
+router.post('/:tournamentId/start', requireFeature('tournaments', (req) => req.tournament.host_id), async (req, res) => {
   const t = req.tournament;
   try {
     const { match_id, sub_match_id } = req.body;

@@ -7,7 +7,7 @@ const { vietqrUrl } = require('./payment');
 const { todayYmd } = require('./memberships');
 
 // Monthly price (VND). PLAN_PRICE_<NAME> overrides one, e.g. PLAN_PRICE_BASIC=99000.
-const DEFAULT_PRICES = { basic: 99000, standard: 249000, pro: 499000, social_manager: 89000 };
+const DEFAULT_PRICES = { ...require('./planFeatures').PRICES, social_manager: 89000 };
 const MONTH_CHOICES = [1, 3, 6, 12];
 
 function prices() {
@@ -119,6 +119,7 @@ async function confirmOrder(orderId, adminEmail) {
     .select()
     .single();
   if (oErr) throw oErr;
+  require('./plan').forgetPlan(order.host_id);
   return { order: done, subscription: patch };
 }
 

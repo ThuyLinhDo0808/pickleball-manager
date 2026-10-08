@@ -13,6 +13,9 @@ import FeedbackButton from '@/components/FeedbackButton';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
 import { api } from '@/lib/api';
+import LockedFeature from '@/components/LockedFeature';
+import PlanLimitNotice from '@/components/PlanLimitNotice';
+import { featureForPath, planFor, hasFeature } from '@/lib/planFeatures';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -292,6 +295,13 @@ export default function AppShell({ children }) {
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
 
+  // Pages the club's plan doesn't include: a 💎 in the menu, an upgrade card instead of the page.
+  const clubPlan = planFor(workspace === 'club' ? club : null, plan);
+  const lockedHref = (href) => !hasFeature(clubPlan, featureForPath(href, workspace));
+  const pageFeature = featureForPath(pathname, workspace);
+  const pageLocked = !!pageFeature && !hasFeature(clubPlan, pageFeature);
+  const Gem = ({ href }) => (lockedHref(href) ? <span className="text-[11px]" title={t('plan.locked')} aria-label={t('plan.locked')}>💎</span> : null);
+
   const linkClass = (active, extra = '') =>
     `flex items-center gap-3 rounded-lg text-sm ${extra} ${active ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:bg-navy-800'}`;
 
@@ -370,7 +380,8 @@ export default function AppShell({ children }) {
                 <div className="ml-5 pl-3 border-l border-navy-700 flex flex-col gap-0.5 my-0.5">
                   {item.children.map((c) => (
                     <Link key={c.href} href={c.href} className={linkClass(navActive(c), 'px-3 py-1.5')}>
-                      {t(c.key)}
+                      <span className="flex-1">{t(c.key)}</span>
+                      <Gem href={c.href} />
                     </Link>
                   ))}
                 </div>
@@ -422,6 +433,8 @@ export default function AppShell({ children }) {
             {suspended.reason && <p className="text-red-200 text-sm mt-2">{t('owner.suspendedReason', { reason: suspended.reason })}</p>}
             <Link href="/home" className="btn-secondary text-sm mt-4 inline-block">{t('owner.suspendedHome')}</Link>
           </div>
+        ) : pageLocked && wsReady ? (
+          <LockedFeature feature={pageFeature} owner={!coAdmin} />
         ) : !wsReady || !workspace ? null : workspace === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
           <div className="max-w-lg mx-auto card mt-4">
             <SocialManagerPanel />
@@ -447,6 +460,7 @@ export default function AppShell({ children }) {
             {children}
           </>
         )}
+      <PlanLimitNotice />
       </main>
 
       {/* Mobile "More" sheet */}
@@ -469,6 +483,7 @@ export default function AppShell({ children }) {
                         >
                           <Icon name={c.icon} className="w-4 h-4 shrink-0" />
                           <span className="leading-tight">{t(c.key)}</span>
+                          <Gem href={c.href} />
                         </Link>
                       ))}
                     </div>
