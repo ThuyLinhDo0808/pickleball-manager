@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import EventCalendar, { KIND_ICON, LEGEND_STATUSES, STATUS_STYLE, hrefOf } from '@/components/EventCalendar';
@@ -121,6 +121,19 @@ export default function EventsPage() {
   const [date, setDate] = useState(todayYmd());
   const [showPast, setShowPast] = useState(false);
   const pickView = setView;
+  // Phones: the month is a list of the days that have something, and the week grid
+  // (7 narrow columns) is left out.
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const on = () => setPhone(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  useEffect(() => {
+    if (phone && view === 'week') setView('month');
+  }, [phone, view]);
 
   // Each club (and sport) its own colour; status shows as faded (done) / struck out (cancelled).
   const tones = useMemo(() => (isClub ? clubTones(clubs) : {}), [isClub, clubKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -200,7 +213,7 @@ export default function EventsPage() {
       </KpiRow>
 
       <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
-        <Segmented items={VIEWS} value={view} onChange={pickView} label={(v) => t(`cal.${v}`)} />
+        <Segmented items={phone ? VIEWS.filter((v) => v !== 'week') : VIEWS} value={view} onChange={pickView} label={(v) => t(`cal.${v}`)} />
         {view !== 'list' && (
           <>
             <div className="flex items-center gap-1">
@@ -238,7 +251,7 @@ export default function EventsPage() {
       {!loading && view !== 'list' && <EventCalendar view={view} date={date} events={all} onPickDay={openDay} onChanged={reload} />}
 
       {!loading && view !== 'list' && (
-        <div className="flex flex-wrap gap-3 mt-3 text-xs text-gray-400">
+        <div className="hidden sm:flex flex-wrap gap-3 mt-3 text-xs text-gray-400">
           {isClub && (clubs || []).length > 0
             ? [
                 ...(clubs || []).map((c) => (

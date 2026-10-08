@@ -1407,7 +1407,7 @@ export const vi = {
   inventory: {
     kind_use: 'Lấy ra dùng',
     title: 'Kho bóng & vật tư',
-    hint: 'Nhập bóng khi mua. Sau mỗi buổi chơi bấm "Ghi buổi chơi": số bóng hỏng và số bóng mới lấy ra — bảng tự tính bóng cũ, bóng đã dùng và số còn lại trong kho.',
+    hint: 'Nhập bóng khi mua. Cuối mỗi ngày chơi bấm "Thống kê bóng cuối ngày": số bóng hỏng và số bóng mới lấy ra — bảng tự tính bóng cũ, bóng đã dùng và số còn lại trong kho.',
     addItem: 'Thêm loại bóng',
     name: 'Tên loại',
     namePh: 'VD: Franklin X-40',
@@ -1430,8 +1430,8 @@ export const vi = {
     kind_retire: 'Hỏng/thay',
     kind_adjust: 'Điều chỉnh',
     deleteConfirm: 'Xóa dòng này? Khoản chi quỹ đi kèm (nếu có) sẽ bị hủy.',
-    logSession: 'Ghi buổi chơi',
-    editSession: 'Sửa buổi {d}',
+    logSession: 'Thống kê bóng cuối ngày',
+    editSession: 'Sửa thống kê ngày {d}',
     newOut: 'Bóng mới lấy ra',
     brokenNow: 'Bóng hỏng buổi này',
     brokenHint: 'Đang dùng {n} quả bóng cũ — bóng mới lấy ra hôm nay hỏng cũng tính vào đây',
@@ -1444,7 +1444,7 @@ export const vi = {
     row_bought: 'Số bóng đã mua',
     row_left: 'Còn lại',
     inPlay: 'Đang dùng',
-    noLog: 'Chưa ghi buổi nào — sau mỗi buổi bấm "Ghi buổi chơi".',
+    noLog: 'Chưa có thống kê nào — cuối mỗi ngày chơi bấm "Thống kê bóng cuối ngày".',
     invariant: 'Bóng mới + bóng cũ + bóng hỏng + còn lại = số bóng đã mua. Bấm vào ngày để sửa buổi đó.',
     kind_broken: 'Hỏng',
     brokenTooMany: 'Buổi này chỉ có {n} quả được chơi ({old} bóng cũ + {fresh} bóng mới lấy ra) — số bóng hỏng không thể lớn hơn.',
@@ -1577,6 +1577,7 @@ export const vi = {
     balance: 'Số dư',
   },
   cal: {
+    noneMonth: 'Tháng này chưa có lịch nào.',
     upcoming: 'Sắp diễn ra',
     allClubs: 'Tất cả CLB',
     list: 'Danh sách',
@@ -2061,6 +2062,7 @@ export const vi = {
   // Words that change in a badminton club (see lib/i18n/core.js).
   sport: {
     badminton: {
+      'inventory.logSession': 'Thống kê cầu cuối ngày',
       'inventory.recordExpense': 'Ghi vào sổ thu chi (Mua cầu)',
       'inventory.row_bought': 'Số cầu đã mua',
       'inventory.row_used': 'Cầu đã dùng',
@@ -2094,7 +2096,7 @@ export const vi = {
       'league.builderHint': 'Trợ lý chia đội tính tổng trình độ của từng đội để các đội ngang sức, và chia đều nam / nữ. Có thể đổi tên đội và chuyển người sau đó.',
       'league.spread': 'Chênh lệch tổng trình độ giữa đội mạnh nhất và yếu nhất: {spread}',
       'inventory.title': 'Kho cầu & vật tư',
-      'inventory.hint': 'Nhập cầu khi mua. Sau mỗi buổi chơi bấm "Ghi buổi chơi": số cầu hỏng và số cầu mới lấy ra — bảng tự tính cầu cũ, cầu đã dùng và số còn lại trong kho.',
+      'inventory.hint': 'Nhập cầu khi mua. Cuối mỗi ngày chơi bấm "Thống kê cầu cuối ngày": số cầu hỏng và số cầu mới lấy ra — bảng tự tính cầu cũ, cầu đã dùng và số còn lại trong kho.',
       'inventory.addItem': 'Thêm loại cầu',
       'inventory.namePh': 'VD: Cầu Thành Công (ống 12 quả)',
       'inventory.none': 'Chưa có loại cầu nào.',

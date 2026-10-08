@@ -198,6 +198,7 @@ Số người tối đa phụ thuộc gói dịch vụ của Host (xem [8.4](#84
 Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh tab ở đầu trang** (*Lịch sự kiện · Tạo lịch chơi hàng tuần · Giải đấu · Tạo kèo*) để chuyển qua lại một chạm.
 
 - **Lịch sự kiện** có 3 ô số liệu: *buổi tháng này* (bao nhiêu buổi đã diễn ra), *7 ngày tới* (kèm buổi gần nhất) và *giải sắp tới*. (Ô *tỷ lệ lấp đầy* chỗ chỉ còn ở không gian Xé Vé, thay cho ô giải đấu — quy mô CLB không cần.) Thanh công cụ (Danh sách / Tháng / Tuần / Ngày, ‹ Hôm nay ›, lịch nhỏ) nằm trong một khung riêng; nút *Tạo lịch chơi hàng tuần* và *＋ Tạo kèo* ở góc phải. Ở chế độ **Danh sách**, mỗi buổi là thẻ có ô ngày bên trái, giờ, địa điểm, CLB và **thanh lấp đầy** số chỗ.
+- **Trên điện thoại**, chế độ **Tháng** không còn là lưới 7 cột: chỉ liệt kê **những ngày có lịch** — ô ngày bên trái (thứ, ngày; *Hôm nay* tô xanh, ngày đã qua mờ đi), bên phải từng buổi (giờ, địa điểm, số chỗ x/y), bấm vào để mở buổi; bấm ô ngày để xem dòng thời gian của ngày đó. Ẩn chế độ *Tuần* và phần chú thích màu trên điện thoại. Máy tính giữ nguyên lưới tháng.
 - **Tạo kèo / Tạo lịch hàng tuần / Sửa buổi**: trên máy tính, bên phải form có khung **Xem trước** luôn hiện khi cuộn: tên, ngày (hoặc *số buổi* sẽ tạo của lịch hàng tuần), giờ, địa điểm + số sân, số chỗ, phí, hạn huỷ, có mở link đăng ký không, và **thu tối đa nếu kín chỗ**. Nút *Tạo* / *Huỷ* nằm trong khung này.
 
 | Mục | Đường dẫn | Dùng để |
@@ -351,7 +352,7 @@ Mục Tài chính có các tab:
 
 | Tab | Nội dung |
 |---|---|
-| **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 3 ô **Thu – Chi – Còn lại** của đúng kỳ đang chọn · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
+| **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 2 ô **Thu – Chi** của đúng kỳ đang chọn (không còn ô *Còn lại*) · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
 | **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Thêm khoản **Thu/Chi**, nút **🧮 Bảng tính quỹ tháng** · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
@@ -374,7 +375,7 @@ Mục Tài chính có các tab:
 
 Các khoản tự động **không huỷ được từ Sổ thu chi**. Muốn sửa thì sửa tại nơi tạo ra nó, để sổ luôn khớp với gói, kho và danh sách kèo.
 
-Giao diện Tài chính dạng thẻ, gọn: khối **Số dư quỹ**, **một** bộ 3 ô thu – chi – còn lại theo kỳ đang chọn (không lặp lại số tháng này / cả năm), biểu đồ thu, chi theo tháng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng thu chi từng buổi / kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
+Giao diện Tài chính dạng thẻ, gọn: khối **Số dư quỹ**, **một** cặp ô thu – chi theo kỳ đang chọn (trên điện thoại nằm cạnh nhau), biểu đồ thu, chi theo tháng, thanh **nguồn thu / khoản chi theo hạng mục** (%), rồi các khoản chờ xác nhận và bảng thu chi từng buổi / kèo. Ô nhập tiền nhận **mọi số nguyên** (không bị ép bước 1.000đ).
 
 **Sổ thu chi chỉ thêm.** Số tiền, loại và chủ sở hữu của một khoản không bao giờ bị ghi đè (database chặn bằng trigger). Nút **Sửa**: đổi hạng mục, ngày, ghi chú thì sửa trực tiếp; đổi **số tiền hoặc loại** thì app tự huỷ dòng cũ (ghi "edited", trỏ tới dòng mới) và ghi dòng mới thay thế — luôn truy vết được.
 
@@ -384,7 +385,7 @@ Link cũ `/club/fund`, `/club/plans`, `/club/inventory` tự chuyển sang trang
 Có ở cả **CLB** và **Kèo Xé Vé** (kho riêng của người tổ chức, không thuộc CLB nào).
 - **Thêm loại bóng** gồm tên (ví dụ Franklin X-40), số lỗ (40 lỗ ngoài trời, 26 lỗ trong nhà…) và đơn vị.
 - **Nhập bóng**: số lượng và đơn giá. Ở CLB có thể tick "Ghi vào sổ thu chi (Mua bóng)" để tự tạo khoản chi. **Điều chỉnh tồn**: số âm khi kiểm kho thiếu.
-- **Ghi buổi chơi** (sau mỗi buổi): *bóng hỏng buổi này* (bóng cũ đang dùng, hoặc bóng mới lấy ra hôm nay mà hỏng luôn — buổi đầu tiên cũng ghi được) và *bóng mới lấy ra* từ kho. Bóng lấy ra hôm trước mà hôm nay vẫn dùng được là **bóng cũ** — không cần ghi lại; bóng cũ không dùng được nữa thì ghi vào *bóng hỏng* và lấy bóng mới.
+- **Thống kê bóng cuối ngày** (cuối mỗi ngày chơi): *bóng hỏng buổi này* (bóng cũ đang dùng, hoặc bóng mới lấy ra hôm nay mà hỏng luôn — buổi đầu tiên cũng ghi được) và *bóng mới lấy ra* từ kho. Bóng lấy ra hôm trước mà hôm nay vẫn dùng được là **bóng cũ** — không cần ghi lại; bóng cũ không dùng được nữa thì ghi vào *bóng hỏng* và lấy bóng mới.
 - **Bảng bóng** của mỗi loại, mỗi cột là một buổi (các buổi CLB / kèo đã diễn ra từ lần đầu lấy bóng, cộng các ngày có ghi): **Bóng mới · Bóng cũ · Bóng hỏng** (cộng dồn) **· Bóng đã dùng** (đã lấy ra khỏi kho, cộng dồn) **· Số bóng đã mua · Còn lại** (trong kho). Luôn đúng: *mới + cũ + hỏng + còn lại = đã mua*. Ví dụ kho 48 quả: 4/10 lấy 2 quả mới → còn 46; 6/10 vẫn chơi 2 quả đó (bóng cũ) → còn 46; 8/10 hai quả cũ hỏng, lấy 2 quả mới → hỏng 2, đã dùng 4, còn 44. Bấm vào ngày ở đầu cột để sửa buổi đó.
 - Ô tổng: còn lại trong kho, đang dùng, bóng hỏng, đã chi. Không còn phần độ bền / so sánh chi phí mỗi quả mỗi buổi (không cần ở quy mô CLB).
 - App không cho tồn kho âm, không cho lấy bóng mới nhiều hơn số đang có trong kho ở ngày đó, và không cho ghi hỏng nhiều hơn số bóng được chơi trong buổi (bóng cũ + bóng mới lấy ra) — báo lỗi bằng tiếng Việt ngay trong form.
@@ -740,7 +741,7 @@ Host tạo buổi lặp lại hằng tuần, đặt phí khách (ví dụ 130.00
 - **Team League**: **Tạo giải đấu** → *Đồng đội* → giữ 3 trận phụ đôi nam / đôi nữ / đôi nam nữ, luật *thắng 2/3* → *Chọn tất cả* → số đội = 3 → *Chia đội cân bằng* → đổi tên đội → *Tạo giải & xếp lịch* → mỗi lượt đấu bấm từng trận phụ để chọn người và nhập tỷ số.
 
 ### Theo dõi chi phí bóng
-**Tài chính → Kho bóng** → thêm loại bóng → *Nhập bóng* (tick ghi vào sổ thu chi) → sau mỗi buổi bấm *Ghi buổi chơi* (bóng hỏng, bóng mới lấy ra) → xem bảng bóng: mới / cũ / hỏng / đã dùng / đã mua / còn lại.
+**Tài chính → Kho bóng** → thêm loại bóng → *Nhập bóng* (tick ghi vào sổ thu chi) → cuối mỗi ngày chơi bấm *Thống kê bóng cuối ngày* (bóng hỏng, bóng mới lấy ra) → xem bảng bóng: mới / cũ / hỏng / đã dùng / đã mua / còn lại.
 
 ---
 
