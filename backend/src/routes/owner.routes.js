@@ -4,7 +4,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, isUuid } = require('../utils/respond');
 const { fetchAll } = require('../services/clubStats');
-const { TIERS, CLUB_LIMIT, CAPACITY, forgetPlan } = require('../services/plan');
+const { TIERS, CLUB_LIMIT, CAPACITY, forgetPlan, memberRoom } = require('../services/plan');
 const billing = require('../services/billing');
 const owner = require('../services/owner');
 const S = require('../services/ownerStats');
@@ -199,7 +199,7 @@ async function loadSub(id) {
 router.get('/hosts/:id', wrap(async (req, res) => {
   const u = await loadHost(req.params.id);
   const [{ data: clubs }, { data: xeve }, { data: sub }, { data: prof }, { data: usage }, { data: notes }, { data: orders }, { data: log }] = await Promise.all([
-    supabase.from('clubs').select('id, name, sport, created_at').eq('host_id', u.id).order('created_at'),
+    supabase.from('clubs').select('*').eq('host_id', u.id).order('created_at'),
     supabase.from('events').select('id').eq('host_id', u.id).is('club_id', null).neq('kind', 'meeting'),
     supabase.from('host_subscriptions').select('*').eq('host_id', u.id).maybeSingle(),
     supabase.from('player_profiles').select('user_id, phone, full_name').eq('user_id', u.id).maybeSingle(),
@@ -209,9 +209,8 @@ router.get('/hosts/:id', wrap(async (req, res) => {
     supabase.from('owner_audit_logs').select('*').eq('target_host_id', u.id).order('created_at', { ascending: false }).limit(50),
   ]);
   // Member counts per club (a number only — no member details here).
-  const counts = await Promise.all(
-    (clubs || []).map((c) => supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('club_id', c.id).then((r) => r.count || 0)),
-  );
+  // Member counts and places per club (numbers only — no member details here).
+  const counts = await Promise.all((clubs || []).map((c) => memberRoom(c).catch(() => null)));
   const ctx = {
     subOf: new Map(sub ? [[u.id, sub]] : []),
     profOf: new Map(prof ? [[u.id, prof]] : []),
@@ -223,7 +222,7 @@ router.get('/hosts/:id', wrap(async (req, res) => {
   const seen = await lastSignIns([u.id]);
   res.json({
     host: { ...hostRow(u, ctx), last_sign_in_at: seen.get(u.id) || null },
-    clubs: (clubs || []).map((c, i) => ({ ...c, members: counts[i] })),
+    clubs: (clubs || []).map((c, i) => ({ id: c.id, name: c.name, sport: c.sport, created_at: c.created_at, members: counts[i] ? counts[i].fixed.used + counts[i].guest.used : 0, room: counts[i] })),
     notes: notes || [],
     orders: (orders || []).map((o) => ({ ...billing.present(o), confirmed_at: o.confirmed_at, confirmed_by: o.confirmed_by })),
     audit: log || [],
@@ -323,6 +322,60 @@ router.post('/hosts/:id/notes', wrap(async (req, res) => {
   res.status(201).json(data);
 }));
 
+// ---- Clubs: extra member places, change of owner -----------------------------------
+
+async function loadClub(id) {
+  if (!isUuid(id)) throw fail(404, 'Club not found.');
+  const { data, error } = await supabase.from('clubs').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!data) throw fail(404, 'Club not found.');
+  return data;
+}
+const placesOf = (c) => ({ extra_fixed_members: Number(c.extra_fixed_members) || 0, extra_guest_members: Number(c.extra_guest_members) || 0 });
+
+// A member licence: extra official / guest places for one club on top of its plan.
+// Body: { extra_fixed_members, extra_guest_members, note }
+router.patch('/clubs/:id/member-addon', wrap(async (req, res) => {
+  const club = await loadClub(req.params.id);
+  const patch = {};
+  for (const k of ['extra_fixed_members', 'extra_guest_members']) {
+    if (!(k in (req.body || {}))) continue;
+    const n = Number(req.body[k]);
+    if (!Number.isInteger(n) || n < 0 || n > 100000) throw fail(400, `${k} must be a whole number ≥ 0.`);
+    patch[k] = n;
+  }
+  if (!Object.keys(patch).length) throw fail(400, 'Nothing to change.');
+  const { data, error } = await supabase.from('clubs').update(patch).eq('id', club.id).select('*').single();
+  if (error) throw error;
+  const host = await loadHost(club.host_id).catch(() => ({ id: club.host_id }));
+  const entry = await owner.audit(req, { action: 'club.member_addon', host, oldValue: { club_id: club.id, club_name: club.name, ...placesOf(club) }, newValue: { club_id: club.id, club_name: club.name, ...placesOf(data) }, note: String(req.body.note || '').trim() || null });
+  res.json({ ...placesOf(data), room: await memberRoom(data), audit_id: entry?.id || null });
+}));
+
+// Hand the club to another account (by email). Its sessions, money, tournaments, ball
+// store and staff grants move with it. Body: { email, note }
+router.post('/clubs/:id/transfer', wrap(async (req, res) => {
+  const club = await loadClub(req.params.id);
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!email) throw fail(400, 'Email of the new owner is required.', 'email_required');
+  const { data: next } = await supabase.from('users').select('id, email').ilike('email', email).maybeSingle();
+  if (!next) throw fail(404, 'No account with that email. The new owner must sign up first.', 'no_account');
+  if (next.id === club.host_id) throw fail(400, 'That account already owns this club.', 'same_owner');
+  const prev = await loadHost(club.host_id).catch(() => ({ id: club.host_id, email: null }));
+  const { error } = await supabase.rpc('owner_transfer_club', { p_club: club.id, p_new_host: next.id });
+  if (error) throw error;
+  forgetPlan(prev.id);
+  forgetPlan(next.id);
+  const entry = await owner.audit(req, {
+    action: 'club.transfer',
+    host: prev,
+    oldValue: { club_id: club.id, club_name: club.name, owner_email: prev.email },
+    newValue: { club_id: club.id, club_name: club.name, owner_email: next.email, owner_id: next.id },
+    note: String(req.body?.note || '').trim() || null,
+  });
+  res.json({ club_id: club.id, from: prev.email, to: next.email, audit_id: entry?.id || null });
+}));
+
 // ---- Plan payments ---------------------------------------------------------------
 
 // ?status=pending|paid|cancelled|all &from=&to= (YYYY-MM-DD, by order date)
@@ -404,6 +457,7 @@ const UNDO = {
     },
   },
   'payment.confirm': null, // money changed hands: change the plan by hand instead
+  'club.member_addon': 'club_places',
   'account.suspend': 'suspension',
   'account.unsuspend': 'suspension',
 };
@@ -418,6 +472,14 @@ const SUSPENSION = {
     owner.forgetSuspension(id);
   },
 };
+// Extra member places of the club named in the entry.
+const clubPlaces = (entry) => ({
+  current: async () => ({ club_id: entry.new_value.club_id, club_name: entry.new_value.club_name, ...placesOf(await loadClub(entry.new_value.club_id)) }),
+  restore: async (_id, v) => {
+    const { error } = await supabase.from('clubs').update(placesOf(v)).eq('id', v.club_id);
+    if (error) throw error;
+  },
+});
 const same = (a, b) => JSON.stringify(Object.keys(a).sort().map((k) => [k, a[k] ?? null])) === JSON.stringify(Object.keys(a).sort().map((k) => [k, b?.[k] ?? null]));
 const sameTime = (a, b) => (a == null && b == null) || (a && b && Date.parse(a) === Date.parse(b));
 
@@ -425,7 +487,7 @@ router.post('/audit/:id/undo', wrap(async (req, res) => {
   if (!isUuid(req.params.id)) throw fail(404, 'Entry not found.');
   const { data: entry } = await supabase.from('owner_audit_logs').select('*').eq('id', req.params.id).maybeSingle();
   if (!entry) throw fail(404, 'Entry not found.');
-  const how = UNDO[entry.action] === 'suspension' ? SUSPENSION : UNDO[entry.action];
+  const how = UNDO[entry.action] === 'suspension' ? SUSPENSION : UNDO[entry.action] === 'club_places' ? clubPlaces(entry) : UNDO[entry.action];
   if (!how || !entry.target_host_id) throw fail(400, 'This change cannot be undone here.', 'not_undoable');
   if (entry.undone_at) throw fail(409, 'Already undone.', 'already_undone');
   const now = await how.current(entry.target_host_id);

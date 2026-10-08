@@ -132,17 +132,20 @@ function requireFeature(feature, hostOf = (req) => req.hostId) {
 
 // Official / guest members a club may still take: { fixed: {used, limit}, guest: {used, limit} }.
 async function memberRoom(club) {
-  let hostId = club.host_id;
-  if (!hostId) hostId = (await supabase.from('clubs').select('host_id').eq('id', club.id).single()).data?.host_id;
+  // The owner and any extra places the app owner granted this club (a member licence).
+  const { data: row } = await supabase.from('clubs').select('*').eq('id', club.id).single();
+  const hostId = club.host_id || row?.host_id;
+  const extra = { fixed: Number(row?.extra_fixed_members) || 0, guest: Number(row?.extra_guest_members) || 0 };
   const p = await getPlan(hostId);
   const count = (type) =>
     supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('club_id', club.id).eq('is_active', true).eq('member_type', type).then((r) => r.count || 0);
   const [fixed, guest] = await Promise.all([count('fixed'), count('guest')]);
   const on = p.features_enforced;
+  const limit = (type) => (on && p.limits[type] != null ? p.limits[type] + extra[type] : null);
   return {
     tier: p.tier,
-    fixed: { used: fixed, limit: on ? p.limits.fixed : null },
-    guest: { used: guest, limit: on ? p.limits.guest : null },
+    fixed: { used: fixed, limit: limit('fixed'), extra: extra.fixed },
+    guest: { used: guest, limit: limit('guest'), extra: extra.guest },
   };
 }
 

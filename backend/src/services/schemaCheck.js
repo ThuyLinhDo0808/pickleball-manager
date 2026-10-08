@@ -37,6 +37,7 @@ const PROBES = [
   { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
   { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
   { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },
+  { table: 'clubs', column: 'extra_fixed_members', migration: '20261028090000_club_member_addon_transfer.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

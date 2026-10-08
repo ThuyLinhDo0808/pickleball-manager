@@ -189,6 +189,71 @@ function Notes({ host, notes, onChanged }) {
   );
 }
 
+// One club of the host: members vs places (plan + extra licence), grant extra places,
+// hand the club to another account.
+function ClubRow({ club, onChanged }) {
+  const { t } = useI18n();
+  const [mode, setMode] = useState(null); // 'addon' | 'transfer'
+  const [fixed, setFixed] = useState(club.room?.fixed?.extra ?? 0);
+  const [guest, setGuest] = useState(club.room?.guest?.extra ?? 0);
+  const [email, setEmail] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const r = club.room;
+  const place = (x) => (x ? `${x.used}/${x.limit ?? '∞'}${x.extra ? ` (+${x.extra})` : ''}` : '—');
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg('');
+    try {
+      if (mode === 'addon') {
+        await api.patch(`/api/owner/clubs/${club.id}/member-addon`, { extra_fixed_members: Number(fixed) || 0, extra_guest_members: Number(guest) || 0, note });
+      } else {
+        if (!window.confirm(t('owner.transferAsk', { club: club.name, email }))) return setBusy(false);
+        await api.post(`/api/owner/clubs/${club.id}/transfer`, { email, note });
+      }
+      setMode(null);
+      setNote('');
+      onChanged();
+    } catch (err) {
+      setMsg(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <li className="py-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-gray-200 truncate">{club.sport === 'badminton' ? '🏸' : '🏓'} {club.name}</span>
+        <span className="text-gray-400 text-xs">{t('owner.placesLine', { fixed: place(r?.fixed), guest: place(r?.guest) })} · {fmtDate(club.created_at)}</span>
+      </div>
+      <div className="flex gap-3 mt-1 text-xs">
+        <button type="button" className="text-sky-300 hover:underline" onClick={() => setMode(mode === 'addon' ? null : 'addon')}>➕ {t('owner.addonBtn')}</button>
+        <button type="button" className="text-amber-300 hover:underline" onClick={() => setMode(mode === 'transfer' ? null : 'transfer')}>🔁 {t('owner.transferBtn')}</button>
+      </div>
+      {mode && (
+        <form onSubmit={save} className="mt-2 rounded-lg border border-navy-600 p-2 flex flex-col gap-2">
+          {mode === 'addon' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs text-gray-400">{t('owner.extraFixed')}<input className="input text-sm mt-0.5" type="number" min="0" value={fixed} onChange={(e) => setFixed(e.target.value)} /></label>
+              <label className="text-xs text-gray-400">{t('owner.extraGuest')}<input className="input text-sm mt-0.5" type="number" min="0" value={guest} onChange={(e) => setGuest(e.target.value)} /></label>
+            </div>
+          ) : (
+            <label className="text-xs text-gray-400">{t('owner.newOwnerEmail')}<input className="input text-sm mt-0.5" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@…" /></label>
+          )}
+          <input className="input text-sm" value={note} onChange={(e) => setNote(e.target.value)} placeholder={mode === 'addon' ? t('owner.addonNotePh') : t('owner.transferNotePh')} maxLength={300} />
+          {mode === 'transfer' && <p className="text-gray-500 text-[11px]">{t('owner.transferHint')}</p>}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-red-300 text-xs">{msg}</span>
+            <button className="btn-primary !py-1 text-xs" disabled={busy}>{t('common.save')}</button>
+          </div>
+        </form>
+      )}
+    </li>
+  );
+}
+
 export default function OwnerHostPage() {
   const { t } = useI18n();
   const { id } = useParams();
@@ -234,12 +299,7 @@ export default function OwnerHostPage() {
                 <p className="text-gray-500 text-sm">{t('owner.noClubs')}</p>
               ) : (
                 <ul className="divide-y divide-navy-700">
-                  {data.clubs.map((c) => (
-                    <li key={c.id} className="py-2 flex items-center justify-between gap-2 text-sm">
-                      <span className="text-gray-200 truncate">{c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}</span>
-                      <span className="text-gray-400 text-xs shrink-0">{t('owner.nMembers', { n: c.members })} · {fmtDate(c.created_at)}</span>
-                    </li>
-                  ))}
+                  {data.clubs.map((c) => <ClubRow key={c.id} club={c} onChanged={reload} />)}
                 </ul>
               )}
               <h2 className="text-white font-semibold mt-4 mb-2">💳 {t('owner.ordersTitle')}</h2>

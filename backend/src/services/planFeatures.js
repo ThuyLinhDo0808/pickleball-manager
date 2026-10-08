@@ -7,12 +7,14 @@
 const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
 
 // null = unlimited. fixed = official members, guest = "giao lưu" members (per club).
+// Plans differ mostly in features; the club count is generous. A club that needs more
+// members than its plan allows gets extra places from the app owner (clubs.extra_*).
 const LIMITS = {
   free: { clubs: 1, fixed: 8, guest: 10 },
-  basic: { clubs: 1, fixed: 16, guest: 20 },
-  standard: { clubs: 2, fixed: 50, guest: 100 },
-  advanced: { clubs: 3, fixed: 100, guest: 200 },
-  pro: { clubs: null, fixed: null, guest: null },
+  basic: { clubs: 3, fixed: 16, guest: 20 },
+  standard: { clubs: 5, fixed: 50, guest: 100 },
+  advanced: { clubs: 10, fixed: 100, guest: 200 },
+  pro: { clubs: 20, fixed: null, guest: null },
 };
 
 // Monthly price (VND). PLAN_PRICE_<TIER> overrides one (see services/billing.js).

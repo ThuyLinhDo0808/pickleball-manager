@@ -5,14 +5,14 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { fmtDate, fmtTime } from '@/components/OwnerShell';
 
-const UNDOABLE = ['subscription.update', 'account.suspend', 'account.unsuspend'];
+const UNDOABLE = ['subscription.update', 'account.suspend', 'account.unsuspend', 'club.member_addon'];
 const isDateKey = (k) => /_until$/.test(k);
 
 // "tier: basic → pro", only for the fields that changed.
 function Diff({ from, to }) {
   const { t } = useI18n();
   const keys = [...new Set([...Object.keys(from || {}), ...Object.keys(to || {})])].filter(
-    (k) => JSON.stringify(from?.[k] ?? null) !== JSON.stringify(to?.[k] ?? null),
+    (k) => !/_id$/.test(k) && JSON.stringify(from?.[k] ?? null) !== JSON.stringify(to?.[k] ?? null),
   );
   if (!keys.length) return null;
   const show = (k, v) => {
@@ -67,6 +67,7 @@ export function AuditRow({ row, onChanged, showTarget = true }) {
           )}
         </div>
       </div>
+      {row.new_value?.club_name && <p className="text-gray-300 text-xs mt-0.5">🏠 {row.new_value.club_name}</p>}
       {row.note && <p className="text-gray-400 text-xs mt-0.5 italic">“{row.note}”</p>}
       {row.action === 'note.add' ? <p className="text-gray-300 text-xs mt-1">{row.new_value?.body}</p> : <Diff from={row.old_value} to={row.new_value} />}
       {msg && <p className="text-red-300 text-xs mt-1">{msg}</p>}

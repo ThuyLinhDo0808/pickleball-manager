@@ -17,12 +17,13 @@ const billingReady = async () => !(await schemaStatus()).missing_migrations.incl
 
 // The first club with more active members of a type than `limits` allow, or null.
 async function clubsOverLimits(hostId, limits) {
-  const { data: clubs } = await supabase.from('clubs').select('id, name').eq('host_id', hostId);
+  const { data: clubs } = await supabase.from('clubs').select('*').eq('host_id', hostId);
   for (const c of clubs || []) {
     for (const type of ['fixed', 'guest']) {
       if (limits[type] == null) continue;
+      const cap = limits[type] + (Number(c[`extra_${type}_members`]) || 0);
       const { count } = await supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('club_id', c.id).eq('is_active', true).eq('member_type', type);
-      if ((count || 0) > limits[type]) return { name: c.name, type, used: count };
+      if ((count || 0) > cap) return { name: c.name, type, used: count };
     }
   }
   return null;
