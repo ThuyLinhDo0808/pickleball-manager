@@ -640,11 +640,19 @@ Mỗi Host có một gói. Gói giới hạn **số CLB được tạo/quản l�
 | standard | 10 |
 | pro | không giới hạn |
 
-Tạo CLB vượt giới hạn → app hiện bảng **Nâng cấp tài khoản** (trang chủ, bộ chuyển ngữ cảnh, trang tạo CLB, Tài khoản → Gói dịch vụ → *Đổi gói*). Bấm *Đăng ký nâng cấp* ghi nhận yêu cầu và báo cho đội vận hành qua kênh góp ý (email/webhook) để liên hệ thanh toán; chưa có cổng thanh toán tự động. Yêu cầu đang chờ có nút **Huỷ yêu cầu**.
+Tạo CLB vượt giới hạn → app hiện bảng **Nâng cấp tài khoản** (trang chủ, bộ chuyển ngữ cảnh, trang tạo CLB, Tài khoản → Gói dịch vụ → *Đổi gói*). Mỗi gói ghi giá theo tháng.
+
+**Nâng cấp phải trả phí trước** (mặc định, `ALLOW_TIER_SELF_SERVE=false`):
+1. Host bấm *Đăng ký nâng cấp* ở gói muốn lên (hoặc *Gia hạn* ở gói đang dùng), chọn **1 / 3 / 6 / 12 tháng**, xem tổng tiền, bấm **Lấy mã chuyển khoản**.
+2. App hiện khung **Chờ thanh toán**: mã **VietQR** (số tiền + nội dung đã điền sẵn) và từng dòng *Số tiền / Nội dung chuyển khoản (mã `PBM…`) / Ngân hàng / Số tài khoản / Chủ tài khoản* có nút Copy. Tiền chuyển về tài khoản của đơn vị vận hành app.
+3. Đội vận hành nhận email/webhook góp ý "[Yêu cầu gói] …" kèm số tiền và mã. Khi thấy tiền vào, mở **Quản trị → Thanh toán gói** (`/admin/payments`) và bấm **Đã nhận tiền** → gói được bật ngay, có hạn đến hết số tháng đã trả (hiện *"Đến hết dd/mm/yyyy"* dưới gói).
+4. Gia hạn trước khi hết hạn thì cộng nối tiếp từ ngày hết hạn cũ. **Hết hạn** mà chưa gia hạn: tài khoản tự về gói **FREE** (Social Manager tắt). Dữ liệu giữ nguyên, chỉ bị chặn tạo thêm CLB / người / kèo Xé Vé; app báo đỏ *"Gói … đã hết hạn"*.
+
+Đơn chưa trả có nút **Huỷ yêu cầu**; tạo đơn mới thì đơn cũ cùng loại tự huỷ. Trang **Thanh toán gói** chỉ mở cho email trong `ADMIN_EMAILS` (người khác thấy 404); có lọc *Chờ xác nhận / Đã nhận tiền / Đã huỷ / Tất cả*, nút *Huỷ đơn* cho đơn không có tiền. Trên trang Tài khoản, admin thấy thêm lối tắt *"Quản trị: xác nhận thanh toán gói"*. Giá mặc định: Basic 99.000đ, Standard 249.000đ, Pro 499.000đ, Social Manager 89.000đ mỗi tháng (đổi bằng `PLAN_PRICE_*`).
 
 **Chuyển về gói thấp hơn:** ở Tài khoản → Gói dịch vụ bấm **💎 Đổi gói**; các gói thấp hơn có nút **↓ Chuyển về gói này** (hỏi xác nhận). Hạ gói **áp dụng ngay**, không cần thanh toán, đội vận hành được báo để ngừng thu phí. Không hạ được nếu đang sở hữu nhiều CLB hơn gói mới cho phép (app ghi *"Bạn đang có N CLB, gói này chỉ cho M — xoá bớt CLB trước"*) hoặc số người đang quản lý vượt giới hạn gói mới. Muốn lên lại thì đăng ký nâng cấp như bình thường.
 
-**Social Manager** là gói bổ sung trả phí cho phần **Xé Vé** (kèo/sự kiện lẻ không thuộc CLB: link đăng ký công khai, danh sách chờ, thu chuyển khoản, vé QR, báo cáo doanh thu). Chưa đăng ký thì không tạo được kèo không thuộc CLB. Đăng ký ở thẻ *Social Manager* trên trang chủ hoặc Tài khoản → Gói dịch vụ; sau khi được kích hoạt, mục Xé vé hiện trong bộ chuyển ngữ cảnh. **Huỷ Social Manager** ở cùng thẻ (hỏi xác nhận): chỉ huỷ được khi không còn kèo Xé Vé sắp diễn ra (kết thúc hoặc huỷ chúng trước); sau khi huỷ không tạo kèo Xé Vé mới và không vào không gian Xé Vé, dữ liệu cũ vẫn giữ, đăng ký lại là thấy. Đăng ký đang chờ duyệt cũng có nút *Huỷ yêu cầu*. Host đã có kèo xé vé trước khi có gói này được bật sẵn Social Manager. Với `ALLOW_TIER_SELF_SERVE=true`, nâng cấp gói và Social Manager được kích hoạt ngay (giai đoạn thử nghiệm).
+**Social Manager** là gói bổ sung trả phí cho phần **Xé Vé** (kèo/sự kiện lẻ không thuộc CLB: link đăng ký công khai, danh sách chờ, thu chuyển khoản, vé QR, báo cáo doanh thu). Chưa đăng ký thì không tạo được kèo không thuộc CLB. Đăng ký ở thẻ *Social Manager* trên trang chủ hoặc Tài khoản → Gói dịch vụ; sau khi được kích hoạt, mục Xé vé hiện trong bộ chuyển ngữ cảnh. **Huỷ Social Manager** ở cùng thẻ (hỏi xác nhận): chỉ huỷ được khi không còn kèo Xé Vé sắp diễn ra (kết thúc hoặc huỷ chúng trước); sau khi huỷ không tạo kèo Xé Vé mới và không vào không gian Xé Vé, dữ liệu cũ vẫn giữ, đăng ký lại là thấy. Đăng ký Social Manager cũng trả phí như trên (chọn số tháng → mã chuyển khoản → admin xác nhận; *Gia hạn* khi đang dùng); đơn đang chờ có nút *Huỷ yêu cầu*. Host đã có kèo xé vé trước khi có gói này được bật sẵn Social Manager (không có hạn). Với `ALLOW_TIER_SELF_SERVE=true`, nâng cấp gói và Social Manager được kích hoạt ngay, không cần trả tiền (chỉ dùng khi thử nghiệm).
 
 Giới hạn **số người đang được quản lý**: Con số này bằng thành viên CLB đang hoạt động cộng với người chơi (đăng ký, chờ, đã check-in) của các kèo chưa kết thúc.
 
@@ -655,7 +663,7 @@ Giới hạn **số người đang được quản lý**: Con số này bằng t
 | standard | 300 |
 | pro | 1000 |
 
-Khi hết chỗ, app chặn thêm người và báo lỗi. Trang **Tài khoản** hiển thị gói, mức đã dùng (`used/limit`), **số CLB đang sở hữu / giới hạn** kèm nút 💎 *Nâng cấp*, và thẻ **Social Manager**. Nếu backend đặt `ALLOW_TIER_SELF_SERVE=true`, Host tự đổi gói được (tiện cho giai đoạn thử nghiệm). Tắt đi khi có thanh toán thật.
+Khi hết chỗ, app chặn thêm người và báo lỗi. Trang **Tài khoản** hiển thị gói, mức đã dùng (`used/limit`), **số CLB đang sở hữu / giới hạn** kèm nút 💎 *Nâng cấp*, và thẻ **Social Manager**. Nếu backend đặt `ALLOW_TIER_SELF_SERVE=true`, Host tự đổi gói miễn phí (chỉ để thử nghiệm); để `false` (mặc định) thì phải chuyển khoản như trên.
 
 ### 8.5. Tài khoản & sao lưu (`/account`)
 Trang Tài khoản chia thẻ: hồ sơ, gói dịch vụ (mức đã dùng), tài khoản nhận tiền, thông báo, sao lưu và vùng nguy hiểm.
@@ -852,6 +860,7 @@ supabase/migrations/
 ├── 20261022090000_club_fund_calculator.sql           # bảng tính quỹ tháng của CLB: clubs.fund_calc
 └── 20261023090000_ball_log_xeve_inventory.sql        # kho bóng Xé Vé (inventory_items.host_id) + ghi bóng hỏng từng buổi
 └── 20261024090000_player_email_notices.sql          # công tắc email cho người chơi (users.notify_players_email, player_profiles.email_notices)
+└── 20261025090000_plan_payments.sql                 # nâng cấp gói trả phí: bảng plan_payments + hạn dùng gói (tier_paid_until, social_manager_paid_until)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -895,7 +904,10 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `PORT` | | Cổng API (mặc định `4000`; Render tự đặt) |
 | `CORS_ORIGIN` | | Domain web được phép gọi API (mặc định `*`) |
 | `APP_TZ` | | Múi giờ tính ngày/kỳ (mặc định `Asia/Ho_Chi_Minh`) |
-| `ALLOW_TIER_SELF_SERVE` | | `true` cho phép Host tự đổi gói dịch vụ và tự bật Social Manager (không qua thanh toán) |
+| `ALLOW_TIER_SELF_SERVE` | | `true` cho phép Host tự đổi gói dịch vụ và tự bật Social Manager (không qua thanh toán, chỉ để thử nghiệm). **Để `false` hoặc bỏ trống trên production** để bắt buộc chuyển khoản. |
+| `ADMIN_EMAILS` | | Email được vào trang **Quản trị → Thanh toán gói** để xác nhận đã nhận tiền, cách nhau dấu phẩy |
+| `PLAN_BANK_CODE` / `PLAN_BANK_NAME` / `PLAN_BANK_ACCOUNT` / `PLAN_BANK_HOLDER` | | Tuỳ chọn: tài khoản nhận tiền nâng cấp gói (mặc định Vietcombank của đơn vị vận hành, xem `backend/src/services/billing.js`) |
+| `PLAN_PRICE_BASIC` / `_STANDARD` / `_PRO` / `_SOCIAL_MANAGER` | | Tuỳ chọn: giá mỗi tháng (VND), mặc định 99000 / 249000 / 499000 / 89000 |
 | `RESEND_API_KEY` | | Gửi góp ý qua email (Resend) |
 | `FEEDBACK_TO_EMAIL` | | Email nhận góp ý (nhiều email cách nhau bằng dấu phẩy) |
 | `FEEDBACK_FROM_EMAIL` | | Người gửi, chỉ dùng khi đã xác minh domain riêng trên Resend |
@@ -1029,7 +1041,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Route chính |
 |---|---|
 | Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
-| Host | `GET /api/host/account/delete-preview` · `DELETE /api/host/account?confirm=<email>` · `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `GET /api/host/plan` (gói, giới hạn CLB, Social Manager) · `POST /api/host/plan/request` `{kind: social_manager | tier, tier}` (tier thấp hơn = hạ gói ngay; `409 too_many_clubs` / `over_capacity` nếu không vừa) · `POST /api/host/plan/cancel` `{kind: social_manager | social_manager_request | upgrade_request}` (`409 upcoming_games` khi còn kèo Xé Vé sắp tới) · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` (`notify_players_email` bật/tắt email cho người chơi; GET trả thêm `email_ready`) · `POST /api/host/notifications/test` |
+| Host | `GET /api/host/account/delete-preview` · `DELETE /api/host/account?confirm=<email>` · `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `GET /api/host/plan` (gói, giới hạn CLB, Social Manager, `prices`, `month_choices`, `pending_payments`, `tier_paid_until`, `social_manager_paid_until`, `is_admin`) · `POST /api/host/plan/request` `{kind: social_manager | tier, tier, months}` (tier thấp hơn = hạ gói ngay; `409 too_many_clubs` / `over_capacity` nếu không vừa; không self-serve thì trả `payment` = đơn chuyển khoản kèm `qr_url`, `ref`, `amount`) · `POST /api/host/plan/cancel` `{kind: social_manager | social_manager_request | upgrade_request}` (`409 upcoming_games` khi còn kèo Xé Vé sắp tới) · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` (`notify_players_email` bật/tắt email cho người chơi; GET trả thêm `email_ready`) · `POST /api/host/notifications/test` |
 | CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH /api/clubs/:id` (PATCH nhận thêm `fund_calc`: bảng tính quỹ tháng) · `GET /api/clubs/:id/delete-preview` · `DELETE /api/clubs/:id?confirm=<tên CLB>` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. Chỉ `delete-preview` và `DELETE` là riêng chủ CLB (co-admin nhận `403 owner_only`). |
 | Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `GET /api/clubs/:id/birthdays?days=3` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
@@ -1045,6 +1057,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` (nhận `ranks` `{memberId: A–D}`; khi tạo giải gửi `player_ranks`) · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `PATCH /api/transactions/:id` (sửa; đổi số tiền/loại = huỷ + ghi dòng thay thế) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance?year=` · `/events-pnl?year=` (theo năm dương lịch; mặc định năm nay; dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
+| Quản trị (chỉ `ADMIN_EMAILS`) | `GET /api/admin/plan-payments?status=pending\|paid\|cancelled\|all` · `POST /api/admin/plan-payments/:id/confirm` (bật gói / gia hạn) · `POST /api/admin/plan-payments/:id/cancel` |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` (kèm `role` mạnh nhất) · `GET /api/staff/events` (kèm `kind`, `arrived`) · `GET /api/staff/events/:id` · `POST …/participants` (điều phối viên thêm khách vãng lai + check-in; hết chỗ thì vào danh sách chờ) · `POST …/participants/:pid/:action` (`checkin` / `no_show` / `undo` / `promote`) · `POST …/checkin-code` · `POST/PATCH …/matches` |
 | Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` · `PUT /api/player/email-notices` `{enabled}` (`/me` trả `email_notices: {available, enabled}`) |
@@ -1055,7 +1068,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 | Nhóm | Bảng / View |
 |---|---|
-| Tài khoản | `users` (có `notify_webhook_url`, `notify_players_email`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký; `social_manager`, `social_manager_requested_at`, `upgrade_requested_at`, `upgrade_requested_tier`), view `v_host_capacity_usage` |
+| Tài khoản | `users` (có `notify_webhook_url`, `notify_players_email`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký; `social_manager`, `social_manager_requested_at`, `upgrade_requested_at`, `upgrade_requested_tier`, `tier_paid_until`, `social_manager_paid_until`), `plan_payments` (đơn nâng cấp trả bằng chuyển khoản: `kind`, `tier`, `months`, `amount`, `ref`, `status` pending/paid/cancelled; chỉ backend đọc/ghi), view `v_host_capacity_usage` |
 | CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, `district`, `play_duration`, `real_rank` (cũ, không còn hiển thị), `priority` + `discount_pct` cho khách, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
 | Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
@@ -1097,6 +1110,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Lỗi kiểu `column … does not exist` sau khi cập nhật code | Database chưa được cập nhật. Chạy `supabase db push` (xem [11.2](#112-cập-nhật-database-production-bằng-migration-supabase-cli)), hoặc chạy lại `database/schema.sql` nếu chưa có dữ liệu thật. |
 | Nút *Quét QR* không mở được camera | Camera chỉ chạy trên **https** và cần cho phép quyền camera trong trình duyệt. Nếu vẫn không được, dán mã `PBP:…` vào ô bên dưới camera. |
 | Quét QR báo "Không có tên trong kèo" | Người chơi chưa đăng ký kèo này (hoặc đăng ký bằng số điện thoại khác mà không đăng nhập). Hãy thêm họ vào kèo trước. |
+| Host đã chuyển khoản nâng cấp nhưng gói chưa đổi | Gói chỉ bật khi admin bấm **Đã nhận tiền** ở `/admin/payments`. Đối chiếu nội dung chuyển khoản (mã `PBM…`) và số tiền trong app ngân hàng. Không vào được trang đó → kiểm tra email của bạn có trong `ADMIN_EMAILS` trên Render. Host ghi sai nội dung → tìm theo email Host + số tiền rồi xác nhận đơn tương ứng. |
 | Người chơi không nhận được email thông báo | Kiểm tra: Host đã bật công tắc *Gửi email thông báo cho người chơi*; không còn cảnh báo vàng (đã đặt `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` trên tên miền đã xác minh); người chơi chưa *Tắt email*. Xem trạng thái gửi trong Resend → Emails; nhắc người chơi kiểm tra thư mục Spam. |
 | Người chơi không nhận được tin Telegram | Kiểm tra 3 biến `TELEGRAM_*` trên Render, đã chạy `npm run telegram:webhook`, và người chơi đã bấm *Start* (Cổng người chơi hiện "Đã kết nối ✓"). |
 | Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |

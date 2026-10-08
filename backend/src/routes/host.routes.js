@@ -8,6 +8,12 @@ const { getPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require
 const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText, emailReady } = require('../services/notify');
 
+const billing = require('../services/billing');
+const { schemaStatus } = require('../services/schemaCheck');
+
+const BILLING_MIGRATION = '20261025090000_plan_payments.sql';
+const billingReady = async () => !(await schemaStatus()).missing_migrations.includes(BILLING_MIGRATION);
+
 const router = express.Router();
 const ALLOW_SELF_SERVE = process.env.ALLOW_TIER_SELF_SERVE === 'true';
 const TIERS = ['free', 'basic', 'standard', 'pro'];
@@ -45,7 +51,7 @@ router.patch('/subscription', async (req, res) => {
 // The Host's plan: tier, club limit and usage, Social Manager add-on.
 router.get('/plan', async (req, res) => {
   try {
-    res.json(await getPlan(req.hostId));
+    res.json({ ...(await getPlan(req.hostId)), is_admin: billing.isAdmin(req.hostEmail) });
   } catch (err) {
     dbError(res, err);
   }
@@ -66,7 +72,8 @@ router.post('/plan/request', async (req, res) => {
     // still fits the smaller plan.
     if (kind === 'tier') {
       const current = await getPlan(req.hostId);
-      if (tier === current.tier) return res.status(400).json({ error: 'This is already your plan.', code: 'same_tier' });
+      // Same plan again = paying to extend it (not with self-serve, where it is free).
+      if (tier === current.tier && (ALLOW_SELF_SERVE || tier === 'free')) return res.status(400).json({ error: 'This is already your plan.', code: 'same_tier' });
       if (PLAN_TIERS.indexOf(tier) < PLAN_TIERS.indexOf(current.tier)) {
         const limit = CLUB_LIMIT[tier];
         if (limit != null && current.clubs_owned > limit) {
@@ -82,6 +89,13 @@ router.post('/plan/request', async (req, res) => {
         return res.json({ applied: true, downgraded: true, plan: await getPlan(req.hostId) });
       }
     }
+    // Paid upgrades: an order with a transfer code; the plan switches on once the
+    // operator confirms the money arrived.
+    let payment = null;
+    if (!ALLOW_SELF_SERVE) {
+      if (!(await billingReady())) return res.status(409).json({ error: `Run migration ${BILLING_MIGRATION} first.` });
+      payment = await billing.createOrder(req.hostId, { kind, tier, months: req.body.months });
+    }
     const patch = ALLOW_SELF_SERVE
       ? kind === 'social_manager'
         ? { social_manager: true }
@@ -93,9 +107,10 @@ router.post('/plan/request', async (req, res) => {
     if (error) throw error;
     if (!ALLOW_SELF_SERVE) {
       const what = kind === 'social_manager' ? 'Đăng ký Social Manager (Xé Vé)' : `Nâng cấp gói lên ${tier}`;
-      await notifyFeedback({ message: `[Yêu cầu gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
+      const money = `${payment.months} tháng · ${payment.amount.toLocaleString('vi-VN')}đ · nội dung CK ${payment.ref}`;
+      await notifyFeedback({ message: `[Yêu cầu gói] ${what} — ${money}. Khi nhận được tiền, vào trang Quản trị → Thanh toán gói để xác nhận.`, contact: req.hostEmail, page: '/admin/payments', userEmail: req.hostEmail }).catch(() => {});
     }
-    res.json({ applied: ALLOW_SELF_SERVE, plan: await getPlan(req.hostId) });
+    res.json({ applied: ALLOW_SELF_SERVE, payment, plan: await getPlan(req.hostId) });
   } catch (err) {
     dbError(res, err);
   }
@@ -130,6 +145,8 @@ router.post('/plan/cancel', async (req, res) => {
     }[kind];
     const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', req.hostId);
     if (error) throw error;
+    // Taking back a request also drops its unpaid transfer order.
+    if (kind !== 'social_manager' && (await billingReady())) await billing.cancelOrders(req.hostId, kind === 'upgrade_request' ? 'tier' : 'social_manager');
     const what = { social_manager: 'Huỷ Social Manager', social_manager_request: 'Huỷ yêu cầu Social Manager', upgrade_request: 'Huỷ yêu cầu nâng cấp' }[kind];
     await notifyFeedback({ message: `[Gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
     res.json({ plan: await getPlan(req.hostId) });

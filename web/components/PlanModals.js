@@ -4,6 +4,7 @@ import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { api } from '@/lib/api';
+import { formatVnd } from '@/lib/format';
 
 // Clubs each plan may own (kept in step with backend services/plan.js).
 export const CLUB_LIMIT = { free: 1, basic: 3, standard: 10, pro: null };
@@ -21,7 +22,7 @@ function useRequest(kind) {
     setError('');
     try {
       const r = await api.post('/api/host/plan/request', { kind, ...extra });
-      setDone(r.downgraded ? 'downgraded' : r.applied ? 'applied' : 'requested');
+      setDone(r.downgraded ? 'downgraded' : r.applied ? 'applied' : r.payment ? 'payment' : 'requested');
       await reloadPlan();
     } catch (err) {
       setError(err.message);
@@ -46,24 +47,132 @@ function useRequest(kind) {
   return { busy, done, error, send, cancel, reset: () => { setDone(null); setError(''); } };
 }
 
+
+const fmtDate = (ymd) => (ymd ? ymd.split('-').reverse().join('/') : '');
+
+function CopyLine({ label, value, strong }) {
+  const { t } = useI18n();
+  const [done, setDone] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(String(value));
+      setDone(true);
+      setTimeout(() => setDone(false), 1200);
+    } catch {
+      /* clipboard blocked — the value is still visible */
+    }
+  }
+  return (
+    <div className="flex items-center justify-between gap-3 py-1.5 border-b border-navy-700 last:border-0">
+      <div className="min-w-0">
+        <div className="text-gray-400 text-[11px]">{label}</div>
+        <div className={`break-all ${strong ? 'text-lime-300 font-bold' : 'text-white font-semibold'} text-sm`}>{value}</div>
+      </div>
+      <button type="button" onClick={copy} className="text-lime-400 text-xs shrink-0">{done ? t('join.copied') : t('join.copy')}</button>
+    </div>
+  );
+}
+
+// A transfer order waiting for the money: VietQR + the details to type by hand.
+export function PlanPaymentBox({ payment, onCancel, busy }) {
+  const { t } = useI18n();
+  const [qrFailed, setQrFailed] = useState(false);
+  const what = payment.kind === 'tier' ? (payment.tier || '').toUpperCase() : 'Social Manager';
+  return (
+    <div className="rounded-xl border border-amber-300/40 bg-amber-300/5 p-3">
+      <p className="text-amber-200 text-sm font-semibold">⏳ {t('plan.payTitle', { what, months: payment.months })}</p>
+      <p className="text-gray-300 text-xs mt-1 mb-3">{t('plan.payHint')}</p>
+      <div className="grid gap-3 sm:grid-cols-[180px_1fr] items-start">
+        {payment.qr_url && !qrFailed && (
+          <div className="bg-white rounded-xl p-2 mx-auto w-full max-w-[200px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={payment.qr_url} alt="VietQR" className="w-full h-auto" onError={() => setQrFailed(true)} />
+          </div>
+        )}
+        <div className="min-w-0">
+          <CopyLine label={t('plan.payAmount')} value={formatVnd(payment.amount)} strong />
+          <CopyLine label={t('plan.payNote')} value={payment.ref} strong />
+          <CopyLine label={t('plan.payBank')} value={payment.bank.name || payment.bank.code} />
+          <CopyLine label={t('plan.payAccount')} value={payment.bank.account} />
+          <CopyLine label={t('plan.payHolder')} value={payment.bank.holder} />
+        </div>
+      </div>
+      <p className="text-gray-400 text-[11px] mt-2">{t('plan.payNoteHint', { ref: payment.ref })}</p>
+      {onCancel && (
+        <button type="button" className="underline text-gray-300 hover:text-white text-xs mt-2" disabled={busy} onClick={onCancel}>{t('plan.cancelRequest')}</button>
+      )}
+    </div>
+  );
+}
+
+// Pick how many months, see the total, then get the transfer details.
+function Checkout({ kind, tier, req, onBack }) {
+  const { t } = useI18n();
+  const { plan } = useWorkspace();
+  const choices = plan?.month_choices || [1, 3, 6, 12];
+  const [months, setMonths] = useState(choices[0]);
+  const price = plan?.prices?.[kind === 'social_manager' ? 'social_manager' : tier] ?? 0;
+  const what = kind === 'tier' ? tier.toUpperCase() : 'Social Manager';
+  return (
+    <div className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-3">
+      <p className="text-white font-semibold text-sm">{t('plan.checkoutTitle', { what })}</p>
+      <p className="text-gray-400 text-xs mb-2">{t('plan.perMonth', { price: formatVnd(price) })}</p>
+      <div className="flex flex-wrap gap-1.5 mb-3" role="radiogroup" aria-label={t('plan.months')}>
+        {choices.map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={months === m}
+            onClick={() => setMonths(m)}
+            className={`rounded-lg px-3 py-1.5 text-sm border ${months === m ? 'border-lime-400 bg-lime-400 text-navy-950 font-bold' : 'border-navy-600 text-gray-200'}`}
+          >
+            {t('plan.nMonths', { n: m })}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-gray-300 text-sm">{t('plan.total')}: <b className="text-white text-base">{formatVnd(price * months)}</b></span>
+        <div className="flex gap-2 ml-auto">
+          {onBack && <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={onBack}>{t('common.cancel')}</button>}
+          <button type="button" className="btn-primary !py-1.5 text-sm" disabled={req.busy} onClick={() => req.send({ ...(tier ? { tier } : {}), months })}>
+            {t('plan.getPayment')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // The plans side by side: ask for a bigger one ("you need a bigger plan to run another
 // club"), or go back down to a smaller one when it still fits.
 export function UpgradeModal({ open, onClose }) {
   const { t } = useI18n();
   const { plan } = useWorkspace();
   const req = useRequest('tier');
+  const [picking, setPicking] = useState(null); // tier being paid for
   const current = plan?.tier || 'free';
   const limited = atClubLimit(plan);
+  const paid = !plan?.self_serve; // upgrades go through a bank transfer
+  const pending = plan?.pending_payments?.tier;
+  const close = () => { req.reset(); setPicking(null); onClose(); };
   function downgrade(tier) {
     if (window.confirm(t('plan.downConfirm', { tier: tier.toUpperCase(), n: CLUB_LIMIT[tier] ?? '∞' }))) req.send({ tier });
   }
   return (
-    <Modal open={open} title={`💎 ${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`} onClose={() => { req.reset(); onClose(); }}>
+    <Modal open={open} title={`💎 ${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`} onClose={close}>
       <p className="text-gray-300 text-sm mb-3">
         {limited
           ? t('plan.upgradeBody', { tier: current.toUpperCase(), n: plan?.club_limit ?? '∞', owned: plan?.clubs_owned ?? 0 })
           : t('plan.changeBody', { tier: current.toUpperCase(), owned: plan?.clubs_owned ?? 0, n: plan?.club_limit ?? '∞' })}
       </p>
+      {plan?.expired_tier && <p className="text-red-300 text-sm mb-2">{t('plan.expired', { tier: plan.expired_tier.toUpperCase() })}</p>}
+      {paid && picking && !(req.done === 'payment') && (
+        <div className="mb-3"><Checkout kind="tier" tier={picking} req={req} onBack={() => setPicking(null)} /></div>
+      )}
+      {paid && pending && req.done !== 'downgraded' && (
+        <div className="mb-3"><PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => { setPicking(null); req.cancel('upgrade_request'); }} /></div>
+      )}
       <div className="grid grid-cols-2 gap-2 mb-3">
         {TIERS.map((tier) => {
           const isCurrent = tier === current;
@@ -72,10 +181,19 @@ export function UpgradeModal({ open, onClose }) {
             <div key={tier} className={`rounded-xl border p-3 ${isCurrent ? 'border-lime-400 bg-lime-400/5' : 'border-navy-600'}`}>
               <div className="text-white font-bold uppercase">{tier}</div>
               <div className="text-gray-300 text-sm">{CLUB_LIMIT[tier] == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: CLUB_LIMIT[tier] })}</div>
+              {paid && tier !== 'free' && plan?.prices?.[tier] != null && (
+                <div className="text-amber-200 text-xs">{t('plan.perMonth', { price: formatVnd(plan.prices[tier]) })}</div>
+              )}
               {isCurrent ? (
-                <div className="text-lime-300 text-xs mt-2">✓ {t('plan.current')}</div>
+                <>
+                  <div className="text-lime-300 text-xs mt-2">✓ {t('plan.current')}</div>
+                  {plan?.tier_paid_until && <div className="text-gray-400 text-[11px]">{t('plan.paidUntil', { date: fmtDate(plan.tier_paid_until) })}</div>}
+                  {paid && tier !== 'free' && (
+                    <button type="button" className="btn-secondary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{t('plan.renew')}</button>
+                  )}
+                </>
               ) : higher ? (
-                <button type="button" className="btn-primary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => req.send({ tier })}>
+                <button type="button" className="btn-primary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => (paid ? setPicking(tier) : req.send({ tier }))}>
                   {plan?.self_serve ? t('plan.switchTo') : t('plan.requestTo')}
                 </button>
               ) : CLUB_LIMIT[tier] != null && (plan?.clubs_owned ?? 0) > CLUB_LIMIT[tier] ? (
@@ -89,7 +207,7 @@ export function UpgradeModal({ open, onClose }) {
           );
         })}
       </div>
-      {plan?.upgrade_requested_at && req.done !== 'downgraded' && (
+      {!paid && plan?.upgrade_requested_at && req.done !== 'downgraded' && (
         <p className="text-amber-300 text-xs mb-2">
           ⏳ {t('plan.requestedOn', { tier: (plan.upgrade_requested_tier || '').toUpperCase() })}{' '}
           <button type="button" className="underline text-gray-300 hover:text-white" disabled={req.busy} onClick={() => req.cancel('upgrade_request')}>{t('plan.cancelRequest')}</button>
@@ -99,7 +217,7 @@ export function UpgradeModal({ open, onClose }) {
       {req.done === 'downgraded' && <p className="text-lime-300 text-sm mb-2">✓ {t('plan.downDone', { tier: current.toUpperCase() })}</p>}
       {req.done === 'applied' && <p className="text-lime-300 text-sm mb-2">✓ {t('plan.applied')}</p>}
       {req.error && <p className="text-red-400 text-sm mb-2">{req.error}</p>}
-      <button type="button" className="btn-secondary w-full" onClick={() => { req.reset(); onClose(); }}>{t('plan.close')}</button>
+      <button type="button" className="btn-secondary w-full" onClick={close}>{t('plan.close')}</button>
     </Modal>
   );
 }
@@ -111,7 +229,10 @@ export function SocialManagerPanel({ compact = false }) {
   const { t } = useI18n();
   const { plan } = useWorkspace();
   const req = useRequest('social_manager');
+  const [renewing, setRenewing] = useState(false);
   const active = !!plan?.social_manager;
+  const paid = !plan?.self_serve;
+  const pending = plan?.pending_payments?.social_manager;
   return (
     <div>
       <div className="flex items-start gap-3 mb-3">
@@ -136,9 +257,17 @@ export function SocialManagerPanel({ compact = false }) {
           ))}
         </ul>
       )}
-      {active ? (
+      {pending ? (
+        <PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => { setRenewing(false); req.cancel('social_manager_request'); }} />
+      ) : paid && (renewing || (!active && !plan?.social_manager_requested_at)) && plan ? (
+        <Checkout kind="social_manager" req={req} onBack={renewing ? () => setRenewing(false) : null} />
+      ) : active ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-lime-300 text-sm">✓ {t('plan.smOn')}</p>
+          <p className="text-lime-300 text-sm">
+            ✓ {t('plan.smOn')}
+            {plan?.social_manager_paid_until && <span className="block text-gray-400 text-xs">{t('plan.paidUntil', { date: fmtDate(plan.social_manager_paid_until) })}</span>}
+          </p>
+          {paid && <button type="button" className="btn-secondary !py-1 text-sm" onClick={() => setRenewing(true)}>{t('plan.renew')}</button>}
           <button
             type="button"
             className="text-red-300 hover:text-red-200 text-sm underline"
