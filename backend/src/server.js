@@ -51,6 +51,7 @@ app.use('/api/live', requireAuth, liveRoutes);
 app.use('/api/inventory', requireAuth, inventoryRoutes);
 app.use('/api/owner', requireAuth, ownerRoutes);
 app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
+app.get('/api/public/announcements', require('./routes/announcements.routes').current); // no login: owner's banner
 app.use('/api/public', publicRoutes); // no login: club join pages
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));

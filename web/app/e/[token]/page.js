@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 
 function locale(lang) {
   return lang === 'vi' ? 'vi-VN' : 'en-GB';
@@ -81,6 +82,7 @@ export default function PublicEventPage() {
         <span className="text-lime-400 font-bold">{ev.club_name || t('appName')}</span>
         {langToggle}
       </header>
+      <AnnouncementBanner publicOnly className="mb-3" />
 
       <section className="card mb-4">
         <h1 className="text-white text-2xl font-bold leading-tight">{ev.title}</h1>

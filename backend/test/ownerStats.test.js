@@ -69,3 +69,17 @@ test('hostStarts takes the first club or Xé Vé game', () => {
   const m = S.hostStarts([{ host_id: 'a', created_at: '2026-10-05T00:00:00Z' }], [{ host_id: 'a', created_at: '2026-09-01T00:00:00Z' }, { host_id: 'b', created_at: '2026-10-06T00:00:00Z' }]);
   assert.deepStrictEqual([...m.entries()], [['a', '2026-09-01T00:00:00Z'], ['b', '2026-10-06T00:00:00Z']]);
 });
+
+test('trials: active list and conversion after the trial', () => {
+  const subs = [
+    { host_id: 'a', tier: 'standard', tier_paid_until: '2026-10-20', trial_ends_on: '2026-10-20', trial_started_at: '2026-10-06T00:00:00Z' },
+    { host_id: 'b', tier: 'free', tier_paid_until: null, trial_ends_on: '2026-10-01', trial_started_at: '2026-09-17T00:00:00Z' },
+    { host_id: 'c', tier: 'basic', tier_paid_until: '2026-11-01', trial_ends_on: '2026-10-02', trial_started_at: '2026-09-18T00:00:00Z' },
+  ];
+  const orders = [{ host_id: 'c', kind: 'tier', confirmed_at: '2026-10-02T03:00:00Z' }];
+  const t = S.trials(subs, orders, '2026-10-08');
+  assert.deepStrictEqual(t.active.map((x) => [x.host_id, x.days_left]), [['a', 12]]);
+  assert.deepStrictEqual([t.ended, t.converted, t.rate], [2, 1, 50]);
+  assert.strictEqual(S.isPaying(subs[0]), false, 'a trial is not paying');
+  assert.deepStrictEqual(S.tierMix(subs, ['a', 'b', 'c', 'd']), { free: 2, basic: 1, standard: 0, advanced: 0, pro: 0, trial: 1 });
+});

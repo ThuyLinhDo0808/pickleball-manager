@@ -12,6 +12,7 @@ import { useLoad } from '@/lib/useLoad';
 import { useEnter } from '@/lib/useEnter';
 import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 
 // One tile of the "spaces" strip: a club (managed or played in), Xé Vé, staff, or "+".
 function SpaceTile({ onClick, href, avatar, label, badge, badgeTone }) {
@@ -84,6 +85,7 @@ export default function HomeHub() {
 
   return (
     <PlayerShell>
+      <AnnouncementBanner className="mb-4" />
       {/* Greeting */}
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="min-w-0">

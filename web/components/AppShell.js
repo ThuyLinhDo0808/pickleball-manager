@@ -16,6 +16,7 @@ import { api } from '@/lib/api';
 import LockedFeature from '@/components/LockedFeature';
 import PlanLimitNotice from '@/components/PlanLimitNotice';
 import { featureForPath, planFor, hasFeature } from '@/lib/planFeatures';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -445,6 +446,7 @@ export default function AppShell({ children }) {
       </header>
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
+        <AnnouncementBanner className="mb-4" />
         {workspace && workspace !== 'staff' && <SchemaBanner />}
         {suspended ? (
           <div className="max-w-lg mx-auto card mt-4 border-red-400/50" role="alert">

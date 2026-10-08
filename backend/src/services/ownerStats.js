@@ -45,8 +45,11 @@ function hostStarts(clubs, xeveEvents) {
   return first; // host_id -> created_at
 }
 
-// Paying = on a paid tier, or a Social Manager that was paid for.
-const isPaying = (s) => (s.tier && s.tier !== 'free') || (!!s.social_manager && !!s.social_manager_paid_until);
+// On the free trial: the plan still runs until the trial's end date.
+const onTrial = (s, today) => !!s.trial_ends_on && s.tier_paid_until === s.trial_ends_on && (!today || s.trial_ends_on >= today);
+
+// Paying = on a paid tier (not the free trial), or a Social Manager that was paid for.
+const isPaying = (s) => (s.tier && s.tier !== 'free' && !onTrial(s)) || (!!s.social_manager && !!s.social_manager_paid_until);
 
 // Free -> paid conversion among organisers.
 function conversion(hostIds, subs) {
@@ -131,4 +134,28 @@ function daily(timestamps, today, n = 14) {
   });
 }
 
-module.exports = { vnYmd, shiftYmd, mondayOf, weekWindows, weekly, hostStarts, isPaying, conversion, mrr, cashIn, expiring, renewal, daily };
+// Trials: who is trying now (soonest end first), and of the trials that ended, how many
+// bought a plan (a paid tier order confirmed after the trial started).
+function trials(subs, paidOrders, today) {
+  const active = subs
+    .filter((s) => onTrial(s, today))
+    .map((s) => ({ host_id: s.host_id, tier: s.tier, ends_on: s.trial_ends_on, days_left: Math.round((Date.parse(s.trial_ends_on) - Date.parse(today)) / DAY) }))
+    .sort((a, b) => a.ends_on.localeCompare(b.ends_on));
+  const ended = subs.filter((s) => s.trial_ends_on && s.trial_ends_on < today);
+  const bought = ended.filter((s) => paidOrders.some((o) => o.host_id === s.host_id && o.kind === 'tier' && (!s.trial_started_at || (o.confirmed_at || '') >= s.trial_started_at))).length;
+  return { active, ended: ended.length, converted: bought, rate: ended.length ? Math.round((bought / ended.length) * 100) : null };
+}
+
+// How many accounts on each plan (organisers only), and the average a paying host pays.
+function tierMix(subs, hostIds) {
+  const mix = { free: 0, basic: 0, standard: 0, advanced: 0, pro: 0, trial: 0 };
+  const byHost = new Map(subs.map((s) => [s.host_id, s]));
+  for (const id of hostIds) {
+    const s = byHost.get(id) || { tier: 'free' };
+    if (onTrial(s)) mix.trial += 1;
+    else mix[s.tier in mix ? s.tier : 'free'] += 1;
+  }
+  return mix;
+}
+
+module.exports = { onTrial, trials, tierMix, vnYmd, shiftYmd, mondayOf, weekWindows, weekly, hostStarts, isPaying, conversion, mrr, cashIn, expiring, renewal, daily };

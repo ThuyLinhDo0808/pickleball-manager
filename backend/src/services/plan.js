@@ -58,7 +58,7 @@ async function getPlan(hostId, { fresh = false } = {}) {
   let live = await billing.expireIfDue(sub);
   if (ready2) live = await maybeStartTrial(live, count || 0);
   const tier = TIERS.includes(live?.tier) ? live.tier : 'free';
-  const selfServe = process.env.ALLOW_TIER_SELF_SERVE === 'true';
+  const selfServe = await require('./appSettings').selfServe();
   const today = todayYmd();
   const onTrial = !!live?.trial_ends_on && live.tier_paid_until === live.trial_ends_on && today <= live.trial_ends_on && tier === PF.TRIAL.tier;
   const value = {

@@ -254,6 +254,49 @@ function ClubRow({ club, onChanged }) {
   );
 }
 
+const ROLE_BADGE = { co_admin: 'bg-violet-400/20 text-violet-200', finance: 'bg-emerald-400/20 text-emerald-200', operator: 'bg-sky-400/20 text-sky-200' };
+
+// Who helps run the host's clubs, by club: role + email, and seats used per role.
+function StaffRoles({ staff, clubs }) {
+  const { t } = useI18n();
+  const clubStaff = staff.filter((g) => g.club_id);
+  const other = staff.length - clubStaff.length;
+  return (
+    <div className="card !p-4">
+      <h2 className="text-white font-semibold mb-1">🧑‍💼 {t('owner.rolesTitle')}</h2>
+      <p className="text-gray-500 text-xs mb-3">{t('owner.rolesHint')}{other > 0 ? ` · ${t('owner.eventStaffN', { n: other })}` : ''}</p>
+      {clubStaff.length === 0 ? (
+        <p className="text-gray-500 text-sm">{t('owner.noRoles')}</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {clubs.filter((c) => clubStaff.some((g) => g.club_id === c.id)).map((c) => {
+            const mine = clubStaff.filter((g) => g.club_id === c.id);
+            const used = (r) => mine.filter((g) => g.role === r).length;
+            return (
+              <div key={c.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-gray-200 text-sm font-semibold">{c.name}</span>
+                  <span className="text-gray-500 text-xs">
+                    {['finance', 'operator'].map((r) => `${t(`staff.${r}`)} ${used(r)}`).join(' · ')}
+                  </span>
+                </div>
+                <ul className="mt-1 divide-y divide-navy-800">
+                  {mine.map((g) => (
+                    <li key={g.id} className="py-1.5 flex items-center justify-between gap-2 text-sm">
+                      <span className="text-gray-300 truncate">{g.full_name ? `${g.full_name} · ` : ''}{g.email}</span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${ROLE_BADGE[g.role] || 'bg-navy-700 text-gray-300'}`}>{t(`staff.${g.role}`)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OwnerHostPage() {
   const { t } = useI18n();
   const { id } = useParams();
@@ -317,6 +360,8 @@ export default function OwnerHostPage() {
               )}
             </div>
           </div>
+
+          <StaffRoles staff={data.staff || []} clubs={data.clubs} />
 
           <div className="card !p-4">
             <h2 className="text-white font-semibold mb-1">📜 {t('owner.tabAudit')}</h2>

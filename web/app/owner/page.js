@@ -61,6 +61,30 @@ function DailyBars({ rows, label }) {
   );
 }
 
+const MIX = [['free', 'bg-gray-500'], ['trial', 'bg-sky-400'], ['basic', 'bg-sky-600'], ['standard', 'bg-violet-400'], ['advanced', 'bg-emerald-400'], ['pro', 'bg-amber-300']];
+
+// How hosts split across the plans: one stacked bar plus the counts.
+function TierMix({ mix }) {
+  const { t } = useI18n();
+  const total = MIX.reduce((n, [k]) => n + (mix[k] || 0), 0);
+  return (
+    <>
+      <div className="flex h-3 rounded-full overflow-hidden bg-navy-700" role="img" aria-label={MIX.map(([k]) => `${t(`owner.mix_${k}`)} ${mix[k] || 0}`).join(', ')}>
+        {total > 0 && MIX.map(([k, c]) => (mix[k] ? <div key={k} className={c} style={{ width: `${(mix[k] / total) * 100}%` }} title={`${t(`owner.mix_${k}`)}: ${mix[k]}`} /> : null))}
+      </div>
+      <ul className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3">
+        {MIX.map(([k, c]) => (
+          <li key={k} className="text-xs">
+            <span className="flex items-center gap-1.5 text-gray-400"><span className={`w-2 h-2 rounded-full ${c}`} aria-hidden="true" />{t(`owner.mix_${k}`)}</span>
+            <span className="text-white font-bold text-lg tabular-nums">{mix[k] || 0}</span>
+            {total > 0 && <span className="text-gray-500 ml-1">{Math.round(((mix[k] || 0) / total) * 100)}%</span>}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 export default function OwnerOverview() {
   const { t } = useI18n();
   const [days, setDays] = useState(7);
@@ -124,6 +148,47 @@ export default function OwnerOverview() {
               />
             </div>
           </section>
+
+          <section>
+            <h2 className="text-gray-300 text-sm font-semibold mb-2">💎 {t('owner.plansMix')}</h2>
+            <div className="grid lg:grid-cols-[2fr_1fr] gap-3 items-start">
+              <div className="card !p-4">
+                <TierMix mix={d.tiers} />
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
+                <Tile label="ARPU" value={formatVnd(d.arpu)} sub={<span className="text-gray-500 text-xs">{t('owner.arpuHint')}</span>} />
+                <Tile
+                  label={t('owner.trialConversion')}
+                  value={d.trials.rate == null ? '—' : `${d.trials.rate}%`}
+                  sub={<span className="text-gray-500 text-xs">{t('owner.trialConvSub', { c: d.trials.converted, e: d.trials.ended })}</span>}
+                />
+              </div>
+            </div>
+          </section>
+
+          <div className="grid lg:grid-cols-2 gap-3">
+            <section className="card !p-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="text-white font-semibold text-sm">🧪 {t('owner.trialsNow', { n: d.trials.active.length })}</h2>
+                <Link href="/owner/hosts?filter=trial" className="text-amber-300 text-xs">{t('owner.seeAll')} →</Link>
+              </div>
+              {d.trials.active.length === 0 ? (
+                <p className="text-gray-500 text-sm">{t('owner.noTrials')}</p>
+              ) : (
+                <ul className="divide-y divide-navy-700">
+                  {d.trials.active.slice(0, 8).map((x) => (
+                    <li key={x.host_id} className="py-2 flex items-center justify-between gap-2">
+                      <Link href={`/owner/hosts/${x.host_id}`} className="min-w-0 text-sm text-gray-200 hover:text-white truncate">{x.email}</Link>
+                      <span className={`text-xs tabular-nums shrink-0 ${x.days_left <= 3 ? 'text-red-300' : 'text-amber-200'}`}>
+                        {x.days_left === 0 ? t('owner.endsToday') : t('owner.daysLeft', { n: x.days_left })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            <DailyBars rows={d.daily.clubs} label={t('owner.dailyClubs')} />
+          </div>
 
           <div className="grid lg:grid-cols-2 gap-3">
             <section className="card !p-4">

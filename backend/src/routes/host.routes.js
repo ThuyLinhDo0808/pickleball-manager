@@ -30,7 +30,7 @@ async function clubsOverLimits(hostId, limits) {
 }
 
 const router = express.Router();
-const ALLOW_SELF_SERVE = process.env.ALLOW_TIER_SELF_SERVE === 'true';
+const appSettings = require('../services/appSettings');
 const TIERS = PLAN_TIERS;
 
 router.get('/me', async (req, res) => {
@@ -48,6 +48,7 @@ router.get('/subscription', async (req, res) => {
 });
 
 router.patch('/subscription', async (req, res) => {
+  const ALLOW_SELF_SERVE = await appSettings.selfServe();
   if (!ALLOW_SELF_SERVE) {
     return res.status(403).json({ error: 'Plan changes are handled outside self-serve. Contact support.' });
   }
@@ -76,6 +77,7 @@ router.get('/plan', async (req, res) => {
 // applied straight away; otherwise the request is stored and sent to the team (same
 // channel as feedback) so they can arrange payment and switch it on.
 router.post('/plan/request', async (req, res) => {
+  const ALLOW_SELF_SERVE = await appSettings.selfServe();
   const kind = req.body.kind;
   if (!['social_manager', 'tier'].includes(kind)) return res.status(400).json({ error: 'kind must be social_manager or tier.' });
   const tier = req.body.tier;

@@ -9,6 +9,9 @@ const billing = require('../services/billing');
 const owner = require('../services/owner');
 const S = require('../services/ownerStats');
 const { notifyFeedback } = require('../services/feedback');
+const appSettings = require('../services/appSettings');
+const { schemaStatus, PROBES } = require('../services/schemaCheck');
+const announcements = require('./announcements.routes');
 
 const router = express.Router();
 const MIGRATION = '20261026090000_owner_console.sql';
@@ -66,6 +69,8 @@ function hostRow(u, ctx) {
     created_at: u.created_at,
     tier,
     tier_paid_until: sub.tier_paid_until || null,
+    trial_ends_on: sub.trial_ends_on || null,
+    on_trial: S.onTrial(sub, S.vnYmd(new Date())),
     social_manager: !!sub.social_manager,
     social_manager_paid_until: sub.social_manager_paid_until || null,
     suspended_at: u.suspended_at || null,
@@ -139,12 +144,22 @@ router.get('/overview', wrap(async (req, res) => {
       clubs: S.daily(all.clubs.map((c) => c.created_at), today),
     },
     suspended: all.users.filter((u) => u.suspended_at).length,
+    // Plans: hosts on each, average a paying host pays per month (ARPU), trials.
+    tiers: S.tierMix(all.subs, [...ctx.hostIds]),
+    arpu: (() => {
+      const paying = all.subs.filter((x) => S.isPaying(x)).length;
+      return paying ? Math.round(S.mrr(all.subs, paid, today) / paying) : 0;
+    })(),
+    trials: (() => {
+      const t = S.trials(all.subs, paid, today);
+      return { ...t, active: t.active.map((x) => ({ ...x, email: emailOf.get(x.host_id) || null })) };
+    })(),
   });
 }));
 
 // ---- Hosts -----------------------------------------------------------------------
 
-const FILTERS = ['hosts', 'all', 'paying', 'free', 'suspended', 'expiring'];
+const FILTERS = ['hosts', 'all', 'paying', 'trial', 'free', 'suspended', 'expiring'];
 
 router.get('/hosts', wrap(async (req, res) => {
   const today = S.vnYmd(new Date());
@@ -157,7 +172,8 @@ router.get('/hosts', wrap(async (req, res) => {
   let rows = all.users.map((u) => hostRow(u, ctx));
   rows = rows.filter((r) => {
     if (filter === 'hosts' && !r.is_host) return false;
-    if (filter === 'paying' && !S.isPaying({ tier: r.tier, social_manager: r.social_manager, social_manager_paid_until: r.social_manager_paid_until })) return false;
+    if (filter === 'paying' && !S.isPaying({ tier: r.tier, tier_paid_until: r.tier_paid_until, trial_ends_on: r.trial_ends_on, social_manager: r.social_manager, social_manager_paid_until: r.social_manager_paid_until })) return false;
+    if (filter === 'trial' && !r.on_trial) return false;
     if (filter === 'free' && (r.tier !== 'free' || !r.is_host)) return false;
     if (filter === 'suspended' && !r.suspended_at) return false;
     if (filter === 'expiring') {
@@ -208,6 +224,8 @@ router.get('/hosts/:id', wrap(async (req, res) => {
     supabase.from('plan_payments').select('*').eq('host_id', u.id).order('created_at', { ascending: false }).limit(50),
     supabase.from('owner_audit_logs').select('*').eq('target_host_id', u.id).order('created_at', { ascending: false }).limit(50),
   ]);
+  // Who works on the host's clubs (role and email only).
+  const { data: staff } = await supabase.from('staff_grants').select('id, email, full_name, role, club_id, event_id, valid_from, valid_until, clubs(name)').eq('host_id', u.id).order('created_at');
   // Member counts per club (a number only — no member details here).
   // Member counts and places per club (numbers only — no member details here).
   const counts = await Promise.all((clubs || []).map((c) => memberRoom(c).catch(() => null)));
@@ -226,6 +244,7 @@ router.get('/hosts/:id', wrap(async (req, res) => {
     notes: notes || [],
     orders: (orders || []).map((o) => ({ ...billing.present(o), confirmed_at: o.confirmed_at, confirmed_by: o.confirmed_by })),
     audit: log || [],
+    staff: (staff || []).map((g) => ({ ...g, club_name: g.clubs?.name || null, clubs: undefined })),
     tiers: TIERS,
   });
 }));
@@ -374,6 +393,193 @@ router.post('/clubs/:id/transfer', wrap(async (req, res) => {
     note: String(req.body?.note || '').trim() || null,
   });
   res.json({ club_id: club.id, from: prev.email, to: next.email, audit_id: entry?.id || null });
+}));
+
+// ---- System activity (read-only) ---------------------------------------------------
+
+const paging = (req, total) => {
+  const per = Math.min(100, Math.max(10, parseInt(req.query.per, 10) || 50));
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  return { per, page, from: (page - 1) * per, to: page * per, pages: Math.max(1, Math.ceil(total / per)) };
+};
+
+// Every club: name, owner, plan, member counts (numbers only — no member details).
+router.get('/activity/clubs', wrap(async (req, res) => {
+  const [clubs, members, users, subs] = await Promise.all([
+    fetchAll(() => supabase.from('clubs').select('id, name, sport, host_id, created_at, extra_fixed_members, extra_guest_members').order('created_at', { ascending: false })),
+    fetchAll(() => supabase.from('club_members').select('club_id, member_type').eq('is_active', true).order('club_id')),
+    fetchAll(() => supabase.from('users').select('id, email').order('id')),
+    fetchAll(() => supabase.from('host_subscriptions').select('host_id, tier').order('host_id')),
+  ]);
+  const emailOf = new Map(users.map((u) => [u.id, u.email]));
+  const tierOf = new Map(subs.map((x) => [x.host_id, x.tier]));
+  const count = new Map();
+  for (const m of members) {
+    const c = count.get(m.club_id) || { fixed: 0, guest: 0 };
+    c[m.member_type === 'guest' ? 'guest' : 'fixed'] += 1;
+    count.set(m.club_id, c);
+  }
+  const q = String(req.query.q || '').trim().toLowerCase();
+  let rows = clubs.map((c) => ({ ...c, owner_email: emailOf.get(c.host_id) || null, tier: tierOf.get(c.host_id) || 'free', members: count.get(c.id) || { fixed: 0, guest: 0 } }));
+  if (q) rows = rows.filter((c) => c.name.toLowerCase().includes(q) || (c.owner_email || '').toLowerCase().includes(q));
+  if (req.query.sort === 'members') rows.sort((a, b) => b.members.fixed + b.members.guest - (a.members.fixed + a.members.guest));
+  const pg = paging(req, rows.length);
+  res.json({ total: rows.length, page: pg.page, pages: pg.pages, rows: rows.slice(pg.from, pg.to) });
+}));
+
+// Xé Vé games: title, when, status, fill rate. ?when=upcoming|past|all &from&to
+router.get('/activity/xeve', wrap(async (req, res) => {
+  const today = S.vnYmd(new Date());
+  const build = () => {
+    let q = supabase.from('v_event_summary').select('id, host_id, title, event_date, start_time, status, slots, main_count, waitlist_count, fee_amount').is('club_id', null).neq('kind', 'meeting');
+    if (req.query.when === 'upcoming') q = q.gte('event_date', today);
+    if (req.query.when === 'past') q = q.lt('event_date', today);
+    if (YMD.test(req.query.from || '')) q = q.gte('event_date', req.query.from);
+    if (YMD.test(req.query.to || '')) q = q.lte('event_date', req.query.to);
+    return q.order('event_date', { ascending: req.query.when === 'upcoming' }).order('start_time');
+  };
+  const [events, users] = await Promise.all([fetchAll(build), fetchAll(() => supabase.from('users').select('id, email').order('id'))]);
+  const emailOf = new Map(users.map((u) => [u.id, u.email]));
+  const rows = events.map((e) => ({ ...e, host_email: emailOf.get(e.host_id) || null, fill: e.slots ? Math.round((Number(e.main_count || 0) / e.slots) * 100) : null }));
+  const pg = paging(req, rows.length);
+  const todayRows = events.filter((e) => e.event_date === today);
+  res.json({ total: rows.length, page: pg.page, pages: pg.pages, rows: rows.slice(pg.from, pg.to), today: { games: todayRows.length, players: todayRows.reduce((n, e) => n + Number(e.main_count || 0), 0) } });
+}));
+
+// ---- Feedback inbox -----------------------------------------------------------------
+
+const FEEDBACK_STATUSES = ['new', 'in_progress', 'closed'];
+
+router.get('/feedback', wrap(async (req, res) => {
+  const status = FEEDBACK_STATUSES.includes(req.query.status) ? req.query.status : null;
+  const per = 50;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  let q = supabase.from('feedback').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range((page - 1) * per, page * per - 1);
+  if (status) q = q.eq('status', status);
+  const { data, error, count } = await q;
+  if (error) throw error;
+  const ids = [...new Set(data.map((f) => f.host_id).filter(Boolean))];
+  const { data: users } = ids.length ? await supabase.from('users').select('id, email').in('id', ids) : { data: [] };
+  const emailOf = new Map((users || []).map((u) => [u.id, u.email]));
+  const counts = {};
+  for (const st of FEEDBACK_STATUSES) {
+    const { count: c } = await supabase.from('feedback').select('id', { count: 'exact', head: true }).eq('status', st);
+    counts[st] = c || 0;
+  }
+  res.json({ rows: data.map((f) => ({ ...f, host_email: emailOf.get(f.host_id) || null })), total: count || 0, page, pages: Math.max(1, Math.ceil((count || 0) / per)), counts });
+}));
+
+router.patch('/feedback/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Feedback not found.');
+  const status = req.body?.status;
+  if (!FEEDBACK_STATUSES.includes(status)) throw fail(400, `status must be one of ${FEEDBACK_STATUSES.join(', ')}.`);
+  const { data: before } = await supabase.from('feedback').select('*').eq('id', req.params.id).maybeSingle();
+  if (!before) throw fail(404, 'Feedback not found.');
+  const { data, error } = await supabase.from('feedback').update({ status, status_changed_at: new Date().toISOString() }).eq('id', before.id).select().single();
+  if (error) throw error;
+  const host = before.host_id ? await loadHost(before.host_id).catch(() => null) : null;
+  await owner.audit(req, { action: 'feedback.status', host, oldValue: { status: before.status }, newValue: { status }, note: String(before.message || '').slice(0, 120) });
+  res.json(data);
+}));
+
+// ---- Announcements (banner for everyone) -------------------------------------------
+
+const cleanAnnouncement = (b, partial = false) => {
+  const out = {};
+  if (!partial || 'message' in b) {
+    const m = String(b.message || '').trim();
+    if (!m || m.length > 500) throw fail(400, 'Message is 1-500 characters.');
+    out.message = m;
+  }
+  if ('level' in b) {
+    if (!['info', 'warning'].includes(b.level)) throw fail(400, 'level must be info or warning.');
+    out.level = b.level;
+  }
+  for (const k of ['starts_at', 'ends_at']) {
+    if (!(k in b)) continue;
+    if (b[k] === null || b[k] === '') out[k] = k === 'starts_at' ? new Date().toISOString() : null;
+    else if (Number.isNaN(Date.parse(b[k]))) throw fail(400, `${k} must be a date-time.`);
+    else out[k] = new Date(b[k]).toISOString();
+  }
+  if ('show_public' in b) out.show_public = b.show_public === true;
+  if ('active' in b) out.active = b.active !== false;
+  if (out.ends_at && out.starts_at && out.ends_at <= out.starts_at) throw fail(400, 'The end must be after the start.');
+  return out;
+};
+
+router.get('/announcements', wrap(async (req, res) => {
+  const { data, error } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(100);
+  if (error) throw error;
+  res.json(data);
+}));
+
+router.post('/announcements', wrap(async (req, res) => {
+  const row = cleanAnnouncement(req.body || {});
+  const { data, error } = await supabase.from('announcements').insert({ ...row, created_by: req.hostEmail }).select().single();
+  if (error) throw error;
+  announcements.forget();
+  await owner.audit(req, { action: 'announcement.create', newValue: { message: data.message, level: data.level, starts_at: data.starts_at, ends_at: data.ends_at, show_public: data.show_public } });
+  res.status(201).json(data);
+}));
+
+router.patch('/announcements/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Announcement not found.');
+  const { data: before } = await supabase.from('announcements').select('*').eq('id', req.params.id).maybeSingle();
+  if (!before) throw fail(404, 'Announcement not found.');
+  const patch = cleanAnnouncement(req.body || {}, true);
+  const { data, error } = await supabase.from('announcements').update(patch).eq('id', before.id).select().single();
+  if (error) throw error;
+  const keys = Object.keys(patch);
+  announcements.forget();
+  await owner.audit(req, { action: 'announcement.update', oldValue: Object.fromEntries(keys.map((k) => [k, before[k]])), newValue: Object.fromEntries(keys.map((k) => [k, data[k]])), note: data.message.slice(0, 120) });
+  res.json(data);
+}));
+
+// ---- System health & settings -------------------------------------------------------
+
+router.get('/system', wrap(async (req, res) => {
+  const schema = await schemaStatus();
+  const { emailReady } = require('../services/notify');
+  const has = (k) => !!process.env[k];
+  const bank = billing.operatorBank();
+  res.json({
+    // Configured or not — key values are never sent.
+    integrations: [
+      { key: 'resend', ok: has('RESEND_API_KEY') },
+      { key: 'feedback_email', ok: has('RESEND_API_KEY') && has('FEEDBACK_TO_EMAIL') },
+      { key: 'player_email', ok: emailReady() },
+      { key: 'feedback_webhook', ok: has('FEEDBACK_WEBHOOK_URL') },
+      { key: 'plan_bank', ok: !!(bank.bank_code && bank.bank_account) },
+      { key: 'cors', ok: has('CORS_ORIGIN') },
+    ],
+    migrations: { ok: schema.ok, missing: schema.missing_migrations, all: [...new Set(PROBES.map((p) => p.migration))].sort() },
+    settings: await appSettings.all(),
+    owners: owner.ownerEmails().length,
+  });
+}));
+
+// Send a test email to the signed-in owner (Resend).
+router.post('/system/test-email', wrap(async (req, res) => {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw fail(409, 'RESEND_API_KEY is not set on the server.', 'not_configured');
+  const from = process.env.FEEDBACK_FROM_EMAIL || process.env.NOTIFY_FROM_EMAIL || 'Pickleball Manager <onboarding@resend.dev>';
+  const r = await fetch(`${process.env.RESEND_API_URL || 'https://api.resend.com'}/emails`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [req.hostEmail], subject: 'Pickleball Manager — email thử', text: 'Email gửi thử từ Trang Owner. Nếu bạn nhận được thư này, cấu hình Resend đang hoạt động.' }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw fail(502, `Resend answered ${r.status}.`, 'send_failed');
+  res.json({ sent: true, to: req.hostEmail });
+}));
+
+router.patch('/settings/:key', wrap(async (req, res) => {
+  const key = req.params.key;
+  if (!(key in appSettings.KEYS)) throw fail(404, 'Unknown setting.');
+  const before = (await appSettings.all())[key]?.value;
+  await appSettings.set(key, req.body?.value, req.hostEmail);
+  await owner.audit(req, { action: 'setting.update', oldValue: { [key]: before }, newValue: { [key]: req.body.value } });
+  res.json((await appSettings.all())[key]);
 }));
 
 // ---- Plan payments ---------------------------------------------------------------

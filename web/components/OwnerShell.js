@@ -10,6 +10,10 @@ const TABS = [
   ['/owner', 'owner.tabOverview', '📊'],
   ['/owner/hosts', 'owner.tabHosts', '👥'],
   ['/owner/payments', 'owner.tabPayments', '💳'],
+  ['/owner/activity', 'owner.tabActivity', '🏓'],
+  ['/owner/feedback', 'owner.tabFeedback', '💬'],
+  ['/owner/announcements', 'owner.tabAnnouncements', '📣'],
+  ['/owner/system', 'owner.tabSystem', '🩺'],
   ['/owner/audit', 'owner.tabAudit', '📜'],
 ];
 
