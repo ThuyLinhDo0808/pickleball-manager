@@ -353,13 +353,13 @@ Mục Tài chính có các tab:
 | Tab | Nội dung |
 |---|---|
 | **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 2 ô **Thu – Chi** của đúng kỳ đang chọn (không còn ô *Còn lại*) · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
-| **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Thêm khoản **Thu/Chi**, nút **🧮 Bảng tính quỹ tháng** · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
+| **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Khung **Ghi khoản thu / chi**: một hàng ô nhập cùng cỡ (Loại · Hạng mục · Số tiền · Ngày · Ghi chú), dòng dưới xem trước khoản sắp ghi (VD *−1.500.000 đ · Thuê sân*) và nút **+ Thêm khoản**; nút **🧮 Bảng tính quỹ tháng** ở góc · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
 
 **Hạng mục có sẵn:**
 - Thu (ghi tay): **Quỹ tháng**, **Thu tiền bóng** (CLB cầu lông: *Thu tiền cầu*), **Khác**. (Hội viên, Phí kèo, Lệ phí giải do app tự ghi.)
-- Chi (ghi tay): **Thuê sân**, **Mua nước**, **Khác**. **Mua bóng** không ghi tay ở đây mà nhập ở **Kho bóng** (*Nhập bóng* tự ghi khoản chi *Mua bóng* vào sổ) — để không bị ghi trùng hai lần.
+- Chi (ghi tay): **Thuê sân**, **Mua nước**, **Khác**. **Mua bóng** không ghi tay ở đây mà nhập ở **Kho bóng** (*Nhập bóng* tự ghi khoản chi *Mua bóng* vào sổ) — để không bị ghi trùng hai lần. Để ai cũng biết: chọn **Chi** thì cuối khung có nút *🎾 Mua bóng? Nhập ở Kho bóng →*; trong danh sách hạng mục vẫn có **Mua bóng** — chọn nó sẽ hiện khung giải thích kèm nút **Mở Kho bóng để nhập bóng** và khoá nút *Thêm khoản*.
 - Quỹ tháng chỉ thu tiền sân + nước. **Tiền bóng thu riêng**, chỉ thu lại khi hết bóng. Chi phí phát sinh khác ghi vào **Khác** (bắt buộc ghi chú khoản gì) và thu riêng. Khoản cũ có hạng mục khác (VD *HLV / Coach*) vẫn giữ nguyên tên.
 
 **🧮 Bảng tính quỹ tháng** (nút trong khung *Ghi khoản thu / chi*): bảng giống file Excel để Host tính số tiền thu mỗi thành viên mỗi tháng.
@@ -590,6 +590,7 @@ Người chơi dùng chung app: **Trang chủ** (`/home`, xem [3.1](#31-trang-ch
 - **Hồ sơ** (`/p/profile`): ảnh đại diện, họ tên, số điện thoại, DUPR, giới tính, năm sinh.
 - **Mã check-in của tôi**: mã QR cá nhân để Host / điều phối viên quét khi đến sân (*Phóng to*, *Đổi mã mới*).
 - **Kết nối Telegram**: bấm nút → mở bot → bấm *Start*. Từ đó người chơi nhận tin nhắn ngay khi được đẩy từ danh sách chờ lên danh sách chính. *Ngắt kết nối* bất cứ lúc nào.
+- **Thông báo qua email**: chỉ hiện khi máy chủ đã cấu hình gửi email. Mặc định bật; người chơi bấm *Tắt email* nếu không muốn nhận (xem [8.6](#86-thông-báo-khi-được-đẩy-từ-danh-sách-chờ)).
 - **Tham gia CLB** qua link `/join/<token>` mà Host gửi:
   1. Chọn gói, tháng bắt đầu và số kỳ. App hiện tổng tiền.
   2. Bấm *Xác nhận đăng ký* (cần đăng nhập và có hồ sơ).
@@ -666,21 +667,22 @@ Khi có người huỷ (hoặc Host bấm *Đưa lên DS chính*), người đư
 
 > 🎉 Lan ơi, bạn đã được đẩy lên DANH SÁCH CHÍNH THỨC kèo "Kèo tối thứ 5" — 20:00 T5 01/10 tại Sân Kỳ Hòa. Hẹn gặp bạn ở sân!
 
-Có hai kênh độc lập. Kênh nào lỗi cũng không làm hỏng thao tác huỷ.
+Có ba kênh độc lập. Kênh nào lỗi cũng không làm hỏng thao tác huỷ.
 
 | Kênh | Cách bật | Ai nhận |
 |---|---|---|
 | **Bot Telegram** (miễn phí) | Nhà phát triển cài bot một lần (xem [11.3](#113-bot-telegram-thông-báo-danh-sách-chờ)). Người chơi bấm **Kết nối Telegram** trong Cổng người chơi rồi bấm *Start*. | Chính người chơi, qua tin nhắn riêng |
+| **Email** (mặc định **tắt**) | **Tài khoản → Thông báo cho người chơi** → bật công tắc *Gửi email thông báo cho người chơi*. Máy chủ cần tên miền riêng đã xác minh trên Resend + `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` (xem [12](#12-biến-môi-trường)); chưa có thì app hiện cảnh báo vàng và chưa gửi gì. | Email tài khoản của người chơi. Thư mang **tên CLB** (gửi từ địa chỉ của app), người chơi bấm *Trả lời* là về **email của Host**. Người chơi tự tắt được ở *Hoạt động → Thông báo qua email*. |
 | **Webhook của Host** | **Tài khoản → Thông báo cho người chơi**: dán URL `https://…` rồi bấm *Gửi thử* | Hệ thống của Host (Make / Zapier / n8n), để chuyển tiếp qua **Zalo ZNS**, SMS, nhóm Telegram, Slack… |
 
-Cùng hai kênh đó, app còn gửi các tin sau:
+Cùng các kênh đó, app còn gửi các tin sau (email: các tin gửi cho người chơi, kể cả email cảm ơn + link khảo sát sau buổi cho khách):
 
 | `type` (webhook) | Khi nào | Ai nhận |
 |---|---|---|
 | `waitlist_promoted` | Người chờ được đẩy lên (`payment_required: true` nếu là khách phải chuyển khoản trong 2 giờ) | Người chơi + Host |
 | `payment_submitted` | Khách vừa gửi ảnh chuyển khoản (`amount`) | Host (chỉ webhook) |
 | `payment_confirmed` | Host xác nhận thanh toán (`ticket_url` = link vé) | Người chơi + Host |
-| *(chỉ Telegram)* | Host từ chối ảnh chuyển khoản (kèm lý do) | Người chơi |
+| *(Telegram + email)* | Host từ chối ảnh chuyển khoản (kèm lý do) | Người chơi |
 | `event_cancelled` | Host huỷ kèo (`players` = số người được báo) | Người chơi + Host |
 | `member_request` | Có người xin xác nhận là thành viên CLB (`new_member: true` nếu là yêu cầu vào CLB mới, `false` nếu khớp SĐT thành viên có sẵn) | Host (chỉ webhook) |
 
@@ -849,6 +851,7 @@ supabase/migrations/
 ├── 20261021090000_meeting_money.sql                   # tài chính buổi họp: meeting_money, meeting_guests, meeting_expenses, events.meeting_settlement
 ├── 20261022090000_club_fund_calculator.sql           # bảng tính quỹ tháng của CLB: clubs.fund_calc
 └── 20261023090000_ball_log_xeve_inventory.sql        # kho bóng Xé Vé (inventory_items.host_id) + ghi bóng hỏng từng buổi
+└── 20261024090000_player_email_notices.sql          # công tắc email cho người chơi (users.notify_players_email, player_profiles.email_notices)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -903,7 +906,7 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `TELEGRAM_WEBHOOK_SECRET` | | Chuỗi bí mật Telegram gửi kèm mỗi cập nhật (header `X-Telegram-Bot-Api-Secret-Token`) |
 | `TELEGRAM_API_URL` | | Tuỳ chọn: Bot API server tự host (mặc định `https://api.telegram.org`) |
 | `PUBLIC_WEB_URL` | | Địa chỉ web (ví dụ `https://pickleball-manager.vercel.app`) để đưa link vé / link thanh toán / link khảo sát vào tin nhắn. Bỏ trống thì dùng `CORS_ORIGIN` nếu là https. |
-| `NOTIFY_FROM_EMAIL` | | Tuỳ chọn: gửi email cảm ơn + link khảo sát cho khách giao lưu (cần `RESEND_API_KEY` và một domain đã xác minh trên Resend, ví dụ `CLB <noreply@clb-cua-ban.vn>`). Bỏ trống thì chỉ gửi qua Telegram và hiện trong trang Người chơi. |
+| `NOTIFY_FROM_EMAIL` | | Tuỳ chọn: địa chỉ gửi email thông báo cho người chơi (được đẩy lên, xác nhận/từ chối chuyển khoản, huỷ kèo, khảo sát sau buổi). Cần `RESEND_API_KEY` và tên miền đã xác minh trên Resend, ví dụ `Pickleball Manager <thongbao@ten-mien-cua-ban.vn>` — tên hiển thị được thay bằng tên CLB. Mỗi Host còn phải tự bật công tắc trong *Thông báo cho người chơi* (mặc định tắt). Bỏ trống thì chỉ gửi qua Telegram/webhook. |
 | `SURVEY_SWEEP_DISABLED` | | `true` để tắt việc tự gửi khảo sát sau buổi (mặc định bật, kiểm tra 10 phút/lần) |
 
 ### Web (`web/.env.local` hoặc Vercel → Environment Variables)
@@ -1026,7 +1029,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Nhóm | Route chính |
 |---|---|
 | Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
-| Host | `GET /api/host/account/delete-preview` · `DELETE /api/host/account?confirm=<email>` · `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `GET /api/host/plan` (gói, giới hạn CLB, Social Manager) · `POST /api/host/plan/request` `{kind: social_manager | tier, tier}` (tier thấp hơn = hạ gói ngay; `409 too_many_clubs` / `over_capacity` nếu không vừa) · `POST /api/host/plan/cancel` `{kind: social_manager | social_manager_request | upgrade_request}` (`409 upcoming_games` khi còn kèo Xé Vé sắp tới) · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
+| Host | `GET /api/host/account/delete-preview` · `DELETE /api/host/account?confirm=<email>` · `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `GET /api/host/plan` (gói, giới hạn CLB, Social Manager) · `POST /api/host/plan/request` `{kind: social_manager | tier, tier}` (tier thấp hơn = hạ gói ngay; `409 too_many_clubs` / `over_capacity` nếu không vừa) · `POST /api/host/plan/cancel` `{kind: social_manager | social_manager_request | upgrade_request}` (`409 upcoming_games` khi còn kèo Xé Vé sắp tới) · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` (`notify_players_email` bật/tắt email cho người chơi; GET trả thêm `email_ready`) · `POST /api/host/notifications/test` |
 | CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH /api/clubs/:id` (PATCH nhận thêm `fund_calc`: bảng tính quỹ tháng) · `GET /api/clubs/:id/delete-preview` · `DELETE /api/clubs/:id?confirm=<tên CLB>` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. Chỉ `delete-preview` và `DELETE` là riêng chủ CLB (co-admin nhận `403 owner_only`). |
 | Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `GET /api/clubs/:id/birthdays?days=3` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
@@ -1044,7 +1047,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thống kê | `GET /api/analytics/finance?year=` · `/events-pnl?year=` (theo năm dương lịch; mặc định năm nay; dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` (kèm `role` mạnh nhất) · `GET /api/staff/events` (kèm `kind`, `arrived`) · `GET /api/staff/events/:id` · `POST …/participants` (điều phối viên thêm khách vãng lai + check-in; hết chỗ thì vào danh sách chờ) · `POST …/participants/:pid/:action` (`checkin` / `no_show` / `undo` / `promote`) · `POST …/checkin-code` · `POST/PATCH …/matches` |
-| Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` |
+| Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` · `PUT /api/player/email-notices` `{enabled}` (`/me` trả `email_notices: {available, enabled}`) |
 
 ---
 
@@ -1052,7 +1055,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 | Nhóm | Bảng / View |
 |---|---|
-| Tài khoản | `users` (có `notify_webhook_url`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký; `social_manager`, `social_manager_requested_at`, `upgrade_requested_at`, `upgrade_requested_tier`), view `v_host_capacity_usage` |
+| Tài khoản | `users` (có `notify_webhook_url`, `notify_players_email`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói + giới hạn, tự tạo khi đăng ký; `social_manager`, `social_manager_requested_at`, `upgrade_requested_at`, `upgrade_requested_tier`), view `v_host_capacity_usage` |
 | CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, `district`, `play_duration`, `real_rank` (cũ, không còn hiển thị), `priority` + `discount_pct` cho khách, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
 | Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
@@ -1060,7 +1063,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Giải đấu | `tournaments` (`player_ranks` = hạng A–D của từng người trong giải; `kind` pairs/team; vòng tròn tính điểm = `group_count` 1 + `advance_per_group` 0, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items` (`club_id` hoặc `host_id` cho kho Xé Vé), `inventory_moves` (`purchase`, `use` = lấy bóng mới ra, `broken` = bóng đang dùng bị hỏng, `adjust`, `retire` cũ) |
-| Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |
+| Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`, `email_notices`) |
 | Lịch sử | `change_history` (SCD Type 2, ghi bằng trigger) |
 | Bảng tính quỹ | `clubs.fund_calc` (jsonb: giá sân/giờ, giờ/buổi, buổi/tháng, % giảm, bóng, nước, số thành viên, làm tròn, buổi bảo lưu, khung giờ giao lưu) |
 | Họp mặt | `meeting_money` (đã chuyển khoản / tài trợ từng người), `meeting_guests` (khách mời + người mời), `meeting_expenses` (khoản chi), `events.meeting_settlement` (cách kết toán) |
@@ -1094,6 +1097,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Lỗi kiểu `column … does not exist` sau khi cập nhật code | Database chưa được cập nhật. Chạy `supabase db push` (xem [11.2](#112-cập-nhật-database-production-bằng-migration-supabase-cli)), hoặc chạy lại `database/schema.sql` nếu chưa có dữ liệu thật. |
 | Nút *Quét QR* không mở được camera | Camera chỉ chạy trên **https** và cần cho phép quyền camera trong trình duyệt. Nếu vẫn không được, dán mã `PBP:…` vào ô bên dưới camera. |
 | Quét QR báo "Không có tên trong kèo" | Người chơi chưa đăng ký kèo này (hoặc đăng ký bằng số điện thoại khác mà không đăng nhập). Hãy thêm họ vào kèo trước. |
+| Người chơi không nhận được email thông báo | Kiểm tra: Host đã bật công tắc *Gửi email thông báo cho người chơi*; không còn cảnh báo vàng (đã đặt `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` trên tên miền đã xác minh); người chơi chưa *Tắt email*. Xem trạng thái gửi trong Resend → Emails; nhắc người chơi kiểm tra thư mục Spam. |
 | Người chơi không nhận được tin Telegram | Kiểm tra 3 biến `TELEGRAM_*` trên Render, đã chạy `npm run telegram:webhook`, và người chơi đã bấm *Start* (Cổng người chơi hiện "Đã kết nối ✓"). |
 | Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |
 | Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số trong danh sách thành viên thì nút "Tôi là thành viên" mới tìm được. |

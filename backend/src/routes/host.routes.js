@@ -6,7 +6,7 @@ const { forgetHost } = require('../middleware/auth');
 const { getPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
 
 const { notifyFeedback } = require('../services/feedback');
-const { postWebhook, promotedText } = require('../services/notify');
+const { postWebhook, promotedText, emailReady } = require('../services/notify');
 
 const router = express.Router();
 const ALLOW_SELF_SERVE = process.env.ALLOW_TIER_SELF_SERVE === 'true';
@@ -173,18 +173,37 @@ function cleanWebhookUrl(v) {
   return { url: u.toString() };
 }
 
+const EMAIL_MIGRATION = '20261024090000_player_email_notices.sql';
+
 router.get('/notifications', async (req, res) => {
-  const { data, error } = await supabase.from('users').select('notify_webhook_url').eq('id', req.hostId).single();
+  const { data, error } = await supabase.from('users').select('*').eq('id', req.hostId).single();
   if (error) return dbError(res, error);
-  res.json({ notify_webhook_url: data.notify_webhook_url, telegram_bot: process.env.TELEGRAM_BOT_USERNAME || null });
+  res.json({
+    notify_webhook_url: data.notify_webhook_url,
+    telegram_bot: process.env.TELEGRAM_BOT_USERNAME || null,
+    // Emails to players: the Host's switch (off by default) and whether the server can send.
+    notify_players_email: !!data.notify_players_email,
+    email_ready: emailReady(),
+    email_migrated: 'notify_players_email' in data,
+  });
 });
 
+// Body: { notify_webhook_url } and/or { notify_players_email: boolean }.
 router.patch('/notifications', async (req, res) => {
-  const { url, error: bad } = cleanWebhookUrl(req.body.notify_webhook_url);
-  if (bad) return res.status(400).json({ error: bad });
-  const { data, error } = await supabase.from('users').update({ notify_webhook_url: url }).eq('id', req.hostId).select('notify_webhook_url').single();
-  if (error) return dbError(res, error);
-  res.json(data);
+  const patch = {};
+  if ('notify_webhook_url' in req.body) {
+    const { url, error: bad } = cleanWebhookUrl(req.body.notify_webhook_url);
+    if (bad) return res.status(400).json({ error: bad });
+    patch.notify_webhook_url = url;
+  }
+  if ('notify_players_email' in req.body) patch.notify_players_email = req.body.notify_players_email === true;
+  if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nothing to change.' });
+  const { data, error } = await supabase.from('users').update(patch).eq('id', req.hostId).select('*').single();
+  if (error) {
+    if ('notify_players_email' in patch) return res.status(409).json({ error: `Run migration ${EMAIL_MIGRATION} first.` });
+    return dbError(res, error);
+  }
+  res.json({ notify_webhook_url: data.notify_webhook_url, notify_players_email: !!data.notify_players_email });
 });
 
 // Send a sample "promoted" message so the Host can check their Zalo/Make/Zapier flow.

@@ -57,6 +57,15 @@ export default function PlayerHome() {
     reload();
   }
 
+  async function setEmailNotices(enabled) {
+    try {
+      await api.put('/api/player/email-notices', { enabled });
+      reload();
+    } catch (err) {
+      window.alert(err.message);
+    }
+  }
+
   async function cancelEvent(h) {
     const late = h.cancel_deadline && new Date() > new Date(h.cancel_deadline) && h.status === 'registered';
     if (!window.confirm(late ? t('pp.cancelLateAsk', { title: h.title }) : t('pp.cancelAsk', { title: h.title }))) return;
@@ -191,6 +200,18 @@ export default function PlayerHome() {
           ) : (
             <button className="btn-primary text-sm" onClick={connectTelegram}>{t('pp.tgConnect')}</button>
           )}
+        </section>
+      )}
+
+      {me.email_notices?.available && p && (
+        <section className="card mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-white font-semibold">✉️ {t('pp.emailTitle')}</h2>
+            <p className="text-gray-400 text-xs">{me.email_notices.enabled ? t('pp.emailOn', { email: me.email || '' }) : t('pp.emailOff')}</p>
+          </div>
+          <button className={me.email_notices.enabled ? 'text-gray-400 text-sm' : 'btn-primary text-sm'} onClick={() => setEmailNotices(!me.email_notices.enabled)}>
+            {me.email_notices.enabled ? t('pp.emailTurnOff') : t('pp.emailTurnOn')}
+          </button>
         </section>
       )}
 
