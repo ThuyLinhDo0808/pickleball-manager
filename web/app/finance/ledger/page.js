@@ -15,9 +15,10 @@ const LABEL = 'block text-xs text-gray-400 mb-1.5';
 const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
 
 // The categories a Host picks from; an older entry keeps its own as an extra choice.
-function CategorySelect({ type, value, onChange }) {
+// `withBalls`: also list "Mua bóng", which only points the Host to the ball store.
+function CategorySelect({ type, value, onChange, withBalls = false }) {
   const { t } = useI18n();
-  const presets = type === 'income' ? MANUAL_INCOME : MANUAL_EXPENSE;
+  const presets = type === 'income' ? MANUAL_INCOME : withBalls ? [...MANUAL_EXPENSE.slice(0, -1), 'balls', 'other'] : MANUAL_EXPENSE;
   const choices = value && !presets.includes(value) ? [...presets, value] : presets;
   return (
     <select className="input h-[42px]" value={value} onChange={(e) => onChange(e.target.value)}>
@@ -37,9 +38,12 @@ function AddEntry({ club, onDone }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [calc, setCalc] = useState(false);
+  // Balls are bought in the ball store (it adds them to the stock and books the expense).
+  const buyingBalls = f.type === 'expense' && f.category === 'balls';
 
   async function submit(e) {
     e.preventDefault();
+    if (buyingBalls) return;
     setBusy(true);
     setError('');
     try {
@@ -86,7 +90,7 @@ function AddEntry({ club, onDone }) {
         </div>
         <div className="col-span-2 md:col-span-3">
           <label className={LABEL}>{t('fin.category')}</label>
-          <CategorySelect type={f.type} value={f.category} onChange={(category) => setF({ ...f, category })} />
+          <CategorySelect type={f.type} value={f.category} withBalls onChange={(category) => setF({ ...f, category })} />
         </div>
         <div className="md:col-span-2">
           <label className={LABEL}>{t('fin.amount')}</label>
@@ -101,18 +105,30 @@ function AddEntry({ club, onDone }) {
           <input className="input h-[42px]" required={f.category === 'other'} placeholder={f.category === 'other' ? t('fin.otherNotePh') : t('fin.notePh')} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         </div>
       </div>
+      {buyingBalls && (
+        <div className="mx-5 mb-4 rounded-xl border border-orange-400/40 bg-orange-400/10 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="text-sm text-orange-100 flex-1">
+            <div className="font-semibold">🎾 {t('fin.ballsCalloutTitle')}</div>
+            <div className="text-orange-200/80 text-xs mt-0.5">{t('fin.ballsCalloutText')}</div>
+          </div>
+          <Link href="/finance/inventory" className="btn-primary text-sm text-center shrink-0">{t('fin.ballsCalloutBtn')} →</Link>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-navy-700 bg-navy-900/40">
         <div className="text-xs text-gray-400 min-w-0">
-          {Number(f.amount) > 0 ? (
-            <span className={`font-semibold tabular-nums ${f.type === 'income' ? 'text-lime-300' : 'text-orange-300'}`}>
+          {Number(f.amount) > 0 && !buyingBalls && (
+            <span className={`font-semibold tabular-nums mr-3 ${f.type === 'income' ? 'text-lime-300' : 'text-orange-300'}`}>
               {f.type === 'income' ? '+' : '−'}{formatVnd(Number(f.amount))} · {categoryLabel(f.category, t)}
             </span>
-          ) : f.type === 'expense' ? (
-            <Link href="/finance/inventory" className="hover:text-lime-400">💡 {t('fin.ballsHint')}</Link>
-          ) : null}
+          )}
+          {f.type === 'expense' && !buyingBalls && (
+            <Link href="/finance/inventory" className="inline-flex items-center gap-1 rounded-full border border-navy-600 px-2.5 py-1 text-gray-300 hover:border-lime-400 hover:text-lime-300">
+              🎾 {t('fin.ballsLink')} →
+            </Link>
+          )}
           {error && <span className="block text-red-400 text-sm">{error}</span>}
         </div>
-        <button className="btn-primary px-6" disabled={busy}>+ {t('fin.addBtn')}</button>
+        <button className="btn-primary px-6" disabled={busy || buyingBalls}>+ {t('fin.addBtn')}</button>
       </div>
       <Modal open={calc} title={`🧮 ${t('calc.title')}`} onClose={() => setCalc(false)}>
         {calc && (

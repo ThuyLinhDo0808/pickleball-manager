@@ -1519,9 +1519,12 @@ export const vi = {
     toPlans: 'Đặt làm giá gói tháng',
   },
   fin: {
+    ballsLink: 'Mua bóng? Nhập ở Kho bóng',
+    ballsCalloutTitle: 'Mua bóng thì nhập ở Kho bóng',
+    ballsCalloutText: 'Vào Kho bóng → bấm "+ Nhập bóng", điền số quả và giá. App tự cộng bóng vào kho và tự ghi khoản chi "Mua bóng" vào sổ này — không cần ghi ở đây (tránh ghi trùng).',
+    ballsCalloutBtn: 'Mở Kho bóng để nhập bóng',
     addBtn: 'Thêm khoản',
     notePh: 'VD: Tiền sân tháng 10',
-    ballsHint: 'Mua bóng → nhập ở Kho bóng (tự ghi vào sổ)',
     otherNotePh: 'Ghi rõ khoản gì — VD thuê HLV, mua giải thưởng',
     byMonth: "Theo tháng",
     byYear: "Theo năm",
@@ -2064,6 +2067,10 @@ export const vi = {
   // Words that change in a badminton club (see lib/i18n/core.js).
   sport: {
     badminton: {
+      'fin.ballsLink': 'Mua cầu? Nhập ở Kho cầu',
+      'fin.ballsCalloutTitle': 'Mua cầu thì nhập ở Kho cầu',
+      'fin.ballsCalloutText': 'Vào Kho cầu → bấm "+ Nhập cầu", điền số quả và giá. App tự cộng vào kho và tự ghi khoản chi "Mua cầu" vào sổ này — không cần ghi ở đây (tránh ghi trùng).',
+      'fin.ballsCalloutBtn': 'Mở Kho cầu để nhập cầu',
       'inventory.logSession': 'Thống kê cầu cuối ngày',
       'inventory.recordExpense': 'Ghi vào sổ thu chi (Mua cầu)',
       'inventory.row_bought': 'Số cầu đã mua',
@@ -2085,7 +2092,6 @@ export const vi = {
       'calc.ballsPerPerson': 'Số tiền cầu / người',
       'calc.ballsRounded': 'Làm tròn — thu tiền cầu mỗi người',
       'fin.cat_ball_fund': 'Thu tiền cầu',
-      'fin.ballsHint': 'Mua cầu → nhập ở Kho cầu (tự ghi vào sổ)',
       'fin.cat_balls': 'Mua cầu',
       'fin.autoHint': 'Khoản tự động (từ gói hội viên, kho cầu hoặc phí kèo) — sửa tại nơi tạo ra nó.',
       'common.level': 'Trình độ',

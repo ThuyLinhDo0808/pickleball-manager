@@ -1519,9 +1519,12 @@ export const en = {
     toPlans: 'Set as the monthly plan price',
   },
   fin: {
+    ballsLink: 'Buying balls? Add them in the ball store',
+    ballsCalloutTitle: 'Balls are bought in the ball store',
+    ballsCalloutText: 'Go to the ball store → "+ Add balls", enter how many and the price. The app adds them to the stock and books the "Balls" expense in this ledger — no need to enter it here (it would count twice).',
+    ballsCalloutBtn: 'Open the ball store',
     addBtn: 'Add entry',
     notePh: 'e.g. October court rent',
-    ballsHint: 'Buying balls → record it in the ball store (goes into the ledger)',
     otherNotePh: 'Say what it was — e.g. coach, prizes',
     byMonth: "By month",
     byYear: "By year",
@@ -2064,6 +2067,10 @@ export const en = {
   // Words that change in a badminton club (see lib/i18n/core.js).
   sport: {
     badminton: {
+      'fin.ballsLink': 'Buying shuttles? Add them in Shuttles',
+      'fin.ballsCalloutTitle': 'Shuttles are bought in Shuttles',
+      'fin.ballsCalloutText': 'Go to Shuttles → "+ Add shuttles", enter how many and the price. The app adds them to the stock and books the expense in this ledger — no need to enter it here (it would count twice).',
+      'fin.ballsCalloutBtn': 'Open Shuttles',
       'inventory.logSession': 'End-of-day shuttle count',
       'inventory.recordExpense': 'Record in the ledger (Shuttles)',
       'inventory.row_bought': 'Shuttles bought',
@@ -2085,7 +2092,6 @@ export const en = {
       'calc.ballsPerPerson': 'Shuttle money / member',
       'calc.ballsRounded': 'Rounded — shuttle money per member',
       'fin.cat_ball_fund': 'Shuttle money',
-      'fin.ballsHint': 'Buying shuttles → record it in Shuttles (goes into the ledger)',
       'fin.cat_balls': 'Shuttles',
       'fin.autoHint': 'Automatic entry (memberships, shuttles or game fees) — edit it where it was created.',
       'common.level': 'Level',

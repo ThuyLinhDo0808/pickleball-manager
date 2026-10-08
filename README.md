@@ -359,7 +359,7 @@ Mục Tài chính có các tab:
 
 **Hạng mục có sẵn:**
 - Thu (ghi tay): **Quỹ tháng**, **Thu tiền bóng** (CLB cầu lông: *Thu tiền cầu*), **Khác**. (Hội viên, Phí kèo, Lệ phí giải do app tự ghi.)
-- Chi (ghi tay): **Thuê sân**, **Mua nước**, **Khác**. **Mua bóng** không ghi tay ở đây mà nhập ở **Kho bóng** (*Nhập bóng* tự ghi khoản chi *Mua bóng* vào sổ) — để không bị ghi trùng hai lần.
+- Chi (ghi tay): **Thuê sân**, **Mua nước**, **Khác**. **Mua bóng** không ghi tay ở đây mà nhập ở **Kho bóng** (*Nhập bóng* tự ghi khoản chi *Mua bóng* vào sổ) — để không bị ghi trùng hai lần. Để ai cũng biết: chọn **Chi** thì cuối khung có nút *🎾 Mua bóng? Nhập ở Kho bóng →*; trong danh sách hạng mục vẫn có **Mua bóng** — chọn nó sẽ hiện khung giải thích kèm nút **Mở Kho bóng để nhập bóng** và khoá nút *Thêm khoản*.
 - Quỹ tháng chỉ thu tiền sân + nước. **Tiền bóng thu riêng**, chỉ thu lại khi hết bóng. Chi phí phát sinh khác ghi vào **Khác** (bắt buộc ghi chú khoản gì) và thu riêng. Khoản cũ có hạng mục khác (VD *HLV / Coach*) vẫn giữ nguyên tên.
 
 **🧮 Bảng tính quỹ tháng** (nút trong khung *Ghi khoản thu / chi*): bảng giống file Excel để Host tính số tiền thu mỗi thành viên mỗi tháng.
