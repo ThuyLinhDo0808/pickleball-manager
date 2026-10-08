@@ -10,6 +10,7 @@ const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText, emailReady } = require('../services/notify');
 
 const billing = require('../services/billing');
+const promo = require('../services/promo');
 const { schemaStatus } = require('../services/schemaCheck');
 
 const BILLING_MIGRATION = '20261025090000_plan_payments.sql';
@@ -117,7 +118,7 @@ router.post('/plan/request', async (req, res) => {
     let payment = null;
     if (!ALLOW_SELF_SERVE) {
       if (!(await billingReady())) return res.status(409).json({ error: `Run migration ${BILLING_MIGRATION} first.` });
-      payment = await billing.createOrder(req.hostId, { kind, tier, months: req.body.months });
+      payment = await billing.createOrder(req.hostId, { kind, tier, months: req.body.months, promoCode: req.body.promo_code || null });
     }
     const patch = ALLOW_SELF_SERVE
       ? kind === 'social_manager'
@@ -130,11 +131,62 @@ router.post('/plan/request', async (req, res) => {
     if (error) throw error;
     if (!ALLOW_SELF_SERVE) {
       const what = kind === 'social_manager' ? 'Đăng ký Social Manager (Xé Vé)' : `Nâng cấp gói lên ${tier}`;
-      const money = `${payment.months} tháng · ${payment.amount.toLocaleString('vi-VN')}đ · nội dung CK ${payment.ref}`;
+      const money = `${payment.months} tháng · ${payment.amount.toLocaleString('vi-VN')}đ${payment.discount_amount ? ` (mã ${payment.promo_code}, giảm ${payment.discount_amount.toLocaleString('vi-VN')}đ)` : ''} · nội dung CK ${payment.ref}`;
       await notifyFeedback({ message: `[Yêu cầu gói] ${what} — ${money}. Khi nhận được tiền, vào trang Quản trị → Thanh toán gói để xác nhận.`, contact: req.hostEmail, page: '/admin/payments', userEmail: req.hostEmail }).catch(() => {});
     }
     res.json({ applied: ALLOW_SELF_SERVE, payment, plan: await getPlan(req.hostId, { fresh: true }) });
   } catch (err) {
+    if (err.status && err.code) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
+// ---- Promo codes ------------------------------------------------------------------
+
+// Preview a code: what it gives, and for an order the discount and the new total.
+// { code, kind?: tier|social_manager, tier?, months? }
+router.post('/promo/check', async (req, res) => {
+  try {
+    const p = await promo.check(req.hostId, req.body?.code);
+    const out = { promo: promo.describe(p) };
+    if (p.kind === 'percent' && ['tier', 'social_manager'].includes(req.body?.kind)) {
+      const price = billing.prices()[req.body.kind === 'social_manager' ? 'social_manager' : req.body.tier];
+      const months = billing.MONTH_CHOICES.includes(Number(req.body.months)) ? Number(req.body.months) : 1;
+      if (price != null) {
+        const gross = price * months;
+        out.discount = promo.discountFor(p, req.body.kind, gross);
+        out.gross = gross;
+        out.amount = gross - out.discount;
+      }
+    }
+    res.json(out);
+  } catch (err) {
+    if (err.status && err.code) return res.status(err.status).json({ error: err.message, code: err.code, promo_kind: err.promo_kind });
+    dbError(res, err);
+  }
+});
+
+// A trial code: switch its plan on now for its number of days (then back to Free).
+// Not over a plan the Host is paying for.
+router.post('/promo/redeem', async (req, res) => {
+  try {
+    const p = await promo.check(req.hostId, req.body?.code, { kind: 'trial' });
+    const plan = await getPlan(req.hostId, { fresh: true });
+    if (plan.tier !== 'free' && !plan.trial) return res.status(409).json({ error: 'You already have a paid plan.', code: 'has_paid_plan' });
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const ends = billing.addDays(today, p.trial_days);
+    await promo.reserve(p, req.hostId, null, 0);
+    const { data: sub } = await supabase.from('host_subscriptions').select('trial_started_at').eq('host_id', req.hostId).maybeSingle();
+    const { error } = await supabase
+      .from('host_subscriptions')
+      .update({ tier: p.trial_tier, tier_paid_until: ends, trial_ends_on: ends, trial_started_at: sub?.trial_started_at || new Date().toISOString(), upgrade_requested_at: null, upgrade_requested_tier: null })
+      .eq('host_id', req.hostId);
+    if (error) throw error;
+    forgetPlan(req.hostId);
+    await notifyFeedback({ message: `[Gói] Dùng mã ${p.code}: dùng thử ${String(p.trial_tier).toUpperCase()} ${p.trial_days} ngày (đến ${ends})`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
+    res.json({ applied: true, tier: p.trial_tier, ends_on: ends, plan: await getPlan(req.hostId, { fresh: true }) });
+  } catch (err) {
+    if (err.status && err.code) return res.status(err.status).json({ error: err.message, code: err.code, promo_kind: err.promo_kind });
     dbError(res, err);
   }
 });

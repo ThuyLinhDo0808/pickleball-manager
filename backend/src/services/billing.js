@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { supabase } = require('../supabase');
 const { vietqrUrl } = require('./payment');
 const { todayYmd } = require('./memberships');
+const promo = require('./promo');
 
 // Monthly price (VND). PLAN_PRICE_<NAME> overrides one, e.g. PLAN_PRICE_BASIC=99000.
 const DEFAULT_PRICES = { ...require('./planFeatures').PRICES, social_manager: 89000 };
@@ -46,6 +47,8 @@ function present(order) {
     tier: order.tier,
     months: order.months,
     amount: Number(order.amount),
+    discount_amount: Number(order.discount_amount || 0),
+    promo_code: order.promo_code || null,
     ref: order.ref,
     status: order.status,
     created_at: order.created_at,
@@ -64,24 +67,39 @@ async function pendingOrders(hostId) {
   };
 }
 
-// A new order replaces the Host's earlier waiting order of the same kind.
-async function createOrder(hostId, { kind, tier, months }) {
+// A new order replaces the Host's earlier waiting order of the same kind. A promo code
+// (percent) lowers the amount; its use is reserved with the order.
+async function createOrder(hostId, { kind, tier, months, promoCode }) {
   const m = MONTH_CHOICES.includes(Number(months)) ? Number(months) : 1;
   const price = prices()[kind === 'social_manager' ? 'social_manager' : tier];
   if (price == null) throw Object.assign(new Error('No price for this plan.'), { status: 400 });
   await cancelOrders(hostId, kind);
-  const { data, error } = await supabase
-    .from('plan_payments')
-    .insert({ host_id: hostId, kind, tier: kind === 'tier' ? tier : null, months: m, amount: price * m, ref: newRef() })
-    .select()
-    .single();
+  const gross = price * m;
+  let promoRow = null;
+  let discount = 0;
+  if (promoCode) {
+    promoRow = await promo.check(hostId, promoCode, { kind: 'order' });
+    discount = promo.discountFor(promoRow, kind, gross);
+  }
+  const row = { host_id: hostId, kind, tier: kind === 'tier' ? tier : null, months: m, amount: gross - discount, ref: newRef() };
+  if (promoRow) Object.assign(row, { promo_code_id: promoRow.id, discount_amount: discount });
+  const { data, error } = await supabase.from('plan_payments').insert(row).select().single();
   if (error) throw error;
-  return present(data);
+  if (promoRow) {
+    try {
+      await promo.reserve(promoRow, hostId, data.id, discount);
+    } catch (err) {
+      await supabase.from('plan_payments').update({ status: 'cancelled' }).eq('id', data.id);
+      throw err;
+    }
+  }
+  return present({ ...data, promo_code: promoRow?.code || null });
 }
 
 async function cancelOrders(hostId, kind) {
-  const { error } = await supabase.from('plan_payments').update({ status: 'cancelled' }).eq('host_id', hostId).eq('kind', kind).eq('status', 'pending');
+  const { data, error } = await supabase.from('plan_payments').update({ status: 'cancelled' }).eq('host_id', hostId).eq('kind', kind).eq('status', 'pending').select('id, promo_code_id');
   if (error) throw error;
+  await promo.release((data || []).filter((o) => o.promo_code_id).map((o) => o.id)).catch(() => {});
 }
 
 // YYYY-MM-DD + n months (end-of-month safe: Jan 31 + 1 month = Feb 28/29).
@@ -92,6 +110,12 @@ function addMonths(ymd, n) {
   target.setUTCDate(Math.min(d, last));
   return target.toISOString().slice(0, 10);
 }
+
+const addDays = (ymd, n) => {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 // Operator: the money arrived -> switch the plan on. Paying again for the plan the Host
 // already has extends it from its current end date.
@@ -137,4 +161,4 @@ async function expireIfDue(sub) {
   return { ...sub, ...patch, expired_tier: patch.tier ? sub.tier : null, expired_social_manager: 'social_manager' in patch };
 }
 
-module.exports = { DEFAULT_PRICES, MONTH_CHOICES, prices, operatorBank, isAdmin, present, pendingOrders, createOrder, cancelOrders, confirmOrder, expireIfDue, addMonths };
+module.exports = { DEFAULT_PRICES, MONTH_CHOICES, prices, operatorBank, isAdmin, present, pendingOrders, createOrder, cancelOrders, confirmOrder, expireIfDue, addMonths, addDays };

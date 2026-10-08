@@ -12,6 +12,7 @@ const { notifyFeedback } = require('../services/feedback');
 const appSettings = require('../services/appSettings');
 const { schemaStatus, PROBES } = require('../services/schemaCheck');
 const announcements = require('./announcements.routes');
+const promo = require('../services/promo');
 
 const router = express.Router();
 const MIGRATION = '20261026090000_owner_console.sql';
@@ -582,6 +583,108 @@ router.patch('/settings/:key', wrap(async (req, res) => {
   res.json((await appSettings.all())[key]);
 }));
 
+// ---- Promo codes ------------------------------------------------------------------
+
+const PROMO_KINDS = ['percent', 'trial'];
+const PROMO_APPLIES = ['any', 'tier', 'social_manager'];
+
+function cleanPromo(b, partial = false) {
+  const out = {};
+  if (!partial) {
+    out.code = promo.normalize(b.code);
+    if (!/^[A-Z0-9_-]{3,32}$/.test(out.code)) throw fail(400, 'Code: 3–32 letters, digits, - or _.', 'bad_code');
+    if (!PROMO_KINDS.includes(b.kind)) throw fail(400, 'kind must be percent or trial.');
+    out.kind = b.kind;
+    if (b.kind === 'percent') {
+      const pct = Number(b.percent);
+      if (!Number.isInteger(pct) || pct < 1 || pct > 100) throw fail(400, 'percent must be 1–100.');
+      out.percent = pct;
+      out.applies_to = PROMO_APPLIES.includes(b.applies_to) ? b.applies_to : 'any';
+      out.first_order_only = b.first_order_only === true;
+    } else {
+      if (!TIERS.includes(b.trial_tier) || b.trial_tier === 'free') throw fail(400, 'trial_tier must be a paid plan.');
+      const days = Number(b.trial_days);
+      if (!Number.isInteger(days) || days < 1 || days > 365) throw fail(400, 'trial_days must be 1–365.');
+      Object.assign(out, { trial_tier: b.trial_tier, trial_days: days });
+    }
+  }
+  if ('expires_on' in b) {
+    if (b.expires_on && !YMD.test(String(b.expires_on))) throw fail(400, 'expires_on must be YYYY-MM-DD.');
+    out.expires_on = b.expires_on || null;
+  }
+  if ('max_uses' in b) {
+    const n = b.max_uses === null || b.max_uses === '' ? null : Number(b.max_uses);
+    if (n !== null && (!Number.isInteger(n) || n < 1)) throw fail(400, 'max_uses must be a positive number or empty.');
+    out.max_uses = n;
+  }
+  if ('note' in b) out.note = String(b.note || '').trim().slice(0, 300) || null;
+  if (partial && 'active' in b) out.active = b.active === true;
+  return out;
+}
+
+router.get('/promos', wrap(async (req, res) => {
+  const [codes, uses] = await Promise.all([
+    fetchAll(() => supabase.from('promo_codes').select('*').order('created_at', { ascending: false })),
+    fetchAll(() => supabase.from('promo_redemptions').select('code_id, discount_amount, payment_id').order('code_id')),
+  ]);
+  const paidIds = new Set();
+  const withPay = uses.filter((u) => u.payment_id).map((u) => u.payment_id);
+  if (withPay.length) {
+    const { data } = await supabase.from('plan_payments').select('id').in('id', withPay).eq('status', 'paid');
+    for (const o of data || []) paidIds.add(o.id);
+  }
+  const today = S.vnYmd(new Date());
+  res.json(codes.map((c) => {
+    const mine = uses.filter((u) => u.code_id === c.id);
+    return {
+      ...c,
+      uses: mine.length,
+      paid_uses: mine.filter((u) => u.payment_id && paidIds.has(u.payment_id)).length,
+      discount_given: mine.filter((u) => paidIds.has(u.payment_id)).reduce((n, u) => n + Number(u.discount_amount || 0), 0),
+      state: !c.active ? 'off' : c.expires_on && c.expires_on < today ? 'expired' : c.max_uses && mine.length >= c.max_uses ? 'used_up' : 'live',
+    };
+  }));
+}));
+
+router.get('/promos/:id/redemptions', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Code not found.');
+  const { data, error } = await supabase.from('promo_redemptions').select('id, host_id, payment_id, discount_amount, created_at').eq('code_id', req.params.id).order('created_at', { ascending: false }).limit(200);
+  if (error) throw error;
+  const ids = [...new Set(data.map((r) => r.host_id))];
+  const pays = data.filter((r) => r.payment_id).map((r) => r.payment_id);
+  const [{ data: users }, { data: orders }] = await Promise.all([
+    ids.length ? supabase.from('users').select('id, email').in('id', ids) : { data: [] },
+    pays.length ? supabase.from('plan_payments').select('id, ref, status, amount').in('id', pays) : { data: [] },
+  ]);
+  const emailOf = new Map((users || []).map((u) => [u.id, u.email]));
+  const orderOf = new Map((orders || []).map((o) => [o.id, o]));
+  res.json(data.map((r) => ({ ...r, email: emailOf.get(r.host_id) || null, order: orderOf.get(r.payment_id) || null })));
+}));
+
+router.post('/promos', wrap(async (req, res) => {
+  const row = cleanPromo(req.body || {});
+  const { data, error } = await supabase.from('promo_codes').insert({ ...row, created_by: req.hostEmail }).select().single();
+  if (error) {
+    if (error.code === '23505') throw fail(409, 'This code already exists.', 'code_taken');
+    throw error;
+  }
+  await owner.audit(req, { action: 'promo.create', newValue: { code: data.code, kind: data.kind, percent: data.percent, trial_tier: data.trial_tier, trial_days: data.trial_days, expires_on: data.expires_on, max_uses: data.max_uses, first_order_only: data.first_order_only }, note: data.note });
+  res.status(201).json(data);
+}));
+
+router.patch('/promos/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Code not found.');
+  const { data: before } = await supabase.from('promo_codes').select('*').eq('id', req.params.id).maybeSingle();
+  if (!before) throw fail(404, 'Code not found.');
+  const patch = cleanPromo(req.body || {}, true);
+  if (!Object.keys(patch).length) throw fail(400, 'Nothing to change.');
+  const { data, error } = await supabase.from('promo_codes').update(patch).eq('id', before.id).select().single();
+  if (error) throw error;
+  const keys = Object.keys(patch);
+  await owner.audit(req, { action: 'promo.update', oldValue: Object.fromEntries(keys.map((k) => [k, before[k]])), newValue: Object.fromEntries(keys.map((k) => [k, data[k]])), note: data.code });
+  res.json(data);
+}));
+
 // ---- Plan payments ---------------------------------------------------------------
 
 // ?status=pending|paid|cancelled|all &from=&to= (YYYY-MM-DD, by order date)
@@ -635,6 +738,7 @@ router.post('/payments/:id/cancel', wrap(async (req, res) => {
   const clear = order.kind === 'tier' ? { upgrade_requested_at: null, upgrade_requested_tier: null } : { social_manager_requested_at: null };
   await supabase.from('host_subscriptions').update(clear).eq('host_id', order.host_id);
   const u = await loadHost(order.host_id).catch(() => null);
+  if (order.promo_code_id) await require('../services/promo').release([order.id]).catch(() => {});
   await owner.audit(req, { action: 'payment.cancel', host: u, oldValue: { status: 'pending' }, newValue: { status: 'cancelled' }, note: order.ref });
   res.json({ order });
 }));

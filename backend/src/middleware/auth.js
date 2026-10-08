@@ -1,5 +1,6 @@
 const { supabase } = require('../supabase');
 const { suspensionOf, OPEN_WHEN_SUSPENDED, suspendedResponse } = require('../services/owner');
+const viewAs = require('../services/viewAs');
 
 // Self-healing: if a host's users/host_subscriptions rows are somehow missing
 // (e.g. account existed before the bootstrap trigger), create them on the fly.
@@ -32,6 +33,11 @@ async function requireAuth(req, res, next) {
     req.hostEmail = data.user.email;
     // Staff access is granted by email, so only trust an email Supabase has confirmed.
     req.emailVerified = !!data.user.email_confirmed_at;
+    // The owner viewing the app as one Host (read-only, see services/viewAs.js).
+    if (req.headers['x-view-as']) {
+      if (await viewAs.apply(req, res)) return;
+      if (req.viewAs) return next();
+    }
     // A suspended account can still play, but not manage anything.
     const path = (req.originalUrl || '').split('?')[0];
     if (!OPEN_WHEN_SUSPENDED.some((re) => re.test(path))) {

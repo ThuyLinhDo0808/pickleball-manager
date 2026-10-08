@@ -6,7 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const ACTIONS = ['', 'subscription.update', 'payment.confirm', 'payment.cancel', 'account.suspend', 'account.unsuspend', 'club.member_addon', 'club.transfer', 'note.add', 'feedback.status', 'announcement.create', 'announcement.update', 'setting.update', 'undo'];
+const ACTIONS = ['', 'subscription.update', 'payment.confirm', 'payment.cancel', 'account.suspend', 'account.unsuspend', 'club.member_addon', 'club.transfer', 'note.add', 'feedback.status', 'announcement.create', 'announcement.update', 'setting.update', 'promo.create', 'promo.update', 'host.view_as', 'undo'];
 
 // Every change made in the owner console, newest first. Append-only: entries are
 // never edited or deleted; an undo is a new entry.

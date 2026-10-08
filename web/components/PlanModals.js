@@ -94,6 +94,7 @@ export function PlanPaymentBox({ payment, onCancel, busy }) {
         )}
         <div className="min-w-0">
           <CopyLine label={t('plan.payAmount')} value={formatVnd(payment.amount)} strong />
+          {payment.discount_amount > 0 && <p className="text-lime-300 text-xs -mt-1 mb-1">🎟 {t('plan.payDiscount', { v: formatVnd(payment.discount_amount) })}</p>}
           <CopyLine label={t('plan.payNote')} value={payment.ref} strong />
           <CopyLine label={t('plan.payBank')} value={payment.bank.name || payment.bank.code} />
           <CopyLine label={t('plan.payAccount')} value={payment.bank.account} />
@@ -116,6 +117,29 @@ function Checkout({ kind, tier, req, onBack }) {
   const [months, setMonths] = useState(choices[0]);
   const price = plan?.prices?.[kind === 'social_manager' ? 'social_manager' : tier] ?? 0;
   const what = kind === 'tier' ? tier.toUpperCase() : 'Social Manager';
+  // Promo code: checked against this plan and number of months.
+  const [code, setCode] = useState('');
+  const [promo, setPromo] = useState(null); // { code, percent, discount, amount }
+  const [promoErr, setPromoErr] = useState('');
+  const [checking, setChecking] = useState(false);
+  async function applyCode(m = months) {
+    if (!code.trim()) return;
+    setChecking(true);
+    setPromoErr('');
+    try {
+      const r = await api.post('/api/host/promo/check', { code, kind, tier, months: m });
+      if (r.promo.kind !== 'percent') {
+        setPromo(null);
+        setPromoErr(t('plan.promoIsTrial'));
+      } else setPromo({ code: r.promo.code, percent: r.promo.percent, discount: r.discount, amount: r.amount });
+    } catch (err) {
+      setPromo(null);
+      setPromoErr(t(`plan.promoErr_${err.payload?.code}`) === `plan.promoErr_${err.payload?.code}` ? err.message : t(`plan.promoErr_${err.payload?.code}`));
+    } finally {
+      setChecking(false);
+    }
+  }
+  const pickMonths = (m) => { setMonths(m); if (promo) applyCode(m); };
   return (
     <div className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-3">
       <p className="text-white font-semibold text-sm">{t('plan.checkoutTitle', { what })}</p>
@@ -127,18 +151,39 @@ function Checkout({ kind, tier, req, onBack }) {
             type="button"
             role="radio"
             aria-checked={months === m}
-            onClick={() => setMonths(m)}
+            onClick={() => pickMonths(m)}
             className={`rounded-lg px-3 py-1.5 text-sm border ${months === m ? 'border-lime-400 bg-lime-400 text-navy-950 font-bold' : 'border-navy-600 text-gray-200'}`}
           >
             {t('plan.nMonths', { n: m })}
           </button>
         ))}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-gray-300 text-sm">{t('plan.total')}: <b className="text-white text-base">{formatVnd(price * months)}</b></span>
+      <div className="flex gap-2 mb-1">
+        <input
+          className="input !py-1.5 text-sm uppercase font-mono flex-1 min-w-0"
+          placeholder={t('plan.promoPlaceholder')}
+          aria-label={t('plan.promoPlaceholder')}
+          value={code}
+          maxLength={32}
+          onChange={(e) => { setCode(e.target.value.toUpperCase()); setPromo(null); setPromoErr(''); }}
+        />
+        {promo ? (
+          <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => { setPromo(null); setCode(''); }}>✕</button>
+        ) : (
+          <button type="button" className="btn-secondary !py-1.5 text-sm" disabled={!code.trim() || checking} onClick={() => applyCode()}>{t('plan.promoApply')}</button>
+        )}
+      </div>
+      {promo && <p className="text-lime-300 text-xs mb-2">🎟 {t('plan.promoApplied', { code: promo.code, p: promo.percent, v: formatVnd(promo.discount) })}</p>}
+      {promoErr && <p className="text-red-300 text-xs mb-2">{promoErr}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+        <span className="text-gray-300 text-sm">
+          {t('plan.total')}:{' '}
+          {promo && <s className="text-gray-500 mr-1">{formatVnd(price * months)}</s>}
+          <b className="text-white text-base">{formatVnd(promo ? promo.amount : price * months)}</b>
+        </span>
         <div className="flex gap-2 ml-auto">
           {onBack && <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={onBack}>{t('common.cancel')}</button>}
-          <button type="button" className="btn-primary !py-1.5 text-sm" disabled={req.busy} onClick={() => req.send({ ...(tier ? { tier } : {}), months })}>
+          <button type="button" className="btn-primary !py-1.5 text-sm" disabled={req.busy} onClick={() => req.send({ ...(tier ? { tier } : {}), months, ...(promo ? { promo_code: promo.code } : {}) })}>
             {t('plan.getPayment')}
           </button>
         </div>
@@ -232,8 +277,48 @@ export function UpgradeModal({ open, onClose }) {
       {req.done === 'downgraded' && <p className="text-lime-300 text-sm mb-2">✓ {t('plan.downDone', { tier: current.toUpperCase() })}</p>}
       {req.done === 'applied' && <p className="text-lime-300 text-sm mb-2">✓ {t('plan.applied')}</p>}
       {req.error && <p className="text-red-400 text-sm mb-2">{req.error}</p>}
+      <TrialCode />
       <button type="button" className="btn-secondary w-full" onClick={close}>{t('plan.close')}</button>
     </Modal>
+  );
+}
+
+// "Have a trial code?" — switches its plan on at once for its number of days.
+function TrialCode() {
+  const { t } = useI18n();
+  const { reloadPlan } = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  async function redeem(e) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.post('/api/host/promo/redeem', { code });
+      setMsg({ ok: true, text: t('plan.trialCodeDone', { tier: String(r.tier).toUpperCase(), date: fmtDate(r.ends_on) }) });
+      setCode('');
+      await reloadPlan();
+    } catch (err) {
+      const c = err.payload?.code;
+      const text = c === 'promo_wrong_kind' ? t('plan.promoIsDiscount') : t(`plan.promoErr_${c}`) === `plan.promoErr_${c}` ? err.message : t(`plan.promoErr_${c}`);
+      setMsg({ ok: false, text });
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!open) {
+    return <button type="button" className="text-gray-400 hover:text-white underline text-xs mb-3" onClick={() => setOpen(true)}>🎟 {t('plan.haveTrialCode')}</button>;
+  }
+  return (
+    <form onSubmit={redeem} className="mb-3">
+      <div className="flex gap-2">
+        <input className="input !py-1.5 text-sm uppercase font-mono flex-1 min-w-0" placeholder={t('plan.trialCodePlaceholder')} aria-label={t('plan.trialCodePlaceholder')} value={code} maxLength={32} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+        <button type="submit" className="btn-primary !py-1.5 text-sm" disabled={busy || !code.trim()}>{t('plan.trialCodeActivate')}</button>
+      </div>
+      {msg && <p className={`text-xs mt-1 ${msg.ok ? 'text-lime-300' : 'text-red-300'}`}>{msg.text}</p>}
+    </form>
   );
 }
 

@@ -60,7 +60,7 @@ async function getPlan(hostId, { fresh = false } = {}) {
   const tier = TIERS.includes(live?.tier) ? live.tier : 'free';
   const selfServe = await require('./appSettings').selfServe();
   const today = todayYmd();
-  const onTrial = !!live?.trial_ends_on && live.tier_paid_until === live.trial_ends_on && today <= live.trial_ends_on && tier === PF.TRIAL.tier;
+  const onTrial = !!live?.trial_ends_on && live.tier_paid_until === live.trial_ends_on && today <= live.trial_ends_on && tier !== 'free';
   const value = {
     enforced: ready,
     // Before the plans-v2 migration features are not locked (old databases keep working).
@@ -71,7 +71,7 @@ async function getPlan(hostId, { fresh = false } = {}) {
     limits: PF.LIMITS[tier],
     features: ready && ready2 ? PF.featuresOf(tier) : PF.featuresOf('pro'),
     role_seats: PF.ROLE_SEATS[tier],
-    trial: onTrial ? { tier: PF.TRIAL.tier, ends_on: live.trial_ends_on } : null,
+    trial: onTrial ? { tier, ends_on: live.trial_ends_on } : null,
     trial_used: !!live?.trial_started_at,
     // Before the migration nothing is locked away.
     social_manager: ready ? !!live?.social_manager : true,

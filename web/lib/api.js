@@ -9,10 +9,38 @@ async function authHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// The owner viewing the app as one Host (Owner Console → Host → 👁): read-only.
+const VIEW_AS_KEY = 'pb_view_as';
+export function viewingAs() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return JSON.parse(sessionStorage.getItem(VIEW_AS_KEY) || 'null');
+  } catch {
+    return null;
+  }
+}
+export function startViewAs(host) {
+  sessionStorage.setItem(VIEW_AS_KEY, JSON.stringify({ id: host.id, email: host.email }));
+  try { localStorage.removeItem('pickleball_club'); } catch {}
+}
+export function stopViewAs() {
+  sessionStorage.removeItem(VIEW_AS_KEY);
+  try { localStorage.removeItem('pickleball_club'); } catch {}
+}
+
 async function request(path, { method = 'GET', body, isPublic = false } = {}) {
+  const as = !isPublic && !path.startsWith('/api/owner') ? viewingAs() : null;
+  if (as && method !== 'GET') {
+    window.dispatchEvent(new CustomEvent('pb:read-only'));
+    const err = new Error('Chế độ xem chỉ đọc — không thay đổi được dữ liệu.');
+    err.status = 403;
+    err.payload = { code: 'read_only' };
+    throw err;
+  }
   const send = async () => {
     const headers = { 'Content-Type': 'application/json' };
     if (!isPublic) Object.assign(headers, await authHeader());
+    if (as) headers['X-View-As'] = as.id;
     return fetch(`${API_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   };
 

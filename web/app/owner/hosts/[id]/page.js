@@ -6,7 +6,7 @@ import OwnerShell, { fmtDate, fmtTime, TIER_BADGE } from '@/components/OwnerShel
 import { AuditRow } from '@/components/OwnerAudit';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
-import { api } from '@/lib/api';
+import { api, startViewAs } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 
 const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
@@ -320,6 +320,14 @@ export default function OwnerHostPage() {
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
               {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}
               {h.suspended_at ? <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-200">⛔ {t('owner.suspended')}</span> : <span className="rounded-full px-2.5 py-1 text-xs bg-lime-400/15 text-lime-200">● {t('owner.active')}</span>}
+              <button
+                type="button"
+                className="btn-secondary !py-1 text-xs"
+                title={t('owner.viewAsHint')}
+                onClick={() => { if (window.confirm(t('owner.viewAsAsk', { email: h.email }))) { startViewAs(h); window.location.href = '/home'; } }}
+              >
+                👁 {t('owner.viewAs')}
+              </button>
             </div>
           </div>
 
