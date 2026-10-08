@@ -167,8 +167,37 @@ router.post('/', async (req, res) => {
 
 router.get('/:clubId', (req, res) => res.json({ ...req.club, role: req.coAdmin ? 'co_admin' : 'owner' }));
 
+// The monthly fund worksheet: known numbers only (whole, >= 0), a few guest price rows.
+const CALC_NUMBERS = ['rate_per_hour', 'hours_per_session', 'sessions_per_month', 'discount_pct', 'balls', 'water', 'other', 'members', 'round_to', 'carry_sessions'];
+function cleanFundCalc(v) {
+  if (v == null) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) throw Object.assign(new Error('fund_calc must be an object.'), { status: 400 });
+  const out = {};
+  for (const k of CALC_NUMBERS) {
+    if (v[k] === '' || v[k] == null) continue;
+    const n = Number(v[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e10) throw Object.assign(new Error(`fund_calc.${k} must be a number, 0 or more.`), { status: 400 });
+    out[k] = k === 'hours_per_session' ? Math.round(n * 100) / 100 : Math.round(n);
+  }
+  if (out.discount_pct > 100) throw Object.assign(new Error('fund_calc.discount_pct is at most 100.'), { status: 400 });
+  out.guest_slots = (Array.isArray(v.guest_slots) ? v.guest_slots : []).slice(0, 10).map((g) => ({
+    label: String(g?.label ?? '').trim().slice(0, 40),
+    price: Math.max(0, Math.min(1e9, Math.round(Number(g?.price) || 0))),
+  }));
+  return out;
+}
+
 router.patch('/:clubId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount']);
+  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc']);
+  if ('fund_calc' in fields) {
+    try {
+      fields.fund_calc = cleanFundCalc(fields.fund_calc);
+    } catch (err) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    const { error: probe } = await supabase.from('clubs').select('fund_calc').limit(1);
+    if (probe) return res.status(409).json({ error: 'Run migration 20261022090000_club_fund_calculator.sql first.' });
+  }
   if ('guest_vip_discount' in fields && !(await guestsReady())) {
     return res.status(409).json({ error: 'Run migration 20261009090000_guest_perks_survey.sql first.' });
   }

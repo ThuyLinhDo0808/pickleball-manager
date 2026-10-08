@@ -1385,5 +1385,14 @@ drop policy if exists p_meeting_expenses_owner on public.meeting_expenses;
 create policy p_meeting_expenses_owner on public.meeting_expenses for select
   using (exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()));
 
+-- ----------------------------------------------------------------------------
+-- MONTHLY FUND CALCULATOR  (migration 20261022090000)
+-- ----------------------------------------------------------------------------
+-- The Host's worksheet for the monthly fee each member pays (court rent per hour,
+-- hours per session, sessions per month, fixed-booking discount, balls, water,
+-- members, rounding, guest prices per time slot). Kept per club as JSON so the
+-- Host opens it with last month's numbers.
+alter table public.clubs add column if not exists fund_calc jsonb;
+
 select 1; -- done
 notify pgrst, 'reload schema';

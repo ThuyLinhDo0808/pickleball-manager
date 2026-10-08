@@ -351,14 +351,19 @@ Mục Tài chính có các tab:
 | Tab | Nội dung |
 |---|---|
 | **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 3 ô **Thu – Chi – Còn lại** của đúng kỳ đang chọn · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
-| **Sổ thu chi** (`/finance/ledger`) | Thêm khoản **Thu/Chi** · Lọc theo loại, tháng, hạng mục · Tổng thu/chi/chênh lệch của phần đang lọc · **✏️ Sửa** (đổi loại, hạng mục, số tiền, ngày, ghi chú) và **Huỷ** khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
+| **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Thêm khoản **Thu/Chi**, nút **🧮 Bảng tính quỹ tháng** · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
 
 **Hạng mục có sẵn:**
-- Thu: Hội viên, Phí kèo, Giải thưởng, Khác.
-- Chi: Tiền sân, Bóng, Nước, HLV/Coach, Giải thưởng, Khác.
-- Chọn **Khác (tự nhập)** để gõ hạng mục riêng.
+- Thu (ghi tay): **Quỹ tháng**, **Khác**. (Hội viên, Phí kèo, Lệ phí giải do app tự ghi.)
+- Chi: **Thuê sân**, **Mua bóng** (CLB cầu lông: *Mua cầu*), **Mua nước**, **Khác**.
+- Đa số CLB thu quỹ theo tháng cho tiền sân + bóng + nước; chi phí phát sinh khác ghi vào **Khác** (bắt buộc ghi chú khoản gì) và thu riêng. Khoản cũ có hạng mục khác (VD *HLV / Coach*) vẫn giữ nguyên tên.
+
+**🧮 Bảng tính quỹ tháng** (nút trong khung *Ghi khoản thu / chi*): bảng giống file Excel để Host tính số tiền thu mỗi thành viên mỗi tháng.
+- **Cố định**: tiền thuê sân/giờ × số giờ/buổi × số buổi/tháng = *thành tiền sân*; trừ **% giảm khi thuê cố định**; cộng tiền bóng, tiền nước/tháng = *tổng chi cần thu*; chia **số thành viên** (mặc định = số thành viên cố định đang hoạt động) = *số tiền/người/tháng*; **làm tròn lên** (1.000 / 5.000 / 10.000 / 50.000 / 100.000đ) = số thu mỗi người (ô vàng). Ví dụ 350.000đ × 5 giờ × 5 buổi = 8.750.000đ, giảm 10% còn 7.875.000đ, 16 người → 492.188đ → làm tròn **500.000đ**. Thêm dòng *số buổi được bảo lưu/tháng* để ghi nhớ.
+- **Giao lưu**: các khung giờ và giá một buổi (VD 17h – 20h: 120.000đ), thêm/xoá tuỳ ý.
+- **Lưu bảng tính** để lần sau mở lại vẫn còn số liệu (lưu theo CLB). Nút *Dùng … / người* hoặc *Dùng tổng …* điền sẵn số tiền vào khoản thu *Quỹ tháng*; link *Đặt làm giá gói tháng* mở **Gói hội viên**.
 
 **Khoản tự động** (có nhãn *tự động*) được app ghi khi:
 - gói hội viên được đánh dấu đã đóng;
@@ -844,7 +849,8 @@ supabase/migrations/
 └── 20261018090000_social_manager_plans.sql            # gói Social Manager (xé vé) + yêu cầu nâng cấp gói trên host_subscriptions
 └── 20261019090000_round_robin_meeting_votes.sql       # giải vòng tròn tính điểm (advance_per_group = 0) + bảng event_votes (bình chọn buổi họp)
 └── 20261020090000_tournament_player_ranks.sql         # hạng A–D xếp riêng cho từng giải (tournaments.player_ranks)
-└── 20261021090000_meeting_money.sql                   # tài chính buổi họp: meeting_money, meeting_guests, meeting_expenses, events.meeting_settlement
+├── 20261021090000_meeting_money.sql                   # tài chính buổi họp: meeting_money, meeting_guests, meeting_expenses, events.meeting_settlement
+└── 20261022090000_club_fund_calculator.sql           # bảng tính quỹ tháng của CLB: clubs.fund_calc
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1021,7 +1027,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 |---|---|
 | Sức khỏe | `GET /health` · `GET /health/schema` (migration nào còn thiếu) |
 | Host | `GET /api/host/account/delete-preview` · `DELETE /api/host/account?confirm=<email>` · `GET /api/host/me` · `GET/PATCH /api/host/subscription` · `GET /api/host/plan` (gói, giới hạn CLB, Social Manager) · `POST /api/host/plan/request` `{kind: social_manager | tier, tier}` (tier thấp hơn = hạ gói ngay; `409 too_many_clubs` / `over_capacity` nếu không vừa) · `POST /api/host/plan/cancel` `{kind: social_manager | social_manager_request | upgrade_request}` (`409 upcoming_games` khi còn kèo Xé Vé sắp tới) · `POST /api/host/feedback` · `GET/PATCH /api/host/payment-settings` · `GET/PATCH /api/host/notifications` · `POST /api/host/notifications/test` |
-| CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH /api/clubs/:id` · `GET /api/clubs/:id/delete-preview` · `DELETE /api/clubs/:id?confirm=<tên CLB>` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. Chỉ `delete-preview` và `DELETE` là riêng chủ CLB (co-admin nhận `403 owner_only`). |
+| CLB | `GET/POST /api/clubs` (kèm CLB được chia sẻ, trường `role`: `owner` / `co_admin`) · `GET/PATCH /api/clubs/:id` (PATCH nhận thêm `fund_calc`: bảng tính quỹ tháng) · `GET /api/clubs/:id/delete-preview` · `DELETE /api/clubs/:id?confirm=<tên CLB>` · `GET /api/clubs/:id/events` · `POST /api/clubs/:id/join-token/rotate`. Chỉ `delete-preview` và `DELETE` là riêng chủ CLB (co-admin nhận `403 owner_only`). |
 | Thành viên | `GET/POST /api/clubs/:id/members` · `POST …/members/bulk` · `PATCH/DELETE …/members/:mid` · `GET …/members/:mid/history` · `GET /api/clubs/:id/member-requests` · `GET /api/clubs/:id/attendance?from=&to=` · `GET /api/clubs/:id/birthdays?days=3` · `POST …/members/:mid/approve` · `POST …/members/:mid/reject` |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
@@ -1056,6 +1062,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Kho | `inventory_items`, `inventory_moves` |
 | Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`) |
 | Lịch sử | `change_history` (SCD Type 2, ghi bằng trigger) |
+| Bảng tính quỹ | `clubs.fund_calc` (jsonb: giá sân/giờ, giờ/buổi, buổi/tháng, % giảm, bóng, nước, số thành viên, làm tròn, buổi bảo lưu, khung giờ giao lưu) |
 | Họp mặt | `meeting_money` (đã chuyển khoản / tài trợ từng người), `meeting_guests` (khách mời + người mời), `meeting_expenses` (khoản chi), `events.meeting_settlement` (cách kết toán) |
 | Khác | `feedback`, `event_votes` (bình chọn tham gia buổi họp: `choice` yes/no, `by_host`) |
 
