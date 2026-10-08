@@ -384,10 +384,10 @@ Link cũ `/club/fund`, `/club/plans`, `/club/inventory` tự chuyển sang trang
 Có ở cả **CLB** và **Kèo Xé Vé** (kho riêng của người tổ chức, không thuộc CLB nào).
 - **Thêm loại bóng** gồm tên (ví dụ Franklin X-40), số lỗ (40 lỗ ngoài trời, 26 lỗ trong nhà…) và đơn vị.
 - **Nhập bóng**: số lượng và đơn giá. Ở CLB có thể tick "Ghi vào sổ thu chi (Mua bóng)" để tự tạo khoản chi. **Điều chỉnh tồn**: số âm khi kiểm kho thiếu.
-- **Ghi buổi chơi** (sau mỗi buổi): *bóng hỏng buổi này* (trong số bóng đang dùng) và *bóng mới lấy ra* từ kho. Bóng lấy ra hôm trước mà hôm nay vẫn dùng được là **bóng cũ** — không cần ghi lại; bóng cũ không dùng được nữa thì ghi vào *bóng hỏng* và lấy bóng mới.
+- **Ghi buổi chơi** (sau mỗi buổi): *bóng hỏng buổi này* (bóng cũ đang dùng, hoặc bóng mới lấy ra hôm nay mà hỏng luôn — buổi đầu tiên cũng ghi được) và *bóng mới lấy ra* từ kho. Bóng lấy ra hôm trước mà hôm nay vẫn dùng được là **bóng cũ** — không cần ghi lại; bóng cũ không dùng được nữa thì ghi vào *bóng hỏng* và lấy bóng mới.
 - **Bảng bóng** của mỗi loại, mỗi cột là một buổi (các buổi CLB / kèo đã diễn ra từ lần đầu lấy bóng, cộng các ngày có ghi): **Bóng mới · Bóng cũ · Bóng hỏng** (cộng dồn) **· Bóng đã dùng** (đã lấy ra khỏi kho, cộng dồn) **· Số bóng đã mua · Còn lại** (trong kho). Luôn đúng: *mới + cũ + hỏng + còn lại = đã mua*. Ví dụ kho 48 quả: 4/10 lấy 2 quả mới → còn 46; 6/10 vẫn chơi 2 quả đó (bóng cũ) → còn 46; 8/10 hai quả cũ hỏng, lấy 2 quả mới → hỏng 2, đã dùng 4, còn 44. Bấm vào ngày ở đầu cột để sửa buổi đó.
 - Ô tổng: còn lại trong kho, đang dùng, bóng hỏng, đã chi. Không còn phần độ bền / so sánh chi phí mỗi quả mỗi buổi (không cần ở quy mô CLB).
-- App không cho tồn kho âm, không cho lấy bóng mới nhiều hơn số đang có trong kho ở ngày đó, và không cho ghi hỏng nhiều hơn số bóng đang dùng.
+- App không cho tồn kho âm, không cho lấy bóng mới nhiều hơn số đang có trong kho ở ngày đó, và không cho ghi hỏng nhiều hơn số bóng được chơi trong buổi (bóng cũ + bóng mới lấy ra) — báo lỗi bằng tiếng Việt ngay trong form.
 - Xoá một dòng nhập bóng cũng huỷ khoản chi đi kèm trong sổ.
 
 ### 4.11. Lịch sử thay đổi (SCD Type 2)

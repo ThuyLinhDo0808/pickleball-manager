@@ -41,3 +41,17 @@ test('old balls carry over until they break; broken balls are not taken from the
   assert.equal(m.stock, 6);
   assert.equal(m.in_play, 3);
 });
+
+test('new balls taken out and broken in the same session', () => {
+  const rows = ballLog([
+    mv('purchase', 48, '2026-10-01', { unit_cost: 1 }),
+    mv('use', 4, '2026-10-04'),
+    mv('broken', 4, '2026-10-04'), // all four broke that evening
+    mv('use', 2, '2026-10-06'),
+  ]);
+  assert.deepEqual(rows.map((r) => [r.new, r.old, r.broken, r.used, r.left]), [
+    [0, 0, 4, 4, 44],
+    [2, 0, 4, 6, 42],
+  ]);
+  for (const r of rows) assert.equal(r.new + r.old + r.broken + r.left, 48);
+});

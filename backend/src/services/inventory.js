@@ -91,14 +91,17 @@ function ballLog(moves, sessions = []) {
     const n = today.filter((m) => m.kind === 'use').reduce((t, m) => t + Number(m.quantity), 0);
     const b = today.filter((m) => m.kind === 'broken').reduce((t, m) => t + Number(m.quantity), 0);
     const upTo = sorted.filter((m) => m.occurred_on <= day);
+    // Breaks hit the old balls first; the rest are new balls taken out (and broken) today.
     const old = Math.max(0, inPlay - b);
+    const fresh = Math.max(0, n - Math.max(0, b - inPlay));
     brokenSoFar += b;
     usedSoFar += n;
-    inPlay = old + n;
+    inPlay = old + fresh;
     rows.push({
       date: day,
       event_id: today.find((m) => m.event_id)?.event_id || null,
-      new: n,
+      new: fresh,
+      new_out: n,
       old,
       broken_now: b,
       broken: brokenSoFar,
