@@ -34,6 +34,8 @@ const PROBES = [
   { table: 'users', column: 'notify_players_email', migration: '20261024090000_player_email_notices.sql' },
   { table: 'plan_payments', column: 'ref', migration: '20261025090000_plan_payments.sql' },
   { table: 'host_subscriptions', column: 'tier_paid_until', migration: '20261025090000_plan_payments.sql' },
+  { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
+  { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

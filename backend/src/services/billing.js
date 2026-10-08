@@ -29,13 +29,8 @@ function operatorBank() {
   };
 }
 
-const isAdmin = (email) =>
-  !!email &&
-  String(process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(String(email).toLowerCase());
+// Who may confirm payments: the app owner(s).
+const isAdmin = (email) => require('./owner').isOwner(email);
 
 // Order code for the transfer note (no 0/O/1/I).
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

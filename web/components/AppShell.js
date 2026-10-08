@@ -188,6 +188,13 @@ export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
   const { t } = useI18n();
   const { clubs, club, isCoAdmin, loading: clubsLoading, reload: reloadClubs } = useClubs();
+  // Set when the API says the app owner suspended this account (see lib/api.js).
+  const [suspended, setSuspended] = useState(null);
+  useEffect(() => {
+    const on = (e) => setSuspended(e.detail || {});
+    window.addEventListener('pb:suspended', on);
+    return () => window.removeEventListener('pb:suspended', on);
+  }, []);
   // Each page mounts its own shell: put the sidebar back where it was scrolled to,
   // instead of jumping to the top after every click.
   const sideRef = useRef(null);
@@ -408,7 +415,14 @@ export default function AppShell({ children }) {
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
         {workspace && workspace !== 'staff' && <SchemaBanner />}
-        {!wsReady || !workspace ? null : workspace === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
+        {suspended ? (
+          <div className="max-w-lg mx-auto card mt-4 border-red-400/50" role="alert">
+            <h1 className="text-white text-lg font-bold mb-1">⛔ {t('owner.suspendedTitle')}</h1>
+            <p className="text-gray-300 text-sm">{t('owner.suspendedBody')}</p>
+            {suspended.reason && <p className="text-red-200 text-sm mt-2">{t('owner.suspendedReason', { reason: suspended.reason })}</p>}
+            <Link href="/home" className="btn-secondary text-sm mt-4 inline-block">{t('owner.suspendedHome')}</Link>
+          </div>
+        ) : !wsReady || !workspace ? null : workspace === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
           <div className="max-w-lg mx-auto card mt-4">
             <SocialManagerPanel />
           </div>

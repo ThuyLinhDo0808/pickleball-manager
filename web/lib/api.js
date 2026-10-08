@@ -28,6 +28,10 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
 
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
+  // The app owner suspended this account: the shell shows a notice instead of the app.
+  if (res.status === 423 && data.code === 'account_suspended' && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pb:suspended', { detail: { reason: data.reason, since: data.since } }));
+  }
   if (!res.ok) {
     const err = new Error(data.error || `Request failed (${res.status})`);
     err.status = res.status;

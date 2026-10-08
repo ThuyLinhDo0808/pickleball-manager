@@ -645,10 +645,10 @@ Tạo CLB vượt giới hạn → app hiện bảng **Nâng cấp tài khoản*
 **Nâng cấp phải trả phí trước** (mặc định, `ALLOW_TIER_SELF_SERVE=false`):
 1. Host bấm *Đăng ký nâng cấp* ở gói muốn lên (hoặc *Gia hạn* ở gói đang dùng), chọn **1 / 3 / 6 / 12 tháng**, xem tổng tiền, bấm **Lấy mã chuyển khoản**.
 2. App hiện khung **Chờ thanh toán**: mã **VietQR** (số tiền + nội dung đã điền sẵn) và từng dòng *Số tiền / Nội dung chuyển khoản (mã `PBM…`) / Ngân hàng / Số tài khoản / Chủ tài khoản* có nút Copy. Tiền chuyển về tài khoản của đơn vị vận hành app.
-3. Đội vận hành nhận email/webhook góp ý "[Yêu cầu gói] …" kèm số tiền và mã. Khi thấy tiền vào, mở **Quản trị → Thanh toán gói** (`/admin/payments`) và bấm **Đã nhận tiền** → gói được bật ngay, có hạn đến hết số tháng đã trả (hiện *"Đến hết dd/mm/yyyy"* dưới gói).
+3. Đội vận hành nhận email/webhook góp ý "[Yêu cầu gói] …" kèm số tiền và mã. Khi thấy tiền vào, mở **Trang Owner → Thanh toán gói** (`/owner/payments`, xem [8.7](#87-trang-owner-owner)) và bấm **Đã nhận tiền** → gói được bật ngay, có hạn đến hết số tháng đã trả (hiện *"Đến hết dd/mm/yyyy"* dưới gói).
 4. Gia hạn trước khi hết hạn thì cộng nối tiếp từ ngày hết hạn cũ. **Hết hạn** mà chưa gia hạn: tài khoản tự về gói **FREE** (Social Manager tắt). Dữ liệu giữ nguyên, chỉ bị chặn tạo thêm CLB / người / kèo Xé Vé; app báo đỏ *"Gói … đã hết hạn"*.
 
-Đơn chưa trả có nút **Huỷ yêu cầu**; tạo đơn mới thì đơn cũ cùng loại tự huỷ. Trang **Thanh toán gói** chỉ mở cho email trong `ADMIN_EMAILS` (người khác thấy 404); có lọc *Chờ xác nhận / Đã nhận tiền / Đã huỷ / Tất cả*, nút *Huỷ đơn* cho đơn không có tiền. Trên trang Tài khoản, admin thấy thêm lối tắt *"Quản trị: xác nhận thanh toán gói"*. Giá mặc định: Basic 99.000đ, Standard 249.000đ, Pro 499.000đ, Social Manager 89.000đ mỗi tháng (đổi bằng `PLAN_PRICE_*`).
+Đơn chưa trả có nút **Huỷ yêu cầu**; tạo đơn mới thì đơn cũ cùng loại tự huỷ. Trang **Thanh toán gói** chỉ mở cho email trong `OWNER_EMAILS` (người khác thấy 404); có lọc *Chờ xác nhận / Đã nhận tiền / Đã huỷ / Tất cả*, nút *Huỷ đơn* cho đơn không có tiền. Giá mặc định: Basic 99.000đ, Standard 249.000đ, Pro 499.000đ, Social Manager 89.000đ mỗi tháng (đổi bằng `PLAN_PRICE_*`).
 
 **Chuyển về gói thấp hơn:** ở Tài khoản → Gói dịch vụ bấm **💎 Đổi gói**; các gói thấp hơn có nút **↓ Chuyển về gói này** (hỏi xác nhận). Hạ gói **áp dụng ngay**, không cần thanh toán, đội vận hành được báo để ngừng thu phí. Không hạ được nếu đang sở hữu nhiều CLB hơn gói mới cho phép (app ghi *"Bạn đang có N CLB, gói này chỉ cho M — xoá bớt CLB trước"*) hoặc số người đang quản lý vượt giới hạn gói mới. Muốn lên lại thì đăng ký nâng cấp như bình thường.
 
@@ -707,6 +707,21 @@ Webhook nhận JSON:
 }
 ```
 Ví dụ Zalo ZNS: trong Make, tạo scenario *Webhooks → Custom webhook*, dán URL vào app, rồi thêm module HTTP gọi API ZNS của Zalo OA với `player.phone` và mẫu tin đã duyệt. Webhook chỉ nhận URL **https công khai**, không nhận localhost hay mạng nội bộ.
+
+### 8.7. Trang Owner (`/owner`)
+Khu quản trị toàn hệ thống dành cho **chủ dự án** (người vận hành app). Chỉ email trong biến `OWNER_EMAILS` trên backend mới vào được — quyền này nằm ở server, không lưu trong database nên không ai tự cấp cho mình được; người khác mở `/owner` chỉ thấy trang 404 (API cũng trả 404). Owner thấy lối tắt *"Trang Owner (quản trị toàn hệ thống)"* ở **Tài khoản → Gói dịch vụ**. Trang có giao diện riêng (không có menu CLB), nút *← Về app* để quay lại.
+
+| Tab | Nội dung |
+|---|---|
+| **Tổng quan** (`/owner`) | **Tăng trưởng** tuần này so với tuần trước (tuần tính từ thứ 2, giờ Việt Nam): Host mới (lần đầu tạo CLB hoặc kèo Xé Vé), CLB mới, người chơi mới; **tỷ lệ lên gói trả phí** (Host đang trả phí / tổng Host). **Hoạt động**: kèo Xé Vé và giải đấu tạo hôm nay / tuần này. **Doanh thu**: tiền thực nhận tháng này (so với tháng trước), **MRR** (mỗi gói đang chạy lấy số tiền đơn chia số tháng — gói 12 tháng 1.188.000đ tính 99.000đ/tháng; gói bật tay không tính), số đơn chờ xác nhận, **tỷ lệ gia hạn** 30 ngày (gia hạn / hết hạn bỏ). Danh sách **gói sắp hết hạn** trong 3 hoặc 7 ngày (bấm để mở Host), biểu đồ tài khoản mới mỗi ngày (14 ngày). |
+| **Host** (`/owner/hosts`) | Tìm theo tên, email, SĐT; lọc *Host / Trả phí / Free / Sắp hết hạn / Bị khoá / Mọi tài khoản*; phân trang 50 dòng. Mỗi dòng: gói + hạn, Social Manager, trạng thái, CLB/giới hạn, người/giới hạn (thanh màu khi gần đầy), lần đăng nhập cuối. |
+| **Chi tiết Host** (`/owner/hosts/<id>`) | **Gói dịch vụ**: đổi gói (Free/Basic/Standard/Pro), sửa ngày hết hạn (để trống = không hạn), **cộng thêm 1–12 tháng** miễn phí, bật/tắt Social Manager + hạn + cộng tháng; ô *Lý do* ghi vào nhật ký; hỏi xác nhận trước khi lưu. **Đình chỉ tài khoản** (bắt buộc nhập lý do; không khoá được tài khoản owner) / **Mở khoá**. **Ghi chú nội bộ** (CRM) — chỉ owner thấy. Danh sách CLB sở hữu (chỉ tên + số thành viên, **không** có danh sách hay SĐT thành viên), các đơn thanh toán, nhật ký thay đổi của Host này. |
+| **Thanh toán gói** (`/owner/payments`) | Duyệt đơn chuyển khoản (*Đã nhận tiền* / *Huỷ đơn*), lọc trạng thái + khoảng ngày, tổng đã thu, nút **⬇ Excel** xuất danh sách đang lọc (mã, ngày tạo/xác nhận, Host, gói, số tháng, số tiền, trạng thái, người xác nhận). Đường dẫn cũ `/admin/payments` tự chuyển sang đây. |
+| **Nhật ký** (`/owner/audit`) | Mọi thay đổi làm trong trang Owner (sửa gói, xác nhận/huỷ đơn, khoá/mở khoá, ghi chú, hoàn tác): thời gian, người làm, Host bị tác động, giá trị **cũ → mới**, lý do. Lọc theo thao tác. Nút **↩ Hoàn tác** cho sửa gói và khoá/mở khoá: trả về giá trị cũ, nhưng **từ chối** nếu sau đó đã có thay đổi mới hơn (báo *"Đã có thay đổi mới hơn…"*) để không ghi đè. Xác nhận thanh toán không hoàn tác (đã có tiền) — sửa gói bằng tay nếu cần. |
+
+**Khi một tài khoản bị đình chỉ:** Host mở bất kỳ trang quản lý nào đều thấy khung *"Tài khoản đang tạm khoá"* kèm lý do; mọi API quản lý trả `423 account_suspended`. Họ vẫn dùng được phần **Người chơi** (`/p`, `/home`, đăng ký kèo của người khác). Link đăng ký kèo của Host đó hiện *"Kèo đang tạm ngưng nhận đăng ký"* và không nhận đăng ký mới (`423 organiser_suspended`); vé đã có, dữ liệu, tiền đã thu đều giữ nguyên. Mở khoá là dùng lại bình thường (có hiệu lực trong tối đa 30 giây).
+
+**Nhật ký chỉ ghi thêm:** database có trigger chặn xoá và chặn sửa dòng nhật ký (chỉ cho đánh dấu *đã hoàn tác* một lần) — kể cả owner cũng không xoá được trong app.
 
 ---
 
@@ -861,6 +876,7 @@ supabase/migrations/
 └── 20261023090000_ball_log_xeve_inventory.sql        # kho bóng Xé Vé (inventory_items.host_id) + ghi bóng hỏng từng buổi
 └── 20261024090000_player_email_notices.sql          # công tắc email cho người chơi (users.notify_players_email, player_profiles.email_notices)
 └── 20261025090000_plan_payments.sql                 # nâng cấp gói trả phí: bảng plan_payments + hạn dùng gói (tier_paid_until, social_manager_paid_until)
+└── 20261026090000_owner_console.sql                 # trang Owner: users.suspended_*, owner_audit_logs (chỉ ghi thêm), owner_notes, hàm owner_last_sign_in
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -905,7 +921,7 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `CORS_ORIGIN` | | Domain web được phép gọi API (mặc định `*`) |
 | `APP_TZ` | | Múi giờ tính ngày/kỳ (mặc định `Asia/Ho_Chi_Minh`) |
 | `ALLOW_TIER_SELF_SERVE` | | `true` cho phép Host tự đổi gói dịch vụ và tự bật Social Manager (không qua thanh toán, chỉ để thử nghiệm). **Để `false` hoặc bỏ trống trên production** để bắt buộc chuyển khoản. |
-| `ADMIN_EMAILS` | | Email được vào trang **Quản trị → Thanh toán gói** để xác nhận đã nhận tiền, cách nhau dấu phẩy |
+| `OWNER_EMAILS` | | Email của chủ dự án, cách nhau dấu phẩy — được vào **Trang Owner** (`/owner`): thống kê toàn hệ thống, quản lý Host, xác nhận thanh toán gói, nhật ký. Tên cũ `ADMIN_EMAILS` vẫn dùng được. |
 | `PLAN_BANK_CODE` / `PLAN_BANK_NAME` / `PLAN_BANK_ACCOUNT` / `PLAN_BANK_HOLDER` | | Tuỳ chọn: tài khoản nhận tiền nâng cấp gói (mặc định Vietcombank của đơn vị vận hành, xem `backend/src/services/billing.js`) |
 | `PLAN_PRICE_BASIC` / `_STANDARD` / `_PRO` / `_SOCIAL_MANAGER` | | Tuỳ chọn: giá mỗi tháng (VND), mặc định 99000 / 249000 / 499000 / 89000 |
 | `RESEND_API_KEY` | | Gửi góp ý qua email (Resend) |
@@ -1057,7 +1073,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` (nhận `ranks` `{memberId: A–D}`; khi tạo giải gửi `player_ranks`) · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `PATCH /api/transactions/:id` (sửa; đổi số tiền/loại = huỷ + ghi dòng thay thế) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance?year=` · `/events-pnl?year=` (theo năm dương lịch; mặc định năm nay; dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
-| Quản trị (chỉ `ADMIN_EMAILS`) | `GET /api/admin/plan-payments?status=pending\|paid\|cancelled\|all` · `POST /api/admin/plan-payments/:id/confirm` (bật gói / gia hạn) · `POST /api/admin/plan-payments/:id/cancel` |
+| Owner (chỉ `OWNER_EMAILS`, người khác nhận 404) | `GET /api/owner/me` · `GET /api/owner/overview` · `GET /api/owner/hosts?q=&filter=hosts\|paying\|free\|expiring\|suspended\|all&page=` · `GET /api/owner/hosts/:id` · `PATCH /api/owner/hosts/:id/subscription` `{tier, tier_paid_until, add_months, social_manager, social_manager_paid_until, sm_add_months, note}` · `POST …/hosts/:id/suspend` `{reason}` · `POST …/hosts/:id/unsuspend` · `POST …/hosts/:id/notes` `{body}` · `GET /api/owner/payments?status=&from=&to=` · `POST /api/owner/payments/:id/confirm` · `POST …/payments/:id/cancel` · `GET /api/owner/audit?page=&host_id=&action=` · `POST /api/owner/audit/:id/undo` (`409 changed_since` nếu đã có thay đổi mới hơn). Tài khoản bị đình chỉ gọi API quản lý nhận `423 account_suspended`. |
 | Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` (kèm `role` mạnh nhất) · `GET /api/staff/events` (kèm `kind`, `arrived`) · `GET /api/staff/events/:id` · `POST …/participants` (điều phối viên thêm khách vãng lai + check-in; hết chỗ thì vào danh sách chờ) · `POST …/participants/:pid/:action` (`checkin` / `no_show` / `undo` / `promote`) · `POST …/checkin-code` · `POST/PATCH …/matches` |
 | Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` · `PUT /api/player/email-notices` `{enabled}` (`/me` trả `email_notices: {available, enabled}`) |
@@ -1080,6 +1096,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Lịch sử | `change_history` (SCD Type 2, ghi bằng trigger) |
 | Bảng tính quỹ | `clubs.fund_calc` (jsonb: giá sân/giờ, giờ/buổi, buổi/tháng, % giảm, bóng, nước, số thành viên, làm tròn, buổi bảo lưu, khung giờ giao lưu) |
 | Họp mặt | `meeting_money` (đã chuyển khoản / tài trợ từng người), `meeting_guests` (khách mời + người mời), `meeting_expenses` (khoản chi), `events.meeting_settlement` (cách kết toán) |
+| Owner | `users.suspended_at`, `users.suspended_reason` (đình chỉ), `owner_audit_logs` (nhật ký thay đổi của owner: `action`, `actor_email`, `target_host_id`, `old_value`, `new_value`, `note`, `undone_at`, `undo_of`; trigger chặn xoá/sửa), `owner_notes` (ghi chú nội bộ theo Host), hàm `owner_last_sign_in(ids)` (đọc lần đăng nhập cuối từ `auth.users`, chỉ service role gọi được). Chỉ backend đọc/ghi các bảng này. |
 | Khác | `feedback`, `event_votes` (bình chọn tham gia buổi họp: `choice` yes/no, `by_host`) |
 
 ---
@@ -1095,6 +1112,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ). Bot Telegram chỉ nhận cập nhật có đúng secret.
 - **Sổ thu chi chỉ thêm.** Sửa số tiền = huỷ dòng cũ + ghi dòng thay thế (server làm, có liên kết `replaced_by`). Các khoản tự động gắn với nguồn tạo ra chúng.
 - **Lịch sử không ghi đè.** Thay đổi quan trọng được lưu theo dòng thời gian (SCD2).
+- **Quyền owner nằm ở server** (`OWNER_EMAILS`), không lưu trong database. Trang Owner chỉ xem số lượng thành viên của CLB, không xem danh sách hay SĐT thành viên. Mọi thao tác của owner được ghi vào nhật ký chỉ-ghi-thêm. Nên bật xác thực 2 bước cho email owner và tài khoản Supabase.
 - **Link công khai** (`/e/…`, `/join/…`, `/l/…` bảng điểm) dùng token ngẫu nhiên, có thể tắt hoặc tạo mới. Trang công khai không lộ số điện thoại.
 
 ---
@@ -1110,7 +1128,8 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Lỗi kiểu `column … does not exist` sau khi cập nhật code | Database chưa được cập nhật. Chạy `supabase db push` (xem [11.2](#112-cập-nhật-database-production-bằng-migration-supabase-cli)), hoặc chạy lại `database/schema.sql` nếu chưa có dữ liệu thật. |
 | Nút *Quét QR* không mở được camera | Camera chỉ chạy trên **https** và cần cho phép quyền camera trong trình duyệt. Nếu vẫn không được, dán mã `PBP:…` vào ô bên dưới camera. |
 | Quét QR báo "Không có tên trong kèo" | Người chơi chưa đăng ký kèo này (hoặc đăng ký bằng số điện thoại khác mà không đăng nhập). Hãy thêm họ vào kèo trước. |
-| Host đã chuyển khoản nâng cấp nhưng gói chưa đổi | Gói chỉ bật khi admin bấm **Đã nhận tiền** ở `/admin/payments`. Đối chiếu nội dung chuyển khoản (mã `PBM…`) và số tiền trong app ngân hàng. Không vào được trang đó → kiểm tra email của bạn có trong `ADMIN_EMAILS` trên Render. Host ghi sai nội dung → tìm theo email Host + số tiền rồi xác nhận đơn tương ứng. |
+| Host đã chuyển khoản nâng cấp nhưng gói chưa đổi | Gói chỉ bật khi owner bấm **Đã nhận tiền** ở `/owner/payments`. Đối chiếu nội dung chuyển khoản (mã `PBM…`) và số tiền trong app ngân hàng. Không vào được trang đó (thấy 404) → kiểm tra email của bạn có trong `OWNER_EMAILS` trên Render rồi deploy lại. Host ghi sai nội dung → tìm theo email Host + số tiền rồi xác nhận đơn tương ứng. |
+| Host báo "Tài khoản đang tạm khoá" | Owner đã đình chỉ tài khoản (lý do hiện trong khung). Mở `/owner/hosts` → lọc *Bị khoá* → mở Host → **Mở khoá**. |
 | Người chơi không nhận được email thông báo | Kiểm tra: Host đã bật công tắc *Gửi email thông báo cho người chơi*; không còn cảnh báo vàng (đã đặt `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` trên tên miền đã xác minh); người chơi chưa *Tắt email*. Xem trạng thái gửi trong Resend → Emails; nhắc người chơi kiểm tra thư mục Spam. |
 | Người chơi không nhận được tin Telegram | Kiểm tra 3 biến `TELEGRAM_*` trên Render, đã chạy `npm run telegram:webhook`, và người chơi đã bấm *Start* (Cổng người chơi hiện "Đã kết nối ✓"). |
 | Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |

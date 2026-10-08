@@ -16,6 +16,7 @@ const {
 } = require('../services/attendance');
 const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
+const { suspensionOf } = require('../services/owner');
 const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember, memberForUser, findClubPerson } = require('../services/guests');
 const survey = require('../services/survey');
@@ -68,7 +69,9 @@ router.get('/public/:publicToken', async (req, res) => {
   if (pErr) return dbError(res, pErr);
 
   let closedCode = null;
-  if (!event.allow_public_registration) closedCode = 'disabled';
+  // The organiser's account is suspended by the app owner: no new sign-ups.
+  if (await suspensionOf(event.host_id)) closedCode = 'suspended';
+  else if (!event.allow_public_registration) closedCode = 'disabled';
   else if (!['draft', 'open'].includes(event.status)) closedCode = 'not_open';
   else if (event.registration_deadline && new Date(event.registration_deadline) < new Date()) closedCode = 'deadline';
 
@@ -226,6 +229,7 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
 router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
   const event = await publicEvent(req, res);
   if (!event) return;
+  if (await suspensionOf(event.host_id)) return res.status(423).json({ error: 'Sign-ups for this event are paused.', code: 'organiser_suspended' });
   try {
     const profile = await playerProfile(req.userId);
     await linkByPhone(req.userId, profile);

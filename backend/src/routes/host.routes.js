@@ -51,7 +51,7 @@ router.patch('/subscription', async (req, res) => {
 // The Host's plan: tier, club limit and usage, Social Manager add-on.
 router.get('/plan', async (req, res) => {
   try {
-    res.json({ ...(await getPlan(req.hostId)), is_admin: billing.isAdmin(req.hostEmail) });
+    res.json({ ...(await getPlan(req.hostId)), is_owner: billing.isAdmin(req.hostEmail) });
   } catch (err) {
     dbError(res, err);
   }
