@@ -9,6 +9,7 @@ const { HOLDS_PLACE } = require('../services/fees');
 const { PLAYER_SELECT, createMatch, updateMatch } = require('../services/matches');
 const { schemaStatus } = require('../services/schemaCheck');
 const { getPlan } = require('../services/plan');
+const { GROUP_NAMES } = require('../services/clubRoles');
 
 const EVENT_ROLES = ['referee', 'coordinator'];
 // co_admin: co-owner of one club (members + finance); handled by services/clubAccess.js, not here.
@@ -32,6 +33,16 @@ async function seatProblem(hostId, role, clubId, except = null) {
   const { count } = await q;
   if ((count || 0) >= seats) return { status: 402, body: { error: `Your ${plan.tier} plan allows ${seats} ${role} per club. Upgrade to Pro for more.`, code: 'role_seats', role, limit: seats } };
   return null;
+}
+// Custom permissions (Pro): permission groups replacing a Finance / Operations role's
+// defaults. [] or null = the role's defaults. -> { value } or { status, body }.
+async function cleanPermissions(hostId, role, value) {
+  if (value == null || (Array.isArray(value) && !value.length)) return { value: null };
+  if (!SEAT_ROLES.includes(role)) return { status: 400, body: { error: 'Custom permissions are for Finance and Operations roles.', code: 'bad_permissions' } };
+  if (!Array.isArray(value) || value.some((g) => !GROUP_NAMES.includes(g))) return { status: 400, body: { error: `permissions: any of ${GROUP_NAMES.join(', ')}.`, code: 'bad_permissions' } };
+  const plan = await getPlan(hostId);
+  if (plan.features_enforced && !plan.features.custom_roles) return { status: 402, body: { error: 'Custom permissions need the Pro plan.', code: 'feature_locked', feature: 'custom_roles', min_tier: 'pro' } };
+  return { value: [...new Set(value)] };
 }
 const RANK = { referee: 1, coordinator: 2 };
 // What each role may do. Neither ever sees phones, fees or any finance data.
@@ -139,6 +150,8 @@ grants.post('/', async (req, res) => {
     const problem = await seatProblem(req.hostId, role, club_id);
     if (problem) return res.status(problem.status).json(problem.body);
   }
+  const perms = await cleanPermissions(req.hostId, role, req.body.permissions);
+  if (perms.status) return res.status(perms.status).json(perms.body);
   if (event_id) {
     if (!isUuid(event_id)) return notFound(res, 'Event');
     const { data } = await supabase.from('events').select('id').eq('id', event_id).eq('host_id', req.hostId).maybeSingle();
@@ -147,7 +160,7 @@ grants.post('/', async (req, res) => {
 
   const { data, error } = await supabase
     .from('staff_grants')
-    .insert({ host_id: req.hostId, email, full_name: String(req.body.full_name || '').trim() || null, role, club_id, event_id, ...(ready ? { scope, ...window } : {}) })
+    .insert({ host_id: req.hostId, email, full_name: String(req.body.full_name || '').trim() || null, role, club_id, event_id, ...(ready ? { scope, ...window } : {}), ...(perms.value ? { permissions: perms.value } : {}) })
     .select('*, clubs(name), events(title, event_date)')
     .single();
   if (error?.code === '23505') return res.status(409).json({ error: 'This person already has access for that scope.' });
@@ -170,6 +183,14 @@ grants.patch('/:grantId', async (req, res) => {
     } catch (err) {
       return res.status(err.status).json({ error: err.message, code: err.code });
     }
+  }
+  // Custom permissions (co-admins always have everything, so theirs are ignored).
+  if ('permissions' in req.body) {
+    const { data: cur } = await supabase.from('staff_grants').select('role').eq('id', req.params.grantId).eq('host_id', req.hostId).maybeSingle();
+    const role = patch.role || cur?.role;
+    const perms = SEAT_ROLES.includes(role) ? await cleanPermissions(req.hostId, role, req.body.permissions) : { value: null };
+    if (perms.status) return res.status(perms.status).json(perms.body);
+    patch.permissions = perms.value;
   }
   if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nothing to change.' });
   if (CLUB_ONLY.includes(patch.role)) {

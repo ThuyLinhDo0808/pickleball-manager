@@ -72,6 +72,7 @@ router.param('clubId', async (req, res, next, clubId) => {
     if (!access) return req.roleForbidden ? res.status(403).json(ROLE_FORBIDDEN) : notFound(res, 'Club');
     req.club = access.club;
     req.clubRole = access.role; // owner / co_admin / finance / operator
+    req.clubGroups = access.groups ?? null; // permission groups (null = everything)
     if (access.role !== 'owner') {
       req.hostId = access.club.host_id;
       req.coAdmin = true;
@@ -183,6 +184,7 @@ router.get('/:clubId', async (req, res) => {
     res.json({
       ...req.club,
       role: req.clubRole || 'owner',
+      groups: req.clubGroups ?? null,
       plan: { tier: plan.tier, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced },
       member_room: await memberRoom(req.club),
     });
@@ -311,7 +313,7 @@ router.get('/:clubId/members', async (req, res) => {
     ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
   }));
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
-  if (req.clubRole === 'operator') {
+  if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
     const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
@@ -1059,5 +1061,8 @@ router.get('/:clubId/birthdays', async (req, res) => {
   if (error) return dbError(res, error);
   res.json(birthdays.upcoming(data, within));
 });
+
+// Pro tools: activity log, duty roster, advanced analytics.
+require('./clubPro').mount(router);
 
 module.exports = router;

@@ -33,6 +33,8 @@ app.get('/health/schema', async (req, res) => {
   }
 });
 
+app.use(require('./services/activityLog').recorder); // club activity log (Pro)
+
 // /api/events contains its own public (unauthenticated) routes for shareable
 // event links, declared before its internal `router.use(requireAuth)` — see
 // events.routes.js. Do not add requireAuth here or those links will break.

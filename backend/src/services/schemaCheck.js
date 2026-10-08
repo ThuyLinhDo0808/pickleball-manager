@@ -42,6 +42,9 @@ const PROBES = [
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },
+  { table: 'club_activity_logs', column: 'action', migration: '20261101090000_pro_club_tools.sql' },
+  { table: 'staff_grants', column: 'permissions', migration: '20261101090000_pro_club_tools.sql' },
+  { table: 'duty_shift_people', column: 'email', migration: '20261101090000_pro_club_tools.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

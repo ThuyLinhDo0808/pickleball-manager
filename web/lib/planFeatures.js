@@ -7,6 +7,9 @@ const CLUB_PAGES = [
   ['/club/rankings', 'rankings'],
   ['/finance/plans', 'membership_plans'],
   ['/finance/inventory', 'ball_inventory'],
+  ['/club/roster', 'duty_roster'],
+  ['/club/activity-log', 'activity_log'],
+  ['/club/insights', 'advanced_analytics'],
   ['/finance', 'stats', true], // the overview (charts); the ledger is in every plan
 ];
 

@@ -16,6 +16,7 @@ const GROUPS = {
   stats: [
     { href: '/club/attendance', key: 'nav.memberStats', icon: '📋', match: (p) => p.startsWith('/club/attendance') },
     { href: '/club/rankings', key: 'nav.rankings', icon: '🏅', match: (p) => p.startsWith('/club/rankings') },
+    { href: '/club/insights', key: 'nav.insights', icon: '🔬', match: (p) => p.startsWith('/club/insights') },
   ],
 };
 

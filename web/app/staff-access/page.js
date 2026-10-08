@@ -15,6 +15,9 @@ const ROLES = ['coordinator', 'referee', 'co_admin', 'finance', 'operator'];
 // Roles that are always for one club; Finance / Operations need the Advanced plan.
 const CLUB_ONLY = ['co_admin', 'finance', 'operator'];
 const PLAN_ROLES = ['finance', 'operator'];
+// Permission groups for custom permissions (Pro) and each role's defaults (backend services/clubRoles.js).
+const PERM_GROUPS = ['members', 'events', 'matches', 'rankings', 'inventory', 'finance_view', 'finance_edit'];
+const ROLE_GROUPS = { finance: ['finance_view', 'finance_edit'], operator: ['members', 'events', 'matches', 'rankings', 'inventory'] };
 const ROLE_STYLE = {
   coordinator: { icon: '📋', chip: 'border-sky-400/50 text-sky-300 bg-sky-400/10' },
   referee: { icon: '🏁', chip: 'border-lime-400/50 text-lime-300 bg-lime-400/10' },
@@ -51,6 +54,24 @@ export default function StaffAccessPage() {
   const clubs = allClubs.filter((c) => !c.role || c.role === 'owner'); // only clubs I own can be shared
   const { plan } = useWorkspace();
   const rolesLocked = !hasFeature(planFor(null, plan), 'staff_roles');
+  const customLocked = !hasFeature(planFor(null, plan), 'custom_roles');
+  const [perms, setPerms] = useState(null); // { id, email, role, groups }
+  const [permErr, setPermErr] = useState('');
+  function openPerms(g) {
+    if (customLocked) return lockedNotice('custom_roles', 'pro');
+    setPermErr('');
+    setPerms({ id: g.id, email: g.email, role: g.role, groups: g.permissions?.length ? g.permissions : ROLE_GROUPS[g.role] });
+  }
+  async function savePerms(reset = false) {
+    try {
+      const same = !reset && [...perms.groups].sort().join() === [...ROLE_GROUPS[perms.role]].sort().join();
+      await api.patch(`/api/staff-grants/${perms.id}`, { permissions: reset || same ? [] : perms.groups });
+      setPerms(null);
+      reload();
+    } catch (err) {
+      setPermErr(err.message);
+    }
+  }
   const { data: grants, loading, reload } = useLoad(() => api.get('/api/staff-grants'), []);
   const { data: events } = useLoad(() => api.get('/api/events'), []);
   const [form, setForm] = useState(emptyForm);
@@ -297,6 +318,11 @@ export default function StaffAccessPage() {
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-lg bg-navy-900 px-2 py-1 text-gray-200">📍 {scopeLabel(g)}</span>
+                {PLAN_ROLES.includes(g.role) && g.permissions?.length > 0 && (
+                  <span className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-2 py-1 text-amber-200" title={g.permissions.map((x) => t(`perms.g_${x}`)).join(', ')}>
+                    🛠 {t('perms.custom', { n: g.permissions.length })}
+                  </span>
+                )}
                 <span className={`rounded-lg border px-2 py-1 ${stTone}`}>
                   {t(`staffX.st_${st}`)}
                   {g.valid_from || g.valid_until
@@ -313,12 +339,52 @@ export default function StaffAccessPage() {
                 <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => setEditing({ id: g.id, email: g.email, valid_from: g.valid_from || '', valid_until: g.valid_until || '' })}>
                   📅 {t('staffX.editDates')}
                 </button>
+                {PLAN_ROLES.includes(g.role) && (
+                  <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => openPerms(g)}>
+                    🛠 {t('perms.button')}{customLocked && <span className="ml-1 text-[11px]">💎</span>}
+                  </button>
+                )}
                 <button type="button" className="text-red-400 text-sm px-2 ml-auto hover:text-red-300" onClick={() => revoke(g)}>{t('staff.remove')}</button>
               </div>
             </div>
           );
         })}
       </div>
+
+      <Modal open={!!perms} title={`🛠 ${t('perms.title')}`} onClose={() => setPerms(null)}>
+        {perms && (
+          <div className="flex flex-col gap-3">
+            <p className="text-gray-300 text-sm">{perms.email} · {t(`staff.${perms.role}`)}</p>
+            <p className="text-gray-500 text-xs">{t('perms.hint')}</p>
+            <ul className="flex flex-col gap-1.5">
+              {PERM_GROUPS.map((gname) => (
+                <li key={gname}>
+                  <label className="flex items-start gap-2 rounded-lg border border-navy-700 px-3 py-2 cursor-pointer hover:border-navy-500">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={perms.groups.includes(gname)}
+                      onChange={(e) => setPerms({ ...perms, groups: e.target.checked ? [...perms.groups, gname] : perms.groups.filter((x) => x !== gname) })}
+                    />
+                    <span>
+                      <span className="text-white text-sm font-semibold">{t(`perms.g_${gname}`)}</span>
+                      {ROLE_GROUPS[perms.role].includes(gname) && <span className="ml-2 text-[10px] text-gray-400">{t('perms.default')}</span>}
+                      <span className="block text-gray-400 text-xs">{t(`perms.h_${gname}`)}</span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <p className="text-gray-500 text-xs">{t('perms.never')}</p>
+            {permErr && <p className="text-red-300 text-sm">{permErr}</p>}
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button type="button" className="btn-secondary text-sm mr-auto" onClick={() => savePerms(true)}>↺ {t('perms.reset')}</button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => setPerms(null)}>{t('common.cancel')}</button>
+              <button type="button" className="btn-primary text-sm" disabled={!perms.groups.length} onClick={() => savePerms(false)}>{t('common.save')}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={!!editing} title={t('staffX.editDates')} onClose={() => setEditing(null)}>
         {editing && (

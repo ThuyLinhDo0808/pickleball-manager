@@ -4,7 +4,8 @@
 const { supabase } = require('../supabase');
 const { isUuid } = require('../utils/respond');
 const { todayYmd } = require('./memberships');
-const { CLUB_ROLES, LIMITED_ROLES, permits } = require('./clubRoles');
+const { CLUB_ROLES, LIMITED_ROLES, permitsGrants, effectiveGroups } = require('./clubRoles');
+const activityLog = require('./activityLog');
 
 // Inside the grant's optional validity dates (before migration 20261015090000: always).
 const activeToday = (g, today = todayYmd()) => (!g.valid_from || g.valid_from <= today) && (!g.valid_until || g.valid_until >= today);
@@ -13,6 +14,12 @@ const activeToday = (g, today = todayYmd()) => (!g.valid_from || g.valid_from <=
 async function rolesAllowed(hostId) {
   const p = await require('./plan').getPlan(hostId);
   return !p.features_enforced || !!p.features.staff_roles;
+}
+
+// Custom permissions per person only count on a plan with custom_roles (Pro).
+async function customAllowed(hostId) {
+  const p = await require('./plan').getPlan(hostId);
+  return !p.features_enforced || !!p.features.custom_roles;
 }
 
 
@@ -27,7 +34,10 @@ async function clubAccess(req, clubId, { check = true } = {}) {
   if (error) throw error;
   if (!club) return null;
   const me = req.userId || req.hostId;
-  if (club.host_id === me) return { club, role: 'owner' };
+  if (club.host_id === me) {
+    activityLog.mark(req, club, 'owner');
+    return { club, role: 'owner' };
+  }
   // Grants are by email, so only an address Supabase has confirmed counts.
   if (!req.emailVerified || !req.hostEmail) return null;
   const { data: rows } = await supabase
@@ -37,15 +47,19 @@ async function clubAccess(req, clubId, { check = true } = {}) {
     .eq('club_id', club.id)
     .in('role', CLUB_ROLES)
     .eq('email', req.hostEmail.toLowerCase());
-  let roles = [...new Set((rows || []).filter((g) => activeToday(g)).map((g) => g.role))];
-  if (roles.some((r) => LIMITED_ROLES.includes(r)) && !(await rolesAllowed(club.host_id))) roles = roles.filter((r) => !LIMITED_ROLES.includes(r));
-  if (!roles.length) return null;
+  let grants = (rows || []).filter((g) => activeToday(g));
+  if (grants.some((g) => LIMITED_ROLES.includes(g.role)) && !(await rolesAllowed(club.host_id))) grants = grants.filter((g) => !LIMITED_ROLES.includes(g.role));
+  if (!grants.length) return null;
+  const roles = [...new Set(grants.map((g) => g.role))];
   const role = roles.includes('co_admin') ? 'co_admin' : roles[0];
-  if (check && !permits(roles, req.method, req.originalUrl, req.body)) {
+  const custom = grants.some((g) => g.permissions?.length) && (await customAllowed(club.host_id));
+  if (check && !permitsGrants(grants, req.method, req.originalUrl, req.body, { custom })) {
     req.roleForbidden = true;
     return null;
   }
-  return { club, role, roles };
+  activityLog.mark(req, club, role);
+  // groups: what this person may work on (null = everything) — the web builds its menu from it.
+  return { club, role, roles, groups: effectiveGroups(grants, custom) };
 }
 
 // Clubs shared with this account (co-admin, Finance or Operations), with the owner's
@@ -74,7 +88,13 @@ async function coAdminClubs(req, roles = CLUB_ROLES) {
     const rs = live.filter((g) => g.club_id === c.id).map((g) => g.role);
     return rs.includes('co_admin') ? 'co_admin' : rs[0];
   };
-  return clubs.map((c) => ({ ...c, role: roleOf(c), owner_email: (owners || []).find((u) => u.id === c.host_id)?.email || null }));
+  const out = [];
+  for (const c of clubs) {
+    const mine = live.filter((g) => g.club_id === c.id);
+    const custom = mine.some((g) => g.permissions?.length) && (await customAllowed(c.host_id));
+    out.push({ ...c, role: roleOf(c), groups: effectiveGroups(mine, custom), owner_email: (owners || []).find((u) => u.id === c.host_id)?.email || null });
+  }
+  return out;
 }
 
 // The club owner's id when this account may work on the club (owner or co-admin), else null.
@@ -88,7 +108,10 @@ async function actingHost(req, clubId) {
 async function eventAccess(req, event) {
   if (!event) return null;
   const me = req.userId || req.hostId;
-  if (event.host_id === me) return { hostId: me, coAdmin: false };
+  if (event.host_id === me) {
+    if (event.club_id) activityLog.mark(req, { id: event.club_id, host_id: me }, 'owner');
+    return { hostId: me, coAdmin: false };
+  }
   if (!event.club_id) return null;
   const access = await clubAccess(req, event.club_id);
   return access && access.club.host_id === event.host_id ? { hostId: event.host_id, coAdmin: true, role: access.role } : null;

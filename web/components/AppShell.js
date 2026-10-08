@@ -56,6 +56,7 @@ const NAV_BY_WORKSPACE = {
         { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
         { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
         { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
+        { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
       ],
     },
     {
@@ -64,6 +65,7 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
         { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+        { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
       ],
     },
     {
@@ -82,6 +84,7 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
         { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
+        { href: '/club/activity-log', key: 'nav.activityLog', icon: 'plans' },
         { href: '/account', key: 'nav.account', icon: 'account' },
       ],
     },
@@ -130,9 +133,24 @@ const TABS_BY_WORKSPACE = {
 
 // Club staff with a limited role see only their pages (the API refuses the rest anyway).
 const ROLE_PAGES = {
-  finance: ['/finance', '/finance/ledger', '/finance/plans', '/account'],
-  operator: ['/club/members', '/events', '/club/attendance', '/club/rankings', '/finance/inventory', '/account'],
+  finance: ['/finance', '/finance/ledger', '/finance/plans', '/club/roster', '/account'],
+  operator: ['/club/members', '/events', '/club/attendance', '/club/rankings', '/finance/inventory', '/club/roster', '/account'],
 };
+// With custom permissions (Pro) the menu follows the person's permission groups.
+const GROUP_PAGES = {
+  members: ['/club/members', '/club/attendance'],
+  events: ['/events'],
+  matches: ['/events'],
+  rankings: ['/club/rankings'],
+  inventory: ['/finance/inventory'],
+  finance_view: ['/finance', '/finance/ledger', '/finance/plans'],
+  finance_edit: ['/finance', '/finance/ledger', '/finance/plans'],
+};
+function pagesFor(club) {
+  if (!club || !['finance', 'operator'].includes(club.role)) return null;
+  if (!Array.isArray(club.groups)) return ROLE_PAGES[club.role] || null;
+  return [...new Set([...club.groups.flatMap((g) => GROUP_PAGES[g] || []), '/club/roster', '/account'])];
+}
 
 const GROUPS_KEY = 'pickleball_nav_groups';
 
@@ -231,11 +249,11 @@ export default function AppShell({ children }) {
 
   // Finance / Operations staff opening a page outside their role go to their first page.
   useEffect(() => {
-    const pages = workspace === 'club' ? ROLE_PAGES[club?.role] : null;
+    const pages = workspace === 'club' ? pagesFor(club) : null;
     if (!pages || !pathname) return;
     const inside = pages.some((p) => pathname === p || (p !== '/finance' && pathname.startsWith(`${p}/`))) || pathname.startsWith('/events/');
     if (!inside) router.replace(pages[0]);
-  }, [workspace, club?.role, pathname, router]);
+  }, [workspace, club, pathname, router]);
 
   useEffect(() => {
     try {
@@ -304,7 +322,7 @@ export default function AppShell({ children }) {
   // A co-admin works on the owner's club with the full menu, except granting access to
   // others (and deleting the club), which stay with the owner.
   const clubRole = workspace === 'club' ? club?.role : null;
-  const rolePages = ROLE_PAGES[clubRole] || null;
+  const rolePages = clubRole ? pagesFor(club) : null;
   const roleOk = (href) => !rolePages || rolePages.includes(href);
   const NAV = (NAV_BY_WORKSPACE[workspace] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
