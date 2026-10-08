@@ -13,12 +13,15 @@ export default function NotifySettings({ bare = false } = {}) {
   const [bot, setBot] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  // Emails to players: the Host's switch (off by default) + whether the server can send.
+  const [mail, setMail] = useState(null);
 
   useEffect(() => {
     api.get('/api/host/notifications').then((r) => {
       setUrl(r.notify_webhook_url || '');
       setSaved(r.notify_webhook_url || '');
       setBot(r.telegram_bot);
+      setMail({ on: !!r.notify_players_email, ready: !!r.email_ready, migrated: r.email_migrated !== false });
     });
   }, []);
 
@@ -31,6 +34,19 @@ export default function NotifySettings({ bare = false } = {}) {
       setSaved(r.notify_webhook_url || '');
       setUrl(r.notify_webhook_url || '');
       setMsg(t('notify.saved'));
+    } catch (err) {
+      setMsg(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleMail() {
+    setBusy(true);
+    setMsg('');
+    try {
+      const r = await api.patch('/api/host/notifications', { notify_players_email: !mail.on });
+      setMail({ ...mail, on: !!r.notify_players_email });
     } catch (err) {
       setMsg(err.message);
     } finally {
@@ -58,6 +74,28 @@ export default function NotifySettings({ bare = false } = {}) {
           <h2 className="text-white font-semibold mb-1">{t('notify.title')}</h2>
           <p className="text-gray-400 text-sm mb-3">{t('notify.hint')}</p>
         </>
+      )}
+      {mail && (
+        <div className="mb-3 rounded-lg bg-navy-900 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-white">✉️ {t('notify.emailTitle')}</p>
+              <p className="text-xs text-gray-400">{t('notify.emailHint')}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={mail.on}
+              aria-label={t('notify.emailTitle')}
+              disabled={busy || !mail.migrated}
+              onClick={toggleMail}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${mail.on ? 'bg-lime-500' : 'bg-navy-700'}`}
+            >
+              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${mail.on ? 'left-[22px]' : 'left-0.5'}`} />
+            </button>
+          </div>
+          {!mail.ready && <p className="text-xs text-amber-300 mt-2">⚠️ {t('notify.emailNotReady')}</p>}
+        </div>
       )}
       <p className="text-sm mb-3 rounded-lg bg-navy-900 px-3 py-2">
         <span className="text-gray-400">Telegram: </span>

@@ -7,7 +7,7 @@ const { todayYmd, periodRange, summarize, normalizePhone } = require('../service
 const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, cancelParticipant } = require('../services/attendance');
-const { telegramSend } = require('../services/notify');
+const { telegramSend, emailReady } = require('../services/notify');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
 const { linkByPhone } = require('../services/phoneLink');
@@ -484,6 +484,8 @@ player.get('/me', async (req, res) => {
         available: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME),
         linked: !!profile?.telegram_chat_id,
       },
+      // Email notices: whether the server can send them, and this player's choice.
+      email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
       dupr_history: duprHistory,
@@ -762,6 +764,23 @@ player.post('/telegram/link', async (req, res) => {
     if (error) throw error;
     if (!data) throw badRequest('Complete your profile first.', 400, 'profile_required');
     res.json({ url: `https://t.me/${bot.replace(/^@/, '')}?start=${code}` });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Turn email notices (promoted, payment, cancelled, survey) on/off. Body: { enabled }
+player.put('/email-notices', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('player_profiles')
+      .update({ email_notices: req.body?.enabled !== false })
+      .eq('user_id', req.hostId)
+      .select('email_notices')
+      .maybeSingle();
+    if (error) throw badRequest('Run migration 20261024090000_player_email_notices.sql first.', 409, 'migration_required');
+    if (!data) throw badRequest('Complete your profile first.', 400, 'profile_required');
+    res.json(data);
   } catch (err) {
     fail(res, err);
   }

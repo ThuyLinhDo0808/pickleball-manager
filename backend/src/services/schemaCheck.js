@@ -31,6 +31,7 @@ const PROBES = [
   { table: 'meeting_money', column: 'sponsor_amount', migration: '20261021090000_meeting_money.sql' },
   { table: 'clubs', column: 'fund_calc', migration: '20261022090000_club_fund_calculator.sql' },
   { table: 'inventory_items', column: 'host_id', migration: '20261023090000_ball_log_xeve_inventory.sql' },
+  { table: 'users', column: 'notify_players_email', migration: '20261024090000_player_email_notices.sql' },
 ];
 
 const TTL_MS = 60 * 1000;
