@@ -686,7 +686,7 @@ Gói được mua **theo tài khoản Host**: khách mua quyền sử dụng cho
 Tạo CLB vượt giới hạn → app hiện bảng **Nâng cấp tài khoản** (trang chủ, bộ chuyển ngữ cảnh, trang tạo CLB, Tài khoản → Gói dịch vụ → *Đổi gói*). Mỗi gói ghi giá theo tháng.
 
 **Nâng cấp phải trả phí trước** (mặc định, `ALLOW_TIER_SELF_SERVE=false`):
-1. Host bấm *Đăng ký nâng cấp* ở gói muốn lên (hoặc *Gia hạn* ở gói đang dùng), chọn **1 / 3 / 6 / 12 tháng**, xem tổng tiền, bấm **Lấy mã chuyển khoản**.
+1. Host bấm *Đăng ký nâng cấp* ở gói muốn lên (hoặc *Gia hạn* / *Mua gói này* ở gói đang dùng). Khung thanh toán mở **ngay dưới gói vừa bấm** (gói đó được viền xanh, màn hình tự cuộn tới khung): chọn **1 / 3 / 6 / 12 tháng**, nhập mã khuyến mãi nếu có, xem tổng tiền, bấm **Lấy mã chuyển khoản** → thông tin chuyển khoản và QR hiện tại chỗ đó.
 2. App hiện khung **Chờ thanh toán**: mã **VietQR** (số tiền + nội dung đã điền sẵn) và từng dòng *Số tiền / Nội dung chuyển khoản (mã `PBM…`) / Ngân hàng / Số tài khoản / Chủ tài khoản* có nút Copy. Tiền chuyển về tài khoản của đơn vị vận hành app.
 3. Đội vận hành nhận email/webhook góp ý "[Yêu cầu gói] …" kèm số tiền và mã. Khi thấy tiền vào, mở **Trang Owner → Thanh toán gói** (`/owner/payments`, xem [8.7](#87-trang-owner-owner)) và bấm **Đã nhận tiền** → gói được bật ngay, có hạn đến hết số tháng đã trả (hiện *"Đến hết dd/mm/yyyy"* dưới gói).
 4. Gia hạn trước khi hết hạn thì cộng nối tiếp từ ngày hết hạn cũ. **Hết hạn** mà chưa gia hạn: tài khoản tự về gói **FREE** (Social Manager tắt). Dữ liệu giữ nguyên, chỉ bị chặn tạo thêm CLB / người / kèo Xé Vé; app báo đỏ *"Gói … đã hết hạn"*.

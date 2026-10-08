@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -53,6 +53,16 @@ function useRequest(kind) {
 
 const fmtDate = (ymd) => (ymd ? ymd.split('-').reverse().join('/') : '');
 
+// Bring a box that just appeared into view (the plan list is long: on a phone the
+// button pressed is far from the top of the dialog).
+function useScrollIntoView(on) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (on) ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+  }, [on]);
+  return ref;
+}
+
 function CopyLine({ label, value, strong }) {
   const { t } = useI18n();
   const [done, setDone] = useState(false);
@@ -77,12 +87,13 @@ function CopyLine({ label, value, strong }) {
 }
 
 // A transfer order waiting for the money: VietQR + the details to type by hand.
-export function PlanPaymentBox({ payment, onCancel, busy }) {
+export function PlanPaymentBox({ payment, onCancel, busy, scroll = false }) {
   const { t } = useI18n();
   const [qrFailed, setQrFailed] = useState(false);
+  const ref = useScrollIntoView(scroll);
   const what = payment.kind === 'tier' ? (payment.tier || '').toUpperCase() : 'Social Manager';
   return (
-    <div className="rounded-xl border border-amber-300/40 bg-amber-300/5 p-3">
+    <div ref={ref} className="rounded-xl border border-amber-300/40 bg-amber-300/5 p-3 scroll-mt-4">
       <p className="text-amber-200 text-sm font-semibold">⏳ {t('plan.payTitle', { what, months: payment.months })}</p>
       <p className="text-gray-300 text-xs mt-1 mb-3">{t('plan.payHint')}</p>
       <div className="grid gap-3 sm:grid-cols-[180px_1fr] items-start">
@@ -110,7 +121,7 @@ export function PlanPaymentBox({ payment, onCancel, busy }) {
 }
 
 // Pick how many months, see the total, then get the transfer details.
-function Checkout({ kind, tier, req, onBack }) {
+function Checkout({ kind, tier, req, onBack, scroll = false }) {
   const { t } = useI18n();
   const { plan } = useWorkspace();
   const choices = plan?.month_choices || [1, 3, 6, 12];
@@ -140,8 +151,9 @@ function Checkout({ kind, tier, req, onBack }) {
     }
   }
   const pickMonths = (m) => { setMonths(m); if (promo) applyCode(m); };
+  const ref = useScrollIntoView(scroll);
   return (
-    <div className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-3">
+    <div ref={ref} className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-3 scroll-mt-4">
       <p className="text-white font-semibold text-sm">{t('plan.checkoutTitle', { what })}</p>
       <p className="text-gray-400 text-xs mb-2">{t('plan.perMonth', { price: formatVnd(price) })}</p>
       <div className="flex flex-wrap gap-1.5 mb-3" role="radiogroup" aria-label={t('plan.months')}>
@@ -217,11 +229,9 @@ export function UpgradeModal({ open, onClose }) {
           : t('plan.changeBody', { tier: current.toUpperCase(), owned: plan?.clubs_owned ?? 0, n: plan?.club_limit ?? '∞' })}
       </p>
       {plan?.expired_tier && <p className="text-red-300 text-sm mb-2">{t('plan.expired', { tier: plan.expired_tier.toUpperCase() })}</p>}
-      {paid && picking && !(req.done === 'payment') && (
-        <div className="mb-3"><Checkout kind="tier" tier={picking} req={req} onBack={() => setPicking(null)} /></div>
-      )}
-      {paid && pending && req.done !== 'downgraded' && (
-        <div className="mb-3"><PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => { setPicking(null); req.cancel('upgrade_request'); }} /></div>
+      {/* An order already waiting (dialog opened again): its transfer details on top. */}
+      {paid && pending && !picking && req.done !== 'downgraded' && (
+        <div className="mb-3"><PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => req.cancel('upgrade_request')} /></div>
       )}
       <div className="grid sm:grid-cols-2 gap-2 mb-3">
         {TIERS.map((tier) => {
@@ -229,8 +239,18 @@ export function UpgradeModal({ open, onClose }) {
           const higher = TIERS.indexOf(tier) > TIERS.indexOf(current);
           const lim = LIMITS[tier] || {};
           const n = (v) => (v == null ? '∞' : v);
-          return (
-            <div key={tier} className={`relative rounded-xl border p-3 flex flex-col ${isCurrent ? 'border-lime-400 bg-lime-400/5' : tier === 'standard' ? 'border-amber-300/60' : 'border-navy-600'}`}>
+          // The plan being bought: months + total, then the transfer details, right under its card.
+          const checkout = paid && picking === tier && (
+            <div key={`${tier}-pay`} className="sm:col-span-2">
+              {req.done === 'payment' && pending ? (
+                <PlanPaymentBox scroll payment={pending} busy={req.busy} onCancel={() => { setPicking(null); req.cancel('upgrade_request'); }} />
+              ) : (
+                <Checkout scroll kind="tier" tier={tier} req={req} onBack={() => setPicking(null)} />
+              )}
+            </div>
+          );
+          return [
+            <div key={tier} className={`relative rounded-xl border p-3 flex flex-col ${picking === tier ? 'border-lime-400 ring-1 ring-lime-400' : isCurrent ? 'border-lime-400 bg-lime-400/5' : tier === 'standard' ? 'border-amber-300/60' : 'border-navy-600'}`}>
               {tier === 'standard' && !isCurrent && <span className="absolute -top-2 right-2 rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-bold text-navy-950">{t('plan.popular')}</span>}
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-white font-bold uppercase">{tier}</span>
@@ -263,8 +283,9 @@ export function UpgradeModal({ open, onClose }) {
                   </button>
                 )}
               </div>
-            </div>
-          );
+            </div>,
+            checkout,
+          ];
         })}
       </div>
       {!paid && plan?.upgrade_requested_at && req.done !== 'downgraded' && (
