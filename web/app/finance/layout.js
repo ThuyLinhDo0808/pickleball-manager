@@ -17,6 +17,7 @@ const TABS = {
   xeve: [
     { href: '/finance', key: 'fin.overview', icon: '📊' },
     { href: '/finance/ledger', key: 'fin.ledger', icon: '📒' },
+    { href: '/finance/inventory', key: 'fin.inventory', icon: '📦' },
   ],
 };
 

@@ -5,7 +5,8 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
-const { itemMetrics } = require('../services/inventory');
+const inventoryStore = require('../services/inventoryStore');
+const { clubStats } = require('../services/clubStats');
 const birthdays = require('../services/birthdays');
 const { guestsReady, discountReady, guestStats, PERKS } = require('../services/guests');
 const { extrasReady, cleanExtras } = require('../services/memberExtras');
@@ -15,12 +16,7 @@ const { setAttendance } = require('../services/attendance');
 const { SPORTS, sportReady, cleanLevel } = require('../services/sport');
 const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
 const {
-  PERIODS: PERIODS_STATS,
-  DEFAULT_MIN_MATCHES,
   localDate,
-  periodBounds,
-  aggregate,
-  awards,
   winnerTeam,
   isScored,
 } = require('../services/stats');
@@ -166,8 +162,37 @@ router.post('/', async (req, res) => {
 
 router.get('/:clubId', (req, res) => res.json({ ...req.club, role: req.coAdmin ? 'co_admin' : 'owner' }));
 
+// The monthly fund worksheet: known numbers only (whole, >= 0), a few guest price rows.
+const CALC_NUMBERS = ['rate_per_hour', 'hours_per_session', 'sessions_per_month', 'discount_pct', 'water', 'members', 'round_to', 'carry_sessions', 'balls_per_session', 'ball_price'];
+function cleanFundCalc(v) {
+  if (v == null) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) throw Object.assign(new Error('fund_calc must be an object.'), { status: 400 });
+  const out = {};
+  for (const k of CALC_NUMBERS) {
+    if (v[k] === '' || v[k] == null) continue;
+    const n = Number(v[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e10) throw Object.assign(new Error(`fund_calc.${k} must be a number, 0 or more.`), { status: 400 });
+    out[k] = k === 'hours_per_session' ? Math.round(n * 100) / 100 : Math.round(n);
+  }
+  if (out.discount_pct > 100) throw Object.assign(new Error('fund_calc.discount_pct is at most 100.'), { status: 400 });
+  out.guest_slots = (Array.isArray(v.guest_slots) ? v.guest_slots : []).slice(0, 10).map((g) => ({
+    label: String(g?.label ?? '').trim().slice(0, 40),
+    price: Math.max(0, Math.min(1e9, Math.round(Number(g?.price) || 0))),
+  }));
+  return out;
+}
+
 router.patch('/:clubId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount']);
+  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc']);
+  if ('fund_calc' in fields) {
+    try {
+      fields.fund_calc = cleanFundCalc(fields.fund_calc);
+    } catch (err) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    const { error: probe } = await supabase.from('clubs').select('fund_calc').limit(1);
+    if (probe) return res.status(409).json({ error: 'Run migration 20261022090000_club_fund_calculator.sql first.' });
+  }
   if ('guest_vip_discount' in fields && !(await guestsReady())) {
     return res.status(409).json({ error: 'Run migration 20261009090000_guest_perks_survey.sql first.' });
   }
@@ -673,107 +698,9 @@ router.delete('/:clubId/memberships/:membershipId/sessions/last', async (req, re
 });
 
 // ---- Stats: rankings + awards for a day / month / quarter / year / all time --
-// Supabase caps a response at 1000 rows, so page through.
-async function fetchAll(build) {
-  const size = 1000;
-  const out = [];
-  for (let from = 0; ; from += size) {
-    const { data, error } = await build().range(from, from + size - 1);
-    if (error) throw error;
-    out.push(...data);
-    if (data.length < size) return out;
-  }
-}
-
-function shiftDay(ymd, days) {
-  const d = new Date(`${ymd}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 router.get('/:clubId/stats', async (req, res) => {
-  const period = PERIODS_STATS.includes(req.query.period) ? req.query.period : 'month';
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : todayYmd();
-  const minMatches = Math.min(Math.max(parseInt(req.query.min_matches, 10) || DEFAULT_MIN_MATCHES, 1), 50);
-  const bounds = periodBounds(period, date);
-  const inRange = (ymd) => !bounds || (ymd >= bounds.from && ymd <= bounds.to);
-
-  // Two leaderboards: the club community (fixed members) and the guests. No group = all.
-  const group = ['club', 'guest'].includes(req.query.group) ? req.query.group : null;
   try {
-    const allMembers = await fetchAll(() =>
-      supabase.from('club_members').select('id, full_name, gender, member_type').eq('club_id', req.club.id).order('id')
-    );
-    const members = allMembers.filter((m) => !group || (group === 'club' ? m.member_type === 'fixed' : m.member_type !== 'fixed'));
-    const linkGuests = await guestsReady(); // guests in sessions are linked by guest_member_id
-    const personOf = (p) => p?.source_club_member_id || (linkGuests ? p?.guest_member_id : null) || null;
-
-    // Pad the UTC window by a day each side, then filter exactly on the local date.
-    const matches = (
-      await fetchAll(() => {
-        let q = supabase
-          .from('matches')
-          .select('id, played_at, team1_score, team2_score, match_players(team, club_member_id)')
-          .eq('club_id', req.club.id)
-          .order('id');
-        if (bounds) q = q.gte('played_at', `${shiftDay(bounds.from, -1)}T00:00:00Z`).lte('played_at', `${shiftDay(bounds.to, 1)}T23:59:59Z`);
-        return q;
-      })
-    ).filter((m) => inRange(localDate(m.played_at)));
-
-    // Matches recorded inside this club's sessions (by the Host or staff) count too:
-    // their players are event participants, linked back to club members.
-    const sessionMatches = (
-      await fetchAll(() => {
-        let q = supabase
-          .from('matches')
-          .select(`id, played_at, team1_score, team2_score, events!inner(club_id), match_players(team, event_participants(source_club_member_id${linkGuests ? ', guest_member_id' : ''}))`)
-          .eq('events.club_id', req.club.id)
-          .order('id');
-        if (bounds) q = q.gte('played_at', `${shiftDay(bounds.from, -1)}T00:00:00Z`).lte('played_at', `${shiftDay(bounds.to, 1)}T23:59:59Z`);
-        return q;
-      })
-    )
-      .filter((m) => inRange(localDate(m.played_at)))
-      .map((m) => ({
-        ...m,
-        match_players: m.match_players.map((p) => ({ team: p.team, club_member_id: personOf(p.event_participants) })),
-      }));
-    matches.push(...sessionMatches);
-
-    const checkIns = await fetchAll(() => {
-      let q = supabase
-        .from('event_participants')
-        .select(`source_club_member_id${linkGuests ? ', guest_member_id' : ''}, event_id, events!inner(club_id, event_date)`)
-        .eq('status', 'checked_in')
-        .eq('events.club_id', req.club.id)
-        .order('id');
-      if (bounds) q = q.gte('events.event_date', bounds.from).lte('events.event_date', bounds.to);
-      return q;
-    });
-    const attendance = {};
-    const seen = new Set();
-    for (const c of checkIns) {
-      const who = personOf(c);
-      if (!who) continue;
-      const key = `${who}:${c.event_id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      attendance[who] = (attendance[who] || 0) + 1;
-    }
-
-    const rankings = aggregate(matches, members);
-    const ids = new Set(members.map((m) => m.id));
-    res.json({
-      period,
-      date,
-      group,
-      range: bounds,
-      // matches with a score that someone of this leaderboard played
-      match_count: matches.filter((m) => isScored(m) && m.match_players.some((p) => ids.has(p.club_member_id))).length,
-      rankings,
-      awards: awards(rankings, attendance, members, minMatches),
-    });
+    res.json(await clubStats(req.club, req.query));
   } catch (err) {
     dbError(res, err);
   }
@@ -844,168 +771,8 @@ router.post('/:clubId/pending-payments/:ref/confirm', async (req, res) => {
   }
 });
 
-// ---- Inventory (balls & supplies) -------------------------------------------
-router.param('itemId', async (req, res, next, itemId) => {
-  if (!isUuid(itemId)) return notFound(res, 'Item');
-  const { data, error } = await supabase.from('inventory_items').select('*').eq('id', itemId).eq('club_id', req.club.id).maybeSingle();
-  if (error) return dbError(res, error);
-  if (!data) return notFound(res, 'Item');
-  req.item = data;
-  next();
-});
-
-async function inventoryFor(clubId) {
-  const { data: items, error } = await supabase
-    .from('inventory_items')
-    .select('*, inventory_moves(*)')
-    .eq('club_id', clubId)
-    .order('created_at');
-  if (error) throw error;
-  return items.map(({ inventory_moves: moves, ...item }) => ({
-    ...item,
-    ...itemMetrics(moves || []),
-    moves: (moves || []).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || b.created_at.localeCompare(a.created_at)).slice(0, 30),
-  }));
-}
-
-async function stockOf(itemId) {
-  const { data, error } = await supabase.from('inventory_moves').select('*').eq('item_id', itemId);
-  if (error) throw error;
-  return itemMetrics(data).stock;
-}
-
-router.get('/:clubId/inventory', async (req, res) => {
-  try {
-    res.json(await inventoryFor(req.club.id));
-  } catch (err) {
-    dbError(res, err);
-  }
-});
-
-router.post('/:clubId/inventory', async (req, res) => {
-  const name = String(req.body.name || '').trim();
-  if (!name) return res.status(400).json({ error: 'name is required.' });
-  const holes = req.body.holes === '' || req.body.holes == null ? null : parseInt(req.body.holes, 10);
-  const { data, error } = await supabase
-    .from('inventory_items')
-    .insert({
-      club_id: req.club.id,
-      name,
-      category: req.body.category === 'other' ? 'other' : 'ball',
-      holes: Number.isInteger(holes) ? holes : null,
-      unit: String(req.body.unit || '').trim() || 'quả',
-    })
-    .select()
-    .single();
-  if (error) return dbError(res, error);
-  res.status(201).json(data);
-});
-
-router.patch('/:clubId/inventory/:itemId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'is_active', 'unit']);
-  const { data, error } = await supabase.from('inventory_items').update(fields).eq('id', req.item.id).select().single();
-  if (error) return dbError(res, error);
-  res.json(data);
-});
-
-// Purchase (optionally also a club-fund expense), retire (with sessions lasted) or adjust.
-router.post('/:clubId/inventory/:itemId/moves', async (req, res) => {
-  const kind = req.body.kind;
-  const quantity = parseInt(req.body.quantity, 10);
-  if (!['purchase', 'retire', 'adjust', 'use'].includes(kind)) return res.status(400).json({ error: 'kind must be purchase, retire, use or adjust.' });
-  if (!Number.isInteger(quantity) || quantity === 0 || (kind !== 'adjust' && quantity < 0)) {
-    return res.status(400).json({ error: 'quantity must be a whole number (positive for purchase/retire/use).' });
-  }
-  // 'use': shuttles used up in one of this club's sessions.
-  let usedAt = null;
-  if (kind === 'use') {
-    if (!(await sportReady())) return res.status(409).json({ error: 'Run migration 20261012090000_multi_sport_badminton.sql first.' });
-    if (!isUuid(req.body.event_id)) return res.status(400).json({ error: 'event_id is required for use.' });
-    const { data: ev } = await supabase.from('events').select('id, event_date').eq('id', req.body.event_id).eq('club_id', req.club.id).maybeSingle();
-    if (!ev) return notFound(res, 'Event');
-    usedAt = ev;
-  }
-  const unitCost = kind === 'purchase' ? Number(req.body.unit_cost) : null;
-  if (kind === 'purchase' && !(unitCost >= 0)) return res.status(400).json({ error: 'unit_cost is required for a purchase.' });
-  const lasted = kind === 'retire' && req.body.sessions_lasted !== '' && req.body.sessions_lasted != null ? Number(req.body.sessions_lasted) : null;
-  if (lasted != null && !(lasted > 0 && lasted < 10000)) return res.status(400).json({ error: 'sessions_lasted must be > 0.' });
-  const occurred_on = usedAt ? usedAt.event_date : /^\d{4}-\d{2}-\d{2}$/.test(req.body.occurred_on || '') ? req.body.occurred_on : todayYmd();
-
-  try {
-    // Stock can never go below zero (retiring or a negative adjustment).
-    if (kind === 'retire' || kind === 'use' || (kind === 'adjust' && quantity < 0)) {
-      const stock = await stockOf(req.item.id);
-      if (Math.abs(quantity) > stock) return res.status(400).json({ error: `Only ${stock} in stock.` });
-    }
-    let transaction_id = null;
-    if (kind === 'purchase' && req.body.record_expense !== false && unitCost * quantity > 0) {
-      const { data: txn, error: tErr } = await supabase
-        .from('transactions')
-        .insert({
-          host_id: req.hostId,
-          owner_type: 'club',
-          club_id: req.club.id,
-          type: 'expense',
-          category: 'balls',
-          amount: Math.round(unitCost * quantity),
-          note: `${quantity} × ${req.item.name}`,
-          occurred_on,
-        })
-        .select('id')
-        .single();
-      if (tErr) throw tErr;
-      transaction_id = txn.id;
-    }
-    const { data, error } = await supabase
-      .from('inventory_moves')
-      .insert({
-        item_id: req.item.id,
-        kind,
-        quantity,
-        unit_cost: unitCost,
-        sessions_lasted: lasted,
-        occurred_on,
-        note: String(req.body.note || '').trim() || null,
-        transaction_id,
-        ...(usedAt ? { event_id: usedAt.id } : {}),
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    res.status(201).json(data);
-  } catch (err) {
-    dbError(res, err);
-  }
-});
-
-// Undo a mistaken entry; a linked fund expense is voided (the ledger stays append-only).
-router.delete('/:clubId/inventory/:itemId/moves/:moveId', async (req, res) => {
-  if (!isUuid(req.params.moveId)) return notFound(res, 'Move');
-  const { data: move } = await supabase.from('inventory_moves').select('*').eq('id', req.params.moveId).eq('item_id', req.item.id).maybeSingle();
-  if (!move) return notFound(res, 'Move');
-  // Removing a purchase (or a positive adjustment) must not leave negative stock.
-  const effect = move.kind === 'retire' ? -move.quantity : move.quantity;
-  if (effect > 0) {
-    let stock;
-    try {
-      stock = await stockOf(req.item.id);
-    } catch (err) {
-      return dbError(res, err);
-    }
-    if (stock - effect < 0) {
-      return res.status(400).json({ error: `Can't delete: ${effect - stock} of these balls were already retired or adjusted. Delete those entries first.` });
-    }
-  }
-  if (move.transaction_id) {
-    await supabase
-      .from('transactions')
-      .update({ is_voided: true, voided_at: new Date().toISOString(), void_reason: 'inventory entry deleted' })
-      .eq('id', move.transaction_id);
-  }
-  const { error } = await supabase.from('inventory_moves').delete().eq('id', move.id);
-  if (error) return dbError(res, error);
-  res.status(204).end();
-});
+// ---- Inventory (balls & supplies) — shared with the Xé Vé store ----------------
+inventoryStore.mount(router, '/:clubId/inventory', (req) => ({ club_id: req.club.id }));
 
 // ---- Rankings / fund ------------------------------------------------------
 router.get('/:clubId/rankings', async (req, res) => {

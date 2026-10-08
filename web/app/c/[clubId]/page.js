@@ -7,6 +7,7 @@ import ClubAvatar from '@/components/ClubAvatar';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import ClubLeaderboard from '@/components/ClubLeaderboard';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -23,7 +24,7 @@ const MY_TONE = {
 };
 
 // A club seen by one of its members (not its managers): my pass, the club's coming
-// sessions (sign up with one tap), my sign-ups and my history there.
+// sessions (sign up with one tap), my sign-ups, my history there and the club's rankings.
 export default function MemberClubPage() {
   const { clubId } = useParams();
   const { t, lang } = useI18n();
@@ -96,6 +97,7 @@ export default function MemberClubPage() {
           { key: 'schedule', label: t('hub.tabSchedule'), icon: '🗓', count: data.events.length },
           { key: 'pass', label: t('hub.tabPass'), icon: '🎫' },
           { key: 'history', label: t('hub.tabHistory'), icon: '🕘', count: data.history.length },
+          { key: 'rankings', label: t('hub.tabRankings'), icon: '🏅' },
         ]}
       />
 
@@ -197,6 +199,8 @@ export default function MemberClubPage() {
           </ul>
         </section>
       )}
+
+      {tab === 'rankings' && <ClubLeaderboard statsUrl={`/api/player/clubs/${clubId}/rankings`} clubName={data.club.name} />}
 
       <p className="text-center mt-6">
         <Link href="/p" className="text-gray-400 text-xs underline">{t('hub.myQrHint')} →</Link>

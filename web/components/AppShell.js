@@ -93,6 +93,7 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/finance', key: 'nav.finOverview', icon: 'fund', exact: true },
         { href: '/finance/ledger', key: 'nav.ledger', icon: 'plans' },
+        { href: '/finance/inventory', key: 'nav.inventory', icon: 'box' },
       ],
     },
     {

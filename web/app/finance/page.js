@@ -80,8 +80,6 @@ export default function FinanceOverview() {
   const { data: pnl } = useLoad(() => (scope ? api.get(`/api/analytics/events-pnl?${scope}&year=${year}`) : Promise.resolve(null)), [scope, year]);
   const { data: fund } = useLoad(() => (isClub && club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null)), [isClub, club?.id]);
 
-  const month = finNow?.months[finNow.months.length - 1];
-
   const isYear = view === 'year';
   const periodCats = isYear ? fin?.categories || [] : fin?.month_categories?.[ymPick] || [];
   const income = periodCats.filter((c) => c.type === 'income');
@@ -109,53 +107,14 @@ export default function FinanceOverview() {
     }
   }
   const bal = Number(fund?.balance || 0);
-  const ym = (m) => (m ? `${Number(m.month.slice(5))}/${m.month.slice(0, 4)}` : '');
+
+  // One set of Thu / Chi / Còn lại, for the month or year picked above.
+  const picked = isYear ? fin?.totals : fin?.months.find((m) => m.month === ymPick);
+  const net = picked ? picked.net : null;
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_2fr] mb-4">
-        {/* Balance / this month */}
-        <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6">
-          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
-          <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{isClub ? t('fin.balance') : t('finX.netThisMonth')}</p>
-          <div className={`text-3xl sm:text-4xl font-bold tabular-nums mt-1 ${(isClub ? bal : month?.net || 0) < 0 ? 'text-red-400' : 'text-lime-400'}`}>
-            {isClub ? (fund ? formatVnd(bal) : '—') : month ? formatVnd(month.net) : '—'}
-          </div>
-          <div className="mt-5 rounded-xl bg-navy-950/60 border border-navy-700 divide-y divide-navy-700">
-            <div className="px-4 py-2 text-gray-400 text-[11px] uppercase tracking-wide">{t('fin.thisMonth')} · {ym(month)}</div>
-            {[
-              ['💚', t('analytics.income'), month?.income, 'text-lime-300'],
-              ['🧾', t('analytics.expense'), month?.expense, 'text-orange-300'],
-              ['⚖️', t('analytics.net'), month?.net, (month?.net || 0) < 0 ? 'text-red-300' : 'text-white'],
-            ].map(([icon, k, v, tone]) => (
-              <div key={k} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                <span className="text-gray-300"><span aria-hidden="true">{icon}</span> {k}</span>
-                <span className={`font-semibold tabular-nums whitespace-nowrap ${tone}`}>{v == null ? '—' : formatVnd(v)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Link href="/finance/ledger" className="btn-primary text-sm">+ {t('finX.addEntry')}</Link>
-            <Link href="/finance/ledger" className="btn-secondary text-sm">📒 {t('fin.ledger')}</Link>
-          </div>
-        </div>
-
-        {/* Last 12 months */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 content-start">
-          <Tile icon="📈" label={`${t('analytics.income')} · ${yearLabel}`} value={fin ? formatVnd(fin.totals.income) : '—'} tone="text-lime-400" sub={t('finX.avgMonth', { v: fin ? formatVnd(Math.round(fin.totals.income / fin.months.length)) : '—' })} />
-          <Tile icon="📉" label={`${t('analytics.expense')} · ${yearLabel}`} value={fin ? formatVnd(fin.totals.expense) : '—'} tone="text-orange-300" sub={t('finX.avgMonth', { v: fin ? formatVnd(Math.round(fin.totals.expense / fin.months.length)) : '—' })} />
-          <Tile
-            icon="⚖️"
-            label={`${t('analytics.net')} · ${yearLabel}`}
-            value={fin ? formatVnd(fin.totals.net) : '—'}
-            tone={fin && fin.totals.net < 0 ? 'text-red-400' : 'text-white'}
-            sub={fin ? t('finX.goodMonths', { n: fin.months.filter((m) => m.net > 0).length, total: fin.months.length }) : null}
-          />
-          <div className="sm:col-span-3">{fin && <FinanceTrend fin={fin} compact />}</div>
-        </div>
-      </div>
-
-      <div className="card !p-3 mb-3 flex flex-wrap items-center gap-2">
+      <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
         <span className="text-gray-400 text-sm">{t('finX.viewing')}</span>
         <div className="flex items-center gap-1">
           <button type="button" className="btn-secondary !px-3 !py-1" onClick={() => step(-1)} aria-label={t('cal.prev')}>‹</button>
@@ -169,7 +128,28 @@ export default function FinanceOverview() {
             </button>
           ))}
         </div>
+        <Link href="/finance/ledger" className="btn-primary text-sm sm:ml-auto">+ {t('finX.addEntry')}</Link>
       </div>
+
+      <div className={`grid gap-4 mb-4 ${isClub ? 'lg:grid-cols-[1fr_2.4fr]' : ''}`}>
+        {/* The club fund: what is in it now, whatever the period. */}
+        {isClub && (
+          <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 flex flex-col justify-center">
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t('fin.balance')}</p>
+            <div className={`text-3xl sm:text-4xl font-bold tabular-nums mt-1 ${bal < 0 ? 'text-red-400' : 'text-lime-400'}`}>{fund ? formatVnd(bal) : '—'}</div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 content-start">
+          <Tile icon="📈" label={`${t('analytics.income')} · ${periodLabel}`} value={picked ? formatVnd(picked.income) : '—'} tone="text-lime-400" />
+          <Tile icon="📉" label={`${t('analytics.expense')} · ${periodLabel}`} value={picked ? formatVnd(picked.expense) : '—'} tone="text-orange-300" />
+          <Tile icon="⚖️" label={`${t('analytics.net')} · ${periodLabel}`} value={net == null ? '—' : formatVnd(net)} tone={net < 0 ? 'text-red-400' : 'text-white'} />
+        </div>
+      </div>
+
+      {fin && <div className="mb-4"><FinanceTrend fin={fin} compact /></div>}
+
       <div className="grid gap-4 md:grid-cols-2 mb-4">
         <Breakdown title={`💚 ${t('finX.incomeByP', { p: periodLabel })}`} rows={income} total={periodTotal('income')} color={INCOME_COLOR} t={t} />
         <Breakdown title={`🧾 ${t('finX.expenseByP', { p: periodLabel })}`} rows={expense} total={periodTotal('expense')} color={EXPENSE_COLOR} t={t} />
