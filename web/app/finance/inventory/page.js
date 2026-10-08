@@ -92,7 +92,7 @@ function MoveForm({ base, item, kind, isClub, onDone, onCancel }) {
 // One session of the ball table: new balls taken out, balls in play that broke.
 function SessionForm({ base, item, session, onDone, onCancel }) {
   const { t } = useI18n();
-  const [f, setF] = useState(() => ({ occurred_on: session?.date || todayYmd(), new_out: session ? String(session.new) : '', broken: session ? String(session.broken_now) : '' }));
+  const [f, setF] = useState(() => ({ occurred_on: session?.date || todayYmd(), new_out: session ? String(session.new_out ?? session.new) : '', broken: session ? String(session.broken_now) : '' }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   // Balls in play before this date: the last logged session before it.
@@ -101,6 +101,11 @@ function SessionForm({ base, item, session, onDone, onCancel }) {
 
   async function submit(e) {
     e.preventDefault();
+    // Broken balls: the old ones in play, or new ones taken out this session.
+    if (Number(f.broken || 0) > playing + Number(f.new_out || 0)) {
+      setError(t('inventory.brokenTooMany', { n: playing + Number(f.new_out || 0), old: playing, fresh: Number(f.new_out || 0) }));
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -121,13 +126,13 @@ function SessionForm({ base, item, session, onDone, onCancel }) {
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('inventory.brokenNow')}</label>
-        <input className="input" type="number" inputMode="numeric" min="0" max={playing} value={f.broken} onChange={(e) => setF({ ...f, broken: e.target.value })} />
+        <input className="input" type="number" inputMode="numeric" min="0" value={f.broken} onChange={(e) => setF({ ...f, broken: e.target.value })} />
         <p className="text-gray-500 text-[11px] mt-1">{t('inventory.brokenHint', { n: playing })}</p>
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('inventory.newOut')}</label>
         <input className="input" type="number" inputMode="numeric" min="0" autoFocus value={f.new_out} onChange={(e) => setF({ ...f, new_out: e.target.value })} />
-        <p className="text-gray-500 text-[11px] mt-1">{t('inventory.inBox', { n: item.stock + (session ? session.new : 0) })}</p>
+        <p className="text-gray-500 text-[11px] mt-1">{t('inventory.inBox', { n: item.stock + (session ? session.new_out ?? session.new : 0) })}</p>
       </div>
       <p className="col-span-2 text-gray-500 text-xs">{t('inventory.sessionHint')}</p>
       {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}

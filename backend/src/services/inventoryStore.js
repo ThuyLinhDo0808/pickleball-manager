@@ -139,7 +139,8 @@ async function logSession(owner, item, body) {
   // Balls in play before this session (everything taken out earlier, less what broke).
   const inPlay = ballLog(rest.filter((x) => x.occurred_on < date)).at(-1);
   const playing = inPlay ? inPlay.old + inPlay.new : 0;
-  if (broken > playing) throw fail(400, `Only ${playing} balls were in play before this session.`);
+  // Broken balls are old ones in play, or new ones taken out (and broken) this session.
+  if (broken > playing + newOut) throw fail(400, `Only ${playing + newOut} balls were played this session (${playing} old + ${newOut} new).`);
   // New balls come out of what was in the box on that day (and stay within today's stock).
   const boxThen = itemMetrics(rest.filter((x) => x.occurred_on <= date)).stock;
   const box = Math.min(boxThen, m.stock);
