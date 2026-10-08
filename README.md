@@ -877,6 +877,7 @@ supabase/migrations/
 └── 20261024090000_player_email_notices.sql          # công tắc email cho người chơi (users.notify_players_email, player_profiles.email_notices)
 └── 20261025090000_plan_payments.sql                 # nâng cấp gói trả phí: bảng plan_payments + hạn dùng gói (tier_paid_until, social_manager_paid_until)
 └── 20261026090000_owner_console.sql                 # trang Owner: users.suspended_*, owner_audit_logs (chỉ ghi thêm), owner_notes, hàm owner_last_sign_in
+└── 20261026100000_owner_audit_guard_fix.sql         # sửa: xoá tài khoản không còn bị chặn bởi nhật ký Owner (cho phép bỏ liên kết tới tài khoản đã xoá)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
