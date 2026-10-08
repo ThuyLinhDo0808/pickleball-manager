@@ -26,12 +26,5 @@ services:
         sync: false
       - key: FEEDBACK_WEBHOOK_SECRET
         sync: false
-      # Optional: Telegram bot that DMs players moved up from the waitlist
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_BOT_USERNAME
-        sync: false
-      - key: TELEGRAM_WEBHOOK_SECRET
-        sync: false
       - key: APP_TZ
         value: Asia/Ho_Chi_Minh
