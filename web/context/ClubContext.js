@@ -101,8 +101,9 @@ export function ClubProvider({ children }) {
   }, [clubs]);
 
   const club = clubs.find((c) => c.id === selectedId) || null;
-  // Co-admin of someone else's club: members + finance only (see backend services/clubAccess.js).
-  const isCoAdmin = club?.role === 'co_admin';
+  // Working on someone else's club (co-admin, Finance or Operations — see backend
+  // services/clubAccess.js and services/clubRoles.js): no owner-only pages.
+  const isCoAdmin = !!club?.role && club.role !== 'owner';
 
   // The whole app speaks the current club's sport (DUPR vs badminton levels, balls vs shuttles...).
   // Personal pages (home hub, member club page, my activity) set their own sport.

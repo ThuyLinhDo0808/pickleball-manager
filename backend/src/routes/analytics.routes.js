@@ -4,6 +4,20 @@ const { dbError, notFound, isUuid } = require('../utils/respond');
 const { todayYmd } = require('../services/memberships');
 const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { clubAccess } = require('../services/clubAccess');
+const { assertFeature } = require('../services/plan');
+
+// Club analytics follow the club's plan (Xé Vé numbers come with Social Manager).
+async function gate(res, scope, feature) {
+  if (!scope?.clubId) return true;
+  try {
+    await assertFeature(scope.hostId, feature);
+    return true;
+  } catch (err) {
+    if (err.status !== 402) throw err;
+    res.status(402).json({ error: err.message, code: err.code, feature: err.feature, min_tier: err.min_tier });
+    return false;
+  }
+}
 
 const router = express.Router();
 
@@ -64,6 +78,7 @@ router.get('/finance', async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope) return notFound(res, 'Club');
+    if (!(await gate(res, scope, 'stats'))) return;
     const year = cleanYear(req.query.year);
     const months = year ? yearMonths(year) : lastMonths(Math.min(Math.max(parseInt(req.query.months, 10) || 12, 3), 36));
     const from = `${months[0]}-01`;
@@ -115,6 +130,7 @@ router.get('/events-pnl', async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope) return notFound(res, 'Club');
+    if (!(await gate(res, scope, 'finance_reports'))) return;
     const year = cleanYear(req.query.year);
     const months = Math.min(Math.max(parseInt(req.query.months, 10) || 12, 1), 36);
     const [y, m] = todayYmd().split('-').map(Number);
@@ -158,6 +174,7 @@ router.get('/no-shows', async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope) return notFound(res, 'Club');
+    if (!(await gate(res, scope, 'advanced_analytics'))) return;
     const months = Math.min(Math.max(parseInt(req.query.months, 10) || 6, 1), 24);
     const today = todayYmd();
     const [y, m, d] = today.split('-').map(Number);
@@ -208,6 +225,7 @@ router.get('/player-form', async (req, res) => {
   try {
     const scope = await resolveScope(req);
     if (!scope?.clubId) return notFound(res, 'Club');
+    if (!(await gate(res, scope, 'rankings'))) return;
     if (!isUuid(req.query.member_id)) return notFound(res, 'Member');
     const { data: member } = await supabase.from('club_members').select('id').eq('id', req.query.member_id).eq('club_id', scope.clubId).maybeSingle();
     if (!member) return notFound(res, 'Member');

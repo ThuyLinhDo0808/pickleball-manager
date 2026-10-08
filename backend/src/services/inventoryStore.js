@@ -181,7 +181,7 @@ async function deleteMove(item, moveId) {
 
 // The Express handlers. `ownerOf(req)` -> { club_id } or { host_id, club_id: null };
 // req.hostId is whose ledger a club purchase goes into.
-function mount(router, prefix, ownerOf) {
+function mount(router, prefix, ownerOf, ...guards) {
   const send = (res, err) => res.status(err.status || 500).json({ error: err.status ? err.message : 'Something went wrong.' });
   const withItem = (fn) => async (req, res) => {
     try {
@@ -194,7 +194,7 @@ function mount(router, prefix, ownerOf) {
       send(res, err);
     }
   };
-  router.get(prefix || '/', async (req, res) => {
+  router.get(prefix || '/', ...guards, async (req, res) => {
     try {
       req.inventoryOwner = ownerOf(req);
       res.json(await list(req.inventoryOwner));
@@ -203,7 +203,7 @@ function mount(router, prefix, ownerOf) {
       send(res, err);
     }
   });
-  router.post(prefix || '/', async (req, res) => {
+  router.post(prefix || '/', ...guards, async (req, res) => {
     try {
       req.inventoryOwner = ownerOf(req);
       res.status(201).json(await createItem(req.inventoryOwner, req.body || {}));
@@ -212,16 +212,16 @@ function mount(router, prefix, ownerOf) {
       send(res, err);
     }
   });
-  router.patch(`${prefix}/:itemId`, withItem(async (req, res, item) => {
+  router.patch(`${prefix}/:itemId`, ...guards, withItem(async (req, res, item) => {
     const fields = {};
     for (const k of ['name', 'is_active', 'unit']) if (k in req.body) fields[k] = req.body[k];
     const { data, error } = await supabase.from('inventory_items').update(fields).eq('id', item.id).select().single();
     if (error) throw error;
     res.json(data);
   }));
-  router.post(`${prefix}/:itemId/moves`, withItem(async (req, res, item) => res.status(201).json(await addMove(req.inventoryOwner, item, req.body || {}, req.hostId))));
-  router.post(`${prefix}/:itemId/sessions`, withItem(async (req, res, item) => res.status(201).json(await logSession(req.inventoryOwner, item, req.body || {}))));
-  router.delete(`${prefix}/:itemId/moves/:moveId`, withItem(async (req, res, item) => {
+  router.post(`${prefix}/:itemId/moves`, ...guards, withItem(async (req, res, item) => res.status(201).json(await addMove(req.inventoryOwner, item, req.body || {}, req.hostId))));
+  router.post(`${prefix}/:itemId/sessions`, ...guards, withItem(async (req, res, item) => res.status(201).json(await logSession(req.inventoryOwner, item, req.body || {}))));
+  router.delete(`${prefix}/:itemId/moves/:moveId`, ...guards, withItem(async (req, res, item) => {
     await deleteMove(item, req.params.moveId);
     res.status(204).end();
   }));

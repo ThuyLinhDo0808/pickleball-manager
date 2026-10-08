@@ -13,6 +13,10 @@ import FeedbackButton from '@/components/FeedbackButton';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
 import { api } from '@/lib/api';
+import LockedFeature from '@/components/LockedFeature';
+import PlanLimitNotice from '@/components/PlanLimitNotice';
+import { featureForPath, planFor, hasFeature } from '@/lib/planFeatures';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -52,6 +56,7 @@ const NAV_BY_WORKSPACE = {
         { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
         { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
         { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
+        { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
       ],
     },
     {
@@ -60,6 +65,7 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
         { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+        { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
       ],
     },
     {
@@ -78,6 +84,7 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/clubs', key: 'nav.clubs', icon: 'clubs' },
         { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
+        { href: '/club/activity-log', key: 'nav.activityLog', icon: 'plans' },
         { href: '/account', key: 'nav.account', icon: 'account' },
       ],
     },
@@ -123,6 +130,27 @@ const TABS_BY_WORKSPACE = {
   ],
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
 };
+
+// Club staff with a limited role see only their pages (the API refuses the rest anyway).
+const ROLE_PAGES = {
+  finance: ['/finance', '/finance/ledger', '/finance/plans', '/club/roster', '/account'],
+  operator: ['/club/members', '/events', '/club/attendance', '/club/rankings', '/finance/inventory', '/club/roster', '/account'],
+};
+// With custom permissions (Pro) the menu follows the person's permission groups.
+const GROUP_PAGES = {
+  members: ['/club/members', '/club/attendance'],
+  events: ['/events'],
+  matches: ['/events'],
+  rankings: ['/club/rankings'],
+  inventory: ['/finance/inventory'],
+  finance_view: ['/finance', '/finance/ledger', '/finance/plans'],
+  finance_edit: ['/finance', '/finance/ledger', '/finance/plans'],
+};
+function pagesFor(club) {
+  if (!club || !['finance', 'operator'].includes(club.role)) return null;
+  if (!Array.isArray(club.groups)) return ROLE_PAGES[club.role] || null;
+  return [...new Set([...club.groups.flatMap((g) => GROUP_PAGES[g] || []), '/club/roster', '/account'])];
+}
 
 const GROUPS_KEY = 'pickleball_nav_groups';
 
@@ -188,6 +216,13 @@ export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
   const { t } = useI18n();
   const { clubs, club, isCoAdmin, loading: clubsLoading, reload: reloadClubs } = useClubs();
+  // Set when the API says the app owner suspended this account (see lib/api.js).
+  const [suspended, setSuspended] = useState(null);
+  useEffect(() => {
+    const on = (e) => setSuspended(e.detail || {});
+    window.addEventListener('pb:suspended', on);
+    return () => window.removeEventListener('pb:suspended', on);
+  }, []);
   // Each page mounts its own shell: put the sidebar back where it was scrolled to,
   // instead of jumping to the top after every click.
   const sideRef = useRef(null);
@@ -211,6 +246,14 @@ export default function AppShell({ children }) {
   useEffect(() => {
     if (user && wsReady && !workspace) router.replace('/home');
   }, [user, wsReady, workspace, router]);
+
+  // Finance / Operations staff opening a page outside their role go to their first page.
+  useEffect(() => {
+    const pages = workspace === 'club' ? pagesFor(club) : null;
+    if (!pages || !pathname) return;
+    const inside = pages.some((p) => pathname === p || (p !== '/finance' && pathname.startsWith(`${p}/`))) || pathname.startsWith('/events/');
+    if (!inside) router.replace(pages[0]);
+  }, [workspace, club, pathname, router]);
 
   useEffect(() => {
     try {
@@ -278,12 +321,25 @@ export default function AppShell({ children }) {
   const coAdmin = workspace === 'club' && isCoAdmin;
   // A co-admin works on the owner's club with the full menu, except granting access to
   // others (and deleting the club), which stay with the owner.
-  const NAV = (NAV_BY_WORKSPACE[workspace] || []).map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g));
-  const tabs = TABS_BY_WORKSPACE[workspace] || [];
+  const clubRole = workspace === 'club' ? club?.role : null;
+  const rolePages = clubRole ? pagesFor(club) : null;
+  const roleOk = (href) => !rolePages || rolePages.includes(href);
+  const NAV = (NAV_BY_WORKSPACE[workspace] || [])
+    .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
+    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href)) } : g))
+    .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
+  const tabs = (TABS_BY_WORKSPACE[workspace] || []).filter((tab) => roleOk(tab.href));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
+
+  // Pages the club's plan doesn't include: a 💎 in the menu, an upgrade card instead of the page.
+  const clubPlan = planFor(workspace === 'club' ? club : null, plan);
+  const lockedHref = (href) => !hasFeature(clubPlan, featureForPath(href, workspace));
+  const pageFeature = featureForPath(pathname, workspace);
+  const pageLocked = !!pageFeature && !hasFeature(clubPlan, pageFeature);
+  const Gem = ({ href }) => (lockedHref(href) ? <span className="text-[11px]" title={t('plan.locked')} aria-label={t('plan.locked')}>💎</span> : null);
 
   const linkClass = (active, extra = '') =>
     `flex items-center gap-3 rounded-lg text-sm ${extra} ${active ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:bg-navy-800'}`;
@@ -363,7 +419,8 @@ export default function AppShell({ children }) {
                 <div className="ml-5 pl-3 border-l border-navy-700 flex flex-col gap-0.5 my-0.5">
                   {item.children.map((c) => (
                     <Link key={c.href} href={c.href} className={linkClass(navActive(c), 'px-3 py-1.5')}>
-                      {t(c.key)}
+                      <span className="flex-1">{t(c.key)}</span>
+                      <Gem href={c.href} />
                     </Link>
                   ))}
                 </div>
@@ -407,8 +464,18 @@ export default function AppShell({ children }) {
       </header>
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
+        <AnnouncementBanner className="mb-4" />
         {workspace && workspace !== 'staff' && <SchemaBanner />}
-        {!wsReady || !workspace ? null : workspace === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
+        {suspended ? (
+          <div className="max-w-lg mx-auto card mt-4 border-red-400/50" role="alert">
+            <h1 className="text-white text-lg font-bold mb-1">⛔ {t('owner.suspendedTitle')}</h1>
+            <p className="text-gray-300 text-sm">{t('owner.suspendedBody')}</p>
+            {suspended.reason && <p className="text-red-200 text-sm mt-2">{t('owner.suspendedReason', { reason: suspended.reason })}</p>}
+            <Link href="/home" className="btn-secondary text-sm mt-4 inline-block">{t('owner.suspendedHome')}</Link>
+          </div>
+        ) : pageLocked && wsReady ? (
+          <LockedFeature feature={pageFeature} owner={!coAdmin} />
+        ) : !wsReady || !workspace ? null : workspace === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
           <div className="max-w-lg mx-auto card mt-4">
             <SocialManagerPanel />
           </div>
@@ -424,8 +491,8 @@ export default function AppShell({ children }) {
               <div className="mb-4 flex items-center gap-3 rounded-xl border border-sky-400/30 bg-sky-400/5 px-3 py-2">
                 <span className="text-lg" aria-hidden="true">🤝</span>
                 <div className="min-w-0 text-sm">
-                  <div className="text-sky-200 font-semibold truncate">{t('coadmin.banner', { name: club?.name || '' })}</div>
-                  <div className="text-gray-400 text-xs truncate">{t('coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
+                  <div className="text-sky-200 font-semibold truncate">{t(clubRole === 'finance' ? 'coadmin.bannerFinance' : clubRole === 'operator' ? 'coadmin.bannerOperator' : 'coadmin.banner', { name: club?.name || '' })}</div>
+                  <div className="text-gray-400 text-xs truncate">{t(clubRole === 'finance' ? 'coadmin.bannerHintFinance' : clubRole === 'operator' ? 'coadmin.bannerHintOperator' : 'coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
                 </div>
               </div>
             )}
@@ -433,6 +500,7 @@ export default function AppShell({ children }) {
             {children}
           </>
         )}
+      <PlanLimitNotice />
       </main>
 
       {/* Mobile "More" sheet */}
@@ -455,6 +523,7 @@ export default function AppShell({ children }) {
                         >
                           <Icon name={c.icon} className="w-4 h-4 shrink-0" />
                           <span className="leading-tight">{t(c.key)}</span>
+                          <Gem href={c.href} />
                         </Link>
                       ))}
                     </div>

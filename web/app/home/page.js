@@ -12,6 +12,7 @@ import { useLoad } from '@/lib/useLoad';
 import { useEnter } from '@/lib/useEnter';
 import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 
 // One tile of the "spaces" strip: a club (managed or played in), Xé Vé, staff, or "+".
 function SpaceTile({ onClick, href, avatar, label, badge, badgeTone }) {
@@ -33,6 +34,8 @@ function SpaceTile({ onClick, href, avatar, label, badge, badgeTone }) {
 const ROLE_TONE = {
   owner: 'bg-lime-400 text-navy-950',
   co_admin: 'bg-sky-400 text-navy-950',
+  finance: 'bg-emerald-400 text-navy-950',
+  operator: 'bg-violet-400 text-navy-950',
   member: 'bg-navy-700 text-gray-200',
   xeve: 'bg-amber-300 text-navy-950',
   staff: 'bg-orange-400 text-navy-950',
@@ -82,6 +85,7 @@ export default function HomeHub() {
 
   return (
     <PlayerShell>
+      <AnnouncementBanner className="mb-4" />
       {/* Greeting */}
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="min-w-0">
@@ -125,7 +129,7 @@ export default function HomeHub() {
               onClick={() => manageClub(c.club_id)}
               avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} ring="ring-2 ring-lime-400/70 ring-offset-2 ring-offset-navy-950" />}
               label={c.name}
-              badge={t(c.role === 'owner' ? 'hub.roleOwner' : 'hub.roleCoAdmin')}
+              badge={t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}
               badgeTone={ROLE_TONE[c.role]}
             />
           ))}

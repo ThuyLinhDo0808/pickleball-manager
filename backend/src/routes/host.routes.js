@@ -3,14 +3,36 @@ const { supabase } = require('../supabase');
 const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
 const { forgetHost } = require('../middleware/auth');
-const { getPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
+const { getPlan, forgetPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
+const { LIMITS } = require('../services/planFeatures');
 
 const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText, emailReady } = require('../services/notify');
 
+const billing = require('../services/billing');
+const promo = require('../services/promo');
+const { schemaStatus } = require('../services/schemaCheck');
+
+const BILLING_MIGRATION = '20261025090000_plan_payments.sql';
+const billingReady = async () => !(await schemaStatus()).missing_migrations.includes(BILLING_MIGRATION);
+
+// The first club with more active members of a type than `limits` allow, or null.
+async function clubsOverLimits(hostId, limits) {
+  const { data: clubs } = await supabase.from('clubs').select('*').eq('host_id', hostId);
+  for (const c of clubs || []) {
+    for (const type of ['fixed', 'guest']) {
+      if (limits[type] == null) continue;
+      const cap = limits[type] + (Number(c[`extra_${type}_members`]) || 0);
+      const { count } = await supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('club_id', c.id).eq('is_active', true).eq('member_type', type);
+      if ((count || 0) > cap) return { name: c.name, type, used: count };
+    }
+  }
+  return null;
+}
+
 const router = express.Router();
-const ALLOW_SELF_SERVE = process.env.ALLOW_TIER_SELF_SERVE === 'true';
-const TIERS = ['free', 'basic', 'standard', 'pro'];
+const appSettings = require('../services/appSettings');
+const TIERS = PLAN_TIERS;
 
 router.get('/me', async (req, res) => {
   const { data: user, error: uErr } = await supabase.from('users').select('*').eq('id', req.hostId).single();
@@ -27,6 +49,7 @@ router.get('/subscription', async (req, res) => {
 });
 
 router.patch('/subscription', async (req, res) => {
+  const ALLOW_SELF_SERVE = await appSettings.selfServe();
   if (!ALLOW_SELF_SERVE) {
     return res.status(403).json({ error: 'Plan changes are handled outside self-serve. Contact support.' });
   }
@@ -45,7 +68,9 @@ router.patch('/subscription', async (req, res) => {
 // The Host's plan: tier, club limit and usage, Social Manager add-on.
 router.get('/plan', async (req, res) => {
   try {
-    res.json(await getPlan(req.hostId));
+    const access = await require('../services/support').consoleAccess(req.hostEmail).catch(() => null);
+    // is_owner: the Owner Console link (owners, and support staff for their parts of it).
+    res.json({ ...(await getPlan(req.hostId, { fresh: true })), is_owner: !!access, console_role: access ? (access.owner ? 'owner' : 'support') : null });
   } catch (err) {
     dbError(res, err);
   }
@@ -55,6 +80,7 @@ router.get('/plan', async (req, res) => {
 // applied straight away; otherwise the request is stored and sent to the team (same
 // channel as feedback) so they can arrange payment and switch it on.
 router.post('/plan/request', async (req, res) => {
+  const ALLOW_SELF_SERVE = await appSettings.selfServe();
   const kind = req.body.kind;
   if (!['social_manager', 'tier'].includes(kind)) return res.status(400).json({ error: 'kind must be social_manager or tier.' });
   const tier = req.body.tier;
@@ -66,11 +92,17 @@ router.post('/plan/request', async (req, res) => {
     // still fits the smaller plan.
     if (kind === 'tier') {
       const current = await getPlan(req.hostId);
-      if (tier === current.tier) return res.status(400).json({ error: 'This is already your plan.', code: 'same_tier' });
+      // Same plan again = paying to extend it (not with self-serve, where it is free).
+      if (tier === current.tier && (ALLOW_SELF_SERVE || tier === 'free')) return res.status(400).json({ error: 'This is already your plan.', code: 'same_tier' });
       if (PLAN_TIERS.indexOf(tier) < PLAN_TIERS.indexOf(current.tier)) {
         const limit = CLUB_LIMIT[tier];
         if (limit != null && current.clubs_owned > limit) {
           return res.status(409).json({ error: `The ${tier} plan allows ${limit} club(s); you own ${current.clubs_owned}. Delete clubs first.`, code: 'too_many_clubs', limit, owned: current.clubs_owned });
+        }
+        // Every club must fit the smaller plan's member limits too.
+        const tooBig = await clubsOverLimits(req.hostId, LIMITS[tier]);
+        if (tooBig) {
+          return res.status(409).json({ error: `The ${tier} plan allows ${LIMITS[tier][tooBig.type]} ${tooBig.type === 'guest' ? 'guest' : 'official'} members per club; "${tooBig.name}" has ${tooBig.used}.`, code: 'too_many_members', club: tooBig.name, member_type: tooBig.type, limit: LIMITS[tier][tooBig.type], used: tooBig.used });
         }
         const usage = await getUsage(req.hostId).catch(() => null);
         if (usage && usage.used > CAPACITY[tier]) {
@@ -78,9 +110,17 @@ router.post('/plan/request', async (req, res) => {
         }
         const { error } = await supabase.from('host_subscriptions').update({ tier, upgrade_requested_at: null, upgrade_requested_tier: null }).eq('host_id', req.hostId);
         if (error) throw error;
+        forgetPlan(req.hostId);
         await notifyFeedback({ message: `[Gói] Hạ gói ${current.tier} → ${tier}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
-        return res.json({ applied: true, downgraded: true, plan: await getPlan(req.hostId) });
+        return res.json({ applied: true, downgraded: true, plan: await getPlan(req.hostId, { fresh: true }) });
       }
+    }
+    // Paid upgrades: an order with a transfer code; the plan switches on once the
+    // operator confirms the money arrived.
+    let payment = null;
+    if (!ALLOW_SELF_SERVE) {
+      if (!(await billingReady())) return res.status(409).json({ error: `Run migration ${BILLING_MIGRATION} first.` });
+      payment = await billing.createOrder(req.hostId, { kind, tier, months: req.body.months, promoCode: req.body.promo_code || null });
     }
     const patch = ALLOW_SELF_SERVE
       ? kind === 'social_manager'
@@ -93,10 +133,62 @@ router.post('/plan/request', async (req, res) => {
     if (error) throw error;
     if (!ALLOW_SELF_SERVE) {
       const what = kind === 'social_manager' ? 'Đăng ký Social Manager (Xé Vé)' : `Nâng cấp gói lên ${tier}`;
-      await notifyFeedback({ message: `[Yêu cầu gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
+      const money = `${payment.months} tháng · ${payment.amount.toLocaleString('vi-VN')}đ${payment.discount_amount ? ` (mã ${payment.promo_code}, giảm ${payment.discount_amount.toLocaleString('vi-VN')}đ)` : ''} · nội dung CK ${payment.ref}`;
+      await notifyFeedback({ message: `[Yêu cầu gói] ${what} — ${money}. Khi nhận được tiền, vào trang Quản trị → Thanh toán gói để xác nhận.`, contact: req.hostEmail, page: '/admin/payments', userEmail: req.hostEmail }).catch(() => {});
     }
-    res.json({ applied: ALLOW_SELF_SERVE, plan: await getPlan(req.hostId) });
+    res.json({ applied: ALLOW_SELF_SERVE, payment, plan: await getPlan(req.hostId, { fresh: true }) });
   } catch (err) {
+    if (err.status && err.code) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
+// ---- Promo codes ------------------------------------------------------------------
+
+// Preview a code: what it gives, and for an order the discount and the new total.
+// { code, kind?: tier|social_manager, tier?, months? }
+router.post('/promo/check', async (req, res) => {
+  try {
+    const p = await promo.check(req.hostId, req.body?.code);
+    const out = { promo: promo.describe(p) };
+    if (p.kind === 'percent' && ['tier', 'social_manager'].includes(req.body?.kind)) {
+      const price = billing.prices()[req.body.kind === 'social_manager' ? 'social_manager' : req.body.tier];
+      const months = billing.MONTH_CHOICES.includes(Number(req.body.months)) ? Number(req.body.months) : 1;
+      if (price != null) {
+        const gross = price * months;
+        out.discount = promo.discountFor(p, req.body.kind, gross);
+        out.gross = gross;
+        out.amount = gross - out.discount;
+      }
+    }
+    res.json(out);
+  } catch (err) {
+    if (err.status && err.code) return res.status(err.status).json({ error: err.message, code: err.code, promo_kind: err.promo_kind });
+    dbError(res, err);
+  }
+});
+
+// A trial code: switch its plan on now for its number of days (then back to Free).
+// Not over a plan the Host is paying for.
+router.post('/promo/redeem', async (req, res) => {
+  try {
+    const p = await promo.check(req.hostId, req.body?.code, { kind: 'trial' });
+    const plan = await getPlan(req.hostId, { fresh: true });
+    if (plan.tier !== 'free' && !plan.trial) return res.status(409).json({ error: 'You already have a paid plan.', code: 'has_paid_plan' });
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const ends = billing.addDays(today, p.trial_days);
+    await promo.reserve(p, req.hostId, null, 0);
+    const { data: sub } = await supabase.from('host_subscriptions').select('trial_started_at').eq('host_id', req.hostId).maybeSingle();
+    const { error } = await supabase
+      .from('host_subscriptions')
+      .update({ tier: p.trial_tier, tier_paid_until: ends, trial_ends_on: ends, trial_started_at: sub?.trial_started_at || new Date().toISOString(), upgrade_requested_at: null, upgrade_requested_tier: null })
+      .eq('host_id', req.hostId);
+    if (error) throw error;
+    forgetPlan(req.hostId);
+    await notifyFeedback({ message: `[Gói] Dùng mã ${p.code}: dùng thử ${String(p.trial_tier).toUpperCase()} ${p.trial_days} ngày (đến ${ends})`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
+    res.json({ applied: true, tier: p.trial_tier, ends_on: ends, plan: await getPlan(req.hostId, { fresh: true }) });
+  } catch (err) {
+    if (err.status && err.code) return res.status(err.status).json({ error: err.message, code: err.code, promo_kind: err.promo_kind });
     dbError(res, err);
   }
 });
@@ -130,9 +222,11 @@ router.post('/plan/cancel', async (req, res) => {
     }[kind];
     const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', req.hostId);
     if (error) throw error;
+    // Taking back a request also drops its unpaid transfer order.
+    if (kind !== 'social_manager' && (await billingReady())) await billing.cancelOrders(req.hostId, kind === 'upgrade_request' ? 'tier' : 'social_manager');
     const what = { social_manager: 'Huỷ Social Manager', social_manager_request: 'Huỷ yêu cầu Social Manager', upgrade_request: 'Huỷ yêu cầu nâng cấp' }[kind];
     await notifyFeedback({ message: `[Gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
-    res.json({ plan: await getPlan(req.hostId) });
+    res.json({ plan: await getPlan(req.hostId, { fresh: true }) });
   } catch (err) {
     dbError(res, err);
   }
@@ -180,7 +274,6 @@ router.get('/notifications', async (req, res) => {
   if (error) return dbError(res, error);
   res.json({
     notify_webhook_url: data.notify_webhook_url,
-    telegram_bot: process.env.TELEGRAM_BOT_USERNAME || null,
     // Emails to players: the Host's switch (off by default) and whether the server can send.
     notify_players_email: !!data.notify_players_email,
     email_ready: emailReady(),

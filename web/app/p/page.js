@@ -32,31 +32,6 @@ export default function PlayerHome() {
   const [qr, setQr] = useState(null);
   const [flash, setFlash] = useState('');
 
-  // Back from Telegram after pressing "Start": refresh to show the connection.
-  useEffect(() => {
-    const onVisible = () => document.visibilityState === 'visible' && reload();
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [reload]);
-
-  async function connectTelegram() {
-    // Open the tab synchronously (popup blockers), then point it at the bot link.
-    const tab = window.open('about:blank', '_blank');
-    try {
-      const { url } = await api.post('/api/player/telegram/link', {});
-      if (tab) tab.location.href = url;
-      else window.location.href = url;
-    } catch (err) {
-      tab?.close();
-      window.alert(err.message);
-    }
-  }
-
-  async function disconnectTelegram() {
-    await api.del('/api/player/telegram');
-    reload();
-  }
-
   async function setEmailNotices(enabled) {
     try {
       await api.put('/api/player/email-notices', { enabled });
@@ -186,20 +161,6 @@ export default function PlayerHome() {
             </div>
           ))}
           <p className="text-gray-500 text-xs mt-2">{t('pp.eventDebtsHint')}</p>
-        </section>
-      )}
-
-      {me.telegram?.available && p && (
-        <section className="card mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-white font-semibold">✈️ Telegram</h2>
-            <p className="text-gray-400 text-xs">{me.telegram.linked ? t('pp.tgLinked') : t('pp.tgHint')}</p>
-          </div>
-          {me.telegram.linked ? (
-            <button className="text-gray-400 text-sm" onClick={disconnectTelegram}>{t('pp.tgDisconnect')}</button>
-          ) : (
-            <button className="btn-primary text-sm" onClick={connectTelegram}>{t('pp.tgConnect')}</button>
-          )}
         </section>
       )}
 

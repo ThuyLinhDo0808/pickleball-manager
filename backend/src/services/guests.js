@@ -10,6 +10,8 @@
 // never reach the list.
 const { supabase } = require('../supabase');
 const { normalizePhone } = require('./memberships');
+// Loaded lazily: plan.js -> billing -> … would be a cycle at require time.
+const plan = () => require('./plan');
 const { schemaStatus } = require('./schemaCheck');
 const { clubSport, profileLevel } = require('./sport');
 
@@ -84,6 +86,8 @@ async function ensureGuestMember(event, p) {
     if (!member) {
       // Nothing to recognise them by next time: skip.
       if (!p.user_id && normalizePhone(p.phone).length < 9) return null;
+      // The club's plan is full of guests: they still play, just aren't added to the list.
+      if (!(await plan().hasMemberRoom({ id: event.club_id, host_id: event.host_id }, 'guest'))) return null;
       const { data: profile } = p.user_id
         ? await supabase.from('player_profiles').select('*').eq('user_id', p.user_id).maybeSingle()
         : { data: null };
@@ -140,6 +144,7 @@ async function memberForUser(event, userId) {
     return found;
   }
   if (!profile?.full_name || normalizePhone(profile.phone).length < 9) return null;
+  await plan().assertMemberRoom({ id: event.club_id, host_id: event.host_id }, 'guest');
   const { data, error } = await supabase
     .from('club_members')
     .insert({

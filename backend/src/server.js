@@ -5,6 +5,7 @@ const cors = require('cors');
 const { requireAuth } = require('./middleware/auth');
 const clubsRoutes = require('./routes/clubs.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
+const ownerRoutes = require('./routes/owner.routes');
 const eventsRoutes = require('./routes/events.routes');
 const matchesRoutes = require('./routes/matches.routes');
 const transactionsRoutes = require('./routes/transactions.routes');
@@ -32,6 +33,8 @@ app.get('/health/schema', async (req, res) => {
   }
 });
 
+app.use(require('./services/activityLog').recorder); // club activity log (Pro)
+
 // /api/events contains its own public (unauthenticated) routes for shareable
 // event links, declared before its internal `router.use(requireAuth)` — see
 // events.routes.js. Do not add requireAuth here or those links will break.
@@ -48,7 +51,9 @@ app.use('/api/player', requireAuth, playerRoutes);
 app.use('/api/analytics', requireAuth, analyticsRoutes);
 app.use('/api/live', requireAuth, liveRoutes);
 app.use('/api/inventory', requireAuth, inventoryRoutes);
+app.use('/api/owner', requireAuth, ownerRoutes);
 app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
+app.get('/api/public/announcements', require('./routes/announcements.routes').current); // no login: owner's banner
 app.use('/api/public', publicRoutes); // no login: club join pages
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));

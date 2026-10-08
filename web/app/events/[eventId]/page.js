@@ -21,12 +21,15 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useClubs } from '@/context/ClubContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { exportEventFinance } from '@/lib/exportExcel';
+import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
   const { t, lang, sport } = useI18n();
   const { club } = useDefaultClub();
+  const { plan } = useWorkspace();
   // Four tabs: details (status, sign-up link, deadlines), players, matches, money.
   const [tab, setTab] = useState('details');
   const [showQr, setShowQr] = useState(false);
@@ -127,6 +130,7 @@ export default function EventDetailPage() {
 
   function onExport() {
     if (!event || !participants || !finance) return;
+    if (event.club_id && !hasFeature(planFor(club, plan), 'excel_export')) return lockedNotice('excel_export');
     exportEventFinance(event, participants, finance.transactions || []);
   }
 

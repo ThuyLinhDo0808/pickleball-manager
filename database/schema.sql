@@ -1437,5 +1437,364 @@ create policy p_inventory_moves_owner on public.inventory_moves for all
 alter table public.users add column if not exists notify_players_email boolean not null default false;
 alter table public.player_profiles add column if not exists email_notices boolean not null default true;
 
+-- ----------------------------------------------------------------------------
+-- PAID PLAN UPGRADES  (migration 20261025090000)
+-- ----------------------------------------------------------------------------
+-- Upgrading a plan / turning on Social Manager is paid by bank transfer (VietQR) to
+-- the app operator. Each order has a short code for the transfer note; the operator
+-- confirms the money arrived, which switches the plan on until `*_paid_until`.
+alter table public.host_subscriptions add column if not exists tier_paid_until date;
+alter table public.host_subscriptions add column if not exists social_manager_paid_until date;
+
+create table if not exists public.plan_payments (
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  kind text not null check (kind in ('tier','social_manager')),
+  tier subscription_tier,
+  months int not null check (months between 1 and 24),
+  amount numeric(12,0) not null check (amount >= 0),
+  ref text not null unique,
+  status text not null default 'pending' check (status in ('pending','paid','cancelled')),
+  created_at timestamptz not null default now(),
+  confirmed_at timestamptz,
+  confirmed_by text,
+  check (kind = 'social_manager' or tier is not null)
+);
+create index if not exists ix_plan_payments_host on public.plan_payments (host_id, status);
+create index if not exists ix_plan_payments_status on public.plan_payments (status, created_at);
+-- Only the backend (service role) reads and writes orders.
+alter table public.plan_payments enable row level security;
+revoke all on public.plan_payments from anon, authenticated;
+
+-- ----------------------------------------------------------------------------
+-- OWNER CONSOLE  (migration 20261026090000)
+-- ----------------------------------------------------------------------------
+-- The app owner's back office (/owner): suspend accounts, internal CRM notes and an
+-- append-only audit log of every change the owner makes. Only the backend (service
+-- role) reads or writes these.
+alter table public.users add column if not exists suspended_at timestamptz;
+alter table public.users add column if not exists suspended_reason text;
+
+create table if not exists public.owner_audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  actor_email text not null,
+  action text not null,
+  target_host_id uuid references public.users(id) on delete set null,
+  target_email text,
+  old_value jsonb,
+  new_value jsonb,
+  note text,
+  undone_at timestamptz,
+  undo_of uuid references public.owner_audit_logs(id) on delete set null
+);
+create index if not exists ix_owner_audit_created on public.owner_audit_logs (created_at desc);
+create index if not exists ix_owner_audit_target on public.owner_audit_logs (target_host_id, created_at desc);
+
+-- Append-only: rows are never deleted; the only change allowed is marking one undone.
+create or replace function public.owner_audit_guard() returns trigger
+language plpgsql as $$
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'owner_audit_logs is append-only';
+  end if;
+  if old.undone_at is not null or new.undone_at is null
+     or (to_jsonb(new) - 'undone_at') <> (to_jsonb(old) - 'undone_at') then
+    raise exception 'owner_audit_logs is append-only (only undone_at may be set once)';
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_owner_audit_guard on public.owner_audit_logs;
+create trigger trg_owner_audit_guard before update or delete on public.owner_audit_logs
+  for each row execute function public.owner_audit_guard();
+
+create table if not exists public.owner_notes (
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  body text not null check (length(body) between 1 and 2000),
+  author_email text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_owner_notes_host on public.owner_notes (host_id, created_at desc);
+
+-- Last sign-in time lives in auth.users, which the REST API can't read directly.
+create or replace function public.owner_last_sign_in(ids uuid[])
+returns table (id uuid, last_sign_in_at timestamptz)
+language plpgsql security definer set search_path = '' as $$
+begin
+  return query select u.id, u.last_sign_in_at from auth.users u where u.id = any(ids);
+end; $$;
+
+alter table public.owner_audit_logs enable row level security;
+alter table public.owner_notes enable row level security;
+revoke all on public.owner_audit_logs from anon, authenticated;
+revoke all on public.owner_notes from anon, authenticated;
+revoke all on function public.owner_last_sign_in(uuid[]) from public, anon, authenticated;
+grant execute on function public.owner_last_sign_in(uuid[]) to service_role;
+
+-- ----------------------------------------------------------------------------
+-- OWNER AUDIT GUARD FIX  (migration 20261026100000)
+-- ----------------------------------------------------------------------------
+-- Deleting an account sets owner_audit_logs.target_host_id to null (on delete set
+-- null), which the append-only guard used to refuse — so the account could not be
+-- deleted. Allow exactly that (and undo_of losing its row), still nothing else.
+create or replace function public.owner_audit_guard() returns trigger
+language plpgsql as $$
+declare
+  changed jsonb := to_jsonb(new) - 'undone_at' - 'target_host_id' - 'undo_of';
+  before jsonb := to_jsonb(old) - 'undone_at' - 'target_host_id' - 'undo_of';
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'owner_audit_logs is append-only';
+  end if;
+  if changed <> before
+     or (new.target_host_id is distinct from old.target_host_id and new.target_host_id is not null)
+     or (new.undo_of is distinct from old.undo_of and new.undo_of is not null)
+     or (new.undone_at is distinct from old.undone_at and (old.undone_at is not null or new.undone_at is null)) then
+    raise exception 'owner_audit_logs is append-only (only undone_at may be set once)';
+  end if;
+  return new;
+end; $$;
+
+-- ----------------------------------------------------------------------------
+-- PLANS V2  (migration 20261027090000)
+-- ----------------------------------------------------------------------------
+-- Five plans per account: free / basic / standard / advanced / pro. Each limits the
+-- clubs an account may own and the official / guest members per club, and unlocks
+-- features (see backend/src/services/planFeatures.js). A new organiser tries Standard
+-- for 14 days (trial_*), then drops to Free unless they pay.
+alter type subscription_tier add value if not exists 'advanced' before 'pro';
+
+alter table public.host_subscriptions add column if not exists trial_started_at timestamptz;
+alter table public.host_subscriptions add column if not exists trial_ends_on date;
+
+-- "People under management" stays as an abuse guard, well above the member limits.
+-- (Compared as text so this works in the same transaction that adds 'advanced'.)
+create or replace function public.tier_capacity(t subscription_tier) returns int
+language sql immutable as $$
+  select case t::text
+    when 'free' then 100
+    when 'basic' then 200
+    when 'standard' then 600
+    when 'advanced' then 1500
+    when 'pro' then 100000
+    else 100
+  end;
+$$;
+update public.host_subscriptions set capacity_limit = public.tier_capacity(tier);
+
+-- ----------------------------------------------------------------------------
+-- CLUB MEMBER ADD-ON + OWNER TRANSFER  (migration 20261028090000)
+-- ----------------------------------------------------------------------------
+-- Plans are bought per account; a club that outgrows its plan's member limit can get
+-- extra places from the app owner (a paid licence) without changing plan.
+alter table public.clubs add column if not exists extra_fixed_members int not null default 0 check (extra_fixed_members >= 0);
+alter table public.clubs add column if not exists extra_guest_members int not null default 0 check (extra_guest_members >= 0);
+
+-- The app owner hands a club to another account: the club and everything filed under
+-- its owner (its sessions, their money, tournaments, ball store, staff grants) move
+-- together, in one transaction. Only the backend (service role) may call it.
+create or replace function public.owner_transfer_club(p_club uuid, p_new_host uuid)
+returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  old_host uuid;
+begin
+  select host_id into old_host from public.clubs where id = p_club for update;
+  if old_host is null then raise exception 'club not found'; end if;
+  if old_host = p_new_host then return; end if;
+  update public.clubs set host_id = p_new_host where id = p_club;
+  update public.events set host_id = p_new_host where club_id = p_club;
+  update public.transactions set host_id = p_new_host
+    where club_id = p_club or event_id in (select id from public.events where club_id = p_club);
+  update public.tournaments set host_id = p_new_host where club_id = p_club;
+  update public.inventory_items set host_id = p_new_host where club_id = p_club and host_id is not null;
+  update public.staff_grants set host_id = p_new_host where club_id = p_club;
+end; $$;
+revoke all on function public.owner_transfer_club(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.owner_transfer_club(uuid, uuid) to service_role;
+
+-- ----------------------------------------------------------------------------
+-- CLUB STAFF ROLES: FINANCE + OPERATIONS  (migration 20261029090000)
+-- ----------------------------------------------------------------------------
+-- Besides co-admins (full rights), a club owner on the Advanced / Pro plan can give
+-- someone the Finance role (money, plans, payments, reports) or the Operations role
+-- (members' basic info, attendance, check-in, activities, matches, balls). Both are
+-- for one club. What each may do is enforced by the backend (services/clubRoles.js).
+alter type event_role add value if not exists 'finance';
+alter type event_role add value if not exists 'operator';
+
+alter table public.staff_grants drop constraint if exists chk_staff_club_roles;
+alter table public.staff_grants add constraint chk_staff_club_roles
+  check (role::text not in ('finance', 'operator') or (club_id is not null and event_id is null));
+
+-- ----------------------------------------------------------------------------
+-- OWNER CONSOLE 2  (migration 20261030090000)
+-- ----------------------------------------------------------------------------
+-- Feedback inbox with a status, app-wide settings the owner can switch from the web
+-- (e.g. self-serve upgrades), and announcements shown as a banner to every user.
+alter table public.feedback add column if not exists status text not null default 'new'
+  check (status in ('new', 'in_progress', 'closed'));
+alter table public.feedback add column if not exists status_changed_at timestamptz;
+
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+
+create table if not exists public.announcements (
+  id uuid primary key default gen_random_uuid(),
+  message text not null check (length(message) between 1 and 500),
+  level text not null default 'info' check (level in ('info', 'warning')),
+  starts_at timestamptz not null default now(),
+  ends_at timestamptz,
+  show_public boolean not null default false,
+  active boolean not null default true,
+  created_by text,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_announcements_live on public.announcements (active, starts_at);
+
+alter table public.app_settings enable row level security;
+alter table public.announcements enable row level security;
+revoke all on public.app_settings from anon, authenticated;
+revoke all on public.announcements from anon, authenticated;
+
+-- ---- 20261031090000_promo_codes.sql ----
+-- Promo codes (Owner Console → Khuyến mãi).
+--   percent: X% off a plan order (bank transfer), optionally only for a first order.
+--   trial:   switches a plan on for N days at once, then it drops back to Free.
+-- Each code: optional expiry date and maximum number of uses; one use per Host.
+
+create table if not exists promo_codes (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique check (code ~ '^[A-Z0-9_-]{3,32}$'),
+  kind text not null check (kind in ('percent', 'trial')),
+  percent int check (percent between 1 and 100),
+  applies_to text not null default 'any' check (applies_to in ('any', 'tier', 'social_manager')),
+  trial_tier subscription_tier,
+  trial_days int check (trial_days between 1 and 365),
+  expires_on date,
+  max_uses int check (max_uses > 0),
+  first_order_only boolean not null default false,
+  active boolean not null default true,
+  note text check (char_length(note) <= 300),
+  created_by text,
+  created_at timestamptz not null default now(),
+  constraint promo_kind_fields check (
+    (kind = 'percent' and percent is not null) or
+    (kind = 'trial' and trial_tier is not null and trial_tier <> 'free' and trial_days is not null)
+  )
+);
+
+-- A use: reserved when a discounted order is created (freed again if that order is
+-- cancelled), or right away for a trial code.
+create table if not exists promo_redemptions (
+  id uuid primary key default gen_random_uuid(),
+  code_id uuid not null references promo_codes(id) on delete cascade,
+  host_id uuid not null references users(id) on delete cascade,
+  payment_id uuid references plan_payments(id) on delete set null,
+  discount_amount int not null default 0,
+  created_at timestamptz not null default now(),
+  unique (code_id, host_id)
+);
+create index if not exists promo_redemptions_code_idx on promo_redemptions(code_id);
+
+alter table plan_payments add column if not exists promo_code_id uuid references promo_codes(id) on delete set null;
+alter table plan_payments add column if not exists discount_amount int not null default 0;
+
+alter table promo_codes enable row level security;
+alter table promo_redemptions enable row level security;
+revoke all on promo_codes, promo_redemptions from anon, authenticated;
+
+-- ---- 20261101090000_pro_club_tools.sql ----
+-- Pro club tools: activity log, custom permissions per staff grant, duty roster.
+
+-- Who did what in a club (every successful change made through the app). Written
+-- by the backend only; nobody edits or deletes entries (the club's deletion removes them).
+create table if not exists club_activity_logs (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references clubs(id) on delete cascade,
+  actor_id uuid references users(id) on delete set null,
+  actor_email text,
+  actor_role text,
+  action text not null,
+  method text not null,
+  path text not null,
+  target text check (char_length(target) <= 120),
+  created_at timestamptz not null default now()
+);
+create index if not exists club_activity_logs_club_idx on club_activity_logs(club_id, created_at desc);
+
+create or replace function club_activity_guard() returns trigger language plpgsql as $$
+begin
+  -- The only change allowed: the actor's account was deleted (FK sets actor_id to null).
+  if new.actor_id is null and old.actor_id is not null
+     and (to_jsonb(new) - 'actor_id') = (to_jsonb(old) - 'actor_id') then
+    return new;
+  end if;
+  raise exception 'club_activity_logs is append-only';
+end $$;
+drop trigger if exists trg_club_activity_guard on club_activity_logs;
+create trigger trg_club_activity_guard before update on club_activity_logs
+  for each row execute function club_activity_guard();
+
+-- Custom permissions for a Finance / Operations grant (Pro): permission groups that
+-- replace the role's defaults. null = the role's defaults.
+alter table staff_grants add column if not exists permissions text[];
+
+-- Duty roster: shifts in a club and who is on each.
+create table if not exists duty_shifts (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references clubs(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 80),
+  shift_date date not null,
+  start_time time,
+  end_time time,
+  notes text check (char_length(notes) <= 300),
+  created_by text,
+  created_at timestamptz not null default now()
+);
+create index if not exists duty_shifts_club_date_idx on duty_shifts(club_id, shift_date);
+
+create table if not exists duty_shift_people (
+  id uuid primary key default gen_random_uuid(),
+  shift_id uuid not null references duty_shifts(id) on delete cascade,
+  email text not null check (email = lower(trim(email))),
+  full_name text,
+  unique (shift_id, email)
+);
+
+alter table club_activity_logs enable row level security;
+alter table duty_shifts enable row level security;
+alter table duty_shift_people enable row level security;
+revoke all on club_activity_logs, duty_shifts, duty_shift_people from anon, authenticated;
+
+-- ---- 20261102090000_support_staff_drop_telegram.sql ----
+-- Support staff for the owner console, and the end of Telegram notifications.
+
+-- People who help run the app (support desk). Added and removed by an owner
+-- (OWNER_EMAILS) in Owner Console → Nhân viên; each gets only the parts of the console
+-- listed in `permissions`. Owner rights themselves are never stored in the database.
+create table if not exists support_staff (
+  email text primary key check (email = lower(trim(email)) and email like '%_@_%'),
+  full_name text check (char_length(full_name) <= 80),
+  permissions text[] not null default '{}',
+  active boolean not null default true,
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table support_staff enable row level security;
+revoke all on support_staff from anon, authenticated;
+
+-- Telegram notifications were removed (the bot API is no longer free): forget the
+-- players' chat ids and link codes.
+drop index if exists ux_player_telegram_code;
+alter table player_profiles drop column if exists telegram_chat_id;
+alter table player_profiles drop column if exists telegram_link_code;
+
 select 1; -- done
 notify pgrst, 'reload schema';

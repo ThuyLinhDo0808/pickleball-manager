@@ -3,6 +3,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { I18nProvider } from '@/context/I18nContext';
 import { ClubProvider } from '@/context/ClubContext';
 import { WorkspaceProvider } from '@/context/WorkspaceContext';
+import ViewAsBanner from '@/components/ViewAsBanner';
 
 export const metadata = {
   title: 'Pickleball Manager',
@@ -24,7 +25,10 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <I18nProvider>
             <ClubProvider>
-              <WorkspaceProvider>{children}</WorkspaceProvider>
+              <WorkspaceProvider>
+                <ViewAsBanner />
+                {children}
+              </WorkspaceProvider>
             </ClubProvider>
           </I18nProvider>
         </AuthProvider>

@@ -1,4 +1,8 @@
 const express = require('express');
+const { requireFeature } = require('../services/plan');
+
+// Tournaments follow the plan of the club's owner (a co-admin works under the owner's plan).
+const planHost = async (req) => (req.body?.club_id && (await require('../services/clubAccess').actingHost(req, req.body.club_id).catch(() => null))) || req.hostId;
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { actingHost } = require('../services/clubAccess');
@@ -258,7 +262,7 @@ router.get('/', async (req, res) => {
 });
 
 // Suggested teams (balanced or random) — the Host can still edit them before creating.
-router.post('/pairing', async (req, res) => {
+router.post('/pairing', requireFeature('tournaments', planHost), async (req, res) => {
   const { club_id, format, mode } = req.body;
   const ids = Array.isArray(req.body.player_ids) ? [...new Set(req.body.player_ids)] : [];
   if (!(await ownedClub(req, club_id))) return notFound(res, 'Club');
@@ -273,7 +277,7 @@ router.post('/pairing', async (req, res) => {
 });
 
 // Team league: split the chosen players into N teams of equal overall strength.
-router.post('/team-builder', async (req, res) => {
+router.post('/team-builder', requireFeature('tournaments', planHost), async (req, res) => {
   const { club_id } = req.body;
   const ids = Array.isArray(req.body.player_ids) ? [...new Set(req.body.player_ids)] : [];
   const count = parseInt(req.body.team_count, 10);
@@ -289,7 +293,7 @@ router.post('/team-builder', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireFeature('tournaments', planHost), async (req, res) => {
   if (req.body.kind === 'team') return createTeamLeague(req, res);
   const { club_id, format } = req.body;
   const division = DIVISIONS.includes(req.body.division) ? req.body.division : 'open';

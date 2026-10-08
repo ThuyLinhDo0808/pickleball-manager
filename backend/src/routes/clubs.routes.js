@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
-const { assertCanCreateClub } = require('../services/plan');
+const { assertCanCreateClub, requireFeature, assertMemberRoom, forgetPlan, getPlan, memberRoom } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
@@ -14,7 +14,7 @@ const { phoneLinkReady } = require('../services/phoneLink');
 const { completeFinished } = require('../services/eventStatus');
 const { setAttendance } = require('../services/attendance');
 const { SPORTS, sportReady, cleanLevel } = require('../services/sport');
-const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
+const { clubAccess, coAdminClubs, ownerOnly, ROLE_FORBIDDEN } = require('../services/clubAccess');
 const {
   localDate,
   winnerTeam,
@@ -23,6 +23,12 @@ const {
 
 const router = express.Router();
 const TIERS = ['vip', 'standard'];
+
+// 402 from the plan checks (member_limit / feature_locked), else a normal error.
+function planError(res, err) {
+  if (err.status === 402) return res.status(402).json({ error: err.message, code: err.code, limit: err.limit, used: err.used, member_type: err.member_type, feature: err.feature, min_tier: err.min_tier });
+  return res.status(err.status || 500).json({ error: err.status ? err.message : 'Something went wrong.' });
+}
 const GENDERS = ['male', 'female'];
 const FLAGS = ['unpaid', 'late', 'attitude'];
 const PERIODS = ['month', 'quarter', 'year'];
@@ -63,9 +69,11 @@ function memberDates(body) {
 router.param('clubId', async (req, res, next, clubId) => {
   try {
     const access = await clubAccess(req, clubId);
-    if (!access) return notFound(res, 'Club');
+    if (!access) return req.roleForbidden ? res.status(403).json(ROLE_FORBIDDEN) : notFound(res, 'Club');
     req.club = access.club;
-    if (access.role === 'co_admin') {
+    req.clubRole = access.role; // owner / co_admin / finance / operator
+    req.clubGroups = access.groups ?? null; // permission groups (null = everything)
+    if (access.role !== 'owner') {
       req.hostId = access.club.host_id;
       req.coAdmin = true;
     }
@@ -133,7 +141,14 @@ router.get('/', async (req, res) => {
   if (error) return dbError(res, error);
   try {
     const shared = await coAdminClubs(req);
-    res.json([...data.map((c) => ({ ...c, role: 'owner' })), ...shared.filter((c) => c.host_id !== req.hostId)]);
+    const all = [...data.map((c) => ({ ...c, role: 'owner' })), ...shared.filter((c) => c.host_id !== req.hostId)];
+    // Each club carries its owner's plan features, so the menu locks the right pages.
+    const plans = {};
+    for (const h of [...new Set(all.map((c) => c.host_id))]) {
+      const p = await getPlan(h);
+      plans[h] = { tier: p.tier, features: p.features, limits: p.limits, features_enforced: p.features_enforced };
+    }
+    res.json(all.map((c) => ({ ...c, plan: plans[c.host_id] })));
   } catch (err) {
     dbError(res, err);
   }
@@ -157,10 +172,26 @@ router.post('/', async (req, res) => {
     .select()
     .single();
   if (error) return dbError(res, error);
+  forgetPlan(req.hostId); // a first club starts the trial
   res.status(201).json(data);
 });
 
-router.get('/:clubId', (req, res) => res.json({ ...req.club, role: req.coAdmin ? 'co_admin' : 'owner' }));
+// The club, with what its owner's plan allows (a co-admin works under the owner's plan)
+// and how many official / guest places are left.
+router.get('/:clubId', async (req, res) => {
+  try {
+    const plan = await getPlan(req.club.host_id);
+    res.json({
+      ...req.club,
+      role: req.clubRole || 'owner',
+      groups: req.clubGroups ?? null,
+      plan: { tier: plan.tier, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced },
+      member_room: await memberRoom(req.club),
+    });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
 
 // The monthly fund worksheet: known numbers only (whole, >= 0), a few guest price rows.
 const CALC_NUMBERS = ['rate_per_hour', 'hours_per_session', 'sessions_per_month', 'discount_pct', 'water', 'members', 'round_to', 'carry_sessions', 'balls_per_session', 'ball_price'];
@@ -275,14 +306,18 @@ router.get('/:clubId/members', async (req, res) => {
   } catch (err) {
     return dbError(res, err);
   }
-  res.json(
-    data.map(({ users, ...m }) => ({
-      ...m,
-      account_email: users?.email || null,
-      ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
-      ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
-    }))
-  );
+  const rows = data.map(({ users, ...m }) => ({
+    ...m,
+    account_email: users?.email || null,
+    ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
+    ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
+  }));
+  // Operations staff see basic info only: no phone, email, birthday, notes or money.
+  if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
+    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining'];
+    return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
+  }
+  res.json(rows);
 });
 
 router.post('/:clubId/members', checkCapacity(), async (req, res) => {
@@ -301,6 +336,11 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
   }
   const nextType = member_type === 'guest' ? 'guest' : 'fixed';
   if (tier && nextType !== 'fixed') tier = null; // guests are never tiered
+  try {
+    await assertMemberRoom(req.club, nextType);
+  } catch (err) {
+    return planError(res, err);
+  }
   let dates;
   let extras;
   try {
@@ -343,6 +383,14 @@ router.post('/:clubId/members/bulk', async (req, res) => {
       error: `Only ${allowed} more people fit on the ${usage.tier} plan (${usage.used}/${usage.capacity_limit} used).`,
       usage,
     });
+  }
+
+  try {
+    const n = (type) => rows.filter((r) => (r.member_type === 'guest' ? 'guest' : 'fixed') === type).length;
+    await assertMemberRoom(req.club, 'fixed', n('fixed'));
+    await assertMemberRoom(req.club, 'guest', n('guest'));
+  } catch (err) {
+    return planError(res, err);
   }
 
   const payload = rows.map((r) => ({
@@ -393,6 +441,19 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
     fields.guest_discount_pct = null;
   }
   if ('flags' in fields) fields.flags = (Array.isArray(fields.flags) ? fields.flags : []).filter((f) => FLAGS.includes(f));
+  // Reactivating a member, or moving one to the other type, takes a place on the plan.
+  {
+    const nextType = fields.member_type === 'guest' ? 'guest' : fields.member_type === 'fixed' ? 'fixed' : req.member.member_type;
+    const nextActive = 'is_active' in fields ? fields.is_active !== false : req.member.is_active;
+    const takesPlace = nextActive && (!req.member.is_active || nextType !== req.member.member_type);
+    if (takesPlace) {
+      try {
+        await assertMemberRoom(req.club, nextType);
+      } catch (err) {
+        return planError(res, err);
+      }
+    }
+  }
   if ('gender' in fields) fields.gender = cleanGender(fields.gender);
   if ('birth_year' in fields) fields.birth_year = cleanBirthYear(fields.birth_year);
   try {
@@ -463,6 +524,12 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
   if (m.user_id) patch.account_verified = true;
   if (m.join_requested) {
     const type = req.body?.member_type === 'guest' ? 'guest' : 'fixed';
+    // Joining (or moving to another type) takes a place within the plan's limits.
+    try {
+      await assertMemberRoom(req.club, type, m.is_active && m.member_type === type ? 0 : 1);
+    } catch (err) {
+      return planError(res, err);
+    }
     patch.member_type = type;
     patch.tier = type === 'fixed' && TIERS.includes(req.body?.tier) ? req.body.tier : null;
     if (type === 'fixed') {
@@ -538,7 +605,7 @@ router.get('/:clubId/plans', async (req, res) => {
   res.json(data);
 });
 
-router.post('/:clubId/plans', async (req, res) => {
+router.post('/:clubId/plans', requireFeature('membership_plans'), async (req, res) => {
   const { name, period, price, sessions_included } = req.body;
   if (!name || !period || price == null) {
     return res.status(400).json({ error: 'name, period, and price are required.' });
@@ -560,7 +627,7 @@ router.post('/:clubId/plans', async (req, res) => {
 
 // Edit a plan. Periods already registered keep their dates and amounts; the new
 // period / price apply to the next registrations.
-router.patch('/:clubId/plans/:planId', async (req, res) => {
+router.patch('/:clubId/plans/:planId', requireFeature('membership_plans'), async (req, res) => {
   const fields = pick(req.body, ['name', 'period', 'price', 'sessions_included', 'is_active']);
   if ('name' in fields) {
     fields.name = String(fields.name || '').trim().slice(0, 120);
@@ -584,7 +651,7 @@ router.patch('/:clubId/plans/:planId', async (req, res) => {
 
 // Register a member for `count` consecutive periods of a plan, starting at `start_month` (YYYY-MM).
 // e.g. monthly plan, start 2026-08, count 3 -> Aug, Sep, Oct.
-router.post('/:clubId/members/:memberId/memberships', async (req, res) => {
+router.post('/:clubId/members/:memberId/memberships', requireFeature('membership_plans'), async (req, res) => {
   const { plan_id, start_month, status } = req.body;
   const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
   if (!isUuid(plan_id) || !/^\d{4}-\d{2}$/.test(start_month || '')) {
@@ -698,7 +765,7 @@ router.delete('/:clubId/memberships/:membershipId/sessions/last', async (req, re
 });
 
 // ---- Stats: rankings + awards for a day / month / quarter / year / all time --
-router.get('/:clubId/stats', async (req, res) => {
+router.get('/:clubId/stats', requireFeature('rankings'), async (req, res) => {
   try {
     res.json(await clubStats(req.club, req.query));
   } catch (err) {
@@ -772,10 +839,10 @@ router.post('/:clubId/pending-payments/:ref/confirm', async (req, res) => {
 });
 
 // ---- Inventory (balls & supplies) — shared with the Xé Vé store ----------------
-inventoryStore.mount(router, '/:clubId/inventory', (req) => ({ club_id: req.club.id }));
+inventoryStore.mount(router, '/:clubId/inventory', (req) => ({ club_id: req.club.id }), requireFeature('ball_inventory'));
 
 // ---- Rankings / fund ------------------------------------------------------
-router.get('/:clubId/rankings', async (req, res) => {
+router.get('/:clubId/rankings', requireFeature('rankings'), async (req, res) => {
   const view = req.query.period === 'monthly' ? 'v_club_rankings_monthly' : 'v_club_rankings_all_time';
   const { data, error } = await supabase.from(view).select('*').eq('club_id', req.club.id);
   if (error) return dbError(res, error);
@@ -994,5 +1061,8 @@ router.get('/:clubId/birthdays', async (req, res) => {
   if (error) return dbError(res, error);
   res.json(birthdays.upcoming(data, within));
 });
+
+// Pro tools: activity log, duty roster, advanced analytics.
+require('./clubPro').mount(router);
 
 module.exports = router;

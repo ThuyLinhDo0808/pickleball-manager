@@ -32,6 +32,20 @@ const PROBES = [
   { table: 'clubs', column: 'fund_calc', migration: '20261022090000_club_fund_calculator.sql' },
   { table: 'inventory_items', column: 'host_id', migration: '20261023090000_ball_log_xeve_inventory.sql' },
   { table: 'users', column: 'notify_players_email', migration: '20261024090000_player_email_notices.sql' },
+  { table: 'plan_payments', column: 'ref', migration: '20261025090000_plan_payments.sql' },
+  { table: 'host_subscriptions', column: 'tier_paid_until', migration: '20261025090000_plan_payments.sql' },
+  { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
+  { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
+  { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },
+  { table: 'clubs', column: 'extra_fixed_members', migration: '20261028090000_club_member_addon_transfer.sql' },
+  { table: 'announcements', column: 'show_public', migration: '20261030090000_owner_console_2.sql' },
+  { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
+  { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
+  { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },
+  { table: 'club_activity_logs', column: 'action', migration: '20261101090000_pro_club_tools.sql' },
+  { table: 'staff_grants', column: 'permissions', migration: '20261101090000_pro_club_tools.sql' },
+  { table: 'duty_shift_people', column: 'email', migration: '20261101090000_pro_club_tools.sql' },
+  { table: 'support_staff', column: 'permissions', migration: '20261102090000_support_staff_drop_telegram.sql' },
 ];
 
 const TTL_MS = 60 * 1000;
@@ -51,4 +65,4 @@ async function schemaStatus() {
   return value;
 }
 
-module.exports = { schemaStatus };
+module.exports = { schemaStatus, PROBES };

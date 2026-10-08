@@ -1,8 +1,8 @@
 const express = require('express');
-const { assertSocialManager } = require('../services/plan');
+const { assertSocialManager, assertFeature } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
-const { actingHost, eventAccess, coAdminClubIds } = require('../services/clubAccess');
+const { actingHost, eventAccess, coAdminClubIds, ROLE_FORBIDDEN } = require('../services/clubAccess');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
 const { normalizePhone, findClubMemberByPhone, todayYmd } = require('../services/memberships');
@@ -16,6 +16,7 @@ const {
 } = require('../services/attendance');
 const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
+const { suspensionOf } = require('../services/owner');
 const { HOLDS_PLACE } = require('../services/fees');
 const { perksFor, ensureGuestMember, memberForUser, findClubPerson } = require('../services/guests');
 const survey = require('../services/survey');
@@ -68,7 +69,9 @@ router.get('/public/:publicToken', async (req, res) => {
   if (pErr) return dbError(res, pErr);
 
   let closedCode = null;
-  if (!event.allow_public_registration) closedCode = 'disabled';
+  // The organiser's account is suspended by the app owner: no new sign-ups.
+  if (await suspensionOf(event.host_id)) closedCode = 'suspended';
+  else if (!event.allow_public_registration) closedCode = 'disabled';
   else if (!['draft', 'open'].includes(event.status)) closedCode = 'not_open';
   else if (event.registration_deadline && new Date(event.registration_deadline) < new Date()) closedCode = 'deadline';
 
@@ -226,6 +229,7 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
 router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
   const event = await publicEvent(req, res);
   if (!event) return;
+  if (await suspensionOf(event.host_id)) return res.status(423).json({ error: 'Sign-ups for this event are paused.', code: 'organiser_suspended' });
   try {
     const profile = await playerProfile(req.userId);
     await linkByPhone(req.userId, profile);
@@ -257,7 +261,7 @@ router.param('eventId', async (req, res, next, eventId) => {
   if (error) return dbError(res, error);
   // The event's host, or a co-admin of its club (who then acts as the owner).
   const access = await eventAccess(req, data).catch(() => null);
-  if (!access) return notFound(res, 'Event');
+  if (!access) return req.roleForbidden ? res.status(403).json(ROLE_FORBIDDEN) : notFound(res, 'Event');
   req.hostId = access.hostId;
   req.coAdmin = access.coAdmin;
   req.event = await completeIfFinished(data);
@@ -313,7 +317,8 @@ function addDays(ymd, days) {
 
 // Transfer screenshots waiting for the Host, across all their upcoming events.
 router.get('/pending-payments', async (req, res) => {
-  const shared = await coAdminClubIds(req).catch(() => []);
+  // Payments to review: the owner's, co-admins' and Finance's clubs (not Operations).
+  const shared = await coAdminClubIds(req, ['co_admin', 'finance']).catch(() => []);
   const base = supabase.from('events').select('id, title, event_date, start_time, fee_amount, club_id');
   const { data: events, error } = await (shared.length ? base.or(`host_id.eq.${req.hostId},club_id.in.(${shared.join(',')})`) : base.eq('host_id', req.hostId))
     .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10));
@@ -382,6 +387,14 @@ router.post('/', async (req, res) => {
   }
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
+  // Many club sessions at once (weekly schedule) is a Standard feature.
+  if (fields.club_id && ((dates && dates.length > 1) || weeks > 1)) {
+    try {
+      await assertFeature(hostId, 'weekly_schedule');
+    } catch (err) {
+      return res.status(err.status || 500).json({ error: err.message, code: err.code, feature: err.feature, min_tier: err.min_tier });
+    }
+  }
   const days = dates || Array.from({ length: weeks }, (_, i) => addDays(event_date, 7 * i));
   // The registration deadline keeps the same distance to each session as to the first.
   const dayMs = (d) => Date.parse(`${d}T00:00:00Z`);

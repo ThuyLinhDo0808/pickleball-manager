@@ -26,7 +26,8 @@ export default function FinanceLayout({ children }) {
   const { workspace } = useWorkspace();
   const { club } = useDefaultClub();
   const pathname = usePathname() || '';
-  const tabs = TABS[workspace] || TABS.club;
+  // Finance staff see the money tabs only (no ball store).
+  const tabs = (TABS[workspace] || TABS.club).filter((tab) => !(workspace === 'club' && club?.role === 'finance' && tab.href === '/finance/inventory'));
   const where = workspace === 'xeve' ? t('finX.scopeXeve') : club?.name || '';
 
   return (
