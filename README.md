@@ -15,7 +15,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 3. [Trang chủ & các không gian làm việc](#3-trang-chủ--các-không-gian-làm-việc)
 4. [Tính năng chi tiết — Club Manager](#4-tính-năng-chi-tiết--club-manager)
 5. [Tính năng chi tiết — Xé Vé Manager](#5-tính-năng-chi-tiết--xé-vé-manager)
-6. [Phân quyền: Trọng tài, Điều phối viên, Đồng quản trị](#6-phân-quyền-trọng-tài-điều-phối-viên-đồng-quản-trị)
+6. [Phân quyền: Trọng tài, Điều phối viên, Đồng quản trị, Tài chính, Vận hành](#6-phân-quyền-trọng-tài-điều-phối-viên-đồng-quản-trị-tài-chính-vận-hành)
 7. [Cổng người chơi](#7-cổng-người-chơi)
 8. [Tính năng chung](#8-tính-năng-chung)
 9. [Hướng dẫn nhanh theo tình huống](#9-hướng-dẫn-nhanh-theo-tình-huống)
@@ -531,7 +531,7 @@ Mỗi kèo có thể đặt **Hạn chót huỷ kèo**: *Không giới hạn*, h
 
 ---
 
-## 6. Phân quyền: Trọng tài, Điều phối viên, Đồng quản trị
+## 6. Phân quyền: Trọng tài, Điều phối viên, Đồng quản trị, Tài chính, Vận hành
 
 ### 6.1. Host cấp quyền (`/staff-access`)
 Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai trò**, **phạm vi** và (tuỳ chọn) **thời hạn hiệu lực** *từ ngày – đến ngày*. Trang có **bảng so sánh quyền** từng vai trò và danh sách quyền đã cấp (đang hiệu lực / chưa bắt đầu / đã hết hạn).
@@ -540,10 +540,14 @@ Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai 
 |---|---|---|
 | **Trọng tài** | Chỉ nhập tỷ số trận đấu | Một kèo · một CLB · **mọi CLB** · **mọi kèo Xé Vé** · tất cả |
 | **Điều phối viên** | Check-in (tay hoặc **quét QR**) + nhập tỷ số | Một kèo · một CLB · **mọi CLB** · **mọi kèo Xé Vé** · tất cả |
-| **Đồng quản trị** (Co-Admin) | **Mọi quyền như chủ CLB**: thành viên, gói, lịch/buổi, trận đấu, giải đấu, tài chính, kho, cài đặt CLB (đổi tên, tài khoản nhận tiền, link tham gia) | Luôn là **một CLB cụ thể** |
+| **Đồng quản trị** (Admin) | **Mọi quyền như chủ CLB**: thành viên, gói, lịch/buổi, trận đấu, giải đấu, tài chính, kho, cài đặt CLB (đổi tên, tài khoản nhận tiền, link tham gia) | Luôn là **một CLB cụ thể** |
+| **Tài chính** 💰 (gói Advanced trở lên) | Tổng quan tài chính, **thu / chi**, **gói hội viên**, xác nhận thành viên đã thanh toán, công nợ, doanh thu, lợi nhuận, báo cáo, xuất Excel. **Không**: sửa cấu hình CLB, phân quyền, thêm/xoá/sửa thành viên, tạo/sửa hoạt động, nhập kết quả trận, bảng xếp hạng | Luôn là **một CLB cụ thể** |
+| **Vận hành / trực ca** 🧑‍💼 (gói Advanced trở lên) | **Thành viên**: xem danh sách + thông tin cơ bản (không SĐT, ngày sinh, ghi chú, công nợ), điểm danh, check-in/out. **Hoạt động**: xem lịch, **mở/đóng** (bật/tắt nhận đăng ký, mở lại / kết thúc buổi — không huỷ), quản lý người tham gia. **Trận đấu**: xem, tạo, nhập người chơi, nhập/sửa tỉ số, kết thúc trận, tính điểm trực tiếp giải. **Bóng**: ghi bóng dùng/hỏng, thống kê bóng cuối ngày. **Xếp hạng**: xem. **Không**: xem chi tiết tài chính, sửa thu/chi, gói hội viên, phân quyền, cài đặt CLB, xoá dữ liệu | Luôn là **một CLB cụ thể** |
 
 - Trọng tài và điều phối viên **không bao giờ thấy tài chính hay số điện thoại**.
 - Đồng quản trị **không được xoá CLB** (server trả `403 owner_only`) và **không phân quyền cho người khác** (menu *Phân quyền* bị ẩn). Mọi thứ họ tạo/ghi đều thuộc về chủ CLB.
+- **Tài chính / Vận hành theo gói của chủ CLB:** gói Advanced cho **1 người Tài chính + 1 người Vận hành mỗi CLB**; gói Pro không giới hạn. Gói thấp hơn: hai vai trò hiện 💎 trên trang Phân quyền, bấm vào thì hiện hộp nâng cấp; cấp thêm khi đã đủ chỗ → `402 role_seats`. Chủ CLB hạ gói xuống dưới Advanced thì hai vai trò này **tạm ngưng** (quyền vẫn lưu, lên lại gói là dùng tiếp). Mỗi người chỉ có một vai trò trên một CLB (đổi vai trò bằng ô chọn trong danh sách).
+- **Kiểm soát ở server, mặc định là cấm:** mọi API của CLB đi qua bảng quyền `backend/src/services/clubRoles.js`; thao tác không có trong bảng của vai trò bị trả `403 role_forbidden`. Menu cũng chỉ hiện trang của vai trò: *Tài chính* thấy Tài chính (Tổng quan, Sổ thu chi, Gói hội viên); *Vận hành* thấy Thành viên, Lịch, Thống kê thành viên, Bảng xếp hạng, Kho bóng. Mở trang khác (vd Tổng quan CLB) sẽ tự chuyển về trang đầu tiên của vai trò. Đầu trang có thẻ ghi rõ *"Bạn phụ trách tài chính"* / *"Bạn là người vận hành (trực ca)"*.
 - Quyền có thời hạn: ngoài khoảng *từ – đến* thì server coi như chưa cấp.
 - Đổi vai trò, sửa thời hạn hoặc thu hồi quyền bất cứ lúc nào.
 
@@ -893,6 +897,7 @@ supabase/migrations/
 └── 20261026100000_owner_audit_guard_fix.sql         # sửa: xoá tài khoản không còn bị chặn bởi nhật ký Owner (cho phép bỏ liên kết tới tài khoản đã xoá)
 └── 20261027090000_plans_v2.sql                      # 5 gói free/basic/standard/advanced/pro (thêm 'advanced'), dùng thử (trial_started_at, trial_ends_on), giới hạn chống lạm dụng mới
 └── 20261028090000_club_member_addon_transfer.sql    # chỗ thành viên mua thêm cho từng CLB (clubs.extra_*_members), hàm owner_transfer_club (đổi chủ CLB)
+└── 20261029090000_club_staff_roles.sql              # vai trò CLB mới: finance (Tài chính), operator (Vận hành) cho staff_grants
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1091,7 +1096,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `PATCH /api/transactions/:id` (sửa; đổi số tiền/loại = huỷ + ghi dòng thay thế) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance?year=` · `/events-pnl?year=` (theo năm dương lịch; mặc định năm nay; dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
 | Owner (chỉ `OWNER_EMAILS`, người khác nhận 404) | `GET /api/owner/me` · `GET /api/owner/overview` · `GET /api/owner/hosts?q=&filter=hosts\|paying\|free\|expiring\|suspended\|all&page=` · `GET /api/owner/hosts/:id` · `PATCH /api/owner/hosts/:id/subscription` `{tier, tier_paid_until, add_months, social_manager, social_manager_paid_until, sm_add_months, note}` · `POST …/hosts/:id/suspend` `{reason}` · `POST …/hosts/:id/unsuspend` · `POST …/hosts/:id/notes` `{body}` · `GET /api/owner/payments?status=&from=&to=` · `POST /api/owner/payments/:id/confirm` · `POST …/payments/:id/cancel` · `PATCH /api/owner/clubs/:id/member-addon` `{extra_fixed_members, extra_guest_members, note}` · `POST /api/owner/clubs/:id/transfer` `{email, note}` (`404 no_account` nếu email chưa có tài khoản) · `GET /api/owner/audit?page=&host_id=&action=` · `POST /api/owner/audit/:id/undo` (`409 changed_since` nếu đã có thay đổi mới hơn). Tài khoản bị đình chỉ gọi API quản lý nhận `423 account_suspended`. |
-| Phân quyền | `GET/POST /api/staff-grants` (`scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
+| Phân quyền | `GET/POST /api/staff-grants` (`role`: `referee` / `coordinator` / `co_admin` / `finance` / `operator` — ba vai sau luôn cần `club_id`; `finance`/`operator` cần gói Advanced: `402 feature_locked` / `402 role_seats`; `scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`) · `PATCH/DELETE /api/staff-grants/:id` |
 | Nhân sự | `GET /api/staff/me` (kèm `role` mạnh nhất) · `GET /api/staff/events` (kèm `kind`, `arrived`) · `GET /api/staff/events/:id` · `POST …/participants` (điều phối viên thêm khách vãng lai + check-in; hết chỗ thì vào danh sách chờ) · `POST …/participants/:pid/:action` (`checkin` / `no_show` / `undo` / `promote`) · `POST …/checkin-code` · `POST/PATCH …/matches` |
 | Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` · `PUT /api/player/email-notices` `{enabled}` (`/me` trả `email_notices: {available, enabled}`) |
 
@@ -1104,7 +1109,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Tài khoản | `users` (có `notify_webhook_url`, `notify_players_email`, tài khoản ngân hàng + ảnh QR nhận tiền kèo), `host_subscriptions` (gói `free`/`basic`/`standard`/`advanced`/`pro` + giới hạn, tự tạo khi đăng ký; `trial_started_at`, `trial_ends_on` dùng thử; `social_manager`, `social_manager_requested_at`, `upgrade_requested_at`, `upgrade_requested_tier`, `tier_paid_until`, `social_manager_paid_until`), `plan_payments` (đơn nâng cấp trả bằng chuyển khoản: `kind`, `tier`, `months`, `amount`, `ref`, `status` pending/paid/cancelled; chỉ backend đọc/ghi), view `v_host_capacity_usage` |
 | CLB | `clubs` (kèm link tham gia, tài khoản ngân hàng, `extra_fixed_members` / `extra_guest_members` = chỗ thành viên mua thêm), `club_members` (giới tính, năm sinh, `birth_date`, `joined_on`, DUPR, loại, hạng, `district`, `play_duration`, `real_rank` (cũ, không còn hiển thị), `priority` + `discount_pct` cho khách, cờ nội bộ, tài khoản liên kết + `account_verified`, `join_requested`) |
 | Hội viên | `membership_plans`, `memberships`, `membership_sessions`, view `v_membership_status` |
-| Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
+| Sự kiện | `events` (có `cancel_deadline_hours`, `kind` loại hoạt động), `event_participants` (có `late_cancel`, `kind` thành viên/khách, `ticket_code` vé QR, `payment_status` + ảnh chuyển khoản, `hold_expires_at` giữ chỗ, `transferred_from`; trạng thái `pending` = đang chờ xác nhận thanh toán), `event_scorers`, `staff_grants` (vai trò `referee` / `coordinator` / `co_admin` / `finance` / `operator`, `scope`, `valid_from`, `valid_until`), view `v_event_summary`, `v_player_reliability` |
 | Thi đấu | `matches` (thuộc CLB **hoặc** kèo; tỷ số có thể null = chưa nhập; cột `video_url` vẫn giữ nhưng giao diện tạm ẩn), `match_players`, view `v_club_rankings_all_time`, `v_club_rankings_monthly` |
 | Giải đấu | `tournaments` (`player_ranks` = hạng A–D của từng người trong giải; `kind` pairs/team; vòng tròn tính điểm = `group_count` 1 + `advance_per_group` 0, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
@@ -1124,6 +1129,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **Service role key chỉ ở backend.** Web chỉ giữ anon key và dùng nó để đăng nhập.
 - **Giới hạn gói kiểm tra ở server.** Tạo CLB vượt giới hạn gói trả `402 club_limit`; tạo kèo không thuộc CLB khi chưa có Social Manager trả `402 social_manager_required` — ẩn nút trên giao diện chỉ là lớp phụ.
 - **Quyền nhân sự theo email đã xác nhận.** Chỉ email Supabase đã xác nhận mới nhận được quyền. Trọng tài và điều phối viên không bao giờ thấy tài chính hay số điện thoại.
+- **Vai trò Tài chính / Vận hành kiểm soát ở server** bằng bảng quyền theo từng API (mặc định cấm thao tác không liệt kê); người Vận hành không nhận SĐT / ngày sinh / công nợ thành viên.
 - **Đồng quản trị kiểm soát ở server**, không chỉ ẩn trên giao diện. Họ chỉ truy cập được đúng CLB được cấp (trong thời hạn hiệu lực), với quyền như chủ CLB trừ xoá CLB. Server tự gắn dữ liệu họ tạo vào chủ CLB, nên mọi khoản nằm trong sổ của chủ. Họ không thấy kèo Xé Vé riêng của chủ.
 - **Mã QR check-in** là một token ngẫu nhiên, không chứa thông tin cá nhân. Chỉ Host hoặc điều phối viên của đúng kèo mới dùng được để check-in, và người chơi đổi mã mới bất cứ lúc nào.
 - **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ). Bot Telegram chỉ nhận cập nhật có đúng secret.

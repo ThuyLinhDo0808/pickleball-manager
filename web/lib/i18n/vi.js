@@ -280,6 +280,9 @@ export const vi = {
     st_later: 'Chưa bắt đầu',
     noLimit: 'không giới hạn',
     editDates: 'Đổi thời hạn',
+    can_openClose: "Mở / đóng hoạt động",
+    can_balls: "Ghi nhận bóng",
+    can_plans: "Gói hội viên, công nợ",
   },
   clubsX: {
     lead: 'Bạn đang quản lý {n} CLB. Chọn CLB để làm việc, hoặc tạo CLB mới.',
@@ -658,6 +661,8 @@ export const vi = {
     backHome: 'Về trang chủ',
     backHomeShort: 'Trang chủ · tất cả CLB & vai trò',
     backHomeHint: 'Tất cả CLB, kể cả CLB bạn là thành viên',
+    roleFinance: "Tài chính",
+    roleOperator: "Vận hành",
   },
   owner: {
     tabOverview: "Tổng quan",
@@ -946,6 +951,7 @@ export const vi = {
     paidUntil: "Đến hết {date}",
     renew: "Gia hạn",
     expired: "Gói {tier} đã hết hạn nên tài khoản đã về gói FREE. Dữ liệu vẫn giữ nguyên — gia hạn để dùng tiếp.",
+    limitSeats: "Gói hiện tại cho tối đa {n} người vai trò \"{role}\" mỗi CLB. Lên gói Pro để thêm người.",
   },
   pairing: {
     man: "nam",
@@ -1445,6 +1451,10 @@ export const vi = {
     removeConfirm: 'Thu hồi quyền của {email}?',
     remove: 'Thu hồi',
     verifyNote: 'Người được cấp quyền đăng nhập (hoặc đăng ký) bằng đúng email này và xác nhận email, rồi chọn workspace "Trọng tài / Điều phối".',
+    finance: "Tài chính",
+    operator: "Vận hành (trực ca)",
+    financeDesc: "Thu chi, gói hội viên, xác nhận thanh toán, công nợ, báo cáo. Không sửa CLB, hoạt động, trận đấu.",
+    operatorDesc: "Thành viên (thông tin cơ bản), điểm danh, check-in, mở/đóng hoạt động, trận đấu, bóng. Không xem tài chính.",
   },
   staffView: {
     title: "Sự kiện của tôi",
@@ -1944,6 +1954,10 @@ export const vi = {
     needsClub: 'Đồng quản trị luôn gắn với một CLB cụ thể — hãy chọn CLB.',
     scopeClub: 'CLB {name} (toàn quyền, trừ xóa CLB)',
     grantNote: 'Người này có mọi quyền như chủ CLB với CLB này: lịch & kèo, trận đấu, giải đấu, thành viên, tài chính, kho, cài đặt và link tham gia — chỉ không xóa được CLB và không phân quyền cho người khác.',
+    bannerFinance: "Bạn phụ trách tài chính · {name}",
+    bannerHintFinance: "Chủ CLB: {owner} · Thu chi, gói hội viên, thanh toán, công nợ, báo cáo",
+    bannerOperator: "Bạn là người vận hành (trực ca) · {name}",
+    bannerHintOperator: "Chủ CLB: {owner} · Thành viên, điểm danh, check-in, hoạt động, trận đấu, bóng",
   },
   notify: {
     title: 'Thông báo cho người chơi',

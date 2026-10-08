@@ -142,9 +142,12 @@ export default function MembersPage() {
         title={t('nav.members')}
         subtitle={club?.name}
         actions={
-          <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
-            ＋ {t('members.addMember')}
-          </button>
+          // Operations staff see the list; only the owner / co-admins add members.
+          (!club?.role || ['owner', 'co_admin'].includes(club.role)) && (
+            <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
+              ＋ {t('members.addMember')}
+            </button>
+          )
         }
       />
 

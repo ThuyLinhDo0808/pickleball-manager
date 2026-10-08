@@ -8,10 +8,31 @@ const { getUsage } = require('../middleware/checkCapacity');
 const { HOLDS_PLACE } = require('../services/fees');
 const { PLAYER_SELECT, createMatch, updateMatch } = require('../services/matches');
 const { schemaStatus } = require('../services/schemaCheck');
+const { getPlan } = require('../services/plan');
 
 const EVENT_ROLES = ['referee', 'coordinator'];
 // co_admin: co-owner of one club (members + finance); handled by services/clubAccess.js, not here.
-const ROLES = [...EVENT_ROLES, 'co_admin'];
+const ROLES = [...EVENT_ROLES, 'co_admin', 'finance', 'operator'];
+// Roles for one club. Finance / Operations need the Advanced plan (seats per club by plan).
+const CLUB_ONLY = ['co_admin', 'finance', 'operator'];
+const SEAT_ROLES = ['finance', 'operator'];
+const ROLE_ERROR = 'role must be referee, coordinator, co_admin, finance or operator.';
+
+// 402 when the owner's plan has no Finance / Operations roles, or this club's seats for
+// the role are taken. `except` = a grant being changed (doesn't count against itself).
+async function seatProblem(hostId, role, clubId, except = null) {
+  if (!SEAT_ROLES.includes(role)) return null;
+  const plan = await getPlan(hostId);
+  if (!plan.features_enforced) return null;
+  if (!plan.features.staff_roles) return { status: 402, body: { error: 'Finance and Operations roles need the Advanced plan or higher.', code: 'feature_locked', feature: 'staff_roles', min_tier: 'advanced' } };
+  const seats = plan.role_seats?.[role];
+  if (seats == null) return null;
+  let q = supabase.from('staff_grants').select('id', { count: 'exact', head: true }).eq('host_id', hostId).eq('club_id', clubId).eq('role', role);
+  if (except) q = q.neq('id', except);
+  const { count } = await q;
+  if ((count || 0) >= seats) return { status: 402, body: { error: `Your ${plan.tier} plan allows ${seats} ${role} per club. Upgrade to Pro for more.`, code: 'role_seats', role, limit: seats } };
+  return null;
+}
 const RANK = { referee: 1, coordinator: 2 };
 // What each role may do. Neither ever sees phones, fees or any finance data.
 const CAN = {
@@ -94,7 +115,7 @@ grants.post('/', async (req, res) => {
   const club_id = req.body.club_id || null;
   const event_id = req.body.event_id || null;
   if (!email) return res.status(400).json({ error: 'A valid email is required.' });
-  if (!ROLES.includes(role)) return res.status(400).json({ error: 'role must be referee, coordinator or co_admin.' });
+  if (!ROLES.includes(role)) return res.status(400).json({ error: ROLE_ERROR });
   if (club_id && event_id) return res.status(400).json({ error: 'Choose one club or one event, not both.' });
   const ready = await scopesReady();
   const scope = club_id || event_id ? 'all' : req.body.scope || 'all';
@@ -106,7 +127,7 @@ grants.post('/', async (req, res) => {
   } catch (err) {
     return res.status(err.status).json({ error: err.message, code: err.code });
   }
-  if (role === 'co_admin' && !club_id) return res.status(400).json({ error: 'A co-admin is always for one club.', code: 'co_admin_needs_club' });
+  if (CLUB_ONLY.includes(role) && !club_id) return res.status(400).json({ error: 'This role is always for one club.', code: 'co_admin_needs_club' });
   if (email === String(req.hostEmail || '').toLowerCase()) {
     return res.status(400).json({ error: 'You already have full access to your own events.' });
   }
@@ -115,6 +136,8 @@ grants.post('/', async (req, res) => {
     if (!isUuid(club_id)) return notFound(res, 'Club');
     const { data } = await supabase.from('clubs').select('id').eq('id', club_id).eq('host_id', req.hostId).maybeSingle();
     if (!data) return notFound(res, 'Club');
+    const problem = await seatProblem(req.hostId, role, club_id);
+    if (problem) return res.status(problem.status).json(problem.body);
   }
   if (event_id) {
     if (!isUuid(event_id)) return notFound(res, 'Event');
@@ -128,6 +151,7 @@ grants.post('/', async (req, res) => {
     .select('*, clubs(name), events(title, event_date)')
     .single();
   if (error?.code === '23505') return res.status(409).json({ error: 'This person already has access for that scope.' });
+  if (error?.code === '22P02' && SEAT_ROLES.includes(role)) return res.status(409).json({ error: 'Run migration 20261029090000_club_staff_roles.sql first.' });
   if (error) return dbError(res, error);
   res.status(201).json(data);
 });
@@ -136,7 +160,7 @@ grants.patch('/:grantId', async (req, res) => {
   if (!isUuid(req.params.grantId)) return notFound(res, 'Grant');
   const patch = {};
   if ('role' in req.body) {
-    if (!ROLES.includes(req.body.role)) return res.status(400).json({ error: 'role must be referee, coordinator or co_admin.' });
+    if (!ROLES.includes(req.body.role)) return res.status(400).json({ error: ROLE_ERROR });
     patch.role = req.body.role;
   }
   if ('valid_from' in req.body || 'valid_until' in req.body) {
@@ -148,9 +172,13 @@ grants.patch('/:grantId', async (req, res) => {
     }
   }
   if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nothing to change.' });
-  if (patch.role === 'co_admin') {
+  if (CLUB_ONLY.includes(patch.role)) {
     const { data: g } = await supabase.from('staff_grants').select('club_id').eq('id', req.params.grantId).eq('host_id', req.hostId).maybeSingle();
-    if (g && !g.club_id) return res.status(400).json({ error: 'A co-admin is always for one club.', code: 'co_admin_needs_club' });
+    if (g && !g.club_id) return res.status(400).json({ error: 'This role is always for one club.', code: 'co_admin_needs_club' });
+    if (g) {
+      const problem = await seatProblem(req.hostId, patch.role, g.club_id, req.params.grantId);
+      if (problem) return res.status(problem.status).json(problem.body);
+    }
   }
   const { data, error } = await supabase
     .from('staff_grants')

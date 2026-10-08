@@ -19,7 +19,9 @@ export default function PlanLimitNotice() {
   const body =
     hit?.code === 'member_limit'
       ? t(hit.member_type === 'guest' ? 'plan.limitGuest' : 'plan.limitFixed', { n: hit.limit })
-      : hit?.code === 'feature_locked'
+      : hit?.code === 'role_seats'
+        ? t('plan.limitSeats', { n: hit.limit, role: t(`staff.${hit.role}`) })
+        : hit?.code === 'feature_locked'
         ? t('plan.limitFeature', { feature: t(`plan.feat_${hit.feature}`), tier: String(hit.min_tier || '').toUpperCase() })
         : hit?.error || '';
   return (

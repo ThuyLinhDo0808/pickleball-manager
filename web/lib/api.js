@@ -30,7 +30,7 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
   const data = await res.json().catch(() => ({}));
   // An action ran into the plan (member limit, locked feature): explain it and offer the
   // plans (components/PlanLimitNotice). Page loads (GET) handle 402 themselves.
-  if (res.status === 402 && method !== 'GET' && ['member_limit', 'feature_locked'].includes(data.code) && typeof window !== 'undefined') {
+  if (res.status === 402 && method !== 'GET' && ['member_limit', 'feature_locked', 'role_seats'].includes(data.code) && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pb:plan-limit', { detail: data }));
   }
   // The app owner suspended this account: the shell shows a notice instead of the app.

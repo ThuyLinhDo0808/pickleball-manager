@@ -8,22 +8,32 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
 import { dmy } from '@/lib/memberDates';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 
-const ROLES = ['coordinator', 'referee', 'co_admin'];
+const ROLES = ['coordinator', 'referee', 'co_admin', 'finance', 'operator'];
+// Roles that are always for one club; Finance / Operations need the Advanced plan.
+const CLUB_ONLY = ['co_admin', 'finance', 'operator'];
+const PLAN_ROLES = ['finance', 'operator'];
 const ROLE_STYLE = {
   coordinator: { icon: '📋', chip: 'border-sky-400/50 text-sky-300 bg-sky-400/10' },
   referee: { icon: '🏁', chip: 'border-lime-400/50 text-lime-300 bg-lime-400/10' },
   co_admin: { icon: '🛡️', chip: 'border-amber-400/60 text-amber-300 bg-amber-400/10' },
+  finance: { icon: '💰', chip: 'border-emerald-400/50 text-emerald-300 bg-emerald-400/10' },
+  operator: { icon: '🧑‍💼', chip: 'border-violet-400/50 text-violet-300 bg-violet-400/10' },
 };
 // What each role can do (rows) — shown as a small table.
 const CAN = [
-  ['checkIn', { coordinator: true, referee: false, co_admin: true }],
-  ['scores', { coordinator: true, referee: true, co_admin: true }],
-  ['schedule', { coordinator: false, referee: false, co_admin: true }],
-  ['members', { coordinator: false, referee: false, co_admin: true }],
-  ['finance', { coordinator: false, referee: false, co_admin: true }],
-  ['settings', { coordinator: false, referee: false, co_admin: true }],
-  ['deleteClub', { coordinator: false, referee: false, co_admin: false }],
+  ['checkIn', { coordinator: true, referee: false, co_admin: true, finance: false, operator: true }],
+  ['scores', { coordinator: true, referee: true, co_admin: true, finance: false, operator: true }],
+  ['openClose', { coordinator: false, referee: false, co_admin: true, finance: false, operator: true }],
+  ['balls', { coordinator: false, referee: false, co_admin: true, finance: false, operator: true }],
+  ['schedule', { coordinator: false, referee: false, co_admin: true, finance: false, operator: false }],
+  ['members', { coordinator: false, referee: false, co_admin: true, finance: false, operator: false }],
+  ['finance', { coordinator: false, referee: false, co_admin: true, finance: true, operator: false }],
+  ['plans', { coordinator: false, referee: false, co_admin: true, finance: true, operator: false }],
+  ['settings', { coordinator: false, referee: false, co_admin: true, finance: false, operator: false }],
+  ['deleteClub', { coordinator: false, referee: false, co_admin: false, finance: false, operator: false }],
 ];
 // Where the access applies.
 const SCOPES = ['all', 'clubs', 'club', 'xeve', 'event'];
@@ -38,7 +48,9 @@ function status(g, today) {
 export default function StaffAccessPage() {
   const { t } = useI18n();
   const { clubs: allClubs } = useClubs();
-  const clubs = allClubs.filter((c) => c.role !== 'co_admin'); // only clubs I own can be shared
+  const clubs = allClubs.filter((c) => !c.role || c.role === 'owner'); // only clubs I own can be shared
+  const { plan } = useWorkspace();
+  const rolesLocked = !hasFeature(planFor(null, plan), 'staff_roles');
   const { data: grants, loading, reload } = useLoad(() => api.get('/api/staff-grants'), []);
   const { data: events } = useLoad(() => api.get('/api/events'), []);
   const [form, setForm] = useState(emptyForm);
@@ -50,17 +62,19 @@ export default function StaffAccessPage() {
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   const upcoming = (events || []).filter((e) => e.event_date >= today && e.status !== 'cancelled');
-  const isCo = form.role === 'co_admin';
+  const isCo = CLUB_ONLY.includes(form.role);
   const scopes = isCo ? ['club'] : SCOPES;
 
   function pickRole(r) {
-    // A co-admin is always for one club.
-    set({ role: r, ...(r === 'co_admin' ? { scope: 'club', club_id: form.club_id || clubs[0]?.id || '' } : {}) });
+    // Finance / Operations need the Advanced plan.
+    if (PLAN_ROLES.includes(r) && rolesLocked) return lockedNotice('staff_roles', 'advanced');
+    // A co-admin / Finance / Operations person is always for one club.
+    set({ role: r, ...(CLUB_ONLY.includes(r) ? { scope: 'club', club_id: form.club_id || clubs[0]?.id || '' } : {}) });
   }
 
   function scopeLabel(g) {
     if (g.event_id) return t('staff.scopeEvent', { title: g.events?.title || '?', date: g.events?.event_date ? dmy(g.events.event_date) : '' });
-    if (g.club_id) return g.role === 'co_admin' ? t('coadmin.scopeClub', { name: g.clubs?.name || '?' }) : t('staff.scopeClub', { name: g.clubs?.name || '?' });
+    if (g.club_id) return CLUB_ONLY.includes(g.role) ? t('coadmin.scopeClub', { name: g.clubs?.name || '?' }) : t('staff.scopeClub', { name: g.clubs?.name || '?' });
     return t(`staffX.scope_${g.scope || 'all'}`);
   }
 
@@ -152,17 +166,17 @@ export default function StaffAccessPage() {
 
           <fieldset>
             <legend className="text-xs text-gray-400 mb-1.5">1. {t('staff.role')}</legend>
-            <div className="grid sm:grid-cols-3 gap-2">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {ROLES.map((r) => (
                 <button
                   key={r}
                   type="button"
                   aria-pressed={form.role === r}
-                  disabled={r === 'co_admin' && !clubs.length}
+                  disabled={CLUB_ONLY.includes(r) && !clubs.length}
                   onClick={() => pickRole(r)}
                   className={`rounded-xl border px-3 py-2.5 text-left transition disabled:opacity-40 ${form.role === r ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
                 >
-                  <div className={`text-sm font-semibold ${form.role === r ? 'text-lime-300' : 'text-white'}`}>{ROLE_STYLE[r].icon} {t(`staff.${r}`)}</div>
+                  <div className={`text-sm font-semibold ${form.role === r ? 'text-lime-300' : 'text-white'}`}>{ROLE_STYLE[r].icon} {t(`staff.${r}`)}{PLAN_ROLES.includes(r) && rolesLocked && <span className="ml-1 text-[11px]" title={t('plan.locked')}>💎</span>}</div>
                   <div className="text-gray-400 text-xs mt-0.5">{t(`staff.${r}Desc`)}</div>
                 </button>
               ))}
@@ -293,7 +307,7 @@ export default function StaffAccessPage() {
               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-navy-700">
                 <select className="input text-sm !w-auto !py-1.5" value={g.role} onChange={(e) => changeRole(g, e.target.value)} aria-label={t('staff.role')}>
                   {ROLES.map((r) => (
-                    <option key={r} value={r} disabled={r === 'co_admin' && !g.club_id}>{t(`staff.${r}`)}</option>
+                    <option key={r} value={r} disabled={CLUB_ONLY.includes(r) && !g.club_id}>{t(`staff.${r}`)}</option>
                   ))}
                 </select>
                 <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => setEditing({ id: g.id, email: g.email, valid_from: g.valid_from || '', valid_until: g.valid_until || '' })}>

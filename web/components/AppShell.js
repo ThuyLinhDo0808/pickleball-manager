@@ -127,6 +127,12 @@ const TABS_BY_WORKSPACE = {
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
 };
 
+// Club staff with a limited role see only their pages (the API refuses the rest anyway).
+const ROLE_PAGES = {
+  finance: ['/finance', '/finance/ledger', '/finance/plans', '/account'],
+  operator: ['/club/members', '/events', '/club/attendance', '/club/rankings', '/finance/inventory', '/account'],
+};
+
 const GROUPS_KEY = 'pickleball_nav_groups';
 
 const COLLAPSE_KEY = 'pickleball_nav_collapsed';
@@ -222,6 +228,14 @@ export default function AppShell({ children }) {
     if (user && wsReady && !workspace) router.replace('/home');
   }, [user, wsReady, workspace, router]);
 
+  // Finance / Operations staff opening a page outside their role go to their first page.
+  useEffect(() => {
+    const pages = workspace === 'club' ? ROLE_PAGES[club?.role] : null;
+    if (!pages || !pathname) return;
+    const inside = pages.some((p) => pathname === p || (p !== '/finance' && pathname.startsWith(`${p}/`))) || pathname.startsWith('/events/');
+    if (!inside) router.replace(pages[0]);
+  }, [workspace, club?.role, pathname, router]);
+
   useEffect(() => {
     try {
       setOpenGroups(JSON.parse(window.localStorage.getItem(GROUPS_KEY) || '{}'));
@@ -288,8 +302,14 @@ export default function AppShell({ children }) {
   const coAdmin = workspace === 'club' && isCoAdmin;
   // A co-admin works on the owner's club with the full menu, except granting access to
   // others (and deleting the club), which stay with the owner.
-  const NAV = (NAV_BY_WORKSPACE[workspace] || []).map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g));
-  const tabs = TABS_BY_WORKSPACE[workspace] || [];
+  const clubRole = workspace === 'club' ? club?.role : null;
+  const rolePages = ROLE_PAGES[clubRole] || null;
+  const roleOk = (href) => !rolePages || rolePages.includes(href);
+  const NAV = (NAV_BY_WORKSPACE[workspace] || [])
+    .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
+    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href)) } : g))
+    .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
+  const tabs = (TABS_BY_WORKSPACE[workspace] || []).filter((tab) => roleOk(tab.href));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
@@ -451,8 +471,8 @@ export default function AppShell({ children }) {
               <div className="mb-4 flex items-center gap-3 rounded-xl border border-sky-400/30 bg-sky-400/5 px-3 py-2">
                 <span className="text-lg" aria-hidden="true">🤝</span>
                 <div className="min-w-0 text-sm">
-                  <div className="text-sky-200 font-semibold truncate">{t('coadmin.banner', { name: club?.name || '' })}</div>
-                  <div className="text-gray-400 text-xs truncate">{t('coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
+                  <div className="text-sky-200 font-semibold truncate">{t(clubRole === 'finance' ? 'coadmin.bannerFinance' : clubRole === 'operator' ? 'coadmin.bannerOperator' : 'coadmin.banner', { name: club?.name || '' })}</div>
+                  <div className="text-gray-400 text-xs truncate">{t(clubRole === 'finance' ? 'coadmin.bannerHintFinance' : clubRole === 'operator' ? 'coadmin.bannerHintOperator' : 'coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
                 </div>
               </div>
             )}

@@ -12,6 +12,9 @@ import { SocialManagerModal, UpgradeModal, atClubLimit } from '@/components/Plan
 // role, and a menu to jump to another space this account manages — or back to the home
 // hub, where the clubs it only plays in live. Replaces the old Manager/Player and
 // Club/Xé Vé toggles.
+// The account's role in a club, as shown under the club's name.
+const ROLE_LABEL = { owner: 'hub.roleOwner', co_admin: 'hub.roleCoAdmin', finance: 'hub.roleFinance', operator: 'hub.roleOperator' };
+
 export default function ContextSwitcher({ compact = false, iconOnly = false, className = '' }) {
   const { t } = useI18n();
   const { clubs, club, selectClub } = useClubs();
@@ -67,7 +70,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
       : workspace === 'staff'
         ? { avatar: <ClubAvatar icon="🦺" size={compact ? 32 : 40} />, name: t('hub.staff'), role: staffRole }
         : club
-          ? { avatar: <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={compact ? 32 : 40} />, name: club.name, role: t(club.role === 'co_admin' ? 'hub.roleCoAdmin' : 'hub.roleOwner') }
+          ? { avatar: <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={compact ? 32 : 40} />, name: club.name, role: t(ROLE_LABEL[club.role] || 'hub.roleOwner') }
           : { avatar: <ClubAvatar icon="🏠" size={compact ? 32 : 40} />, name: t('hub.noClubYet'), role: '' };
 
   function pickClub(id) {
@@ -132,7 +135,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
                     () => pickClub(c.id),
                     <ClubAvatar id={c.id} name={c.name} sport={c.sport} size={32} />,
                     c.name,
-                    t(c.role === 'co_admin' ? 'hub.roleCoAdmin' : 'hub.roleOwner')
+                    t(ROLE_LABEL[c.role] || 'hub.roleOwner')
                   )}
                 </div>
               ))}

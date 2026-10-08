@@ -280,6 +280,9 @@ export const en = {
     st_later: 'Not started',
     noLimit: 'no limit',
     editDates: 'Change dates',
+    can_openClose: "Open / close activities",
+    can_balls: "Log balls",
+    can_plans: "Membership plans, debts",
   },
   clubsX: {
     lead: 'You manage {n} clubs. Pick one to work on, or create a new one.',
@@ -658,6 +661,8 @@ export const en = {
     backHome: 'Back to home',
     backHomeShort: 'Home · all clubs & roles',
     backHomeHint: 'Every club, including those you play in',
+    roleFinance: "Finance",
+    roleOperator: "Operations",
   },
   owner: {
     tabOverview: "Overview",
@@ -946,6 +951,7 @@ export const en = {
     paidUntil: "Until {date}",
     renew: "Renew",
     expired: "Your {tier} plan expired, so the account is back on FREE. Your data is kept — renew to continue.",
+    limitSeats: "Your plan allows up to {n} \"{role}\" per club. Upgrade to Pro for more.",
   },
   pairing: {
     man: "man",
@@ -1445,6 +1451,10 @@ export const en = {
     removeConfirm: 'Revoke access for {email}?',
     remove: 'Revoke',
     verifyNote: 'They sign in (or sign up) with exactly this email, confirm it, then pick the "Referee / Coordinator" workspace.',
+    finance: "Finance",
+    operator: "Operations (on duty)",
+    financeDesc: "Income/expenses, membership plans, confirming payments, debts, reports. Can't change the club, activities or matches.",
+    operatorDesc: "Members (basic info), attendance, check-in, open/close activities, matches, balls. No finance.",
   },
   staffView: {
     title: "My events",
@@ -1944,6 +1954,10 @@ export const en = {
     needsClub: 'A co-admin is always for one club — pick the club.',
     scopeClub: 'Club {name} (everything but deleting it)',
     grantNote: 'This person can do everything the owner can in this club — schedule & games, matches, tournaments, members, money, stock, settings and the join link — except delete the club or give access to others.',
+    bannerFinance: "You handle finance · {name}",
+    bannerHintFinance: "Owner: {owner} · Money, membership plans, payments, debts, reports",
+    bannerOperator: "You run operations (on duty) · {name}",
+    bannerHintOperator: "Owner: {owner} · Members, attendance, check-in, activities, matches, balls",
   },
   notify: {
     title: 'Player notifications',

@@ -603,7 +603,7 @@ player.get('/home', async (req, res) => {
       profile: profile ? { full_name: profile.full_name, avatar: profile.avatar, dupr_level: profile.dupr_level, birth_date: profile.birth_date } : null,
       managed_clubs: [
         ...(managed.data || []).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: 'owner' })),
-        ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: 'co_admin' })),
+        ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: c.role || 'co_admin' })),
       ],
       member_clubs: memberClubs,
       xeve_events: xeve.count || 0,

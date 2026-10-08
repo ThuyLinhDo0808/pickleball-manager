@@ -14,7 +14,7 @@ const { phoneLinkReady } = require('../services/phoneLink');
 const { completeFinished } = require('../services/eventStatus');
 const { setAttendance } = require('../services/attendance');
 const { SPORTS, sportReady, cleanLevel } = require('../services/sport');
-const { clubAccess, coAdminClubs, ownerOnly } = require('../services/clubAccess');
+const { clubAccess, coAdminClubs, ownerOnly, ROLE_FORBIDDEN } = require('../services/clubAccess');
 const {
   localDate,
   winnerTeam,
@@ -69,9 +69,10 @@ function memberDates(body) {
 router.param('clubId', async (req, res, next, clubId) => {
   try {
     const access = await clubAccess(req, clubId);
-    if (!access) return notFound(res, 'Club');
+    if (!access) return req.roleForbidden ? res.status(403).json(ROLE_FORBIDDEN) : notFound(res, 'Club');
     req.club = access.club;
-    if (access.role === 'co_admin') {
+    req.clubRole = access.role; // owner / co_admin / finance / operator
+    if (access.role !== 'owner') {
       req.hostId = access.club.host_id;
       req.coAdmin = true;
     }
@@ -181,7 +182,7 @@ router.get('/:clubId', async (req, res) => {
     const plan = await getPlan(req.club.host_id);
     res.json({
       ...req.club,
-      role: req.coAdmin ? 'co_admin' : 'owner',
+      role: req.clubRole || 'owner',
       plan: { tier: plan.tier, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced },
       member_room: await memberRoom(req.club),
     });
@@ -303,14 +304,18 @@ router.get('/:clubId/members', async (req, res) => {
   } catch (err) {
     return dbError(res, err);
   }
-  res.json(
-    data.map(({ users, ...m }) => ({
-      ...m,
-      account_email: users?.email || null,
-      ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
-      ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
-    }))
-  );
+  const rows = data.map(({ users, ...m }) => ({
+    ...m,
+    account_email: users?.email || null,
+    ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
+    ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
+  }));
+  // Operations staff see basic info only: no phone, email, birthday, notes or money.
+  if (req.clubRole === 'operator') {
+    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining'];
+    return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
+  }
+  res.json(rows);
 });
 
 router.post('/:clubId/members', checkCapacity(), async (req, res) => {

@@ -165,7 +165,7 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
   const fixed = (members || []).filter((m) => m.member_type === 'fixed' && m.is_active !== false).length;
   const guests = (members || []).filter((m) => m.member_type !== 'fixed' && m.is_active !== false).length;
   const next = (events || []).find((e) => e.event_date >= today && !['cancelled', 'completed'].includes(e.status));
-  const owner = c.role !== 'co_admin';
+  const owner = !c.role || c.role === 'owner';
   return (
     <div className={`card !p-0 overflow-hidden flex flex-col ${current ? 'ring-2 ring-lime-400/70' : ''}`}>
       <div className={`h-2 ${tone?.dot || 'bg-lime-400'}`} />
@@ -189,7 +189,7 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
                   <span className="text-[11px] rounded-full border border-navy-500 text-gray-300 px-2 py-0.5">{t(`clubs.sport_${c.sport || 'pickleball'}`)}</span>
                   {current && <span className="text-[11px] bg-lime-400 text-navy-950 font-semibold rounded-full px-2 py-0.5">{t('clubs.current')}</span>}
-                  {!owner && <span className="text-[11px] border border-sky-400/60 text-sky-300 rounded-full px-2 py-0.5">{t('staff.co_admin')}</span>}
+                  {!owner && <span className="text-[11px] border border-sky-400/60 text-sky-300 rounded-full px-2 py-0.5">{t(`staff.${c.role}`)}</span>}
                 </div>
               </>
             )}

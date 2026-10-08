@@ -2,7 +2,7 @@ const express = require('express');
 const { assertSocialManager, assertFeature } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
-const { actingHost, eventAccess, coAdminClubIds } = require('../services/clubAccess');
+const { actingHost, eventAccess, coAdminClubIds, ROLE_FORBIDDEN } = require('../services/clubAccess');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { requireAuth } = require('../middleware/auth');
 const { normalizePhone, findClubMemberByPhone, todayYmd } = require('../services/memberships');
@@ -261,7 +261,7 @@ router.param('eventId', async (req, res, next, eventId) => {
   if (error) return dbError(res, error);
   // The event's host, or a co-admin of its club (who then acts as the owner).
   const access = await eventAccess(req, data).catch(() => null);
-  if (!access) return notFound(res, 'Event');
+  if (!access) return req.roleForbidden ? res.status(403).json(ROLE_FORBIDDEN) : notFound(res, 'Event');
   req.hostId = access.hostId;
   req.coAdmin = access.coAdmin;
   req.event = await completeIfFinished(data);
@@ -317,7 +317,8 @@ function addDays(ymd, days) {
 
 // Transfer screenshots waiting for the Host, across all their upcoming events.
 router.get('/pending-payments', async (req, res) => {
-  const shared = await coAdminClubIds(req).catch(() => []);
+  // Payments to review: the owner's, co-admins' and Finance's clubs (not Operations).
+  const shared = await coAdminClubIds(req, ['co_admin', 'finance']).catch(() => []);
   const base = supabase.from('events').select('id, title, event_date, start_time, fee_amount, club_id');
   const { data: events, error } = await (shared.length ? base.or(`host_id.eq.${req.hostId},club_id.in.(${shared.join(',')})`) : base.eq('host_id', req.hostId))
     .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10));
