@@ -36,10 +36,10 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 | Bạn là… | App giúp bạn… |
 |---|---|
 | **Chủ nhiệm CLB** | Quản lý thành viên, bán gói tháng/quý/năm và trừ buổi tự động khi check-in. Xếp lịch chơi định kỳ trên lịch tháng/tuần/ngày, nhập trận đấu, xếp hạng và vinh danh, tổ chức giải nội bộ, quản lý quỹ, kho bóng và thống kê. |
-| **Người mở kèo lẻ (Xé Vé)** | Tạo kèo và gửi link đăng ký vào nhóm Zalo/Telegram. App tự xếp danh sách chính / danh sách chờ, tự đẩy người chờ lên khi có người huỷ và nhắn tin báo họ. Áp dụng hạn chót huỷ kèo, check-in bằng quét QR, đánh dấu vắng, thu phí, xem thu chi từng kèo (còn dư / thiếu) và xuất Excel. |
+| **Người mở kèo lẻ (Xé Vé)** | Tạo kèo và gửi link đăng ký vào nhóm Zalo/Telegram. App tự xếp danh sách chính / danh sách chờ, tự đẩy người chờ lên khi có người huỷ và báo họ (email, webhook). Áp dụng hạn chót huỷ kèo, check-in bằng quét QR, đánh dấu vắng, thu phí, xem thu chi từng kèo (còn dư / thiếu) và xuất Excel. |
 | **Trọng tài / điều phối viên** | Đăng nhập bằng tài khoản riêng để check-in người chơi (bấm tay hoặc quét QR) và nhập tỷ số của các kèo được giao. Không thấy tài chính hay số điện thoại. |
 | **Đồng quản trị (người cùng góp vốn)** | Dùng email riêng để quản lý một CLB với **đầy đủ quyền như chủ CLB** (thành viên, lịch, trận đấu, giải, tài chính, cài đặt). Chỉ không xoá được CLB. |
-| **Người chơi** | Đăng nhập rồi đăng ký kèo qua link, chuyển khoản và gửi ảnh xác nhận, nhận vé QR check-in, chuyển nhượng slot cho bạn, tự huỷ kèo, tham gia CLB, nhận tin Telegram khi được lên danh sách chính. Xem số buổi còn lại, công nợ, lịch sử tham gia, phong độ và biến động DUPR. |
+| **Người chơi** | Đăng nhập rồi đăng ký kèo qua link, chuyển khoản và gửi ảnh xác nhận, nhận vé QR check-in, chuyển nhượng slot cho bạn, tự huỷ kèo, tham gia CLB, nhận email khi được lên danh sách chính. Xem số buổi còn lại, công nợ, lịch sử tham gia, phong độ và biến động DUPR. |
 
 ---
 
@@ -84,7 +84,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 - **Lịch sắp tới của tôi**: mọi buổi bạn đã đăng ký (mọi CLB + Xé Vé), **nhóm theo ngày**: giờ, tên buổi, CLB, trạng thái (đã đăng ký / danh sách chờ / chờ thanh toán), số chỗ `x/y`, vé QR. Lọc theo từng CLB hoặc Xé Vé.
 - Nhắc hoàn thiện hồ sơ (*"Bạn chưa cập nhật thông tin cá nhân. Vui lòng bấm vào đây để cập nhật."* — bấm vào là mở Hồ sơ), khảo sát sau buổi.
 
-Thanh điều hướng cá nhân: **Trang chủ · Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, Telegram) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới.
+Thanh điều hướng cá nhân: **Trang chủ · Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, thông báo qua email) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới.
 
 ### 3.2. Trang CLB cho thành viên (`/c/<clubId>`)
 Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được. Gồm: ảnh/tên CLB, nhãn *Thành viên* (+ *chờ xác thực* nếu CLB chưa duyệt), liên hệ; 4 ô số liệu (buổi còn lại, buổi đã đăng ký, buổi đã chơi, công nợ) và 4 tab:
@@ -482,7 +482,7 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 | **1. Đăng nhập / Đăng ký** | Nút "Đăng nhập / Đăng ký để tham gia". Xong thì quay lại đúng trang kèo. Lần đầu nhập họ tên + số điện thoại (+ DUPR). |
 | **2. Xác nhận** | App cho biết bạn đăng ký với tư cách gì và phải trả bao nhiêu: *Thành viên có gói còn hiệu lực* thì "Trừ 1 buổi trong gói"; *khách* (hoặc thành viên hết gói) thì "Phí buổi này 130.000 ₫". Tick "Tôi đã đọc thông tin kèo…" rồi bấm **Xác nhận**. |
 | **3. Thanh toán** (khách, phí > 0) | Chỗ được **giữ 30 phút**. Trang hiện **VietQR** (đã điền sẵn số tiền + nội dung `PBxxxxxx`), **ảnh QR ngân hàng của Host** (nếu Host tải lên), số tài khoản và nút Copy. Chuyển khoản xong, **tải ảnh chụp màn hình giao dịch** lên. Trạng thái chuyển thành **"⏳ Host đang xác nhận thanh toán"**. |
-| **4. Nhận vé** | Host xác nhận thì trang chuyển thành **"🎉 Đăng ký thành công"** kèm **vé QR check-in**, có khung vàng nhắc rất rõ: **"📸 CHỤP MÀN HÌNH MÃ QR NÀY"**. Nếu đã kết nối Telegram, người chơi cũng nhận tin kèm link vé. |
+| **4. Nhận vé** | Host xác nhận thì trang chuyển thành **"🎉 Đăng ký thành công"** kèm **vé QR check-in**, có khung vàng nhắc rất rõ: **"📸 CHỤP MÀN HÌNH MÃ QR NÀY"**. |
 
 - **Thành viên có gói** và **kèo miễn phí** đi thẳng từ bước 2 sang bước 4 (không cần thanh toán).
 - **Quá 30 phút chưa gửi ảnh** thì chỗ tự được nhả cho người trong danh sách chờ. **Host từ chối ảnh** (kèm lý do, ví dụ "sai số tiền") thì người chơi có thêm 2 giờ để gửi ảnh khác.
@@ -503,7 +503,7 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
   - **🔓 Mở đăng ký / 🔒 Đóng đăng ký**. Mở lại khi hạn đăng ký đã qua thì hạn cũ được xoá để mọi người đăng ký tiếp.
   - **✓ Đánh dấu đã xong**.
   - **✏️ Sửa thông tin** (`/events/<id>/edit`): sửa ngày, giờ, địa điểm, phí, số chỗ… Nếu kèo đã có người đăng ký, app nhắc bạn báo lại cho họ.
-  - **Huỷ kèo**: giữ lại danh sách và thu chi, và báo cho mọi người đã đăng ký (Telegram + webhook `event_cancelled`). Khách đã trả tiền cần được hoàn.
+  - **Huỷ kèo**: giữ lại danh sách và thu chi, và báo cho mọi người đã đăng ký (email nếu Host bật + webhook `event_cancelled`). Khách đã trả tiền cần được hoàn.
   - **🗑 Xoá**: kèo trống thì xoá ngay. Kèo đã có người đăng ký hoặc có thu chi thì app hỏi lại lần hai (xoá sẽ mất hết lịch sử) và gợi ý dùng *Huỷ kèo* thay thế.
 - **Bảng đếm trên sân**: *Đã đến sân* (x/y) · *Giữ chỗ / tổng* · *Chờ xác nhận thanh toán* · *Chờ chuyển khoản* · *Danh sách chờ*.
 - **💸 Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ.
@@ -520,7 +520,7 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
   - **Chuyển slot**: đổi sang tên + SĐT người khác, cấp vé mới
   - Bật/tắt **đã thu phí**; người huỷ trước hạn đã trả tiền có nhãn **Cần hoàn tiền** → bấm *Đánh dấu đã hoàn tiền* (khoản thu phí tự bị huỷ)
 - **📷 Quét QR**: check-in bằng vé QR hoặc mã QR cá nhân của người chơi (xem [6.3](#63-check-in-bằng-mã-qr)). Người quên ảnh thì Host bấm **Check-in** tay trong danh sách, hoặc gõ mã vé trong ô dưới camera.
-- Khi một người trong danh sách chính huỷ, người đầu tiên trong danh sách chờ **tự được đưa lên** và **được báo ngay** qua Telegram / webhook (xem [8.6](#86-thông-báo-khi-được-đẩy-từ-danh-sách-chờ)).
+- Khi một người trong danh sách chính huỷ, người đầu tiên trong danh sách chờ **tự được đưa lên** và **được báo ngay** qua email / webhook (xem [8.6](#86-thông-báo-khi-được-đẩy-từ-danh-sách-chờ)).
 - Nhập trận đấu của kèo ngay trong trang.
 - Sửa trạng thái, hạn đăng ký, hạn chót huỷ và thông báo ở khung **Link đăng ký**.
 
@@ -613,7 +613,6 @@ Người chơi dùng chung app: **Trang chủ** (`/home`, xem [3.1](#31-trang-ch
 
 - **Hồ sơ** (`/p/profile`): ảnh đại diện, họ tên, số điện thoại, DUPR, giới tính, năm sinh.
 - **Mã check-in của tôi**: mã QR cá nhân để Host / điều phối viên quét khi đến sân (*Phóng to*, *Đổi mã mới*).
-- **Kết nối Telegram**: bấm nút → mở bot → bấm *Start*. Từ đó người chơi nhận tin nhắn ngay khi được đẩy từ danh sách chờ lên danh sách chính. *Ngắt kết nối* bất cứ lúc nào.
 - **Thông báo qua email**: chỉ hiện khi máy chủ đã cấu hình gửi email. Mặc định bật; người chơi bấm *Tắt email* nếu không muốn nhận (xem [8.6](#86-thông-báo-khi-được-đẩy-từ-danh-sách-chờ)).
 - **Tham gia CLB** qua link `/join/<token>` mà Host gửi:
   1. Chọn gói, tháng bắt đầu và số kỳ. App hiện tổng tiền.
@@ -708,15 +707,14 @@ Trang Tài khoản chia thẻ: hồ sơ, gói dịch vụ (mức đã dùng), t�
 **Club backup** xuất một file Excel gồm Thành viên, Lịch buổi và Xếp hạng của CLB đang chọn.
 
 ### 8.6. Thông báo khi được đẩy từ danh sách chờ
-Khi có người huỷ (hoặc Host bấm *Đưa lên DS chính*), người được đẩy lên nhận tin nhắn ngay, dù sát giờ:
+Khi có người huỷ (hoặc Host bấm *Đưa lên DS chính*), người được đẩy lên được báo ngay, dù sát giờ:
 
 > 🎉 Lan ơi, bạn đã được đẩy lên DANH SÁCH CHÍNH THỨC kèo "Kèo tối thứ 5" — 20:00 T5 01/10 tại Sân Kỳ Hòa. Hẹn gặp bạn ở sân!
 
-Có ba kênh độc lập. Kênh nào lỗi cũng không làm hỏng thao tác huỷ.
+Có hai kênh độc lập (thông báo Telegram đã được gỡ vì Telegram không còn miễn phí). Kênh nào lỗi cũng không làm hỏng thao tác huỷ.
 
 | Kênh | Cách bật | Ai nhận |
 |---|---|---|
-| **Bot Telegram** (miễn phí) | Nhà phát triển cài bot một lần (xem [11.3](#113-bot-telegram-thông-báo-danh-sách-chờ)). Người chơi bấm **Kết nối Telegram** trong Cổng người chơi rồi bấm *Start*. | Chính người chơi, qua tin nhắn riêng |
 | **Email** (mặc định **tắt**) | **Tài khoản → Thông báo cho người chơi** → bật công tắc *Gửi email thông báo cho người chơi*. Máy chủ cần tên miền riêng đã xác minh trên Resend + `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` (xem [12](#12-biến-môi-trường)); chưa có thì app hiện cảnh báo vàng và chưa gửi gì. | Email tài khoản của người chơi. Thư mang **tên CLB** (gửi từ địa chỉ của app), người chơi bấm *Trả lời* là về **email của Host**. Người chơi tự tắt được ở *Hoạt động → Thông báo qua email*. |
 | **Webhook của Host** | **Tài khoản → Thông báo cho người chơi**: dán URL `https://…` rồi bấm *Gửi thử* | Hệ thống của Host (Make / Zapier / n8n), để chuyển tiếp qua **Zalo ZNS**, SMS, nhóm Telegram, Slack… |
 
@@ -727,7 +725,7 @@ Cùng các kênh đó, app còn gửi các tin sau (email: các tin gửi cho ng
 | `waitlist_promoted` | Người chờ được đẩy lên (`payment_required: true` nếu là khách phải chuyển khoản trong 2 giờ) | Người chơi + Host |
 | `payment_submitted` | Khách vừa gửi ảnh chuyển khoản (`amount`) | Host (chỉ webhook) |
 | `payment_confirmed` | Host xác nhận thanh toán (`ticket_url` = link vé) | Người chơi + Host |
-| *(Telegram + email)* | Host từ chối ảnh chuyển khoản (kèm lý do) | Người chơi |
+| *(email)* | Host từ chối ảnh chuyển khoản (kèm lý do) | Người chơi |
 | `event_cancelled` | Host huỷ kèo (`players` = số người được báo) | Người chơi + Host |
 | `member_request` | Có người xin xác nhận là thành viên CLB (`new_member: true` nếu là yêu cầu vào CLB mới, `false` nếu khớp SĐT thành viên có sẵn) | Host (chỉ webhook) |
 
@@ -759,11 +757,14 @@ Khu quản trị toàn hệ thống dành cho **chủ dự án** (người vận
 | **Góp ý** (`/owner/feedback`) | Hộp thư góp ý gửi từ nút *Góp ý* trong app (kèm email người gửi). Mỗi góp ý có trạng thái **Mới → Đang xử lý → Đã đóng**, đổi bằng một nút; lọc theo trạng thái (kèm số lượng mỗi loại), phân trang 50. Đổi trạng thái được ghi nhật ký. |
 | **Thông báo** (`/owner/announcements`) | Tạo **dòng thông báo chung** hiện trên đầu app cho mọi người (bảo trì, tính năng mới…): nội dung (≤ 500 ký tự), mức **Thông tin** 📣 / **Cảnh báo** ⚠️, giờ **bắt đầu** (trống = hiện ngay) và **kết thúc** (trống = đến khi tắt), tuỳ chọn **hiện cả trên trang công khai** (trang đăng ký kèo `/e/…`, không cần đăng nhập). Danh sách hiện trạng thái *Đang hiện / Đã hẹn giờ / Đã hết hạn / Đã tắt*, nút **Sửa** và **Tắt / Bật lại**. Người xem bấm ✕ để ẩn thông báo đó trên máy mình. Thông báo hiện ở mọi trang quản lý, trang chủ `/home` và (nếu chọn) trang công khai; thay đổi có hiệu lực trong khoảng 30 giây. |
 | **Hệ thống** (`/owner/system`) | **Kết nối** — đèn xanh/xám cho Resend, email góp ý, email cho người chơi, webhook góp ý, tài khoản nhận tiền gói, CORS: chỉ cho biết **đã cấu hình hay chưa, không bao giờ hiện giá trị khoá**. Nút **Gửi email thử cho tôi** (gửi qua Resend tới email owner đang đăng nhập). **Cài đặt** — công tắc *Nâng gói không cần thanh toán* (thay cho việc sửa `ALLOW_TIER_SELF_SERVE` rồi deploy lại): bấm sẽ hỏi xác nhận, lưu trong database, ghi nhật ký, hiện nguồn giá trị (*Đặt trên Trang Owner* / *Theo biến môi trường* / *Mặc định*). **Migration cơ sở dữ liệu** — danh sách migration và cái nào còn thiếu. Số email owner đang cấu hình. |
+| **Nhân viên** (`/owner/support`, chỉ owner) | Thêm **nhân viên hỗ trợ** bằng email tài khoản của họ (họ cần đăng ký tài khoản bình thường trước), đặt tên dễ nhận ra và tick các phần họ được dùng: **Tổng quan**, **Tra cứu Host** (danh sách, chi tiết, ghi chú nội bộ, mục Hoạt động), **Thanh toán gói** (xác nhận / huỷ đơn), **Sửa gói** (đổi gói, hạn, tặng tháng, cấp thêm chỗ thành viên), **Góp ý**, **Thông báo**, **Khuyến mãi**, **Xem như Host**. Có hai mẫu nhanh *Trực hỗ trợ* (Host + Góp ý + Xem như Host) và *Thanh toán* (Host + Thanh toán + Sửa gói + Khuyến mãi). Mỗi người hiện quyền, lần đăng nhập cuối (hoặc *chưa có tài khoản*), nút **Sửa quyền**, **Tạm khoá / Mở lại**, **Xoá**. Thêm/sửa/xoá đều ghi nhật ký. |
 | **Nhật ký** (`/owner/audit`) | Mọi thay đổi làm trong trang Owner (sửa gói, xác nhận/huỷ đơn, khoá/mở khoá, ghi chú, cấp chỗ, đổi chủ, trạng thái góp ý, thông báo, cài đặt, hoàn tác): thời gian, người làm, Host bị tác động, giá trị **cũ → mới**, lý do. Lọc theo thao tác. Nút **↩ Hoàn tác** cho sửa gói và khoá/mở khoá: trả về giá trị cũ, nhưng **từ chối** nếu sau đó đã có thay đổi mới hơn (báo *"Đã có thay đổi mới hơn…"*) để không ghi đè. Xác nhận thanh toán không hoàn tác (đã có tiền) — sửa gói bằng tay nếu cần. |
 
 **Xem như Host (chỉ đọc):** ở **Chi tiết Host**, bấm **👁 Xem như Host này** (hỏi xác nhận) → app mở ra đúng như Host đó thấy (CLB, thành viên, buổi chơi, tài chính…) để hỗ trợ khi họ báo lỗi. Thanh vàng trên cùng ghi *"Đang xem với tư cách … — chỉ đọc"* với nút **✕ Thoát** (quay về trang Host). Trong chế độ này **không thay đổi được gì**: web chặn và server cũng từ chối mọi yêu cầu không phải đọc (`403 read_only`); **số điện thoại được che** dạng `09xx xxx 123`; mỗi lượt xem được ghi vào nhật ký (*Xem như Host*, tối đa một dòng mỗi 30 phút cho cùng một Host). Chế độ chỉ áp cho tab trình duyệt đang mở (đóng tab là hết). Chỉ owner dùng được; tài khoản khác gửi kèm yêu cầu này nhận `403`.
 
 **Mã khuyến mãi phía Host:** khi mua gói, ở bước chọn số tháng có ô **Mã khuyến mãi** → **Áp dụng**: hiện *"Mã …: giảm X% (−…đ)"* và tổng tiền mới (giá cũ gạch ngang); đơn chuyển khoản tạo ra đã trừ tiền giảm (dòng *Đã giảm … nhờ mã khuyến mãi*). Lượt dùng mã được giữ khi tạo đơn và **trả lại nếu đơn bị huỷ** (Host huỷ yêu cầu, tạo đơn mới thay thế, hoặc owner bấm *Huỷ đơn*). Mã dùng thử nhập ở **Có mã dùng thử?** cuối bảng gói → **Kích hoạt**: gói bật ngay đến hết số ngày của mã, sau đó tự về Free; không dùng được khi đang có gói trả phí. Lỗi rõ ràng: mã không tồn tại, hết hạn, hết lượt, đã dùng, chỉ cho đơn đầu tiên, không áp dụng cho loại đơn này.
+
+**Nhân viên hỗ trợ dùng Trang Owner thế nào:** đăng nhập bằng tài khoản của mình, vào **Tài khoản → Trang Owner** (hoặc mở `/owner`). Đầu trang có nhãn *Nhân viên hỗ trợ*; menu chỉ hiện các phần được giao, trang khác hiện *"Phần này không nằm trong quyền của bạn"*. Trong chi tiết Host, nút *Sửa gói*, *Cấp thêm chỗ*, *Xem như Host* chỉ hiện khi có quyền tương ứng. **Luôn chỉ owner** mới làm được: đình chỉ / mở khoá tài khoản, đổi chủ CLB, trang Hệ thống và cài đặt, Nhật ký (và hoàn tác), quản lý nhân viên. Server kiểm tra từng yêu cầu: ngoài quyền → `403 support_forbidden`. Mọi thao tác của nhân viên ghi vào Nhật ký **với email của họ**. Tạm khoá hoặc xoá là mất quyền vào trang ngay (tối đa 30 giây); tài khoản nhân viên bị đình chỉ cũng không vào được.
 
 **Khi một tài khoản bị đình chỉ:** Host mở bất kỳ trang quản lý nào đều thấy khung *"Tài khoản đang tạm khoá"* kèm lý do; mọi API quản lý trả `423 account_suspended`. Họ vẫn dùng được phần **Người chơi** (`/p`, `/home`, đăng ký kèo của người khác). Link đăng ký kèo của Host đó hiện *"Kèo đang tạm ngưng nhận đăng ký"* và không nhận đăng ký mới (`423 organiser_suspended`); vé đã có, dữ liệu, tiền đã thu đều giữ nguyên. Mở khoá là dùng lại bình thường (có hiệu lực trong tối đa 30 giây).
 
@@ -930,6 +931,7 @@ supabase/migrations/
 └── 20261030090000_owner_console_2.sql               # trang Owner (2): feedback.status, app_settings (cài đặt bật/tắt từ web), announcements (thông báo chung)
 └── 20261031090000_promo_codes.sql                   # mã khuyến mãi: promo_codes, promo_redemptions, plan_payments.promo_code_id / discount_amount
 └── 20261101090000_pro_club_tools.sql                # gói Pro: club_activity_logs (nhật ký thao tác, chỉ ghi thêm), staff_grants.permissions (tuỳ chỉnh quyền), duty_shifts + duty_shift_people (lịch trực)
+└── 20261102090000_support_staff_drop_telegram.sql   # nhân viên hỗ trợ (support_staff); xoá cột Telegram khỏi player_profiles (đã gỡ thông báo Telegram)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -948,17 +950,6 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 - **Cài mới hoàn toàn**: chạy `schema.sql` như bước 1. Sau đó đánh dấu các migration là đã chạy: `supabase migration repair --status applied 20260930120000`.
 - **Khi tự thêm thay đổi schema**: `supabase migration new <ten_thay_doi>`, viết SQL vào file mới, cập nhật luôn `schema.sql` cho khớp, thử trên project staging trước rồi mới `db push` lên production.
 - Thêm cột mới nên có giá trị mặc định hằng số, và tạo index lớn bằng `create index concurrently` trong một migration riêng. Làm vậy để không khoá bảng lâu.
-
-### 11.3. Bot Telegram thông báo danh sách chờ
-1. Mở Telegram, chat với **@BotFather** → `/newbot` → đặt tên. Bạn nhận được **token** và **username** của bot (ví dụ `pb_club_bot`).
-2. Trên Render → Environment, thêm `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` và `TELEGRAM_WEBHOOK_SECRET` (một chuỗi ngẫu nhiên dài, chỉ gồm chữ, số, `_` hoặc `-`).
-3. Đăng ký webhook một lần, chạy từ máy bạn:
-   ```bash
-   cd backend
-   TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=... npm run telegram:webhook -- https://<tên-service>.onrender.com
-   ```
-   Kết quả in ra `200 {"ok":true,…}` là xong. Telegram sẽ gửi tin tới `POST /api/public/telegram`, kèm secret để backend kiểm tra.
-4. Người chơi vào Cổng người chơi → **Kết nối Telegram** → bấm *Start* trong bot. Bot trả lời "✅ Đã kết nối".
 
 ---
 
@@ -983,10 +974,6 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `FEEDBACK_FROM_EMAIL` | | Người gửi, chỉ dùng khi đã xác minh domain riêng trên Resend |
 | `FEEDBACK_WEBHOOK_URL` | | Gửi góp ý dạng JSON tới webhook |
 | `FEEDBACK_WEBHOOK_SECRET` | | Gửi kèm header `X-Feedback-Secret` |
-| `TELEGRAM_BOT_TOKEN` | | Token bot Telegram (từ @BotFather) để nhắn người chơi được đẩy lên danh sách chính |
-| `TELEGRAM_BOT_USERNAME` | | Username của bot (không có `@`), dùng cho nút "Kết nối Telegram" |
-| `TELEGRAM_WEBHOOK_SECRET` | | Chuỗi bí mật Telegram gửi kèm mỗi cập nhật (header `X-Telegram-Bot-Api-Secret-Token`) |
-| `TELEGRAM_API_URL` | | Tuỳ chọn: Bot API server tự host (mặc định `https://api.telegram.org`) |
 | `PUBLIC_WEB_URL` | | Địa chỉ web (ví dụ `https://pickleball-manager.vercel.app`) để đưa link vé / link thanh toán / link khảo sát vào tin nhắn. Bỏ trống thì dùng `CORS_ORIGIN` nếu là https. |
 | `NOTIFY_FROM_EMAIL` | | Tuỳ chọn: địa chỉ gửi email thông báo cho người chơi (được đẩy lên, xác nhận/từ chối chuyển khoản, huỷ kèo, khảo sát sau buổi). Cần `RESEND_API_KEY` và tên miền đã xác minh trên Resend, ví dụ `Pickleball Manager <thongbao@ten-mien-cua-ban.vn>` — tên hiển thị được thay bằng tên CLB. Mỗi Host còn phải tự bật công tắc trong *Thông báo cho người chơi* (mặc định tắt). Bỏ trống thì chỉ gửi qua Telegram/webhook. |
 | `SURVEY_SWEEP_DISABLED` | | `true` để tắt việc tự gửi khảo sát sau buổi (mặc định bật, kiểm tra 10 phút/lần) |
@@ -1054,7 +1041,6 @@ pickleball-manager/
 │   └── migrations/             # migration có đánh phiên bản cho production (supabase db push)
 ├── backend/
 │   ├── render.yaml             # cấu hình deploy Render
-│   ├── scripts/telegram-webhook.js  # đăng ký webhook cho bot Telegram (một lần)
 │   ├── test/                   # unit test (npm test): luật tính điểm trực tiếp
 │   └── src/
 │       ├── server.js           # khởi tạo Express, gắn các route
@@ -1067,7 +1053,7 @@ pickleball-manager/
 │       ├── services/           # nghiệp vụ dùng chung:
 │       │   ├── memberships.js  #   gói hội viên, trừ/hoàn buổi, ngày theo APP_TZ
 │       │   ├── attendance.js   #   check-in / vắng / hoàn tác, chính sách huỷ, đẩy DS chờ, check-in QR
-│       │   ├── notify.js       #   thông báo Telegram + webhook của Host
+│       │   ├── notify.js       #   thông báo email + webhook của Host
 │       │   ├── clubAccess.js   #   quyền chủ CLB / đồng quản trị
 │       │   ├── matches.js      #   kiểm tra & lưu trận đấu
 │       │   ├── stats.js        #   xếp hạng theo kỳ, vinh danh
@@ -1119,7 +1105,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = tất cả, `club`, `guest`; kèm `weeks_at_top`: số tuần giữ Top 1 của bảng đó) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
 | Kho bóng | CLB: `GET/POST /api/clubs/:id/inventory` · `PATCH …/inventory/:itemId` · `POST …/:itemId/moves` (`kind`: `purchase` / `use` / `broken` / `adjust`, `event_id` tuỳ chọn) · `POST …/:itemId/sessions` (`occurred_on`, `new_out`, `broken` — ghi/sửa một buổi) · `DELETE …/:itemId/moves/:moveId`. Xé Vé: cùng các đường dẫn dưới `/api/inventory`. Danh sách trả thêm `in_play`, `broken`, `log` (bảng bóng từng buổi). |
 | Sự kiện | `GET/POST /api/events` (trường `kind`: `weekly` / `game` / `training` / `meeting` / `challenge` = round robin; `dates: [...]` tạo nhiều buổi một lần) · `GET/PATCH/DELETE /api/events/:id` (`DELETE` trả `409 has_activity` nếu kèo có người/thu chi; thêm `?force=1` để xoá hẳn) · `GET/POST …/participants` · `POST …/participants/import` · `POST …/participants/:pid/:action` (`check-in`, `no-show`, `reset`, `promote`, `cancel`, `waive`, `fee`) · `POST …/checkin-code` (quét QR) · `GET …/finance` · `GET/POST …/scorers` · `GET /api/events/reliability/:memberId` · `GET …/votes` · `PUT …/votes/:clubMemberId` `{choice: yes | no | null}` (bình chọn buổi họp) · người chơi: `POST /api/player/events/:eventId/vote` `{choice}` · buổi họp: `GET …/:id/meeting` · `PUT …/meeting/money/:memberId` `{paid_amount, sponsor_amount}` · `POST/DELETE …/meeting/guests` · `POST/PATCH/DELETE …/meeting/expenses` · `POST …/meeting/settle` `{mode: to_fund | from_fund | sponsor | split, member_id}` · `DELETE …/meeting/settle` (hoàn tác) · link bình chọn: `GET /api/events/public/:token/vote` (không cần đăng nhập) · `GET …/vote/me` · `POST …/vote` `{choice}` (đăng nhập; người ngoài CLB được thêm làm khách, `400 profile_required` nếu hồ sơ thiếu tên/SĐT) |
-| Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `POST /api/public/telegram` (chỉ Telegram, có secret) · `GET /api/public/live/:token` (bảng điểm trực tiếp) |
+| Công khai | `GET /api/events/public/:token` · `GET /api/public/clubs/:token` · `GET /api/public/tickets/:code` (trang vé) · `GET /api/public/live/:token` (bảng điểm trực tiếp) |
 | Đăng ký kèo (cần đăng nhập) | `GET /api/events/public/:token/me` · `POST …/register` · `POST …/payment-proof` · `POST …/claim-member` |
 | Duyệt thanh toán (Host) | `GET /api/events/pending-payments` · `GET /api/events/:id/participants/:pid/proof` · `POST …/participants/:pid/confirm-payment` · `…/reject-payment` · `…/transfer` |
 | Trận đấu | `GET/POST /api/matches` (`?scope=xeve` cho mọi trận Xé Vé; tỷ số có thể để trống) · `PATCH/DELETE /api/matches/:id` |
@@ -1127,11 +1113,11 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Giải đấu | `GET/POST /api/tournaments` (`kind`: `pairs` / `team`, `mode: round_robin` = vòng tròn tính điểm, `division`, ngày/giờ/địa điểm) · `POST /api/tournaments/pairing` (nhận `ranks` `{memberId: A–D}`; khi tạo giải gửi `player_ranks`) · `PATCH /api/tournaments/:id/teams/:teamId` `{player_id}` (điền chỗ trống của cặp; khi tạo giải `player_ids` được có `null` = để trống) · `POST /api/tournaments/team-builder` · `GET/PATCH/DELETE /api/tournaments/:id` · `PATCH …/matches/:mid` · `PATCH …/sub-matches/:subId` (Team League; cả hai nhận `games` + `format`, `duration_min`) · `GET …/fees` · `POST …/fees/:memberId` `{paid}` · `POST …/fees/import` `{from}` · `POST/DELETE …/knockout` |
 | Thu chi | `GET/POST /api/transactions` (`?scope=standalone` cho kèo lẻ) · `PATCH /api/transactions/:id` (sửa; đổi số tiền/loại = huỷ + ghi dòng thay thế) · `POST /api/transactions/:id/void` |
 | Thống kê | `GET /api/analytics/finance?year=` · `/events-pnl?year=` (theo năm dương lịch; mặc định năm nay; dùng ở Tổng quan / Tài chính) · `/no-shows` · `/player-form` (còn giữ trong API, giao diện không dùng nữa) (`?club_id=` hoặc `?scope=standalone`) |
-| Owner (chỉ `OWNER_EMAILS`, người khác nhận 404) | `GET /api/owner/me` · `GET /api/owner/overview` · `GET /api/owner/hosts?q=&filter=hosts\|paying\|trial\|free\|expiring\|suspended\|all&page=` · `GET /api/owner/hosts/:id` · `PATCH /api/owner/hosts/:id/subscription` `{tier, tier_paid_until, add_months, social_manager, social_manager_paid_until, sm_add_months, note}` · `POST …/hosts/:id/suspend` `{reason}` · `POST …/hosts/:id/unsuspend` · `POST …/hosts/:id/notes` `{body}` · `GET /api/owner/payments?status=&from=&to=` · `POST /api/owner/payments/:id/confirm` · `POST …/payments/:id/cancel` · `PATCH /api/owner/clubs/:id/member-addon` `{extra_fixed_members, extra_guest_members, note}` · `POST /api/owner/clubs/:id/transfer` `{email, note}` (`404 no_account` nếu email chưa có tài khoản) · `GET /api/owner/audit?page=&host_id=&action=` · `POST /api/owner/audit/:id/undo` (`409 changed_since` nếu đã có thay đổi mới hơn) · `GET /api/owner/activity/clubs?q=&sort=new\|members&page=` · `GET /api/owner/activity/xeve?when=upcoming\|past\|all&from=&to=&page=` · `GET /api/owner/feedback?status=new\|in_progress\|closed&page=` · `PATCH /api/owner/feedback/:id` `{status}` · `GET/POST /api/owner/announcements` · `PATCH /api/owner/announcements/:id` `{message, level, starts_at, ends_at, show_public, active}` · `GET /api/owner/system` (đèn kết nối — không trả giá trị khoá, migration, cài đặt) · `POST /api/owner/system/test-email` (`409 not_configured` khi chưa có `RESEND_API_KEY`) · `PATCH /api/owner/settings/:key` `{value}` (hiện có `tier_self_serve`) · `GET/POST /api/owner/promos` `{code, kind: percent\|trial, percent, applies_to, first_order_only, trial_tier, trial_days, expires_on, max_uses, note}` (`409 code_taken`) · `PATCH /api/owner/promos/:id` `{active, expires_on, max_uses, note}` · `GET /api/owner/promos/:id/redemptions`. **Xem như Host**: owner gửi header `X-View-As: <id Host>` với mọi API (trừ `/api/owner`) → dữ liệu của Host đó, SĐT bị che, mọi yêu cầu không phải `GET` trả `403 read_only`; người không phải owner gửi header nhận `403 view_as_forbidden`. Không cần đăng nhập: `GET /api/public/announcements?public=1` (thông báo đang hiện). Tài khoản bị đình chỉ gọi API quản lý nhận `423 account_suspended`. |
+| Owner (chỉ `OWNER_EMAILS`, người khác nhận 404) | `GET /api/owner/me` · `GET /api/owner/overview` · `GET /api/owner/hosts?q=&filter=hosts\|paying\|trial\|free\|expiring\|suspended\|all&page=` · `GET /api/owner/hosts/:id` · `PATCH /api/owner/hosts/:id/subscription` `{tier, tier_paid_until, add_months, social_manager, social_manager_paid_until, sm_add_months, note}` · `POST …/hosts/:id/suspend` `{reason}` · `POST …/hosts/:id/unsuspend` · `POST …/hosts/:id/notes` `{body}` · `GET /api/owner/payments?status=&from=&to=` · `POST /api/owner/payments/:id/confirm` · `POST …/payments/:id/cancel` · `PATCH /api/owner/clubs/:id/member-addon` `{extra_fixed_members, extra_guest_members, note}` · `POST /api/owner/clubs/:id/transfer` `{email, note}` (`404 no_account` nếu email chưa có tài khoản) · `GET /api/owner/audit?page=&host_id=&action=` · `POST /api/owner/audit/:id/undo` (`409 changed_since` nếu đã có thay đổi mới hơn) · `GET /api/owner/activity/clubs?q=&sort=new\|members&page=` · `GET /api/owner/activity/xeve?when=upcoming\|past\|all&from=&to=&page=` · `GET /api/owner/feedback?status=new\|in_progress\|closed&page=` · `PATCH /api/owner/feedback/:id` `{status}` · `GET/POST /api/owner/announcements` · `PATCH /api/owner/announcements/:id` `{message, level, starts_at, ends_at, show_public, active}` · `GET /api/owner/system` (đèn kết nối — không trả giá trị khoá, migration, cài đặt) · `POST /api/owner/system/test-email` (`409 not_configured` khi chưa có `RESEND_API_KEY`) · `PATCH /api/owner/settings/:key` `{value}` (hiện có `tier_self_serve`) · `GET/POST /api/owner/promos` `{code, kind: percent\|trial, percent, applies_to, first_order_only, trial_tier, trial_days, expires_on, max_uses, note}` (`409 code_taken`) · `PATCH /api/owner/promos/:id` `{active, expires_on, max_uses, note}` · `GET /api/owner/promos/:id/redemptions`. **Xem như Host**: owner gửi header `X-View-As: <id Host>` với mọi API (trừ `/api/owner`) → dữ liệu của Host đó, SĐT bị che, mọi yêu cầu không phải `GET` trả `403 read_only`; người không phải owner gửi header nhận `403 view_as_forbidden`. **Nhân viên hỗ trợ** (chỉ owner): `GET /api/owner/support` · `POST /api/owner/support` `{email, full_name, permissions}` (`400 already_owner` / `409 already_staff`) · `PATCH /api/owner/support/:email` `{permissions, active, full_name}` · `DELETE /api/owner/support/:email`; `permissions`: `stats` / `hosts` / `payments` / `plans` / `feedback` / `announcements` / `promos` / `view_as`. `GET /api/owner/me` trả `{owner, support, permissions}`; nhân viên gọi API ngoài quyền nhận `403 support_forbidden`. `GET /api/host/plan` trả `is_owner` (= vào được Trang Owner) và `console_role` (`owner` / `support`). Không cần đăng nhập: `GET /api/public/announcements?public=1` (thông báo đang hiện). Tài khoản bị đình chỉ gọi API quản lý nhận `423 account_suspended`. |
 | Phân quyền | `GET/POST /api/staff-grants` (`role`: `referee` / `coordinator` / `co_admin` / `finance` / `operator` — ba vai sau luôn cần `club_id`; `finance`/`operator` cần gói Advanced: `402 feature_locked` / `402 role_seats`; `scope`: `all` / `clubs` / `xeve`, hoặc `event_id` / `club_id`; `valid_from`, `valid_until`, `permissions`) · `PATCH/DELETE /api/staff-grants/:id` (`permissions`: mảng nhóm `members` / `events` / `matches` / `rankings` / `inventory` / `finance_view` / `finance_edit`, `[]` = mặc định của vai trò; chỉ cho `finance`/`operator`, cần gói Pro: `402 feature_locked`; sai nhóm `400 bad_permissions`). `GET /api/clubs` và `GET /api/clubs/:id` trả thêm `groups` (nhóm quyền đang có, `null` = toàn quyền) |
 | Gói Pro của CLB | `GET /api/clubs/:id/activity-log?page=&actor=&action=&from=&to=` (nhật ký thao tác; chủ CLB / đồng quản trị) · `GET /api/clubs/:id/roster?from=&to=` (lịch trực, tối đa ~4 tháng; mọi người được phân quyền ở CLB đọc được; trả `staff`, `me`, `can_manage`) · `POST /api/clubs/:id/roster` `{title, shift_date, start_time, end_time, notes, people: [email], repeat_weeks}` (`400 not_staff` nếu email không thuộc CLB) · `PATCH/DELETE /api/clubs/:id/roster/:shiftId` (chủ CLB / đồng quản trị) · `GET /api/clubs/:id/insights?months=3\|6\|12` (phân tích nâng cao). Tất cả cần gói Pro của chủ CLB: `402 feature_locked` |
 | Nhân sự | `GET /api/staff/me` (kèm `role` mạnh nhất) · `GET /api/staff/events` (kèm `kind`, `arrived`) · `GET /api/staff/events/:id` · `POST …/participants` (điều phối viên thêm khách vãng lai + check-in; hết chỗ thì vào danh sách chờ) · `POST …/participants/:pid/:action` (`checkin` / `no_show` / `undo` / `promote`) · `POST …/checkin-code` · `POST/PATCH …/matches` |
-| Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `POST/DELETE /api/player/telegram(/link)` · `PUT /api/player/email-notices` `{enabled}` (`/me` trả `email_notices: {available, enabled}`) |
+| Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `PUT /api/player/email-notices` `{enabled}` (`/me` trả `email_notices: {available, enabled}`) |
 
 ---
 
@@ -1147,11 +1133,12 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Giải đấu | `tournaments` (`player_ranks` = hạng A–D của từng người trong giải; `kind` pairs/team; vòng tròn tính điểm = `group_count` 1 + `advance_per_group` 0, `division`, ngày/giờ/địa điểm, `win_rule`, `sub_formats`), `tournament_teams` (`player2_id` null = chỗ trống chờ mời), `tournament_team_members` (đội hình Team League), `tournament_matches` (lượt đấu), `tournament_sub_matches` (trận phụ), `tournament_live` (trận đang tính điểm trực tiếp: cài đặt, đội hình, nhật ký từng pha `log` + thời điểm `stamps`; điểm và thời gian được tính lại từ nhật ký), `tournament_matches` / `tournament_sub_matches` có `duration_sec` (thời gian trận) và `score_format` (thể thức ván), `tournaments.live_token` (link bảng điểm công khai) |
 | Tài chính | `transactions` (sổ chỉ thêm, huỷ thay vì sửa), view `v_club_fund_balance`, `v_event_finance` |
 | Kho | `inventory_items` (`club_id` hoặc `host_id` cho kho Xé Vé), `inventory_moves` (`purchase`, `use` = lấy bóng mới ra, `broken` = bóng đang dùng bị hỏng, `adjust`, `retire` cũ) |
-| Người chơi | `player_profiles` (có `checkin_token` cho QR, `telegram_chat_id`, `email_notices`) |
+| Người chơi | `player_profiles` (có `checkin_token` cho QR, `email_notices`) |
 | Lịch sử | `change_history` (SCD Type 2, ghi bằng trigger) |
 | Bảng tính quỹ | `clubs.fund_calc` (jsonb: giá sân/giờ, giờ/buổi, buổi/tháng, % giảm, bóng, nước, số thành viên, làm tròn, buổi bảo lưu, khung giờ giao lưu) |
 | Họp mặt | `meeting_money` (đã chuyển khoản / tài trợ từng người), `meeting_guests` (khách mời + người mời), `meeting_expenses` (khoản chi), `events.meeting_settlement` (cách kết toán) |
 | Gói Pro của CLB | `club_activity_logs` (nhật ký thao tác: `club_id`, `actor_id`, `actor_email`, `actor_role`, `action`, `method`, `path`, `target`; trigger chặn sửa, chỉ cho đặt `actor_id` = null khi tài khoản bị xoá), `staff_grants.permissions` (nhóm quyền tuỳ chỉnh), `duty_shifts` (ca trực: `title`, `shift_date`, `start_time`, `end_time`, `notes`) + `duty_shift_people` (`shift_id`, `email`, `full_name`). Chỉ backend đọc/ghi. |
+| Nhân viên hỗ trợ | `support_staff` (`email` khoá chính, `full_name`, `permissions` text[], `active`, `created_by`). Chỉ backend đọc/ghi; owner thêm trong Trang Owner. |
 | Owner | `users.suspended_at`, `users.suspended_reason` (đình chỉ), `owner_audit_logs` (nhật ký thay đổi của owner: `action`, `actor_email`, `target_host_id`, `old_value`, `new_value`, `note`, `undone_at`, `undo_of`; trigger chặn xoá/sửa), `owner_notes` (ghi chú nội bộ theo Host), hàm `owner_last_sign_in(ids)` (đọc lần đăng nhập cuối từ `auth.users`, chỉ service role gọi được), `feedback.status` / `status_changed_at` (hộp thư góp ý), `app_settings` (`key`, `value` jsonb, `updated_by` — cài đặt bật/tắt từ Trang Owner), `announcements` (thông báo chung: `message`, `level` info/warning, `starts_at`, `ends_at`, `show_public`, `active`), `promo_codes` (`code` duy nhất, `kind` percent/trial, `percent`, `applies_to`, `trial_tier`, `trial_days`, `expires_on`, `max_uses`, `first_order_only`, `active`), `promo_redemptions` (một dòng mỗi lượt dùng, duy nhất theo mã + Host, `payment_id` khi là đơn giảm giá), `plan_payments.promo_code_id` / `discount_amount`. Chỉ backend đọc/ghi các bảng này. |
 | Khác | `feedback`, `event_votes` (bình chọn tham gia buổi họp: `choice` yes/no, `by_host`) |
 
@@ -1166,10 +1153,10 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **Vai trò Tài chính / Vận hành kiểm soát ở server** bằng bảng quyền theo từng API (mặc định cấm thao tác không liệt kê); người Vận hành không nhận SĐT / ngày sinh / công nợ thành viên.
 - **Đồng quản trị kiểm soát ở server**, không chỉ ẩn trên giao diện. Họ chỉ truy cập được đúng CLB được cấp (trong thời hạn hiệu lực), với quyền như chủ CLB trừ xoá CLB. Server tự gắn dữ liệu họ tạo vào chủ CLB, nên mọi khoản nằm trong sổ của chủ. Họ không thấy kèo Xé Vé riêng của chủ.
 - **Mã QR check-in** là một token ngẫu nhiên, không chứa thông tin cá nhân. Chỉ Host hoặc điều phối viên của đúng kèo mới dùng được để check-in, và người chơi đổi mã mới bất cứ lúc nào.
-- **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ). Bot Telegram chỉ nhận cập nhật có đúng secret.
+- **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ).
 - **Sổ thu chi chỉ thêm.** Sửa số tiền = huỷ dòng cũ + ghi dòng thay thế (server làm, có liên kết `replaced_by`). Các khoản tự động gắn với nguồn tạo ra chúng.
 - **Lịch sử không ghi đè.** Thay đổi quan trọng được lưu theo dòng thời gian (SCD2).
-- **Quyền owner nằm ở server** (`OWNER_EMAILS`), không lưu trong database. Trang Owner chỉ xem số lượng thành viên của CLB, không xem danh sách hay SĐT thành viên (cả mục *Hoạt động*). Trang *Hệ thống* chỉ báo một kết nối đã cấu hình hay chưa, không bao giờ gửi giá trị khoá về trình duyệt. Chế độ **Xem như Host** chỉ đọc ở cả hai phía (web và server chặn mọi thay đổi), che SĐT trong mọi phản hồi và ghi nhật ký. Bảng `app_settings`, `announcements`, `promo_codes`, `promo_redemptions` bật RLS, không cấp quyền cho `anon`/`authenticated` — chỉ backend đọc/ghi; trang công khai chỉ nhận thông báo đang hiện qua API. Mọi thao tác của owner được ghi vào nhật ký chỉ-ghi-thêm. Nên bật xác thực 2 bước cho email owner và tài khoản Supabase.
+- **Quyền owner nằm ở server** (`OWNER_EMAILS`), không lưu trong database. **Nhân viên hỗ trợ** thì lưu trong bảng `support_staff`, nhưng chỉ owner thêm/sửa được và nhân viên không bao giờ có các quyền chỉ-owner (đình chỉ, đổi chủ CLB, hệ thống, nhật ký, quản lý nhân viên) — nên không ai tự nâng mình lên owner qua app. Trang Owner chỉ xem số lượng thành viên của CLB, không xem danh sách hay SĐT thành viên (cả mục *Hoạt động*). Trang *Hệ thống* chỉ báo một kết nối đã cấu hình hay chưa, không bao giờ gửi giá trị khoá về trình duyệt. Chế độ **Xem như Host** chỉ đọc ở cả hai phía (web và server chặn mọi thay đổi), che SĐT trong mọi phản hồi và ghi nhật ký. Bảng `app_settings`, `announcements`, `promo_codes`, `promo_redemptions` bật RLS, không cấp quyền cho `anon`/`authenticated` — chỉ backend đọc/ghi; trang công khai chỉ nhận thông báo đang hiện qua API. Mọi thao tác của owner được ghi vào nhật ký chỉ-ghi-thêm. Nên bật xác thực 2 bước cho email owner và tài khoản Supabase.
 - **Link công khai** (`/e/…`, `/join/…`, `/l/…` bảng điểm) dùng token ngẫu nhiên, có thể tắt hoặc tạo mới. Trang công khai không lộ số điện thoại.
 
 ---
@@ -1188,6 +1175,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Bấm vào trang thấy khung 💎 "Có từ gói …" / thêm thành viên bị báo "Cần nâng cấp gói" | Gói của tài khoản (hoặc của chủ CLB, nếu bạn là đồng quản trị) chưa có tính năng đó hoặc đã đủ số thành viên. Nâng cấp ở **Tài khoản → Gói dịch vụ**, hoặc owner chỉnh gói ở `/owner/hosts`. Sau khi đổi gói tối đa 15 giây mới có hiệu lực ở mọi trang. |
 | Host đã chuyển khoản nâng cấp nhưng gói chưa đổi | Gói chỉ bật khi owner bấm **Đã nhận tiền** ở `/owner/payments`. Đối chiếu nội dung chuyển khoản (mã `PBM…`) và số tiền trong app ngân hàng. Không vào được trang đó (thấy 404) → kiểm tra email của bạn có trong `OWNER_EMAILS` trên Render rồi deploy lại. Host ghi sai nội dung → tìm theo email Host + số tiền rồi xác nhận đơn tương ứng. |
 | Host vẫn tự nâng gói được không cần trả tiền (hoặc ngược lại) dù đã sửa `ALLOW_TIER_SELF_SERVE` | Công tắc ở **Trang Owner → Hệ thống** được ưu tiên hơn biến môi trường (dòng *Đặt trên Trang Owner*). Đổi ở đó; có hiệu lực trong ~15 giây. |
+| Nhân viên hỗ trợ mở `/owner` thấy 404 | Email phải khớp đúng email tài khoản họ đăng nhập, đang *Hoạt động* (không *Tạm khoá*) và tài khoản không bị đình chỉ. Kiểm tra migration `20261102090000_support_staff_drop_telegram.sql` đã chạy. |
 | Nhật ký thao tác trống dù đã làm nhiều việc | Nhật ký chỉ ghi từ khi chạy migration `20261101090000_pro_club_tools.sql`, và chỉ ghi thao tác thành công đi qua app. Kiểm tra *Hệ thống* trong Trang Owner xem migration đã chạy chưa. |
 | Người Vận hành / Tài chính không thấy trang cần dùng | Kiểm tra quyền tuỳ chỉnh trên trang *Phân quyền* (nhãn *Quyền tuỳ chỉnh*). Menu theo đúng nhóm quyền; bấm **↺ Về mặc định** nếu muốn quay lại quyền chuẩn của vai trò. Chủ CLB hạ khỏi gói Pro thì quyền tuỳ chỉnh tạm không dùng. |
 | Thông báo chung không hiện / vẫn hiện sau khi tắt | Kiểm tra giờ bắt đầu/kết thúc và trạng thái ở **Trang Owner → Thông báo**; thay đổi mất tới ~30 giây. Người đã bấm ✕ sẽ không thấy lại thông báo đó trên máy của họ. Trang đăng ký kèo chỉ hiện thông báo có tick *Hiện cả trên trang công khai*. |
@@ -1195,7 +1183,6 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Đang *Xem như Host* mà bấm gì cũng báo "Chỉ đọc" | Đúng thiết kế. Bấm **✕ Thoát** ở thanh vàng để về Trang Owner; đóng tab cũng thoát chế độ này. |
 | Host báo "Tài khoản đang tạm khoá" | Owner đã đình chỉ tài khoản (lý do hiện trong khung). Mở `/owner/hosts` → lọc *Bị khoá* → mở Host → **Mở khoá**. |
 | Người chơi không nhận được email thông báo | Kiểm tra: Host đã bật công tắc *Gửi email thông báo cho người chơi*; không còn cảnh báo vàng (đã đặt `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` trên tên miền đã xác minh); người chơi chưa *Tắt email*. Xem trạng thái gửi trong Resend → Emails; nhắc người chơi kiểm tra thư mục Spam. |
-| Người chơi không nhận được tin Telegram | Kiểm tra 3 biến `TELEGRAM_*` trên Render, đã chạy `npm run telegram:webhook`, và người chơi đã bấm *Start* (Cổng người chơi hiện "Đã kết nối ✓"). |
 | Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |
 | Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số trong danh sách thành viên thì nút "Tôi là thành viên" mới tìm được. |
 | Khách chuyển khoản rồi nhưng chỗ bị huỷ | Quá 30 phút (hoặc 2 giờ sau khi bị từ chối) mà chưa gửi ảnh thì chỗ tự nhả. Host thêm tay người đó rồi bấm *Đã thu tiền mặt* / *đã thu phí*. |

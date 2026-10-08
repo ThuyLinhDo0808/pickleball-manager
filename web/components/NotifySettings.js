@@ -3,14 +3,13 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 
-// Host: where "moved up from the waitlist" notices go. Players who connected Telegram
-// in the portal get a DM automatically; this webhook is for everything else
-// (Make / Zapier / n8n -> Zalo ZNS, SMS, a Telegram group, Slack...).
+// Host: where "moved up from the waitlist" notices go. Players get an email when the
+// Host turns it on; this webhook is for everything else (Make / Zapier / n8n -> Zalo
+// ZNS, SMS, a group chat, Slack...).
 export default function NotifySettings({ bare = false } = {}) {
   const { t } = useI18n();
   const [url, setUrl] = useState('');
   const [saved, setSaved] = useState('');
-  const [bot, setBot] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   // Emails to players: the Host's switch (off by default) + whether the server can send.
@@ -20,7 +19,6 @@ export default function NotifySettings({ bare = false } = {}) {
     api.get('/api/host/notifications').then((r) => {
       setUrl(r.notify_webhook_url || '');
       setSaved(r.notify_webhook_url || '');
-      setBot(r.telegram_bot);
       setMail({ on: !!r.notify_players_email, ready: !!r.email_ready, migrated: r.email_migrated !== false });
     });
   }, []);
@@ -97,10 +95,6 @@ export default function NotifySettings({ bare = false } = {}) {
           {!mail.ready && <p className="text-xs text-amber-300 mt-2">⚠️ {t('notify.emailNotReady')}</p>}
         </div>
       )}
-      <p className="text-sm mb-3 rounded-lg bg-navy-900 px-3 py-2">
-        <span className="text-gray-400">Telegram: </span>
-        {bot ? <span className="text-lime-400">@{bot.replace(/^@/, '')} — {t('notify.tgOn')}</span> : <span className="text-gray-500">{t('notify.tgOff')}</span>}
-      </p>
       <form onSubmit={save} className="flex flex-col sm:flex-row gap-2">
         <input className="input text-sm" type="url" inputMode="url" placeholder="https://hook.eu1.make.com/…" value={url} onChange={(e) => setUrl(e.target.value)} />
         <div className="flex gap-2 shrink-0">

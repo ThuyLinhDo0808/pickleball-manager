@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import { fmtDate, fmtTime } from '@/components/OwnerShell';
+import { fmtDate, fmtTime, useOwnerMe } from '@/components/OwnerShell';
 
 const UNDOABLE = ['subscription.update', 'account.suspend', 'account.unsuspend', 'club.member_addon'];
 const isDateKey = (k) => /_until$/.test(k);
@@ -35,6 +35,7 @@ function Diff({ from, to }) {
 
 export function AuditRow({ row, onChanged, showTarget = true }) {
   const { t } = useI18n();
+  const me = useOwnerMe();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   async function undo() {
@@ -62,7 +63,7 @@ export function AuditRow({ row, onChanged, showTarget = true }) {
         </div>
         <div className="flex items-center gap-2 text-gray-500 text-xs">
           <span>{fmtTime(row.created_at)} · {row.actor_email}</span>
-          {UNDOABLE.includes(row.action) && !row.undone_at && (
+          {me?.owner && UNDOABLE.includes(row.action) && !row.undone_at && (
             <button type="button" className="rounded border border-navy-600 px-2 py-0.5 text-gray-200 hover:border-amber-300" disabled={busy} onClick={undo}>↩ {t('owner.undo')}</button>
           )}
         </div>

@@ -1,6 +1,7 @@
 // "View as host": the owner opens the app exactly as one Host sees it, to help with
 // support. Read-only — the server refuses every change — phone numbers are masked, and
-// each viewing session is written to the owner audit log.
+// each viewing session is written to the owner audit log. Owners and support staff with
+// the view_as permission may use it.
 const { supabase } = require('../supabase');
 const owner = require('./owner');
 
@@ -33,7 +34,9 @@ async function apply(req, res) {
   if (!target) return false;
   const path = (req.originalUrl || '').split('?')[0];
   if (/^\/api\/owner(\/|$)/.test(path)) return false; // the owner console itself
-  if (!owner.isOwner(req.hostEmail)) {
+  // Owners, and support staff given "view as host".
+  const support = require('./support');
+  if (!support.can(await support.consoleAccess(req.hostEmail), 'view_as')) {
     res.status(403).json({ error: 'Not allowed.', code: 'view_as_forbidden' });
     return true;
   }

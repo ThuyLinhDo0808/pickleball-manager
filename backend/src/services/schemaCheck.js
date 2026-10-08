@@ -45,6 +45,7 @@ const PROBES = [
   { table: 'club_activity_logs', column: 'action', migration: '20261101090000_pro_club_tools.sql' },
   { table: 'staff_grants', column: 'permissions', migration: '20261101090000_pro_club_tools.sql' },
   { table: 'duty_shift_people', column: 'email', migration: '20261101090000_pro_club_tools.sql' },
+  { table: 'support_staff', column: 'permissions', migration: '20261102090000_support_staff_drop_telegram.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

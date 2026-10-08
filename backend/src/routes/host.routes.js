@@ -68,7 +68,9 @@ router.patch('/subscription', async (req, res) => {
 // The Host's plan: tier, club limit and usage, Social Manager add-on.
 router.get('/plan', async (req, res) => {
   try {
-    res.json({ ...(await getPlan(req.hostId, { fresh: true })), is_owner: billing.isAdmin(req.hostEmail) });
+    const access = await require('../services/support').consoleAccess(req.hostEmail).catch(() => null);
+    // is_owner: the Owner Console link (owners, and support staff for their parts of it).
+    res.json({ ...(await getPlan(req.hostId, { fresh: true })), is_owner: !!access, console_role: access ? (access.owner ? 'owner' : 'support') : null });
   } catch (err) {
     dbError(res, err);
   }
@@ -272,7 +274,6 @@ router.get('/notifications', async (req, res) => {
   if (error) return dbError(res, error);
   res.json({
     notify_webhook_url: data.notify_webhook_url,
-    telegram_bot: process.env.TELEGRAM_BOT_USERNAME || null,
     // Emails to players: the Host's switch (off by default) and whether the server can send.
     notify_players_email: !!data.notify_players_email,
     email_ready: emailReady(),

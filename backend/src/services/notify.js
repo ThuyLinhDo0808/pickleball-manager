@@ -2,10 +2,6 @@
 // or rejected) and the Host about new transfer screenshots. Two independent,
 // best-effort channels — neither can fail the request that triggered them:
 //
-//   Telegram DM:  TELEGRAM_BOT_TOKEN (+ TELEGRAM_BOT_USERNAME for the link button).
-//     Players connect once from the portal (t.me/<bot>?start=<code>); the bot
-//     stores their chat id via POST /api/public/telegram.
-//
 //   Host webhook: users.notify_webhook_url (set on the Account page). Receives JSON,
 //     so Make / Zapier / n8n can forward it to Zalo ZNS, SMS, a Telegram group...
 //
@@ -48,19 +44,6 @@ function promotedText(event, name, { mustPay = false, payUrl = null } = {}) {
   );
 }
 
-async function telegramSend(chatId, text) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return 'not_configured';
-  const api = (process.env.TELEGRAM_API_URL || 'https://api.telegram.org').replace(/\/+$/, ''); // or a self-hosted Bot API server
-  const r = await fetch(`${api}/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-    signal: AbortSignal.timeout(8000),
-  });
-  return r.ok ? 'sent' : `failed_${r.status}`;
-}
-
 // Portal accounts behind a participant: their own sign-up, or the club member record they're linked to.
 async function participantUserIds(participant) {
   const ids = new Set(participant.user_id ? [participant.user_id] : []);
@@ -69,16 +52,6 @@ async function participantUserIds(participant) {
     if (data?.user_id) ids.add(data.user_id);
   }
   return [...ids];
-}
-
-async function sendToPlayer(participant, text) {
-  if (!process.env.TELEGRAM_BOT_TOKEN) return 'not_configured';
-  const ids = await participantUserIds(participant);
-  if (!ids.length) return 'no_account';
-  const { data } = await supabase.from('player_profiles').select('telegram_chat_id').in('user_id', ids).not('telegram_chat_id', 'is', null);
-  if (!data?.length) return 'not_linked';
-  const results = await Promise.all(data.map((p) => telegramSend(p.telegram_chat_id, text)));
-  return results.includes('sent') ? 'sent' : results[0];
 }
 
 async function postWebhook(url, payload) {
@@ -122,15 +95,14 @@ function payloadFor(type, event, participant, text, extra = {}) {
   };
 }
 
-// Player (Telegram + email) + Host webhook. Never throws; returns { telegram, email, webhook }.
+// Player (email) + Host webhook. Never throws; returns { email, webhook }.
 // `mail`: [template kind, extra template context] for the email.
 async function tellPlayerAndHost(type, event, participant, text, extra, mail) {
-  const [telegram, email, webhook] = await Promise.all([
-    safe(sendToPlayer(participant, text)),
+  const [email, webhook] = await Promise.all([
     mail ? safe(emailAbout(event, participant, mail[0], mail[1] || {})) : 'off',
     safe(sendToHostWebhook(event.host_id, payloadFor(type, event, participant, text, extra))),
   ]);
-  return { telegram, email, webhook };
+  return { email, webhook };
 }
 
 async function notifyPromoted(event, participant) {
@@ -154,8 +126,8 @@ async function notifyPaymentRejected(event, participant, note) {
   const text =
     `⚠️ Host chưa xác nhận được thanh toán của bạn cho ${where(event)}${note ? `: ${note}` : '.'}\n` +
     `Vui lòng gửi lại ảnh chuyển khoản${payUrl ? `: ${payUrl}` : ''}.`;
-  const [telegram, email] = await Promise.all([safe(sendToPlayer(participant, text)), safe(emailAbout(event, participant, 'payment_rejected', { payUrl, note }))]);
-  return { telegram, email };
+  const email = await safe(emailAbout(event, participant, 'payment_rejected', { payUrl, note }));
+  return { email };
 }
 
 // Host only: a guest uploaded a transfer screenshot to check.
@@ -177,12 +149,11 @@ async function notifyEventCancelled(event) {
     const text = `❌ Host đã hủy ${where(event)}.`;
     const sender = await safe(emailSender(event));
     await Promise.all(
-      list.flatMap((p) => [
-        safe(sendToPlayer(p, `${text}${p.fee_paid ? '\nHost sẽ liên hệ hoàn tiền cho bạn.' : ''}`)),
+      list.map((p) =>
         sender && sender !== 'failed'
           ? safe(participantUserIds(p).then((ids) => emailPlayer(ids, playerEmail('event_cancelled', { name: p.full_name, event, clubName: sender.clubName, refund: !!p.fee_paid }), sender)))
-          : null,
-      ])
+          : null
+      )
     );
     await safe(sendToHostWebhook(event.host_id, { ...payloadFor('event_cancelled', event, { full_name: null }, text), players: list.length, player: undefined }));
   } catch (err) {
@@ -246,13 +217,13 @@ async function emailAbout(event, participant, kind, ctx) {
   return emailPlayer(ids, playerEmail(kind, { name: participant.full_name, event, clubName: sender.clubName, ...ctx }), sender);
 }
 
-// Guest played a session: thank them and send the survey link (Telegram + email).
+// Guest played a session: thank them and send the survey link (email).
 async function notifySurvey(event, participant, { clubName, url }) {
   const text =
     `🙏 Cảm ơn ${participant.full_name || 'bạn'} đã đến giao lưu ở ${where(event)}${clubName ? ` cùng ${clubName}` : ''}!\n` +
     `Bạn dành 1 phút đánh giá buổi chơi giúp CLB nhé${url ? `: ${url}` : ' (mở trang Người chơi trong app)'}.`;
-  const [telegram, email] = await Promise.all([safe(sendToPlayer(participant, text)), safe(emailAbout(event, participant, 'survey', { surveyUrl: url }))]);
-  return { telegram, email };
+  const email = await safe(emailAbout(event, participant, 'survey', { surveyUrl: url }));
+  return { email, text };
 }
 
 // Host: a guest asked to join the fixed team from the survey.
@@ -270,7 +241,6 @@ module.exports = {
   notifyPaymentConfirmed,
   notifyPaymentRejected,
   notifyPaymentSubmitted,
-  telegramSend,
   postWebhook,
   promotedText,
   webUrl,

@@ -13,13 +13,32 @@ const appSettings = require('../services/appSettings');
 const { schemaStatus, PROBES } = require('../services/schemaCheck');
 const announcements = require('./announcements.routes');
 const promo = require('../services/promo');
+const support = require('../services/support');
 
 const router = express.Router();
 const MIGRATION = '20261026090000_owner_console.sql';
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const fail = (status, message, code) => Object.assign(new Error(message), { status, code });
 
-router.use((req, res, next) => (owner.isOwner(req.hostEmail) ? next() : res.status(404).json({ error: 'Not found.' })));
+// Owners (OWNER_EMAILS) get everything; support staff only the parts their permissions
+// open (services/support.js); anyone else gets "not found".
+router.use(async (req, res, next) => {
+  try {
+    const access = await support.consoleAccess(req.hostEmail);
+    if (!access) return res.status(404).json({ error: 'Not found.' });
+    if (access.support) {
+      // A suspended support account can't use the console.
+      if (await owner.suspensionOf(req.userId)) return res.status(404).json({ error: 'Not found.' });
+      const path = req.path.replace(/\/+$/, '') || '/';
+      const perm = path === '/me' ? 'me' : support.permissionFor(req.method, path);
+      if (perm !== 'me' && !support.can(access, perm)) return res.status(403).json({ error: 'Your support role does not include this.', code: 'support_forbidden' });
+    }
+    req.console = access;
+    next();
+  } catch (err) {
+    dbError(res, err);
+  }
+});
 
 const wrap = (fn) => async (req, res) => {
   try {
@@ -34,7 +53,68 @@ const wrap = (fn) => async (req, res) => {
   }
 };
 
-router.get('/me', (req, res) => res.json({ owner: true, email: req.hostEmail }));
+router.get('/me', (req, res) => res.json({ owner: !!req.console.owner, support: !!req.console.support, permissions: req.console.permissions, email: req.hostEmail }));
+
+// ---- Support staff (owners only) ----------------------------------------------------
+
+const cleanStaffPerms = (v) => {
+  if (!Array.isArray(v) || v.some((p) => !support.PERMISSIONS.includes(p))) throw fail(400, `permissions: any of ${support.PERMISSIONS.join(', ')}.`, 'bad_permissions');
+  return [...new Set(v)];
+};
+const staffEmail = (v) => {
+  const e = String(v || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw fail(400, 'A valid email is required.', 'bad_email');
+  return e;
+};
+
+router.get('/support', wrap(async (req, res) => {
+  const { data, error } = await supabase.from('support_staff').select('*').order('created_at');
+  if (error) throw error;
+  const emails = data.map((s) => s.email);
+  const { data: users } = emails.length ? await supabase.from('users').select('id, email').in('email', emails) : { data: [] };
+  const known = new Map((users || []).map((u) => [String(u.email).toLowerCase(), u.id]));
+  const ids = [...known.values()];
+  const seen = await lastSignIns(ids);
+  res.json({ permissions: support.PERMISSIONS, staff: data.map((s) => ({ ...s, has_account: known.has(s.email), last_sign_in_at: seen.get(known.get(s.email)) || null })) });
+}));
+
+router.post('/support', wrap(async (req, res) => {
+  const email = staffEmail(req.body?.email);
+  if (owner.isOwner(email)) throw fail(400, 'This email is already an owner.', 'already_owner');
+  const row = { email, full_name: String(req.body?.full_name || '').trim().slice(0, 80) || null, permissions: cleanStaffPerms(req.body?.permissions || []), created_by: req.hostEmail };
+  const { data, error } = await supabase.from('support_staff').insert(row).select().single();
+  if (error?.code === '23505') throw fail(409, 'This person is already on the support staff.', 'already_staff');
+  if (error) throw error;
+  support.forget(email);
+  await owner.audit(req, { action: 'support.add', newValue: { email, permissions: data.permissions }, note: data.full_name });
+  res.status(201).json(data);
+}));
+
+router.patch('/support/:email', wrap(async (req, res) => {
+  const email = staffEmail(req.params.email);
+  const { data: before } = await supabase.from('support_staff').select('*').eq('email', email).maybeSingle();
+  if (!before) throw fail(404, 'Not on the support staff.');
+  const patch = { updated_at: new Date().toISOString() };
+  if ('permissions' in (req.body || {})) patch.permissions = cleanStaffPerms(req.body.permissions);
+  if ('active' in (req.body || {})) patch.active = req.body.active === true;
+  if ('full_name' in (req.body || {})) patch.full_name = String(req.body.full_name || '').trim().slice(0, 80) || null;
+  const { data, error } = await supabase.from('support_staff').update(patch).eq('email', email).select().single();
+  if (error) throw error;
+  support.forget(email);
+  const keys = Object.keys(patch).filter((k) => k !== 'updated_at');
+  await owner.audit(req, { action: 'support.update', oldValue: Object.fromEntries(keys.map((k) => [k, before[k]])), newValue: Object.fromEntries(keys.map((k) => [k, data[k]])), note: email });
+  res.json(data);
+}));
+
+router.delete('/support/:email', wrap(async (req, res) => {
+  const email = staffEmail(req.params.email);
+  const { data, error } = await supabase.from('support_staff').delete().eq('email', email).select();
+  if (error) throw error;
+  if (!data.length) throw fail(404, 'Not on the support staff.');
+  support.forget(email);
+  await owner.audit(req, { action: 'support.remove', oldValue: { email, permissions: data[0].permissions }, note: email });
+  res.status(204).end();
+}));
 
 // ---- Data loading ----------------------------------------------------------------
 

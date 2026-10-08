@@ -7,7 +7,7 @@ const { todayYmd, periodRange, summarize, normalizePhone } = require('../service
 const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, cancelParticipant } = require('../services/attendance');
-const { telegramSend, emailReady } = require('../services/notify');
+const { emailReady } = require('../services/notify');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
 const { linkByPhone } = require('../services/phoneLink');
@@ -105,37 +105,6 @@ publicRoutes.get('/tickets/:code', async (req, res) => {
     });
   } catch (err) {
     fail(res, err);
-  }
-});
-
-// Telegram bot updates (set up with backend/scripts/telegram-webhook.js). Telegram
-// signs each call with the secret we registered; anything else is ignored.
-publicRoutes.post('/telegram', async (req, res) => {
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!secret || req.get('X-Telegram-Bot-Api-Secret-Token') !== secret) return res.status(404).json({ error: 'Not found.' });
-  res.json({ ok: true }); // answer Telegram right away; it retries on errors
-  try {
-    const msg = req.body?.message;
-    const code = String(msg?.text || '').match(/^\/start\s+([a-f0-9]{16,64})$/i)?.[1];
-    if (!msg?.chat?.id) return;
-    if (!code) {
-      await telegramSend(msg.chat.id, 'Xin chào! Hãy mở Cổng người chơi → Hồ sơ → "Kết nối Telegram" để nhận thông báo kèo.');
-      return;
-    }
-    const { data: profile } = await supabase
-      .from('player_profiles')
-      .update({ telegram_chat_id: msg.chat.id })
-      .eq('telegram_link_code', code.toLowerCase())
-      .select('full_name')
-      .maybeSingle();
-    await telegramSend(
-      msg.chat.id,
-      profile
-        ? `✅ Đã kết nối, ${profile.full_name}! Bạn sẽ nhận tin khi được đẩy từ danh sách chờ lên danh sách chính.`
-        : 'Mã kết nối không đúng hoặc đã hết hạn. Hãy bấm lại "Kết nối Telegram" trong app.'
-    );
-  } catch (err) {
-    console.error('telegram webhook', err);
   }
 });
 
@@ -479,12 +448,8 @@ player.get('/me', async (req, res) => {
 
     res.json({
       email: req.hostEmail,
-      profile: profile && (({ telegram_link_code, telegram_chat_id, ...p }) => p)(profile),
+      profile,
       checkin_code: profile ? `PBP:${profile.checkin_token}` : null,
-      telegram: {
-        available: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME),
-        linked: !!profile?.telegram_chat_id,
-      },
       // Email notices: whether the server can send them, and this player's choice.
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
@@ -754,26 +719,6 @@ player.post('/checkin-code/rotate', async (req, res) => {
   }
 });
 
-// Telegram: get a one-time link that opens the bot and connects this account.
-player.post('/telegram/link', async (req, res) => {
-  try {
-    const bot = process.env.TELEGRAM_BOT_USERNAME;
-    if (!process.env.TELEGRAM_BOT_TOKEN || !bot) throw badRequest('Telegram notifications are not set up on this server.', 501, 'not_configured');
-    const code = crypto.randomBytes(12).toString('hex');
-    const { data, error } = await supabase
-      .from('player_profiles')
-      .update({ telegram_link_code: code })
-      .eq('user_id', req.hostId)
-      .select('user_id')
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) throw badRequest('Complete your profile first.', 400, 'profile_required');
-    res.json({ url: `https://t.me/${bot.replace(/^@/, '')}?start=${code}` });
-  } catch (err) {
-    fail(res, err);
-  }
-});
-
 // Turn email notices (promoted, payment, cancelled, survey) on/off. Body: { enabled }
 player.put('/email-notices', async (req, res) => {
   try {
@@ -786,16 +731,6 @@ player.put('/email-notices', async (req, res) => {
     if (error) throw badRequest('Run migration 20261024090000_player_email_notices.sql first.', 409, 'migration_required');
     if (!data) throw badRequest('Complete your profile first.', 400, 'profile_required');
     res.json(data);
-  } catch (err) {
-    fail(res, err);
-  }
-});
-
-player.delete('/telegram', async (req, res) => {
-  try {
-    const { error } = await supabase.from('player_profiles').update({ telegram_chat_id: null, telegram_link_code: null }).eq('user_id', req.hostId);
-    if (error) throw error;
-    res.status(204).end();
   } catch (err) {
     fail(res, err);
   }

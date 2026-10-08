@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import OwnerShell, { fmtDate, fmtTime, TIER_BADGE } from '@/components/OwnerShell';
+import OwnerShell, { fmtDate, fmtTime, TIER_BADGE, useOwnerMe, consoleCan } from '@/components/OwnerShell';
 import { AuditRow } from '@/components/OwnerAudit';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -193,6 +193,7 @@ function Notes({ host, notes, onChanged }) {
 // hand the club to another account.
 function ClubRow({ club, onChanged }) {
   const { t } = useI18n();
+  const me = useOwnerMe();
   const [mode, setMode] = useState(null); // 'addon' | 'transfer'
   const [fixed, setFixed] = useState(club.room?.fixed?.extra ?? 0);
   const [guest, setGuest] = useState(club.room?.guest?.extra ?? 0);
@@ -229,8 +230,8 @@ function ClubRow({ club, onChanged }) {
         <span className="text-gray-400 text-xs">{t('owner.placesLine', { fixed: place(r?.fixed), guest: place(r?.guest) })} · {fmtDate(club.created_at)}</span>
       </div>
       <div className="flex gap-3 mt-1 text-xs">
-        <button type="button" className="text-sky-300 hover:underline" onClick={() => setMode(mode === 'addon' ? null : 'addon')}>➕ {t('owner.addonBtn')}</button>
-        <button type="button" className="text-amber-300 hover:underline" onClick={() => setMode(mode === 'transfer' ? null : 'transfer')}>🔁 {t('owner.transferBtn')}</button>
+        {consoleCan(me, 'plans') && <button type="button" className="text-sky-300 hover:underline" onClick={() => setMode(mode === 'addon' ? null : 'addon')}>➕ {t('owner.addonBtn')}</button>}
+        {me?.owner && <button type="button" className="text-amber-300 hover:underline" onClick={() => setMode(mode === 'transfer' ? null : 'transfer')}>🔁 {t('owner.transferBtn')}</button>}
       </div>
       {mode && (
         <form onSubmit={save} className="mt-2 rounded-lg border border-navy-600 p-2 flex flex-col gap-2">
@@ -297,6 +298,28 @@ function StaffRoles({ staff, clubs }) {
   );
 }
 
+// The page's body (inside OwnerShell, so it knows who is using the console).
+function ViewAsButton({ host }) {
+  const { t } = useI18n();
+  const me = useOwnerMe();
+  if (!consoleCan(me, 'view_as')) return null;
+  return (
+    <button
+      type="button"
+      className="btn-secondary !py-1 text-xs"
+      title={t('owner.viewAsHint')}
+      onClick={() => { if (window.confirm(t('owner.viewAsAsk', { email: host.email }))) { startViewAs(host); window.location.href = '/home'; } }}
+    >
+      👁 {t('owner.viewAs')}
+    </button>
+  );
+}
+
+function Gate({ perm, owner = false, children }) {
+  const me = useOwnerMe();
+  return (owner ? me?.owner : consoleCan(me, perm)) ? children : null;
+}
+
 export default function OwnerHostPage() {
   const { t } = useI18n();
   const { id } = useParams();
@@ -320,14 +343,7 @@ export default function OwnerHostPage() {
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
               {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}
               {h.suspended_at ? <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-200">⛔ {t('owner.suspended')}</span> : <span className="rounded-full px-2.5 py-1 text-xs bg-lime-400/15 text-lime-200">● {t('owner.active')}</span>}
-              <button
-                type="button"
-                className="btn-secondary !py-1 text-xs"
-                title={t('owner.viewAsHint')}
-                onClick={() => { if (window.confirm(t('owner.viewAsAsk', { email: h.email }))) { startViewAs(h); window.location.href = '/home'; } }}
-              >
-                👁 {t('owner.viewAs')}
-              </button>
+              <ViewAsButton host={h} />
             </div>
           </div>
 
@@ -338,8 +354,8 @@ export default function OwnerHostPage() {
           </div>
 
           <div className="grid lg:grid-cols-[2fr_1fr] gap-4 items-start">
-            <PlanEditor host={h} onSaved={reload} />
-            <SuspendBox host={h} onChanged={reload} />
+            <Gate perm="plans"><PlanEditor host={h} onSaved={reload} /></Gate>
+            <Gate owner><SuspendBox host={h} onChanged={reload} /></Gate>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-4 items-start">

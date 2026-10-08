@@ -7,8 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test",
-    "telegram:webhook": "node scripts/telegram-webhook.js"
+    "test": "node --test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

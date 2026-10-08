@@ -1,4 +1,5 @@
 'use client';
+import { createContext, useContext } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -6,17 +7,25 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
+// [href, label, icon, permission a support account needs (null = owners only)]
 const TABS = [
-  ['/owner', 'owner.tabOverview', '📊'],
-  ['/owner/hosts', 'owner.tabHosts', '👥'],
-  ['/owner/payments', 'owner.tabPayments', '💳'],
-  ['/owner/promos', 'owner.tabPromos', '🎟'],
-  ['/owner/activity', 'owner.tabActivity', '🏓'],
-  ['/owner/feedback', 'owner.tabFeedback', '💬'],
-  ['/owner/announcements', 'owner.tabAnnouncements', '📣'],
-  ['/owner/system', 'owner.tabSystem', '🩺'],
-  ['/owner/audit', 'owner.tabAudit', '📜'],
+  ['/owner', 'owner.tabOverview', '📊', 'stats'],
+  ['/owner/hosts', 'owner.tabHosts', '👥', 'hosts'],
+  ['/owner/payments', 'owner.tabPayments', '💳', 'payments'],
+  ['/owner/promos', 'owner.tabPromos', '🎟', 'promos'],
+  ['/owner/activity', 'owner.tabActivity', '🏓', 'hosts'],
+  ['/owner/feedback', 'owner.tabFeedback', '💬', 'feedback'],
+  ['/owner/announcements', 'owner.tabAnnouncements', '📣', 'announcements'],
+  ['/owner/system', 'owner.tabSystem', '🩺', null],
+  ['/owner/support', 'owner.tabSupport', '🧑‍💻', null],
+  ['/owner/audit', 'owner.tabAudit', '📜', null],
 ];
+
+// Who is using the console: { owner, support, permissions, email }.
+const OwnerMeContext = createContext(null);
+export const useOwnerMe = () => useContext(OwnerMeContext);
+// May this person use this part of the console?
+export const consoleCan = (me, perm) => !!me && (me.owner || (!!perm && (me.permissions || []).includes(perm)));
 
 // The owner's back office: its own header and tabs, separate from the club/Xé Vé
 // app. Anyone who is not an owner just sees "not found" (the API answers 404 too).
@@ -37,12 +46,15 @@ export default function OwnerShell({ children, title }) {
     );
   }
   const active = (href) => (href === '/owner' ? pathname === '/owner' : pathname.startsWith(href));
+  const tabs = TABS.filter(([, , , perm]) => consoleCan(me, perm));
+  const here = TABS.find(([href]) => active(href));
+  const allowed = !here || consoleCan(me, here[3]);
   return (
     <div className="min-h-screen bg-navy-950">
       <header className="sticky top-0 z-30 border-b border-navy-700 bg-navy-950/95 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 pt-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Owner Console</p>
+            <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Owner Console{me.support ? <span className="ml-2 rounded-full bg-sky-400/20 text-sky-200 px-2 py-0.5 normal-case tracking-normal">{t('owner.supportBadge')}</span> : null}</p>
             <p className="text-white font-bold truncate">Pickleball Manager</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -51,7 +63,7 @@ export default function OwnerShell({ children, title }) {
           </div>
         </div>
         <nav className="mx-auto max-w-6xl px-2 sm:px-4 flex gap-1 overflow-x-auto" aria-label="Owner">
-          {TABS.map(([href, key, icon]) => (
+          {tabs.map(([href, key, icon]) => (
             <Link
               key={href}
               href={href}
@@ -65,7 +77,14 @@ export default function OwnerShell({ children, title }) {
       </header>
       <main className="mx-auto max-w-6xl px-4 py-5">
         {title && <h1 className="text-2xl font-bold text-white mb-4">{title}</h1>}
-        {children}
+        {allowed ? (
+          <OwnerMeContext.Provider value={me}>{children}</OwnerMeContext.Provider>
+        ) : (
+          <div className="card text-sm text-gray-300">
+            🔒 {t('owner.supportNoAccess')}
+            {tabs[0] && <Link href={tabs[0][0]} className="ml-2 text-amber-300 underline">{t(tabs[0][1])}</Link>}
+          </div>
+        )}
       </main>
     </div>
   );

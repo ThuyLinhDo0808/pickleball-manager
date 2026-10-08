@@ -1,5 +1,5 @@
 // After-session survey for guests. When a club session is over, every guest who was
-// checked in gets a thank-you with a private link (Telegram / email, and a card in the
+// checked in gets a thank-you with a private link (email, and a card in the
 // player portal). The survey asks for stars, whether the level suited them, a comment,
 // and finally "Do you want to join our fixed team?" — yes opens a short member form
 // whose answers land in the club's waiting list (DS chờ) for the Host to approve.
