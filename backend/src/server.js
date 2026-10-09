@@ -21,6 +21,7 @@ const { startSurveySweeper } = require('./services/survey');
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+app.set('trust proxy', 1); // behind Render's proxy: req.ip = the visitor (rate limits)
 app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -53,6 +54,7 @@ app.use('/api/live', requireAuth, liveRoutes);
 app.use('/api/inventory', requireAuth, inventoryRoutes);
 app.use('/api/owner', requireAuth, ownerRoutes);
 app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
+app.use('/api/public/auth', require('./routes/auth.routes')); // no login: sign in / sign up / forgot password
 app.get('/api/public/announcements', require('./routes/announcements.routes').current); // no login: owner's banner
 app.use('/api/public', publicRoutes); // no login: club join pages
 

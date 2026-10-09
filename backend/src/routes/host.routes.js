@@ -232,6 +232,44 @@ router.post('/plan/cancel', async (req, res) => {
   }
 });
 
+// The account's sign-in name and personal details (asked at sign-up; older accounts can
+// set a username here to sign in with it instead of the email).
+const ACCOUNT_FIELDS = 'email, username, birth_date, gender, region';
+router.get('/account', async (req, res) => {
+  const { data, error } = await supabase.from('users').select(ACCOUNT_FIELDS).eq('id', req.userId || req.hostId).maybeSingle();
+  if (error) return res.status(409).json({ error: 'Run migration 20261103090000_username_signup.sql first.', code: 'migration_required' });
+  res.json(data || {});
+});
+
+router.patch('/account', async (req, res) => {
+  const b = req.body || {};
+  const patch = {};
+  if ('username' in b) {
+    const u = String(b.username || '').trim().toLowerCase();
+    if (!/^[a-z][a-z0-9._]{2,29}$/.test(u)) return res.status(400).json({ error: 'Username: 3–30 characters, a–z, 0–9, . or _, starting with a letter.', code: 'bad_username' });
+    patch.username = u;
+  }
+  if ('birth_date' in b) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.birth_date || '')) || b.birth_date < '1900-01-01' || b.birth_date >= today) return res.status(400).json({ error: 'A valid birth date is required.', code: 'bad_birth_date' });
+    patch.birth_date = b.birth_date;
+  }
+  if ('gender' in b) {
+    if (!['male', 'female', 'other'].includes(b.gender)) return res.status(400).json({ error: 'Gender is required.', code: 'bad_gender' });
+    patch.gender = b.gender;
+  }
+  if ('region' in b) {
+    const r = String(b.region || '').trim().slice(0, 80);
+    if (!r) return res.status(400).json({ error: 'Region is required.', code: 'bad_region' });
+    patch.region = r;
+  }
+  if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nothing to change.' });
+  const { data, error } = await supabase.from('users').update(patch).eq('id', req.userId || req.hostId).select(ACCOUNT_FIELDS).single();
+  if (error?.code === '23505') return res.status(409).json({ error: 'This username is taken.', code: 'username_taken' });
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
 router.post('/feedback', async (req, res) => {
   const message = String(req.body.message || '').trim();
   const contact = String(req.body.contact || '').trim() || null;
