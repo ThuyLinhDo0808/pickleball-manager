@@ -220,6 +220,7 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
         sessions_remaining: standing.pass ? (standing.pass.sessions_included === 0 ? null : standing.pass.sessions_remaining) : null,
       },
       registration: await signup.registrationView(event, participant),
+      survey: await survey.surveyFor(event, participant).catch(() => null),
     });
   } catch (err) {
     fail(res, err);

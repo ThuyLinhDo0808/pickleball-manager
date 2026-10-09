@@ -483,10 +483,12 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 | **2. Xác nhận** | App cho biết bạn đăng ký với tư cách gì và phải trả bao nhiêu: *Thành viên có gói còn hiệu lực* thì "Trừ 1 buổi trong gói"; *khách* (hoặc thành viên hết gói) thì "Phí buổi này 130.000 ₫". Tick "Tôi đã đọc thông tin kèo…" rồi bấm **Xác nhận**. |
 | **3. Thanh toán** (khách, phí > 0) | Chỗ được **giữ 30 phút**. Trang hiện **VietQR** (đã điền sẵn số tiền + nội dung `PBxxxxxx`), **ảnh QR ngân hàng của Host** (nếu Host tải lên), số tài khoản và nút Copy. Chuyển khoản xong, **tải ảnh chụp màn hình giao dịch** lên. Trạng thái chuyển thành **"⏳ Host đang xác nhận thanh toán"**. |
 | **4. Nhận vé** | Host xác nhận thì trang chuyển thành **"🎉 Đăng ký thành công"** kèm **vé QR check-in**, có khung vàng nhắc rất rõ: **"📸 CHỤP MÀN HÌNH MÃ QR NÀY"**. |
+| **5. Sau buổi** (khách giao lưu của CLB) | Đã check-in thì khung vàng "chụp màn hình" tự ẩn. Khi tới **giờ kết thúc** của kèo, ngay trên trang kèo hiện khung **"⭐ Buổi chơi đã kết thúc"** với nút **Đánh giá buổi chơi** (mở trang khảo sát, có câu "muốn vào team cố định"). Đã gửi thì khung đổi thành *"Bạn đã gửi đánh giá"* + *Xem lại đánh giá*. Không cần chờ email. |
 
 - **Thành viên có gói** và **kèo miễn phí** đi thẳng từ bước 2 sang bước 4 (không cần thanh toán).
 - **Quá 30 phút chưa gửi ảnh** thì chỗ tự được nhả cho người trong danh sách chờ. **Host từ chối ảnh** (kèm lý do, ví dụ "sai số tiền") thì người chơi có thêm 2 giờ để gửi ảnh khác.
 - **Hết chỗ** thì vào **danh sách chờ**, chưa phải trả tiền. Khi có người huỷ, người đầu danh sách được đẩy lên: thành viên có gói thì vào thẳng; khách thì nhận tin "đã có chỗ, hãy chuyển khoản trong 2 giờ".
+- Trang kèo, trang vé và trang khảo sát có nút **← Về trang chủ** ở góc trên (đã đăng nhập thì về Trang chủ của bạn).
 - **Mỗi lượt đăng ký có một vé riêng** (`/t/<mã vé>`, không cần đăng nhập để mở). Lỡ mất ảnh thì mở lại link kèo, Cổng người chơi, hoặc trang vé; Host cũng check-in tay được.
 - **Chuyển nhượng slot** (khách không đi được): bấm *Chuyển nhượng slot cho người khác* → nhập tên + SĐT người nhận → vé cũ mất hiệu lực, người nhận có **vé mới** (gửi link hoặc ảnh QR cho họ). Slot của thành viên gắn với gói nên không tự chuyển được; Host vẫn chuyển giúp được.
 - **Huỷ**: theo [chính sách huỷ](#55-chính-sách-huỷ--hoàn-buổi). Khách đã trả tiền huỷ trước hạn thì Host thấy nhãn **Cần hoàn tiền**.

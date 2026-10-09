@@ -1,4 +1,5 @@
 'use client';
+import HomeLink from '@/components/HomeLink';
 import { useParams } from 'next/navigation';
 import TicketCard from '@/components/TicketCard';
 import { useI18n } from '@/context/I18nContext';
@@ -35,8 +36,11 @@ export default function TicketPage() {
   return (
     <div className="min-h-screen max-w-md mx-auto px-4 pt-safe pb-safe-4">
       <header className="flex items-center justify-between py-4">
-        <span className="text-lime-400 font-bold">{e.club_name || t('appName')}</span>
-        {langToggle}
+        <span className="text-lime-400 font-bold truncate">{e.club_name || t('appName')}</span>
+        <div className="flex items-center gap-2">
+          <HomeLink />
+          {langToggle}
+        </div>
       </header>
       <section className="card mb-4">
         <p className="text-gray-400 text-xs uppercase tracking-wide">{t('ticket.title')}</p>

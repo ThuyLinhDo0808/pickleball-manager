@@ -243,4 +243,14 @@ async function surveysDueFor(userId) {
     .sort((a, b) => b.event_date.localeCompare(a.event_date));
 }
 
-module.exports = { sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, eventSurveys, surveysDueFor };
+// The survey link of one registration, shown on the event page once play is over
+// (so a guest does not have to wait for the email or the sweeper).
+async function surveyFor(event, p, now = Date.now()) {
+  if (!p || p.status !== 'checked_in' || !event?.club_id || !p.survey_token) return null;
+  if (now < eventEndMs(event) || event.event_date < daysAgo(OPEN_DAYS)) return null;
+  if (!(await guestsReady()) || !(await isGuestParticipant(p))) return null;
+  const { data } = await supabase.from('event_surveys').select('participant_id').eq('participant_id', p.id).maybeSingle();
+  return { token: p.survey_token, answered: !!data };
+}
+
+module.exports = { sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, eventSurveys, surveysDueFor, surveyFor };

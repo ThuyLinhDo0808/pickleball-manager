@@ -259,6 +259,15 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (reg?.status === 'registered' || reg?.status === 'checked_in') {
     return (
       <div className="flex flex-col items-center text-center">
+        {me.survey && (
+          <div className="w-full rounded-xl border-2 border-lime-400 bg-lime-400/10 px-3 py-3 mb-4">
+            <p className="text-lime-300 font-bold">⭐ {t('signup.surveyTitle')}</p>
+            <p className="text-gray-200 text-sm mt-0.5 mb-2">{me.survey.answered ? t('signup.surveyDone') : t('signup.surveyHint')}</p>
+            <Link href={`/s/${me.survey.token}`} className={me.survey.answered ? 'btn-secondary inline-block' : 'btn-primary inline-block'}>
+              {me.survey.answered ? t('signup.surveyView') : t('signup.surveyCta')}
+            </Link>
+          </div>
+        )}
         <Steps current="ticket" guestPays={reg.kind === 'guest' && reg.fee > 0} />
         <div className="text-4xl">🎉</div>
         <p className="text-white font-bold text-lg mt-1">
@@ -268,7 +277,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
           {reg.kind === 'member' ? t('signup.asMember') : t('signup.asGuest')}
           {reg.fee_paid && reg.fee > 0 ? ` · ${t('signup.paid', { amount: formatVnd(reg.fee) })}` : ''}
         </p>
-        <TicketCard ticketCode={reg.ticket_code} name={reg.full_name} />
+        <TicketCard ticketCode={reg.ticket_code} name={reg.full_name} checkedIn={reg.status === 'checked_in'} />
         {reg.status === 'registered' && (
           <div className="flex flex-col items-center gap-2 mt-4">
             <p className="text-gray-400 text-xs max-w-xs">{t('signup.noTransfer')}</p>

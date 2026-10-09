@@ -1,4 +1,5 @@
 'use client';
+import HomeLink from '@/components/HomeLink';
 import { useEffect } from 'react';
 import { levelRange, levelText } from '@/lib/levels';
 import { useParams } from 'next/navigation';
@@ -79,8 +80,11 @@ export default function PublicEventPage() {
   return (
     <div className="min-h-screen max-w-lg mx-auto px-4 pt-safe pb-safe-4">
       <header className="flex items-center justify-between py-4">
-        <span className="text-lime-400 font-bold">{ev.club_name || t('appName')}</span>
-        {langToggle}
+        <span className="text-lime-400 font-bold truncate">{ev.club_name || t('appName')}</span>
+        <div className="flex items-center gap-2">
+          <HomeLink />
+          {langToggle}
+        </div>
       </header>
       <AnnouncementBanner publicOnly className="mb-3" />
 
