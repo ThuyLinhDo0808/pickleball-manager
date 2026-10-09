@@ -6,6 +6,7 @@ import SettingsSection from '@/components/SettingsSection';
 import NotifySettings from '@/components/NotifySettings';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import DeleteAccount from '@/components/DeleteAccount';
+import AccountDetails from '@/components/AccountDetails';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useClubs } from '@/context/ClubContext';
@@ -124,6 +125,10 @@ export default function AccountPage() {
       </nav>
 
       <div className="flex flex-col">
+        <SettingsSection id="login" icon="🔑" tone="lime" title={t('auth.detailsTitle')} description={t('auth.detailsHint')}>
+          <AccountDetails />
+        </SettingsSection>
+
         <SettingsSection id="plan" icon="💎" tone="amber" title={t('acct.s_plan')} description={t('acct.planHint')}>
           {plan ? (
             <>

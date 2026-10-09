@@ -4,18 +4,6 @@ import { supabase } from '@/lib/supabaseClient';
 
 const AuthContext = createContext(null);
 
-// Only the origin of NEXT_PUBLIC_SITE_URL is used, so a value copied from Supabase's
-// Redirect URLs (".../**") or with a trailing path still gives a valid link.
-function siteOrigin() {
-  try {
-    if (process.env.NEXT_PUBLIC_SITE_URL) return new URL(process.env.NEXT_PUBLIC_SITE_URL).origin;
-  } catch {
-    /* fall back to this site */
-  }
-  return window.location.origin;
-}
-const welcomeUrl = () => `${siteOrigin()}/welcome`;
-
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
 
@@ -29,14 +17,9 @@ export function AuthProvider({ children }) {
     session,
     user: session?.user || null,
     loading: session === undefined,
-    signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
-    // The confirmation email brings people to the welcome page of this site. Supabase only
-    // follows it when the URL is in Authentication → URL Configuration → Redirect URLs;
-    // otherwise it falls back to the Site URL (e.g. localhost). NEXT_PUBLIC_SITE_URL can pin
-    // the public address.
-    signUp: (email, password) => supabase.auth.signUp({ email, password, options: { emailRedirectTo: welcomeUrl() } }),
-    // A fresh confirmation email (the old link may be used up, expired or point elsewhere).
-    resendConfirmation: (email) => supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: welcomeUrl() } }),
+    // Sign-in with a username goes through the API (it knows the email); the session it
+    // returns is handed to Supabase here.
+    adoptSession: (sess) => supabase.auth.setSession({ access_token: sess.access_token, refresh_token: sess.refresh_token }),
     signOut: () => supabase.auth.signOut(),
   };
 
