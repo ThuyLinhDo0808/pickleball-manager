@@ -551,7 +551,10 @@ router.post('/club-requests/:id/:decision(approve|reject)', wrap(async (req, res
   await requestsGuard();
   if (!isUuid(req.params.id)) throw fail(404, 'Request not found.');
   const decision = req.params.decision;
-  const out = await clubRequests.decide(req.params.id, decision, { actor: req.hostEmail, note: req.body?.note });
+  // Confirming a transfer here needs the payments right too (support staff).
+  if (req.body?.confirm_payment === true && !support.can(req.console, 'payments')) throw fail(403, 'Your support role does not include payments.', 'support_forbidden');
+  // confirm_payment: the owner saw the transfer arrive — confirm the plan order and approve.
+  const out = await clubRequests.decide(req.params.id, decision, { actor: req.hostEmail, note: req.body?.note, confirmPayment: req.body?.confirm_payment === true });
   const { data: r } = await supabase.from('club_requests').select('user_id, name, users(email)').eq('id', req.params.id).single();
   await owner.audit(req, {
     action: decision === 'approve' ? 'club_request.approve' : 'club_request.reject',

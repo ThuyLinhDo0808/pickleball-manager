@@ -86,8 +86,19 @@ router.post('/club-requests', async (req, res) => {
   try {
     if (!(await requestsReady(res))) return;
     const r = await clubRequests.create(req.hostId, req.body);
-    await notifyFeedback({ message: `[CLB mới] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}) — vào Trang Owner → Yêu cầu tạo CLB để duyệt.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
+    const pay = r.payment ? ` · chờ chuyển khoản ${r.payment.amount.toLocaleString('vi-VN')}đ, mã ${r.payment.ref}` : ' · gói hiện có còn chỗ';
+    await notifyFeedback({ message: `[CLB mới] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}${pay}) — vào Trang Owner → Duyệt CLB khi đã nhận tiền.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
     res.status(201).json(r);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
+router.post('/club-requests/:id/payment', async (req, res) => {
+  try {
+    if (!(await requestsReady(res))) return;
+    res.json(await clubRequests.renewPayment(req.hostId, req.params.id));
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
     dbError(res, err);

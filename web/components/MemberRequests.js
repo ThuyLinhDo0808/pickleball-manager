@@ -3,6 +3,7 @@ import { levelTag } from '@/lib/levels';
 import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import { PastWarning } from '@/components/MemberModeration';
 
 // DS chờ: guests who asked to join the fixed team in the after-session survey, "I'm a
 // member" requests from the event page, and accounts that matched a member by phone.
@@ -13,6 +14,9 @@ const SOURCE_STYLE = {
   survey: 'border-lime-400/60 text-lime-300',
   request: 'border-sky-400/60 text-sky-300',
   link: 'border-yellow-400/60 text-yellow-300',
+  search: 'border-violet-400/60 text-violet-300',
+  invite: 'border-emerald-400/60 text-emerald-300',
+  manual: 'border-gray-400/60 text-gray-300',
 };
 
 export default function MemberRequests({ club, requests, onChanged }) {
@@ -80,6 +84,8 @@ export default function MemberRequests({ club, requests, onChanged }) {
                 )}
                 {facts.length > 0 && <p className="text-gray-500 text-xs mt-0.5">{facts.join(' · ')}</p>}
                 {m.join_note && <p className="text-gray-200 text-sm mt-1 rounded bg-navy-900 px-2 py-1">“{m.join_note}”</p>}
+                {/* Removed / reviewed here before (kept when the club changes manager). */}
+                <PastWarning past={m.past} />
                 <p className="text-gray-600 text-xs mt-0.5">{t('requests.since', { date: new Date(m.join_requested_at || m.created_at).toLocaleDateString('vi-VN') })}</p>
               </div>
               {m.join_requested && (

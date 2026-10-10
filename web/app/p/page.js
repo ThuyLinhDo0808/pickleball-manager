@@ -1,4 +1,5 @@
 'use client';
+import PlayerNotices from '@/components/PlayerNotices';
 import { levelText } from '@/lib/levels';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -74,6 +75,7 @@ export default function PlayerHome() {
 
   return (
     <PlayerShell>
+      <PlayerNotices notices={me.notices || []} />
       <div className="flex items-center gap-3 mb-4">
         {p?.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -188,7 +188,8 @@ async function publicEvent(req, res) {
 }
 
 function fail(res, err) {
-  return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  // reason / until: why and how long a player is kept out (blocked / suspended by the club).
+  return err.status ? res.status(err.status).json({ error: err.message, code: err.code, ...(err.reason ? { reason: err.reason } : {}), ...(err.until ? { until: err.until } : {}) }) : dbError(res, err);
 }
 
 async function playerProfile(userId) {

@@ -21,8 +21,20 @@ function AccountLine({ a }) {
       {a.tier === 'free' ? t('ownerReq.noPlan') : `${t('ownerReq.plan')}: ${a.tier.toUpperCase()}${a.trial ? ` (${t('ownerReq.trial')})` : ''}`}
       {' · '}
       {t('ownerReq.clubs', { n: a.clubs_owned, limit: a.club_limit ?? '∞' })}
-      {a.trial_available && <span className="text-lime-300"> · 🎁 {t('ownerReq.trialAvailable')}</span>}
-      {a.pending_payment && <span className="text-amber-200"> · 💳 {t('ownerReq.paymentWaiting', { amount: formatVnd(a.pending_payment.amount) })}</span>}
+
+    </p>
+  );
+}
+
+// The plan bought with the request: amount, transfer code, paid or not.
+function PaymentLine({ r }) {
+  const { t } = useI18n();
+  const p = r.payment;
+  if (!p) return <p className="text-xs text-gray-400 mt-0.5">💎 {t('ownerReq.payCovered')}</p>;
+  const tone = p.status === 'paid' ? 'text-lime-300' : p.status === 'pending' ? 'text-amber-200' : 'text-red-300';
+  return (
+    <p className={`text-xs mt-0.5 ${tone}`}>
+      💳 {t(`ownerReq.pay_${p.status}`)} · {formatVnd(p.amount)} · {p.upgrade_from ? t('ownerReq.payUpgrade', { from: p.upgrade_from.toUpperCase() }) : t('plan.nMonths', { n: p.months })} · <span className="font-mono">{p.ref}</span>
     </p>
   );
 }
@@ -47,18 +59,21 @@ export default function OwnerClubRequestsPage() {
     }
   }
 
-  async function decide(r, decision) {
-    const note = decision === 'reject' ? window.prompt(t('ownerReq.rejectReason')) : window.prompt(t('ownerReq.approveNote'), '');
+  // pay = also confirm the transfer for the request's plan order (money seen in the bank).
+  async function decide(r, decision, pay = false) {
+    if (pay && !window.confirm(t('ownerReq.payConfirm', { amount: formatVnd(r.payment?.amount || 0), ref: r.payment?.ref || '' }))) return;
+    const note = decision === 'reject' ? window.prompt(r.payment?.status === 'paid' ? `${t('ownerReq.rejectReason')}\n${t('ownerReq.refundNote')}` : t('ownerReq.rejectReason')) : window.prompt(t('ownerReq.approveNote'), '');
     if (note === null) return; // cancelled
     if (decision === 'reject' && !note.trim()) return window.alert(t('ownerReq.reasonRequired'));
     setBusy(r.id);
     setErr('');
     try {
-      await api.post(`/api/owner/club-requests/${r.id}/${decision}`, { note });
+      await api.post(`/api/owner/club-requests/${r.id}/${decision}`, { note, ...(pay ? { confirm_payment: true } : {}) });
       setOpen(null);
       await reload();
     } catch (e) {
-      setErr(e.payload?.code === 'club_limit' ? t('ownerReq.errClubLimit') : e.message);
+      const c = e.payload?.code;
+      setErr(c === 'club_limit' ? t('ownerReq.errClubLimit') : c === 'payment_pending' || c === 'payment_missing' ? t(`ownerReq.err_${c}`) : e.message);
     } finally {
       setBusy(null);
     }
@@ -103,12 +118,13 @@ export default function OwnerClubRequestsPage() {
             </div>
             {r.description && <p className="text-gray-300 text-sm mt-1 whitespace-pre-line break-words">{r.description}</p>}
             <div className="mt-1"><AccountLine a={r.account} /></div>
+            <PaymentLine r={r} />
             {r.owner_note && <p className="text-gray-400 text-xs mt-1">💬 {r.owner_note} {r.decided_by ? `— ${r.decided_by}` : ''}</p>}
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => show(r)}>🔍 {t('ownerReq.view')}</button>
               {r.status === 'pending' && (
                 <>
-                  <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === r.id} onClick={() => decide(r, 'approve')}>✓ {t('ownerReq.approve')}</button>
+                  <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === r.id} onClick={() => decide(r, 'approve', r.payment?.status === 'pending')}>{r.payment?.status === 'pending' ? `💳 ${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
                   <button type="button" className="btn-secondary !py-1 text-xs text-red-300" disabled={busy === r.id} onClick={() => decide(r, 'reject')}>✕ {t('ownerReq.reject')}</button>
                 </>
               )}
@@ -131,10 +147,11 @@ export default function OwnerClubRequestsPage() {
               )}
             </div>
             <AccountLine a={open.account} />
+            <PaymentLine r={open} />
             <p className="text-sm text-gray-200 whitespace-pre-line">{open.description || '—'}</p>
             {open.status === 'pending' && (
               <div className="flex gap-2">
-                <button type="button" className="btn-primary flex-1" disabled={busy === open.id} onClick={() => decide(open, 'approve')}>✓ {t('ownerReq.approve')}</button>
+                <button type="button" className="btn-primary flex-1" disabled={busy === open.id} onClick={() => decide(open, 'approve', open.payment?.status === 'pending')}>{open.payment?.status === 'pending' ? `💳 ${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
                 <button type="button" className="btn-secondary flex-1 text-red-300" disabled={busy === open.id} onClick={() => decide(open, 'reject')}>✕ {t('ownerReq.reject')}</button>
               </div>
             )}

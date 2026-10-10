@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { HIGHLIGHTS, suggestTier } from '@/lib/planFeatures';
 import { VIETNAM } from '@/lib/regions';
+import { PlanPaymentBox } from '@/components/PlanModals';
 
 const PAID = ['basic', 'standard', 'advanced', 'pro'];
 const FALLBACK_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
@@ -25,8 +26,9 @@ const STATUS_TONE = {
 };
 
 // One past / waiting request.
-function RequestCard({ r, onCancel, busy }) {
+function RequestCard({ r, onCancel, onRenew, busy }) {
   const { t } = useI18n();
+  const pay = r.payment;
   return (
     <div className={`rounded-2xl border p-4 ${STATUS_TONE[r.status]}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -38,6 +40,18 @@ function RequestCard({ r, onCancel, busy }) {
       </div>
       <p className="text-sm mt-2">{t(`creq.statusHint_${r.status}`, { tier: String(r.plan_tier || '').toUpperCase() })}</p>
       {r.owner_note && <p className="text-sm mt-1 text-gray-200">💬 {t('creq.ownerNote')}: {r.owner_note}</p>}
+      {/* The plan is paid with the request: transfer details until the money arrives. */}
+      {r.status === 'pending' && pay?.status === 'pending' && (
+        <div className="mt-3"><PlanPaymentBox payment={pay} /></div>
+      )}
+      {r.status === 'pending' && pay?.status === 'paid' && <p className="mt-2 text-lime-300 text-sm">✓ {t('creq.paid')}</p>}
+      {r.status === 'pending' && !pay && r.payment_id === null && <p className="mt-2 text-gray-300 text-sm">ℹ️ {t('creq.planCovers', { tier: String(r.plan_tier || '').toUpperCase() })}</p>}
+      {r.status === 'pending' && pay?.status === 'cancelled' && (
+        <p className="mt-2 text-red-300 text-sm">
+          ⚠️ {t('creq.payCancelled')}{' '}
+          <button type="button" className="underline" disabled={busy} onClick={() => onRenew(r.id)}>{t('creq.payRenew')}</button>
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         {r.status === 'pending' && (
           <button type="button" className="btn-secondary !py-1.5 text-sm" disabled={busy} onClick={() => window.confirm(t('creq.cancelConfirm')) && onCancel(r.id)}>{t('creq.cancel')}</button>
@@ -79,7 +93,9 @@ export default function ClubRequestPage() {
   const months = plan?.month_choices || [1, 3, 6, 12];
   const suggested = useMemo(() => suggestTier(form.member_count, limits) || 'basic', [form.member_count, limits]);
   const tier = form.plan_tier || suggested;
-  const trialFree = plan ? !plan.trial_used && plan.tier === 'free' : true;
+  // Every club pays for its plan; an account already paying for a plan with room for
+  // another club is covered.
+  const covered = !!plan && plan.tier !== 'free' && !plan.trial && (plan.club_limit == null || plan.clubs_owned < plan.club_limit);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const items = data?.items || [];
@@ -100,6 +116,19 @@ export default function ClubRequestPage() {
       reload();
     } catch (e) {
       setErr(t(`creq.err_${e.payload?.code}`) === `creq.err_${e.payload?.code}` ? e.message : t(`creq.err_${e.payload?.code}`));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function renew(id) {
+    setBusy(true);
+    try {
+      const r = await api.post(`/api/host/club-requests/${id}/payment`, {});
+      setSent(r);
+      reload();
+    } catch (e) {
+      window.alert(e.message);
     } finally {
       setBusy(false);
     }
@@ -132,12 +161,12 @@ export default function ClubRequestPage() {
         {sent || waiting ? (
           <div className="flex flex-col gap-3 mb-6">
             {sent && <p className="rounded-xl border border-lime-400/50 bg-lime-400/10 px-3 py-2 text-lime-200 text-sm">✓ {t('creq.sent')}</p>}
-            <RequestCard r={sent || waiting} onCancel={cancel} busy={busy} />
+            <RequestCard r={sent && waiting && sent.id === waiting.id ? { ...waiting, ...sent } : sent || waiting} onCancel={cancel} onRenew={renew} busy={busy} />
             <div className="card text-sm text-gray-300">
               <p className="text-white font-semibold mb-1">{t('creq.nextTitle')}</p>
               <ol className="list-decimal pl-5 space-y-1">
                 <li>{t('creq.next1')}</li>
-                <li>{trialFree ? t('creq.next2Trial') : t('creq.next2Pay')}</li>
+                <li>{t('creq.next2Pay')}</li>
                 <li>{t('creq.next3')}</li>
               </ol>
             </div>
@@ -208,8 +237,8 @@ export default function ClubRequestPage() {
                   </div>
                   <p className="text-gray-300 text-sm mt-2">{t('plan.total')}: <b className="text-white">{formatVnd(prices[tier] * form.plan_months)}</b></p>
                 </div>
-                <p className={`rounded-xl border px-3 py-2 text-sm ${trialFree ? 'border-amber-300/50 bg-amber-300/10 text-amber-100' : 'border-navy-600 text-gray-300'}`}>
-                  {trialFree ? `🎁 ${t('creq.trialNote', { tier: String(plan?.catalog?.trial?.tier || 'basic').toUpperCase(), days: plan?.catalog?.trial?.days || 7 })}` : `ℹ️ ${t('creq.noTrialNote')}`}
+                <p className={`rounded-xl border px-3 py-2 text-sm ${covered ? 'border-lime-400/50 bg-lime-400/10 text-lime-100' : 'border-amber-300/50 bg-amber-300/10 text-amber-100'}`}>
+                  {covered ? `✓ ${t('creq.coveredNote', { tier: String(plan.tier).toUpperCase() })}` : `💳 ${t('creq.payNote')}`}
                 </p>
                 <p className="text-gray-500 text-xs">{t('creq.approvalNote')}</p>
                 <div className="flex justify-between">
@@ -233,7 +262,7 @@ export default function ClubRequestPage() {
                       ['creq.schedule', form.schedule || '—'],
                       ['creq.contactEmail', form.contact_email],
                       ['creq.description', form.description || '—'],
-                      ['creq.planPicked', `${tier.toUpperCase()} · ${t('plan.nMonths', { n: form.plan_months })} · ${formatVnd(prices[tier] * form.plan_months)}`],
+                      ['creq.planPicked', covered ? `${String(plan.tier).toUpperCase()} · ${t('creq.covered')}` : `${tier.toUpperCase()} · ${t('plan.nMonths', { n: form.plan_months })} · ${formatVnd(prices[tier] * form.plan_months)}`],
                     ].map(([k, v]) => (
                       <div key={k} className="contents">
                         <dt className="text-gray-400">{t(k)}</dt>
@@ -246,7 +275,7 @@ export default function ClubRequestPage() {
                 {err && <p className="text-red-300 text-sm">{err}</p>}
                 <div className="flex justify-between">
                   <button type="button" className="btn-secondary" onClick={() => setStep(1)} disabled={busy}>← {t('onb.back')}</button>
-                  <button type="button" className="btn-primary" onClick={submit} disabled={busy}>{busy ? t('common.loading') : `📨 ${t('creq.submit')}`}</button>
+                  <button type="button" className="btn-primary" onClick={submit} disabled={busy}>{busy ? t('common.loading') : covered ? `📨 ${t('creq.submit')}` : `💳 ${t('creq.submitPay')}`}</button>
                 </div>
               </div>
             )}
@@ -257,7 +286,7 @@ export default function ClubRequestPage() {
           <section className="mt-8">
             <h2 className="text-white font-semibold mb-2">{t('creq.history')}</h2>
             <div className="flex flex-col gap-2">
-              {items.filter((r) => r.id !== (sent || waiting)?.id).map((r) => <RequestCard key={r.id} r={r} onCancel={cancel} busy={busy} />)}
+              {items.filter((r) => r.id !== (sent || waiting)?.id).map((r) => <RequestCard key={r.id} r={r} onCancel={cancel} onRenew={renew} busy={busy} />)}
             </div>
           </section>
         )}

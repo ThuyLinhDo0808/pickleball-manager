@@ -346,7 +346,11 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       await api.post(`/api/events/public/${token}/register`, {});
       onChanged();
     } catch (err) {
-      setError(err.message);
+      // Kept out by the club: suspended ("to review") until a date, or blocked.
+      const p = err.payload || {};
+      if (p.code === 'club_suspended') setError(t('notice.signupSuspended', { reason: p.reason || '—', date: p.until ? new Date(p.until).toLocaleDateString('vi-VN') : '' }));
+      else if (p.code === 'club_blocked') setError(t('notice.signupBlocked', { reason: p.reason || '—' }));
+      else setError(err.message);
     } finally {
       setBusy(false);
     }

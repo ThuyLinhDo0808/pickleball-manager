@@ -142,6 +142,15 @@ publicRoutes.get('/discover/clubs/:clubId/:kind(avatar|cover)', async (req, res)
   }
 });
 
+// Invite link (no login to see it): the club it leads to.
+publicRoutes.get('/invite/:token', async (req, res) => {
+  try {
+    res.json((await discover.inviteClub(req.params.token)).view);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 const player = express.Router();
 
 async function getProfile(userId) {
@@ -278,6 +287,34 @@ player.post('/discover/:clubId/join', async (req, res) => {
     res.status(201).json(await discover.requestJoin(req.params.clubId, req.hostId, req.body || {}));
   } catch (err) {
     if (err.code === 'member_limit') return res.status(403).json({ error: 'This club is full right now.', code: 'member_limit' });
+    fail(res, err);
+  }
+});
+
+// Join through a club's invite link: into its waiting list for the Host to approve.
+player.post('/invite/:token/join', async (req, res) => {
+  try {
+    res.status(201).json(await discover.joinByInvite(req.params.token, req.hostId, req.body || {}));
+  } catch (err) {
+    if (err.code === 'member_limit') return res.status(403).json({ error: 'This club is full right now.', code: 'member_limit' });
+    fail(res, err);
+  }
+});
+
+// Messages from clubs shown on screen: warned / back in the club / removed.
+const moderation = require('../services/moderation');
+player.get('/notices', async (req, res) => {
+  try {
+    res.json(await moderation.noticesFor(req.hostId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+player.post('/notices/:id/read', async (req, res) => {
+  if (!isUuid(req.params.id)) return notFound(res, 'Notice');
+  try {
+    res.json(await moderation.markRead(req.hostId, req.params.id));
+  } catch (err) {
     fail(res, err);
   }
 });
@@ -561,6 +598,7 @@ player.get('/me', async (req, res) => {
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
       clubs,
       history: history.slice(0, 50),
@@ -684,6 +722,7 @@ player.get('/home', async (req, res) => {
       plan: await getPlan(uid).catch(() => null),
       upcoming: upcoming.slice(0, 40),
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
     });
   } catch (err) {
     fail(res, err);

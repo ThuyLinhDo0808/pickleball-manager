@@ -21,6 +21,10 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
 import { dmy, isBirthdayMonth, my, tenureLabel } from '@/lib/memberDates';
+import { ReviewModal, ReviewTab, InviteModal } from '@/components/MemberModeration';
+import { exportMembers } from '@/lib/exportExcel';
+import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '' });
 
@@ -47,6 +51,9 @@ export default function MembersPage() {
   const [gender, setGender] = useState('all');
   const [sortBy, setSortBy] = useState('default');
   const [showInactive, setShowInactive] = useState(true);
+  const [reviewing, setReviewing] = useState(null); // member being moved to review
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const { plan } = useWorkspace();
   const { data: requests, reload: reloadRequests } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/member-requests`).catch(() => []) : Promise.resolve([])),
     [club?.id]
@@ -55,11 +62,24 @@ export default function MembersPage() {
 
   // New join requests ("I'm a member", no match) only live in DS chờ until approved. Guests who
   // asked to join from the survey stay in the guest tab meanwhile (they did play).
-  const all = (members || []).filter((m) => !(m.join_requested && !m.account_verified && m.member_type === 'fixed'));
+  // Members under review ("Xem xét thêm") have their own tab.
+  const reviewRows = (members || []).filter((m) => m.review_started_at);
+  const all = (members || []).filter((m) => !m.review_started_at && !(m.join_requested && !m.account_verified && m.member_type === 'fixed'));
   const fixedRows = all.filter((m) => m.member_type === 'fixed');
   const guestRows = all.filter((m) => m.member_type !== 'fixed');
-  // Tabs: fixed members, guests, waiting list. Editing a member's type moves them across.
+  // Tabs: fixed members, guests, to review, waiting list. Editing a member's type moves them across.
   const rows = tab === 'fixed' ? fixedRows : tab === 'guest' ? guestRows : [];
+  const canManage = !club?.role || ['owner', 'co_admin'].includes(club.role);
+
+  // Everyone in the club with their details, in one Excel sheet.
+  function exportAll() {
+    if (!hasFeature(planFor(club, plan), 'excel_export')) return lockedNotice('excel_export');
+    const waitingIds = new Set(pending.map((r) => r.id));
+    const placeOf = (m) => (m.review_started_at ? 'review' : waitingIds.has(m.id) || (m.join_requested && !m.account_verified && m.member_type === 'fixed') ? 'waiting' : m.member_type === 'fixed' ? 'fixed' : 'guest');
+    const order = { fixed: 0, guest: 1, review: 2, waiting: 3 };
+    const list = (members || []).map((m) => ({ ...m, place: placeOf(m) })).sort((a, b) => order[a.place] - order[b.place] || a.full_name.localeCompare(b.full_name, 'vi'));
+    exportMembers(club, list, t, (v) => levelText(v, sport, t));
+  }
   const isGuestTab = tab === 'guest';
   const detailMember = all.find((m) => m.id === detailId) || null;
 
@@ -84,8 +104,13 @@ export default function MembersPage() {
         gender: form.gender || null,
         tier: form.tier || null,
       });
+      const toWaiting = form.member_type === 'waiting';
       closeAdd();
       reload();
+      if (toWaiting) {
+        reloadRequests();
+        pickTab('waiting');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -143,11 +168,17 @@ export default function MembersPage() {
         subtitle={club?.name}
         actions={
           // Operations staff see the list; only the owner / co-admins add members.
-          (!club?.role || ['owner', 'co_admin'].includes(club.role)) && (
-            <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
-              ＋ {t('members.addMember')}
-            </button>
-          )
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>⬇ {t('common.exportExcel')}</button>
+            {canManage && (
+              <>
+                <button className="btn-secondary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>
+                <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
+                  ＋ {t('members.addMember')}
+                </button>
+              </>
+            )}
+          </div>
         }
       />
 
@@ -165,13 +196,15 @@ export default function MembersPage() {
         tabs={[
           { key: 'fixed', label: t('requests.tabFixed'), icon: '🏠', count: fixedRows.length },
           { key: 'guest', label: t('requests.tabGuest'), icon: '🤝', count: guestRows.length },
+          { key: 'review', label: t('mod.tab'), icon: '⚠️', count: reviewRows.length },
           { key: 'waiting', label: t('requests.tabWaiting'), icon: '📝', alert: pending.length },
         ]}
       />
 
       {tab === 'waiting' && <MemberRequests club={club} requests={pending} onChanged={() => { reloadRequests(); reload(); }} />}
+      {tab === 'review' && club && <ReviewTab club={club} members={reviewRows} onChanged={() => { reloadRequests(); reload(); }} />}
 
-      {tab !== 'waiting' && pending.length > 0 && (
+      {!['waiting', 'review'].includes(tab) && pending.length > 0 && (
         <button className="w-full text-left rounded-xl border border-yellow-400/40 bg-yellow-400/5 px-4 py-2.5 mb-3 text-sm" onClick={() => pickTab('waiting')}>
           <span className="text-yellow-300 font-semibold">📝 {t('requests.banner', { n: pending.length })}</span>{' '}
           <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
@@ -181,7 +214,7 @@ export default function MembersPage() {
 
       {isGuestTab && club && <GuestPerkSettings />}
 
-      {tab !== 'waiting' && (
+      {!['waiting', 'review'].includes(tab) && (
         <section className="card !p-0 overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
             <div className="relative flex-1 min-w-[12rem]">
@@ -378,7 +411,16 @@ export default function MembersPage() {
         </section>
       )}
 
-      <MemberDetail club={club} member={detailMember} autoEdit={editing} onClose={() => { setDetailId(null); setEditing(false); }} onChanged={reload} />
+      <MemberDetail
+        club={club}
+        member={detailMember}
+        autoEdit={editing}
+        onClose={() => { setDetailId(null); setEditing(false); }}
+        onChanged={reload}
+        onReview={canManage ? (m) => { setDetailId(null); setEditing(false); setReviewing(m); } : null}
+      />
+      <ReviewModal club={club} member={reviewing} open={!!reviewing} onClose={() => setReviewing(null)} onDone={() => { setReviewing(null); reload(); pickTab('review'); }} />
+      <InviteModal club={club} open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
       <Modal open={showAdd} title={t('members.newMember')} onClose={closeAdd}>
         <form onSubmit={addMember} className="grid grid-cols-2 gap-3">
@@ -419,7 +461,9 @@ export default function MembersPage() {
             >
               <option value="fixed">{t('members.fixed')}</option>
               <option value="guest">{t('members.guest')}</option>
+              <option value="waiting">--- {t('members.undecided')}</option>
             </select>
+            {form.member_type === 'waiting' && <p className="text-yellow-300 text-[11px] mt-1">{t('members.undecidedHint')}</p>}
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('members.tier')}</label>

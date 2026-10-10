@@ -103,3 +103,30 @@ export function exportRankings(clubName, label, stats, t) {
   const safe = `${clubName}-${label}`.replace(/[^\p{L}\p{N}-]+/gu, '_');
   XLSX.writeFile(wb, `rankings-${safe}.xlsx`);
 }
+
+// Every member of the club with their details (Members page → Export Excel).
+// `place` says where each one sits: official, guest, to review, waiting list.
+export function exportMembers(club, members, t, levelText) {
+  const head = ['#', t('common.name'), t('xlsx.place'), t('members.tier'), t('members.gender'), t('members.birthDate'), t('common.phone'), t('common.level'), t('memberX.district'), t('memberX.playDuration'), t('members.joined'), t('xlsx.active'), t('xlsx.account'), t('xlsx.notes')];
+  const rows = members.map((m, i) => [
+    i + 1,
+    m.full_name,
+    t(`xlsx.place_${m.place}`),
+    m.member_type === 'fixed' && m.tier ? t(`members.${m.tier}`) : '',
+    m.gender ? t(`members.${m.gender}`) : '',
+    m.birth_date ? m.birth_date.split('-').reverse().join('/') : m.birth_year ?? '',
+    m.phone || '',
+    levelText(m.dupr_level) ?? '',
+    m.district || '',
+    m.play_duration || '',
+    m.joined_on ? m.joined_on.slice(0, 7).split('-').reverse().join('/') : '',
+    m.is_active ? t('xlsx.yes') : t('xlsx.no'),
+    m.account_email || '',
+    [m.notes, m.review_reason ? `${t('xlsx.place_review')}: ${m.review_reason}` : null].filter(Boolean).join(' · '),
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
+  ws['!cols'] = [4, 26, 14, 10, 8, 12, 14, 8, 16, 12, 10, 8, 26, 30].map((wch) => ({ wch }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, t('xlsx.sheet'));
+  XLSX.writeFile(wb, `${(club.name || 'club').replace(/\s+/g, '-').toLowerCase()}-thanh-vien.xlsx`);
+}

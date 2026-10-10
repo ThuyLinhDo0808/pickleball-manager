@@ -22,6 +22,7 @@ const {
 } = require('../services/stats');
 
 const router = express.Router();
+const moderation = require('../services/moderation');
 const TIERS = ['vip', 'standard'];
 
 // 402 from the plan checks (member_limit / feature_locked), else a normal error.
@@ -219,7 +220,8 @@ function cleanFundCalc(v) {
 }
 
 router.patch('/:clubId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc']);
+  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc', 'invite_enabled']);
+  if ('invite_enabled' in fields) fields.invite_enabled = !!fields.invite_enabled;
   // The club's profile in the club search (where, when, how big, listed or not).
   const PROFILE = ['country', 'province', 'district', 'address', 'schedule', 'contact_email', 'member_count', 'is_listed'];
   if (PROFILE.some((k) => k in (req.body || {}))) {
@@ -386,10 +388,13 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
   if (tier && !TIERS.includes(tier)) {
     return res.status(400).json({ error: 'tier must be vip or standard.' });
   }
+  // "---" (not decided yet): the person goes to the waiting list; the type is picked
+  // when they are approved (and only then takes a place in the plan).
+  const waiting = member_type === 'waiting';
   const nextType = member_type === 'guest' ? 'guest' : 'fixed';
-  if (tier && nextType !== 'fixed') tier = null; // guests are never tiered
+  if (tier && (nextType !== 'fixed' || waiting)) tier = null; // guests are never tiered
   try {
-    await assertMemberRoom(req.club, nextType);
+    if (!waiting) await assertMemberRoom(req.club, nextType);
   } catch (err) {
     return planError(res, err);
   }
@@ -417,11 +422,69 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
       notes: req.body.notes || null,
       ...dates,
       ...extras,
+      ...(waiting ? { join_requested: true, account_verified: false, join_requested_at: new Date().toISOString(), ...((await moderation.ready()) ? { join_source: 'manual' } : {}) } : {}),
     })
     .select()
     .single();
   if (error) return dbError(res, error);
   res.status(201).json(data);
+});
+
+// ---- To review (Xem xét thêm), removal, blocks and their history ------------------------
+const moderationGuard = async (res) => {
+  if (await moderation.ready()) return true;
+  res.status(409).json({ error: `Run migration ${moderation.MIGRATION} first.`, code: 'migration_required' });
+  return false;
+};
+const modFail = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code, ...(err.limit != null ? { limit: err.limit } : {}) }) : dbError(res, err));
+
+router.post('/:clubId/members/:memberId/review', async (req, res) => {
+  try {
+    if (!(await moderationGuard(res))) return;
+    res.json(await moderation.review(req.club, req.member, req.body || {}, req.hostEmail));
+  } catch (err) {
+    modFail(res, err);
+  }
+});
+
+router.post('/:clubId/members/:memberId/restore', async (req, res) => {
+  try {
+    if (!(await moderationGuard(res))) return;
+    res.json(await moderation.restore(req.club, req.member, req.body || {}, req.hostEmail));
+  } catch (err) {
+    if (err.status === 402) return planError(res, err);
+    modFail(res, err);
+  }
+});
+
+router.post('/:clubId/members/:memberId/remove', async (req, res) => {
+  try {
+    if (!(await moderationGuard(res))) return;
+    res.json(await moderation.remove(req.club, req.member, req.body || {}, req.hostEmail));
+  } catch (err) {
+    modFail(res, err);
+  }
+});
+
+// The club's moderation history (kept across owners) and who is blocked now.
+router.get('/:clubId/moderation', async (req, res) => {
+  try {
+    if (!(await moderationGuard(res))) return;
+    const [log, blocks] = await Promise.all([moderation.history(req.club, { page: parseInt(req.query.page, 10) || 1 }), moderation.blocksOf(req.club)]);
+    res.json({ ...log, blocks });
+  } catch (err) {
+    modFail(res, err);
+  }
+});
+
+router.delete('/:clubId/blocks/:blockId', async (req, res) => {
+  if (!isUuid(req.params.blockId)) return notFound(res, 'Block');
+  try {
+    if (!(await moderationGuard(res))) return;
+    res.json(await moderation.unblock(req.club, req.params.blockId, req.hostEmail));
+  } catch (err) {
+    modFail(res, err);
+  }
 });
 
 // Bulk import (used by "Import from Club" on the event side, or CSV-style add)
@@ -550,7 +613,7 @@ router.get('/:clubId/member-requests', async (req, res) => {
   const { data, error } = await supabase
     .from('club_members')
     .select(
-      `id, full_name, phone, gender, birth_year, birth_date, dupr_level, member_type, join_requested, account_verified, user_id, created_at, users(email)${ready ? ', join_requested_at, join_note' : ''}${v3 ? ', join_source' : ''}`
+      `id, full_name, phone, gender, birth_year, birth_date, dupr_level, member_type, join_requested, account_verified, user_id, created_at, users(email)${ready ? ', join_requested_at, join_note' : ''}${v3 ? ', join_source' : ''}${(await moderation.ready()) ? ', review_started_at' : ''}`
     )
     .eq('club_id', req.club.id)
     .or('and(account_verified.eq.false,user_id.not.is.null),join_requested.eq.true')
@@ -559,13 +622,22 @@ router.get('/:clubId/member-requests', async (req, res) => {
   const { data: profiles } = data.length
     ? await supabase.from('player_profiles').select('user_id, full_name, phone').in('user_id', data.map((m) => m.user_id))
     : { data: [] };
-  res.json(
-    data.map(({ users, ...m }) => {
+  // Their past here (removed / reviewed before, blocked now): so a new manager knows.
+  const visible = data.filter((m) => !m.review_started_at);
+  const past = await moderation
+    .pastOf(req.club, visible.map((m) => {
       const p = (profiles || []).find((x) => x.user_id === m.user_id);
-      // search = asked from the club search; survey = guest asked in the after-session survey;
+      return { key: m.id, user_id: m.user_id, phone: p?.phone || m.phone };
+    }))
+    .catch(() => ({}));
+  res.json(
+    visible.map(({ users, ...m }) => {
+      const p = (profiles || []).find((x) => x.user_id === m.user_id);
+      // search = asked from the club search; invite = through the invite link; manual = added
+      // by the Host with type "---"; survey = guest asked in the after-session survey;
       // request = "I'm a member" with no match; link = phone matched
-      const source = m.join_source === 'search' ? 'search' : m.join_requested_at ? 'survey' : m.join_requested ? 'request' : 'link';
-      return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null };
+      const source = ['search', 'manual', 'invite'].includes(m.join_source) ? m.join_source : m.join_requested_at ? 'survey' : m.join_requested ? 'request' : 'link';
+      return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null, past: past[m.id] || null };
     })
   );
 });
@@ -837,6 +909,13 @@ router.get('/:clubId/stats', requireFeature('rankings'), async (req, res) => {
 });
 
 // ---- Player self-service: join link + payments to confirm -------------------
+// Invite link (/invite/<token>): people who open it ask to join; they land in the waiting list.
+router.post('/:clubId/invite-token/rotate', async (req, res) => {
+  const { data, error } = await supabase.from('clubs').update({ invite_token: crypto.randomUUID() }).eq('id', req.club.id).select().single();
+  if (error) return dbError(res, error);
+  res.json(data);
+});
+
 router.post('/:clubId/join-token/rotate', async (req, res) => {
   const { data, error } = await supabase
     .from('clubs')

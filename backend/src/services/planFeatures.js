@@ -58,8 +58,9 @@ const ROLE_SEATS = {
   pro: { finance: null, operator: null },
 };
 
-// Plan a new club owner tries for free once (starts when their first club is approved).
-const TRIAL = { tier: 'basic', days: 7 };
+// No automatic free trial: every club pays for its plan. (Trial promo codes made by the
+// app owner still switch a plan on for some days.)
+const TRIAL = null;
 
 const rank = (tier) => Math.max(0, TIERS.indexOf(tier));
 const has = (tier, feature) => !FEATURES[feature] || rank(tier) >= rank(FEATURES[feature]);

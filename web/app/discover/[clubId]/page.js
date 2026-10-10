@@ -81,6 +81,8 @@ export default function DiscoverClubPage() {
                 <span className="rounded-full bg-lime-400 text-navy-950 text-xs font-bold px-3 py-1">{t('disc.yourClub')}</span>
               ) : state === 'member' ? (
                 <Link href={`/c/${c.id}`} className="btn-secondary">✓ {t('disc.isMember')}</Link>
+              ) : state === 'review' ? (
+                <span className="rounded-full border border-red-400/60 text-red-200 text-xs font-semibold px-3 py-1">⚠️ {t('disc.inReview')}</span>
               ) : state === 'requested' ? (
                 <span className="rounded-full border border-amber-300/60 text-amber-200 text-xs font-semibold px-3 py-1">⏳ {t('disc.requested')}</span>
               ) : (

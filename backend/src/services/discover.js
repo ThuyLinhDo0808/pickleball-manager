@@ -139,6 +139,7 @@ async function relation(clubId, userId) {
   const { data: profile } = await supabase.from('player_profiles').select('phone').eq('user_id', userId).maybeSingle();
   const m = await findClubPerson(clubId, { userId, phone: profile?.phone });
   if (!m) return { state: 'none' };
+  if (m.review_started_at) return { state: 'review' };
   if (m.member_type === 'fixed' && m.is_active !== false && !m.join_requested) return { state: 'member' };
   if (m.join_requested) return { state: 'requested' };
   return { state: 'guest' };
@@ -147,7 +148,27 @@ async function relation(clubId, userId) {
 // "Ask to join": the player lands in the club's waiting list (Members -> join requests)
 // for the Host to approve, like a request from the after-session survey.
 async function requestJoin(clubId, userId, body = {}) {
-  const club = await listedClub(clubId);
+  return joinClub(await listedClub(clubId), userId, body, 'search');
+}
+
+// The club behind an invite link (only while the link is switched on).
+async function inviteClub(token) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(token || ''))) throw fail('Invite not found.', 404, 'not_found');
+  const { data, error } = await supabase.from('clubs').select(`${CLUB_FIELDS}, invite_enabled`).eq('invite_token', token).maybeSingle();
+  if (error) throw error;
+  if (!data || !data.invite_enabled || (await suspendedHosts([data.host_id])).size) throw fail('Invite not found.', 404, 'not_found');
+  const counts = await countsFor([data.id]);
+  return { club: data, view: present(data, counts[data.id]) };
+}
+
+async function joinByInvite(token, userId, body = {}) {
+  const { club } = await inviteClub(token);
+  return { ...(await joinClub(club, userId, body, 'invite')), club_id: club.id };
+}
+
+// "Ask to join" (from the search or an invite link): into the club's waiting list.
+async function joinClub(club, userId, body, source) {
+  const clubId = club.id;
   if (club.host_id === userId) throw fail('This is your club.', 409, 'own_club');
   const { data: profile } = await supabase.from('player_profiles').select('*').eq('user_id', userId).maybeSingle();
   if (!profile?.full_name || normalizePhone(profile.phone).length < 9 || !profile.birth_date) {
@@ -157,22 +178,24 @@ async function requestJoin(clubId, userId, body = {}) {
   const { profileLevel } = require('./sport');
   let member = await findClubPerson(clubId, { userId, phone: profile.phone });
   if (member?.member_type === 'fixed' && !member.join_requested) throw fail('You are already a member of this club.', 409, 'already_member');
+  if (member?.review_started_at) throw fail('You are under review in this club.', 409, 'in_review');
   if (member?.join_requested) throw fail('Your request is already waiting for the club.', 409, 'already_requested');
-  const info = { join_requested: true, join_requested_at: new Date().toISOString(), join_note, join_source: 'search' };
+  const info = { join_requested: true, join_requested_at: new Date().toISOString(), join_note, join_source: source };
   if (member) {
     const { data, error } = await supabase.from('club_members').update({ ...info, user_id: member.user_id || userId }).eq('id', member.id).select().single();
     if (error) throw error;
     member = data;
   } else {
-    await require('./plan').assertMemberRoom(club, 'guest');
+    // A waiting-list entry: it takes a place in the plan only when the Host approves it
+    // (and picks official or guest then).
     const { data, error } = await supabase
       .from('club_members')
       .insert({
         ...info,
         club_id: clubId,
         user_id: userId,
-        account_verified: true,
-        member_type: 'guest',
+        account_verified: false,
+        member_type: 'fixed',
         full_name: profile.full_name,
         phone: profile.phone,
         gender: profile.gender,
@@ -189,4 +212,4 @@ async function requestJoin(clubId, userId, body = {}) {
   return { state: 'requested', member_id: member.id };
 }
 
-module.exports = { search, profile, image, relation, requestJoin, term };
+module.exports = { search, profile, image, relation, requestJoin, inviteClub, joinByInvite, term };

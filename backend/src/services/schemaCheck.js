@@ -50,6 +50,9 @@ const PROBES = [
   { table: 'club_requests', column: 'plan_tier', migration: '20261104090000_club_requests_discovery.sql' },
   { table: 'clubs', column: 'is_listed', migration: '20261104090000_club_requests_discovery.sql' },
   { table: 'users', column: 'onboarded_at', migration: '20261104090000_club_requests_discovery.sql' },
+  { table: 'member_moderation_log', column: 'action', migration: '20261105090000_member_moderation_invites.sql' },
+  { table: 'player_notices', column: 'kind', migration: '20261105090000_member_moderation_invites.sql' },
+  { table: 'clubs', column: 'invite_token', migration: '20261105090000_member_moderation_invites.sql' },
 ];
 
 const TTL_MS = 60 * 1000;
