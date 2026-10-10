@@ -115,6 +115,44 @@ const NAV_BY_WORKSPACE = {
   // Referees / coordinators: only their assigned events. No finance, no members.
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
 };
+// Social Manager with a community (cụm sân) picked: every Club Manager page, for the
+// community (no meetings / round robin), plus the app-wide leaderboard.
+NAV_BY_WORKSPACE.community = [
+  { href: '/dashboard', key: 'nav.commOverview', icon: 'dashboard' },
+  { href: '/club/members', key: 'nav.commMembers', icon: 'members', badge: 'memberRequests' },
+  {
+    key: 'nav.groupActivities',
+    icon: 'schedule',
+    children: [
+      { href: '/events', key: 'nav.kevents', icon: 'schedule', exclude: ['/events/create'] },
+      { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
+      { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
+      { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
+      { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
+    ],
+  },
+  {
+    key: 'nav.groupStats',
+    icon: 'chart',
+    children: [
+      { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
+      { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+      { href: '/leaderboard', key: 'nav.globalRank', icon: 'rankings' },
+      { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
+    ],
+  },
+  NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance'),
+  {
+    key: 'nav.groupSettings',
+    icon: 'clubs',
+    children: [
+      { href: '/clubs', key: 'nav.communities', icon: 'clubs' },
+      { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
+      { href: '/club/activity-log', key: 'nav.activityLog', icon: 'plans' },
+      { href: '/account', key: 'nav.account', icon: 'account' },
+    ],
+  },
+];
 
 // Phone bottom bar (plus "More", which holds the full grouped menu).
 const TABS_BY_WORKSPACE = {
@@ -129,6 +167,12 @@ const TABS_BY_WORKSPACE = {
     { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
   ],
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
+  community: [
+    { href: '/dashboard', key: 'nav.commOverview', icon: 'dashboard' },
+    { href: '/club/members', key: 'nav.commMembers', icon: 'members', badge: 'memberRequests' },
+    { href: '/events', key: 'nav.kevents', icon: 'ticket', exclude: ['/events/create'] },
+    { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
+  ],
 };
 
 // Club staff with a limited role see only their pages (the API refuses the rest anyway).
@@ -234,12 +278,14 @@ export default function AppShell({ children }) {
     } catch {}
   });
   const { workspace, ready: wsReady, plan } = useWorkspace();
+  // 'community' = Social Manager with a community picked (club pages for that community);
+  // 'xeve' alone = the older one-off kèo. `scoped`: the pages work on a club / community.
   const pathname = usePathname() || '';
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState({});
-  const requestCount = useMemberRequestCount(club?.id, !!user && workspace === 'club', pathname);
+  const requestCount = useMemberRequestCount(club?.id, !!user && (workspace === 'club' || (workspace === 'xeve' && !!club)), pathname);
   const badges = { memberRequests: requestCount };
 
   // No space chosen yet (first visit, or the saved one is gone): the home hub lists them.
@@ -249,7 +295,7 @@ export default function AppShell({ children }) {
 
   // Finance / Operations staff opening a page outside their role go to their first page.
   useEffect(() => {
-    const pages = workspace === 'club' ? pagesFor(club) : null;
+    const pages = workspace === 'club' || (workspace === 'xeve' && club) ? pagesFor(club) : null;
     if (!pages || !pathname) return;
     const inside = pages.some((p) => pathname === p || (p !== '/finance' && pathname.startsWith(`${p}/`))) || pathname.startsWith('/events/');
     if (!inside) router.replace(pages[0]);
@@ -318,26 +364,28 @@ export default function AppShell({ children }) {
     (isActive(item.href, item.exact) && !(item.exclude || []).some((p) => isActive(p))) ||
     (item.also || []).some((p) => isActive(p));
   const itemActive = (item) => (item.children ? item.children.some(navActive) : navActive(item));
-  const coAdmin = workspace === 'club' && isCoAdmin;
+  const mode = workspace === 'xeve' && club ? 'community' : workspace;
+  const scoped = workspace === 'club' || mode === 'community';
+  const coAdmin = scoped && isCoAdmin;
   // A co-admin works on the owner's club with the full menu, except granting access to
   // others (and deleting the club), which stay with the owner.
-  const clubRole = workspace === 'club' ? club?.role : null;
+  const clubRole = scoped ? club?.role : null;
   const rolePages = clubRole ? pagesFor(club) : null;
   const roleOk = (href) => !rolePages || rolePages.includes(href);
-  const NAV = (NAV_BY_WORKSPACE[workspace] || [])
+  const NAV = (NAV_BY_WORKSPACE[mode] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
     .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href)) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
-  const tabs = (TABS_BY_WORKSPACE[workspace] || []).filter((tab) => roleOk(tab.href));
+  const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
 
   // Pages the club's plan doesn't include: a 💎 in the menu, an upgrade card instead of the page.
-  const clubPlan = planFor(workspace === 'club' ? club : null, plan);
-  const lockedHref = (href) => !hasFeature(clubPlan, featureForPath(href, workspace));
-  const pageFeature = featureForPath(pathname, workspace);
+  const clubPlan = planFor(scoped ? club : null, plan);
+  const lockedHref = (href) => !hasFeature(clubPlan, featureForPath(href, scoped ? 'club' : workspace));
+  const pageFeature = featureForPath(pathname, scoped ? 'club' : workspace);
   const pageLocked = !!pageFeature && !hasFeature(clubPlan, pageFeature);
   const Gem = ({ href }) => (lockedHref(href) ? <span className="text-[11px]" title={t('plan.locked')} aria-label={t('plan.locked')}>💎</span> : null);
 
@@ -475,9 +523,15 @@ export default function AppShell({ children }) {
           </div>
         ) : pageLocked && wsReady ? (
           <LockedFeature feature={pageFeature} owner={!coAdmin} />
-        ) : !wsReady || !workspace ? null : workspace === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
-          <div className="max-w-lg mx-auto card mt-4">
-            <SocialManagerPanel />
+        ) : !wsReady || !workspace ? null : mode === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
+          <div className="max-w-lg mx-auto mt-4 flex flex-col gap-3">
+            {/* Social Manager now runs communities (cụm sân): open one like a club. */}
+            <div className="card border-amber-300/50">
+              <h2 className="text-white font-semibold">🎟 {t('social.startTitle')}</h2>
+              <p className="text-gray-300 text-sm mt-1 mb-3">{t('social.startBody')}</p>
+              <Link href="/club-request?kind=community" className="btn-primary inline-block">＋ {t('social.newCommunity')}</Link>
+            </div>
+            <div className="card"><SocialManagerPanel /></div>
           </div>
         ) : needsClub ? (
           <div className="max-w-md mx-auto card mt-4">
@@ -496,7 +550,7 @@ export default function AppShell({ children }) {
                 </div>
               </div>
             )}
-            {workspace === 'club' && <BirthdayBanner clubId={club?.id} />}
+            {scoped && <BirthdayBanner clubId={club?.id} />}
             {children}
           </>
         )}

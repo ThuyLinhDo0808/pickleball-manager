@@ -88,7 +88,7 @@ router.post('/club-requests', async (req, res) => {
     if (!(await requestsReady(res))) return;
     const r = await clubRequests.create(req.hostId, req.body);
     const pay = r.payment ? ` · chờ chuyển khoản ${r.payment.amount.toLocaleString('vi-VN')}đ, mã ${r.payment.ref}` : ' · gói hiện có còn chỗ';
-    await notifyFeedback({ message: `[CLB mới] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}${pay}) — vào Trang Owner → Duyệt CLB khi đã nhận tiền.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
+    await notifyFeedback({ message: `[${r.kind === 'community' ? 'Cộng đồng mới' : 'CLB mới'}] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}${pay}) — vào Trang Owner → Duyệt CLB khi đã nhận tiền.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
     res.status(201).json(r);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });

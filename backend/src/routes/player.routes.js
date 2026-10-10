@@ -688,7 +688,7 @@ player.get('/home', async (req, res) => {
     await linkByPhone(uid, profile);
     const [members, managed, coAdmin, xeve] = await Promise.all([
       myMemberRows(uid),
-      supabase.from('clubs').select('id, name, sport').eq('host_id', uid).order('created_at'),
+      supabase.from('clubs').select('id, name, sport, kind').eq('host_id', uid).order('created_at'),
       coAdminClubs(req).catch(() => []),
       supabase.from('events').select('id', { count: 'exact', head: true }).eq('host_id', uid).is('club_id', null),
     ]);
@@ -716,8 +716,8 @@ player.get('/home', async (req, res) => {
       ...account,
       profile: profile ? { full_name: profile.full_name, avatar: profile.avatar, dupr_level: profile.dupr_level, birth_date: profile.birth_date } : null,
       managed_clubs: [
-        ...(managed.data || []).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: 'owner' })),
-        ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: c.role || 'co_admin' })),
+        ...(managed.data || []).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', kind: c.kind || 'club', role: 'owner' })),
+        ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', kind: c.kind || 'club', role: c.role || 'co_admin' })),
       ],
       member_clubs: memberClubs,
       xeve_events: xeve.count || 0,

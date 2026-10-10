@@ -73,6 +73,8 @@ function cleanRequest(body) {
   return {
     name,
     sport,
+    // a club, or a Social Manager community ("cộng đồng xé vé")
+    kind: body.kind === 'community' ? 'community' : 'club',
     ...p,
     avatar: cleanImage(body.avatar, MAX_AVATAR, 'The avatar'),
     cover: cleanImage(body.cover, MAX_COVER, 'The cover picture'),
@@ -82,7 +84,7 @@ function cleanRequest(body) {
 }
 
 // A request as its author sees it (pictures left out of lists: they are big).
-const LIST_FIELDS = 'id, name, sport, member_count, address, schedule, description, contact_email, country, province, district, plan_tier, plan_months, status, owner_note, club_id, created_at, decided_at, payment_id';
+const LIST_FIELDS = 'id, name, kind, sport, member_count, address, schedule, description, contact_email, country, province, district, plan_tier, plan_months, status, owner_note, club_id, created_at, decided_at, payment_id';
 
 // Each request carries its plan order: { payment: order as the Host sees it, or null }.
 async function withPayments(rows) {
@@ -237,6 +239,7 @@ async function decide(id, decision, { actor, note, confirmPayment = false }) {
     .insert({
       host_id: r.user_id,
       name: r.name,
+      kind: r.kind || 'club',
       description: r.description,
       sport: r.sport,
       country: r.country,

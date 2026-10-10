@@ -32,7 +32,6 @@ export default function EventDetailPage() {
   const { eventId } = useParams();
   const { t, lang, sport } = useI18n();
   const { club } = useDefaultClub();
-  const { plan } = useWorkspace();
   // Four tabs: details (status, sign-up link, deadlines), players, matches, money.
   const [tab, setTab] = useState('details');
   const [showQr, setShowQr] = useState(false);
@@ -40,10 +39,16 @@ export default function EventDetailPage() {
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   // Opened from the all-clubs calendar: switch to the event's club so the page speaks its
   // sport (levels, scoring, shuttles) and imports from the right member list.
-  const { clubs, selectClub } = useClubs();
+  // A community's kèo opens in Social Manager, a club's session in Club Manager.
+  const { allClubs, selectClub } = useClubs();
+  const { workspace, setWorkspace, plan } = useWorkspace();
   useEffect(() => {
-    if (event?.club_id && club?.id !== event.club_id && clubs.some((c) => c.id === event.club_id)) selectClub(event.club_id);
-  }, [event?.club_id, club?.id, clubs, selectClub]);
+    const owner = event?.club_id ? allClubs.find((c) => c.id === event.club_id) : null;
+    if (!owner) return;
+    const ws = owner.kind === 'community' ? 'xeve' : 'club';
+    if (workspace !== 'staff' && workspace !== ws) setWorkspace(ws);
+    if (club?.id !== owner.id) selectClub(owner.id);
+  }, [event?.club_id, club?.id, allClubs, selectClub, workspace, setWorkspace]);
   const { data: participants, reload: reloadParticipants } = useLoad(
     () => api.get(`/api/events/${eventId}/participants`),
     [eventId]

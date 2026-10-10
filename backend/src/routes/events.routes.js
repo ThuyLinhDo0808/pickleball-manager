@@ -44,7 +44,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
-  'cancel_deadline_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later',
+  'cancel_deadline_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
 ];
 
 // Short links: /e/<8 characters> stands for the event's full public token.
@@ -354,6 +354,11 @@ function cleanEventFields(fields) {
     if (v && (v.length > 500 || !/^https:\/\/\S+$/i.test(v))) return 'map_url must be an https link (Google Maps).';
     fields.map_url = v || null;
   }
+  if ('series_label' in fields) {
+    const v = fields.series_label == null ? '' : String(fields.series_label).trim();
+    if (v.length > 40) return 'series_label: at most 40 characters.';
+    fields.series_label = v || null;
+  }
   if ('auto_approve' in fields) fields.auto_approve = fields.auto_approve === true || fields.auto_approve === 'true';
   if ('allow_pay_later' in fields) fields.allow_pay_later = !(fields.allow_pay_later === false || fields.allow_pay_later === 'false');
   if ('cost_items' in fields) {
@@ -364,9 +369,16 @@ function cleanEventFields(fields) {
   return null;
 }
 const PLAY_FORMATS = ['men', 'women', 'mixed', 'open'];
+// A Social Manager community runs kèo, training and weekly play — no meetings / round robin.
+const NOT_FOR_COMMUNITY = ['meeting', 'challenge'];
+async function kindAllowed(clubId, kind) {
+  if (!clubId || !NOT_FOR_COMMUNITY.includes(kind)) return true;
+  const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
+  return data?.kind !== 'community';
+}
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
-  'auto_approve', 'allow_pay_later', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
+  'auto_approve', 'allow_pay_later', 'series_label', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'allow_public_registration', 'cost_items',
 ];
 
@@ -433,12 +445,13 @@ router.post('/', async (req, res) => {
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
   const hostId = await hostForClub(req, fields.club_id);
   if (!hostId) return notFound(res, 'Club');
+  if (!(await kindAllowed(fields.club_id, fields.kind))) return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
   // Xé Vé games (no club) need the Social Manager add-on.
   if (!fields.club_id) {
     try {
@@ -680,7 +693,7 @@ router.patch('/:eventId', async (req, res) => {
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -688,6 +701,9 @@ router.patch('/:eventId', async (req, res) => {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }
   if ('club_id' in fields && (await hostForClub(req, fields.club_id)) !== req.event.host_id) return notFound(res, 'Club');
+  if ('kind' in fields && fields.kind !== req.event.kind && !(await kindAllowed(fields.club_id ?? req.event.club_id, fields.kind))) {
+    return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
+  }
   const { data, error } = await supabase
     .from('events')
     .update(fields)

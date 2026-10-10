@@ -33,7 +33,7 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
     <div className={`rounded-2xl border p-4 ${STATUS_TONE[r.status]}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-white font-bold">{r.sport === 'badminton' ? '🏸' : '🏓'} {r.name}</p>
+          <p className="text-white font-bold">{r.sport === 'badminton' ? '🏸' : '🏓'} {r.name}{r.kind === 'community' && <span className="ml-2 text-[11px] rounded-full border border-amber-300/60 text-amber-200 px-2 py-0.5 align-middle">🎟 {t('creq.kind_community')}</span>}</p>
           <p className="text-gray-400 text-xs">{[r.district, r.province, r.country].filter(Boolean).join(', ')} · {t('creq.sentOn', { date: fmtDate(r.created_at) })}</p>
         </div>
         <span className="rounded-full border border-current px-2 py-0.5 text-[11px] font-bold uppercase">{t(`creq.status_${r.status}`)}</span>
@@ -64,6 +64,26 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
 
 // Ask for a new club: its profile and pictures, then a plan (suggested from its size),
 // then send it. The app owner checks it; the club is created once approved.
+// Club or community: what the Host is about to open. Same steps after this choice.
+function KindChooser({ onPick }) {
+  const { t } = useI18n();
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {[
+        ['club', '🏟', 'border-lime-400/50 hover:border-lime-400'],
+        ['community', '🎟', 'border-amber-300/50 hover:border-amber-300'],
+      ].map(([k, icon, tone]) => (
+        <button key={k} type="button" onClick={() => onPick(k)} className={`card text-left border-2 ${tone} transition`}>
+          <span className="text-3xl" aria-hidden="true">{icon}</span>
+          <span className="block text-white text-lg font-bold mt-2">{t(`creq.pick_${k}`)}</span>
+          <span className="block text-gray-300 text-sm mt-1">{t(`creq.pickHint_${k}`)}</span>
+          <span className="block text-lime-300 text-sm font-semibold mt-3">{t('creq.pickCta')} →</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ClubRequestPage() {
   const { t } = useI18n();
   const { user } = useAuth();
@@ -78,8 +98,14 @@ export default function ClubRequestPage() {
   const [err, setErr] = useState('');
   const [sent, setSent] = useState(null);
   const [fromOnboarding, setFromOnboarding] = useState(false);
+  // First choice: a club (Club Manager) or a community (Social Manager, "cộng đồng xé vé").
+  const [kind, setKind] = useState(null);
 
-  useEffect(() => setFromOnboarding(new URLSearchParams(window.location.search).get('from') === 'onboarding'), []);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setFromOnboarding(q.get('from') === 'onboarding');
+    if (['club', 'community'].includes(q.get('kind'))) setKind(q.get('kind'));
+  }, []);
   useEffect(() => {
     if (user?.email) setForm((f) => ({ ...f, contact_email: f.contact_email || user.email }));
   }, [user?.email]);
@@ -111,7 +137,7 @@ export default function ClubRequestPage() {
     setBusy(true);
     setErr('');
     try {
-      const r = await api.post('/api/host/club-requests', { ...form, plan_tier: tier, member_count: Number(form.member_count), avatar, cover });
+      const r = await api.post('/api/host/club-requests', { ...form, kind: kind || 'club', plan_tier: tier, member_count: Number(form.member_count), avatar, cover });
       setSent(r);
       reload();
     } catch (e) {
@@ -151,8 +177,8 @@ export default function ClubRequestPage() {
     <PlayerShell>
       <div className="mx-auto max-w-3xl">
         <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{t('creq.kicker')}</p>
-        <h1 className="text-white text-2xl font-bold mt-1">{t('creq.title')}</h1>
-        <p className="text-gray-400 text-sm mt-1 mb-4">{t('creq.intro')}</p>
+        <h1 className="text-white text-2xl font-bold mt-1">{t(kind === 'community' ? 'creq.titleCommunity' : kind === 'club' ? 'creq.title' : 'creq.titlePick')}</h1>
+        <p className="text-gray-400 text-sm mt-1 mb-4">{t(kind === 'community' ? 'creq.introCommunity' : kind === 'club' ? 'creq.intro' : 'creq.introPick')}</p>
 
         {data?.approval === false && (
           <p className="card mb-4 text-sm text-gray-300">ℹ️ {t('creq.approvalOff')} <Link href="/clubs" className="text-lime-300 underline">{t('creq.createDirect')}</Link></p>
@@ -175,6 +201,16 @@ export default function ClubRequestPage() {
         ) : (
           <>
             {fromOnboarding && <p className="rounded-xl border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sky-100 text-sm mb-4">👋 {t('creq.welcome')}</p>}
+            {!kind ? (
+              <KindChooser onPick={(k) => { setKind(k); setStep(0); }} />
+            ) : (
+            <>
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              <span className={`rounded-full border px-3 py-1 font-semibold ${kind === 'community' ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-lime-400/60 bg-lime-400/10 text-lime-100'}`}>
+                {kind === 'community' ? '🎟' : '🏟'} {t(`creq.kind_${kind}`)}
+              </span>
+              <button type="button" className="text-gray-400 text-xs underline" onClick={() => setKind(null)}>{t('creq.kindChange')}</button>
+            </div>
             <ol className="flex items-center gap-2 mb-5" aria-label={t('onb.progress')}>
               {STEPS.map((s, i) => (
                 <li key={s} className="flex-1">
@@ -278,6 +314,8 @@ export default function ClubRequestPage() {
                   <button type="button" className="btn-primary" onClick={submit} disabled={busy}>{busy ? t('common.loading') : covered ? `📨 ${t('creq.submit')}` : `💳 ${t('creq.submitPay')}`}</button>
                 </div>
               </div>
+            )}
+            </>
             )}
           </>
         )}

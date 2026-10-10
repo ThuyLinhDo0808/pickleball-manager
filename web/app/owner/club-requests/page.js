@@ -101,7 +101,7 @@ export default function OwnerClubRequestsPage() {
           <li key={r.id} className="card !p-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-white font-semibold">{r.sport === 'badminton' ? '🏸' : '🏓'} {r.name}</p>
+                <p className="text-white font-semibold">{r.sport === 'badminton' ? '🏸' : '🏓'} {r.name}{r.kind === 'community' && <span className="ml-2 text-[11px] rounded-full border border-amber-300/60 text-amber-200 px-2 py-0.5 align-middle">🎟 {t('creq.kind_community')}</span>}</p>
                 <p className="text-xs text-gray-400">
                   {fmtTime(r.created_at)} · <Link href={`/owner/hosts/${r.user_id}`} className="hover:text-white">{r.username ? `@${r.username}` : r.email}</Link>
                   {r.username && r.email ? ` · ${r.email}` : ''}

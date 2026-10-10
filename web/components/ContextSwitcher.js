@@ -17,12 +17,14 @@ const ROLE_LABEL = { owner: 'hub.roleOwner', co_admin: 'hub.roleCoAdmin', financ
 
 export default function ContextSwitcher({ compact = false, iconOnly = false, className = '' }) {
   const { t } = useI18n();
-  const { clubs, club, selectClub } = useClubs();
+  const { allClubs, club } = useClubs();
+  const clubs = allClubs.filter((c) => c.kind !== 'community');
+  const communities = allClubs.filter((c) => c.kind === 'community');
   const { workspace, staffInfo, plan } = useWorkspace();
   // Coordinator or referee: the strongest role this account holds.
   const staffRole = t(staffInfo?.role === 'coordinator' ? 'staff.coordinator' : 'staff.referee');
   const [smOpen, setSmOpen] = useState(false);
-  const { manageClub, space } = useEnter();
+  const { manageClub, space, standalone } = useEnter();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
@@ -64,8 +66,10 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   }, [open]);
 
   const current =
-    workspace === 'xeve'
-      ? { avatar: <ClubAvatar icon="🎟" size={compact ? 32 : 40} />, name: t('hub.socialManager'), role: t('hub.roleOrganizer') }
+    workspace === 'xeve' && club
+      ? { avatar: <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={compact ? 32 : 40} />, name: club.name, role: `🎟 ${t(ROLE_LABEL[club.role] || 'hub.roleOwner')}` }
+      : workspace === 'xeve'
+      ? { avatar: <ClubAvatar icon="🎟" size={compact ? 32 : 40} />, name: t('hub.oneOffKeo'), role: t('hub.roleOrganizer') }
       : workspace === 'staff'
         ? { avatar: <ClubAvatar icon="🦺" size={compact ? 32 : 40} />, name: t('hub.staff'), role: staffRole }
         : club
@@ -74,8 +78,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
 
   function pickClub(id) {
     setOpen(false);
-    if (workspace === 'club') selectClub(id);
-    else manageClub(id);
+    manageClub(id);
   }
   function pickSpace(ws) {
     setOpen(false);
@@ -124,9 +127,19 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
           style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
           className="z-50 rounded-xl border border-navy-600 bg-navy-900 shadow-2xl p-2 overflow-y-auto overflow-x-hidden"
         >
+          {communities.length > 0 && (
+            <>
+              <p className="px-2 pt-1 pb-1 text-amber-300/80 text-[11px] font-semibold uppercase tracking-wide">🎟 {t('hub.socialManager')} · {t('hub.communities')}</p>
+              {communities.map((c) => (
+                <div key={c.id}>
+                  {row(workspace === 'xeve' && club?.id === c.id, () => pickClub(c.id), <ClubAvatar id={c.id} name={c.name} sport={c.sport} size={32} />, c.name, t(ROLE_LABEL[c.role] || 'hub.roleOwner'))}
+                </div>
+              ))}
+            </>
+          )}
           {clubs.length > 0 && (
             <>
-              <p className="px-2 pt-1 pb-1 text-gray-500 text-[11px] font-semibold uppercase tracking-wide">{t('hub.managing')}</p>
+              <p className="px-2 pt-2 pb-1 text-gray-500 text-[11px] font-semibold uppercase tracking-wide">{t('hub.managing')}</p>
               {clubs.map((c) => (
                 <div key={c.id}>
                   {row(
@@ -142,8 +155,8 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
           )}
           <p className="px-2 pt-2 pb-1 text-gray-500 text-[11px] font-semibold uppercase tracking-wide">{t('hub.otherSpaces')}</p>
           {plan?.social_manager
-            ? row(workspace === 'xeve', () => pickSpace('xeve'), <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.roleOrganizer'))
-            : row(false, () => { setOpen(false); setSmOpen(true); }, <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.smSignUpShort'))}
+            ? row(workspace === 'xeve' && !club, () => { setOpen(false); standalone(); }, <ClubAvatar icon="🎟" size={32} />, t('hub.oneOffKeo'), t('hub.oneOffKeoHint'))
+            : !communities.length && row(false, () => { setOpen(false); setSmOpen(true); }, <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.smSignUpShort'))}
           {staffInfo?.is_staff && row(workspace === 'staff', () => pickSpace('staff'), <ClubAvatar icon="🦺" size={32} />, t('hub.staff'), staffRole)}
           <div className="border-t border-navy-700 mt-2 pt-2 grid gap-1">
             <Link href="/home" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-white">
@@ -153,7 +166,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
                 <span className="block text-gray-500 text-[11px]">{t('hub.backHomeHint')}</span>
               </span>
             </Link>
-            <Link href="/club-request" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-gray-300 text-left">
+            <Link href="/club-request?pick=1" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-gray-300 text-left">
               <span className="w-8 text-center" aria-hidden="true">＋</span>
               {t('hub.createClub')}
             </Link>

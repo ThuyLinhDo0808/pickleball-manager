@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { categoryLabel, describeEntry, EVENT_EXPENSE, EVENT_INCOME } from '@/lib/finance';
@@ -78,6 +79,9 @@ export default function EventFinance({ event, finance, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
+  // Social Manager (communities, one-off kèo): what is left is the kèo's profit.
+  const { workspace } = useWorkspace();
+  const netLabel = workspace === 'xeve' ? t('social.profit') : t('finance.net');
   const rows = (finance?.transactions || []).filter((r) => !r.is_voided);
   const cats = f.type === 'income' ? EVENT_INCOME : EVENT_EXPENSE;
 
@@ -126,7 +130,7 @@ export default function EventFinance({ event, finance, onChanged }) {
           ['net', finance?.net, Number(finance?.net) < 0 ? 'text-red-400' : 'text-white'],
         ].map(([k, v, tone]) => (
           <div key={k} className="card !p-3">
-            <span className="text-gray-400 text-xs">{k === 'expense' ? t('evfin.expense') : t(`finance.${k}`)}</span>
+            <span className="text-gray-400 text-xs">{k === 'expense' ? t('evfin.expense') : k === 'net' ? netLabel : t(`finance.${k}`)}</span>
             <div className={`text-lg md:text-xl font-bold tabular-nums ${tone}`}>{formatVnd(v || 0)}</div>
           </div>
         ))}

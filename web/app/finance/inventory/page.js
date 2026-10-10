@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useScope } from '@/lib/useScope';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -185,7 +186,7 @@ export default function InventoryPage() {
   const { t, lang, sport } = useI18n();
   const badminton = sport === 'badminton';
   const { workspace } = useWorkspace();
-  const isClub = workspace !== 'xeve';
+  const { scoped: isClub } = useScope();
   const { club } = useDefaultClub();
   const base = isClub ? (club ? `/api/clubs/${club.id}/inventory` : null) : '/api/inventory';
   const { data: items, loading, reload } = useLoad(() => (base ? api.get(base) : Promise.resolve([])), [base]);

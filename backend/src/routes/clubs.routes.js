@@ -174,7 +174,7 @@ router.post('/', async (req, res) => {
   }
   const { data, error } = await supabase
     .from('clubs')
-    .insert({ host_id: req.hostId, name, description: description || null, ...(sport !== 'pickleball' ? { sport } : {}) })
+    .insert({ host_id: req.hostId, name, description: description || null, ...(sport !== 'pickleball' ? { sport } : {}), ...(req.body.kind === 'community' ? { kind: 'community' } : {}) })
     .select()
     .single();
   if (error) return dbError(res, error);
@@ -989,6 +989,16 @@ router.get('/:clubId/rankings', requireFeature('rankings'), async (req, res) => 
   const { data, error } = await supabase.from(view).select('*').eq('club_id', req.club.id);
   if (error) return dbError(res, error);
   res.json(data);
+});
+
+// Social Manager overview of a community (also works for a club): members per series,
+// active / inactive, regular / irregular, money in / out / balance / still owed.
+router.get('/:clubId/community-overview', async (req, res) => {
+  try {
+    res.json(await require('../services/community').overview(req.club));
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 router.get('/:clubId/fund', async (req, res) => {

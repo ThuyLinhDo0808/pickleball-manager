@@ -14,6 +14,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useScope } from '@/lib/useScope';
 import { useClubs } from '@/context/ClubContext';
 import { clubTones, STATUS_MOD } from '@/lib/clubColors';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
@@ -79,6 +80,7 @@ function EventCard({ e }) {
           <div className="text-sky-300 text-xs mt-0.5 truncate">
             {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}
             {e.kind && <span className="text-gray-500"> · {t(`kind.${e.kind}`)}</span>}
+            {e.series_label && <span className="text-amber-200"> · 🏷 {e.series_label}</span>}
           </div>
         )}
         {e.slots != null ? (
@@ -106,7 +108,7 @@ export default function EventsPage() {
   const { club } = useDefaultClub();
   const { clubs } = useClubs();
   const { workspace } = useWorkspace();
-  const isClub = workspace === 'club';
+  const { scoped: isClub, community } = useScope();
   const clubKey = (clubs || []).map((c) => c.id).join(',');
   // Every club the Host runs (pickleball and badminton) in one calendar, each tagged with
   // its club: weekly play, games/sessions and tournaments.
@@ -133,6 +135,7 @@ export default function EventsPage() {
   // List: search + filters, then three groups (Sắp diễn ra / Đang mở / Đã xong).
   const [q, setQ] = useState('');
   const [kindF, setKindF] = useState('all');
+  const [seriesF, setSeriesF] = useState('all');
   const [groupF, setGroupF] = useState('all');
   const [showDone, setShowDone] = useState(false);
   const pickView = setView;
@@ -165,6 +168,7 @@ export default function EventsPage() {
   const listed = sorted.filter(
     (e) =>
       (kindF === 'all' || e.kind === kindF) &&
+      (seriesF === 'all' || e.series_label === seriesF) &&
       (!needle || [e.title, e.location, e.club_name].filter(Boolean).some((x) => x.toLowerCase().includes(needle)))
   );
   const groups = {
@@ -173,6 +177,7 @@ export default function EventsPage() {
     done: listed.filter((e) => isOver(e, today, nowHm)).reverse(),
   };
   const kindsPresent = [...new Set(all.map((e) => e.kind).filter(Boolean))];
+  const seriesPresent = [...new Set(all.map((e) => e.series_label).filter(Boolean))].sort();
   const kpi = useMemo(() => {
     const live = all.filter((e) => e.status !== 'cancelled');
     const games = live.filter((e) => e.kind !== 'tournament');
@@ -212,9 +217,9 @@ export default function EventsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon={isClub ? '🗓' : '🎟'}
-        title={isClub ? t('nav.schedule') : t('nav.kevents')}
-        subtitle={isClub ? (manyClubs ? t('calx.allYourClubs', { n: clubs.length }) : club?.name) : t('finX.scopeXeve')}
+        icon={isClub && !community ? '🗓' : '🎟'}
+        title={isClub && !community ? t('nav.schedule') : t('nav.kevents')}
+        subtitle={isClub ? (manyClubs ? t(community ? 'social.allCommunities' : 'calx.allYourClubs', { n: clubs.length }) : club?.name) : t('finX.scopeXeve')}
         actions={
           isClub ? (
             <>
@@ -232,7 +237,7 @@ export default function EventsPage() {
       <KpiRow cols={3}>
         <StatTile icon="📅" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
         <StatTile icon="⏭" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
-        {isClub ? (
+        {isClub && !community ? (
           <StatTile icon="🏆" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
         ) : (
           <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
@@ -256,7 +261,7 @@ export default function EventsPage() {
 
       {manyClubs && (
         <div className="flex flex-wrap gap-1.5 mb-3 text-sm" role="tablist">
-          {[{ id: 'all', name: t('cal.allClubs') }, ...clubs].map((c) => (
+          {[{ id: 'all', name: t(community ? 'social.allComm' : 'cal.allClubs') }, ...clubs].map((c) => (
             <button
               key={c.id}
               type="button"
@@ -316,6 +321,12 @@ export default function EventsPage() {
               <option value="all">{t('evlist.allKinds')}</option>
               {kindsPresent.map((k) => <option key={k} value={k}>{KIND_ICON[k] ? `${KIND_ICON[k]} ` : ''}{t(`kind.${k}`)}</option>)}
             </select>
+            {seriesPresent.length > 0 && (
+              <select className="input !w-auto text-sm" value={seriesF} onChange={(e) => setSeriesF(e.target.value)} aria-label={t('social.series')}>
+                <option value="all">{t('social.allSeries')}</option>
+                {seriesPresent.map((x) => <option key={x} value={x}>🏷 {x}</option>)}
+              </select>
+            )}
             <div className="flex flex-wrap gap-1.5" role="tablist">
               {['all', ...LIST_GROUPS].map((g) => (
                 <button key={g} type="button" role="tab" aria-selected={groupF === g} onClick={() => setGroupF(g)} className={`rounded-full border px-3 py-1 text-sm ${groupF === g ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>

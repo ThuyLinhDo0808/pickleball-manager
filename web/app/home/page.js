@@ -162,9 +162,9 @@ export default function HomeHub() {
             <SpaceTile
               key={`m${c.club_id}`}
               onClick={() => manageClub(c.club_id)}
-              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} ring="ring-2 ring-lime-400/70 ring-offset-2 ring-offset-navy-950" />}
+              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} ring={`ring-2 ${c.kind === 'community' ? 'ring-amber-300/80' : 'ring-lime-400/70'} ring-offset-2 ring-offset-navy-950`} />}
               label={c.name}
-              badge={t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}
+              badge={`${c.kind === 'community' ? '🎟 ' : ''}${t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}`}
               badgeTone={ROLE_TONE[c.role]}
             />
           ))}

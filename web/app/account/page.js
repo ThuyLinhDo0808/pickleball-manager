@@ -32,7 +32,7 @@ const SECTIONS = [
 export default function AccountPage() {
   const { t, lang } = useI18n();
   const { user, signOut } = useAuth();
-  const { clubs } = useClubs();
+  const { allClubs: clubs } = useClubs(); // clubs and communities
   const { club } = useDefaultClub();
   const { data: sub } = useLoad(() => api.get('/api/host/subscription').catch(() => null), []);
   const { data: me } = useLoad(() => api.get('/api/host/me').catch(() => null), []);

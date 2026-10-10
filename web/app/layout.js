@@ -24,12 +24,12 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           <I18nProvider>
-            <ClubProvider>
-              <WorkspaceProvider>
+            <WorkspaceProvider>
+              <ClubProvider>
                 <ViewAsBanner />
                 {children}
-              </WorkspaceProvider>
-            </ClubProvider>
+              </ClubProvider>
+            </WorkspaceProvider>
           </I18nProvider>
         </AuthProvider>
       </body>

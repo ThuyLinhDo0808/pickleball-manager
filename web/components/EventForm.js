@@ -7,6 +7,8 @@ import { KIND_ICON, STATUS_STYLE } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { todayYmd } from '@/lib/dates';
 import { mapsEmbed, mapsHref } from '@/lib/maps';
+import { useLoad } from '@/lib/useLoad';
+import { api } from '@/lib/api';
 
 export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 // open = upcoming; completed is also set automatically once the slot is over.
@@ -42,6 +44,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   map_url: '',
   cost_items: [],
   deadline_auto: true,
+  series_label: '',
 });
 
 // Registration closes when the cancel-for-free window starts: start time minus the cancel
@@ -106,6 +109,7 @@ export function formFromEvent(ev) {
     allow_public_registration: !!ev.allow_public_registration,
     allow_pay_later: ev.allow_pay_later !== false,
     services: ev.services || '',
+    series_label: ev.series_label || '',
     play_format: ev.play_format || '',
     map_url: ev.map_url || '',
     cost_items: (ev.cost_items || []).map((c) => ({ category: c.category, amount: String(c.amount), note: c.note || '' })),
@@ -164,6 +168,7 @@ export function eventPayload(f) {
     play_format: f.play_format || null,
     map_url: f.map_url.trim() || null,
     cost_items: costList(f.cost_items),
+    ...(f.series_label !== undefined ? { series_label: (f.series_label || '').trim() || null } : {}),
   };
 }
 
@@ -240,7 +245,9 @@ function CostItems({ items, onChange, sessions }) {
 // `seriesCount`: on edit, how many other upcoming sessions share this weekly schedule
 // (the Host chooses this session only, or all of them). `deadlineDate`: the day the
 // automatic deadline is counted from on a weekly schedule (its first session).
-export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null, seriesCount = 0, deadlineDate = null }) {
+// `community` + `clubId`: a Social Manager community — the kèo can belong to a series
+// (Series A, B…), picked from the community's existing ones or typed new.
+export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null, seriesCount = 0, deadlineDate = null, community = false, clubId = null }) {
   const { t, lang } = useI18n();
   const [f, setF] = useState(() => ({ apply_to: seriesCount > 0 ? 'series' : 'one', ...initial }));
   const [busy, setBusy] = useState(false);
@@ -265,6 +272,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   }
 
   const meeting = f.kind === 'meeting';
+  const { data: clubEvents } = useLoad(() => (community && clubId ? api.get(`/api/clubs/${clubId}/events`).catch(() => []) : Promise.resolve([])), [community, clubId]);
+  const seriesOptions = [...new Set((clubEvents || []).map((e) => e.series_label).filter(Boolean))].sort();
   const autoAt = autoDeadline(deadlineDate || f.event_date, f.start_time, f.cancel_deadline_hours);
   const fmtLocal = (v) => (v ? new Date(v).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—');
   const perSessionCost = costTotal(f.cost_items);
@@ -322,6 +331,19 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <input className="input" type="time" value={f.end_time} onChange={(e) => set({ end_time: e.target.value })} />
           </Field>
           <LocationField f={f} set={set} meeting={meeting} />
+          {community && !meeting && (
+            <Field label={t('social.seriesLabel')} span={2} hint={t('social.seriesHint')}>
+              <input className="input" list="series-options" maxLength={40} placeholder={t('social.seriesPh')} value={f.series_label || ''} onChange={(e) => set({ series_label: e.target.value })} />
+              <datalist id="series-options">{seriesOptions.map((o) => <option key={o} value={o} />)}</datalist>
+              {seriesOptions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {seriesOptions.map((o) => (
+                    <button key={o} type="button" onClick={() => set({ series_label: o })} className={`rounded-full border px-2.5 py-0.5 text-xs ${f.series_label === o ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300'}`}>{o}</button>
+                  ))}
+                </div>
+              )}
+            </Field>
+          )}
           {meeting && (
             <>
               <Field label={t('meeting.fee')} span={2}>
