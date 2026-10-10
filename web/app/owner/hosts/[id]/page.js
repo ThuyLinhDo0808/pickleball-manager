@@ -61,7 +61,7 @@ function PlanEditor({ host, onSaved }) {
         <label className="block">
           <span className={L}>{t('owner.field_tier')}</span>
           <select className="input text-sm" value={f.tier} onChange={set('tier')}>
-            {TIERS.map((x) => <option key={x} value={x}>{x.toUpperCase()}</option>)}
+            {TIERS.map((x) => <option key={x} value={x}>{x === 'free' ? t('owner.f_free') : x.toUpperCase()}</option>)}
           </select>
         </label>
         <label className="block">

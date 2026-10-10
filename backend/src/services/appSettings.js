@@ -6,6 +6,8 @@ const { supabase } = require('../supabase');
 const KEYS = {
   // Upgrades switch on at once, without payment (testing only).
   tier_self_serve: { env: 'ALLOW_TIER_SELF_SERVE', fallback: false, type: 'boolean' },
+  // New clubs are asked for and created only once the app owner approves them.
+  club_approval: { env: 'CLUB_APPROVAL', fallback: true, type: 'boolean' },
 };
 
 const TTL_MS = 15 * 1000;
@@ -45,5 +47,6 @@ async function set(key, value, actor) {
 }
 
 const selfServe = async () => (await get('tier_self_serve')) === true;
+const clubApproval = async () => (await get('club_approval')) !== false;
 
-module.exports = { KEYS, all, get, set, selfServe };
+module.exports = { KEYS, all, get, set, selfServe, clubApproval };

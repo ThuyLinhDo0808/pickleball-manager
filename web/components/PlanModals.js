@@ -9,8 +9,9 @@ import { formatVnd } from '@/lib/format';
 import { HIGHLIGHTS } from '@/lib/planFeatures';
 
 // Fallback before the plan has loaded; the real catalog comes from GET /api/host/plan.
-const DEFAULT_TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
-const DEFAULT_LIMITS = { free: { clubs: 1, fixed: 8, guest: 10 }, basic: { clubs: 1, fixed: 16, guest: 20 }, standard: { clubs: 2, fixed: 50, guest: 100 }, advanced: { clubs: 3, fixed: 100, guest: 200 }, pro: { clubs: null, fixed: null, guest: null } };
+// Every plan is paid ('free' only means the account has no plan).
+const DEFAULT_TIERS = ['basic', 'standard', 'advanced', 'pro'];
+const DEFAULT_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
 export const CLUB_LIMIT = Object.fromEntries(DEFAULT_TIERS.map((t) => [t, DEFAULT_LIMITS[t].clubs]));
 
 export const atClubLimit = (plan) => !!plan?.enforced && plan.club_limit != null && plan.clubs_owned >= plan.club_limit;
@@ -94,7 +95,11 @@ export function PlanPaymentBox({ payment, onCancel, busy, scroll = false }) {
   const what = payment.kind === 'tier' ? (payment.tier || '').toUpperCase() : 'Social Manager';
   return (
     <div ref={ref} className="rounded-xl border border-amber-300/40 bg-amber-300/5 p-3 scroll-mt-4">
-      <p className="text-amber-200 text-sm font-semibold">⏳ {t('plan.payTitle', { what, months: payment.months })}</p>
+      <p className="text-amber-200 text-sm font-semibold">
+        ⏳ {payment.upgrade_from
+          ? t('plan.payTitleUpgrade', { from: payment.upgrade_from.toUpperCase(), to: what, days: payment.upgrade_days })
+          : t('plan.payTitle', { what, months: payment.months })}
+      </p>
       <p className="text-gray-300 text-xs mt-1 mb-3">{t('plan.payHint')}</p>
       <div className="grid gap-3 sm:grid-cols-[180px_1fr] items-start">
         {payment.qr_url && !qrFailed && (
@@ -204,6 +209,30 @@ function Checkout({ kind, tier, req, onBack, scroll = false }) {
   );
 }
 
+// Moving up while a paid plan runs: only the difference for the days left, same end date.
+function UpgradeCheckout({ quote, req, onBack, scroll = false }) {
+  const { t } = useI18n();
+  const ref = useScrollIntoView(scroll);
+  return (
+    <div ref={ref} className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-3 scroll-mt-4">
+      <p className="text-white font-semibold text-sm">⬆️ {t('plan.upgradeTitleX', { from: quote.from.toUpperCase(), to: quote.to.toUpperCase() })}</p>
+      <ul className="text-gray-300 text-xs mt-2 space-y-1">
+        <li>📅 {t('plan.upgradeLeft', { days: quote.days, date: fmtDate(quote.until) })}</li>
+        <li>💵 {t('plan.upgradeDiff', { to: formatVnd(quote.price_to), from: formatVnd(quote.price_from), diff: formatVnd(quote.price_to - quote.price_from) })}</li>
+        <li>🧮 {t('plan.upgradeCalc', { diff: formatVnd(quote.price_to - quote.price_from), days: quote.days, amount: formatVnd(quote.amount) })}</li>
+      </ul>
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+        <span className="text-gray-300 text-sm">{t('plan.upgradePay')}: <b className="text-white text-base">{formatVnd(quote.amount)}</b></span>
+        <div className="flex gap-2 ml-auto">
+          {onBack && <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={onBack}>{t('common.cancel')}</button>}
+          <button type="button" className="btn-primary !py-1.5 text-sm" disabled={req.busy} onClick={() => req.send({ tier: quote.to })}>{t('plan.getPayment')}</button>
+        </div>
+      </div>
+      <p className="text-gray-500 text-[11px] mt-2">{t('plan.upgradeNote')}</p>
+    </div>
+  );
+}
+
 // The plans side by side: ask for a bigger one ("you need a bigger plan to run another
 // club"), or go back down to a smaller one when it still fits.
 export function UpgradeModal({ open, onClose }) {
@@ -212,7 +241,7 @@ export function UpgradeModal({ open, onClose }) {
   const req = useRequest('tier');
   const [picking, setPicking] = useState(null); // tier being paid for
   const current = plan?.tier || 'free';
-  const limited = atClubLimit(plan);
+  const limited = atClubLimit(plan) && current !== 'free';
   const paid = !plan?.self_serve; // upgrades go through a bank transfer
   const pending = plan?.pending_payments?.tier;
   const close = () => { req.reset(); setPicking(null); onClose(); };
@@ -223,11 +252,14 @@ export function UpgradeModal({ open, onClose }) {
   }
   return (
     <Modal open={open} title={`💎 ${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`} onClose={close}>
+      {plan?.no_plan && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">⚠️ {plan.clubs_owned ? t('plan.noPlanClubs') : t('plan.noPlanHint')}</p>}
+      {current !== 'free' && (
       <p className="text-gray-300 text-sm mb-3">
-        {limited
-          ? t('plan.upgradeBody', { tier: current.toUpperCase(), n: plan?.club_limit ?? '∞', owned: plan?.clubs_owned ?? 0 })
-          : t('plan.changeBody', { tier: current.toUpperCase(), owned: plan?.clubs_owned ?? 0, n: plan?.club_limit ?? '∞' })}
-      </p>
+          {limited
+            ? t('plan.upgradeBody', { tier: current.toUpperCase(), n: plan?.club_limit ?? '∞', owned: plan?.clubs_owned ?? 0 })
+            : t('plan.changeBody', { tier: current.toUpperCase(), owned: plan?.clubs_owned ?? 0, n: plan?.club_limit ?? '∞' })}
+        </p>
+      )}
       {plan?.expired_tier && <p className="text-red-300 text-sm mb-2">{t('plan.expired', { tier: plan.expired_tier.toUpperCase() })}</p>}
       {/* An order already waiting (dialog opened again): its transfer details on top. */}
       {paid && pending && !picking && req.done !== 'downgraded' && (
@@ -236,7 +268,8 @@ export function UpgradeModal({ open, onClose }) {
       <div className="grid sm:grid-cols-2 gap-2 mb-3">
         {TIERS.map((tier) => {
           const isCurrent = tier === current;
-          const higher = TIERS.indexOf(tier) > TIERS.indexOf(current);
+          const higher = TIERS.indexOf(tier) > TIERS.indexOf(current); // no plan ('free') -> every plan is "higher"
+          const quote = plan?.upgrade_quotes?.[tier] || null;
           const lim = LIMITS[tier] || {};
           const n = (v) => (v == null ? '∞' : v);
           // The plan being bought: months + total, then the transfer details, right under its card.
@@ -244,6 +277,8 @@ export function UpgradeModal({ open, onClose }) {
             <div key={`${tier}-pay`} className="sm:col-span-2">
               {req.done === 'payment' && pending ? (
                 <PlanPaymentBox scroll payment={pending} busy={req.busy} onCancel={() => { setPicking(null); req.cancel('upgrade_request'); }} />
+              ) : quote ? (
+                <UpgradeCheckout scroll quote={quote} req={req} onBack={() => setPicking(null)} />
               ) : (
                 <Checkout scroll kind="tier" tier={tier} req={req} onBack={() => setPicking(null)} />
               )}
@@ -254,7 +289,7 @@ export function UpgradeModal({ open, onClose }) {
               {tier === 'standard' && !isCurrent && <span className="absolute -top-2 right-2 rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-bold text-navy-950">{t('plan.popular')}</span>}
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-white font-bold uppercase">{tier}</span>
-                <span className="text-amber-200 text-xs font-semibold">{tier === 'free' ? t('plan.freeLabel') : plan?.prices?.[tier] != null ? t('plan.perMonth', { price: formatVnd(plan.prices[tier]) }) : ''}</span>
+                <span className="text-amber-200 text-xs font-semibold">{plan?.prices?.[tier] != null ? t('plan.perMonth', { price: formatVnd(plan.prices[tier]) }) : ''}</span>
               </div>
               <div className="text-gray-400 text-xs mt-0.5">{t(`plan.for_${tier}`)}</div>
               <ul className="text-gray-200 text-xs mt-2 space-y-0.5">
@@ -267,14 +302,18 @@ export function UpgradeModal({ open, onClose }) {
                   <>
                     <div className="text-lime-300 text-xs">✓ {plan?.trial ? t('plan.trialCurrent', { date: fmtDate(plan.trial.ends_on) }) : t('plan.current')}</div>
                     {!plan?.trial && plan?.tier_paid_until && <div className="text-gray-400 text-[11px]">{t('plan.paidUntil', { date: fmtDate(plan.tier_paid_until) })}</div>}
-                    {paid && tier !== 'free' && (
+                    {paid && (
                       <button type="button" className="btn-secondary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{plan?.trial ? t('plan.buyThis') : t('plan.renew')}</button>
                     )}
                   </>
                 ) : higher ? (
                   <button type="button" className="btn-primary !py-1 !px-2 text-xs w-full" disabled={req.busy} onClick={() => (paid ? setPicking(tier) : req.send({ tier }))}>
-                    {plan?.self_serve ? t('plan.switchTo') : t('plan.requestTo')}
+                    {plan?.self_serve ? t('plan.switchTo') : quote ? t('plan.upgradeFor', { amount: formatVnd(quote.amount) }) : current === 'free' ? t('plan.buyThis') : t('plan.requestTo')}
                   </button>
+                ) : paid && plan?.active_paid ? (
+                  <p className="text-gray-500 text-[11px] leading-snug">{t('plan.downLater', { date: fmtDate(plan.tier_paid_until) })}</p>
+                ) : paid ? (
+                  <button type="button" className="btn-secondary !py-1 !px-2 text-xs w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{t('plan.buyThis')}</button>
                 ) : lim.clubs != null && (plan?.clubs_owned ?? 0) > lim.clubs ? (
                   <p className="text-gray-500 text-[11px] leading-snug">{t('plan.downBlocked', { owned: plan?.clubs_owned ?? 0, n: lim.clubs })}</p>
                 ) : (

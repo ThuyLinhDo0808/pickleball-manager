@@ -40,7 +40,11 @@ export default function OwnerSystemPage() {
       setBusy(false);
     }
   };
-  const self = data?.settings?.tier_self_serve;
+  // Switches, safest default first: club approval (on), self-serve plans (off).
+  const SWITCHES = [
+    ['club_approval', 'bg-lime-400'],
+    ['tier_self_serve', 'bg-amber-300'],
+  ];
   return (
     <OwnerShell title={t('owner.tabSystem')}>
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
@@ -66,27 +70,31 @@ export default function OwnerSystemPage() {
 
           <section className="card !p-4">
             <h2 className="text-white font-semibold mb-1">⚙️ {t('owner.sysSettings')}</h2>
-            {self && (
-              <div className="py-2 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-gray-200 text-sm">{t('owner.set_tier_self_serve')}</div>
-                  <div className="text-gray-500 text-xs">{t('owner.set_tier_self_serve_hint')}</div>
-                  <div className="text-gray-500 text-[11px] mt-0.5">
-                    {t(`owner.src_${self.source}`)}{self.updated_by ? ` · ${self.updated_by} · ${fmtTime(self.updated_at)}` : ''}
+            {SWITCHES.map(([key, tone]) => {
+              const sw = data.settings?.[key];
+              if (!sw) return null;
+              return (
+                <div key={key} className="py-2 flex items-start justify-between gap-3 border-b border-navy-700 last:border-0">
+                  <div className="min-w-0">
+                    <div className="text-gray-200 text-sm">{t(`owner.set_${key}`)}</div>
+                    <div className="text-gray-500 text-xs">{t(`owner.set_${key}_hint`)}</div>
+                    <div className="text-gray-500 text-[11px] mt-0.5">
+                      {t(`owner.src_${sw.source}`)}{sw.updated_by ? ` · ${sw.updated_by} · ${fmtTime(sw.updated_at)}` : ''}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={sw.value === true}
+                    aria-label={t(`owner.set_${key}`)}
+                    onClick={() => setConfirm({ key, value: sw.value !== true })}
+                    className={`shrink-0 w-11 h-6 rounded-full relative transition ${sw.value ? tone : 'bg-navy-600'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${sw.value ? 'left-[22px]' : 'left-0.5'}`} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={self.value === true}
-                  aria-label={t('owner.set_tier_self_serve')}
-                  onClick={() => setConfirm({ key: 'tier_self_serve', value: self.value !== true })}
-                  className={`shrink-0 w-11 h-6 rounded-full relative transition ${self.value ? 'bg-amber-300' : 'bg-navy-600'}`}
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${self.value ? 'left-[22px]' : 'left-0.5'}`} />
-                </button>
-              </div>
-            )}
+              );
+            })}
 
             <h2 className="text-white font-semibold mt-4 mb-1">🗄 {t('owner.sysMigrations')}</h2>
             <p className={`text-sm mb-2 ${data.migrations.ok ? 'text-lime-300' : 'text-amber-200'}`}>
@@ -104,8 +112,17 @@ export default function OwnerSystemPage() {
       <Modal open={!!confirm} title={t('owner.confirmSetting')} onClose={() => setConfirm(null)}>
         {confirm && (
           <>
-            <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.selfServeOnQ' : 'owner.selfServeOffQ')}</p>
-            {confirm.value && <p className="text-amber-200 text-xs mb-3">⚠️ {t('owner.selfServeWarn')}</p>}
+            {confirm.key === 'club_approval' ? (
+              <>
+                <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.approvalOnQ' : 'owner.approvalOffQ')}</p>
+                {!confirm.value && <p className="text-amber-200 text-xs mb-3">⚠️ {t('owner.approvalWarn')}</p>}
+              </>
+            ) : (
+              <>
+                <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.selfServeOnQ' : 'owner.selfServeOffQ')}</p>
+                {confirm.value && <p className="text-amber-200 text-xs mb-3">⚠️ {t('owner.selfServeWarn')}</p>}
+              </>
+            )}
             {confirm.error && <p className="text-red-300 text-sm mb-2">{confirm.error}</p>}
             <div className="flex gap-2 justify-end">
               <button type="button" className="btn-secondary text-sm" onClick={() => setConfirm(null)}>{t('common.cancel')}</button>

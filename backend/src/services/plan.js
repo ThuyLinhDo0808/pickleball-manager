@@ -66,6 +66,12 @@ async function getPlan(hostId, { fresh = false } = {}) {
     // Before the plans-v2 migration features are not locked (old databases keep working).
     features_enforced: ready && ready2,
     tier,
+    // No plan (never bought one, or it ran out): clubs stay, nothing can be added.
+    no_plan: tier === 'free',
+    // Paying for a plan right now (not a trial): higher plans are upgrades for the days
+    // left (quotes below), lower ones wait until it ends.
+    active_paid: billing.activePaid(live, today),
+    upgrade_quotes: Object.fromEntries(PF.PAID_TIERS.map((t) => [t, billing.upgradeQuote(live, t, today)]).filter(([, q]) => q)),
     club_limit: CLUB_LIMIT[tier] ?? null,
     clubs_owned: count || 0,
     limits: PF.LIMITS[tier],
@@ -98,6 +104,8 @@ const locked = (message, code, extra = {}) => Object.assign(new Error(message), 
 // Throws { status: 402, code } when the Host can't add another club / run Xé Vé.
 async function assertCanCreateClub(hostId) {
   const p = await getPlan(hostId, { fresh: true });
+  // A first club with no plan yet is fine: owning it starts the one free trial.
+  if (p.tier === 'free' && !p.trial_used && p.clubs_owned === 0) return;
   if (p.enforced && p.club_limit != null && p.clubs_owned >= p.club_limit) {
     throw locked(`Your ${p.tier} plan allows ${p.club_limit} club(s). Upgrade to add another.`, 'club_limit', { plan: p });
   }

@@ -4,7 +4,7 @@ const { dbError } = require('../utils/respond');
 const { getUsage } = require('../middleware/checkCapacity');
 const { forgetHost } = require('../middleware/auth');
 const { getPlan, forgetPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY } = require('../services/plan');
-const { LIMITS } = require('../services/planFeatures');
+const { LIMITS, PAID_TIERS } = require('../services/planFeatures');
 
 const { notifyFeedback } = require('../services/feedback');
 const { postWebhook, promotedText, emailReady } = require('../services/notify');
@@ -65,6 +65,45 @@ router.patch('/subscription', async (req, res) => {
   res.json(data);
 });
 
+// ---- Club requests: a new club is asked for and created when the app owner approves it.
+const clubRequests = require('../services/clubRequests');
+const requestsReady = async (res) => {
+  if (await clubRequests.ready()) return true;
+  res.status(409).json({ error: `Run migration ${clubRequests.MIGRATION} first.`, code: 'migration_required' });
+  return false;
+};
+
+router.get('/club-requests', async (req, res) => {
+  try {
+    if (!(await requestsReady(res))) return;
+    res.json({ items: await clubRequests.mine(req.hostId), approval: await appSettings.clubApproval() });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+router.post('/club-requests', async (req, res) => {
+  try {
+    if (!(await requestsReady(res))) return;
+    const r = await clubRequests.create(req.hostId, req.body);
+    await notifyFeedback({ message: `[CLB mới] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}) — vào Trang Owner → Yêu cầu tạo CLB để duyệt.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
+    res.status(201).json(r);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
+router.post('/club-requests/:id/cancel', async (req, res) => {
+  try {
+    if (!(await requestsReady(res))) return;
+    res.json(await clubRequests.cancel(req.hostId, req.params.id));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
 // The Host's plan: tier, club limit and usage, Social Manager add-on.
 router.get('/plan', async (req, res) => {
   try {
@@ -84,17 +123,19 @@ router.post('/plan/request', async (req, res) => {
   const kind = req.body.kind;
   if (!['social_manager', 'tier'].includes(kind)) return res.status(400).json({ error: 'kind must be social_manager or tier.' });
   const tier = req.body.tier;
-  if (kind === 'tier' && !PLAN_TIERS.includes(tier)) return res.status(400).json({ error: `tier must be one of ${PLAN_TIERS.join(', ')}` });
+  // Every plan is paid; there is no Free plan to ask for.
+  if (kind === 'tier' && !PAID_TIERS.includes(tier)) return res.status(400).json({ error: `tier must be one of ${PAID_TIERS.join(', ')}` });
   try {
     if (!(await plansReady())) return res.status(409).json({ error: 'Run migration 20261018090000_social_manager_plans.sql first.' });
     const now = new Date().toISOString();
-    // Going down a plan needs no payment: it applies at once, if what the Host runs
-    // still fits the smaller plan.
+    // With self-serve (testing) going down a plan applies at once, if what the Host runs
+    // still fits the smaller plan. When paying, a lower plan waits for the current one
+    // to end (billing.createOrder says so).
     if (kind === 'tier') {
       const current = await getPlan(req.hostId);
       // Same plan again = paying to extend it (not with self-serve, where it is free).
-      if (tier === current.tier && (ALLOW_SELF_SERVE || tier === 'free')) return res.status(400).json({ error: 'This is already your plan.', code: 'same_tier' });
-      if (PLAN_TIERS.indexOf(tier) < PLAN_TIERS.indexOf(current.tier)) {
+      if (tier === current.tier && ALLOW_SELF_SERVE) return res.status(400).json({ error: 'This is already your plan.', code: 'same_tier' });
+      if (ALLOW_SELF_SERVE && PLAN_TIERS.indexOf(tier) < PLAN_TIERS.indexOf(current.tier)) {
         const limit = CLUB_LIMIT[tier];
         if (limit != null && current.clubs_owned > limit) {
           return res.status(409).json({ error: `The ${tier} plan allows ${limit} club(s); you own ${current.clubs_owned}. Delete clubs first.`, code: 'too_many_clubs', limit, owned: current.clubs_owned });
@@ -132,8 +173,8 @@ router.post('/plan/request', async (req, res) => {
     const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', req.hostId);
     if (error) throw error;
     if (!ALLOW_SELF_SERVE) {
-      const what = kind === 'social_manager' ? 'Đăng ký Social Manager (Xé Vé)' : `Nâng cấp gói lên ${tier}`;
-      const money = `${payment.months} tháng · ${payment.amount.toLocaleString('vi-VN')}đ${payment.discount_amount ? ` (mã ${payment.promo_code}, giảm ${payment.discount_amount.toLocaleString('vi-VN')}đ)` : ''} · nội dung CK ${payment.ref}`;
+      const what = kind === 'social_manager' ? 'Đăng ký Social Manager (Xé Vé)' : payment.upgrade_from ? `Nâng cấp ${payment.upgrade_from} → ${tier} cho ${payment.upgrade_days} ngày còn lại` : `Mua gói ${tier}`;
+      const money = `${payment.upgrade_from ? 'phần chênh lệch' : `${payment.months} tháng`} · ${payment.amount.toLocaleString('vi-VN')}đ${payment.discount_amount ? ` (mã ${payment.promo_code}, giảm ${payment.discount_amount.toLocaleString('vi-VN')}đ)` : ''} · nội dung CK ${payment.ref}`;
       await notifyFeedback({ message: `[Yêu cầu gói] ${what} — ${money}. Khi nhận được tiền, vào trang Quản trị → Thanh toán gói để xác nhận.`, contact: req.hostEmail, page: '/admin/payments', userEmail: req.hostEmail }).catch(() => {});
     }
     res.json({ applied: ALLOW_SELF_SERVE, payment, plan: await getPlan(req.hostId, { fresh: true }) });

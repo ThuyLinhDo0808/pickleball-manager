@@ -527,6 +527,41 @@ router.get('/activity/xeve', wrap(async (req, res) => {
   res.json({ total: rows.length, page: pg.page, pages: pg.pages, rows: rows.slice(pg.from, pg.to), today: { games: todayRows.length, players: todayRows.reduce((n, e) => n + Number(e.main_count || 0), 0) } });
 }));
 
+// ---- Club requests: approve (the club is created) or reject ---------------------------
+
+const clubRequests = require('../services/clubRequests');
+const REQUEST_STATUSES = ['pending', 'approved', 'rejected', 'cancelled', 'all'];
+const requestsGuard = async () => {
+  if (!(await clubRequests.ready())) throw fail(409, `Run migration ${clubRequests.MIGRATION} first.`, 'migration_required');
+};
+
+router.get('/club-requests', wrap(async (req, res) => {
+  await requestsGuard();
+  const status = REQUEST_STATUSES.includes(req.query.status) ? req.query.status : 'pending';
+  res.json(await clubRequests.list({ status, page: Math.max(1, parseInt(req.query.page, 10) || 1) }));
+}));
+
+router.get('/club-requests/:id', wrap(async (req, res) => {
+  await requestsGuard();
+  if (!isUuid(req.params.id)) throw fail(404, 'Request not found.');
+  res.json(await clubRequests.detail(req.params.id));
+}));
+
+router.post('/club-requests/:id/:decision(approve|reject)', wrap(async (req, res) => {
+  await requestsGuard();
+  if (!isUuid(req.params.id)) throw fail(404, 'Request not found.');
+  const decision = req.params.decision;
+  const out = await clubRequests.decide(req.params.id, decision, { actor: req.hostEmail, note: req.body?.note });
+  const { data: r } = await supabase.from('club_requests').select('user_id, name, users(email)').eq('id', req.params.id).single();
+  await owner.audit(req, {
+    action: decision === 'approve' ? 'club_request.approve' : 'club_request.reject',
+    host: r ? { id: r.user_id, email: r.users?.email || null } : null,
+    newValue: { status: out.request.status, club_id: out.club?.id || null },
+    note: [r?.name, req.body?.note].filter(Boolean).join(' — ') || null,
+  });
+  res.json(out);
+}));
+
 // ---- Feedback inbox -----------------------------------------------------------------
 
 const FEEDBACK_STATUSES = ['new', 'in_progress', 'closed'];

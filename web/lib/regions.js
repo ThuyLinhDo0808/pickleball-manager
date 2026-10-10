@@ -37,3 +37,8 @@ export const REGIONS = [
   'Vĩnh Long',
 ];
 export const ABROAD = 'Nước ngoài';
+
+// Countries for a club's profile and the club search (Vietnam first; free text for others).
+export const VIETNAM = 'Việt Nam';
+export const COUNTRIES = [VIETNAM, 'Singapore', 'Thái Lan', 'Malaysia', 'Campuchia', 'Lào', 'Indonesia', 'Philippines', 'Hàn Quốc', 'Nhật Bản', 'Đài Loan', 'Trung Quốc', 'Úc', 'Hoa Kỳ', 'Canada'];
+export const PROVINCES = REGIONS.filter((r) => r !== ABROAD);

@@ -155,6 +155,11 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+  // New clubs go through a request the app owner approves (POST /api/host/club-requests),
+  // so nobody can open a club to scam players. The owner can switch this off.
+  if (await require('../services/appSettings').clubApproval()) {
+    return res.status(403).json({ error: 'New clubs are created by sending a club request for approval.', code: 'club_request_required' });
+  }
   const { name, description } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required.' });
   // The sport is picked once, when the club is created.
@@ -215,6 +220,28 @@ function cleanFundCalc(v) {
 
 router.patch('/:clubId', async (req, res) => {
   const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc']);
+  // The club's profile in the club search (where, when, how big, listed or not).
+  const PROFILE = ['country', 'province', 'district', 'address', 'schedule', 'contact_email', 'member_count', 'is_listed'];
+  if (PROFILE.some((k) => k in (req.body || {}))) {
+    const CR = require('../services/clubRequests');
+    if (!(await CR.ready())) return res.status(409).json({ error: `Run migration ${CR.MIGRATION} first.` });
+    try {
+      const p = CR.cleanProfile(req.body, { partial: true });
+      delete p.description;
+      if ('member_count' in p) {
+        p.member_count_hint = p.member_count;
+        delete p.member_count;
+      }
+      Object.assign(fields, p);
+      if ('is_listed' in req.body) fields.is_listed = !!req.body.is_listed;
+    } catch (err) {
+      return res.status(err.status || 400).json({ error: err.message, code: err.code });
+    }
+  }
+  if ('name' in fields) {
+    fields.name = String(fields.name ?? '').trim().slice(0, 80);
+    if (!fields.name) return res.status(400).json({ error: 'name is required.' });
+  }
   if ('fund_calc' in fields) {
     try {
       fields.fund_calc = cleanFundCalc(fields.fund_calc);
@@ -248,6 +275,31 @@ router.patch('/:clubId', async (req, res) => {
     .single();
   if (error) return dbError(res, error);
   res.json(data);
+});
+
+// The club's avatar / cover picture (small data URLs; null removes one). Shown in the
+// club search and on the club's page.
+router.put('/:clubId/images', ownerOnly, async (req, res) => {
+  const CR = require('../services/clubRequests');
+  try {
+    if (!(await CR.ready())) return res.status(409).json({ error: `Run migration ${CR.MIGRATION} first.` });
+    const patch = {};
+    if ('avatar' in req.body) patch.avatar = CR.cleanImage(req.body.avatar, CR.MAX_AVATAR, 'The avatar');
+    if ('cover' in req.body) patch.cover = CR.cleanImage(req.body.cover, CR.MAX_COVER, 'The cover picture');
+    if (!Object.keys(patch).length) return res.status(400).json({ error: 'Send avatar and/or cover.' });
+    const { error } = await supabase.from('club_images').upsert({ club_id: req.club.id, ...patch, updated_at: new Date().toISOString() }, { onConflict: 'club_id' });
+    if (error) throw error;
+    const bump = (k) => (patch[k] ? (Number(req.club[`${k}_version`]) || 0) + 1 : null);
+    const versions = {};
+    if ('avatar' in patch) versions.avatar_version = bump('avatar');
+    if ('cover' in patch) versions.cover_version = bump('cover');
+    const { data, error: uErr } = await supabase.from('clubs').update(versions).eq('id', req.club.id).select().single();
+    if (uErr) throw uErr;
+    res.json(data);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
 });
 
 // What deleting the club would remove (shown to the Host before they confirm).
@@ -494,10 +546,11 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
 // event page, and guests who asked to join the fixed team in the after-session survey.
 router.get('/:clubId/member-requests', async (req, res) => {
   const ready = await guestsReady();
+  const v3 = await require('../services/clubRequests').ready();
   const { data, error } = await supabase
     .from('club_members')
     .select(
-      `id, full_name, phone, gender, birth_year, birth_date, dupr_level, member_type, join_requested, account_verified, user_id, created_at, users(email)${ready ? ', join_requested_at, join_note' : ''}`
+      `id, full_name, phone, gender, birth_year, birth_date, dupr_level, member_type, join_requested, account_verified, user_id, created_at, users(email)${ready ? ', join_requested_at, join_note' : ''}${v3 ? ', join_source' : ''}`
     )
     .eq('club_id', req.club.id)
     .or('and(account_verified.eq.false,user_id.not.is.null),join_requested.eq.true')
@@ -509,8 +562,9 @@ router.get('/:clubId/member-requests', async (req, res) => {
   res.json(
     data.map(({ users, ...m }) => {
       const p = (profiles || []).find((x) => x.user_id === m.user_id);
-      // survey = guest asked in the after-session survey; request = "I'm a member" with no match; link = phone matched
-      const source = m.join_requested_at ? 'survey' : m.join_requested ? 'request' : 'link';
+      // search = asked from the club search; survey = guest asked in the after-session survey;
+      // request = "I'm a member" with no match; link = phone matched
+      const source = m.join_source === 'search' ? 'search' : m.join_requested_at ? 'survey' : m.join_requested ? 'request' : 'link';
       return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null };
     })
   );
@@ -550,6 +604,15 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
 // Not our member: a new join request is removed; a link to an existing member is undone.
 router.post('/:clubId/members/:memberId/reject', async (req, res) => {
   const m = req.member;
+  // Asked from the club search and never played here: the record made for the request goes.
+  if (m.join_requested && m.join_source === 'search' && m.member_type === 'guest') {
+    const { count } = await supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('guest_member_id', m.id);
+    if (!count) {
+      const { error } = await supabase.from('club_members').delete().eq('id', m.id);
+      if (error) return dbError(res, error);
+      return res.json({ removed: true });
+    }
+  }
   // A guest who asked to join the fixed team stays a guest; only the request goes.
   if (m.join_requested && m.member_type === 'guest') {
     const { error } = await supabase.from('club_members').update({ join_requested: false }).eq('id', m.id);

@@ -3,14 +3,19 @@
 //
 // Plans are bought per account (the Host): one plan covers all of the Host's clubs.
 // Member limits apply to each club; `clubs` is how many clubs the account may own.
+//
+// Every plan is paid. 'free' is only the state of an account without a plan (never
+// bought one, or its plan ran out): its clubs and data stay, but no club or member can
+// be added until it pays again.
 
 const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
+const PAID_TIERS = TIERS.slice(1);
 
 // null = unlimited. fixed = official members, guest = "giao lưu" members (per club).
 // Plans differ mostly in features; the club count is generous. A club that needs more
 // members than its plan allows gets extra places from the app owner (clubs.extra_*).
 const LIMITS = {
-  free: { clubs: 1, fixed: 8, guest: 10 },
+  free: { clubs: 0, fixed: 0, guest: 0 }, // no plan
   basic: { clubs: 3, fixed: 16, guest: 20 },
   standard: { clubs: 5, fixed: 50, guest: 100 },
   advanced: { clubs: 10, fixed: 100, guest: 200 },
@@ -53,15 +58,15 @@ const ROLE_SEATS = {
   pro: { finance: null, operator: null },
 };
 
-// Plan a brand-new account tries for free, and for how long.
-const TRIAL = { tier: 'standard', days: 14 };
+// Plan a new club owner tries for free once (starts when their first club is approved).
+const TRIAL = { tier: 'basic', days: 7 };
 
 const rank = (tier) => Math.max(0, TIERS.indexOf(tier));
 const has = (tier, feature) => !FEATURES[feature] || rank(tier) >= rank(FEATURES[feature]);
 const featuresOf = (tier) => Object.fromEntries(Object.keys(FEATURES).map((f) => [f, has(tier, f)]));
 
 function catalog(prices = PRICES) {
-  return { tiers: TIERS, limits: LIMITS, prices, features: FEATURES, role_seats: ROLE_SEATS, trial: TRIAL };
+  return { tiers: PAID_TIERS, limits: LIMITS, prices, features: FEATURES, role_seats: ROLE_SEATS, trial: TRIAL };
 }
 
-module.exports = { TIERS, LIMITS, PRICES, FEATURES, ROLE_SEATS, TRIAL, rank, has, featuresOf, catalog };
+module.exports = { TIERS, PAID_TIERS, LIMITS, PRICES, FEATURES, ROLE_SEATS, TRIAL, rank, has, featuresOf, catalog };

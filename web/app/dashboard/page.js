@@ -116,7 +116,7 @@ export default function DashboardPage() {
   const free = (e) => (e.slots ? Math.max(0, e.slots - (e.main_count || 0)) : null);
   const birthdays = all.filter((m) => isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
   const usage = me?.usage;
-  const name = me?.full_name || user?.email?.split('@')[0] || '';
+  const name = me?.username || me?.full_name || user?.email?.split('@')[0] || '';
   const todos = [
     // The nearest session: how full it is, and how many guests to find.
     next && next.slots

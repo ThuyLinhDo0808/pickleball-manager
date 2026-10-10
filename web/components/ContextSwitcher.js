@@ -6,7 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useEnter } from '@/lib/useEnter';
-import { SocialManagerModal, UpgradeModal, atClubLimit } from '@/components/PlanModals';
+import { SocialManagerModal } from '@/components/PlanModals';
 
 // "Where am I": the club (or Xé Vé / staff space) the manager pages work on, with the
 // role, and a menu to jump to another space this account manages — or back to the home
@@ -22,7 +22,6 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   // Coordinator or referee: the strongest role this account holds.
   const staffRole = t(staffInfo?.role === 'coordinator' ? 'staff.coordinator' : 'staff.referee');
   const [smOpen, setSmOpen] = useState(false);
-  const [upOpen, setUpOpen] = useState(false);
   const { manageClub, space } = useEnter();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
@@ -154,15 +153,14 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
                 <span className="block text-gray-500 text-[11px]">{t('hub.backHomeHint')}</span>
               </span>
             </Link>
-            <button type="button" onClick={() => { setOpen(false); if (atClubLimit(plan)) setUpOpen(true); else space('club', '/clubs'); }} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-gray-300 text-left">
+            <Link href="/club-request" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-gray-300 text-left">
               <span className="w-8 text-center" aria-hidden="true">＋</span>
               {t('hub.createClub')}
-            </button>
+            </Link>
           </div>
         </div>
       )}
       <SocialManagerModal open={smOpen} onClose={() => setSmOpen(false)} />
-      <UpgradeModal open={upOpen} onClose={() => setUpOpen(false)} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 const TABS = [
   ['/owner', 'owner.tabOverview', '📊', 'stats'],
   ['/owner/hosts', 'owner.tabHosts', '👥', 'hosts'],
+  ['/owner/club-requests', 'owner.tabClubRequests', '🏟', 'hosts'],
   ['/owner/payments', 'owner.tabPayments', '💳', 'payments'],
   ['/owner/promos', 'owner.tabPromos', '🎟', 'promos'],
   ['/owner/activity', 'owner.tabActivity', '🏓', 'hosts'],

@@ -47,6 +47,9 @@ const PROBES = [
   { table: 'duty_shift_people', column: 'email', migration: '20261101090000_pro_club_tools.sql' },
   { table: 'support_staff', column: 'permissions', migration: '20261102090000_support_staff_drop_telegram.sql' },
   { table: 'users', column: 'username', migration: '20261103090000_username_signup.sql' },
+  { table: 'club_requests', column: 'plan_tier', migration: '20261104090000_club_requests_discovery.sql' },
+  { table: 'clubs', column: 'is_listed', migration: '20261104090000_club_requests_discovery.sql' },
+  { table: 'users', column: 'onboarded_at', migration: '20261104090000_club_requests_discovery.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

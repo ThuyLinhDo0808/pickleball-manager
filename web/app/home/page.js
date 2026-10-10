@@ -1,9 +1,10 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
 import ClubAvatar from '@/components/ClubAvatar';
-import { SocialManagerModal, UpgradeModal, atClubLimit } from '@/components/PlanModals';
+import { SocialManagerModal } from '@/components/PlanModals';
 import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
@@ -57,7 +58,12 @@ export default function HomeHub() {
   const { manageClub, space, memberClub } = useEnter();
   const { data, loading } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
-  const [upgrading, setUpgrading] = useState(false);
+  const [query, setQuery] = useState('');
+  const router = useRouter();
+  // New accounts first say which sports they play and whether they run a club.
+  useEffect(() => {
+    if (data && data.onboarded === false) router.replace('/onboarding');
+  }, [data, router]);
   const [smOpen, setSmOpen] = useState(false);
 
   const days = useMemo(() => {
@@ -74,7 +80,9 @@ export default function HomeHub() {
   if (loading && !data) return <PlayerShell><p className="text-gray-400">{t('common.loading')}</p></PlayerShell>;
   if (!data) return <PlayerShell><p className="text-gray-400">{t('public.loadError')}</p></PlayerShell>;
 
-  const name = data.profile?.full_name || data.email;
+  // People are called by their username when they have one (never by their email).
+  const name = data.username || data.profile?.full_name || String(data.email || '').split('@')[0];
+  const cr = data.club_request;
   const managed = data.managed_clubs;
   const member = data.member_clubs;
   const isStaff = !!staffInfo?.is_staff;
@@ -105,6 +113,31 @@ export default function HomeHub() {
       {(!data.profile || !data.profile.birth_date) && (
         <Link href="/p/profile" className="card block mb-4 border-lime-400/50 text-lime-300 text-sm">
           {data.profile ? t('player.needBirthDate') : t('player.completeProfile')}
+        </Link>
+      )}
+
+      {/* Find a club: by name, place or area -> /discover */}
+      <form
+        onSubmit={(e) => { e.preventDefault(); router.push(`/discover${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`); }}
+        className="card !p-3 mb-4 flex items-center gap-2"
+        role="search"
+      >
+        <span className="text-xl" aria-hidden="true">🔍</span>
+        <input
+          className="input !py-2 flex-1 min-w-0"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('disc.homePh')}
+          aria-label={t('disc.homeTitle')}
+        />
+        <button className="btn-primary !py-2 shrink-0">{t('disc.search')}</button>
+      </form>
+
+      {cr && (cr.status === 'pending' || (cr.status !== 'cancelled' && cr.decided_at && Date.now() - Date.parse(cr.decided_at) < 14 * 86400000)) && (
+        <Link href="/club-request" className={`card block mb-4 text-sm ${cr.status === 'approved' ? 'border-lime-400/50' : cr.status === 'rejected' ? 'border-red-400/50' : 'border-amber-300/50'}`}>
+          <span className="font-semibold text-white">🏟 {cr.name}</span>
+          <span className="text-gray-300"> · {t(`creq.status_${cr.status}`)}</span>
+          <span className="block text-gray-400 text-xs mt-0.5">{t(`creq.homeHint_${cr.status}`)}</span>
         </Link>
       )}
 
@@ -144,14 +177,16 @@ export default function HomeHub() {
             />
           ))}
           <SpaceTile
-            onClick={() => (atClubLimit(plan) ? setUpgrading(true) : space('club', '/clubs'))}
+            href="/club-request"
             avatar={<ClubAvatar icon="＋" />}
             label={t('hub.createClub')}
-            badge={atClubLimit(plan) ? '💎 ' + t('hub.upgrade') : null}
-            badgeTone="bg-amber-300/20 text-amber-200"
           />
         </div>
-        {!hasAnything && <p className="card text-gray-300 text-sm mt-2">{t('hub.emptySpaces')}</p>}
+        {!hasAnything && (
+          <p className="card text-gray-300 text-sm mt-2">
+            {t('hub.emptySpaces')} <Link href="/discover" className="text-lime-300 underline">{t('disc.findLink')}</Link>
+          </p>
+        )}
         {/* Hosts: Social Manager (xé vé) is a paid add-on — enter it, or see what it offers and sign up. */}
         {managed.some((c) => c.role === 'owner') && (
           <button
@@ -263,7 +298,6 @@ export default function HomeHub() {
       </section>
 
       <SocialManagerModal open={smOpen} onClose={() => setSmOpen(false)} />
-      <UpgradeModal open={upgrading} onClose={() => setUpgrading(false)} />
     </PlayerShell>
   );
 }
