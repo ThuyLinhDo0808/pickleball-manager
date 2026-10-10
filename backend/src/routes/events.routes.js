@@ -13,6 +13,7 @@ const {
   waiveLateCancel,
   promoteParticipant,
   checkInByCode,
+  setPlace,
 } = require('../services/attendance');
 const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
@@ -46,6 +47,15 @@ const PUBLIC_EVENT_FIELDS = [
   'cancel_deadline_hours', 'kind', 'services', 'play_format', 'map_url',
 ];
 
+// Short links: /e/<8 characters> stands for the event's full public token.
+router.param('publicToken', async (req, res, next, token) => {
+  if (isUuid(token) || !/^[0-9a-z]{6,12}$/i.test(token || '')) return next();
+  const { data, error } = await supabase.from('events').select('public_token').eq('short_code', token.toLowerCase()).maybeSingle();
+  if (error) return dbError(res, error);
+  if (data) req.params.publicToken = data.public_token;
+  next();
+});
+
 router.get('/public/:publicToken', async (req, res) => {
   if (!isUuid(req.params.publicToken)) return notFound(res, 'Event');
   const { data: event, error } = await supabase
@@ -64,9 +74,10 @@ router.get('/public/:publicToken', async (req, res) => {
 
   const { data: people, error: pErr } = await supabase
     .from('event_participants')
-    .select('full_name, dupr_level, status, joined_at')
+    .select('full_name, dupr_level, status, joined_at, is_organizer')
     .eq('event_id', event.id)
-    .not('status', 'in', '(cancelled,no_show)') // (works on databases that don't know 'pending' yet)
+    // Players with a place or on the waitlist (not requests waiting for the Host, nor organizers who don't play).
+    .not('status', 'in', '(cancelled,no_show,requested,not_playing)')
     .order('joined_at', { ascending: true });
   if (pErr) return dbError(res, pErr);
 
@@ -83,6 +94,7 @@ router.get('/public/:publicToken', async (req, res) => {
     registration_open: !closedCode,
     closed_code: closedCode,
     participants: people.map(({ joined_at, ...p }) => p),
+    public_token: event.public_token,
   });
 });
 
@@ -221,6 +233,8 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
         state: standing.state, // 'verified' | 'pending' | 'guest' | 'none'
         is_club_event: !!event.club_id,
         has_pass: !!standing.pass,
+        // the Host checks this player before they get a place (and pay)
+        needs_approval: signup.needsApproval(event, standing),
         sessions_remaining: standing.pass ? (standing.pass.sessions_included === 0 ? null : standing.pass.sessions_remaining) : null,
       },
       registration: await signup.registrationView(event, participant),
@@ -325,6 +339,7 @@ function cleanEventFields(fields) {
     if (v && (v.length > 500 || !/^https:\/\/\S+$/i.test(v))) return 'map_url must be an https link (Google Maps).';
     fields.map_url = v || null;
   }
+  if ('auto_approve' in fields) fields.auto_approve = fields.auto_approve === true || fields.auto_approve === 'true';
   if ('cost_items' in fields) {
     const { items, error } = cleanCostItems(fields.cost_items);
     if (error) return error;
@@ -335,7 +350,7 @@ function cleanEventFields(fields) {
 const PLAY_FORMATS = ['men', 'women', 'mixed', 'open'];
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
-  'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
+  'auto_approve', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'allow_public_registration', 'cost_items',
 ];
 
@@ -402,7 +417,7 @@ router.post('/', async (req, res) => {
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -457,7 +472,10 @@ router.post('/', async (req, res) => {
 // With `series_upcoming`: how many other sessions of the same weekly schedule an edit can
 // also change ("Áp dụng cho tất cả các buổi").
 router.get('/:eventId', async (req, res) => {
-  if (!req.event.series_id) return res.json(req.event);
+  // The Host is always shown among the organizers ("Người tổ chức"), playing or not.
+  const host = await hostPerson(req.event.host_id).catch(() => null);
+  const base = { ...req.event, host_name: host?.full_name || null };
+  if (!req.event.series_id) return res.json(base);
   const { count, error } = await supabase
     .from('events')
     .select('id', { count: 'exact', head: true })
@@ -466,7 +484,7 @@ router.get('/:eventId', async (req, res) => {
     .gte('event_date', todayYmd())
     .not('status', 'in', '(completed,cancelled)');
   if (error) return dbError(res, error);
-  res.json({ ...req.event, series_upcoming: count || 0 });
+  res.json({ ...base, series_upcoming: count || 0 });
 });
 
 // ---- Meeting money (kind = 'meeting') ---------------------------------------------
@@ -646,7 +664,7 @@ router.patch('/:eventId', async (req, res) => {
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -712,7 +730,8 @@ async function applyToSeries(ev, fields) {
 // Otherwise money records alone also need ?force=1.
 router.delete('/:eventId', async (req, res) => {
   const [{ count: people }, { count: money }, { count: matches }] = await Promise.all([
-    supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).neq('status', 'cancelled'),
+    // (organizers who don't play, e.g. the Host's own row, are not sign-ups)
+    supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).not('status', 'in', '(cancelled,not_playing)'),
     // (the session's own costs from the form don't count: they go with it)
     supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false).eq('event_cost', false),
     supabase.from('matches').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id),
@@ -926,7 +945,62 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
   res.status(201).json(data);
 });
 
-// Actions: check-in / no-show / reset / promote / cancel / waive / fee
+async function hostPerson(hostId) {
+  const [{ data: prof }, { data: user }] = await Promise.all([
+    supabase.from('player_profiles').select('full_name, phone').eq('user_id', hostId).maybeSingle(),
+    supabase.from('users').select('full_name, username, email').eq('id', hostId).maybeSingle(),
+  ]);
+  return { full_name: prof?.full_name || user?.full_name || user?.username || (user?.email || 'Host').split('@')[0], phone: prof?.phone || null };
+}
+
+// The Host plays (main list), may play (waitlist) or only organizes. Their row on the
+// list is made the first time they choose to play; their place never costs a fee.
+router.post('/:eventId/host-play', async (req, res) => {
+  const to = req.body?.to;
+  if (!['main', 'waitlist', 'not_playing'].includes(to)) return res.status(400).json({ error: 'to must be main, waitlist or not_playing.' });
+  try {
+    const { data: rows, error } = await supabase.from('event_participants').select('*').eq('event_id', req.event.id).eq('user_id', req.event.host_id).neq('status', 'cancelled').limit(1);
+    if (error) throw error;
+    let row = rows[0];
+    if (!row) {
+      if (to === 'not_playing') return res.json(null);
+      const host = await hostPerson(req.event.host_id);
+      const { data, error: iErr } = await supabase
+        .from('event_participants')
+        .insert({ event_id: req.event.id, user_id: req.event.host_id, full_name: host.full_name, phone: host.phone, kind: 'member', status: 'not_playing', is_organizer: true, fee_amount: 0 })
+        .select()
+        .single();
+      if (iErr) throw iErr;
+      row = data;
+    } else if (!row.is_organizer) {
+      const { data } = await supabase.from('event_participants').update({ is_organizer: true }).eq('id', row.id).select().single();
+      row = data;
+    }
+    res.json(await setPlace(req.event, row, to));
+  } catch (err) {
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
+});
+
+const TAGS = ['coach', 'referee'];
+async function setRoles(event, prior, body) {
+  const patch = {};
+  if ('is_organizer' in body) {
+    if (prior.user_id === event.host_id && !body.is_organizer) throw Object.assign(new Error('The Host is always an organizer.'), { status: 400, code: 'host_organizer' });
+    patch.is_organizer = !!body.is_organizer;
+    // No longer an organizer: someone "not playing" goes to the waitlist.
+    if (!patch.is_organizer && prior.status === 'not_playing') patch.status = 'waitlisted';
+  }
+  if ('tags' in body) {
+    if (!Array.isArray(body.tags) || body.tags.some((x) => !TAGS.includes(x))) throw Object.assign(new Error(`tags: ${TAGS.join(', ')}.`), { status: 400 });
+    patch.tags = [...new Set(body.tags)];
+  }
+  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles
 router.post('/:eventId/participants/:participantId/:action', async (req, res) => {
   const { action } = req.params;
   const prior = req.participant;
@@ -936,6 +1010,10 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     if (action === 'cancel') return res.json(await cancelParticipant(req.event, prior));
     if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
+    // The sheet on a name: where they are (main / waitlist / waiting for approval / not playing)…
+    if (action === 'place') return res.json(await setPlace(req.event, prior, req.body.to));
+    // …and their role: organizer (Host / co-host), coach, referee.
+    if (action === 'roles') return res.json(await setRoles(req.event, prior, req.body || {}));
     if (action === 'confirm-payment') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
     if (action === 'reject-payment') return res.json(await signup.rejectPayment(req.event, prior, req.body.note));
     // "Paid" on someone still waiting for confirmation = confirm their payment.

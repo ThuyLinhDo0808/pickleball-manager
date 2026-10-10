@@ -27,6 +27,20 @@ const KINDS = {
     lines: ['Bạn đã được đẩy từ danh sách chờ lên. Hãy <b>chuyển khoản và gửi ảnh xác nhận trong 2 giờ</b>, quá hạn chỗ sẽ được nhường cho người tiếp theo.'],
     cta: c.payUrl ? ['Chuyển khoản & gửi ảnh', c.payUrl] : null,
   }),
+  approved: (c) => ({
+    subject: `✅ Host đã xác nhận bạn tham gia – ${c.event.title}`,
+    tone: '#65a30d',
+    title: 'Bạn đã được xác nhận tham gia!',
+    lines: ['Host đã kiểm tra thông tin và xác nhận bạn vào <b>danh sách chính</b> của buổi dưới đây.', 'Hẹn gặp bạn ở sân!'],
+    cta: c.payUrl ? ['Xem vé', c.payUrl] : null,
+  }),
+  approved_pay: (c) => ({
+    subject: `✅ Đã được duyệt – chuyển khoản để giữ chỗ – ${c.event.title}`,
+    tone: '#d97706',
+    title: 'Đã được duyệt — hãy chuyển khoản để giữ chỗ',
+    lines: ['Host đã kiểm tra thông tin và xác nhận bạn tham gia. Hãy <b>chuyển khoản và gửi ảnh xác nhận trong 12 giờ</b>, quá hạn chỗ sẽ được nhường cho người khác.'],
+    cta: c.payUrl ? ['Chuyển khoản & gửi ảnh', c.payUrl] : null,
+  }),
   payment_confirmed: (c) => ({
     subject: `✅ Đăng ký thành công – ${c.event.title}`,
     tone: '#65a30d',

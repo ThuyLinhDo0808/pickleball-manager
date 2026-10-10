@@ -37,7 +37,9 @@ export default function EventShareCard({ event, onSaved }) {
   }, []);
   useEffect(() => setForm(formFrom(event)), [event]);
 
-  const link = `${origin}/e/${event.public_token}`;
+  // Short link (/e/<8 characters>); older events without one keep the full token.
+  const link = `${origin}/e/${event.short_code || event.public_token}`;
+  const shown = link.replace(/^https?:\/\//, '');
   const dirty = JSON.stringify(form) !== JSON.stringify(formFrom(event));
   const deadlinePassed = event.registration_deadline && new Date(event.registration_deadline) < new Date();
   const isOpen = event.allow_public_registration && ['draft', 'open'].includes(event.status) && !deadlinePassed;
@@ -104,7 +106,7 @@ export default function EventShareCard({ event, onSaved }) {
 
       {event.allow_public_registration ? (
         <div className="flex flex-col sm:flex-row gap-2 mb-4">
-          <input readOnly value={link} onFocus={(e) => e.target.select()} className="input text-sm flex-1 min-w-0" />
+          <input readOnly value={shown} onFocus={(e) => e.target.select()} className="input text-sm flex-1 min-w-0 font-mono" aria-label={t('events.copyLink')} />
           <div className="flex gap-2">
             <button type="button" className="btn-primary text-sm flex-1 sm:flex-none" onClick={copy}>
               {copied ? t('events.copied') : t('events.copyLink')}

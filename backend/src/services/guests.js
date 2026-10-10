@@ -72,7 +72,8 @@ function monthStart(ymd) {
 // payment or check-in that called this must not fail because of the guest list.
 async function ensureGuestMember(event, p) {
   try {
-    if (!event.club_id || !p || !CONFIRMED.includes(p.status) || !(await guestsReady())) return null;
+    // Organizers (the Host, co-hosts) are not the club's guests.
+    if (!event.club_id || !p || p.is_organizer || !CONFIRMED.includes(p.status) || !(await guestsReady())) return null;
     if (p.guest_member_id) return p.guest_member_id;
 
     let member = null;

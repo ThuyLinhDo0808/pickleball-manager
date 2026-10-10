@@ -13,11 +13,15 @@ const { HOLDS_PLACE, feeFor, memberStanding, needsOnlinePayment } = require('./f
 const { promoteNext } = require('./attendance');
 const { perksFor, ensureGuestMember } = require('./guests');
 const { clubSport, profileLevel } = require('./sport');
-const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted } = require('./notify');
+const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted, notifySignupRequest } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
 const REJECTED_HOLD_MS = 2 * 3600 * 1000; // time to send a better screenshot
-const ACTIVE = [...HOLDS_PLACE, 'waitlisted'];
+const ACTIVE = [...HOLDS_PLACE, 'waitlisted', 'requested', 'not_playing'];
+
+// Does this sign-up wait for the Host to check the player first? Yes unless the event
+// approves automatically, or the player is a verified member of the event's club.
+const needsApproval = (event, standing) => !event.auto_approve && standing?.state !== 'verified';
 const MAX_PROOF = 400000;
 
 function httpError(message, status, code) {
@@ -99,7 +103,7 @@ async function myRegistration(event, userId) {
     .or(filters.join(','))
     .order('joined_at', { ascending: false });
   if (error) throw error;
-  const rank = { checked_in: 0, registered: 1, pending: 2, waitlisted: 3, no_show: 4, cancelled: 5 };
+  const rank = { checked_in: 0, registered: 1, pending: 2, waitlisted: 3, requested: 4, not_playing: 5, no_show: 6, cancelled: 7 };
   const mine = (data || []).sort((a, b) => rank[a.status] - rank[b.status])[0] || null;
   return { standing, participant: mine };
 }
@@ -147,13 +151,16 @@ async function registerOnline(event, userId, profile) {
     source_club_member_id: isMember ? standing.member.id : null,
     status: hasPlace ? 'registered' : 'waitlisted',
   };
+  // The Host checks new players first (level, who they are): no place or payment yet.
+  const approval = needsApproval(event, standing);
+  if (approval) row.status = 'requested';
   // Guest perks: VIP pays the club's VIP price; priority/VIP go first off the waitlist.
   if (!isMember) {
     const perks = await perksFor(event, { userId, phone: profile.phone });
     if (perks.priority) row.priority = true;
     if (perks.fee_amount != null) row.fee_amount = perks.fee_amount;
   }
-  if (hasPlace && (await needsOnlinePayment(event, row))) {
+  if (!approval && hasPlace && (await needsOnlinePayment(event, row))) {
     Object.assign(row, {
       status: 'pending',
       payment_status: 'awaiting_proof',
@@ -164,6 +171,7 @@ async function registerOnline(event, userId, profile) {
   const { data, error } = await supabase.from('event_participants').insert(row).select().single();
   if (error) throw error;
   if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
+  if (data.status === 'requested') notifySignupRequest(event, data); // Host webhook, in the background
   return registrationView(event, data);
 }
 
@@ -235,4 +243,5 @@ module.exports = {
   confirmPayment,
   rejectPayment,
   MAX_PROOF,
+  needsApproval,
 };

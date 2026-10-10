@@ -113,6 +113,23 @@ async function notifyPromoted(event, participant) {
   }, [mustPay ? 'promoted_pay' : 'promoted', { payUrl }]);
 }
 
+// The Host checked a sign-up request and confirmed the player (next: pay, or ticket).
+async function notifyApproved(event, participant) {
+  const mustPay = participant.status === 'pending';
+  const payUrl = event.public_token ? webUrl(`/e/${event.public_token}`) : null;
+  const text =
+    `✅ ${participant.full_name} đã được Host xác nhận tham gia ${where(event)}.` +
+    (mustPay ? `\nHãy chuyển khoản và gửi ảnh trong 12 giờ để giữ chỗ${payUrl ? `: ${payUrl}` : '.'}` : '');
+  return tellPlayerAndHost('signup_approved', event, participant, text, { payment_required: mustPay }, [mustPay ? 'approved_pay' : 'approved', { payUrl }]);
+}
+
+// Host only: someone asked to join through the link and waits to be checked.
+async function notifySignupRequest(event, participant) {
+  const text = `🙋 ${participant.full_name} xin tham gia ${where(event)}. Vào app → buổi → Thành viên để kiểm tra và xác nhận.`;
+  const webhook = await safe(sendToHostWebhook(event.host_id, payloadFor('signup_request', event, participant, text)));
+  return { webhook };
+}
+
 async function notifyPaymentConfirmed(event, participant) {
   const ticketUrl = webUrl(`/t/${participant.ticket_code}`);
   const text =
@@ -238,6 +255,8 @@ module.exports = {
   notifyJoinFromSurvey,
   notifyEventCancelled,
   notifyPromoted,
+  notifyApproved,
+  notifySignupRequest,
   notifyPaymentConfirmed,
   notifyPaymentRejected,
   notifyPaymentSubmitted,

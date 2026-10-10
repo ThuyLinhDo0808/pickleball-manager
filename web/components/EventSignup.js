@@ -9,11 +9,12 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { resizeImage } from '@/lib/image';
 
-const ACTIVE = ['registered', 'checked_in', 'pending', 'waitlisted'];
+const ACTIVE = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
 
-function Steps({ current, guestPays }) {
+// `approval`: the Host checks the player before they get a place (and pay).
+function Steps({ current, guestPays, approval = false }) {
   const { t } = useI18n();
-  const steps = guestPays ? ['login', 'confirm', 'pay', 'ticket'] : ['login', 'confirm', 'ticket'];
+  const steps = ['login', 'confirm', ...(approval ? ['approve'] : []), ...(guestPays ? ['pay'] : []), 'ticket'];
   const at = steps.indexOf(current);
   return (
     <ol className="grid mb-4" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
@@ -239,6 +240,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const memberFree = me.member.state === 'verified' && me.member.has_pass;
   const myFee = me.member.my_fee ?? fee; // priority guests pay the price after their discount
   const guestPays = myFee > 0 && !memberFree;
+  const approval = !!me.member.needs_approval;
 
   async function cancel() {
     // Past the free-cancellation deadline (event time is local; players are in the same timezone).
@@ -293,7 +295,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     const holdUntil = reg.hold_expires_at && new Date(reg.hold_expires_at).toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
     return (
       <div className="flex flex-col gap-3">
-        <Steps current={reg.payment_status === 'proof_submitted' ? 'ticket' : 'pay'} guestPays />
+        <Steps current={reg.payment_status === 'proof_submitted' ? 'ticket' : 'pay'} guestPays approval={approval} />
         {reg.payment_status === 'proof_submitted' ? (
           <div className="rounded-xl border border-sky-400/50 bg-sky-400/10 px-3 py-3 text-center">
             <div className="text-3xl">⏳</div>
@@ -317,6 +319,20 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         {reg.payment_status !== 'proof_submitted' && <p className="text-white text-sm font-semibold">{t('signup.afterTransfer')}</p>}
         <ProofUpload token={token} reg={reg} onChanged={onChanged} />
         <button type="button" className="text-red-400 text-sm self-center" onClick={cancel}>{t('events.cancel')}</button>
+      </div>
+    );
+  }
+
+  // Asked to join: the Host checks the player first, then they pay (or get the ticket).
+  if (reg?.status === 'requested') {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <Steps current="approve" guestPays={guestPays} approval />
+        <div className="text-4xl">🙋</div>
+        <p className="text-white font-bold">{t('signup.requestedTitle')}</p>
+        <p className="text-gray-300 text-sm mt-1 max-w-sm">{guestPays ? t('signup.requestedPay', { amount: formatVnd(reg.fee ?? myFee) }) : t('signup.requestedFree')}</p>
+        <p className="text-gray-500 text-xs mt-2">{t('signup.requestedNotify')}</p>
+        <button type="button" className="text-red-400 text-sm mt-3" onClick={cancel}>{t('signup.cancelRequest')}</button>
       </div>
     );
   }
@@ -359,7 +375,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const full = ev.main_count >= ev.slots;
   return (
     <div className="flex flex-col">
-      <Steps current="confirm" guestPays={guestPays} />
+      <Steps current="confirm" guestPays={guestPays} approval={approval} />
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}
       <MemberStanding me={me} clubName={ev.club_name} />
       <div className="rounded-lg bg-navy-900 px-3 py-2 text-sm mb-3">
@@ -382,9 +398,10 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       </label>
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       <button type="button" className="btn-primary w-full py-3 text-base" disabled={!agree || busy} onClick={register}>
-        {full ? t('signup.joinWaitlist') : guestPays ? t('signup.confirmAndPay') : t('signup.confirm')}
+        {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : guestPays ? t('signup.confirmAndPay') : t('signup.confirm')}
       </button>
-      {guestPays && !full && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
+      {approval && <p className="text-gray-400 text-xs mt-2 text-center">{t('signup.approvalNote')}</p>}
+      {!approval && guestPays && !full && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
     </div>
   );
 }
