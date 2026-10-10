@@ -10,6 +10,9 @@ export function I18nProvider({ children }) {
   // Sport of the club being managed (set by ClubContext); words like "DUPR" or "balls"
   // follow it.
   const [sport, setSport] = useState('pickleball');
+  // 'community' while the manager pages run a community (set by AppShell): "CLB" words
+  // read "cộng đồng" there.
+  const [space, setSpace] = useState(null);
 
   useEffect(() => {
     try {
@@ -30,9 +33,9 @@ export function I18nProvider({ children }) {
     }
   }, []);
 
-  const t = useCallback((key, params) => translate(lang, key, params, sport), [lang, sport]);
+  const t = useCallback((key, params) => translate(lang, key, params, sport, space), [lang, sport, space]);
 
-  const value = useMemo(() => ({ lang, setLang: changeLang, t, langs: SUPPORTED_LANGS, sport, setSport }), [lang, changeLang, t, sport]);
+  const value = useMemo(() => ({ lang, setLang: changeLang, t, langs: SUPPORTED_LANGS, sport, setSport, space, setSpace }), [lang, changeLang, t, sport, space]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

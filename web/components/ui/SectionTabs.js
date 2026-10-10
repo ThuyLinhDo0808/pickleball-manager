@@ -2,10 +2,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
-import { useWorkspace } from '@/context/WorkspaceContext';
+import { useScope } from '@/lib/useScope';
 
 // The pages of one menu group as tabs, so the Host can move between them in one tap.
-// Club workspace only: in Xé Vé these pages stand alone.
+// Club and community (Social Manager) only: in one-off Xé Vé these pages stand alone.
 const GROUPS = {
   activities: [
     { href: '/events', key: 'nav.schedule', icon: '🗓', match: (p) => p === '/events' },
@@ -22,9 +22,9 @@ const GROUPS = {
 
 export default function SectionTabs({ group }) {
   const { t } = useI18n();
-  const { workspace } = useWorkspace();
+  const { scoped } = useScope();
   const pathname = usePathname() || '';
-  if (workspace !== 'club') return null;
+  if (!scoped) return null;
   return (
     <nav className="-mx-4 px-4 md:mx-0 md:px-0 mb-5 overflow-x-auto overflow-y-hidden no-scrollbar border-b border-navy-700">
       <div className="flex gap-1 min-w-max">

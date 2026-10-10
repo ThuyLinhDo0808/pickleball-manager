@@ -64,14 +64,24 @@ function Section({ title, action, children }) {
   );
 }
 
-// Social Manager with a community picked: its own overview (one tab per community).
+// Social Manager with a community picked: its own overview (one tab per community),
+// followed by everything the club home has.
 export default function DashboardPage() {
   const { community } = useScope();
-  return community ? <CommunityOverview /> : <ClubDashboard />;
+  return community ? (
+    <CommunityOverview>
+      <ClubHome community />
+    </CommunityOverview>
+  ) : (
+    <AppShell>
+      <ClubHome />
+    </AppShell>
+  );
 }
 
 // Club home: who we are, what's next, what needs the Host, and how the club is doing.
-function ClubDashboard() {
+// In a community the overview above already has the title and buttons, so no header.
+function ClubHome({ community = false }) {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const { club } = useClubs();
@@ -143,30 +153,34 @@ function ClubDashboard() {
   const top = stats?.awards;
 
   return (
-    <AppShell>
+    <>
       {/* Header */}
-      <div className="rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 mb-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-gray-400 text-sm capitalize">
-              {new Date().toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-            <h1 className="text-white text-2xl sm:text-3xl font-bold mt-1 truncate">
-              {greeting(t)}{name ? `, ${name}` : ''} 👋
-            </h1>
-            {club && (
-              <p className="text-gray-300 text-sm mt-1">
-                {t(`clubs.sport_${club.sport || 'pickleball'}`)} · <span className="text-lime-300 font-semibold">{club.name}</span>
+      {!community && (
+        <div className="rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-gray-400 text-sm capitalize">
+                {new Date().toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/events/create" className="btn-primary text-sm">+ {t('nav.createGame')}</Link>
-            <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>
-            <Link href="/club/members" className="btn-secondary text-sm">{t('nav.members')}</Link>
+              <h1 className="text-white text-2xl sm:text-3xl font-bold mt-1 truncate">
+                {greeting(t)}{name ? `, ${name}` : ''} 👋
+              </h1>
+              {club && (
+                <p className="text-gray-300 text-sm mt-1">
+                  {t(`clubs.sport_${club.sport || 'pickleball'}`)} · <span className="text-lime-300 font-semibold">{club.name}</span>
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/events/create" className="btn-primary text-sm">+ {t('nav.createGame')}</Link>
+              <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>
+              <Link href="/club/members" className="btn-secondary text-sm">{t('nav.members')}</Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {community && <h2 className="text-white text-lg font-semibold mt-6 mb-3">🗓 {t('social.thisMonth', { name: club?.name || '' })}</h2>}
 
       {/* Club at a glance */}
       <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowClub')}</h2>
@@ -358,6 +372,6 @@ function ClubDashboard() {
           )}
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }

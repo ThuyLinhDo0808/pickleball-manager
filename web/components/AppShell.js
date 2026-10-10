@@ -258,7 +258,7 @@ const SIDEBAR_SCROLL_KEY = 'pickleball_sidebar_scroll';
 
 export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
-  const { t } = useI18n();
+  const { t, setSpace } = useI18n();
   const { clubs, club, isCoAdmin, loading: clubsLoading, reload: reloadClubs } = useClubs();
   // Set when the API says the app owner suspended this account (see lib/api.js).
   const [suspended, setSuspended] = useState(null);
@@ -353,6 +353,13 @@ export default function AppShell({ children }) {
     if (workspace !== 'club' || clubsLoading || clubs.length || clubsChecked) return;
     reloadClubs().finally(() => setClubsChecked(true));
   }, [workspace, clubsLoading, clubs.length, clubsChecked, reloadClubs]);
+
+  // Running a community: the club pages' words say "cộng đồng" instead of "CLB".
+  const communityMode = workspace === 'xeve' && !!club;
+  useLayoutEffect(() => {
+    setSpace(communityMode ? 'community' : null);
+    return () => setSpace(null);
+  }, [communityMode, setSpace]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white">{t('common.loading')}</div>;
   if (!user) return null;

@@ -38,8 +38,9 @@ function Split({ parts }) {
 
 // Social Manager overview: one tab per community (cụm sân) the Host runs, then its
 // members (per series, active / inactive), money (in, out, balance, still owed) and how
-// regularly members come.
-export default function CommunityOverview() {
+// regularly members come. `children` (the club home: this month, upcoming sessions,
+// transfers to check, top players, to-dos, birthdays, plan) follows.
+export default function CommunityOverview({ children }) {
   const { t } = useI18n();
   const { clubs, club, selectClub } = useClubs();
   const { data, error } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/community-overview`) : Promise.resolve(null)), [club?.id]);
@@ -57,6 +58,7 @@ export default function CommunityOverview() {
         actions={
           <>
             <Link href="/events/create" className="btn-primary text-sm">＋ {t('nav.createGame')}</Link>
+            <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>
             <Link href="/club-request?kind=community" className="btn-secondary text-sm">＋ {t('social.newCommunity')}</Link>
           </>
         }
@@ -144,6 +146,8 @@ export default function CommunityOverview() {
           </Section>
         </>
       )}
+
+      {club && children}
     </AppShell>
   );
 }

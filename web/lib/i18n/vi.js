@@ -3448,6 +3448,7 @@ export const vi = {
     s_cancelled: "Đã huỷ",
   },
   social: {
+    thisMonth: "{name} tháng này",
     allComm: "Tất cả cộng đồng",
     forCommunity: "Kèo của cộng đồng {name}",
     gameIntro: "Kèo một lần của cộng đồng: kèo giao lưu (xé vé) hoặc buổi tập. Gắn Series để theo dõi thành viên theo series.",
