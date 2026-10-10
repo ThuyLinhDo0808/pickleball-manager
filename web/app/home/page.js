@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
 import ClubAvatar from '@/components/ClubAvatar';
-import { SocialManagerModal } from '@/components/PlanModals';
 import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
@@ -56,7 +55,7 @@ export default function HomeHub() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const { staffInfo, plan } = useWorkspace();
-  const { manageClub, space, memberClub } = useEnter();
+  const { manageClub, space, standalone, memberClub } = useEnter();
   const { data, loading } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -65,7 +64,6 @@ export default function HomeHub() {
   useEffect(() => {
     if (data && data.onboarded === false) router.replace('/onboarding');
   }, [data, router]);
-  const [smOpen, setSmOpen] = useState(false);
 
   const days = useMemo(() => {
     const list = (data?.upcoming || []).filter((e) => filter === 'all' || (filter === 'xeve' ? !e.club_id : e.club_id === filter));
@@ -178,6 +176,18 @@ export default function HomeHub() {
               badgeTone={ROLE_TONE.member}
             />
           ))}
+          {/* One-off kèo made before communities existed (Social Manager add-on): a tile like the others. */}
+          {plan?.social_manager && managed.some((c) => c.role === 'owner') && (
+            <SpaceTile
+              onClick={() => standalone()}
+              avatar={<ClubAvatar icon="🎟" ring="ring-2 ring-amber-300/80 ring-offset-2 ring-offset-navy-950" />}
+              label={t('hub.oneOffKeo')}
+              badge={t('hub.roleOwner')}
+              badgeTone={ROLE_TONE.owner}
+              lines={3}
+            />
+          )}
+          {/* Club or play community (Social Manager): the request form asks which one first. */}
           <SpaceTile
             href="/club-request"
             avatar={<ClubAvatar icon="＋" />}
@@ -189,27 +199,6 @@ export default function HomeHub() {
           <p className="card text-gray-300 text-sm mt-2">
             {t('hub.emptySpaces')} <Link href="/discover" className="text-lime-300 underline">{t('disc.findLink')}</Link>
           </p>
-        )}
-        {/* Hosts: Social Manager (xé vé) is a paid add-on — enter it, or see what it offers and sign up. */}
-        {managed.some((c) => c.role === 'owner') && (
-          <button
-            type="button"
-            onClick={() => (plan?.social_manager ? space('xeve') : setSmOpen(true))}
-            className="mt-3 w-full card !py-3 flex items-center gap-3 text-left text-sm hover:border-amber-300/60"
-          >
-            <span className="text-xl" aria-hidden="true">🎟</span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-white font-semibold">{t('hub.socialManager')}</span>
-              <span className="block text-gray-400 text-xs">{plan?.social_manager ? t('hub.smEnter') : plan?.social_manager_requested_at ? t('plan.smRequested') : t('hub.smSignUpShort')}</span>
-            </span>
-            {plan?.social_manager ? (
-              <span className="text-lime-400">→</span>
-            ) : plan?.social_manager_requested_at ? (
-              <span className="text-amber-300 shrink-0" aria-hidden="true">⏳</span>
-            ) : (
-              <span className="rounded-full bg-amber-300 text-navy-950 text-[11px] font-bold px-2 py-0.5 uppercase shrink-0">{t('plan.smSignUp')}</span>
-            )}
-          </button>
         )}
         {isStaff && (
           <button type="button" onClick={() => space('staff')} className="mt-3 w-full card !py-3 flex items-center gap-3 text-left text-sm hover:border-orange-400/60">
@@ -300,7 +289,6 @@ export default function HomeHub() {
         </div>
       </section>
 
-      <SocialManagerModal open={smOpen} onClose={() => setSmOpen(false)} />
     </PlayerShell>
   );
 }

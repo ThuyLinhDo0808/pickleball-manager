@@ -80,7 +80,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
   - CLB bạn **quản lý** (nhãn *Quản lý*, viền xanh) hoặc **đồng quản trị** → bấm vào là mở **trang quản lý** của CLB đó (Tổng quan, Thành viên, Lịch, Tài chính…).
   - CLB bạn là **thành viên** (nhãn *Thành viên*) → bấm vào là mở **trang thành viên** của CLB (`/c/<id>`, xem 3.2).
   - **＋ Tạo CLB / Cộng đồng mới**: mở trang **Đăng ký câu lạc bộ** (`/club-request`, xem [3.5](#35-đăng-ký-quản-lý-clb-club-request)) — CLB mới chỉ được tạo khi Owner duyệt.
-- **Social Manager (Xé vé)** — thẻ ngay dưới dải avatar, chỉ hiện với Host: quản lý kèo xé vé là **gói trả phí riêng**. Đã có gói → bấm để vào không gian Xé Vé. Chưa có → bấm để xem tính năng và **Đăng ký Social Manager** (đã gửi đăng ký thì hiện ⏳ chờ kích hoạt). Không đăng ký thì Host chỉ dùng các tính năng CLB.
+- **Social Manager (Xé vé)** — không còn thẻ riêng: **cộng đồng xé vé hiện trong dải avatar giống CLB** (viền vàng, nhãn *🎟 Quản lý*); bấm vào là vào trang quản lý cộng đồng thay vì quản lý CLB. Muốn mở cộng đồng mới thì bấm **＋ Tạo CLB / Cộng đồng mới** (cùng một nút với tạo CLB) → bước đầu chọn *Tạo câu lạc bộ* hoặc *Tạo cộng đồng xé vé*. Host đã có add-on Social Manager và còn kèo lẻ cũ (không thuộc cộng đồng) thấy thêm ô **🎟 Kèo lẻ** trong dải avatar.
 - **Không gian nhân viên** (chỉ hiện khi bạn là trọng tài / điều phối viên): thẻ mở *Sự kiện của tôi*.
   - Một CLB vừa quản lý vừa là thành viên chỉ hiện ở vai trò quản lý.
 - **Gói hội viên của tôi**: số buổi còn lại ở từng CLB bạn là thành viên.
