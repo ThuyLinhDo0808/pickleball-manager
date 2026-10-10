@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useI18n } from '@/context/I18nContext';
+import { useScope } from '@/lib/useScope';
 import { UpgradeModal } from '@/components/PlanModals';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -12,6 +13,7 @@ import { api } from '@/lib/api';
 // owner switched approval off can a club be created here straight away.
 export default function CreateClubForm(props) {
   const { t } = useI18n();
+  const { community } = useScope();
   const { data, loading } = useLoad(() => api.get('/api/host/club-requests').catch(() => ({ approval: true, items: [] })), []);
   if (loading && !data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
   if (data?.approval !== false) {
@@ -20,7 +22,7 @@ export default function CreateClubForm(props) {
       <div className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-4">
         <p className="text-white font-semibold">🏟 {waiting ? t('creq.waitingTitle', { name: waiting.name }) : t('creq.ctaTitle')}</p>
         <p className="text-gray-300 text-sm mt-1">{waiting ? t('creq.waitingBody') : t('creq.ctaBody')}</p>
-        <Link href="/club-request" className="btn-primary inline-block mt-3">{waiting ? t('creq.seeRequest') : t('creq.ctaButton')}</Link>
+        <Link href={community && !waiting ? '/club-request?kind=community' : '/club-request'} className="btn-primary inline-block mt-3">{waiting ? t('creq.seeRequest') : t('creq.ctaButton')}</Link>
       </div>
     );
   }

@@ -3448,6 +3448,7 @@ export const en = {
     s_cancelled: "Cancelled",
   },
   social: {
+    thisMonth: "{name} this month",
     allComm: "All communities",
     forCommunity: "Kèo of the {name} community",
     gameIntro: "A one-off kèo of the community: a play session or training. Add a Series to follow members by series.",
