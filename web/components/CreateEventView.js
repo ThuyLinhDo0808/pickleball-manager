@@ -9,6 +9,7 @@ import EventForm, { GAME_KINDS, blankEvent, eventPayload } from '@/components/Ev
 import WeeklyDates, { MAX_SESSIONS, blankWeekly, weeklyDates } from '@/components/WeeklyDates';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useScope } from '@/lib/useScope';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { api } from '@/lib/api';
 
@@ -19,7 +20,7 @@ export default function CreateEventView({ weekly = false }) {
   const router = useRouter();
   const { workspace } = useWorkspace();
   const { club } = useDefaultClub();
-  const isClub = workspace === 'club';
+  const { scoped: isClub, community } = useScope();
   // ?date=YYYY-MM-DD pre-fills the day
   const [initial, setInitial] = useState(null);
   const [plan, setPlan] = useState(blankWeekly);
@@ -66,11 +67,11 @@ export default function CreateEventView({ weekly = false }) {
       <PageHeader
         icon={weekly ? '🔁' : '🏓'}
         title={weekly ? t('nav.createWeekly') : t('nav.createGame')}
-        subtitle={isClub && club ? t('create.forClub', { name: club.name }) : t('finX.scopeXeve')}
+        subtitle={isClub && club ? t(community ? 'social.forCommunity' : 'create.forClub', { name: club.name }) : t('finX.scopeXeve')}
         actions={<Link href="/events" className="btn-secondary text-sm">🗓 {isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
       />
       <SectionTabs group="activities" />
-      <p className="text-gray-400 text-sm mb-4 rounded-xl border border-navy-700 bg-navy-900/40 px-4 py-2.5">💡 {weekly ? t('weekly.intro') : t('create.gameIntro')}</p>
+      <p className="text-gray-400 text-sm mb-4 rounded-xl border border-navy-700 bg-navy-900/40 px-4 py-2.5">💡 {weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')}</p>
       {initial && (
         <EventForm
           initial={initial}
@@ -78,7 +79,9 @@ export default function CreateEventView({ weekly = false }) {
           submitLabel={weekly ? t('weekly.submit') : t('create.submit')}
           showRepeat={false}
           dateField={weekly ? <WeeklyDates value={plan} onChange={setPlan} /> : null}
-          kinds={weekly ? null : isClub ? GAME_KINDS : GAME_KINDS.filter((k) => k !== 'meeting')}
+          kinds={weekly ? null : community ? GAME_KINDS.filter((k) => !['meeting', 'challenge'].includes(k)) : isClub ? GAME_KINDS : GAME_KINDS.filter((k) => k !== 'meeting')}
+          community={community}
+          clubId={club?.id || null}
           disabled={isClub && !club}
           lockTitle={weekly}
           sessions={weekly ? weeklyDates(plan).length : null}

@@ -508,7 +508,7 @@ player.get('/me', async (req, res) => {
       const deadline = cancelDeadline(r.events);
       history.push({
         participant_id: r.id,
-        can_cancel: upcoming && ['registered', 'waitlisted', 'pending'].includes(r.status),
+        can_cancel: upcoming && ['registered', 'waitlisted', 'pending', 'requested'].includes(r.status),
         cancel_deadline: deadline ? deadline.toISOString() : null,
         late_cancel: r.late_cancel,
         payment_status: r.payment_status,
@@ -621,7 +621,7 @@ player.get('/me', async (req, res) => {
 // co-admin), clubs it plays in, Xé Vé games it organises, staff access — plus the
 // player's upcoming sessions across all of them.
 // ---------------------------------------------------------------------------
-const LIVE_STATUSES = ['registered', 'checked_in', 'pending', 'waitlisted'];
+const LIVE_STATUSES = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
 
 async function myMemberRows(uid) {
   const { data, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, host_id, description)').eq('user_id', uid);
@@ -640,7 +640,7 @@ async function upcomingFor(uid, memberIds, clubId = null) {
     .gte('events.event_date', today)
     .limit(300);
   if (error) throw error;
-  const order = { checked_in: 0, registered: 1, pending: 2, waitlisted: 3 };
+  const order = { checked_in: 0, registered: 1, pending: 2, waitlisted: 3, requested: 4 };
   const seen = new Set();
   const rows = (regs || [])
     .filter((r) => LIVE_STATUSES.includes(r.status) && r.events.status !== 'cancelled' && (!clubId || r.events.club_id === clubId))
@@ -674,7 +674,7 @@ async function upcomingFor(uid, memberIds, clubId = null) {
         sport: club?.sport || 'pickleball',
         main_count: sum.main_count ?? null,
         slots: sum.slots ?? null,
-        can_cancel: ['registered', 'waitlisted', 'pending'].includes(r.status),
+        can_cancel: ['registered', 'waitlisted', 'pending', 'requested'].includes(r.status),
         cancel_deadline: deadline ? deadline.toISOString() : null,
       };
     })
@@ -688,7 +688,7 @@ player.get('/home', async (req, res) => {
     await linkByPhone(uid, profile);
     const [members, managed, coAdmin, xeve] = await Promise.all([
       myMemberRows(uid),
-      supabase.from('clubs').select('id, name, sport').eq('host_id', uid).order('created_at'),
+      supabase.from('clubs').select('id, name, sport, kind').eq('host_id', uid).order('created_at'),
       coAdminClubs(req).catch(() => []),
       supabase.from('events').select('id', { count: 'exact', head: true }).eq('host_id', uid).is('club_id', null),
     ]);
@@ -716,8 +716,8 @@ player.get('/home', async (req, res) => {
       ...account,
       profile: profile ? { full_name: profile.full_name, avatar: profile.avatar, dupr_level: profile.dupr_level, birth_date: profile.birth_date } : null,
       managed_clubs: [
-        ...(managed.data || []).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: 'owner' })),
-        ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: c.role || 'co_admin' })),
+        ...(managed.data || []).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', kind: c.kind || 'club', role: 'owner' })),
+        ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', kind: c.kind || 'club', role: c.role || 'co_admin' })),
       ],
       member_clubs: memberClubs,
       xeve_events: xeve.count || 0,
@@ -844,7 +844,7 @@ player.post('/participations/:participantId/cancel', async (req, res) => {
     if (event.event_date < todayYmd() || !['draft', 'open', 'closed'].includes(event.status)) {
       throw badRequest('This event can no longer be cancelled here. Please contact the host.', 409, 'event_over');
     }
-    if (!['registered', 'waitlisted', 'pending'].includes(prior.status)) throw badRequest('Only upcoming registrations can be cancelled.', 409, 'not_cancellable');
+    if (!['registered', 'waitlisted', 'pending', 'requested'].includes(prior.status)) throw badRequest('Only upcoming registrations can be cancelled.', 409, 'not_cancellable');
     const r = await cancelParticipant(event, prior);
     res.json({ status: r.status, late: r.late, pass: r.pass });
   } catch (err) {

@@ -56,6 +56,13 @@ const PROBES = [
   { table: 'events', column: 'cost_items', migration: '20261106090000_weekly_series_costs.sql' },
   { table: 'v_event_summary', column: 'series_id', migration: '20261106090000_weekly_series_costs.sql' },
   { table: 'transactions', column: 'event_cost', migration: '20261106090000_weekly_series_costs.sql' },
+  { table: 'events', column: 'short_code', migration: '20261107090000_event_approval_organizers.sql' },
+  { table: 'event_participants', column: 'is_organizer', migration: '20261107090000_event_approval_organizers.sql' },
+  { table: 'v_event_summary', column: 'requested_count', migration: '20261107090000_event_approval_organizers.sql' },
+  { table: 'account_handovers', column: 'status', migration: '20261108090000_account_handover_pay_later.sql' },
+  { table: 'event_participants', column: 'pay_later', migration: '20261108090000_account_handover_pay_later.sql' },
+  { table: 'clubs', column: 'kind', migration: '20261109090000_communities.sql' },
+  { table: 'v_event_summary', column: 'series_label', migration: '20261109090000_communities.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

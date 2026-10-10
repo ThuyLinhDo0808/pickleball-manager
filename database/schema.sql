@@ -2142,5 +2142,145 @@ from public.events e
 left join public.clubs c on c.id = e.club_id;
 
 
+-- ============================================================================
+-- 20261107090000_event_approval_organizers
+-- ============================================================================
+-- Events v6: the Host approves each sign-up before the player pays, organizers
+-- (Host / co-hosts) on the participant list, and a short sign-up link.
+
+-- 1. New participant states:
+--    requested   = asked to join through the link, waiting for the Host to check them
+--    not_playing = an organizer who runs the event but does not play
+alter type public.participant_status add value if not exists 'requested';
+alter type public.participant_status add value if not exists 'not_playing';
+
+-- 2. "Duyệt tự động": off = the Host approves every sign-up first (the default for new
+--    events). Events made before this keep working as they did (auto approve).
+do $$ begin
+  if not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'events' and column_name = 'auto_approve') then
+    alter table public.events add column auto_approve boolean not null default false;
+    update public.events set auto_approve = true;
+  end if;
+end $$;
+
+-- 3. Short sign-up link: /e/<8 characters> instead of the full token.
+alter table public.events add column if not exists short_code text;
+update public.events set short_code = substr(replace(gen_random_uuid()::text, '-', ''), 1, 8) where short_code is null;
+alter table public.events alter column short_code set default substr(replace(gen_random_uuid()::text, '-', ''), 1, 8);
+alter table public.events alter column short_code set not null;
+create unique index if not exists ux_events_short_code on public.events (short_code);
+
+-- 4. Organizers and roles on the participant list.
+alter table public.event_participants add column if not exists is_organizer boolean not null default false;
+alter table public.event_participants add column if not exists tags text[] not null default '{}'
+  check (tags <@ array['coach', 'referee']::text[]);
+
+-- v_event_summary selects e.*: rebuild it (new columns + waiting-for-approval count).
+drop view if exists public.v_event_summary;
+create view public.v_event_summary as
+select
+  e.*,
+  c.name as club_name,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text in ('registered','checked_in','pending')) as main_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'pending') as pending_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'requested') as requested_count
+from public.events e
+left join public.clubs c on c.id = e.club_id;
+
+
+-- ============================================================================
+-- 20261108090000_account_handover_pay_later
+-- ============================================================================
+-- v7: deleting an account that runs clubs / Xé Vé needs a handover first (approved by the
+-- app owner, who checks the new owner is real), and "register now, transfer later".
+
+-- 1. Handover requests: the account hands every club and Xé Vé event to another account.
+create table if not exists public.account_handovers (
+  id uuid primary key default gen_random_uuid(),
+  from_user uuid references public.users(id) on delete set null,
+  from_email text,
+  to_user uuid references public.users(id) on delete set null,
+  to_email text,
+  note text check (note is null or char_length(note) <= 1000),
+  clubs jsonb not null default '[]'::jsonb,       -- [{id, name}] when asked
+  xeve_events int not null default 0,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'cancelled')),
+  owner_note text check (owner_note is null or char_length(owner_note) <= 1000),
+  decided_by text,
+  decided_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists ux_account_handovers_pending on public.account_handovers (from_user) where status = 'pending';
+create index if not exists ix_account_handovers_status on public.account_handovers (status, created_at desc);
+alter table public.account_handovers enable row level security;
+revoke all on public.account_handovers from anon, authenticated;
+
+-- 2. "Đăng ký, chuyển khoản sau": the place is held until the sign-up deadline (or the start).
+alter table public.event_participants add column if not exists pay_later boolean not null default false;
+alter table public.events add column if not exists allow_pay_later boolean not null default true;
+
+-- v_event_summary selects e.*: rebuild it for the new events column.
+drop view if exists public.v_event_summary;
+create view public.v_event_summary as
+select
+  e.*,
+  c.name as club_name,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text in ('registered','checked_in','pending')) as main_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'pending') as pending_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'requested') as requested_count
+from public.events e
+left join public.clubs c on c.id = e.club_id;
+
+
+-- ============================================================================
+-- 20261109090000_communities
+-- ============================================================================
+-- Social Manager v8: communities ("cộng đồng xé vé", one per court cluster). A community
+-- is a club of kind 'community': it has every Club Manager feature (members, plans,
+-- schedule, tournaments, finance, ball store, staff…) and lives in the Social Manager
+-- space. Its kèo can be grouped into series (Series A, B, C…).
+
+alter table public.clubs add column if not exists kind text not null default 'club'
+  check (kind in ('club', 'community'));
+create index if not exists ix_clubs_kind on public.clubs (host_id, kind);
+
+-- What a request asks for: a club or a community.
+alter table public.club_requests add column if not exists kind text not null default 'club'
+  check (kind in ('club', 'community'));
+
+-- Series a community's kèo belong to (e.g. "Series A").
+alter table public.events add column if not exists series_label text
+  check (series_label is null or char_length(series_label) between 1 and 40);
+create index if not exists ix_events_series_label on public.events (club_id, series_label) where series_label is not null;
+
+-- v_event_summary selects e.*: rebuild it for the new events column.
+drop view if exists public.v_event_summary;
+create view public.v_event_summary as
+select
+  e.*,
+  c.name as club_name,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text in ('registered','checked_in','pending')) as main_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'pending') as pending_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'requested') as requested_count
+from public.events e
+left join public.clubs c on c.id = e.club_id;
+
+
 select 1; -- done
 notify pgrst, 'reload schema';

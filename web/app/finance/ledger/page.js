@@ -5,6 +5,7 @@ import Modal from '@/components/Modal';
 import FundCalculator from '@/components/FundCalculator';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useScope } from '@/lib/useScope';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -216,7 +217,7 @@ export default function LedgerPage() {
   const { t } = useI18n();
   const { workspace } = useWorkspace();
   const { club } = useDefaultClub();
-  const isClub = workspace === 'club';
+  const { scoped: isClub } = useScope();
   const { data, loading, reload } = useLoad(() => {
     if (isClub) return club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null);
     return api.get('/api/transactions?scope=standalone').then((transactions) => ({ transactions, balance: null }));

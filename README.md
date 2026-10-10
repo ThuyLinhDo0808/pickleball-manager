@@ -79,7 +79,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 - **CLB & không gian của bạn**: dải avatar (vuốt ngang trên điện thoại), mỗi ô có nhãn vai trò:
   - CLB bạn **quản lý** (nhãn *Quản lý*, viền xanh) hoặc **đồng quản trị** → bấm vào là mở **trang quản lý** của CLB đó (Tổng quan, Thành viên, Lịch, Tài chính…).
   - CLB bạn là **thành viên** (nhãn *Thành viên*) → bấm vào là mở **trang thành viên** của CLB (`/c/<id>`, xem 3.2).
-  - **＋ Tạo CLB mới**: mở trang **Đăng ký câu lạc bộ** (`/club-request`, xem [3.5](#35-đăng-ký-quản-lý-clb-club-request)) — CLB mới chỉ được tạo khi Owner duyệt.
+  - **＋ Tạo CLB / Cộng đồng mới**: mở trang **Đăng ký câu lạc bộ** (`/club-request`, xem [3.5](#35-đăng-ký-quản-lý-clb-club-request)) — CLB mới chỉ được tạo khi Owner duyệt.
 - **Social Manager (Xé vé)** — thẻ ngay dưới dải avatar, chỉ hiện với Host: quản lý kèo xé vé là **gói trả phí riêng**. Đã có gói → bấm để vào không gian Xé Vé. Chưa có → bấm để xem tính năng và **Đăng ký Social Manager** (đã gửi đăng ký thì hiện ⏳ chờ kích hoạt). Không đăng ký thì Host chỉ dùng các tính năng CLB.
 - **Không gian nhân viên** (chỉ hiện khi bạn là trọng tài / điều phối viên): thẻ mở *Sự kiện của tôi*.
   - Một CLB vừa quản lý vừa là thành viên chỉ hiện ở vai trò quản lý.
@@ -101,6 +101,7 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 |---|---|---|
 | **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · Thành viên · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo, **Lịch trực** 💎Pro) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, **Phân tích nâng cao** 💎Pro) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, **Nhật ký thao tác** 💎Pro, Tài khoản) |
 | **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Tạo kèo · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi, **Kho bóng** riêng của kèo Xé Vé) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
+| **Social Manager — cộng đồng xé vé** (chọn một cộng đồng trong bộ chuyển ngữ cảnh) | Chủ / người quản lý cụm sân xé vé | Tổng quan (mỗi cụm sân một tab, xem [5.0](#50-social-manager-cộng-đồng-xé-vé)) · Thành viên · **Tạo hoạt động ▸** (Kèo Xé Vé, Tạo kèo, Tạo lịch chơi hàng tuần, Tạo giải đấu, Lịch trực) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, Xếp hạng toàn hệ thống, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (Cộng đồng của tôi, Phân quyền, Nhật ký thao tác, Tài khoản) |
 | **Sự kiện của tôi** | Điều phối viên / Trọng tài | Sự kiện được giao (+ giải được giao bấm điểm) |
 
 **Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Điều phối viên* / *Trọng tài* — đúng vai trò mạnh nhất bạn đang được cấp). Bấm vào để đổi sang CLB khác bạn quản lý, sang **Social Manager (Xé vé)** (chưa có gói thì mở phần đăng ký) / Sự kiện của tôi, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc **tạo CLB mới** (đủ giới hạn gói thì hiện bảng nâng cấp). Mở trang Xé Vé khi chưa có Social Manager sẽ thấy phần giới thiệu + nút đăng ký thay cho nội dung. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
@@ -116,7 +117,10 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 
 Club và Xé Vé tách dữ liệu rõ ràng:
 - **Club:** các buổi (event) gắn với CLB đang chọn.
-- **Xé Vé:** các kèo không thuộc CLB nào.
+- **Social Manager — cộng đồng:** các kèo gắn với cộng đồng đang chọn (cộng đồng là một "CLB" loại *cộng đồng*, có đủ mọi tính năng của CLB).
+- **Kèo lẻ (Xé Vé cũ):** các kèo không thuộc CLB / cộng đồng nào (cần add-on Social Manager như trước).
+
+**Bộ chuyển ngữ cảnh** chia: *🎟 Social Manager · Cộng đồng* (các cộng đồng), *Đang quản lý* (các CLB), *Không gian khác* (Kèo lẻ nếu có add-on, Sự kiện của tôi). Chọn một cộng đồng là vào Social Manager của cộng đồng đó; chọn CLB là vào Club Manager. App nhớ riêng CLB và cộng đồng đang chọn. Trang Trang chủ gắn nhãn 🎟 và viền vàng cho cộng đồng.
 
 ### 3.4. Tìm câu lạc bộ (`/discover`)
 Mở từ ô tìm kiếm ở Trang chủ hoặc mục **Tìm CLB** trên thanh điều hướng. Ai cũng xem được (không cần đăng nhập).
@@ -126,8 +130,10 @@ Mở từ ô tìm kiếm ở Trang chủ hoặc mục **Tìm CLB** trên thanh �
 - **🙋 Xin gia nhập CLB**: cần đăng nhập và hồ sơ có họ tên, SĐT, ngày sinh. Nhập lời nhắn → yêu cầu vào **Thành viên → Danh sách xin gia nhập CLB** của CLB với nguồn *Từ tìm kiếm CLB* (chưa chiếm chỗ của gói cho tới khi được duyệt). Người đang bị *Xem xét thêm* hoặc bị CLB chặn không gửi được yêu cầu. Chủ CLB **Duyệt** (thành chính thức hoặc giao lưu) hoặc **Từ chối** (người chưa từng chơi ở CLB thì bản ghi tạo cho yêu cầu bị xoá). Trạng thái hiện ngay trên trang: *Đã gửi yêu cầu* / *Bạn là thành viên* / *CLB của bạn*.
 - Chỉ CLB **bật "Hiện trong tìm kiếm"** (mặc định bật) và chủ không bị đình chỉ mới hiện. Chủ CLB sửa hồ sơ hiển thị ở **CLB của tôi → 🪪 Hồ sơ CLB** (xem [4.1](#41-clb-của-tôi-clubs)).
 
-### 3.5. Đăng ký quản lý CLB (`/club-request`)
-Người chơi muốn quản lý CLB (chọn *Quản lý CLB* ở trang Chào mừng, bấm **＋ Tạo CLB mới**, hoặc **Tài khoản → 🏟 Quản lý CLB → Đăng ký CLB**) điền yêu cầu 3 bước. **CLB chỉ được tạo khi Owner duyệt** — chặn việc lập CLB giả để thu tiền người chơi.
+### 3.5. Đăng ký CLB / cộng đồng (`/club-request`)
+**Bước đầu tiên: chọn loại** — *🏟 Tạo câu lạc bộ* (Club Manager) hoặc *🎟 Tạo cộng đồng xé vé* (Social Manager, mỗi cụm sân một cộng đồng). Bấm **＋ Tạo CLB / Cộng đồng mới** ở Trang chủ hay bộ chuyển ngữ cảnh đều mở màn hình chọn này; link `/club-request?kind=community` vào thẳng luồng cộng đồng. Sau khi chọn, các bước **giống hệt** dưới đây (có nhãn loại + nút *Đổi*); yêu cầu, thông báo cho Owner (*"[Cộng đồng mới] …"*) và trang **Duyệt CLB** của Owner đều ghi rõ 🎟 *Cộng đồng xé vé*. Duyệt xong, cộng đồng hiện ở Trang chủ và trong Social Manager. Cộng đồng tính vào số CLB tối đa của gói như một CLB.
+
+Người chơi muốn quản lý CLB (chọn *Quản lý CLB* ở trang Chào mừng, bấm **＋ Tạo CLB / Cộng đồng mới**, hoặc **Tài khoản → 🏟 Quản lý CLB → Đăng ký CLB**) điền yêu cầu 3 bước. **CLB chỉ được tạo khi Owner duyệt** — chặn việc lập CLB giả để thu tiền người chơi.
 1. **Thông tin CLB:** ảnh đại diện + ảnh nền (không bắt buộc, tự thu nhỏ), **tên CLB**, **môn**, **số thành viên**, **email chủ CLB** (mặc định email tài khoản), **quốc gia**, **tỉnh / thành phố**, quận / huyện, **địa điểm sinh hoạt**, thời gian sinh hoạt định kỳ (không bắt buộc), mô tả ngắn. (*đậm* = bắt buộc)
 2. **Chọn gói:** app **gợi ý gói** theo số thành viên (gói nhỏ nhất đủ chỗ chính thức: ≤16 Basic, ≤50 Standard, ≤100 Advanced, còn lại Pro — nhãn *Gợi ý*), gói quá nhỏ có cảnh báo. Chọn thời hạn 1 / 3 / 6 / 12 tháng để xem tổng tiền. **Đăng ký CLB luôn phải trả phí gói** — không có gói miễn phí hay dùng thử. Nếu tài khoản đang có gói trả phí còn hạn thì đơn là **nâng cấp** (chỉ trả phần chênh lệch); nếu gói hiện tại còn đủ chỗ cho thêm một CLB thì không cần trả thêm.
 3. **Xem lại & gửi:** tóm tắt toàn bộ → **📨 Gửi & lấy mã chuyển khoản**. Mỗi tài khoản chỉ có **một yêu cầu chờ duyệt** tại một thời điểm (có nút *Huỷ yêu cầu*).
@@ -273,7 +279,7 @@ Trang chi tiết buổi:
 - Trang chi tiết buổi giống kèo Xé Vé (xem [mục 5](#5-tính-năng-chi-tiết--xé-vé-manager)), cộng thêm:
   - **Nhập từ CLB**: chọn thành viên đưa vào buổi.
   - Trang chia **4 tab**: **Chi tiết** · **Thành viên** · **Trận đấu** · **Tài chính**.
-  - Tab **Tài chính** của buổi / kèo: 3 ô *Thu · Chi · Còn lại*, khung thêm khoản thu / chi (hạng mục, số tiền, ngày, ghi chú) và bảng từng khoản có nội dung dễ đọc (*Anh A trả phí tham gia*, *Bạn trả Thuê sân*…). **Mọi khoản ở đây đều nằm trong Sổ thu chi** (link *Mở Sổ thu chi →*). Khoản tự ghi từ *Chi phí mỗi buổi* sửa ở nút ✏️ Sửa của buổi; huỷ (✕) được nếu không phải trả (VD buổi bị huỷ).
+  - Tab **Tài chính** của buổi / kèo: 3 ô *Thu · **Chi phí phát sinh** · Còn lại*, mỗi khoản có nút **✏️ Sửa** (đổi số tiền / loại = huỷ dòng cũ, ghi dòng mới) và **🗑 Xoá** (hỏi lại, ghi lý do; khoản được gạch ngang trong lịch sử, không mất hẳn), khung thêm khoản thu / chi (hạng mục, số tiền, ngày, ghi chú) và bảng từng khoản có nội dung dễ đọc (*Anh A trả phí tham gia*, *Bạn trả Thuê sân*…). **Mọi khoản ở đây đều nằm trong Sổ thu chi** (link *Mở Sổ thu chi →*). Khoản tự ghi từ *Chi phí mỗi buổi* sửa ở nút ✏️ Sửa của buổi; xoá được nếu không phải trả (VD buổi bị huỷ). Khoản tự động (phí kèo, hội viên…) không sửa/xoá ở đây.
   - **Check-in một hội viên sẽ tự trừ 1 buổi** trong gói còn hiệu lực. App báo "đã trừ 1 buổi, còn n buổi", hoặc "gói không giới hạn", hoặc "không có gói còn hiệu lực". Huỷ check-in thì buổi được hoàn lại. Mỗi buổi chỉ trừ tối đa 1 lần.
 
 ### 4.6. Trận đấu (tab *Trận đấu* của buổi · `/xeve/matches`)
@@ -494,12 +500,28 @@ Ba trang dành cho CLB mà chủ CLB dùng gói **Pro** (gói thấp hơn thấy
 
 ## 5. Tính năng chi tiết — Xé Vé Manager
 
+### 5.0. Social Manager: cộng đồng xé vé
+Một Host có thể điều hành **nhiều cụm sân xé vé**; mỗi cụm sân là một **cộng đồng**. Cộng đồng có **toàn bộ tính năng của Club Manager** (thành viên, danh sách xin gia nhập, link mời, gói hội viên, lịch chơi hàng tuần, kèo, giải đấu, bảng xếp hạng, thống kê, sổ thu chi, kho bóng, phân quyền, lịch trực, nhật ký…), với các điểm khác:
+
+- **Tổng quan** (`/dashboard` khi đang ở một cộng đồng): hàng **tab — mỗi cụm sân một tab**, bấm để xem cụm đó.
+  - **👥 Thành viên**: tổng thành viên của cả cộng đồng (cố định / giao lưu), **đang hoạt động** (có tham gia trong 30 ngày qua) và **không hoạt động** (không tham gia hoạt động nào từ 30 ngày trở lên), số series; bảng **Theo series**: mỗi series có bao nhiêu thành viên (từng chơi kèo của series đó), bao nhiêu đang / không hoạt động và số kèo.
+  - **💰 Tài chính** (từ trước tới nay): *Thu*, *Chi*, *Số dư quỹ* (= thu − chi, gồm quỹ cộng đồng và tiền mọi kèo), *Khoản chưa thu* (phí kèo của khách đã đăng ký mà chưa trả + gói hội viên chưa thanh toán).
+  - **🔁 Thành viên cộng đồng**: **thường xuyên** (≥ 4 kèo trong 30 ngày qua), **không thường xuyên** (1–3 kèo), không hoạt động.
+- **Series**: khi tạo / sửa kèo của cộng đồng có ô **Series** (vd *Series A*, gợi ý các series đã có). Danh sách kèo có thêm bộ lọc *Mọi series* và nhãn 🏷 trên từng kèo.
+- **Tạo kèo**: chỉ có *Kèo giao lưu* và *Buổi tập* (không có *Họp / gặp mặt* và *Round robin* — server cũng từ chối, `400 kind_not_for_community`). Lịch chơi hàng tuần và giải đấu vẫn có.
+- **Tab Tài chính của kèo**: ô *Còn lại* đổi thành **Lợi nhuận** (cả kèo lẻ).
+- **Tài chính → Tổng quan** (Social Manager, cả cộng đồng lẫn kèo lẻ):
+  - Ô *Số dư quỹ* đổi thành **Lợi nhuận dự kiến** của kỳ đang xem = *Thu − Chi + khoản chưa thu* (xem theo năm: Thu − Chi).
+  - Thêm **📅 Tổng quan theo ngày** của tháng đang xem: mỗi ngày *số kèo, người chơi, thu, chi, lợi nhuận, khoản chưa thu*, dòng **Cộng** ở cuối. Tiền của kèo tính vào **ngày diễn ra kèo** (dù phí được thu trước); khoản của quỹ cộng đồng tính theo ngày ghi sổ.
+  - Bảng *Thu chi từng buổi / kèo* ghi cột **Lợi nhuận**.
+- **Kèo lẻ (Xé Vé cũ)**: kèo không thuộc cộng đồng vẫn dùng như trước ở mục *Kèo lẻ* trong bộ chuyển ngữ cảnh (cần add-on Social Manager). Khi chưa có cộng đồng nào, Social Manager hiện thẻ **🎟 Tạo cộng đồng mới**.
+
 ### 5.1. Lịch kèo dạng calendar (`/events`)
 Trang Lịch/Kèo có 4 chế độ xem. App nhớ chế độ bạn chọn lần trước.
 
 | Chế độ | Hiển thị |
 |---|---|
-| **Danh sách** | Kèo *sắp diễn ra* dạng thẻ. Kèo *đã qua* được thu gọn, bấm để mở. |
+| **Danh sách** | Chia 3 nhóm: **Sắp diễn ra** (từ giờ đến 3 ngày tới), **Đang mở** (xa hơn 3 ngày) và **Đã xong** (đã kết thúc — kể cả buổi hôm nay đã qua giờ kết thúc — hoặc đã huỷ; thu gọn, bấm để mở). Thanh lọc: ô **tìm theo tên / địa điểm / CLB**, chọn **loại hoạt động**, và nút nhóm *Tất cả · Sắp diễn ra · Đang mở · Đã xong* (kèm số lượng). Thẻ kèo có số **🙋 chờ duyệt** nếu có người xin tham gia. |
 | **Tháng** | Lưới 7 cột kiểu Google Calendar. Mỗi ô ngày có tối đa 3 kèo (giờ + tên), phần còn lại hiện "+n kèo". Trên điện thoại mỗi kèo là một chấm màu. |
 | **Tuần** | Lưới giờ, mỗi kèo là **một khối màu trải dài từ giờ bắt đầu đến giờ kết thúc**, trong khối có số người/số chỗ. Kèo trùng giờ được xếp cạnh nhau. Lịch tự cuộn tới kèo sớm nhất. Trên điện thoại vuốt ngang để xem cả tuần. |
 | **Ngày** | Lưới giờ của một ngày, cạnh đó là **timeline chi tiết**: giờ, địa điểm, số sân, trạng thái, số người/số chỗ, phí. Trên điện thoại timeline hiện lên trước. |
@@ -517,23 +539,27 @@ Bấm **＋ Tạo sự kiện mới**. Nếu đang ở chế độ Ngày thì fo
 |---|---|
 | **1. Thông tin cơ bản** | Tên kèo · **Ngày** (chọn bằng lịch popover) · Giờ bắt đầu · Giờ kết thúc · Địa điểm + **Link Google Maps** (bản đồ xem trước) · Số sân |
 | **2. Luật & tài chính** | Số chỗ · Phí tham gia · **Nội dung chơi** (Tự do / Full nam / Full nữ / Mix) · **Dịch vụ bao gồm trong phí** · DUPR từ–đến · **Hạn chót huỷ kèo** (xem [5.5](#55-chính-sách-huỷ--hoàn-buổi)) · **Hạn đăng ký** (tự động = giờ bắt đầu − hạn huỷ, hoặc tự chọn) · **Chi phí mỗi buổi** (tự ghi vào Sổ thu chi). Chi tiết: [4.5](#45-tạo-hoạt-động-lịch-sự-kiện-lịch-hàng-tuần-giải-đấu-kèo) |
-| **3. Lưu ý** | Ghi chú hiện trên trang đăng ký (vd: sân số 3, chuyển khoản trước 20h…) · Cho phép đăng ký qua link |
+| **3. Lưu ý** | Ghi chú hiện trên trang đăng ký (vd: sân số 3, chuyển khoản trước 20h…) · Cho phép đăng ký qua link · Cho phép *Đăng ký trước, chuyển khoản sau* (khi có phí) |
 | **4. Trạng thái** | *Nháp → Đang mở → Đã đóng → Đã xong*, hoặc *Đã huỷ* |
 
 Form kiểm tra trước khi gửi: giờ kết thúc phải sau giờ bắt đầu, và "DUPR đến" phải lớn hơn hoặc bằng "DUPR từ". Tạo 1 kèo thì app mở luôn trang kèo để bạn copy link đăng ký. Tạo nhiều tuần thì app quay về lịch.
 
-### 5.3. Đăng ký qua link: đăng nhập → xác nhận → thanh toán → nhận vé (`/e/<token>`)
+### 5.3. Đăng ký qua link: đăng nhập → xác nhận tham gia → Host duyệt → thanh toán → nhận vé (`/e/<mã>`)
 Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* vào nhóm Zalo/Telegram. Ai cũng xem được trang kèo (thông tin, phí, trình độ, số chỗ, thông báo của Host, chính sách huỷ, danh sách người tham gia). Nhưng **muốn đăng ký thì phải đăng nhập**, để app biết người đó là **thành viên CLB** hay **khách giao lưu**.
 
 | Bước | Người chơi thấy gì |
 |---|---|
 | **1. Đăng nhập / Đăng ký** | Nút "Đăng nhập / Đăng ký để tham gia". Xong thì quay lại đúng trang kèo. Lần đầu nhập họ tên + số điện thoại (+ DUPR). |
-| **2. Xác nhận** | App cho biết bạn đăng ký với tư cách gì và phải trả bao nhiêu: *Thành viên có gói còn hiệu lực* thì "Trừ 1 buổi trong gói"; *khách* (hoặc thành viên hết gói) thì "Phí buổi này 130.000 ₫". Tick "Tôi đã đọc thông tin kèo…" rồi bấm **Xác nhận**. |
+| **2. Xác nhận tham gia** | App cho biết bạn đăng ký với tư cách gì và phải trả bao nhiêu: *Thành viên có gói còn hiệu lực* thì "Trừ 1 buổi trong gói"; *khách* (hoặc thành viên hết gói) thì "Phí buổi này 130.000 ₫". Tick "Tôi đã đọc thông tin kèo…" rồi bấm **Xác nhận**. |
+| **2b. Host duyệt** (mặc định bật cho kèo mới) | Bấm **🙋 Xác nhận tham gia** = gửi yêu cầu. Người chơi vào mục **Chờ xác nhận tham gia** của kèo, **chưa có chỗ, chưa phải trả tiền**; trang hiện *"Đã gửi — chờ Host xác nhận"* và nút *Huỷ yêu cầu*. Host kiểm tra thông tin (trình độ, là ai — tránh lệch trình) rồi **Xác nhận tham gia** → người chơi sang bước thanh toán (giữ chỗ **12 giờ**, nhận email nếu bật) hoặc nhận vé ngay nếu không phải trả. Host cũng có thể *Đặt vào danh sách chờ*. Thành viên đã xác thực của CLB và kèo bật **Duyệt tự động** thì bỏ qua bước này. |
 | **3. Thanh toán** (khách, phí > 0) | Chỗ được **giữ 30 phút**. Trang hiện **VietQR** (đã điền sẵn số tiền + nội dung `PBxxxxxx`), **ảnh QR ngân hàng của Host** (nếu Host tải lên), số tài khoản và nút Copy. Chuyển khoản xong, **tải ảnh chụp màn hình giao dịch** lên. Trạng thái chuyển thành **"⏳ Host đang xác nhận thanh toán"**. |
 | **4. Nhận vé** | Host xác nhận thì trang chuyển thành **"🎉 Đăng ký thành công"** kèm **vé QR check-in**, có khung vàng nhắc rất rõ: **"📸 CHỤP MÀN HÌNH MÃ QR NÀY"**. |
 | **5. Sau buổi** (khách giao lưu của CLB) | Đã check-in thì khung vàng "chụp màn hình" tự ẩn. Khi tới **giờ kết thúc** của kèo, ngay trên trang kèo hiện khung **"⭐ Buổi chơi đã kết thúc"** với nút **Đánh giá buổi chơi** (mở trang khảo sát, có câu "muốn vào team cố định"). Đã gửi thì khung đổi thành *"Bạn đã gửi đánh giá"* + *Xem lại đánh giá*. Không cần chờ email. |
 
-- **Thành viên có gói** và **kèo miễn phí** đi thẳng từ bước 2 sang bước 4 (không cần thanh toán).
+- **Link rút gọn**: link đăng ký có dạng `…/e/<8 ký tự>` (link dài cũ vẫn dùng được).
+- **Đồng hồ đếm ngược**: kèo có hạn đăng ký thì trang đăng ký (cả khi chưa đăng nhập, lúc xác nhận và lúc chờ Host duyệt) hiện khung lớn **"Thời gian đăng ký còn lại: 1 ngày 02:12:27"** chạy từng giây, kèm giờ hết hạn; dưới 1 giờ thì khung chuyển màu đỏ. Lúc đang giữ chỗ chờ chuyển khoản, khung hiện **thời gian giữ chỗ còn lại**.
+- **Đăng ký trước, chuyển khoản sau**: ở bước xác nhận, khách phải trả phí chọn **Chuyển khoản ngay** (giữ chỗ 30 phút) hoặc **Đăng ký trước, chuyển khoản sau** (giữ chỗ **đến hạn đăng ký**, hoặc tới giờ bắt đầu nếu kèo không đặt hạn). Đang ở bước thanh toán cũng có nút **🕒 Chuyển khoản sau — giữ chỗ đến …** (kể cả sau khi Host duyệt). Quá hạn chưa gửi ảnh thì chỗ tự nhả như thường. Host thấy nhãn **🕒 trả sau** trong *Thanh toán cần xác nhận*. Host tắt được ở form kèo: **Cho phép "Đăng ký trước, chuyển khoản sau"** (mục 3, chỉ hiện khi có phí; mặc định bật). Không có lựa chọn này khi còn chưa tới 30 phút.
+- **Thành viên có gói** và **kèo miễn phí** không cần bước thanh toán.
 - **Quá 30 phút chưa gửi ảnh** thì chỗ tự được nhả cho người trong danh sách chờ. **Host từ chối ảnh** (kèm lý do, ví dụ "sai số tiền") thì người chơi có thêm 2 giờ để gửi ảnh khác.
 - **Hết chỗ** thì vào **danh sách chờ**, chưa phải trả tiền. Khi có người huỷ, người đầu danh sách được đẩy lên: thành viên có gói thì vào thẳng; khách thì nhận tin "đã có chỗ, hãy chuyển khoản trong 2 giờ".
 - Trang kèo, trang vé và trang khảo sát có nút **← Về trang chủ** ở góc trên (đã đăng nhập thì về Trang chủ của bạn).
@@ -555,6 +581,11 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
   - **✏️ Sửa thông tin** (`/events/<id>/edit`): sửa ngày, giờ, địa điểm, phí, số chỗ… Nếu kèo đã có người đăng ký, app nhắc bạn báo lại cho họ.
   - **Huỷ kèo**: giữ lại danh sách và thu chi, và báo cho mọi người đã đăng ký (email nếu Host bật + webhook `event_cancelled`). Khách đã trả tiền cần được hoàn.
   - **🗑 Xoá**: kèo trống thì xoá ngay. Kèo đã có người đăng ký hoặc có thu chi thì app hỏi lại lần hai (xoá sẽ mất hết lịch sử) và gợi ý dùng *Huỷ kèo* thay thế.
+- **Tab Thành viên** của kèo, từ trên xuống:
+  - Công tắc **Duyệt tự động**: tắt (mặc định với kèo mới) = mọi người đăng ký qua link phải được Host duyệt; bật = vào thẳng như trước. Kèo tạo trước bản cập nhật này được bật sẵn để không đổi cách chạy.
+  - **Người tổ chức**: Host **luôn** có mặt, cùng những người được gắn vai trò *Người tổ chức* (co-host). Nhãn dưới tên: *chơi* / *chờ* / *không chơi*. Người tổ chức tham gia chơi thì có tên ở **cả** phần Người tổ chức **và** danh sách chính; Host chơi không mất phí.
+  - **🙋 Chờ xác nhận tham gia**: người đã xin qua link, kèm trình độ; nút nhanh **✓ Xác nhận tham gia** / **⏳ Đặt vào danh sách chờ**.
+  - **Bảng chọn chỗ** (bấm vào người tổ chức, người chờ duyệt, hoặc nút **⇄ Xếp chỗ** trong danh sách chính / chờ): *Vai trò* — **🛡 Người tổ chức**, **HLV**, **Trọng tài** (bấm để bật/tắt; HLV và Trọng tài là nhãn, quyền trọng tài vẫn cấp ở *Phân quyền*) — và các nút **Tạm hoãn duyệt** · **Đặt vào danh sách chờ** · **Xác nhận tham gia** (+ **Không chơi** cho người tổ chức). *Xác nhận tham gia* đưa vào danh sách chính (khách trả phí online chuyển sang bước thanh toán; hết chỗ thì báo *danh sách chính đã đủ*); *Đặt vào danh sách chờ* bỏ xác nhận (chỗ giữ chưa trả tiền được nhả, tiền đã trả vẫn giữ). Người tổ chức chưa chắc chơi thì để ở danh sách chờ.
 - **Bảng đếm trên sân**: *Đã đến sân* (x/y) · *Giữ chỗ / tổng* · *Chờ xác nhận thanh toán* · *Chờ chuyển khoản* · *Danh sách chờ*.
 - **💸 Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ.
   - Người đã gửi ảnh: bấm **Xem ảnh** để mở ảnh chụp chuyển khoản (kèm số tiền và nội dung cần khớp), rồi **Xác nhận** hoặc **Từ chối** (ghi lý do).
@@ -572,7 +603,7 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 - **📷 Quét QR**: check-in bằng vé QR hoặc mã QR cá nhân của người chơi (xem [6.3](#63-check-in-bằng-mã-qr)). Người quên ảnh thì Host bấm **Check-in** tay trong danh sách, hoặc gõ mã vé trong ô dưới camera.
 - Khi một người trong danh sách chính huỷ, người đầu tiên trong danh sách chờ **tự được đưa lên** và **được báo ngay** qua email / webhook (xem [8.6](#86-thông-báo-khi-được-đẩy-từ-danh-sách-chờ)).
 - Nhập trận đấu của kèo ngay trong trang.
-- Sửa trạng thái, hạn đăng ký, hạn chót huỷ và thông báo ở khung **Link đăng ký**.
+- Sửa trạng thái, hạn đăng ký, hạn chót huỷ và lưu ý ở khung **Link đăng ký** (hiện **link rút gọn** `…/e/<8 ký tự>` + Copy / Chia sẻ / Mở trang).
 
 ### 5.5. Chính sách huỷ & hoàn buổi
 Mỗi kèo có thể đặt **Hạn chót huỷ kèo**: *Không giới hạn*, hoặc trước **2 / 6 / 12 / 24 / 48 tiếng** so với giờ bắt đầu (tính theo giờ Việt Nam, `APP_TZ`).
@@ -711,7 +742,15 @@ Người đăng ký mới nhận **email xác nhận** và phải bấm xác nh�
 - Chưa nhận email? Nút **Gửi lại email xác nhận** ngay ở trang đăng nhập. Khi Supabase chặn vì gửi quá nhiều, app báo lỗi dễ hiểu (đợi vài phút).
 
 ### 8.1b. Xoá tài khoản (`/account`)
-Mục **Vùng nguy hiểm → Xoá tài khoản**: app liệt kê những gì sẽ bị xoá (các CLB bạn sở hữu, kèo Xé Vé, hồ sơ người chơi; liên kết thành viên ở CLB khác được gỡ) và bắt **gõ đúng email tài khoản**. Xoá xong app đăng xuất và về trang đăng nhập.
+Mục **Vùng nguy hiểm → Xoá tài khoản** (cũng có ở **Hồ sơ** của người chơi). **Chỉ xoá tài khoản của bạn** (hồ sơ người chơi, vé, cài đặt; liên kết thành viên ở CLB khác được gỡ, CLB đó vẫn giữ tên và lịch sử chơi). **CLB / cộng đồng và kèo Xé Vé không bao giờ bị xoá theo tài khoản.**
+
+- **Không quản lý CLB / kèo nào**: gõ đúng email tài khoản → **Xoá vĩnh viễn**; app đăng xuất và về trang đăng nhập.
+- **Đang quản lý CLB / cộng đồng hoặc kèo Xé Vé** (Host): chưa xoá được (API trả `409 must_handover`). Khung xoá tài khoản chuyển thành **Chuyển giao**:
+  1. Liệt kê CLB / cộng đồng và số kèo Xé Vé sẽ chuyển.
+  2. Nhập **email hoặc tên đăng nhập** của người nhận (người đó phải đã có tài khoản) và lời nhắn cho nhà phát triển (VD: quan hệ, SĐT) → **Gửi yêu cầu chuyển giao**. Mỗi tài khoản chỉ có một yêu cầu chờ duyệt; có nút *Huỷ yêu cầu*.
+  3. Nhà phát triển (Owner) nhận email/webhook *"[Chuyển giao tài khoản] …"*, vào **Trang Owner → Chuyển giao** để **xác minh người nhận có thật** (gọi điện, đối chiếu họ tên, SĐT, ngày sinh, ngày tạo tài khoản, gói và số CLB đang có) rồi **duyệt** hoặc **từ chối** (bắt buộc ghi lý do — Host thấy lý do và gửi lại được).
+  4. Duyệt: toàn bộ CLB (kèm buổi, thu chi, giải, kho bóng, phân quyền) và kèo Xé Vé (kèm thu chi, phân quyền, kho bóng Xé Vé) chuyển sang người nhận. Host thấy *"Đã chuyển giao CLB / kèo cho …"* và lúc này mới xoá được tài khoản.
+- Lịch sử chuyển giao được giữ lại sau khi tài khoản bị xoá.
 
 ### 8.2. Ngôn ngữ
 Tiếng Việt (mặc định) và tiếng Anh, đổi trong menu.
@@ -819,6 +858,7 @@ Khu quản trị toàn hệ thống dành cho **chủ dự án** (người vận
 |---|---|
 | **Tổng quan** (`/owner`) | **Tăng trưởng** tuần này so với tuần trước (tuần tính từ thứ 2, giờ Việt Nam): Host mới (lần đầu tạo CLB hoặc kèo Xé Vé), CLB mới, người chơi mới; **tỷ lệ lên gói trả phí** (Host đang trả phí / tổng Host). **Hoạt động**: kèo Xé Vé và giải đấu tạo hôm nay / tuần này. **Doanh thu**: tiền thực nhận tháng này (so với tháng trước), **MRR** (mỗi gói đang chạy lấy số tiền đơn chia số tháng — gói 12 tháng 1.188.000đ tính 99.000đ/tháng; gói bật tay không tính), số đơn chờ xác nhận, **tỷ lệ gia hạn** 30 ngày (gia hạn / hết hạn bỏ). Danh sách **gói sắp hết hạn** trong 3 hoặc 7 ngày (bấm để mở Host), biểu đồ tài khoản mới mỗi ngày (14 ngày). **Gói & dùng thử**: số Host theo từng gói (Chưa có gói / Dùng thử / Basic / Standard / Advanced / Pro, thanh tỷ lệ), **ARPU** (MRR ÷ số Host đang trả phí — Host dùng thử không tính là trả phí), **tỷ lệ dùng thử → trả phí** (trong các lượt dùng thử đã kết thúc, bao nhiêu Host sau đó mua gói), danh sách **đang dùng thử** (còn mấy ngày), biểu đồ CLB mới mỗi ngày. |
 | **Duyệt CLB** (`/owner/club-requests`) | Các yêu cầu tạo CLB mới (xem [3.5](#35-đăng-ký-quản-lý-clb-club-request)), lọc *Chờ duyệt (số lượng) / Đã duyệt / Từ chối / Tất cả*. Mỗi yêu cầu: tên CLB, môn, người gửi (@tên đăng nhập, email — bấm để mở Host), địa điểm + khu vực, số thành viên, lịch sinh hoạt, email liên hệ, gói muốn dùng, mô tả, và **tình trạng tài khoản** (gói hiện tại, số CLB / giới hạn) và **dòng thanh toán** (💳 *Chờ thanh toán / Đã thanh toán / Đã huỷ* · số tiền · số tháng hoặc nâng cấp từ gói nào · mã `PBM…`; hoặc *Gói hiện tại đủ chỗ*). **🔍 Xem chi tiết** hiện ảnh nền + ảnh đại diện. Khi đơn còn chờ, nút duyệt là **💳 Đã nhận tiền & duyệt**: đối chiếu số tiền + mã trong sao kê, xác nhận → gói được bật và CLB được tạo cùng lúc. Không duyệt được khi chưa nhận tiền (`409 payment_pending`) hay tài khoản chưa có gói trả phí (`409 payment_missing`); bị chặn nếu gói đã đủ số CLB (`409 club_limit`). **✕ Từ chối** bắt buộc nhập lý do (người gửi sẽ thấy); đơn chờ bị huỷ, đơn đã trả cần hoàn tiền thủ công. Duyệt / từ chối được ghi nhật ký. Nhân viên hỗ trợ có quyền *Tra cứu Host* dùng được tab này; bấm *Đã nhận tiền & duyệt* cần thêm quyền *Thanh toán*. |
+| **Chuyển giao** (`/owner/handovers`, chỉ owner) | Yêu cầu chuyển giao của Host muốn xoá tài khoản (xem [8.1b](#81b-xoá-tài-khoản-account)). Lọc *Chờ duyệt / Đã duyệt / Từ chối / Tất cả*. Mỗi yêu cầu: số CLB + kèo Xé Vé, tên các CLB, lời nhắn của Host, và 2 thẻ **Người chuyển** / **Người nhận** (họ tên, email, @tên đăng nhập, SĐT, ngày sinh, ngày tạo tài khoản, gói, số CLB đang sở hữu — bấm để mở trang Host). **✓ Đã xác minh — duyệt chuyển giao** (ghi chú tuỳ chọn) chuyển toàn bộ sang người nhận; **✕ Từ chối** bắt buộc ghi lý do. Duyệt / từ chối được ghi nhật ký (`account.handover_approve` / `_reject`). |
 | **Host** (`/owner/hosts`) | Tìm theo tên, email, SĐT; lọc *Host / Trả phí / Dùng thử / Chưa có gói / Sắp hết hạn / Bị khoá / Mọi tài khoản*; phân trang 50 dòng. Mỗi dòng: gói + hạn (nhãn *Thử* khi đang dùng thử), Social Manager, trạng thái, CLB/giới hạn, người/giới hạn (thanh màu khi gần đầy), lần đăng nhập cuối. |
 | **Chi tiết Host** (`/owner/hosts/<id>`) | **Gói dịch vụ**: đổi gói (Chưa có gói / Basic / Standard / Advanced / Pro), sửa ngày hết hạn (để trống = không hạn), **cộng thêm 1–12 tháng** miễn phí, bật/tắt Social Manager + hạn + cộng tháng; ô *Lý do* ghi vào nhật ký; hỏi xác nhận trước khi lưu. **Đình chỉ tài khoản** (bắt buộc nhập lý do; không khoá được tài khoản owner) / **Mở khoá**. **Ghi chú nội bộ** (CRM) — chỉ owner thấy. Danh sách CLB sở hữu (tên, số chính thức / giao lưu đã dùng trên giới hạn và số chỗ cấp thêm — **không** có danh sách hay SĐT thành viên), nút **➕ Cấp thêm chỗ thành viên** (hoàn tác được) và **🔁 Đổi chủ CLB**, các đơn thanh toán, **Vai trò trong CLB** (theo từng CLB: email + vai trò Đồng quản trị / Tài chính / Vận hành, số chỗ đã dùng mỗi vai trò), nhật ký thay đổi của Host này. Nút **👁 Xem như Host này** (xem bên dưới). |
 | **Thanh toán gói** (`/owner/payments`) | Duyệt đơn chuyển khoản (*Đã nhận tiền* / *Huỷ đơn*), lọc trạng thái + khoảng ngày, tổng đã thu, nút **⬇ Excel** xuất danh sách đang lọc (mã, ngày tạo/xác nhận, Host, gói, số tháng, số tiền, trạng thái, người xác nhận). Đường dẫn cũ `/admin/payments` tự chuyển sang đây. |
@@ -1007,6 +1047,9 @@ supabase/migrations/
 └── 20261104090000_club_requests_discovery.sql        # trang Chào mừng (users.sports, account_role, onboarded_at), yêu cầu tạo CLB chờ Owner duyệt (club_requests), hồ sơ CLB + tìm kiếm (clubs.country/province/district/address/schedule/member_count_hint/contact_email/is_listed, club_images), club_members.join_source, đơn nâng cấp tính chênh lệch (plan_payments.upgrade_from/upgrade_days), bỏ gói Free (tài khoản Free có CLB được 30 ngày Basic một lần)
 └── 20261105090000_member_moderation_invites.sql      # đăng ký CLB kèm đơn thanh toán (club_requests.payment_id), link mời (clubs.invite_token, invite_enabled), Xem xét thêm (club_members.review_until/review_started_at/review_reason/review_from), lịch sử xử lý chỉ ghi thêm (member_moderation_log), chặn (member_blocks), thông báo người chơi (player_notices), join_source thêm manual/invite
 └── 20261106090000_weekly_series_costs.sql            # lịch hàng tuần: events.series_id (sửa cả lịch; nhận lại lịch cũ), services (dịch vụ trong phí), play_format (men/women/mixed/open), map_url (link Google Maps), cost_items (chi phí mỗi buổi) + transactions.event_cost; dựng lại v_event_summary
+└── 20261107090000_event_approval_organizers.sql      # Host duyệt người đăng ký: trạng thái participant 'requested' (chờ duyệt) và 'not_playing' (người tổ chức không chơi), events.auto_approve (kèo cũ = bật), events.short_code (link rút gọn), event_participants.is_organizer + tags (coach/referee); dựng lại v_event_summary (+ requested_count)
+└── 20261108090000_account_handover_pay_later.sql     # chuyển giao trước khi xoá tài khoản (account_handovers, chỉ backend đọc/ghi), "đăng ký trước, chuyển khoản sau" (event_participants.pay_later, events.allow_pay_later); dựng lại v_event_summary
+└── 20261109090000_communities.sql                   # Social Manager: clubs.kind ('club' / 'community'), club_requests.kind, events.series_label (Series A, B…); dựng lại v_event_summary
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1182,6 +1225,10 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Link mời & thông báo | *Công khai:* `GET /api/public/invite/:token` · `POST /api/player/invite/:token/join` `{note}` · `GET /api/player/notices` · `POST /api/player/notices/:id/read` (`/api/player/me` và `/home` kèm `notices` chưa đọc) · Đăng ký kèo bị chặn trả `403 club_suspended` / `club_blocked` kèm `reason`, `until` |
 | Đăng ký CLB trả phí | `POST /api/host/club-requests` trả kèm `payment` (đơn chuyển khoản) hoặc `plan_covered` · `POST /api/host/club-requests/:id/payment` (tạo mã mới) · Owner: `POST /api/owner/club-requests/:id/approve` `{note, confirm_payment}` |
 | Lịch hàng tuần & chi phí | `POST /api/events` nhận thêm `services`, `play_format` (`men`/`women`/`mixed`/`open`), `map_url` (https), `cost_items` `[{category: court\|water\|coach\|other, amount, note}]` (ghi khoản chi vào sổ theo ngày từng buổi); nhiều `dates` → cùng `series_id` · `GET /api/events/:id` kèm `series_upcoming` · `PATCH /api/events/:id` `{…, apply_to: 'series'}` chép thay đổi sang các buổi sắp tới của lịch, trả `series_updated` · `GET /api/clubs/:id/fund` trả cả khoản của các buổi (kèm `events`: tên, ngày) · `PATCH /api/transactions/:id` với khoản chi phí buổi → `409 linked_event_cost` (huỷ thì được) |
+| Duyệt & người tổ chức | `GET /api/events/public/:token` nhận cả **mã rút gọn** 8 ký tự (mọi route `/public/:token…`) · `GET …/public/:token/me` kèm `member.needs_approval` · `POST …/register` → `status: 'requested'` khi cần Host duyệt · `POST /api/events/:id/participants/:pid/place` `{to: main\|waitlist\|requested\|not_playing}` (hết chỗ → `409 full`) · `POST /api/events/:id/participants/:pid/roles` `{is_organizer, tags: [coach, referee]}` · `POST /api/events/:id/host-play` `{to: main\|waitlist\|not_playing}` · `GET /api/events/:id` kèm `host_name` · `PATCH /api/events/:id` `{auto_approve}` · webhook Host `signup_request`, `signup_approved` |
+| Xoá tài khoản & chuyển giao | `GET /api/host/account/delete-preview` kèm `must_handover`, `handover` (yêu cầu mới nhất) · `POST /api/host/account/handover` `{to: email\|username, note}` (`404 no_account`, `400 self`, `409 pending_exists`) · `POST /api/host/account/handover/cancel` · `DELETE /api/host/account?confirm=<email>` chỉ xoá tài khoản; còn CLB / kèo Xé Vé → `409 must_handover` · Owner: `GET /api/owner/handovers?status=pending\|approved\|rejected\|cancelled\|all` · `POST /api/owner/handovers/:id/approve\|reject` `{note}` |
+| Chuyển khoản sau | `POST /api/events/public/:token/register` `{pay_later: true}` · `POST /api/events/public/:token/pay-later` (`409 pay_later_off`) · `…/me` kèm `member.pay_later_until`, `registration.pay_later` / `pay_later_until` · `PATCH /api/events/:id` `{allow_pay_later}` |
+| Social Manager | `POST /api/host/club-requests` `{…, kind: 'club'\|'community'}` · `POST /api/clubs` `{…, kind}` (khi tắt duyệt) · `GET /api/clubs` kèm `kind` · `GET /api/player/home` → `managed_clubs[].kind` · `GET /api/clubs/:id/community-overview` → `{members: {total, fixed, guest, active, inactive, by_series[]}, finance: {income, expense, balance, unpaid, …}, regularity: {regular, irregular, inactive}, rules}` · `GET /api/analytics/daily?club_id=\|scope=standalone&month=YYYY-MM` → `{days[], totals}` · `POST/PATCH /api/events` nhận `series_label`; cộng đồng không nhận `kind` meeting / challenge (`400 kind_not_for_community`) |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = tất cả, `club`, `guest`; kèm `weeks_at_top`: số tuần giữ Top 1 của bảng đó) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
@@ -1227,6 +1274,9 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Xử lý thành viên | `club_members.review_until` / `review_started_at` / `review_reason` / `review_from` (đang Xem xét thêm), `member_moderation_log` (lịch sử chỉ ghi thêm: `club_id`, `member_id`, `full_name`, `phone`, `user_id`, `action`, `reason`, `until`, `from_type` / `to_type`, `blocked`, `block_scope`, `actor_email`; trigger chặn sửa/xoá, không khoá ngoại tới thành viên nên còn sau khi xoá người), `member_blocks` (`club_id` gốc, `host_id`, `scope` club/all, `user_id`/`phone`), `player_notices` (`kind` warning/restored/removed, `read_at`) |
 | Link mời & đăng ký CLB | `clubs.invite_token` (duy nhất), `clubs.invite_enabled`, `club_requests.payment_id` → `plan_payments` |
 | Lịch hàng tuần | `events.series_id` (các buổi tạo cùng một lịch), `events.services`, `events.play_format`, `events.map_url`, `events.cost_items` (jsonb), `transactions.event_cost` (khoản chi tự ghi từ chi phí buổi) |
+| Duyệt & người tổ chức | `events.auto_approve`, `events.short_code` (duy nhất), `event_participants.is_organizer`, `event_participants.tags`, trạng thái `requested` / `not_playing`; view `v_event_summary.requested_count` |
+| Chuyển giao & trả sau | `account_handovers` (`from_user`, `from_email`, `to_user`, `to_email`, `note`, `clubs` jsonb, `xeve_events`, `status` pending/approved/rejected/cancelled, `owner_note`, `decided_by`, `decided_at`; tối đa 1 yêu cầu chờ mỗi tài khoản; RLS bật, chỉ backend), `event_participants.pay_later`, `events.allow_pay_later` |
+| Social Manager | `clubs.kind` (`club` / `community`), `club_requests.kind`, `events.series_label` |
 
 ---
 
@@ -1248,6 +1298,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **CLB mới phải được Owner duyệt** (mặc định; công tắc *Duyệt CLB mới* ở Trang Owner → Hệ thống): server từ chối tạo CLB trực tiếp (`403 club_request_required`), nên không ai lập được CLB giả để thu tiền người chơi. Bảng `club_requests`, `club_images` bật RLS, chỉ backend đọc/ghi; ảnh chỉ nhận JPEG/PNG/WebP nhỏ (đại diện ≤ 200 KB, nền ≤ 600 KB).
 - **Tìm CLB công khai** chỉ trả hồ sơ CLB (tên, khu vực, lịch, mô tả, ảnh, **số** thành viên) và các buổi sắp tới — không trả danh sách hay SĐT thành viên; CLB tắt *Hiện trong tìm kiếm* hoặc của tài khoản bị đình chỉ thì không hiện. Từ khoá tìm kiếm được lọc ký tự trước khi đưa vào truy vấn.
 - **Lịch sử xử lý thành viên chỉ ghi thêm**: trigger chặn sửa/xoá `member_moderation_log` (chỉ cho xoá khi cả CLB bị xoá), nên chủ CLB mới sau khi chuyển nhượng vẫn thấy ai từng bị xoá và vì sao. Lệnh chặn gắn với CLB gốc; chặn *mọi sự kiện* chỉ áp cho chủ CLB đang sở hữu. Kiểm tra chặn / tạm ngưng chạy ở server khi đăng ký kèo và xin gia nhập.
+- **Xoá tài khoản không xoá CLB / kèo.** Server chặn xoá tài khoản còn sở hữu CLB hoặc kèo Xé Vé; chỉ owner (`OWNER_EMAILS`, không phải nhân viên hỗ trợ) duyệt được chuyển giao, sau khi xác minh người nhận. Mọi lần duyệt / từ chối đều ghi nhật ký owner.
 - **Link mời** là token ngẫu nhiên, mặc định tắt, đổi mới được; trang mời chỉ hiện hồ sơ công khai của CLB.
 
 ---
@@ -1286,6 +1337,12 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Sửa buổi không thấy lựa chọn *Áp dụng cho tất cả các buổi* | Chỉ buổi tạo từ **Tạo lịch chơi hàng tuần** (nhiều buổi một lần) và còn buổi khác chưa diễn ra / chưa huỷ mới có. Kiểm tra đã chạy migration `20261106090000_weekly_series_costs.sql`. |
 | Sổ thu chi có khoản *Thuê sân* cho buổi đã huỷ | Chi phí buổi được ghi khi tạo lịch. Nếu không phải trả, bấm ✕ ở khoản đó trong Sổ thu chi hoặc tab Tài chính của buổi. |
 | Bản đồ trong form tạo buổi trống | Bản đồ xem trước cần mạng tới Google Maps; người chơi vẫn bấm được vào địa chỉ để mở Google Maps. |
+| Người chơi bấm *Xác nhận tham gia* nhưng không thấy bước thanh toán | Đúng thiết kế: kèo đang **tắt Duyệt tự động**, người chơi chờ Host bấm *Xác nhận tham gia* trong tab Thành viên. Muốn cho vào thẳng thì bật **Duyệt tự động**. |
+| Bấm *Xác nhận tham gia* báo *danh sách chính đã đủ* | Tăng số chỗ ở ✏️ Sửa thông tin, hoặc chuyển bớt người sang danh sách chờ trước. |
+| Xoá tài khoản báo phải chuyển giao (`must_handover`) | Tài khoản còn quản lý CLB / cộng đồng hoặc kèo Xé Vé. Gửi yêu cầu chuyển giao trong khung Xoá tài khoản và chờ nhà phát triển duyệt ở **Trang Owner → Chuyển giao**. |
+| Không thấy lựa chọn *Chuyển khoản sau* | Host đã tắt ở form kèo, kèo miễn phí / người chơi dùng buổi trong gói, kèo cần Host duyệt (lựa chọn hiện ở bước thanh toán sau khi được duyệt), hoặc còn chưa tới 30 phút tới hạn đăng ký / giờ bắt đầu. |
+| Không thấy cộng đồng vừa được duyệt | Mở bộ chuyển ngữ cảnh → mục *🎟 Social Manager · Cộng đồng*, hoặc bấm cộng đồng (viền vàng) ở Trang chủ. Kiểm tra đã chạy migration `20261109090000_communities.sql`. |
+| Tổng quan cộng đồng không có bảng *Theo series* | Chưa kèo nào có Series: điền ô *Series* khi tạo / sửa kèo. |
 | Host báo "Tài khoản đang tạm khoá" | Owner đã đình chỉ tài khoản (lý do hiện trong khung). Mở `/owner/hosts` → lọc *Bị khoá* → mở Host → **Mở khoá**. |
 | Người chơi không nhận được email thông báo | Kiểm tra: Host đã bật công tắc *Gửi email thông báo cho người chơi*; không còn cảnh báo vàng (đã đặt `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` trên tên miền đã xác minh); người chơi chưa *Tắt email*. Xem trạng thái gửi trong Resend → Emails; nhắc người chơi kiểm tra thư mục Spam. |
 | Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |

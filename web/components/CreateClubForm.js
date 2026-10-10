@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useClubs } from '@/context/ClubContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { useI18n } from '@/context/I18nContext';
 import { UpgradeModal } from '@/components/PlanModals';
 import { useLoad } from '@/lib/useLoad';
@@ -29,6 +30,7 @@ export default function CreateClubForm(props) {
 function DirectCreateForm({ onCreated, autoFocus = false }) {
   const { t } = useI18n();
   const { createClub } = useClubs();
+  const { workspace } = useWorkspace();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [sport, setSport] = useState('pickleball');
@@ -43,7 +45,7 @@ function DirectCreateForm({ onCreated, autoFocus = false }) {
     setBusy(true);
     setError('');
     try {
-      const club = await createClub({ name: trimmed, description: description.trim(), sport });
+      const club = await createClub({ name: trimmed, description: description.trim(), sport, kind: workspace === 'xeve' ? 'community' : 'club' });
       setName('');
       setDescription('');
       onCreated?.(club);

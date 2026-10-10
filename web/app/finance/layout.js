@@ -27,8 +27,10 @@ export default function FinanceLayout({ children }) {
   const { club } = useDefaultClub();
   const pathname = usePathname() || '';
   // Finance staff see the money tabs only (no ball store).
-  const tabs = (TABS[workspace] || TABS.club).filter((tab) => !(workspace === 'club' && club?.role === 'finance' && tab.href === '/finance/inventory'));
-  const where = workspace === 'xeve' ? t('finX.scopeXeve') : club?.name || '';
+  // A Social Manager community has the club's tabs (plans too); one-off kèo the short list.
+  const space = workspace === 'xeve' && !club ? 'xeve' : 'club';
+  const tabs = TABS[space].filter((tab) => !(space === 'club' && club?.role === 'finance' && tab.href === '/finance/inventory'));
+  const where = space === 'xeve' ? t('finX.scopeXeve') : club?.name || '';
 
   return (
     <AppShell>

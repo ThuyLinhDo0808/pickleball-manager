@@ -9,19 +9,31 @@ import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 // assigned events. Clubs it only plays in open the member page /c/<id> instead.
 export function useEnter() {
   const router = useRouter();
-  const { clubs, selectClub, reload } = useClubs();
+  const { allClubs, selectClub, reload } = useClubs();
   const { setWorkspace } = useWorkspace();
 
   const manageClub = useCallback(
     async (clubId, path = '/dashboard') => {
       // The club list is loaded once at sign-in; a club shared since then (co-admin)
       // isn't in it yet, so fetch it again before opening.
-      if (!clubs.some((c) => c.id === clubId)) await reload();
+      let list = allClubs;
+      if (!list.some((c) => c.id === clubId)) list = (await reload()) || list;
       selectClub(clubId);
-      setWorkspace('club');
+      // A community opens in Social Manager, a club in Club Manager.
+      const c = list.find((x) => x.id === clubId);
+      setWorkspace(c?.kind === 'community' ? 'xeve' : 'club');
       router.push(path);
     },
-    [router, clubs, selectClub, reload, setWorkspace]
+    [router, allClubs, selectClub, reload, setWorkspace]
+  );
+  // Social Manager's one-off kèo (no community).
+  const standalone = useCallback(
+    (path = '/events') => {
+      setWorkspace('xeve');
+      selectClub(null);
+      router.push(path);
+    },
+    [router, setWorkspace, selectClub]
   );
   const space = useCallback(
     (ws, path) => {
@@ -31,5 +43,5 @@ export function useEnter() {
     [router, setWorkspace]
   );
   const memberClub = useCallback((clubId) => router.push(`/c/${clubId}`), [router]);
-  return { manageClub, space, memberClub, reloadClubs: reload };
+  return { manageClub, space, standalone, memberClub, reloadClubs: reload };
 }

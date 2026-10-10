@@ -1,12 +1,13 @@
 const { supabase } = require('../supabase');
 const { consumeSession, releaseSession } = require('./memberships');
 const { APP_TZ } = require('./stats');
-const { notifyPromoted } = require('./notify');
+const { notifyPromoted, notifyApproved } = require('./notify');
 const { HOLDS_PLACE, needsOnlinePayment } = require('./fees');
 const { newPaymentRef } = require('./payment');
 const { ensureGuestMember, guestsReady } = require('./guests');
 
 const PROMOTED_HOLD_MS = 2 * 3600 * 1000; // a promoted guest has 2 hours to pay
+const APPROVED_HOLD_MS = 12 * 3600 * 1000; // an approved request has 12 hours to pay
 
 const ATTENDANCE_ACTIONS = ['check-in', 'no-show', 'reset'];
 
@@ -93,14 +94,51 @@ function isLateCancel(event, prior, now = new Date()) {
 }
 
 // Status for someone getting a place: straight in, or 'pending' while an online guest pays.
-async function placePatch(event, participant) {
-  if (!(await needsOnlinePayment(event, participant))) return { status: 'registered' };
+async function placePatch(event, participant, holdMs = PROMOTED_HOLD_MS) {
+  if (!(await needsOnlinePayment(event, participant))) return { status: 'registered', hold_expires_at: null };
   return {
     status: 'pending',
     payment_status: participant.payment_status === 'proof_submitted' ? 'proof_submitted' : 'awaiting_proof',
     payment_ref: participant.payment_ref || newPaymentRef(),
-    hold_expires_at: new Date(Date.now() + PROMOTED_HOLD_MS).toISOString(),
+    hold_expires_at: new Date(Date.now() + holdMs).toISOString(),
   };
+}
+
+// Where the Host puts someone on the participant list (the sheet on a name):
+//   main        = "Xác nhận tham gia": a place (pays first if they owe online)
+//   waitlist    = "Đặt vào danh sách chờ"
+//   requested   = "Tạm hoãn duyệt": back to the requests waiting for a decision
+//   not_playing = an organizer who runs the event without playing
+const PLACES = ['main', 'waitlist', 'requested', 'not_playing'];
+async function setPlace(event, prior, to) {
+  if (!PLACES.includes(to)) throw httpError(`to must be one of ${PLACES.join(', ')}.`, 400, 'bad_place');
+  if (['cancelled', 'checked_in', 'no_show'].includes(prior.status)) throw httpError('This person already played or cancelled.', 409, 'locked');
+  if (to === 'not_playing' && !prior.is_organizer) throw httpError('Only organizers can be "not playing".', 400, 'not_organizer');
+  const target = { main: null, waitlist: 'waitlisted', requested: 'requested', not_playing: 'not_playing' }[to];
+  let patch;
+  if (to === 'main') {
+    if (HOLDS_PLACE.includes(prior.status)) return prior;
+    const { count, error } = await supabase
+      .from('event_participants')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', event.id)
+      .in('status', HOLDS_PLACE);
+    if (error) throw error;
+    if ((count || 0) >= event.slots) throw httpError('The main list is full: add places or move someone out first.', 409, 'full');
+    patch = await placePatch(event, prior, prior.status === 'requested' ? APPROVED_HOLD_MS : PROMOTED_HOLD_MS);
+  } else {
+    if (prior.status === target) return prior;
+    // Out of the main list: an unpaid hold is dropped (a paid fee stays paid).
+    patch = { status: target, hold_expires_at: null };
+    if (prior.status === 'pending' && prior.payment_status !== 'proof_submitted') patch.payment_status = 'none';
+  }
+  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
+  if (error) throw error;
+  if (to === 'main') {
+    if (data.status === 'registered') await ensureGuestMember(event, data);
+    if (data.user_id && !data.is_organizer) (prior.status === 'requested' ? notifyApproved : notifyPromoted)(event, data);
+  }
+  return data;
 }
 
 // Move the first waitlisted player up and tell them (in the background).
@@ -226,6 +264,9 @@ async function checkInByCode(event, code) {
 }
 
 module.exports = {
+  eventStartMs,
+  PLACES,
+  setPlace,
   ATTENDANCE_ACTIONS,
   eventEndMs,
   MAIN_LIST,

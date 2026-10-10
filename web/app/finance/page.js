@@ -6,6 +6,7 @@ import PendingPayments from '@/components/PendingPayments';
 import EventPaymentsPending from '@/components/EventPaymentsPending';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useScope } from '@/lib/useScope';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -59,12 +60,64 @@ function Breakdown({ title, rows, total, color, t }) {
   );
 }
 
+// Social Manager: the month day by day — sessions, players, money in / out, profit, owed.
+function DailyOverview({ daily, isYear, label }) {
+  const { t, lang } = useI18n();
+  return (
+    <section className="card !p-5 mb-4">
+      <h2 className="text-white font-semibold mb-1">📅 {t('social.daily')} · {label}</h2>
+      {isYear && <p className="text-gray-500 text-xs mb-2">{t('social.dailyYearHint')}</p>}
+      {!daily && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
+      {daily && daily.days.length === 0 && <p className="text-gray-400 text-sm">{t('social.dailyNone')}</p>}
+      {daily && daily.days.length > 0 && (
+        <div className="table-wrap">
+          <table className="w-full text-sm grid-table !min-w-[40rem]">
+            <thead>
+              <tr className="text-gray-300 text-left bg-navy-900">
+                <th>{t('fin.date')}</th>
+                <th className="text-right">{t('social.sessions')}</th>
+                <th className="text-right">{t('fin.playersCol')}</th>
+                <th className="text-right">{t('analytics.income')}</th>
+                <th className="text-right">{t('analytics.expense')}</th>
+                <th className="text-right">{t('social.profit')}</th>
+                <th className="text-right">{t('social.unpaid')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {daily.days.map((d) => (
+                <tr key={d.date}>
+                  <td className="text-gray-200 whitespace-nowrap capitalize">{new Date(`${d.date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td>
+                  <td className="text-right tabular-nums text-gray-300">{d.sessions || '—'}</td>
+                  <td className="text-right tabular-nums text-gray-300">{d.players || '—'}</td>
+                  <td className="text-right tabular-nums text-lime-400">{formatVnd(d.income)}</td>
+                  <td className="text-right tabular-nums text-orange-300">{formatVnd(d.expense)}</td>
+                  <td className={`text-right tabular-nums font-semibold ${d.profit < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(d.profit)}</td>
+                  <td className="text-right tabular-nums text-amber-200">{d.unpaid ? formatVnd(d.unpaid) : '—'}</td>
+                </tr>
+              ))}
+              <tr className="bg-navy-900/60 font-semibold">
+                <td className="text-white">{t('social.total')}</td>
+                <td className="text-right tabular-nums text-white">{daily.totals.sessions}</td>
+                <td className="text-right tabular-nums text-white">{daily.totals.players}</td>
+                <td className="text-right tabular-nums text-lime-400">{formatVnd(daily.totals.income)}</td>
+                <td className="text-right tabular-nums text-orange-300">{formatVnd(daily.totals.expense)}</td>
+                <td className={`text-right tabular-nums ${daily.totals.profit < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(daily.totals.profit)}</td>
+                <td className="text-right tabular-nums text-amber-200">{formatVnd(daily.totals.unpaid)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // Finance overview: fund balance, the year's trend, payments to confirm, money per event.
 export default function FinanceOverview() {
   const { t, lang } = useI18n();
   const { workspace } = useWorkspace();
   const { club } = useDefaultClub();
-  const isClub = workspace === 'club';
+  const { scoped: isClub } = useScope();
   const scope = isClub ? (club ? `club_id=${club.id}` : null) : 'scope=standalone';
 
   // Views follow the calendar: one month (‹ ›), or a whole year ("Năm 2026").
@@ -79,6 +132,9 @@ export default function FinanceOverview() {
   const fin = year === thisYear ? finNow : finYear;
   const { data: pnl } = useLoad(() => (scope ? api.get(`/api/analytics/events-pnl?${scope}&year=${year}`).catch((e) => (e.status === 402 ? 'locked' : Promise.reject(e))) : Promise.resolve(null)), [scope, year]);
   const { data: fund } = useLoad(() => (isClub && club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null)), [isClub, club?.id]);
+  // Social Manager (communities and one-off kèo): the money day by day, and the profit to expect.
+  const social = workspace === 'xeve';
+  const { data: daily } = useLoad(() => (social && scope ? api.get(`/api/analytics/daily?${scope}&month=${ymPick}`).catch(() => null) : Promise.resolve(null)), [social, scope, ymPick]);
 
   const isYear = view === 'year';
   const periodCats = isYear ? fin?.categories || [] : fin?.month_categories?.[ymPick] || [];
@@ -131,9 +187,22 @@ export default function FinanceOverview() {
         <Link href="/finance/ledger" className="btn-primary text-sm sm:ml-auto">+ {t('finX.addEntry')}</Link>
       </div>
 
-      <div className={`grid gap-4 mb-4 ${isClub ? 'lg:grid-cols-[1fr_2.4fr]' : ''}`}>
+      <div className={`grid gap-4 mb-4 ${isClub || social ? 'lg:grid-cols-[1fr_2.4fr]' : ''}`}>
+        {/* Social Manager: "Lợi nhuận dự kiến" = income − costs + what players still owe, for the period. */}
+        {social && (
+          <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 flex flex-col justify-center">
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t('social.expectedProfit')} · {periodLabel}</p>
+            {(() => {
+              const owed = !isYear && daily ? daily.totals.unpaid : 0;
+              const v = picked ? Number(picked.income) - Number(picked.expense) + owed : null;
+              return <div className={`text-3xl sm:text-4xl font-bold tabular-nums mt-1 ${v < 0 ? 'text-red-400' : 'text-lime-400'}`}>{v == null ? '—' : formatVnd(v)}</div>;
+            })()}
+            <p className="text-gray-500 text-xs mt-1">{isYear ? t('social.expectedProfitYear') : t('social.expectedProfitHint', { owed: formatVnd(daily?.totals.unpaid || 0) })}</p>
+          </div>
+        )}
         {/* The club fund: what is in it now, whatever the period. */}
-        {isClub && (
+        {isClub && !social && (
           <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 flex flex-col justify-center">
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
             <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t('fin.balance')}</p>
@@ -148,6 +217,8 @@ export default function FinanceOverview() {
       </div>
 
       {fin && <div className="mb-4"><FinanceTrend fin={fin} compact /></div>}
+
+      {social && <DailyOverview daily={daily} isYear={isYear} label={`${Number(ymPick.slice(5))}/${ymPick.slice(0, 4)}`} />}
 
       <div className="grid gap-4 md:grid-cols-2 mb-4">
         <Breakdown title={`💚 ${t('finX.incomeByP', { p: periodLabel })}`} rows={income} total={periodTotal('income')} color={INCOME_COLOR} t={t} />
@@ -178,7 +249,7 @@ export default function FinanceOverview() {
                   <th className="text-right">{t('fin.playersCol')}</th>
                   <th className="text-right">{t('analytics.income')}</th>
                   <th className="text-right">{t('analytics.expense')}</th>
-                  <th className="text-right">{t('analytics.net')}</th>
+                  <th className="text-right">{social ? t('social.profit') : t('analytics.net')}</th>
                 </tr>
               </thead>
               <tbody>

@@ -14,11 +14,22 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useScope } from '@/lib/useScope';
 import { useClubs } from '@/context/ClubContext';
 import { clubTones, STATUS_MOD } from '@/lib/clubColors';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 
 const VIEWS = ['list', 'month', 'week', 'day'];
+const SOON_DAYS = 3; // "Sắp diễn ra": from now to 3 days ahead
+const LIST_GROUPS = ['soon', 'open', 'done'];
+
+// Over already: marked done / cancelled, an earlier day, or today after its end time.
+function isOver(e, today, nowHm) {
+  if (e.status === 'completed' || e.status === 'cancelled') return true;
+  if (e.event_date < today) return true;
+  if (e.event_date === today && e.end_time && e.end_time.slice(0, 5) <= nowHm) return true;
+  return false;
+}
 
 // A tournament shown on the calendar (links to its own page; no sign-up counts).
 function tournamentAsEvent(tr, club) {
@@ -69,6 +80,7 @@ function EventCard({ e }) {
           <div className="text-sky-300 text-xs mt-0.5 truncate">
             {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}
             {e.kind && <span className="text-gray-500"> · {t(`kind.${e.kind}`)}</span>}
+            {e.series_label && <span className="text-amber-200"> · 🏷 {e.series_label}</span>}
           </div>
         )}
         {e.slots != null ? (
@@ -79,6 +91,7 @@ function EventCard({ e }) {
             <span className="text-gray-300 tabular-nums whitespace-nowrap">
               {e.main_count || 0}/{e.slots}
               {e.waitlist_count > 0 && <span className="text-gray-500"> · +{e.waitlist_count} {t('events.waitlist').toLowerCase()}</span>}
+              {e.requested_count > 0 && <span className="text-amber-300"> · 🙋 {t('evlist.requests', { n: e.requested_count })}</span>}
             </span>
           </div>
         ) : (
@@ -95,7 +108,7 @@ export default function EventsPage() {
   const { club } = useDefaultClub();
   const { clubs } = useClubs();
   const { workspace } = useWorkspace();
-  const isClub = workspace === 'club';
+  const { scoped: isClub, community } = useScope();
   const clubKey = (clubs || []).map((c) => c.id).join(',');
   // Every club the Host runs (pickleball and badminton) in one calendar, each tagged with
   // its club: weekly play, games/sessions and tournaments.
@@ -119,7 +132,12 @@ export default function EventsPage() {
   // Always opens on the month: the clearest overview. Clicking a day opens its timeline.
   const [view, setView] = useState('month');
   const [date, setDate] = useState(todayYmd());
-  const [showPast, setShowPast] = useState(false);
+  // List: search + filters, then three groups (Sắp diễn ra / Đang mở / Đã xong).
+  const [q, setQ] = useState('');
+  const [kindF, setKindF] = useState('all');
+  const [seriesF, setSeriesF] = useState('all');
+  const [groupF, setGroupF] = useState('all');
+  const [showDone, setShowDone] = useState(false);
   const pickView = setView;
   // Phones: the month is a list of the days that have something, and the week grid
   // (7 narrow columns) is left out.
@@ -144,8 +162,22 @@ export default function EventsPage() {
   const marks = useMemo(() => all.reduce((m, e) => ({ ...m, [e.event_date]: (m[e.event_date] || 0) + 1 }), {}), [all]);
   const today = todayYmd();
   const sorted = [...all].sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
-  const upcoming = sorted.filter((e) => e.event_date >= today);
-  const past = sorted.filter((e) => e.event_date < today).reverse();
+  const nowHm = (() => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })();
+  const soonEnd = addDays(today, SOON_DAYS);
+  const needle = q.trim().toLowerCase();
+  const listed = sorted.filter(
+    (e) =>
+      (kindF === 'all' || e.kind === kindF) &&
+      (seriesF === 'all' || e.series_label === seriesF) &&
+      (!needle || [e.title, e.location, e.club_name].filter(Boolean).some((x) => x.toLowerCase().includes(needle)))
+  );
+  const groups = {
+    soon: listed.filter((e) => !isOver(e, today, nowHm) && e.event_date <= soonEnd),
+    open: listed.filter((e) => !isOver(e, today, nowHm) && e.event_date > soonEnd),
+    done: listed.filter((e) => isOver(e, today, nowHm)).reverse(),
+  };
+  const kindsPresent = [...new Set(all.map((e) => e.kind).filter(Boolean))];
+  const seriesPresent = [...new Set(all.map((e) => e.series_label).filter(Boolean))].sort();
   const kpi = useMemo(() => {
     const live = all.filter((e) => e.status !== 'cancelled');
     const games = live.filter((e) => e.kind !== 'tournament');
@@ -185,9 +217,9 @@ export default function EventsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon={isClub ? '🗓' : '🎟'}
-        title={isClub ? t('nav.schedule') : t('nav.kevents')}
-        subtitle={isClub ? (manyClubs ? t('calx.allYourClubs', { n: clubs.length }) : club?.name) : t('finX.scopeXeve')}
+        icon={isClub && !community ? '🗓' : '🎟'}
+        title={isClub && !community ? t('nav.schedule') : t('nav.kevents')}
+        subtitle={isClub ? (manyClubs ? t(community ? 'social.allCommunities' : 'calx.allYourClubs', { n: clubs.length }) : club?.name) : t('finX.scopeXeve')}
         actions={
           isClub ? (
             <>
@@ -205,7 +237,7 @@ export default function EventsPage() {
       <KpiRow cols={3}>
         <StatTile icon="📅" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
         <StatTile icon="⏭" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
-        {isClub ? (
+        {isClub && !community ? (
           <StatTile icon="🏆" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
         ) : (
           <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
@@ -229,7 +261,7 @@ export default function EventsPage() {
 
       {manyClubs && (
         <div className="flex flex-wrap gap-1.5 mb-3 text-sm" role="tablist">
-          {[{ id: 'all', name: t('cal.allClubs') }, ...clubs].map((c) => (
+          {[{ id: 'all', name: t(community ? 'social.allComm' : 'cal.allClubs') }, ...clubs].map((c) => (
             <button
               key={c.id}
               type="button"
@@ -283,21 +315,50 @@ export default function EventsPage() {
 
       {!loading && view === 'list' && (
         <>
-          <h2 className="text-gray-300 text-sm font-semibold mb-2">{t('cal.upcoming')} ({upcoming.length})</h2>
-          {upcoming.length === 0 && <p className="text-gray-400 text-sm mb-4">{t('cal.noUpcoming')}</p>}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-            {upcoming.map((e) => <EventCard key={e.id} e={e} />)}
-          </div>
-          {past.length > 0 && (
-            <button type="button" className="text-lime-400 text-sm mb-3" onClick={() => setShowPast(!showPast)}>
-              {showPast ? '▾' : '▸'} {t('cal.past')} ({past.length})
-            </button>
-          )}
-          {showPast && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-80">
-              {past.map((e) => <EventCard key={e.id} e={e} />)}
+          <div className="card !p-3 mb-3 flex flex-wrap items-center gap-2">
+            <input className="input !w-auto flex-1 min-w-[12rem] text-sm" placeholder={t('evlist.searchPh')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('evlist.search')} />
+            <select className="input !w-auto text-sm" value={kindF} onChange={(e) => setKindF(e.target.value)} aria-label={t('kind.label')}>
+              <option value="all">{t('evlist.allKinds')}</option>
+              {kindsPresent.map((k) => <option key={k} value={k}>{KIND_ICON[k] ? `${KIND_ICON[k]} ` : ''}{t(`kind.${k}`)}</option>)}
+            </select>
+            {seriesPresent.length > 0 && (
+              <select className="input !w-auto text-sm" value={seriesF} onChange={(e) => setSeriesF(e.target.value)} aria-label={t('social.series')}>
+                <option value="all">{t('social.allSeries')}</option>
+                {seriesPresent.map((x) => <option key={x} value={x}>🏷 {x}</option>)}
+              </select>
+            )}
+            <div className="flex flex-wrap gap-1.5" role="tablist">
+              {['all', ...LIST_GROUPS].map((g) => (
+                <button key={g} type="button" role="tab" aria-selected={groupF === g} onClick={() => setGroupF(g)} className={`rounded-full border px-3 py-1 text-sm ${groupF === g ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                  {t(`evlist.g_${g}`)}{g !== 'all' && <span className="ml-1 text-gray-400 tabular-nums">{groups[g].length}</span>}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+          {LIST_GROUPS.filter((g) => groupF === 'all' || groupF === g).map((g) => {
+            const rows = groups[g];
+            const folded = g === 'done' && groupF === 'all' && !showDone;
+            return (
+              <section key={g} className="mb-6">
+                {g === 'done' && groupF === 'all' ? (
+                  <button type="button" className="text-gray-300 text-sm font-semibold mb-2" onClick={() => setShowDone(!showDone)}>
+                    {showDone ? '▾' : '▸'} {t('evlist.g_done')} ({rows.length})
+                  </button>
+                ) : (
+                  <h2 className="text-gray-300 text-sm font-semibold mb-1">{t(`evlist.g_${g}`)} ({rows.length})</h2>
+                )}
+                {!folded && (
+                  <>
+                    <p className="text-gray-500 text-xs mb-2">{t(`evlist.h_${g}`, { n: SOON_DAYS })}</p>
+                    {rows.length === 0 && <p className="text-gray-500 text-sm">{t('evlist.none')}</p>}
+                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${g === 'done' ? 'opacity-80' : ''}`}>
+                      {rows.map((e) => <EventCard key={e.id} e={e} />)}
+                    </div>
+                  </>
+                )}
+              </section>
+            );
+          })}
         </>
       )}
     </AppShell>

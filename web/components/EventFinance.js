@@ -1,7 +1,9 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { categoryLabel, describeEntry, EVENT_EXPENSE, EVENT_INCOME } from '@/lib/finance';
@@ -12,6 +14,63 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+// Income is "Thu"; money out on a session is "Chi phí phát sinh".
+const sideLabel = (ty, t) => (ty === 'expense' ? t('evfin.expense') : t('finance.income'));
+
+// Fix an entry. A new amount or type is saved as a corrected entry (the old one is voided,
+// so the ledger keeps its history); category, date and note change in place.
+function EditEntry({ entry, onClose, onSaved }) {
+  const { t } = useI18n();
+  const [f, setF] = useState({ type: entry.type, category: entry.category || 'other', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const cats = f.type === 'income' ? EVENT_INCOME : EVENT_EXPENSE;
+  const choices = cats.includes(f.category) ? cats : [...cats, f.category];
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(`/api/transactions/${entry.id}`, { type: f.type, category: f.category, amount: Number(f.amount), occurred_on: f.occurred_on, note: f.note.trim() || null });
+      onSaved();
+    } catch (err) {
+      setError(err.payload?.code?.startsWith('linked_') ? t('fin.autoHint') : err.message);
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal open title={`✏️ ${t('fin.editTitle')}`} onClose={onClose}>
+      <form onSubmit={save} className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
+          {['income', 'expense'].map((ty) => (
+            <button key={ty} type="button" onClick={() => setF({ ...f, type: ty, category: ty === entry.type ? entry.category || 'other' : ty === 'income' ? 'other' : 'court' })} className={`rounded-md py-1.5 ${f.type === ty ? (ty === 'income' ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-orange-500 text-white font-semibold') : 'text-gray-400'}`}>
+              {sideLabel(ty, t)}
+            </button>
+          ))}
+        </div>
+        <label className="col-span-2 sm:col-span-1 text-xs text-gray-400">{t('fin.category')}
+          <select className="input mt-1" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
+            {choices.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
+          </select>
+        </label>
+        <label className="col-span-2 sm:col-span-1 text-xs text-gray-400">{t('fin.amount')}
+          <input className="input mt-1" type="number" inputMode="numeric" min="0" step="1" required value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+        </label>
+        <label className="col-span-2 sm:col-span-1 text-xs text-gray-400">{t('fin.date')}
+          <input className="input mt-1" type="date" required value={f.occurred_on} onChange={(e) => setF({ ...f, occurred_on: e.target.value })} />
+        </label>
+        <label className="col-span-2 sm:col-span-1 text-xs text-gray-400">{t('fin.note')}
+          <input className="input mt-1" required={f.category === 'other'} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
+        </label>
+        <p className="col-span-2 text-gray-500 text-xs">{t('fin.editHint')}</p>
+        {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
+        <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
+        <button className="btn-primary" disabled={busy}>{t('common.save')}</button>
+      </form>
+    </Modal>
+  );
+}
+
 // The money tab of a session / kèo. Every entry here is also in the Host's ledger
 // (Tài chính → Sổ thu chi): fees players paid, the session's costs, anything added here.
 export default function EventFinance({ event, finance, onChanged }) {
@@ -19,6 +78,10 @@ export default function EventFinance({ event, finance, onChanged }) {
   const [f, setF] = useState({ type: 'expense', category: 'court', amount: '', note: '', occurred_on: event.event_date || today() });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(null);
+  // Social Manager (communities, one-off kèo): what is left is the kèo's profit.
+  const { workspace } = useWorkspace();
+  const netLabel = workspace === 'xeve' ? t('social.profit') : t('finance.net');
   const rows = (finance?.transactions || []).filter((r) => !r.is_voided);
   const cats = f.type === 'income' ? EVENT_INCOME : EVENT_EXPENSE;
 
@@ -45,8 +108,9 @@ export default function EventFinance({ event, finance, onChanged }) {
     }
   }
 
+  // "Xoá": the ledger only grows, so a deleted entry is voided (kept, struck out, with why).
   async function voidEntry(r) {
-    const reason = window.prompt(t('fin.voidAsk'));
+    const reason = window.prompt(t('evfin.deleteAsk', { what: describeEntry(r, t) || categoryLabel(r.category, t), amount: formatVnd(r.amount) }));
     if (reason === null) return;
     setError('');
     try {
@@ -66,7 +130,7 @@ export default function EventFinance({ event, finance, onChanged }) {
           ['net', finance?.net, Number(finance?.net) < 0 ? 'text-red-400' : 'text-white'],
         ].map(([k, v, tone]) => (
           <div key={k} className="card !p-3">
-            <span className="text-gray-400 text-xs">{t(`finance.${k}`)}</span>
+            <span className="text-gray-400 text-xs">{k === 'expense' ? t('evfin.expense') : k === 'net' ? netLabel : t(`finance.${k}`)}</span>
             <div className={`text-lg md:text-xl font-bold tabular-nums ${tone}`}>{formatVnd(v || 0)}</div>
           </div>
         ))}
@@ -80,7 +144,7 @@ export default function EventFinance({ event, finance, onChanged }) {
         <div className="col-span-2 md:col-span-3 grid grid-cols-2 bg-navy-900 border border-navy-700 rounded-lg p-1 text-sm h-[42px]">
           {['income', 'expense'].map((ty) => (
             <button key={ty} type="button" onClick={() => setF({ ...f, type: ty, category: ty === 'income' ? 'other' : 'court' })} className={`rounded-md ${f.type === ty ? (ty === 'income' ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-orange-500 text-white font-semibold') : 'text-gray-400'}`}>
-              {t(`finance.${ty}`)}
+              {sideLabel(ty, t)}
             </button>
           ))}
         </div>
@@ -124,9 +188,14 @@ export default function EventFinance({ event, finance, onChanged }) {
                     <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${r.type === 'income' ? 'text-lime-400' : 'text-orange-300'}`}>
                       {r.type === 'income' ? '+' : '−'}{formatVnd(r.amount)}
                     </td>
-                    <td className="text-right">
+                    <td className="text-right whitespace-nowrap">
                       {!AUTO.has(r.category) && (
-                        <button type="button" className="text-red-400/80 hover:text-red-300 px-1" title={t('fin.void')} aria-label={t('fin.void')} onClick={() => voidEntry(r)}>✕</button>
+                        <>
+                          {!r.event_cost && (
+                            <button type="button" className="text-gray-200 hover:text-white px-1.5 text-xs" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}>✏️ {t('fin.edit')}</button>
+                          )}
+                          <button type="button" className="text-red-400/90 hover:text-red-300 px-1.5 text-xs" title={t('common.delete')} aria-label={t('common.delete')} onClick={() => voidEntry(r)}>🗑 {t('common.delete')}</button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -136,6 +205,7 @@ export default function EventFinance({ event, finance, onChanged }) {
           </div>
         )}
       </div>
+      {editing && <EditEntry entry={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onChanged(); }} />}
     </>
   );
 }

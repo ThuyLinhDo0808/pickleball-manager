@@ -2,6 +2,8 @@
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import PendingPayments from '@/components/PendingPayments';
+import CommunityOverview from '@/components/CommunityOverview';
+import { useScope } from '@/lib/useScope';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useClubs } from '@/context/ClubContext';
@@ -62,8 +64,14 @@ function Section({ title, action, children }) {
   );
 }
 
-// Club home: who we are, what's next, what needs the Host, and how the club is doing.
+// Social Manager with a community picked: its own overview (one tab per community).
 export default function DashboardPage() {
+  const { community } = useScope();
+  return community ? <CommunityOverview /> : <ClubDashboard />;
+}
+
+// Club home: who we are, what's next, what needs the Host, and how the club is doing.
+function ClubDashboard() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const { club } = useClubs();

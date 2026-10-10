@@ -14,6 +14,7 @@ import MeetingEvent from '@/components/MeetingEvent';
 import EventShuttles from '@/components/EventShuttles';
 import PlayerChip from '@/components/PlayerChip';
 import EventFinance from '@/components/EventFinance';
+import { AutoApproveToggle, OrganizersSection, PlaceSheet, RequestsSection } from '@/components/EventPeople';
 import MapLink from '@/components/MapLink';
 import { exportMatchesJpg } from '@/lib/matchImage';
 import { formatDay, hhmm } from '@/lib/dates';
@@ -31,7 +32,6 @@ export default function EventDetailPage() {
   const { eventId } = useParams();
   const { t, lang, sport } = useI18n();
   const { club } = useDefaultClub();
-  const { plan } = useWorkspace();
   // Four tabs: details (status, sign-up link, deadlines), players, matches, money.
   const [tab, setTab] = useState('details');
   const [showQr, setShowQr] = useState(false);
@@ -39,10 +39,16 @@ export default function EventDetailPage() {
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   // Opened from the all-clubs calendar: switch to the event's club so the page speaks its
   // sport (levels, scoring, shuttles) and imports from the right member list.
-  const { clubs, selectClub } = useClubs();
+  // A community's kèo opens in Social Manager, a club's session in Club Manager.
+  const { allClubs, selectClub } = useClubs();
+  const { workspace, setWorkspace, plan } = useWorkspace();
   useEffect(() => {
-    if (event?.club_id && club?.id !== event.club_id && clubs.some((c) => c.id === event.club_id)) selectClub(event.club_id);
-  }, [event?.club_id, club?.id, clubs, selectClub]);
+    const owner = event?.club_id ? allClubs.find((c) => c.id === event.club_id) : null;
+    if (!owner) return;
+    const ws = owner.kind === 'community' ? 'xeve' : 'club';
+    if (workspace !== 'staff' && workspace !== ws) setWorkspace(ws);
+    if (club?.id !== owner.id) selectClub(owner.id);
+  }, [event?.club_id, club?.id, allClubs, selectClub, workspace, setWorkspace]);
   const { data: participants, reload: reloadParticipants } = useLoad(
     () => api.get(`/api/events/${eventId}/participants`),
     [eventId]
@@ -60,6 +66,8 @@ export default function EventDetailPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [flash, setFlash] = useState('');
   const [showMatch, setShowMatch] = useState(false);
+  // The place sheet on a name: { person (row or null for the Host without one), isHost }.
+  const [sheet, setSheet] = useState(null);
   const { data: matches, reload: reloadMatches } = useLoad(() => api.get(`/api/matches?event_id=${eventId}`), [eventId]);
 
   async function addParticipant(e) {
@@ -99,6 +107,18 @@ export default function EventDetailPage() {
     reloadFinance();
   }
 
+  // Quick buttons on a request: confirm (main list) or put on the waitlist.
+  async function placeTo(p, to) {
+    try {
+      await api.post(`/api/events/${eventId}/participants/${p.id}/place`, { to });
+    } catch (err) {
+      setFlash(err.payload?.code === 'full' ? t('place.full') : err.message);
+    }
+    reloadParticipants();
+    reloadEvent();
+  }
+  const openSheet = (p, isHost = false) => setSheet({ person: p, isHost: isHost || (p && p.user_id === event?.host_id) });
+
   async function toggleFee(p) {
     if (p.status === 'cancelled' && p.fee_paid && !window.confirm(t('slot.refundAsk', { name: p.full_name }))) return;
     await api.post(`/api/events/${eventId}/participants/${p.id}/fee`, { fee_paid: !p.fee_paid });
@@ -128,6 +148,7 @@ export default function EventDetailPage() {
   // Guests with a perk go first off the waitlist, so show them first.
   const waitlist = (participants || []).filter((p) => p.status === 'waitlisted').sort((a, b) => Number(!!b.priority) - Number(!!a.priority));
   const cancelled = (participants || []).filter((p) => p.status === 'cancelled');
+  const requested = (participants || []).filter((p) => p.status === 'requested');
   const counts = {
     arrived: main.filter((p) => p.status === 'checked_in').length,
     confirmed: main.filter((p) => p.status !== 'no_show').length,
@@ -196,8 +217,8 @@ export default function EventDetailPage() {
 
       {tab === 'details' && (
         <>
-          <EventControls event={event} onChanged={setEvent} />
-          {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={setEvent} />}
+          <EventControls event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
+          {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={(e) => setEvent({ ...event, ...e })} />}
         </>
       )}
 
@@ -239,6 +260,9 @@ export default function EventDetailPage() {
             </div>
           )}
 
+          <AutoApproveToggle event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
+          <OrganizersSection event={event} people={participants || []} onOpen={openSheet} />
+          <RequestsSection rows={requested} onPlace={placeTo} onOpen={(p) => openSheet(p)} />
           {flash && (
             <div className="card mb-4 border-lime-400/50 text-lime-300 text-sm flex items-center justify-between gap-3">
               <span>{flash}</span>
@@ -261,12 +285,21 @@ export default function EventDetailPage() {
           </div>
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} />
-          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} />
+          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} />
           {cancelled.length > 0 && (
             <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} fee={event.fee_amount} />
           )}
           {event.club_id && <EventSurveys eventId={event.id} />}
+          {sheet && (
+            <PlaceSheet
+              event={event}
+              person={sheet.person ? (participants || []).find((x) => x.id === sheet.person.id) || sheet.person : null}
+              isHost={sheet.isHost}
+              onClose={() => setSheet(null)}
+              onChanged={refresh}
+            />
+          )}
         </>
       )}
 
@@ -307,7 +340,7 @@ export default function EventDetailPage() {
 
 const STATUS_TONE = { checked_in: 'text-lime-400', registered: 'text-gray-300', no_show: 'text-yellow-400', waitlisted: 'text-sky-300', cancelled: 'text-gray-500' };
 
-function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
+function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee, onManage }) {
   return (
     <div className="card mb-4">
       <h3 className="text-white font-semibold mb-2">{title}</h3>
@@ -327,9 +360,11 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
                       {p.card?.member_type === 'fixed' && (
                         <span className="text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">{t('events.fixedMember')}</span>
                       )}
-                      {p.card?.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || p.card?.member_type) && (
+                      {!p.is_organizer && p.card?.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || p.card?.member_type) && (
                         <span className="text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t('review.kind_guest')}</span>
                       )}
+                      {p.is_organizer && <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">🛡 {t('people.organizer')}</span>}
+                      {(p.tags || []).map((tag) => <span key={tag} className="text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t(`people.tag_${tag}`)}</span>)}
                       {p.priority && (
                         <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1" title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>
                       )}
@@ -346,7 +381,9 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
               </td>
               <td className={`text-xs ${STATUS_TONE[p.status]}`}>{t(`player.status_${p.status}`)}</td>
               <td>
-                {p.paid_by_plan && kind !== 'cancelled' ? (
+                {p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0 ? (
+                  <span className="text-xs text-gray-500">{t('people.noFee')}</span>
+                ) : p.paid_by_plan && kind !== 'cancelled' ? (
                   <span className="text-xs text-lime-400" title={t('events.paidByPlanHint')}>{t('events.paidByPlan')}</span>
                 ) : (kind !== 'cancelled' || p.late_cancel || p.fee_paid) && (
                   <button className={`text-xs mr-2 ${p.fee_paid ? 'text-lime-400' : 'text-gray-300'}`} onClick={() => onFee(p)}>
@@ -371,6 +408,9 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee }) {
                 )}
                 {kind === 'waitlist' && (
                   <button className="text-sky-300 text-xs mr-2" onClick={() => onAction(p, 'promote')}>{t('policy.promote')}</button>
+                )}
+                {onManage && ['registered', 'waitlisted', 'pending'].includes(p.status) && (
+                  <button className="text-gray-200 text-xs mr-2 rounded border border-navy-600 px-1.5" title={t('place.manage')} onClick={() => onManage(p)}>⇄ {t('place.manage')}</button>
                 )}
                 {kind === 'cancelled' && p.late_cancel && (
                   <button className="text-orange-300 text-xs" onClick={() => window.confirm(t('policy.waiveAsk', { name: p.full_name })) && onAction(p, 'waive')}>

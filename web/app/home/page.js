@@ -17,11 +17,11 @@ import AnnouncementBanner from '@/components/AnnouncementBanner';
 import PlayerNotices from '@/components/PlayerNotices';
 
 // One tile of the "spaces" strip: a club (managed or played in), Xé Vé, staff, or "+".
-function SpaceTile({ onClick, href, avatar, label, badge, badgeTone }) {
+function SpaceTile({ onClick, href, avatar, label, badge, badgeTone, lines = 2 }) {
   const body = (
     <>
       {avatar}
-      <span className="mt-1.5 w-full text-center text-white text-xs font-semibold leading-tight line-clamp-2">{label}</span>
+      <span className={`mt-1.5 w-full text-center text-white text-xs font-semibold leading-tight break-words ${lines === 3 ? 'line-clamp-3' : 'line-clamp-2'}`}>{label}</span>
       {badge && <span className={`mt-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badgeTone}`}>{badge}</span>}
     </>
   );
@@ -162,9 +162,9 @@ export default function HomeHub() {
             <SpaceTile
               key={`m${c.club_id}`}
               onClick={() => manageClub(c.club_id)}
-              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} ring="ring-2 ring-lime-400/70 ring-offset-2 ring-offset-navy-950" />}
+              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} ring={`ring-2 ${c.kind === 'community' ? 'ring-amber-300/80' : 'ring-lime-400/70'} ring-offset-2 ring-offset-navy-950`} />}
               label={c.name}
-              badge={t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}
+              badge={`${c.kind === 'community' ? '🎟 ' : ''}${t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}`}
               badgeTone={ROLE_TONE[c.role]}
             />
           ))}
@@ -182,6 +182,7 @@ export default function HomeHub() {
             href="/club-request"
             avatar={<ClubAvatar icon="＋" />}
             label={t('hub.createClub')}
+            lines={3}
           />
         </div>
         {!hasAnything && (

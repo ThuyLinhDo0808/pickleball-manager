@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import EventForm, { GAME_KINDS, eventPayload, formFromEvent } from '@/components/EventForm';
 import { useI18n } from '@/context/I18nContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
@@ -12,6 +13,7 @@ export default function EditEventPage() {
   const { eventId } = useParams();
   const { t } = useI18n();
   const router = useRouter();
+  const { workspace } = useWorkspace();
   const { data: event } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   const { data: people } = useLoad(() => api.get(`/api/events/${eventId}/participants`), [eventId]);
 
@@ -38,9 +40,11 @@ export default function EditEventPage() {
           submitLabel={t('common.save')}
           cancelHref={`/events/${eventId}`}
           warning={active ? t('manage.editWarning', { n: active }) : null}
-          kinds={event.club_id ? ['weekly', ...GAME_KINDS] : GAME_KINDS}
+          kinds={event.club_id ? (workspace === 'xeve' ? ['weekly', ...GAME_KINDS.filter((k) => !['meeting', 'challenge'].includes(k))] : ['weekly', ...GAME_KINDS]) : GAME_KINDS}
           showStatus
           seriesCount={event.series_upcoming || 0}
+          community={workspace === 'xeve' && !!event.club_id}
+          clubId={event.club_id}
         />
       )}
     </AppShell>

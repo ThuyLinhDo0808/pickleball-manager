@@ -125,6 +125,19 @@ router.get('/finance', async (req, res) => {
   }
 });
 
+// Day by day for one month (Social Manager finance overview): ?month=YYYY-MM.
+router.get('/daily', async (req, res) => {
+  try {
+    const scope = await resolveScope(req);
+    if (!scope) return notFound(res, 'Club');
+    if (!(await gate(res, scope, 'stats'))) return;
+    const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(req.query.month || '') ? req.query.month : todayYmd().slice(0, 7);
+    res.json(await require('../services/community').daily(scope, month));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
 // Profit / loss per event (sessions of a club, or standalone Xé Vé events), newest first.
 router.get('/events-pnl', async (req, res) => {
   try {
