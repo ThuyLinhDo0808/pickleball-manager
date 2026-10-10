@@ -32,7 +32,6 @@ export const hasFeature = (p, feature) => !feature || !p || !p.features_enforced
 
 // Short highlights per plan for the comparison cards (i18n keys under plan.hl_*).
 export const HIGHLIGHTS = {
-  free: ['hl_members', 'hl_events', 'hl_matches', 'hl_money'],
   basic: ['hl_members', 'hl_events', 'hl_matches', 'hl_money'],
   standard: ['hl_basicAll', 'hl_weekly', 'hl_plansDebts', 'hl_stats', 'hl_excel', 'hl_balls'],
   advanced: ['hl_standardAll', 'hl_tournaments', 'hl_rankings', 'hl_reports', 'hl_roles'],
@@ -46,3 +45,12 @@ export function lockedNotice(feature, minTier) {
   window.dispatchEvent(new CustomEvent('pb:plan-limit', { detail: { code: 'feature_locked', feature, min_tier: minTier || FEATURE_TIER[feature] } }));
 }
 const FEATURE_TIER = { excel_export: 'standard', full_export: 'pro' };
+
+// Plans that can be bought (there is no Free plan; 'free' only means "no plan").
+export const PAID_TIERS = ['basic', 'standard', 'advanced', 'pro'];
+
+// The smallest plan whose official-member limit fits a club of `count` members.
+export function suggestTier(count, limits) {
+  const n = Number(count) || 0;
+  return PAID_TIERS.find((t) => limits?.[t]?.fixed == null || n <= limits[t].fixed) || 'pro';
+}

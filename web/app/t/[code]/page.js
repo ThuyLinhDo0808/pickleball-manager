@@ -1,4 +1,6 @@
 'use client';
+import HomeLink from '@/components/HomeLink';
+import MapLink from '@/components/MapLink';
 import { useParams } from 'next/navigation';
 import TicketCard from '@/components/TicketCard';
 import { useI18n } from '@/context/I18nContext';
@@ -35,8 +37,11 @@ export default function TicketPage() {
   return (
     <div className="min-h-screen max-w-md mx-auto px-4 pt-safe pb-safe-4">
       <header className="flex items-center justify-between py-4">
-        <span className="text-lime-400 font-bold">{e.club_name || t('appName')}</span>
-        {langToggle}
+        <span className="text-lime-400 font-bold truncate">{e.club_name || t('appName')}</span>
+        <div className="flex items-center gap-2">
+          <HomeLink />
+          {langToggle}
+        </div>
       </header>
       <section className="card mb-4">
         <p className="text-gray-400 text-xs uppercase tracking-wide">{t('ticket.title')}</p>
@@ -45,7 +50,7 @@ export default function TicketPage() {
           {formatDay(e.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
           {time && ` · ${time}`}
         </p>
-        {e.location && <p className="text-gray-300 text-sm mt-1">📍 {e.location}</p>}
+        {(e.location || e.map_url) && <p className="mt-1"><MapLink location={e.location} mapUrl={e.map_url} /></p>}
       </section>
       <section className="card mb-4">
         {tk.valid ? (

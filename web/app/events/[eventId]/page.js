@@ -13,6 +13,8 @@ import EventSurveys from '@/components/EventSurveys';
 import MeetingEvent from '@/components/MeetingEvent';
 import EventShuttles from '@/components/EventShuttles';
 import PlayerChip from '@/components/PlayerChip';
+import EventFinance from '@/components/EventFinance';
+import MapLink from '@/components/MapLink';
 import { exportMatchesJpg } from '@/lib/matchImage';
 import { formatDay, hhmm } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
@@ -59,7 +61,6 @@ export default function EventDetailPage() {
   const [flash, setFlash] = useState('');
   const [showMatch, setShowMatch] = useState(false);
   const { data: matches, reload: reloadMatches } = useLoad(() => api.get(`/api/matches?event_id=${eventId}`), [eventId]);
-  const [txnForm, setTxnForm] = useState({ type: 'expense', category: '', amount: '', note: '' });
 
   async function addParticipant(e) {
     e.preventDefault();
@@ -114,20 +115,6 @@ export default function EventDetailPage() {
     reloadEvent();
   }
 
-  async function addTxn(e) {
-    e.preventDefault();
-    await api.post('/api/transactions', {
-      owner_type: 'event',
-      event_id: eventId,
-      type: txnForm.type,
-      category: txnForm.category || null,
-      amount: Number(txnForm.amount || 0),
-      note: txnForm.note || null,
-    });
-    setTxnForm({ type: 'expense', category: '', amount: '', note: '' });
-    reloadFinance();
-  }
-
   function onExport() {
     if (!event || !participants || !finance) return;
     if (event.club_id && !hasFeature(planFor(club, plan), 'excel_export')) return lockedNotice('excel_export');
@@ -171,8 +158,14 @@ export default function EventDetailPage() {
           <h1 className="text-white text-2xl font-bold">{event.title}</h1>
           <p className="text-gray-400 text-sm">
             {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
-            {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`} · {event.location || '—'}
+            {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`}
           </p>
+          {(event.location || event.map_url) && <MapLink location={event.location} mapUrl={event.map_url} />}
+          {(event.play_format || event.services || event.series_id) && (
+            <p className="text-gray-400 text-xs mt-0.5">
+              {[event.series_id && `🔁 ${t('series.badge')}`, event.play_format && `🏓 ${t(`fmt.${event.play_format}`)}`, event.services && `🎁 ${event.services}`].filter(Boolean).join(' · ')}
+            </p>
+          )}
           {event.notice && event.kind === 'meeting' && <p className="text-gray-300 text-sm mt-1 whitespace-pre-line">{event.notice}</p>}
           <p className={`text-gray-500 text-xs mt-0.5 ${event.kind === 'meeting' ? 'hidden' : ''}`}>
             {event.cancel_deadline_hours == null ? t('policy.noneShort') : t('policy.short', { h: event.cancel_deadline_hours })}
@@ -307,49 +300,7 @@ export default function EventDetailPage() {
         </>
       )}
 
-      {tab === 'finance' && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-4">
-            <div className="card"><span className="text-gray-400 text-xs">{t('finance.income')}</span><div className="text-lime-400 text-xl font-bold">{(finance?.income || 0).toLocaleString('vi-VN')} ₫</div></div>
-            <div className="card"><span className="text-gray-400 text-xs">{t('finance.expense')}</span><div className="text-red-400 text-xl font-bold">{(finance?.expense || 0).toLocaleString('vi-VN')} ₫</div></div>
-            <div className="card"><span className="text-gray-400 text-xs">{t('finance.net')}</span><div className="text-white text-xl font-bold">{(finance?.net || 0).toLocaleString('vi-VN')} ₫</div></div>
-          </div>
-
-          <form onSubmit={addTxn} className="card mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-            <select className="input" value={txnForm.type} onChange={(e) => setTxnForm({ ...txnForm, type: e.target.value })}>
-              <option value="income">{t('finance.income')}</option>
-              <option value="expense">{t('finance.expense')}</option>
-            </select>
-            <input className="input" placeholder="Category (e.g. balls 40-hole)" value={txnForm.category} onChange={(e) => setTxnForm({ ...txnForm, category: e.target.value })} />
-            <input className="input" type="number" placeholder="Amount" required value={txnForm.amount} onChange={(e) => setTxnForm({ ...txnForm, amount: e.target.value })} />
-            <input className="input" placeholder="Note" value={txnForm.note} onChange={(e) => setTxnForm({ ...txnForm, note: e.target.value })} />
-            <button className="btn-primary md:col-span-4">{t('common.add')}</button>
-          </form>
-
-          <div className="card">
-            <div className="table-wrap">
-              <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-400 text-left border-b border-navy-700">
-                  <th className="py-2">Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(finance?.transactions || []).map((tx) => (
-                  <tr key={tx.id} className={`border-b border-navy-800 ${tx.is_voided ? 'opacity-40 line-through' : ''}`}>
-                    <td className="py-2 text-gray-300">{tx.occurred_on}</td>
-                    <td className={tx.type === 'income' ? 'text-lime-400' : 'text-red-400'}>{t(`finance.${tx.type}`)}</td>
-                    <td className="text-gray-300">{tx.category || '—'}</td>
-                    <td className="text-gray-300">{Number(tx.amount).toLocaleString('vi-VN')} ₫</td>
-                    <td className="text-gray-300">{tx.note || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+      {tab === 'finance' && <EventFinance event={event} finance={finance} onChanged={reloadFinance} />}
     </AppShell>
   );
 }

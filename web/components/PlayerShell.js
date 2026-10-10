@@ -11,6 +11,7 @@ import { useI18n } from '@/context/I18nContext';
 // account only plays in opens its member page (/c/<id>) inside this shell.
 const NAV = [
   { href: '/home', key: 'hub.navHome', icon: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10', match: (p) => p === '/home' || p.startsWith('/c/') },
+  { href: '/discover', key: 'hub.navDiscover', icon: 'M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35', match: (p) => p.startsWith('/discover') },
   { href: '/p', key: 'hub.navActivity', icon: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', match: (p) => p === '/p' },
   { href: '/p/profile', key: 'hub.navProfile', icon: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0', match: (p) => p.startsWith('/p/profile') },
 ];
@@ -71,7 +72,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
       {/* Phone tab bar */}
       {user && (
         <nav className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900/95 backdrop-blur border-t border-navy-700 pb-safe">
-          <div className="grid grid-cols-3">
+          <div className="grid grid-cols-4">
             {NAV.map((n) => (
               <Link key={n.href} href={n.href} className={`flex flex-col items-center justify-center gap-0.5 h-16 text-[11px] ${n.match(pathname) ? 'text-lime-400' : 'text-gray-400'}`}>
                 <Icon d={n.icon} />

@@ -22,6 +22,8 @@ const { startSurveySweeper } = require('./services/survey');
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.set('trust proxy', 1); // behind Render's proxy: req.ip = the visitor (rate limits)
+// Club requests and club pictures carry images (data URLs): a bigger body for those only.
+app.use(['/api/host/club-requests', /^\/api\/clubs\/[^/]+\/images$/], express.json({ limit: '1mb' }));
 app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true }));

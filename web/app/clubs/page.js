@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import CreateClubForm from '@/components/CreateClubForm';
 import ClubPaymentSettings from '@/components/ClubPaymentSettings';
+import ClubProfileSettings from '@/components/ClubProfileSettings';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
@@ -20,6 +21,7 @@ export default function ClubsPage() {
   const [editName, setEditName] = useState('');
   const [error, setError] = useState('');
   const [settingsId, setSettingsId] = useState(null);
+  const [profileId, setProfileId] = useState(null);
   const [creating, setCreating] = useState(false);
   const tones = clubTones(clubs);
 
@@ -138,6 +140,7 @@ export default function ClubsPage() {
               router.push('/dashboard');
             }}
             onSettings={() => setSettingsId(c.id)}
+            onProfile={() => setProfileId(c.id)}
             onRename={() => startRename(c)}
             onDelete={() => remove(c)}
           />
@@ -146,6 +149,11 @@ export default function ClubsPage() {
 
       <Modal open={creating} title={t('clubs.create')} onClose={() => setCreating(false)}>
         {creating && <CreateClubForm onCreated={() => { setCreating(false); router.push('/dashboard'); }} autoFocus />}
+      </Modal>
+      <Modal open={!!profileId} title={t('clubProfile.title')} onClose={() => setProfileId(null)}>
+        {profileId && clubs.find((c) => c.id === profileId) && (
+          <ClubProfileSettings club={clubs.find((c) => c.id === profileId)} onDone={() => setProfileId(null)} />
+        )}
       </Modal>
       <Modal open={!!settingsId} title={t('payments.settings')} onClose={() => setSettingsId(null)}>
         {settingsId && clubs.find((c) => c.id === settingsId) && (
@@ -157,7 +165,7 @@ export default function ClubsPage() {
 }
 
 // One club: colour band, initial, sport, quick numbers, and what you can do with it.
-function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSaveRename, onCancelRename, onSelect, onOpen, onSettings, onRename, onDelete }) {
+function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSaveRename, onCancelRename, onSelect, onOpen, onSettings, onProfile, onRename, onDelete }) {
   const { t, lang } = useI18n();
   const { data: members } = useLoad(() => api.get(`/api/clubs/${c.id}/members`).catch(() => null), [c.id]);
   const { data: events } = useLoad(() => api.get(`/api/clubs/${c.id}/events`).catch(() => null), [c.id]);
@@ -229,6 +237,7 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
             <button className="btn-primary text-sm" onClick={onSelect}>{t('clubs.switchTo')}</button>
           )}
           {/* Co-admins can do everything but delete the club. */}
+          <button className="btn-secondary text-sm" onClick={onProfile}>🪪 {t('clubProfile.button')}</button>
           <button className="btn-secondary text-sm" onClick={onSettings}>💳 {t('payments.settings')}</button>
           <button className="btn-secondary text-sm" onClick={onRename}>✏️ {t('clubs.rename')}</button>
           {owner && <button className="text-red-400 hover:text-red-300 text-sm px-2 ml-auto" onClick={onDelete}>🗑 {t('common.delete')}</button>}

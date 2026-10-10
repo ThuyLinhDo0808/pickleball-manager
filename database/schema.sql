@@ -1856,5 +1856,291 @@ begin
   return new;
 end; $$;
 
+-- ---- 20261104090000_club_requests_discovery.sql ----
+-- Flow v3:
+--   1. Onboarding after sign-up: the sports someone plays and whether they came as a
+--      player or a club manager (users.sports / account_role / onboarded_at).
+--   2. New clubs are asked for (club_requests) and created only when the app owner
+--      approves them. The request carries the club's profile, pictures and the plan picked.
+--   3. Club profile shown in the club search: country, province, district, address,
+--      regular schedule, size, contact email, avatar / cover (club_images), listed or not.
+--   4. Join requests sent from the club search are told apart (club_members.join_source).
+--   5. Upgrade orders pay only the difference for the days left (plan_payments.upgrade_*).
+--   6. There is no Free plan any more: accounts that run clubs on Free get 30 days of
+--      Basic once, so nothing stops overnight.
+
+-- ---- 1. Onboarding ----------------------------------------------------------------------
+alter table public.users add column if not exists sports text[] not null default '{}';
+alter table public.users add column if not exists account_role text;
+do $$ begin
+  -- Added once; everyone who signed up before counts as onboarded.
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'onboarded_at') then
+    alter table public.users add column onboarded_at timestamptz;
+    update public.users set onboarded_at = now();
+  end if;
+end $$;
+do $$ begin
+  alter table public.users add constraint chk_users_sports check (sports <@ array['pickleball', 'badminton']::text[]);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.users add constraint chk_users_account_role check (account_role is null or account_role in ('player', 'manager'));
+exception when duplicate_object then null; end $$;
+
+-- ---- 3. Club profile ----------------------------------------------------------------------
+alter table public.clubs add column if not exists country text not null default 'Việt Nam';
+alter table public.clubs add column if not exists province text;
+alter table public.clubs add column if not exists district text;
+alter table public.clubs add column if not exists address text;
+alter table public.clubs add column if not exists schedule text;
+alter table public.clubs add column if not exists member_count_hint int;
+alter table public.clubs add column if not exists contact_email text;
+alter table public.clubs add column if not exists is_listed boolean not null default true;
+alter table public.clubs add column if not exists avatar_version int;
+alter table public.clubs add column if not exists cover_version int;
+do $$ begin
+  alter table public.clubs add constraint chk_clubs_profile check (
+    char_length(country) <= 60 and (province is null or char_length(province) <= 80)
+    and (district is null or char_length(district) <= 80) and (address is null or char_length(address) <= 200)
+    and (schedule is null or char_length(schedule) <= 300) and (contact_email is null or char_length(contact_email) <= 200)
+    and (member_count_hint is null or member_count_hint between 1 and 100000));
+exception when duplicate_object then null; end $$;
+create index if not exists ix_clubs_listed on public.clubs (is_listed, province);
+
+-- Pictures live apart from clubs (clubs rows are read everywhere; pictures are big).
+create table if not exists public.club_images (
+  club_id uuid primary key references public.clubs(id) on delete cascade,
+  avatar text check (avatar is null or length(avatar) <= 200000),
+  cover text check (cover is null or length(cover) <= 600000),
+  updated_at timestamptz not null default now()
+);
+alter table public.club_images enable row level security;
+
+-- ---- 2. Club requests ----------------------------------------------------------------------
+create table if not exists public.club_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  name text not null check (char_length(name) between 2 and 80),
+  sport text not null default 'pickleball' check (sport in ('pickleball', 'badminton')),
+  member_count int check (member_count is null or member_count between 1 and 100000),
+  address text not null check (char_length(address) between 2 and 200),
+  schedule text check (schedule is null or char_length(schedule) <= 300),
+  description text check (description is null or char_length(description) <= 1000),
+  contact_email text not null check (char_length(contact_email) between 3 and 200),
+  country text not null default 'Việt Nam' check (char_length(country) <= 60),
+  province text check (province is null or char_length(province) <= 80),
+  district text check (district is null or char_length(district) <= 80),
+  avatar text check (avatar is null or length(avatar) <= 200000),
+  cover text check (cover is null or length(cover) <= 600000),
+  plan_tier text check (plan_tier is null or plan_tier in ('basic', 'standard', 'advanced', 'pro')),
+  plan_months int check (plan_months is null or plan_months between 1 and 24),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'cancelled')),
+  owner_note text check (owner_note is null or char_length(owner_note) <= 500),
+  club_id uuid references public.clubs(id) on delete set null,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  decided_by text
+);
+create index if not exists ix_club_requests_status on public.club_requests (status, created_at desc);
+create index if not exists ix_club_requests_user on public.club_requests (user_id, created_at desc);
+-- One waiting request per account at a time.
+create unique index if not exists ux_club_requests_one_pending on public.club_requests (user_id) where status = 'pending';
+alter table public.club_requests enable row level security;
+
+-- ---- 4. Join requests from the club search ----------------------------------------------------
+alter table public.club_members add column if not exists join_source text;
+do $$ begin
+  alter table public.club_members add constraint chk_members_join_source check (join_source is null or join_source in ('survey', 'search'));
+exception when duplicate_object then null; end $$;
+
+-- ---- 5. Upgrade orders (pay the difference for the days left) -----------------------------------
+alter table public.plan_payments add column if not exists upgrade_from text;
+alter table public.plan_payments add column if not exists upgrade_days int;
+alter table public.plan_payments drop constraint if exists plan_payments_months_check;
+do $$ begin
+  alter table public.plan_payments add constraint plan_payments_months_check check (months between 0 and 24);
+exception when duplicate_object then null; end $$;
+
+-- ---- 6. No Free plan: 30 days of Basic, once, for accounts running clubs on Free ----------------
+do $$ begin
+  if not exists (select 1 from public.app_settings where key = 'migr_20261104_basic_grace') then
+    update public.host_subscriptions s
+       set tier = 'basic', tier_paid_until = current_date + 30
+     where s.tier = 'free'
+       and exists (select 1 from public.clubs c where c.host_id = s.host_id);
+    insert into public.app_settings (key, value, updated_by) values ('migr_20261104_basic_grace', 'true'::jsonb, 'migration');
+  end if;
+end $$;
+
+
+-- ---- 20261105090000_member_moderation_invites.sql ----
+-- Paid club requests, invite links, the "to review" table, moderation history,
+-- blocks and on-screen notices for players.
+--   1. club_requests.payment_id: the plan order paid with the request (every club
+--      request pays for its plan; there is no free trial any more).
+--   2. club_members.join_source: also 'manual' (added by the Host with type "---") and
+--      'invite' (joined through the club's invite link).
+--   3. clubs.invite_token / invite_enabled: a link to join the club's waiting list.
+--   4. club_members.review_*: a member moved to "to review" (suspended until a date).
+--   5. member_moderation_log: every review / restore / removal / (un)block, kept even
+--      after the member is deleted or the club changes hands — the next manager sees it.
+--   6. member_blocks: people who may not sign up for a club's events (or for all of a
+--      Host's events, Xé Vé included).
+--   7. player_notices: messages shown to the player on screen (warned, back, removed).
+
+-- ---- 1 ---------------------------------------------------------------------------------------
+alter table public.club_requests add column if not exists payment_id uuid references public.plan_payments(id) on delete set null;
+
+-- ---- 2 ---------------------------------------------------------------------------------------
+alter table public.club_members drop constraint if exists chk_members_join_source;
+do $$ begin
+  alter table public.club_members add constraint chk_members_join_source
+    check (join_source is null or join_source in ('survey', 'search', 'manual', 'invite'));
+exception when duplicate_object then null; end $$;
+
+-- ---- 3 ---------------------------------------------------------------------------------------
+alter table public.clubs add column if not exists invite_token uuid not null default gen_random_uuid();
+alter table public.clubs add column if not exists invite_enabled boolean not null default false;
+create unique index if not exists ux_clubs_invite_token on public.clubs (invite_token);
+
+-- ---- 4 ---------------------------------------------------------------------------------------
+alter table public.club_members add column if not exists review_until timestamptz;
+alter table public.club_members add column if not exists review_started_at timestamptz;
+alter table public.club_members add column if not exists review_reason text;
+alter table public.club_members add column if not exists review_from text;
+do $$ begin
+  alter table public.club_members add constraint chk_members_review check (
+    (review_reason is null or char_length(review_reason) <= 500)
+    and (review_from is null or review_from in ('fixed', 'guest', 'waiting')));
+exception when duplicate_object then null; end $$;
+
+-- ---- 5 ---------------------------------------------------------------------------------------
+create table if not exists public.member_moderation_log (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  member_id uuid,              -- no foreign key: the history outlives the member
+  user_id uuid,                -- no foreign key: the history outlives the account
+  phone text,
+  full_name text,
+  action text not null check (action in ('review', 'restore', 'remove', 'unblock')),
+  reason text check (reason is null or char_length(reason) <= 500),
+  until timestamptz,
+  from_type text,
+  to_type text,
+  blocked boolean not null default false,
+  block_scope text check (block_scope is null or block_scope in ('club', 'all')),
+  actor_email text,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_moderation_club on public.member_moderation_log (club_id, created_at desc);
+create index if not exists ix_moderation_user on public.member_moderation_log (club_id, user_id);
+alter table public.member_moderation_log enable row level security;
+
+-- Append-only: rows are never edited; they only go when their club is deleted.
+create or replace function public.member_moderation_guard() returns trigger
+language plpgsql as $$
+begin
+  if tg_op = 'DELETE' and not exists (select 1 from public.clubs where id = old.club_id) then
+    return old;
+  end if;
+  raise exception 'member_moderation_log is append-only';
+end; $$;
+drop trigger if exists trg_member_moderation_guard on public.member_moderation_log;
+create trigger trg_member_moderation_guard before update or delete on public.member_moderation_log
+  for each row execute function public.member_moderation_guard();
+
+-- ---- 6 ---------------------------------------------------------------------------------------
+create table if not exists public.member_blocks (
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.users(id) on delete cascade,
+  club_id uuid references public.clubs(id) on delete cascade,
+  scope text not null default 'club' check (scope in ('club', 'all')),
+  user_id uuid,
+  phone text,
+  full_name text,
+  reason text check (reason is null or char_length(reason) <= 500),
+  created_by text,
+  created_at timestamptz not null default now(),
+  lifted_at timestamptz,
+  lifted_by text,
+  check (user_id is not null or phone is not null)
+);
+create index if not exists ix_member_blocks_club on public.member_blocks (club_id) where lifted_at is null;
+create index if not exists ix_member_blocks_host on public.member_blocks (host_id) where lifted_at is null;
+alter table public.member_blocks enable row level security;
+
+-- ---- 7 ---------------------------------------------------------------------------------------
+create table if not exists public.player_notices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  club_id uuid references public.clubs(id) on delete set null,
+  club_name text,
+  kind text not null check (kind in ('warning', 'restored', 'removed')),
+  reason text check (reason is null or char_length(reason) <= 500),
+  until timestamptz,
+  blocked boolean not null default false,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+create index if not exists ix_player_notices_user on public.player_notices (user_id, created_at desc);
+alter table public.player_notices enable row level security;
+
+
+-- ============================================================================
+-- 20261106090000_weekly_series_costs
+-- ============================================================================
+-- Weekly schedule v5: sessions of one weekly schedule share a series (edit them all at
+-- once), what the fee includes, which play format, a Google Maps link for the court,
+-- and the costs of each session (court, water…) booked into the ledger automatically.
+
+-- 1. Series: every session created together by "Tạo lịch chơi hàng tuần".
+alter table public.events add column if not exists series_id uuid;
+create index if not exists ix_events_series on public.events (series_id) where series_id is not null;
+-- Older weekly schedules: sessions inserted together share created_at (one insert).
+with groups as (
+  select club_id, created_at, title, gen_random_uuid() as sid
+  from public.events
+  where kind = 'weekly' and club_id is not null and series_id is null
+  group by club_id, created_at, title
+  having count(*) > 1
+)
+update public.events e set series_id = g.sid
+from groups g
+where e.series_id is null and e.kind = 'weekly'
+  and e.club_id = g.club_id and e.created_at = g.created_at and e.title = g.title;
+
+-- 2. What the fee includes (balls, water, fruit…), shown under the fee.
+alter table public.events add column if not exists services text
+  check (services is null or char_length(services) <= 300);
+
+-- 3. Play format: full men / full women / mixed / open to all.
+alter table public.events add column if not exists play_format text
+  check (play_format is null or play_format in ('men', 'women', 'mixed', 'open'));
+
+-- 4. A Google Maps link to the court (otherwise the address is searched on Google Maps).
+alter table public.events add column if not exists map_url text
+  check (map_url is null or (char_length(map_url) <= 500 and map_url ~* '^https://'));
+
+-- 5. Costs of one session: [{ "category": "court", "amount": 300000, "note": "..." }].
+alter table public.events add column if not exists cost_items jsonb not null default '[]'::jsonb;
+-- Ledger entries written from those costs (re-written when the costs change).
+alter table public.transactions add column if not exists event_cost boolean not null default false;
+create index if not exists ix_transactions_event on public.transactions (event_id) where event_id is not null;
+
+-- v_event_summary selects e.*, so rebuild it to include the new columns.
+drop view if exists public.v_event_summary;
+create view public.v_event_summary as
+select
+  e.*,
+  c.name as club_name,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text in ('registered','checked_in','pending')) as main_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'pending') as pending_count
+from public.events e
+left join public.clubs c on c.id = e.club_id;
+
+
 select 1; -- done
 notify pgrst, 'reload schema';

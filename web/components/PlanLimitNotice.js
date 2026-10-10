@@ -17,7 +17,9 @@ export default function PlanLimitNotice() {
   }, []);
   if (!hit && !upgrading) return null;
   const body =
-    hit?.code === 'member_limit'
+    hit?.code === 'member_limit' && hit.limit === 0
+      ? t('plan.noPlanClubs') // no plan (never bought, or it ended): nothing can be added
+      : hit?.code === 'member_limit'
       ? t(hit.member_type === 'guest' ? 'plan.limitGuest' : 'plan.limitFixed', { n: hit.limit })
       : hit?.code === 'role_seats'
         ? t('plan.limitSeats', { n: hit.limit, role: t(`staff.${hit.role}`) })

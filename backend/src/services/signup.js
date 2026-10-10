@@ -117,6 +117,8 @@ async function registerOnline(event, userId, profile) {
   if (!profile?.full_name || normalizePhone(profile.phone).length < 9 || !profile.birth_date) {
     throw httpError('Complete your profile (name, phone, birth date) first.', 400, 'profile_required');
   }
+  // Blocked by this Host, or suspended ("to review") in this club: no sign-up.
+  await require('./moderation').assertCanJoin(event, { userId, phone: profile.phone });
   await expireHolds(event);
   const { standing, participant: existing } = await myRegistration(event, userId);
   if (existing && ACTIVE.includes(existing.status)) throw httpError('You are already registered for this event.', 409, 'already_registered');

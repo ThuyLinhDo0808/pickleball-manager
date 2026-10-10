@@ -9,7 +9,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { categoryLabel, MANUAL_EXPENSE, MANUAL_INCOME } from '@/lib/finance';
+import { categoryLabel, describeEntry, sessionLabel, MANUAL_EXPENSE, MANUAL_INCOME } from '@/lib/finance';
 
 const LABEL = 'block text-xs text-gray-400 mb-1.5';
 const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
@@ -32,9 +32,11 @@ function todayYmd() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function AddEntry({ club, onDone }) {
+// `events`: sessions the entry can belong to (optional for a club; a Xé Vé entry always
+// belongs to one of the kèo). Without a session it goes into the club fund.
+function AddEntry({ club, events = [], onDone }) {
   const { t } = useI18n();
-  const [f, setF] = useState({ type: 'expense', category: 'court', amount: '', occurred_on: todayYmd(), note: '' });
+  const [f, setF] = useState({ type: 'expense', category: 'court', amount: '', occurred_on: todayYmd(), note: '', event_id: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [calc, setCalc] = useState(false);
@@ -47,9 +49,9 @@ function AddEntry({ club, onDone }) {
     setBusy(true);
     setError('');
     try {
+      if (!club && !f.event_id) throw new Error(t('ledger.pickSession'));
       await api.post('/api/transactions', {
-        owner_type: 'club',
-        club_id: club.id,
+        ...(f.event_id ? { owner_type: 'event', event_id: f.event_id } : { owner_type: 'club', club_id: club.id }),
         type: f.type,
         category: f.category.trim() || null,
         amount: Number(f.amount),
@@ -69,7 +71,7 @@ function AddEntry({ club, onDone }) {
     <form onSubmit={submit} className="card !p-0 mb-4 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-b border-navy-700">
         <h2 className="text-white font-semibold">✍️ {t('finX.addEntry')}</h2>
-        <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => setCalc(true)}>🧮 {t('calc.title')}</button>
+        {club && <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => setCalc(true)}>🧮 {t('calc.title')}</button>}
       </div>
       {/* One row of equal-height fields, labels on top; hints and the button in the footer. */}
       <div className="grid grid-cols-2 md:grid-cols-12 gap-3 px-5 py-4 items-end">
@@ -105,6 +107,16 @@ function AddEntry({ club, onDone }) {
           <input className="input h-[42px]" required={f.category === 'other'} placeholder={f.category === 'other' ? t('fin.otherNotePh') : t('fin.notePh')} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         </div>
       </div>
+      <div className="px-5 pb-4 -mt-1">
+        <label className={LABEL}>{t('ledger.session')}</label>
+        <select className="input h-[42px]" value={f.event_id} required={!club} onChange={(e) => {
+          const ev = events.find((x) => x.id === e.target.value);
+          setF({ ...f, event_id: e.target.value, ...(ev ? { occurred_on: ev.event_date } : {}) });
+        }}>
+          <option value="">{club ? t('ledger.noSession') : t('ledger.pickSession')}</option>
+          {events.map((ev) => <option key={ev.id} value={ev.id}>{sessionLabel(ev, t)}</option>)}
+        </select>
+      </div>
       {buyingBalls && (
         <div className="mx-5 mb-4 rounded-xl border border-orange-400/40 bg-orange-400/10 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="text-sm text-orange-100 flex-1">
@@ -131,7 +143,7 @@ function AddEntry({ club, onDone }) {
         <button className="btn-primary px-6" disabled={busy || buyingBalls}>+ {t('fin.addBtn')}</button>
       </div>
       <Modal open={calc} title={`🧮 ${t('calc.title')}`} onClose={() => setCalc(false)}>
-        {calc && (
+        {calc && club && (
           <FundCalculator
             club={club}
             onUse={(amount, category) => {
@@ -210,6 +222,19 @@ export default function LedgerPage() {
     return api.get('/api/transactions?scope=standalone').then((transactions) => ({ transactions, balance: null }));
   }, [isClub, club?.id]);
 
+  // Sessions an entry can be put on: the club's (or Xé Vé kèo) from 3 months back to 2 ahead.
+  const { data: evList } = useLoad(() => {
+    if (isClub) return club ? api.get(`/api/clubs/${club.id}/events`) : Promise.resolve([]);
+    return api.get('/api/events?scope=standalone');
+  }, [isClub, club?.id]);
+  const sessions = useMemo(() => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0, 10);
+    const to = new Date(now.getFullYear(), now.getMonth() + 2, 28).toISOString().slice(0, 10);
+    return (evList || []).filter((e) => e.kind !== 'meeting' && e.event_date >= from && e.event_date <= to).sort((a, b) => b.event_date.localeCompare(a.event_date));
+  }, [evList]);
+  const [view, setView] = useState('entries');
+  const [source, setSource] = useState('all');
   const [month, setMonth] = useState('all');
   const [category, setCategory] = useState('all');
   const [showVoided, setShowVoided] = useState(false);
@@ -223,11 +248,25 @@ export default function LedgerPage() {
     (r) =>
       (showVoided || !r.is_voided) &&
       (month === 'all' || r.occurred_on.startsWith(month)) &&
+      (source === 'all' || (source === 'session') === !!r.event_id) &&
       (category === 'all' || (r.category || 'other') === category)
   );
   const live = shown.filter((r) => !r.is_voided);
   const tin = live.filter((r) => r.type === 'income').reduce((s, r) => s + Number(r.amount), 0);
   const tout = live.filter((r) => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0);
+  // "Theo buổi": what each session took in and paid out.
+  const bySession = useMemo(() => {
+    const m = new Map();
+    for (const r of live) {
+      if (!r.event_id) continue;
+      const x = m.get(r.event_id) || { id: r.event_id, ev: r.events, income: 0, expense: 0, payers: 0 };
+      if (r.type === 'income') x.income += Number(r.amount);
+      else x.expense += Number(r.amount);
+      if (r.category === 'event_fee') x.payers += 1;
+      m.set(r.event_id, x);
+    }
+    return [...m.values()].sort((a, b) => String(b.ev?.event_date).localeCompare(String(a.ev?.event_date)));
+  }, [live]);
 
   async function voidEntry(r) {
     const reason = window.prompt(t('fin.voidAsk'));
@@ -243,9 +282,9 @@ export default function LedgerPage() {
 
   // One table per side: money in on the left, money out on the right.
   const ROW_ACTIONS = (r) =>
-    !r.is_voided && isClub && !AUTO.has(r.category) ? (
+    !r.is_voided && !AUTO.has(r.category) ? (
       <span className="inline-flex gap-1 whitespace-nowrap">
-        <button className="text-gray-300 hover:text-white px-1" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}>✏️</button>
+        {!r.event_cost && <button className="text-gray-300 hover:text-white px-1" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}>✏️</button>}
         <button className="text-red-400/80 hover:text-red-300 px-1" title={t('fin.void')} aria-label={t('fin.void')} onClick={() => voidEntry(r)}>✕</button>
       </span>
     ) : null;
@@ -277,16 +316,16 @@ export default function LedgerPage() {
                     <td className="text-gray-300 whitespace-nowrap">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</td>
                     <td className="text-gray-200 whitespace-nowrap">
                       {categoryLabel(r.category, t)}
-                      {AUTO.has(r.category) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{t('fin.auto')}</span>}
+                      {(AUTO.has(r.category) || r.event_cost) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
                     </td>
                     <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(r.amount)}</td>
                     <td className="text-gray-400 !whitespace-normal break-words text-xs">
                       <div className="flex items-start justify-between gap-2">
                         <span className="min-w-0">
                           {r.events && (
-                            <Link href={`/events/${r.event_id}`} className="text-gray-300 hover:text-lime-400 block">{t('fin.fromEvent', { title: r.events.title })}</Link>
+                            <Link href={`/events/${r.event_id}`} className="text-sky-300 hover:text-lime-400 block">🏓 {sessionLabel(r.events, t)}</Link>
                           )}
-                          {r.is_voided ? `${t('fin.voided')}${r.void_reason ? `: ${r.void_reason}` : ''}` : r.note || (r.events ? '' : '—')}
+                          <span className="text-gray-300">{r.is_voided ? `${t('fin.voided')}${r.void_reason ? `: ${r.void_reason}` : ''}` : describeEntry(r, t) || (r.events ? '' : '—')}</span>
                         </span>
                         {ROW_ACTIONS(r)}
                       </div>
@@ -303,11 +342,12 @@ export default function LedgerPage() {
 
   return (
     <>
-      <div className={`grid gap-3 mb-4 ${isClub ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
+      <p className="text-gray-400 text-sm mb-3">📒 {t('ledger.intro')}</p>
+      <div className="grid gap-3 mb-4 grid-cols-1 sm:grid-cols-3">
         {[
           ['💚', t('analytics.income'), formatVnd(tin), 'text-lime-400'],
           ['🧾', t('analytics.expense'), formatVnd(tout), 'text-orange-300'],
-          ...(isClub && data ? [['🏦', t('fin.balance'), formatVnd(data.balance), Number(data.balance) < 0 ? 'text-red-400' : 'text-lime-400']] : []),
+          ['⚖️', t('finance.net'), formatVnd(tin - tout), tin - tout < 0 ? 'text-red-400' : 'text-white'],
         ].map(([icon, k, v, tone]) => (
           <div key={k} className="card !p-4">
             <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
@@ -319,7 +359,11 @@ export default function LedgerPage() {
         ))}
       </div>
 
-      {isClub ? club && <AddEntry club={club} onDone={reload} /> : <p className="card text-gray-400 text-sm mb-4">{t('fin.ledgerXeve')}</p>}
+      {isClub && data && (
+        <p className="text-gray-400 text-xs -mt-2 mb-4">🏦 {t('ledger.fundBalance', { v: formatVnd(data.balance) })}</p>
+      )}
+
+      {isClub ? club && <AddEntry club={club} events={sessions} onDone={reload} /> : <AddEntry club={null} events={sessions} onDone={reload} />}
 
       <div className="card !p-3 flex flex-wrap items-center gap-2 mb-3">
         <span className="text-gray-400 text-sm px-1">🔎 {t('finX.filter')}</span>
@@ -331,18 +375,65 @@ export default function LedgerPage() {
           <option value="all">{t('fin.category')}: {t('fin.all')}</option>
           {categories.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
         </select>
+        {isClub && (
+          <select className="input !w-auto text-sm" value={source} onChange={(e) => setSource(e.target.value)} aria-label={t('ledger.source')}>
+            {['all', 'club', 'session'].map((k) => <option key={k} value={k}>{t(`ledger.src_${k}`)}</option>)}
+          </select>
+        )}
         <label className="flex items-center gap-2 text-sm text-gray-300 ml-1">
           <input type="checkbox" checked={showVoided} onChange={(e) => setShowVoided(e.target.checked)} />
           {t('fin.showVoided')}
         </label>
+        <div className="ml-auto grid grid-cols-2 bg-navy-900 border border-navy-700 rounded-lg p-1 text-sm">
+          {['entries', 'sessions'].map((v) => (
+            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`rounded-md px-3 py-1 ${view === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300'}`}>
+              {t(`ledger.view_${v}`)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && <p className="card text-yellow-300 text-sm mb-3">{error}</p>}
 
-      <div className="grid gap-4 xl:grid-cols-2 items-start">
-        {side('income')}
-        {side('expense')}
-      </div>
+      {view === 'entries' ? (
+        <div className="grid gap-4 2xl:grid-cols-2 items-start">
+          {side('income')}
+          {side('expense')}
+        </div>
+      ) : (
+        <div className="card !p-4">
+          <h2 className="text-white font-semibold mb-3">🏓 {t('ledger.bySession')} <span className="text-gray-500 font-normal text-sm">({bySession.length})</span></h2>
+          {bySession.length === 0 ? (
+            <p className="text-gray-500 text-sm">{t('fin.eventPnlNone')}</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="w-full text-sm grid-table !min-w-[32rem]">
+                <thead>
+                  <tr className="text-gray-300 text-left bg-navy-900">
+                    <th>{t('ledger.session')}</th>
+                    <th className="text-right">{t('finance.income')}</th>
+                    <th className="text-right">{t('finance.expense')}</th>
+                    <th className="text-right">{t('finance.net')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bySession.map((x) => (
+                    <tr key={x.id}>
+                      <td className="!whitespace-normal">
+                        <Link href={`/events/${x.id}`} className="text-gray-100 hover:text-lime-400">{sessionLabel(x.ev, t)}</Link>
+                        {x.payers > 0 && <span className="block text-gray-500 text-xs">{t('ledger.payers', { n: x.payers })}</span>}
+                      </td>
+                      <td className="text-right tabular-nums text-lime-400">{formatVnd(x.income)}</td>
+                      <td className="text-right tabular-nums text-orange-300">{formatVnd(x.expense)}</td>
+                      <td className={`text-right tabular-nums font-semibold ${x.income - x.expense < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
       {editing && <EditEntry entry={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}
     </>
   );

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import MapLink from '@/components/MapLink';
 import { ProfileForm } from '@/components/EventSignup';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
@@ -69,7 +70,7 @@ export default function MeetingVotePage() {
           {formatDay(ev.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
           {time && ` · ${time}`}
         </p>
-        {ev.location && <p className="text-gray-300 text-sm mt-1">📍 {ev.location}</p>}
+        {ev.location && <p className="mt-1"><MapLink location={ev.location} mapUrl={ev.map_url} /></p>}
         <p className="text-gray-300 text-sm mt-1">💰 {Number(ev.fee_amount) > 0 ? `${formatVnd(ev.fee_amount)} / ${t('vote.perPerson')}` : t('public.free')}</p>
         {ev.notice && (
           <div className="mt-3 rounded-lg bg-navy-900 px-3 py-2">

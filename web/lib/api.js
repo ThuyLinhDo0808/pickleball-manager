@@ -3,6 +3,9 @@ import { supabase } from './supabaseClient';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+// A club's avatar / cover picture (served by the API; the version busts the cache).
+export const clubImage = (clubId, kind, version) => (clubId && version ? `${API_URL}/api/public/discover/clubs/${clubId}/${kind}?v=${version}` : null);
+
 async function authHeader() {
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token;

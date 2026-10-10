@@ -270,7 +270,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
   );
 }
 
-export default function MemberDetail({ club, member, onClose, onChanged, autoEdit = false }) {
+export default function MemberDetail({ club, member, onClose, onChanged, autoEdit = false, onReview = null }) {
   const { t, sport } = useI18n();
   const open = !!member;
   const { data: plans } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/plans`) : Promise.resolve([])), [club?.id]);
@@ -321,6 +321,12 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
   return (
     <Modal open title={member.full_name} onClose={onClose}>
       <div className="flex flex-col gap-5">
+        {/* Bad behaviour: move to "To review" (suspended for a while, the player is told). */}
+        {onReview && !member.review_started_at && (
+          <button type="button" className="self-start rounded-lg px-3 py-1.5 text-sm border border-amber-300/60 text-amber-200 hover:bg-amber-300/10" onClick={() => onReview(member)}>
+            ⚠️ {t('mod.moveToReview')}
+          </button>
+        )}
         <div className="text-gray-400 text-sm flex flex-wrap gap-x-4 gap-y-1">
           <span>
             {member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}

@@ -4,7 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 
 // The check-in ticket of one registration: a big QR ("PBT:<ticket_code>") plus a loud
 // reminder to screenshot it, and a link to the ticket page as a backup.
-export default function TicketCard({ ticketCode, name, subtitle }) {
+export default function TicketCard({ ticketCode, name, subtitle, checkedIn = false }) {
   const { t } = useI18n();
   const [qr, setQr] = useState('');
   const [link, setLink] = useState('');
@@ -30,10 +30,13 @@ export default function TicketCard({ ticketCode, name, subtitle }) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="w-full rounded-xl border-2 border-yellow-400 bg-yellow-400/10 px-3 py-2.5 text-center">
-        <p className="text-yellow-300 font-extrabold text-base uppercase tracking-wide">📸 {t('ticket.screenshot')}</p>
-        <p className="text-yellow-100 text-sm font-semibold mt-0.5">{t('ticket.screenshotHint')}</p>
-      </div>
+      {/* Once checked in, the QR has done its job: no need to shout about screenshots. */}
+      {!checkedIn && (
+        <div className="w-full rounded-xl border-2 border-yellow-400 bg-yellow-400/10 px-3 py-2.5 text-center">
+          <p className="text-yellow-300 font-extrabold text-base uppercase tracking-wide">📸 {t('ticket.screenshot')}</p>
+          <p className="text-yellow-100 text-sm font-semibold mt-0.5">{t('ticket.screenshotHint')}</p>
+        </div>
+      )}
       <div className="rounded-xl bg-white p-2 w-full max-w-[280px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {qr ? <img src={qr} alt={t('ticket.qrAlt')} className="w-full h-auto" /> : <div className="aspect-square" />}

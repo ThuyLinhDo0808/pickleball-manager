@@ -10,6 +10,7 @@ import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import ClubLeaderboard from '@/components/ClubLeaderboard';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
+import MapLink from '@/components/MapLink';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
@@ -117,9 +118,10 @@ export default function MemberClubPage() {
                 <div className="min-w-0 flex-1 p-3">
                   <div className="text-white font-semibold truncate">{KIND_ICON[e.kind] ? `${KIND_ICON[e.kind]} ` : ''}{e.title}</div>
                   <div className="text-gray-400 text-xs truncate">
-                    {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
+                    {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''}
                     {Number(e.fee_amount) > 0 ? ` · ${formatVnd(e.fee_amount)}` : ''}
                   </div>
+                  {(e.location || e.map_url) && <MapLink location={e.location} mapUrl={e.map_url} className="text-gray-400 text-xs" />}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {e.slots && e.kind !== 'meeting' ? <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${full ? 'bg-amber-400/15 text-amber-300' : 'bg-navy-700 text-gray-200'}`}>{e.main_count}/{e.slots}{e.waitlist_count ? ` · +${e.waitlist_count}` : ''}</span> : null}
                     {e.kind === 'meeting' ? (

@@ -33,14 +33,6 @@ function shiftYmd(ymd, days) {
   return d.toISOString().slice(0, 10);
 }
 
-// A new organiser (owns a club, never paid, never tried) gets the trial plan once.
-async function maybeStartTrial(sub, clubsOwned) {
-  if (!sub || sub.tier !== 'free' || sub.trial_started_at || sub.tier_paid_until || !clubsOwned) return sub;
-  const patch = { tier: PF.TRIAL.tier, tier_paid_until: shiftYmd(todayYmd(), PF.TRIAL.days), trial_started_at: new Date().toISOString(), trial_ends_on: shiftYmd(todayYmd(), PF.TRIAL.days) };
-  const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', sub.host_id).eq('tier', 'free').is('trial_started_at', null);
-  return error ? sub : { ...sub, ...patch };
-}
-
 // Small cache: plan checks run on many requests.
 const CACHE_MS = Number(process.env.PLAN_CACHE_MS ?? 15000); // 0 in tests that edit the database directly
 const cache = new Map();
@@ -56,7 +48,6 @@ async function getPlan(hostId, { fresh = false } = {}) {
   ]);
   // A paid period that ran out drops back to Free / Social Manager off.
   let live = await billing.expireIfDue(sub);
-  if (ready2) live = await maybeStartTrial(live, count || 0);
   const tier = TIERS.includes(live?.tier) ? live.tier : 'free';
   const selfServe = await require('./appSettings').selfServe();
   const today = todayYmd();
@@ -66,6 +57,12 @@ async function getPlan(hostId, { fresh = false } = {}) {
     // Before the plans-v2 migration features are not locked (old databases keep working).
     features_enforced: ready && ready2,
     tier,
+    // No plan (never bought one, or it ran out): clubs stay, nothing can be added.
+    no_plan: tier === 'free',
+    // Paying for a plan right now (not a trial): higher plans are upgrades for the days
+    // left (quotes below), lower ones wait until it ends.
+    active_paid: billing.activePaid(live, today),
+    upgrade_quotes: Object.fromEntries(PF.PAID_TIERS.map((t) => [t, billing.upgradeQuote(live, t, today)]).filter(([, q]) => q)),
     club_limit: CLUB_LIMIT[tier] ?? null,
     clubs_owned: count || 0,
     limits: PF.LIMITS[tier],
@@ -98,6 +95,8 @@ const locked = (message, code, extra = {}) => Object.assign(new Error(message), 
 // Throws { status: 402, code } when the Host can't add another club / run Xé Vé.
 async function assertCanCreateClub(hostId) {
   const p = await getPlan(hostId, { fresh: true });
+  // Only when the owner switched club approval off (testing): a first club needs no plan.
+  if (p.tier === 'free' && p.clubs_owned === 0) return;
   if (p.enforced && p.club_limit != null && p.clubs_owned >= p.club_limit) {
     throw locked(`Your ${p.tier} plan allows ${p.club_limit} club(s). Upgrade to add another.`, 'club_limit', { plan: p });
   }

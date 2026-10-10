@@ -19,6 +19,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 
 const SECTIONS = [
+  ['manage', '🏟'],
   ['plan', '💎'],
   ['payout', '🏦'],
   ['notify', '🔔'],
@@ -35,6 +36,8 @@ export default function AccountPage() {
   const { club } = useDefaultClub();
   const { data: sub } = useLoad(() => api.get('/api/host/subscription').catch(() => null), []);
   const { data: me } = useLoad(() => api.get('/api/host/me').catch(() => null), []);
+  const { data: requests } = useLoad(() => api.get('/api/host/club-requests').catch(() => null), []);
+  const lastRequest = requests?.items?.[0] || null;
   const { plan } = useWorkspace();
   const [upgrading, setUpgrading] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -45,7 +48,7 @@ export default function AccountPage() {
   const usage = sub?.usage;
   const pct = usage?.capacity_limit ? Math.min(100, Math.round((100 * usage.used) / usage.capacity_limit)) : 0;
   const email = user?.email || '';
-  const name = me?.full_name || email.split('@')[0];
+  const name = me?.username || me?.full_name || email.split('@')[0];
   const since = me?.created_at ? new Date(me.created_at).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { month: '2-digit', year: 'numeric' }) : null;
 
   async function onBackup() {
@@ -93,7 +96,7 @@ export default function AccountPage() {
               {user?.email_confirmed_at && (
                 <span className="text-[11px] rounded-full border border-lime-400/50 text-lime-300 px-2 py-0.5">✓ {t('acct.verified')}</span>
               )}
-              {sub && <span className="text-[11px] rounded-full bg-amber-300 text-navy-950 font-bold px-2 py-0.5 uppercase">{sub.tier}</span>}
+              {sub && <span className="text-[11px] rounded-full bg-amber-300 text-navy-950 font-bold px-2 py-0.5 uppercase">{sub.tier === 'free' ? t('plan.noPlan') : sub.tier}</span>}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
@@ -129,13 +132,27 @@ export default function AccountPage() {
           <AccountDetails />
         </SettingsSection>
 
+        {/* Players become club managers here: a club request the app owner approves. */}
+        <SettingsSection id="manage" icon="🏟" tone="lime" title={t('acct.s_manage')} description={t('acct.manageHint')}>
+          {lastRequest && (
+            <p className="mb-3 text-sm text-gray-200">
+              {t('acct.lastRequest', { name: lastRequest.name })}: <b>{t(`creq.status_${lastRequest.status}`)}</b>
+              {lastRequest.owner_note ? <span className="block text-gray-400 text-xs">💬 {lastRequest.owner_note}</span> : null}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-gray-400 text-sm min-w-0 flex-1">{clubs.length ? t('acct.manageMore', { n: clubs.length }) : t('acct.manageFirst')}</p>
+            <Link href="/club-request" className="btn-primary">{lastRequest?.status === 'pending' ? t('acct.manageSeeRequest') : t('acct.manageApply')}</Link>
+          </div>
+        </SettingsSection>
+
         <SettingsSection id="plan" icon="💎" tone="amber" title={t('acct.s_plan')} description={t('acct.planHint')}>
           {plan ? (
             <>
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
                   <div className="text-gray-400 text-xs uppercase tracking-wide">{t('acct.currentPlan')}</div>
-                  <div className="text-white text-2xl font-bold uppercase">{plan.tier}</div>
+                  <div className="text-white text-2xl font-bold uppercase">{plan.tier === 'free' ? t('plan.noPlan') : plan.tier}</div>
                 </div>
                 <div className="text-right text-sm">
                   <div className="text-white font-semibold">
@@ -144,6 +161,9 @@ export default function AccountPage() {
                   <div className="text-gray-400 text-xs">{t('plan.perClub')}</div>
                 </div>
               </div>
+              {plan.no_plan && (
+                <p className="mt-3 rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm">⚠️ {plan.clubs_owned ? t('plan.noPlanClubs') : t('plan.noPlanHint')}</p>
+              )}
               {plan.trial ? (
                 <p className="mt-3 rounded-lg border border-amber-300/40 bg-amber-300/5 px-3 py-2 text-amber-200 text-sm">
                   🎁 {t('plan.trialBanner', { tier: plan.trial.tier.toUpperCase(), date: plan.trial.ends_on.split('-').reverse().join('/') })}

@@ -1,4 +1,5 @@
 'use client';
+import PlayerNotices from '@/components/PlayerNotices';
 import { levelText } from '@/lib/levels';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -74,17 +75,18 @@ export default function PlayerHome() {
 
   return (
     <PlayerShell>
+      <PlayerNotices notices={me.notices || []} />
       <div className="flex items-center gap-3 mb-4">
         {p?.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.avatar} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-lime-400" />
         ) : (
           <div className="w-14 h-14 rounded-full bg-navy-700 flex items-center justify-center text-lime-400 text-xl font-bold">
-            {(p?.full_name || me.email || '?').slice(0, 1).toUpperCase()}
+            {(me.username || p?.full_name || me.email || '?').slice(0, 1).toUpperCase()}
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-white text-xl font-bold truncate">{t('player.hello', { name: p?.full_name || me.email })}</h1>
+          <h1 className="text-white text-xl font-bold truncate">{t('player.hello', { name: me.username || p?.full_name || String(me.email || '').split('@')[0] })}</h1>
           {(p?.dupr_level != null || p?.badminton_level != null) && (
             <div className="text-gray-400 text-sm">
               {[p.dupr_level != null && `🏓 DUPR ${p.dupr_level}`, p.badminton_level != null && `🏸 ${levelText(p.badminton_level, 'badminton', t)}`].filter(Boolean).join(' · ')}

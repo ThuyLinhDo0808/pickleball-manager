@@ -87,7 +87,7 @@ publicRoutes.get('/tickets/:code', async (req, res) => {
     if (!isUuid(req.params.code)) return notFound(res, 'Ticket');
     const { data: p, error } = await supabase
       .from('event_participants')
-      .select('full_name, status, kind, payment_status, ticket_code, transferred_from, events(title, event_date, start_time, end_time, location, public_token, clubs(name))')
+      .select('full_name, status, kind, payment_status, ticket_code, transferred_from, events(title, event_date, start_time, end_time, location, map_url, public_token, clubs(name))')
       .eq('ticket_code', req.params.code)
       .maybeSingle();
     if (error) throw error;
@@ -111,6 +111,46 @@ publicRoutes.get('/tickets/:code', async (req, res) => {
 // =============================================================================
 // Signed-in player  —  /api/player
 // =============================================================================
+// ---- Club search (no login): find clubs, see one club and its coming sessions -------
+const discover = require('../services/discover');
+publicRoutes.get('/discover/clubs', async (req, res) => {
+  try {
+    res.json(await discover.search(req.query));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+publicRoutes.get('/discover/clubs/:clubId', async (req, res) => {
+  if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+  try {
+    res.json(await discover.profile(req.params.clubId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+// The club's pictures; the URL carries a version (?v=), so they can be cached for long.
+publicRoutes.get('/discover/clubs/:clubId/:kind(avatar|cover)', async (req, res) => {
+  if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+  try {
+    const img = await discover.image(req.params.clubId, req.params.kind);
+    res.set('Content-Type', img.type);
+    res.set('Cache-Control', 'public, max-age=604800, immutable');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.send(img.body);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Invite link (no login to see it): the club it leads to.
+publicRoutes.get('/invite/:token', async (req, res) => {
+  try {
+    res.json((await discover.inviteClub(req.params.token)).view);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 const player = express.Router();
 
 async function getProfile(userId) {
@@ -172,6 +212,108 @@ player.put('/profile', async (req, res) => {
       if (Object.keys(patch).length) await supabase.from('club_members').update(patch).eq('id', m.id);
     }
     res.json(data);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Who the account is (username, sports, onboarding done?) and its latest club request.
+// Before migration 20261104 there is no onboarding: everyone counts as done.
+async function accountInfo(uid) {
+  const { data: u } = await supabase.from('users').select('*').eq('id', uid).maybeSingle();
+  const v3 = !!u && 'onboarded_at' in u;
+  let clubRequest = null;
+  if (v3) {
+    const { data } = await supabase.from('club_requests').select('id, name, status, owner_note, club_id, created_at, decided_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(1);
+    clubRequest = data?.[0] || null;
+  }
+  return {
+    username: u?.username || null,
+    onboarded: v3 ? !!u.onboarded_at : true,
+    sports: u?.sports || [],
+    account_role: u?.account_role || null,
+    club_request: clubRequest,
+  };
+}
+
+// After sign-up: the sports this person plays, player or club manager, and their profile
+// (levels for each sport they play). Managers then go on to ask for their club.
+player.post('/onboarding', async (req, res) => {
+  try {
+    const CR = require('../services/clubRequests');
+    if (!(await CR.ready())) throw badRequest(`Run migration ${CR.MIGRATION} first.`, 409, 'migration_required');
+    const sports = [...new Set(Array.isArray(req.body.sports) ? req.body.sports : [])].filter((s) => ['pickleball', 'badminton'].includes(s));
+    if (!sports.length) throw badRequest('Choose at least one sport.', 400, 'sports_required');
+    const role = req.body.role === 'manager' ? 'manager' : 'player';
+    const p = cleanProfile(req.body, { badminton: await sportReady() });
+    if (!sports.includes('pickleball')) p.dupr_level = null;
+    if (!sports.includes('badminton') && 'badminton_level' in p) p.badminton_level = null;
+    const { data: old } = await supabase.from('player_profiles').select('avatar').eq('user_id', req.hostId).maybeSingle();
+    if (!p.avatar && old?.avatar) p.avatar = old.avatar; // the wizard has no photo step
+    const { data, error } = await supabase
+      .from('player_profiles')
+      .upsert({ user_id: req.hostId, ...p, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    await linkByPhone(req.hostId, data);
+    const userPatch = { sports, account_role: role, onboarded_at: new Date().toISOString() };
+    if (['male', 'female', 'other'].includes(req.body.gender)) userPatch.gender = req.body.gender;
+    if (p.birth_date) userPatch.birth_date = p.birth_date;
+    const { error: uErr } = await supabase.from('users').update(userPatch).eq('id', req.hostId);
+    if (uErr) throw uErr;
+    res.json({ profile: data, sports, role });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// The signed-in player and a club from the search: owner / member / requested / guest / none.
+player.get('/discover/:clubId', async (req, res) => {
+  if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+  try {
+    res.json(await discover.relation(req.params.clubId, req.hostId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Ask to join a club found in the search (lands in its waiting list for the Host).
+player.post('/discover/:clubId/join', async (req, res) => {
+  if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+  try {
+    const CR = require('../services/clubRequests');
+    if (!(await CR.ready())) throw badRequest(`Run migration ${CR.MIGRATION} first.`, 409, 'migration_required');
+    res.status(201).json(await discover.requestJoin(req.params.clubId, req.hostId, req.body || {}));
+  } catch (err) {
+    if (err.code === 'member_limit') return res.status(403).json({ error: 'This club is full right now.', code: 'member_limit' });
+    fail(res, err);
+  }
+});
+
+// Join through a club's invite link: into its waiting list for the Host to approve.
+player.post('/invite/:token/join', async (req, res) => {
+  try {
+    res.status(201).json(await discover.joinByInvite(req.params.token, req.hostId, req.body || {}));
+  } catch (err) {
+    if (err.code === 'member_limit') return res.status(403).json({ error: 'This club is full right now.', code: 'member_limit' });
+    fail(res, err);
+  }
+});
+
+// Messages from clubs shown on screen: warned / back in the club / removed.
+const moderation = require('../services/moderation');
+player.get('/notices', async (req, res) => {
+  try {
+    res.json(await moderation.noticesFor(req.hostId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+player.post('/notices/:id/read', async (req, res) => {
+  if (!isUuid(req.params.id)) return notFound(res, 'Notice');
+  try {
+    res.json(await moderation.markRead(req.hostId, req.params.id));
   } catch (err) {
     fail(res, err);
   }
@@ -349,7 +491,7 @@ player.get('/me', async (req, res) => {
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
       .select(
-        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, events(title, event_date, start_time, location, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
+        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
       )
       .or(orFilter)
       .limit(500);
@@ -377,6 +519,7 @@ player.get('/me', async (req, res) => {
         event_date: r.events.event_date,
         start_time: r.events.start_time,
         location: r.events.location,
+        map_url: r.events.map_url,
         club_name: r.events.clubs?.name || null,
         status: r.status,
         link: r.events.allow_public_registration ? r.events.public_token : null,
@@ -446,14 +589,17 @@ player.get('/me', async (req, res) => {
       .filter((h) => h.value != null)
       .map((h) => ({ date: localDate(h.valid_from), dupr: Number(h.value), source: h.entity === 'player' ? 'self' : 'club' }));
 
+    const { data: who } = await supabase.from('users').select('username').eq('id', uid).maybeSingle();
     res.json({
       email: req.hostEmail,
+      username: who?.username || null,
       profile,
       checkin_code: profile ? `PBP:${profile.checkin_token}` : null,
       // Email notices: whether the server can send them, and this player's choice.
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
       clubs,
       history: history.slice(0, 50),
@@ -489,7 +635,7 @@ async function upcomingFor(uid, memberIds, clubId = null) {
   const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
   const { data: regs, error } = await supabase
     .from('event_participants')
-    .select('id, status, event_id, ticket_code, payment_status, events!inner(id, title, event_date, start_time, end_time, location, status, club_id, public_token, allow_public_registration, cancel_deadline_hours)')
+    .select('id, status, event_id, ticket_code, payment_status, events!inner(id, title, event_date, start_time, end_time, location, map_url, status, club_id, public_token, allow_public_registration, cancel_deadline_hours)')
     .or(orFilter)
     .gte('events.event_date', today)
     .limit(300);
@@ -518,6 +664,7 @@ async function upcomingFor(uid, memberIds, clubId = null) {
         start_time: e.start_time,
         end_time: e.end_time,
         location: e.location,
+        map_url: e.map_url,
         status: r.status,
         payment_status: r.payment_status,
         ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null,
@@ -563,8 +710,10 @@ player.get('/home', async (req, res) => {
         ...summarize((passes || []).filter((p) => p.club_member_id === m.id), today),
       }));
     const upcoming = await upcomingFor(uid, memberIds);
+    const account = await accountInfo(uid);
     res.json({
       email: req.hostEmail,
+      ...account,
       profile: profile ? { full_name: profile.full_name, avatar: profile.avatar, dupr_level: profile.dupr_level, birth_date: profile.birth_date } : null,
       managed_clubs: [
         ...(managed.data || []).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', role: 'owner' })),
@@ -575,6 +724,7 @@ player.get('/home', async (req, res) => {
       plan: await getPlan(uid).catch(() => null),
       upcoming: upcoming.slice(0, 40),
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
     });
   } catch (err) {
     fail(res, err);
@@ -594,7 +744,7 @@ player.get('/clubs/:clubId', async (req, res) => {
     const today = todayYmd();
     const [{ data: passes }, { data: events }, { data: owner }] = await Promise.all([
       supabase.from('v_membership_status').select('*').eq('club_member_id', me.id).order('starts_on', { ascending: false }),
-      supabase.from('v_event_summary').select('id, title, kind, event_date, start_time, end_time, location, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration').eq('club_id', clubId).gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(30),
+      supabase.from('v_event_summary').select('id, title, kind, event_date, start_time, end_time, location, map_url, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration').eq('club_id', clubId).gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(30),
       supabase.from('users').select('email').eq('id', me.clubs.host_id).maybeSingle(),
     ]);
     const mine = await upcomingFor(uid, [me.id], clubId);

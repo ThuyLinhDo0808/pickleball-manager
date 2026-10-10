@@ -1,4 +1,6 @@
 'use client';
+import HomeLink from '@/components/HomeLink';
+import MapLink from '@/components/MapLink';
 import { useEffect } from 'react';
 import { levelRange, levelText } from '@/lib/levels';
 import { useParams } from 'next/navigation';
@@ -79,8 +81,11 @@ export default function PublicEventPage() {
   return (
     <div className="min-h-screen max-w-lg mx-auto px-4 pt-safe pb-safe-4">
       <header className="flex items-center justify-between py-4">
-        <span className="text-lime-400 font-bold">{ev.club_name || t('appName')}</span>
-        {langToggle}
+        <span className="text-lime-400 font-bold truncate">{ev.club_name || t('appName')}</span>
+        <div className="flex items-center gap-2">
+          <HomeLink />
+          {langToggle}
+        </div>
       </header>
       <AnnouncementBanner publicOnly className="mb-3" />
 
@@ -90,7 +95,8 @@ export default function PublicEventPage() {
           {formatDate(ev.event_date, lang)}
           {time && ` · ${time}`}
         </p>
-        {ev.location && <p className="text-gray-300 text-sm mt-1">📍 {ev.location}</p>}
+        {(ev.location || ev.map_url) && <p className="mt-1"><MapLink location={ev.location} mapUrl={ev.map_url} /></p>}
+        {ev.play_format && <p className="text-gray-300 text-sm mt-1">🏓 {t(`fmt.${ev.play_format}`)}</p>}
 
         <div className="grid grid-cols-2 gap-2 mt-4">
           <Info label={t('public.fee')} value={Number(ev.fee_amount) ? `${Number(ev.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')} />
@@ -98,6 +104,7 @@ export default function PublicEventPage() {
           <Info label={t('events.courts')} value={ev.courts} />
           <Info label={t('events.slots')} value={`${ev.main_count}/${ev.slots}`} />
         </div>
+        {ev.services && <p className="text-gray-300 text-sm mt-2">🎁 {t('svc.included')}: <span className="text-white">{ev.services}</span></p>}
       </section>
 
       {ev.cancel_deadline_hours != null && (
