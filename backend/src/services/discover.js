@@ -92,7 +92,7 @@ async function profile(clubId) {
     countsFor([club.id]),
     supabase
       .from('v_event_summary')
-      .select('id, title, event_date, start_time, end_time, location, slots, main_count, waitlist_count, fee_amount, status, kind, allow_public_registration, public_token')
+      .select('id, title, event_date, start_time, end_time, location, map_url, slots, main_count, waitlist_count, fee_amount, status, kind, allow_public_registration, public_token')
       .eq('club_id', club.id)
       .gte('event_date', todayYmd())
       .in('status', ['open', 'closed'])

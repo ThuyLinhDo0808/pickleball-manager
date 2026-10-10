@@ -239,11 +239,22 @@ Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh
 | Mục | Đường dẫn | Dùng để |
 |---|---|---|
 | **Lịch sự kiện** | `/events` | **Chỉ xem** toàn bộ hoạt động của CLB: lịch chơi hàng tuần 🗓, kèo 🏓, buổi tập 🎯, họp 👥, round robin 🔄 và **giải đấu 🏆**. Dạng **Danh sách / Tháng / Tuần / Ngày** (xem [5.1](#51-lịch-kèo-dạng-calendar-events)). Bấm vào giải thì mở trang giải. |
-| **Tạo lịch chơi hàng tuần** | `/events/create/weekly` | Buổi chơi cố định của CLB. Tick **các thứ trong tuần** (VD T3, T5, T7) và chọn **từ ngày – đến ngày**; lịch bên dưới tô sẵn mọi buổi, bấm vào một ngày để thêm/bỏ riêng buổi đó (nghỉ lễ, buổi bù). App tạo tất cả trong một lần (tối đa 200 buổi). |
+| **Tạo lịch chơi hàng tuần** | `/events/create/weekly` | Buổi chơi cố định của CLB. Tick **các thứ trong tuần** (VD T3, T5, T7) và chọn **từ ngày – đến ngày**; lịch bên dưới tô sẵn mọi buổi, bấm vào một ngày để thêm/bỏ riêng buổi đó (nghỉ lễ, buổi bù). App tạo tất cả trong một lần (tối đa 200 buổi); các buổi này thuộc **cùng một lịch** để sau sửa một lần cho tất cả (xem *Form tạo / sửa buổi* bên dưới). |
 | **Tạo giải đấu** | `/club/tournaments/new` | Xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments). |
 | **Tạo kèo** | `/events/create` | Một buổi lẻ. Chọn **loại hoạt động**: *Kèo giao lưu*, *Buổi tập*, *Họp / gặp mặt*, hoặc *Round robin* (thi đấu theo thể thức vòng tròn: mỗi đôi lần lượt đánh với những đôi khác). Các ô còn lại giống [5.2](#52-tạo-kèo-eventscreate), trừ *Họp / gặp mặt* (xem dưới). |
 
 Loại hoạt động sửa được ở trang *Sửa* của buổi.
+
+**Form tạo / sửa buổi** (lịch hàng tuần và kèo dùng chung):
+- **Địa điểm + Google Maps**: gõ địa chỉ sân, form hiện **bản đồ nhỏ** của địa chỉ đó và link *🗺 Kiểm tra trên Google Maps*. Có thể dán thêm **Link Google Maps của sân** (Google Maps → Chia sẻ → Sao chép đường liên kết). Người chơi bấm vào địa chỉ ở trang đăng ký `/e/…`, vé `/t/…`, trang CLB, *Tìm CLB* và trang họp `/v/…` → mở **Google Maps chỉ đường tới sân** (dùng link của Host nếu có, không thì tìm theo địa chỉ). Không cần API key.
+- **Luật & tài chính**:
+  - **Nội dung chơi**: *Tự do* / *Full nam* / *Full nữ* / *Mix (nam nữ)* — hiện trên trang đăng ký (chỉ để thông báo, app không chặn theo giới tính).
+  - **Dịch vụ bao gồm trong phí** ngay dưới phí tham gia: gõ tự do hoặc bấm nhanh *Bóng · Nước · Hoa quả · Khăn lạnh · Gửi xe*. Trang đăng ký hiện *🎁 Phí đã gồm: …*.
+  - **Hạn đăng ký tự động** (mặc định bật, ô *Tự động theo hạn huỷ*): hạn đăng ký = **giờ bắt đầu trừ hạn chót huỷ kèo**. VD bắt đầu 17:00, hạn huỷ *Trước 12 tiếng* → đóng đăng ký lúc **05:00** cùng ngày; không đặt hạn huỷ → đóng đúng giờ bắt đầu. Lịch hàng tuần: mỗi buổi tự tính theo ngày của nó. Bỏ tick để tự chọn ngày giờ. Thiếu người sát giờ chơi: vào trang buổi bấm **🔓 Mở lại đăng ký** (bỏ hạn cũ, mở link đăng ký) để mời thêm người.
+  - **💸 Chi phí mỗi buổi**: thêm các khoản Host phải trả cho **mỗi buổi** (*Thuê sân · Nước · HLV · Khác* — *Khác* bắt buộc ghi chú, VD hoa quả). Khi tạo, app **tự ghi khoản chi vào Sổ thu chi đúng ngày của từng buổi** (nhãn *chi phí buổi*). Sửa chi phí ở form sửa buổi thì các khoản cũ được huỷ và ghi lại theo số mới. (Mua bóng vẫn nhập ở Kho bóng.)
+- Mục **3. Lưu ý** (trước đây *Thông báo cho người chơi*): ghi chú hiện trên trang đăng ký (khung *Lưu ý*).
+- **Xem trước** (bên phải, máy tính) tính **theo 1 buổi**: phí / người + dịch vụ, nội dung chơi, hạn đăng ký, và khung **Mỗi buổi**: *Thu tối đa nếu kín chỗ* (phí × số chỗ), *Chi phí*, *Còn lại tối đa*. Lịch hàng tuần chỉ ghi thêm số buổi sẽ tạo; tổng chi phí cả lịch hiện ở dưới khung chi phí (VD *Mỗi buổi: 300.000đ · 7 buổi: 2.100.000đ*).
+- **Sửa một buổi của lịch hàng tuần**: cuối form có khung **🔁 Buổi này thuộc một lịch chơi hàng tuần** với 2 lựa chọn — **Áp dụng cho tất cả N buổi sắp tới của lịch** (mặc định) hoặc **Chỉ buổi này**. Áp dụng cho cả lịch: tên, giờ, địa điểm + link bản đồ, số sân, số chỗ, trình độ, phí, dịch vụ, nội dung chơi, lưu ý, hạn huỷ, link đăng ký và chi phí được chép sang mọi buổi **chưa diễn ra, chưa huỷ**; mỗi buổi **giữ nguyên ngày** của nó, hạn đăng ký giữ đúng khoảng cách tới giờ chơi; trạng thái chỉ đổi ở buổi đang sửa. Trang buổi có nhãn *🔁 Lịch hàng tuần*. Lịch hàng tuần tạo trước bản cập nhật này được nhận lại tự động (các buổi tạo cùng lúc).
 
 **Họp / gặp mặt** (ăn uống, liên hoan, hoạt động ngoài sân — chỉ có ở không gian CLB) dùng form gọn: **nội dung kèo, ngày giờ, địa điểm dự kiến, phí tham gia, agenda sự kiện**; không có số sân, số chỗ, trình độ, hạn huỷ hay link đăng ký. Tạo xong, trang chi tiết buổi họp có nút **🔗 Sao chép link bình chọn** (`/v/<mã>`) để gửi vào nhóm Zalo/Telegram. Ai mở link cũng xem được nội dung, thời gian, địa điểm, phí và **danh sách ai tham gia**; muốn bình chọn **Tham gia / Không** thì đăng nhập (chưa có tên + SĐT trong hồ sơ thì điền ngay trên trang). **Người ngoài CLB cũng bình chọn được**: bình chọn xong họ được thêm vào danh sách *Thành viên giao lưu* của CLB (nhận ra người cũ theo tài khoản / SĐT, không tạo trùng). Bấm lại lựa chọn để rút phiếu; buổi đã qua hoặc đã huỷ thì khoá bình chọn. Thành viên cũng bình chọn được ngay trên trang CLB của họ (`/c/<clubId>`). Trang chi tiết buổi họp có thẻ **🗳 Bình chọn tham gia**: thanh tỉ lệ, lọc *Tất cả / Tham gia / Không / Chưa bình chọn*, dự kiến thu (phí × số người tham gia); Host bấm để **đánh dấu giúp** ai báo qua nhóm chat (ghi "host đánh dấu"). Buổi họp không tính vào thống kê số buổi chơi.
 
@@ -262,6 +273,7 @@ Trang chi tiết buổi:
 - Trang chi tiết buổi giống kèo Xé Vé (xem [mục 5](#5-tính-năng-chi-tiết--xé-vé-manager)), cộng thêm:
   - **Nhập từ CLB**: chọn thành viên đưa vào buổi.
   - Trang chia **4 tab**: **Chi tiết** · **Thành viên** · **Trận đấu** · **Tài chính**.
+  - Tab **Tài chính** của buổi / kèo: 3 ô *Thu · Chi · Còn lại*, khung thêm khoản thu / chi (hạng mục, số tiền, ngày, ghi chú) và bảng từng khoản có nội dung dễ đọc (*Anh A trả phí tham gia*, *Bạn trả Thuê sân*…). **Mọi khoản ở đây đều nằm trong Sổ thu chi** (link *Mở Sổ thu chi →*). Khoản tự ghi từ *Chi phí mỗi buổi* sửa ở nút ✏️ Sửa của buổi; huỷ (✕) được nếu không phải trả (VD buổi bị huỷ).
   - **Check-in một hội viên sẽ tự trừ 1 buổi** trong gói còn hiệu lực. App báo "đã trừ 1 buổi, còn n buổi", hoặc "gói không giới hạn", hoặc "không có gói còn hiệu lực". Huỷ check-in thì buổi được hoàn lại. Mỗi buổi chỉ trừ tối đa 1 lần.
 
 ### 4.6. Trận đấu (tab *Trận đấu* của buổi · `/xeve/matches`)
@@ -388,7 +400,7 @@ Mục Tài chính có các tab:
 | Tab | Nội dung |
 |---|---|
 | **Tổng quan** (`/finance`) | Thanh **Xem theo** ở đầu trang: *Theo tháng* (‹ 10/2026 ›) hoặc *Theo năm* (‹ Năm 2026 ›, xem được năm trước) + nút **Ghi khoản thu / chi** · **Số dư quỹ** CLB · 2 ô **Thu – Chi** của đúng kỳ đang chọn (không còn ô *Còn lại*) · Biểu đồ **Thu, chi theo tháng** của năm · Thu/chi theo hạng mục và bảng **Thu chi từng buổi / kèo** (còn dư / thiếu) của kỳ đang chọn · Yêu cầu thanh toán chờ xác nhận |
-| **Sổ thu chi** (`/finance/ledger`) | 3 ô **Thu · Chi · Số dư quỹ** · Khung **Ghi khoản thu / chi**: một hàng ô nhập cùng cỡ (Loại · Hạng mục · Số tiền · Ngày · Ghi chú), dòng dưới xem trước khoản sắp ghi (VD *−1.500.000 đ · Thuê sân*) và nút **+ Thêm khoản**; nút **🧮 Bảng tính quỹ tháng** ở góc · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
+| **Sổ thu chi** (`/finance/ledger`) | **Sổ ghi mọi khoản thu và chi của Host**: quỹ CLB **và tiền của từng buổi / kèo** (phí người chơi đã trả, chi phí buổi, khoản thêm trong tab Tài chính của buổi). Mỗi khoản của buổi ghi rõ **Buổi dd/mm · tên buổi** (bấm để mở) và nội dung (*Anh A trả phí tham gia*, *Bạn trả Thuê sân*). Lọc nguồn *Quỹ CLB + các buổi / Chỉ quỹ CLB / Chỉ tiền theo buổi*; nút **Chi tiết / Theo buổi** — *Theo buổi* là bảng mỗi buổi đã thu, đã chi, còn lại và số người đã trả phí. Khung ghi khoản có ô **Buổi** (không bắt buộc: bỏ trống = quỹ CLB). Không gian Xé Vé dùng cùng trang, ghi khoản bắt buộc chọn kèo. 3 ô **Thu · Chi · Còn lại** (theo bộ lọc), dòng dưới ghi *Số dư quỹ CLB* (chỉ tính khoản của quỹ) · Khung **Ghi khoản thu / chi**: một hàng ô nhập cùng cỡ (Loại · Hạng mục · Số tiền · Ngày · Ghi chú), dòng dưới xem trước khoản sắp ghi (VD *−1.500.000 đ · Thuê sân*) và nút **+ Thêm khoản**; nút **🧮 Bảng tính quỹ tháng** ở góc · Lọc theo tháng, hạng mục · **Hai bảng riêng: Thu bên trái, Chi bên phải** (mỗi bảng có tổng) · **✏️** sửa (loại, hạng mục, số tiền, ngày, ghi chú) và **✕** huỷ khoản kèm lý do · Tuỳ chọn hiện các khoản đã huỷ |
 | **Gói hội viên** (`/finance/plans`) | Xem [4.4](#44-gói-hội-viên-financeplans) |
 | **Kho bóng** (`/finance/inventory`) | Xem [4.10](#410-kho-bóng-financeinventory) |
 
@@ -406,7 +418,8 @@ Mục Tài chính có các tab:
 **Khoản tự động** (có nhãn *tự động*) được app ghi khi:
 - gói hội viên được đánh dấu đã đóng;
 - nhập bóng ở Kho bóng của CLB có tick "Ghi vào sổ thu chi (Mua bóng)";
-- đánh dấu người chơi **đã thu phí** trong một kèo.
+- đánh dấu người chơi **đã thu phí** trong một kèo;
+- tạo / sửa buổi có **Chi phí mỗi buổi** (nhãn *chi phí buổi*; không sửa được trong sổ nhưng huỷ được).
 
 Các khoản tự động **không huỷ được từ Sổ thu chi**. Muốn sửa thì sửa tại nơi tạo ra nó, để sổ luôn khớp với gói, kho và danh sách kèo.
 
@@ -502,9 +515,9 @@ Bấm **＋ Tạo sự kiện mới**. Nếu đang ở chế độ Ngày thì fo
 
 | Nhóm | Trường |
 |---|---|
-| **1. Thông tin cơ bản** | Tên kèo · **Ngày** (chọn bằng lịch popover) · Giờ bắt đầu · Giờ kết thúc · Địa điểm · Số sân · *(Club)* Lặp lại hằng tuần |
-| **2. Luật & tài chính** | Số chỗ · Phí tham gia · DUPR từ–đến · Hạn đăng ký · **Hạn chót huỷ kèo** (xem [5.5](#55-chính-sách-huỷ--hoàn-buổi)) |
-| **3. Thông báo cho người chơi** | Ghi chú hiện trên trang đăng ký (vd: sân số 3, chuyển khoản trước 20h…) · Cho phép đăng ký qua link |
+| **1. Thông tin cơ bản** | Tên kèo · **Ngày** (chọn bằng lịch popover) · Giờ bắt đầu · Giờ kết thúc · Địa điểm + **Link Google Maps** (bản đồ xem trước) · Số sân |
+| **2. Luật & tài chính** | Số chỗ · Phí tham gia · **Nội dung chơi** (Tự do / Full nam / Full nữ / Mix) · **Dịch vụ bao gồm trong phí** · DUPR từ–đến · **Hạn chót huỷ kèo** (xem [5.5](#55-chính-sách-huỷ--hoàn-buổi)) · **Hạn đăng ký** (tự động = giờ bắt đầu − hạn huỷ, hoặc tự chọn) · **Chi phí mỗi buổi** (tự ghi vào Sổ thu chi). Chi tiết: [4.5](#45-tạo-hoạt-động-lịch-sự-kiện-lịch-hàng-tuần-giải-đấu-kèo) |
+| **3. Lưu ý** | Ghi chú hiện trên trang đăng ký (vd: sân số 3, chuyển khoản trước 20h…) · Cho phép đăng ký qua link |
 | **4. Trạng thái** | *Nháp → Đang mở → Đã đóng → Đã xong*, hoặc *Đã huỷ* |
 
 Form kiểm tra trước khi gửi: giờ kết thúc phải sau giờ bắt đầu, và "DUPR đến" phải lớn hơn hoặc bằng "DUPR từ". Tạo 1 kèo thì app mở luôn trang kèo để bạn copy link đăng ký. Tạo nhiều tuần thì app quay về lịch.
@@ -993,6 +1006,7 @@ supabase/migrations/
 └── 20261103090000_username_signup.sql                # đăng nhập bằng tên đăng nhập: users.username (duy nhất), birth_date, gender, region; trigger tài khoản mới chép thông tin đăng ký
 └── 20261104090000_club_requests_discovery.sql        # trang Chào mừng (users.sports, account_role, onboarded_at), yêu cầu tạo CLB chờ Owner duyệt (club_requests), hồ sơ CLB + tìm kiếm (clubs.country/province/district/address/schedule/member_count_hint/contact_email/is_listed, club_images), club_members.join_source, đơn nâng cấp tính chênh lệch (plan_payments.upgrade_from/upgrade_days), bỏ gói Free (tài khoản Free có CLB được 30 ngày Basic một lần)
 └── 20261105090000_member_moderation_invites.sql      # đăng ký CLB kèm đơn thanh toán (club_requests.payment_id), link mời (clubs.invite_token, invite_enabled), Xem xét thêm (club_members.review_until/review_started_at/review_reason/review_from), lịch sử xử lý chỉ ghi thêm (member_moderation_log), chặn (member_blocks), thông báo người chơi (player_notices), join_source thêm manual/invite
+└── 20261106090000_weekly_series_costs.sql            # lịch hàng tuần: events.series_id (sửa cả lịch; nhận lại lịch cũ), services (dịch vụ trong phí), play_format (men/women/mixed/open), map_url (link Google Maps), cost_items (chi phí mỗi buổi) + transactions.event_cost; dựng lại v_event_summary
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1167,6 +1181,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Xử lý thành viên | `POST /api/clubs/:id/members` với `member_type: 'waiting'` (= "---", vào danh sách chờ) · `POST …/members/:mid/review` `{reason, days\|months}` · `POST …/members/:mid/restore` `{to: fixed\|guest\|waiting}` · `POST …/members/:mid/remove` `{reason, block, block_scope: club\|all}` · `GET /api/clubs/:id/moderation?page=` (đang xem xét, người bị chặn, lịch sử) · `DELETE /api/clubs/:id/blocks/:blockId` · `POST /api/clubs/:id/invite-token/rotate` · `PATCH /api/clubs/:id` `{invite_enabled}` · `member-requests` kèm `past` (lần bị xử lý trước) |
 | Link mời & thông báo | *Công khai:* `GET /api/public/invite/:token` · `POST /api/player/invite/:token/join` `{note}` · `GET /api/player/notices` · `POST /api/player/notices/:id/read` (`/api/player/me` và `/home` kèm `notices` chưa đọc) · Đăng ký kèo bị chặn trả `403 club_suspended` / `club_blocked` kèm `reason`, `until` |
 | Đăng ký CLB trả phí | `POST /api/host/club-requests` trả kèm `payment` (đơn chuyển khoản) hoặc `plan_covered` · `POST /api/host/club-requests/:id/payment` (tạo mã mới) · Owner: `POST /api/owner/club-requests/:id/approve` `{note, confirm_payment}` |
+| Lịch hàng tuần & chi phí | `POST /api/events` nhận thêm `services`, `play_format` (`men`/`women`/`mixed`/`open`), `map_url` (https), `cost_items` `[{category: court\|water\|coach\|other, amount, note}]` (ghi khoản chi vào sổ theo ngày từng buổi); nhiều `dates` → cùng `series_id` · `GET /api/events/:id` kèm `series_upcoming` · `PATCH /api/events/:id` `{…, apply_to: 'series'}` chép thay đổi sang các buổi sắp tới của lịch, trả `series_updated` · `GET /api/clubs/:id/fund` trả cả khoản của các buổi (kèm `events`: tên, ngày) · `PATCH /api/transactions/:id` với khoản chi phí buổi → `409 linked_event_cost` (huỷ thì được) |
 | Gói hội viên | `GET/POST /api/clubs/:id/plans` · `PATCH …/plans/:pid` · `GET/POST …/members/:mid/memberships` · `PATCH/DELETE …/memberships/:msid` · `POST …/memberships/:msid/sessions` · `DELETE …/sessions/last` |
 | Thanh toán | `GET /api/clubs/:id/pending-payments` · `POST …/pending-payments/:ref/confirm` |
 | Xếp hạng / quỹ | `GET /api/clubs/:id/rankings` · `GET /api/clubs/:id/stats?period=&group=` (`group`: trống = tất cả, `club`, `guest`; kèm `weeks_at_top`: số tuần giữ Top 1 của bảng đó) · `GET /api/leaderboard?sport=&period=&date=` · `GET /api/clubs/:id/fund` |
@@ -1211,6 +1226,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Khác | `feedback`, `event_votes` (bình chọn tham gia buổi họp: `choice` yes/no, `by_host`) |
 | Xử lý thành viên | `club_members.review_until` / `review_started_at` / `review_reason` / `review_from` (đang Xem xét thêm), `member_moderation_log` (lịch sử chỉ ghi thêm: `club_id`, `member_id`, `full_name`, `phone`, `user_id`, `action`, `reason`, `until`, `from_type` / `to_type`, `blocked`, `block_scope`, `actor_email`; trigger chặn sửa/xoá, không khoá ngoại tới thành viên nên còn sau khi xoá người), `member_blocks` (`club_id` gốc, `host_id`, `scope` club/all, `user_id`/`phone`), `player_notices` (`kind` warning/restored/removed, `read_at`) |
 | Link mời & đăng ký CLB | `clubs.invite_token` (duy nhất), `clubs.invite_enabled`, `club_requests.payment_id` → `plan_payments` |
+| Lịch hàng tuần | `events.series_id` (các buổi tạo cùng một lịch), `events.services`, `events.play_format`, `events.map_url`, `events.cost_items` (jsonb), `transactions.event_cost` (khoản chi tự ghi từ chi phí buổi) |
 
 ---
 
@@ -1267,6 +1283,9 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Người chơi báo không đăng ký được kèo của CLB | Có thể họ đang ở **Xem xét thêm** hoặc bị chặn: xem tab ⚠️ *Xem xét thêm* (cho quay lại / bỏ chặn). Thông báo lỗi trên trang đăng ký có lý do và ngày hết hạn. |
 | Link mời báo *"Không tìm thấy"* | Link đã tắt hoặc đã tạo link mới. Mở **Thành viên → 🔗 Link mời**, bật lại và gửi link mới. |
 | Tab Xem xét thêm / Link mời lỗi `relation … does not exist` | Chạy migration `20261105090000_member_moderation_invites.sql`. |
+| Sửa buổi không thấy lựa chọn *Áp dụng cho tất cả các buổi* | Chỉ buổi tạo từ **Tạo lịch chơi hàng tuần** (nhiều buổi một lần) và còn buổi khác chưa diễn ra / chưa huỷ mới có. Kiểm tra đã chạy migration `20261106090000_weekly_series_costs.sql`. |
+| Sổ thu chi có khoản *Thuê sân* cho buổi đã huỷ | Chi phí buổi được ghi khi tạo lịch. Nếu không phải trả, bấm ✕ ở khoản đó trong Sổ thu chi hoặc tab Tài chính của buổi. |
+| Bản đồ trong form tạo buổi trống | Bản đồ xem trước cần mạng tới Google Maps; người chơi vẫn bấm được vào địa chỉ để mở Google Maps. |
 | Host báo "Tài khoản đang tạm khoá" | Owner đã đình chỉ tài khoản (lý do hiện trong khung). Mở `/owner/hosts` → lọc *Bị khoá* → mở Host → **Mở khoá**. |
 | Người chơi không nhận được email thông báo | Kiểm tra: Host đã bật công tắc *Gửi email thông báo cho người chơi*; không còn cảnh báo vàng (đã đặt `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` trên tên miền đã xác minh); người chơi chưa *Tắt email*. Xem trạng thái gửi trong Resend → Emails; nhắc người chơi kiểm tra thư mục Spam. |
 | Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |

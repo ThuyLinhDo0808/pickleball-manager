@@ -87,7 +87,7 @@ publicRoutes.get('/tickets/:code', async (req, res) => {
     if (!isUuid(req.params.code)) return notFound(res, 'Ticket');
     const { data: p, error } = await supabase
       .from('event_participants')
-      .select('full_name, status, kind, payment_status, ticket_code, transferred_from, events(title, event_date, start_time, end_time, location, public_token, clubs(name))')
+      .select('full_name, status, kind, payment_status, ticket_code, transferred_from, events(title, event_date, start_time, end_time, location, map_url, public_token, clubs(name))')
       .eq('ticket_code', req.params.code)
       .maybeSingle();
     if (error) throw error;
@@ -491,7 +491,7 @@ player.get('/me', async (req, res) => {
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
       .select(
-        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, events(title, event_date, start_time, location, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
+        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
       )
       .or(orFilter)
       .limit(500);
@@ -519,6 +519,7 @@ player.get('/me', async (req, res) => {
         event_date: r.events.event_date,
         start_time: r.events.start_time,
         location: r.events.location,
+        map_url: r.events.map_url,
         club_name: r.events.clubs?.name || null,
         status: r.status,
         link: r.events.allow_public_registration ? r.events.public_token : null,
@@ -634,7 +635,7 @@ async function upcomingFor(uid, memberIds, clubId = null) {
   const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
   const { data: regs, error } = await supabase
     .from('event_participants')
-    .select('id, status, event_id, ticket_code, payment_status, events!inner(id, title, event_date, start_time, end_time, location, status, club_id, public_token, allow_public_registration, cancel_deadline_hours)')
+    .select('id, status, event_id, ticket_code, payment_status, events!inner(id, title, event_date, start_time, end_time, location, map_url, status, club_id, public_token, allow_public_registration, cancel_deadline_hours)')
     .or(orFilter)
     .gte('events.event_date', today)
     .limit(300);
@@ -663,6 +664,7 @@ async function upcomingFor(uid, memberIds, clubId = null) {
         start_time: e.start_time,
         end_time: e.end_time,
         location: e.location,
+        map_url: e.map_url,
         status: r.status,
         payment_status: r.payment_status,
         ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null,
@@ -742,7 +744,7 @@ player.get('/clubs/:clubId', async (req, res) => {
     const today = todayYmd();
     const [{ data: passes }, { data: events }, { data: owner }] = await Promise.all([
       supabase.from('v_membership_status').select('*').eq('club_member_id', me.id).order('starts_on', { ascending: false }),
-      supabase.from('v_event_summary').select('id, title, kind, event_date, start_time, end_time, location, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration').eq('club_id', clubId).gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(30),
+      supabase.from('v_event_summary').select('id, title, kind, event_date, start_time, end_time, location, map_url, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration').eq('club_id', clubId).gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(30),
       supabase.from('users').select('email').eq('id', me.clubs.host_id).maybeSingle(),
     ]);
     const mine = await upcomingFor(uid, [me.id], clubId);

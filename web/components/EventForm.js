@@ -1,16 +1,22 @@
 'use client';
 import LevelInput from '@/components/LevelInput';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DatePopover from '@/components/DatePopover';
 import { KIND_ICON, STATUS_STYLE } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { todayYmd } from '@/lib/dates';
+import { mapsEmbed, mapsHref } from '@/lib/maps';
 
 export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 // open = upcoming; completed is also set automatically once the slot is over.
 const STATUSES = ['open', 'completed', 'cancelled'];
 const CANCEL_PRESETS = ['', '2', '6', '12', '24', '48'];
+export const PLAY_FORMATS = ['open', 'men', 'women', 'mixed'];
+// What the fee includes: quick picks that fill the "Dịch vụ" line.
+const SERVICE_PICKS = ['balls', 'water', 'fruit', 'towel', 'parking'];
+// What a session costs the Host (balls are bought in the ball store instead).
+export const COST_CATEGORIES = ['court', 'water', 'coach', 'other'];
 
 export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   kind,
@@ -30,7 +36,22 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   status: 'open',
   allow_public_registration: true,
   repeat_weeks: 1,
+  services: '',
+  play_format: '',
+  map_url: '',
+  cost_items: [],
+  deadline_auto: true,
 });
+
+// Registration closes when the cancel-for-free window starts: start time minus the cancel
+// deadline (no cancel deadline → at the start time). E.g. 17:00, 12 hours → 05:00.
+export function autoDeadline(date, start, hours) {
+  if (!date || !start) return '';
+  const d = new Date(`${date}T${start.slice(0, 5)}:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setHours(d.getHours() - (hours === '' || hours == null ? 0 : Number(hours)));
+  return toLocalInput(d.toISOString());
+}
 
 function Section({ n, title, hint, children }) {
   return (
@@ -82,8 +103,22 @@ export function formFromEvent(ev) {
     notice: ev.notice || '',
     status: ['draft', 'closed'].includes(ev.status) ? 'open' : ev.status,
     allow_public_registration: !!ev.allow_public_registration,
+    services: ev.services || '',
+    play_format: ev.play_format || '',
+    map_url: ev.map_url || '',
+    cost_items: (ev.cost_items || []).map((c) => ({ category: c.category, amount: String(c.amount), note: c.note || '' })),
+    // Auto when the saved deadline is exactly "start minus the cancel deadline".
+    deadline_auto:
+      !!ev.registration_deadline &&
+      toLocalInput(ev.registration_deadline) === autoDeadline(ev.event_date, ev.start_time, ev.cancel_deadline_hours == null ? '' : String(ev.cancel_deadline_hours)),
   };
 }
+
+const costList = (items) =>
+  (items || [])
+    .filter((c) => Number(c.amount) > 0)
+    .map((c) => ({ category: c.category, amount: Math.round(Number(c.amount)), note: (c.note || '').trim() || null }));
+export const costTotal = (items) => costList(items).reduce((s, c) => s + c.amount, 0);
 
 // Form values -> API body (shared by create and edit). A meeting is only what, when,
 // where and the fee: members vote whether they come instead of signing up by link.
@@ -96,6 +131,7 @@ export function eventPayload(f) {
       start_time: f.start_time || null,
       end_time: f.end_time || null,
       location: f.location.trim() || null,
+      map_url: f.map_url.trim() || null,
       fee_amount: Number(f.fee_amount || 0),
       notice: f.notice.trim() || null,
       status: f.status,
@@ -103,6 +139,7 @@ export function eventPayload(f) {
       cancel_deadline_hours: null,
     };
   }
+  const deadline = f.deadline_auto ? autoDeadline(f.event_date, f.start_time, f.cancel_deadline_hours) : f.registration_deadline;
   return {
     kind: f.kind,
     title: f.title.trim(),
@@ -115,19 +152,94 @@ export function eventPayload(f) {
     level_min: f.level_min === '' ? null : Number(f.level_min),
     level_max: f.level_max === '' ? null : Number(f.level_max),
     fee_amount: Number(f.fee_amount || 0),
-    registration_deadline: f.registration_deadline ? new Date(f.registration_deadline).toISOString() : null,
+    registration_deadline: deadline ? new Date(deadline).toISOString() : null,
     cancel_deadline_hours: f.cancel_deadline_hours === '' ? null : Number(f.cancel_deadline_hours),
     notice: f.notice.trim() || null,
     status: f.status,
     allow_public_registration: f.allow_public_registration,
+    services: f.services.trim() || null,
+    play_format: f.play_format || null,
+    map_url: f.map_url.trim() || null,
+    cost_items: costList(f.cost_items),
   };
+}
+
+// Address of the court: typed address + optional Google Maps link, with a live map so the
+// Host sees the right place; players tap the address to get directions.
+function LocationField({ f, set, meeting }) {
+  const { t } = useI18n();
+  const [shown, setShown] = useState(f.location);
+  useEffect(() => {
+    const id = setTimeout(() => setShown(f.location), 700);
+    return () => clearTimeout(id);
+  }, [f.location]);
+  const embed = mapsEmbed(shown);
+  const href = mapsHref(f.location, f.map_url);
+  return (
+    <>
+      <Field label={meeting ? t('meeting.place') : t('events.location')} span={2}>
+        <input className="input" placeholder={meeting ? t('meeting.placePh') : t('create.locationPh')} value={f.location} onChange={(e) => set({ location: e.target.value })} />
+      </Field>
+      <Field label={t('map.linkLabel')} span={2} hint={t('map.linkHint')}>
+        <input className="input" inputMode="url" placeholder="https://maps.app.goo.gl/…" value={f.map_url} onChange={(e) => set({ map_url: e.target.value })} />
+      </Field>
+      {(embed || href) && (
+        <div className="col-span-2 md:col-span-4">
+          {embed && (
+            <iframe title={t('map.preview')} src={embed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="w-full h-48 rounded-lg border border-navy-700 bg-navy-900" />
+          )}
+          {href && (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 text-xs text-lime-400 hover:underline">🗺 {t('map.check')} →</a>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// "Chi phí mỗi buổi": what one session costs (court, water…). Each line is booked into
+// the ledger as an expense on the session's day.
+function CostItems({ items, onChange, sessions }) {
+  const { t } = useI18n();
+  const setAt = (i, patch) => onChange(items.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const total = costTotal(items);
+  return (
+    <div className="col-span-2 md:col-span-4 rounded-xl border border-orange-400/30 bg-orange-400/5 p-3">
+      <p className="text-orange-100 text-sm font-semibold">💸 {t('cost.title')}</p>
+      <p className="text-gray-400 text-xs mt-0.5">{t('cost.hint')}</p>
+      <div className="flex flex-col gap-2 mt-2">
+        {items.map((c, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2">
+            <select className="input !w-36 shrink-0" value={c.category} onChange={(e) => setAt(i, { category: e.target.value })} aria-label={t('fin.category')}>
+              {COST_CATEGORIES.map((k) => <option key={k} value={k}>{t(`cost.cat_${k}`)}</option>)}
+            </select>
+            <input className="input no-spin !w-32 shrink-0 text-right tabular-nums" type="number" inputMode="numeric" min="0" step="1000" placeholder="0" value={c.amount} onChange={(e) => setAt(i, { amount: e.target.value })} aria-label={t('fin.amount')} />
+            <input className="input !w-auto flex-1 min-w-[10rem]" placeholder={c.category === 'other' ? t('cost.otherPh') : t('cost.notePh')} required={c.category === 'other' && Number(c.amount) > 0} value={c.note} onChange={(e) => setAt(i, { note: e.target.value })} aria-label={t('fin.note')} />
+            <button type="button" className="text-red-400 px-2 text-lg leading-none" aria-label={t('common.delete')} onClick={() => onChange(items.filter((_, j) => j !== i))}>×</button>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+        <button type="button" className="btn-secondary !py-1 text-xs" disabled={items.length >= 10} onClick={() => onChange([...items, { category: items.length ? 'water' : 'court', amount: '', note: '' }])}>＋ {t('cost.add')}</button>
+        {total > 0 && (
+          <span className="text-orange-200 text-sm tabular-nums">
+            {t('cost.perSession', { v: total.toLocaleString('vi-VN') })}
+            {sessions > 1 ? ` · ${t('cost.allSessions', { n: sessions, v: (total * sessions).toLocaleString('vi-VN') })}` : ''}
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // The event form in 4 groups: basic info, rules & finance, notes, status.
 // `kinds`: the activity types the Host may pick here (none → the kind is fixed by the page).
-export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null }) {
+// `seriesCount`: on edit, how many other upcoming sessions share this weekly schedule
+// (the Host chooses this session only, or all of them). `deadlineDate`: the day the
+// automatic deadline is counted from on a weekly schedule (its first session).
+export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null, seriesCount = 0, deadlineDate = null }) {
   const { t, lang } = useI18n();
-  const [f, setF] = useState(initial);
+  const [f, setF] = useState(() => ({ apply_to: seriesCount > 0 ? 'series' : 'one', ...initial }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = (patch) => setF((prev) => ({ ...prev, ...patch }));
@@ -138,6 +250,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     if (!f.event_date) return setError(t('create.needDate'));
     if (f.start_time && f.end_time && f.end_time <= f.start_time) return setError(t('create.endAfterStart'));
     if (f.level_min !== '' && f.level_max !== '' && Number(f.level_max) < Number(f.level_min)) return setError(t('create.duprRange'));
+    if (f.map_url.trim() && !/^https:\/\/\S+$/i.test(f.map_url.trim())) return setError(t('map.badLink'));
+    if (f.cost_items.some((c) => c.category === 'other' && Number(c.amount) > 0 && !c.note.trim())) return setError(t('cost.otherNeedNote'));
     setBusy(true);
     try {
       await onSubmit(f);
@@ -148,6 +262,16 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   }
 
   const meeting = f.kind === 'meeting';
+  const autoAt = autoDeadline(deadlineDate || f.event_date, f.start_time, f.cancel_deadline_hours);
+  const fmtLocal = (v) => (v ? new Date(v).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—');
+  const perSessionCost = costTotal(f.cost_items);
+  const maxIncome = Number(f.fee_amount) * Number(f.slots || 0);
+  const toggleService = (key) => {
+    const word = t(`svc.${key}`);
+    const parts = f.services.split(',').map((x) => x.trim()).filter(Boolean);
+    const has = parts.some((x) => x.toLowerCase() === word.toLowerCase());
+    set({ services: (has ? parts.filter((x) => x.toLowerCase() !== word.toLowerCase()) : [...parts, word]).join(', ') });
+  };
   return (
       <form onSubmit={submit} className="w-full lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-4 lg:items-start">
         <div className="min-w-0">
@@ -194,9 +318,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('create.end')}>
             <input className="input" type="time" value={f.end_time} onChange={(e) => set({ end_time: e.target.value })} />
           </Field>
-          <Field label={meeting ? t('meeting.place') : t('events.location')} span={2}>
-            <input className="input" placeholder={meeting ? t('meeting.placePh') : t('create.locationPh')} value={f.location} onChange={(e) => set({ location: e.target.value })} />
-          </Field>
+          <LocationField f={f} set={set} meeting={meeting} />
           {meeting && (
             <>
               <Field label={t('meeting.fee')} span={2}>
@@ -229,20 +351,54 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('create.fee')}>
             <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
           </Field>
+          <Field label={t('fmt.label')} span={2} hint={t('fmt.hint')}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-1">
+              {PLAY_FORMATS.map((k) => (
+                <button key={k} type="button" aria-pressed={(f.play_format || 'open') === k} onClick={() => set({ play_format: k === 'open' ? '' : k })} className={`rounded-lg border px-2 py-2 text-sm ${(f.play_format || 'open') === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                  {t(`fmt.${k}`)}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label={t('svc.label')} span={4} hint={t('svc.hint')}>
+            <input className="input" maxLength={300} placeholder={t('svc.ph')} value={f.services} onChange={(e) => set({ services: e.target.value })} />
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {SERVICE_PICKS.map((k) => {
+                const on = f.services.toLowerCase().split(',').map((x) => x.trim()).includes(t(`svc.${k}`).toLowerCase());
+                return (
+                  <button key={k} type="button" aria-pressed={on} onClick={() => toggleService(k)} className={`rounded-full border px-2.5 py-0.5 text-xs ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                    {on ? '✓ ' : '+ '}{t(`svc.${k}`)}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
           <Field label={t('events.levelMin')}>
             <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
           </Field>
           <Field label={t('events.levelMax')}>
             <LevelInput value={f.level_max} onChange={(v) => set({ level_max: v })} placeholder="—" />
           </Field>
-          <Field label={t('events.deadline')} span={2}>
-            <input className="input" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} />
-          </Field>
           <Field label={t('policy.label')} span={2} hint={f.cancel_deadline_hours === '' ? t('policy.noneHint') : t('policy.hint', { h: f.cancel_deadline_hours })}>
             <select className="input" value={f.cancel_deadline_hours} onChange={(e) => set({ cancel_deadline_hours: e.target.value })}>
               {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hours', { h })}</option>)}
             </select>
           </Field>
+          <Field label={t('events.deadline')} span={2}>
+            <label className="flex items-center gap-2 text-sm text-gray-200 mt-1">
+              <input type="checkbox" checked={f.deadline_auto} onChange={(e) => set({ deadline_auto: e.target.checked, registration_deadline: e.target.checked ? f.registration_deadline : f.registration_deadline || autoAt })} />
+              {t('dl.auto')}
+            </label>
+            {f.deadline_auto ? (
+              <p className="mt-1 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-100">
+                {autoAt ? (sessions > 1 ? t('dl.autoEach', { h: f.cancel_deadline_hours || 0, time: autoAt.slice(11, 16) }) : t('dl.autoAt', { at: fmtLocal(autoAt), h: f.cancel_deadline_hours || 0 })) : t('dl.needStart')}
+              </p>
+            ) : (
+              <input className="input mt-1" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} />
+            )}
+            <p className="text-gray-500 text-xs mt-1">🔓 {t('dl.reopenHint')}</p>
+          </Field>
+          <CostItems items={f.cost_items} onChange={(cost_items) => set({ cost_items })} sessions={sessions || 1} />
         </Section>
 
         <Section n={3} title={t('create.notes')}>
@@ -275,6 +431,20 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         </Section>
         )}
 
+        {seriesCount > 0 && (
+          <section className="card mb-4 border-sky-400/40">
+            <h2 className="text-white font-semibold">🔁 {t('series.title')}</h2>
+            <p className="text-gray-400 text-xs mt-0.5">{t('series.hint')}</p>
+            <div className="mt-2 flex flex-col gap-2">
+              {[['series', t('series.all', { n: seriesCount + 1 })], ['one', t('series.one')]].map(([v, label]) => (
+                <label key={v} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${f.apply_to === v ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300'}`}>
+                  <input type="radio" name="apply_to" checked={f.apply_to === v} onChange={() => set({ apply_to: v })} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </section>
+        )}
         {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">⚠️ {warning}</p>}
         {error && <p className="text-red-400 text-sm mb-3 lg:hidden">{error}</p>}
         <div className="flex gap-3 lg:hidden">
@@ -308,7 +478,16 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               {!meeting && <dt className="text-gray-400">👥</dt>}
               {!meeting && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
               <dt className="text-gray-400">💰</dt>
-              <dd className="text-gray-100 tabular-nums">{Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')}</dd>
+              <dd className="text-gray-100 tabular-nums">
+                {Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ / ${t('createx.perPerson')}` : t('createx.free')}
+                {f.services.trim() && <span className="block text-gray-400 text-xs">🎁 {f.services}</span>}
+              </dd>
+              {!meeting && f.play_format && (
+                <>
+                  <dt className="text-gray-400">🏓</dt>
+                  <dd className="text-gray-100">{t(`fmt.${f.play_format}`)}</dd>
+                </>
+              )}
               {meeting ? (
                 <>
                   <dt className="text-gray-400">🗳</dt>
@@ -318,14 +497,19 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                 <>
                   <dt className="text-gray-400">⏳</dt>
                   <dd className="text-gray-100">{f.cancel_deadline_hours === '' ? t('policy.none') : t('policy.hours', { h: f.cancel_deadline_hours })}</dd>
+                  <dt className="text-gray-400">📝</dt>
+                  <dd className="text-gray-100">{f.deadline_auto ? (autoAt ? (sessions > 1 ? t('dl.previewEach', { time: autoAt.slice(11, 16) }) : fmtLocal(autoAt)) : '—') : fmtLocal(f.registration_deadline)}</dd>
                   <dt className="text-gray-400">🔗</dt>
                   <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('createx.linkOn') : t('createx.linkOff')}</dd>
                 </>
               )}
             </dl>
-            {!meeting && Number(f.fee_amount) > 0 && Number(f.slots) > 0 && (
-              <div className="mx-4 mb-3 rounded-lg bg-lime-400/10 border border-lime-400/30 px-3 py-2 text-xs text-lime-100">
-                {t('createx.maxIncome', { v: (Number(f.fee_amount) * Number(f.slots) * (sessions || 1)).toLocaleString('vi-VN') })}
+            {!meeting && (maxIncome > 0 || perSessionCost > 0) && (
+              <div className="mx-4 mb-3 rounded-lg bg-lime-400/10 border border-lime-400/30 px-3 py-2 text-xs text-lime-100 flex flex-col gap-0.5">
+                <span className="text-gray-300 font-semibold">{t('createx.perSessionTitle')}</span>
+                {maxIncome > 0 && <span>{t('createx.maxIncome', { v: maxIncome.toLocaleString('vi-VN') })}</span>}
+                {perSessionCost > 0 && <span className="text-orange-200">{t('createx.costs', { v: perSessionCost.toLocaleString('vi-VN') })}</span>}
+                {maxIncome > 0 && perSessionCost > 0 && <span className="font-semibold">{t('createx.maxProfit', { v: (maxIncome - perSessionCost).toLocaleString('vi-VN') })}</span>}
               </div>
             )}
             <div className="p-4 border-t border-navy-700 flex flex-col gap-2">

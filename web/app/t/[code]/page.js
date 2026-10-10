@@ -1,5 +1,6 @@
 'use client';
 import HomeLink from '@/components/HomeLink';
+import MapLink from '@/components/MapLink';
 import { useParams } from 'next/navigation';
 import TicketCard from '@/components/TicketCard';
 import { useI18n } from '@/context/I18nContext';
@@ -49,7 +50,7 @@ export default function TicketPage() {
           {formatDay(e.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
           {time && ` · ${time}`}
         </p>
-        {e.location && <p className="text-gray-300 text-sm mt-1">📍 {e.location}</p>}
+        {(e.location || e.map_url) && <p className="mt-1"><MapLink location={e.location} mapUrl={e.map_url} /></p>}
       </section>
       <section className="card mb-4">
         {tk.valid ? (

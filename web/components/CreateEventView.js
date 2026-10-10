@@ -40,7 +40,8 @@ export default function CreateEventView({ weekly = false }) {
     let created;
     try {
       created = await api.post('/api/events', {
-        ...eventPayload(f),
+        // weekly: the automatic deadline counts from the first session (then the same for each)
+        ...eventPayload(dates ? { ...f, event_date: dates[0] } : f),
         club_id: isClub ? club?.id || null : null,
         ...(dates ? { dates } : {}),
       });
@@ -81,6 +82,7 @@ export default function CreateEventView({ weekly = false }) {
           disabled={isClub && !club}
           lockTitle={weekly}
           sessions={weekly ? weeklyDates(plan).length : null}
+          deadlineDate={weekly ? weeklyDates(plan)[0] || null : null}
         />
       )}
     </AppShell>

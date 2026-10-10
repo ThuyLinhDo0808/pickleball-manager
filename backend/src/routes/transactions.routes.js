@@ -18,7 +18,7 @@ async function ledgerOwner(req, { club_id, event_id }) {
 
 router.get('/', async (req, res) => {
   const { club_id, event_id } = req.query;
-  let query = supabase.from('transactions').select('*, events(title, event_date)').eq('host_id', req.hostId).order('occurred_on', { ascending: false });
+  let query = supabase.from('transactions').select('*, events(title, event_date, start_time, kind)').eq('host_id', req.hostId).order('occurred_on', { ascending: false });
   if (req.query.scope === 'standalone') {
     // Xé Vé ledger: every entry of the host's events that aren't tied to a club.
     const { data: evs, error: eErr } = await supabase.from('events').select('id').eq('host_id', req.hostId).is('club_id', null);
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
     if (!access) return notFound(res, 'Club');
     query = supabase
       .from('transactions')
-      .select('*, events(title, event_date)')
+      .select('*, events(title, event_date, start_time, kind)')
       .eq('host_id', access.club.host_id)
       .eq('owner_type', 'club')
       .eq('club_id', club_id)
@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
     if (!isUuid(event_id)) return res.status(400).json({ error: 'invalid event_id' });
     const host = await ledgerOwner(req, { event_id });
     if (!host) return notFound(res, 'Event');
-    query = supabase.from('transactions').select('*, events(title, event_date)').eq('host_id', host).eq('owner_type', 'event').eq('event_id', event_id).order('occurred_on', { ascending: false });
+    query = supabase.from('transactions').select('*, events(title, event_date, start_time, kind)').eq('host_id', host).eq('owner_type', 'event').eq('event_id', event_id).order('occurred_on', { ascending: false });
   }
   const { data, error } = await query;
   if (error) return dbError(res, error);
@@ -89,11 +89,14 @@ async function ownTxn(req) {
 }
 
 // Entries created from somewhere else must be changed there, or the two would disagree.
-async function linkedSource(txn) {
+// A session's own costs can't be edited here (change them on the session form) but can be
+// voided, e.g. the court was not paid because the session was cancelled.
+async function linkedSource(txn, { voiding = false } = {}) {
   const [{ data: ms }, { data: moves }] = await Promise.all([
     supabase.from('memberships').select('id').eq('transaction_id', txn.id).limit(1),
     supabase.from('inventory_moves').select('id').eq('transaction_id', txn.id).limit(1),
   ]);
+  if (txn.event_cost) return voiding ? null : 'event_cost';
   return ms?.length ? 'membership' : moves?.length ? 'inventory' : txn.category === 'event_fee' ? 'event_fee' : txn.category === 'meeting' ? 'meeting' : null;
 }
 const linkedError = (res, source) =>
@@ -148,7 +151,7 @@ router.post('/:id/void', async (req, res) => {
   }
   if (!txn) return notFound(res, 'Transaction');
   if (txn.is_voided) return res.status(400).json({ error: 'Already voided.' });
-  const source = await linkedSource(txn);
+  const source = await linkedSource(txn, { voiding: true });
   if (source) return linkedError(res, source);
 
   const { data, error } = await supabase

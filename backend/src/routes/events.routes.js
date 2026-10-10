@@ -26,6 +26,8 @@ const { itemMetrics } = require('../services/inventory');
 const { clubSport } = require('../services/sport');
 const { linkByPhone } = require('../services/phoneLink');
 const { HOST_STATUSES, completeFinished, completeIfFinished } = require('../services/eventStatus');
+const { cleanCostItems, sameItems, syncEventCosts } = require('../services/eventCosts');
+const { randomUUID } = require('crypto');
 
 const router = express.Router();
 const MAIN_LIST = HOLDS_PLACE; // registered, checked_in, pending (payment being checked)
@@ -41,7 +43,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
-  'cancel_deadline_hours', 'kind',
+  'cancel_deadline_hours', 'kind', 'services', 'play_format', 'map_url',
 ];
 
 router.get('/public/:publicToken', async (req, res) => {
@@ -116,6 +118,7 @@ async function meetingView(event) {
     start_time: event.start_time,
     end_time: event.end_time,
     location: event.location,
+    map_url: event.map_url,
     fee_amount: event.fee_amount,
     notice: event.notice,
     status: event.status,
@@ -308,8 +311,33 @@ function cleanEventFields(fields) {
     else fields.cancel_deadline_hours = Number(v);
   }
   if (fields.start_time && fields.end_time && fields.end_time <= fields.start_time) return 'end_time must be after start_time.';
+  if ('services' in fields) {
+    const v = fields.services == null ? '' : String(fields.services).trim();
+    if (v.length > 300) return 'services: at most 300 characters.';
+    fields.services = v || null;
+  }
+  if ('play_format' in fields) {
+    if (fields.play_format === '' || fields.play_format == null) fields.play_format = null;
+    else if (!PLAY_FORMATS.includes(fields.play_format)) return `play_format must be one of ${PLAY_FORMATS.join(', ')}.`;
+  }
+  if ('map_url' in fields) {
+    const v = fields.map_url == null ? '' : String(fields.map_url).trim();
+    if (v && (v.length > 500 || !/^https:\/\/\S+$/i.test(v))) return 'map_url must be an https link (Google Maps).';
+    fields.map_url = v || null;
+  }
+  if ('cost_items' in fields) {
+    const { items, error } = cleanCostItems(fields.cost_items);
+    if (error) return error;
+    fields.cost_items = items;
+  }
   return null;
 }
+const PLAY_FORMATS = ['men', 'women', 'mixed', 'open'];
+// Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
+const SERIES_FIELDS = [
+  'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
+  'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'allow_public_registration', 'cost_items',
+];
 
 function addDays(ymd, days) {
   const d = new Date(`${ymd}T00:00:00Z`);
@@ -374,6 +402,7 @@ router.post('/', async (req, res) => {
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
+    'services', 'play_format', 'map_url', 'cost_items',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -400,10 +429,13 @@ router.post('/', async (req, res) => {
   const days = dates || Array.from({ length: weeks }, (_, i) => addDays(event_date, 7 * i));
   // The registration deadline keeps the same distance to each session as to the first.
   const dayMs = (d) => Date.parse(`${d}T00:00:00Z`);
+  // Sessions made together form a series: they can be edited all at once later.
+  const series_id = days.length > 1 ? randomUUID() : null;
   const rows = days.map((d) => ({
     host_id: hostId,
     title,
     ...fields,
+    ...(series_id ? { series_id } : {}),
     status: fields.status || 'open',
     event_date: d,
     registration_deadline: fields.registration_deadline
@@ -412,11 +444,30 @@ router.post('/', async (req, res) => {
   }));
   const { data, error } = await supabase.from('events').insert(rows).select();
   if (error) return dbError(res, error);
+  // Each session's costs (court, water…) go into the ledger on its day.
+  try {
+    for (const ev of data) if (ev.cost_items?.length) await syncEventCosts(ev);
+  } catch (err) {
+    return dbError(res, err);
+  }
   data.sort((a, b) => a.event_date.localeCompare(b.event_date));
   res.status(201).json({ ...data[0], created_count: data.length });
 });
 
-router.get('/:eventId', (req, res) => res.json(req.event));
+// With `series_upcoming`: how many other sessions of the same weekly schedule an edit can
+// also change ("Áp dụng cho tất cả các buổi").
+router.get('/:eventId', async (req, res) => {
+  if (!req.event.series_id) return res.json(req.event);
+  const { count, error } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .eq('series_id', req.event.series_id)
+    .neq('id', req.event.id)
+    .gte('event_date', todayYmd())
+    .not('status', 'in', '(completed,cancelled)');
+  if (error) return dbError(res, error);
+  res.json({ ...req.event, series_upcoming: count || 0 });
+});
 
 // ---- Meeting money (kind = 'meeting') ---------------------------------------------
 function meetingOnly(req, res) {
@@ -595,6 +646,7 @@ router.patch('/:eventId', async (req, res) => {
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
+    'services', 'play_format', 'map_url', 'cost_items',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -611,8 +663,46 @@ router.patch('/:eventId', async (req, res) => {
   if (error) return dbError(res, error);
   // Host cancelled the event: tell everyone who had a place (in the background).
   if (fields.status === 'cancelled' && req.event.status !== 'cancelled') notifyEventCancelled(data);
-  res.json(data);
+  let updated = 0;
+  try {
+    if (('cost_items' in fields && !sameItems(fields.cost_items, req.event.cost_items)) || ('event_date' in fields && fields.event_date !== req.event.event_date && data.cost_items?.length)) {
+      await syncEventCosts(data);
+    }
+    // "Áp dụng cho tất cả các buổi": the same change on every upcoming session of the schedule.
+    if (req.body.apply_to === 'series' && data.series_id) updated = await applyToSeries(data, fields);
+  } catch (err) {
+    return dbError(res, err);
+  }
+  res.json(req.body.apply_to === 'series' ? { ...data, series_updated: updated } : data);
 });
+
+// Copy an edit to the other sessions of the same weekly schedule that haven't happened
+// yet (not completed / cancelled, today or later). Each keeps its own day; a registration
+// deadline keeps the same distance to its session as on the edited one.
+async function applyToSeries(ev, fields) {
+  const patch = pick(fields, SERIES_FIELDS);
+  const { data: others, error } = await supabase
+    .from('events')
+    .select('id, event_date, cost_items, host_id')
+    .eq('series_id', ev.series_id)
+    .neq('id', ev.id)
+    .gte('event_date', todayYmd())
+    .not('status', 'in', '(completed,cancelled)');
+  if (error) throw error;
+  const dayMs = (d) => Date.parse(`${d}T00:00:00Z`);
+  const deadline = 'registration_deadline' in fields ? fields.registration_deadline : undefined;
+  for (const o of others) {
+    const row = { ...patch };
+    if (deadline !== undefined) {
+      row.registration_deadline = deadline ? new Date(new Date(deadline).getTime() + dayMs(o.event_date) - dayMs(ev.event_date)).toISOString() : null;
+    }
+    if (!Object.keys(row).length) continue;
+    const { data: next, error: uErr } = await supabase.from('events').update(row).eq('id', o.id).select().single();
+    if (uErr) throw uErr;
+    if ('cost_items' in row && !sameItems(row.cost_items, o.cost_items)) await syncEventCosts(next);
+  }
+  return others.length;
+}
 
 // Deleting wipes the event's participants and money records too. When there are any,
 // the Host must confirm (?force=1); "Cancelled" is the way to keep the history.
@@ -623,7 +713,8 @@ router.patch('/:eventId', async (req, res) => {
 router.delete('/:eventId', async (req, res) => {
   const [{ count: people }, { count: money }, { count: matches }] = await Promise.all([
     supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).neq('status', 'cancelled'),
-    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false),
+    // (the session's own costs from the form don't count: they go with it)
+    supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id).eq('is_voided', false).eq('event_cost', false),
     supabase.from('matches').select('id', { count: 'exact', head: true }).eq('event_id', req.event.id),
   ]);
   const past = ['completed', 'cancelled'].includes(req.event.status) || req.event.event_date < todayYmd();

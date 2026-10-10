@@ -53,6 +53,9 @@ const PROBES = [
   { table: 'member_moderation_log', column: 'action', migration: '20261105090000_member_moderation_invites.sql' },
   { table: 'player_notices', column: 'kind', migration: '20261105090000_member_moderation_invites.sql' },
   { table: 'clubs', column: 'invite_token', migration: '20261105090000_member_moderation_invites.sql' },
+  { table: 'events', column: 'cost_items', migration: '20261106090000_weekly_series_costs.sql' },
+  { table: 'v_event_summary', column: 'series_id', migration: '20261106090000_weekly_series_costs.sql' },
+  { table: 'transactions', column: 'event_cost', migration: '20261106090000_weekly_series_costs.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

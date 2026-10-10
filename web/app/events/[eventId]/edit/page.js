@@ -15,8 +15,10 @@ export default function EditEventPage() {
   const { data: event } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   const { data: people } = useLoad(() => api.get(`/api/events/${eventId}/participants`), [eventId]);
 
+  // A session of a weekly schedule: the Host picks this one only or every upcoming one.
   async function save(f) {
-    await api.patch(`/api/events/${eventId}`, eventPayload(f));
+    const series = f.apply_to === 'series' && event.series_upcoming > 0;
+    await api.patch(`/api/events/${eventId}`, { ...eventPayload(f), ...(series ? { apply_to: 'series' } : {}) });
     router.push(`/events/${eventId}`);
   }
 
@@ -38,6 +40,7 @@ export default function EditEventPage() {
           warning={active ? t('manage.editWarning', { n: active }) : null}
           kinds={event.club_id ? ['weekly', ...GAME_KINDS] : GAME_KINDS}
           showStatus
+          seriesCount={event.series_upcoming || 0}
         />
       )}
     </AppShell>

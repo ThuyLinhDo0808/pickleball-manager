@@ -999,15 +999,23 @@ router.get('/:clubId/fund', async (req, res) => {
     .maybeSingle();
   if (balErr) return dbError(res, balErr);
 
-  const { data: txns, error: txnErr } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('owner_type', 'club')
-    .eq('club_id', req.club.id)
-    .order('occurred_on', { ascending: false });
+  // The ledger is everything the Host takes in and pays out: the club fund's own entries
+  // and the money of every session (fees players paid, court hire…), with the session.
+  const [{ data: txns, error: txnErr }, { data: evTxns, error: evErr }] = await Promise.all([
+    supabase.from('transactions').select('*').eq('owner_type', 'club').eq('club_id', req.club.id).order('occurred_on', { ascending: false }),
+    supabase
+      .from('transactions')
+      .select('*, events!inner(title, event_date, start_time, kind, club_id)')
+      .eq('owner_type', 'event')
+      .eq('events.club_id', req.club.id)
+      .order('occurred_on', { ascending: false })
+      .limit(5000),
+  ]);
   if (txnErr) return dbError(res, txnErr);
-
-  res.json({ balance: balanceRow?.balance || 0, transactions: txns });
+  if (evErr) return dbError(res, evErr);
+  const all = [...txns, ...evTxns.map(({ events, ...t }) => ({ ...t, events: { title: events.title, event_date: events.event_date, start_time: events.start_time, kind: events.kind } }))]
+    .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || String(b.created_at).localeCompare(String(a.created_at)));
+  res.json({ balance: balanceRow?.balance || 0, transactions: all });
 });
 
 // ---- Club events (schedule list scoped to a club) -------------------------

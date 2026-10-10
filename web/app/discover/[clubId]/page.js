@@ -6,6 +6,7 @@ import PlayerShell from '@/components/PlayerShell';
 import ClubAvatar from '@/components/ClubAvatar';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
+import MapLink from '@/components/MapLink';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api, clubImage } from '@/lib/api';
@@ -118,8 +119,9 @@ export default function DiscoverClubPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-white font-semibold leading-snug">{e.title}</p>
                 <p className="text-gray-400 text-xs">
-                  {[e.start_time && `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}`, e.location].filter(Boolean).join(' · ')}
+                  {e.start_time && `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}`}
                 </p>
+                {e.location && <MapLink location={e.location} mapUrl={e.map_url} className="text-gray-400 text-xs" />}
                 <p className="text-gray-400 text-xs mt-0.5">
                   {e.slots ? t('disc.slots', { n: e.main_count || 0, m: e.slots }) : null}
                   {Number(e.fee_amount) > 0 ? ` · ${formatVnd(e.fee_amount)}` : ` · ${t('public.free')}`}
