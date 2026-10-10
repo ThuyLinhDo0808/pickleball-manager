@@ -7,6 +7,7 @@ const { getPlan, forgetPlan, plansReady, TIERS: PLAN_TIERS, CLUB_LIMIT, CAPACITY
 const { LIMITS, PAID_TIERS } = require('../services/planFeatures');
 
 const { notifyFeedback } = require('../services/feedback');
+const handover = require('../services/handover');
 const { postWebhook, promotedText, emailReady } = require('../services/notify');
 
 const billing = require('../services/billing');
@@ -462,24 +463,56 @@ async function accountFootprint(userId) {
 
 router.get('/account/delete-preview', async (req, res) => {
   try {
-    res.json({ email: req.hostEmail, ...(await accountFootprint(req.userId)) });
+    const fp = await accountFootprint(req.userId);
+    // Running clubs / Xé Vé: hand them over (approved by the app owner) before deleting.
+    res.json({ email: req.hostEmail, ...fp, must_handover: fp.clubs.length > 0 || fp.xeve_events > 0, handover: await handover.latest(req.userId) });
   } catch (err) {
     dbError(res, err);
   }
 });
 
+const sendErr = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
+
+// Hand every club and Xé Vé event to another account (by email or username). The app
+// owner checks the new owner is a real person and approves; then the account can go.
+router.post('/account/handover', async (req, res) => {
+  try {
+    const h = await handover.request({ id: req.userId, email: req.hostEmail }, req.body || {});
+    notifyFeedback({
+      message: `[Chuyển giao tài khoản] ${req.hostEmail} muốn chuyển ${h.clubs.length} CLB${h.xeve_events ? ` + ${h.xeve_events} kèo Xé Vé` : ''} cho ${h.to_email} rồi xoá tài khoản — vào Trang Owner → Chuyển giao để xác minh.`,
+      contact: req.hostEmail,
+      page: '/owner/handovers',
+      userEmail: req.hostEmail,
+    }).catch(() => {});
+    res.status(201).json(h);
+  } catch (err) {
+    sendErr(res, err);
+  }
+});
+
+router.post('/account/handover/cancel', async (req, res) => {
+  try {
+    res.json(await handover.cancel(req.userId));
+  } catch (err) {
+    sendErr(res, err);
+  }
+});
+
+// Deletes the account only: clubs and Xé Vé events are never deleted with it. An account
+// that still runs any must hand them over first (409 must_handover).
 router.delete('/account', async (req, res) => {
   const userId = req.userId;
   const typed = String(req.query.confirm || '').trim().toLowerCase();
   if (!typed || typed !== String(req.hostEmail || '').trim().toLowerCase()) {
     return res.status(400).json({ error: 'Type your account email to confirm.', code: 'confirm_email' });
   }
-  // Tournaments first (their line-ups point at members and would clash while cascading),
-  // then events (club sessions and Xé Vé), then the clubs; the account deletion cascades
-  // to everything else the account owns.
-  for (const table of ['tournaments', 'events', 'clubs']) {
-    const { error } = await supabase.from(table).delete().eq('host_id', userId);
-    if (error) return dbError(res, error);
+  try {
+    const owned = await handover.ownedBy(userId);
+    if (owned.clubs.length || owned.xeve_events) {
+      return res.status(409).json({ error: 'Hand your clubs and Xé Vé events to another account first.', code: 'must_handover', clubs: owned.clubs.length, xeve_events: owned.xeve_events });
+    }
+  } catch (err) {
+    return dbError(res, err);
   }
   const { error } = await supabase.auth.admin.deleteUser(userId);
   if (error) {

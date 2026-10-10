@@ -56,6 +56,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
               <div className="text-white">
                 {p.full_name}
                 <span className="ml-2 text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t(`review.kind_${p.kind}`)}</span>
+                {p.pay_later && <span className="ml-1 text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">🕒 {t('payLater.badge')}</span>}
               </div>
               <div className="text-gray-400 text-xs">
                 {formatVnd(fee(p))} · {p.payment_ref || '—'} ·{' '}

@@ -35,6 +35,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   notice: '',
   status: 'open',
   allow_public_registration: true,
+  allow_pay_later: true,
   repeat_weeks: 1,
   services: '',
   play_format: '',
@@ -103,6 +104,7 @@ export function formFromEvent(ev) {
     notice: ev.notice || '',
     status: ['draft', 'closed'].includes(ev.status) ? 'open' : ev.status,
     allow_public_registration: !!ev.allow_public_registration,
+    allow_pay_later: ev.allow_pay_later !== false,
     services: ev.services || '',
     play_format: ev.play_format || '',
     map_url: ev.map_url || '',
@@ -157,6 +159,7 @@ export function eventPayload(f) {
     notice: f.notice.trim() || null,
     status: f.status,
     allow_public_registration: f.allow_public_registration,
+    allow_pay_later: f.allow_pay_later,
     services: f.services.trim() || null,
     play_format: f.play_format || null,
     map_url: f.map_url.trim() || null,
@@ -409,6 +412,12 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <input type="checkbox" checked={f.allow_public_registration} onChange={(e) => set({ allow_public_registration: e.target.checked })} />
             {t('events.allowPublic')}
           </label>
+          {Number(f.fee_amount) > 0 && (
+            <label className="col-span-2 md:col-span-4 flex items-start gap-2 text-sm text-gray-200">
+              <input type="checkbox" className="mt-1" checked={f.allow_pay_later} onChange={(e) => set({ allow_pay_later: e.target.checked })} />
+              <span>{t('payLater.allow')}<span className="block text-gray-500 text-xs">{t('payLater.allowHint')}</span></span>
+            </label>
+          )}
         </Section>
         </>
         )}

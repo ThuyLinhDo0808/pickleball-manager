@@ -59,6 +59,8 @@ const PROBES = [
   { table: 'events', column: 'short_code', migration: '20261107090000_event_approval_organizers.sql' },
   { table: 'event_participants', column: 'is_organizer', migration: '20261107090000_event_approval_organizers.sql' },
   { table: 'v_event_summary', column: 'requested_count', migration: '20261107090000_event_approval_organizers.sql' },
+  { table: 'account_handovers', column: 'status', migration: '20261108090000_account_handover_pay_later.sql' },
+  { table: 'event_participants', column: 'pay_later', migration: '20261108090000_account_handover_pay_later.sql' },
 ];
 
 const TTL_MS = 60 * 1000;

@@ -44,7 +44,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
-  'cancel_deadline_hours', 'kind', 'services', 'play_format', 'map_url',
+  'cancel_deadline_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later',
 ];
 
 // Short links: /e/<8 characters> stands for the event's full public token.
@@ -235,6 +235,8 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
         has_pass: !!standing.pass,
         // the Host checks this player before they get a place (and pay)
         needs_approval: signup.needsApproval(event, standing),
+        // "register now, transfer later" is possible until then (null = not offered)
+        pay_later_until: signup.payLaterUntil(event),
         sessions_remaining: standing.pass ? (standing.pass.sessions_included === 0 ? null : standing.pass.sessions_remaining) : null,
       },
       registration: await signup.registrationView(event, participant),
@@ -252,7 +254,20 @@ router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
   try {
     const profile = await playerProfile(req.userId);
     await linkByPhone(req.userId, profile);
-    res.status(201).json(await signup.registerOnline(event, req.userId, profile));
+    res.status(201).json(await signup.registerOnline(event, req.userId, profile, { payLater: req.body?.pay_later === true }));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// "Chuyển khoản sau": keep my place until the sign-up deadline and pay later.
+router.post('/public/:publicToken/pay-later', requireAuth, async (req, res) => {
+  const event = await publicEvent(req, res);
+  if (!event) return;
+  try {
+    const { participant } = await signup.myRegistration(event, req.userId);
+    if (!participant) throw Object.assign(new Error('You are not registered for this event.'), { status: 404, code: 'not_registered' });
+    res.json(await signup.payLater(event, participant));
   } catch (err) {
     fail(res, err);
   }
@@ -340,6 +355,7 @@ function cleanEventFields(fields) {
     fields.map_url = v || null;
   }
   if ('auto_approve' in fields) fields.auto_approve = fields.auto_approve === true || fields.auto_approve === 'true';
+  if ('allow_pay_later' in fields) fields.allow_pay_later = !(fields.allow_pay_later === false || fields.allow_pay_later === 'false');
   if ('cost_items' in fields) {
     const { items, error } = cleanCostItems(fields.cost_items);
     if (error) return error;
@@ -350,7 +366,7 @@ function cleanEventFields(fields) {
 const PLAY_FORMATS = ['men', 'women', 'mixed', 'open'];
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
-  'auto_approve', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
+  'auto_approve', 'allow_pay_later', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'allow_public_registration', 'cost_items',
 ];
 
@@ -417,7 +433,7 @@ router.post('/', async (req, res) => {
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
@@ -664,7 +680,7 @@ router.patch('/:eventId', async (req, res) => {
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });

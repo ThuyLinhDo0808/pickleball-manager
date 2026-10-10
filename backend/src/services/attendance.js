@@ -264,6 +264,7 @@ async function checkInByCode(event, code) {
 }
 
 module.exports = {
+  eventStartMs,
   PLACES,
   setPlace,
   ATTENDANCE_ACTIONS,

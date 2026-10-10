@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import PaymentCard from '@/components/PaymentCard';
 import TicketCard from '@/components/TicketCard';
+import Countdown from '@/components/Countdown';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
@@ -33,10 +34,6 @@ function Steps({ current, guestPays, approval = false }) {
       ))}
     </ol>
   );
-}
-
-function minutesLeft(iso) {
-  return iso ? Math.max(Math.ceil((new Date(iso) - Date.now()) / 60000), 0) : null;
 }
 
 export function ProfileForm({ profile, onSaved, sport = 'pickleball' }) {
@@ -202,6 +199,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [payLater, setPayLater] = useState(false);
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30000); // hold countdown
@@ -217,6 +215,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <Steps current="login" guestPays={fee > 0} />
         <h2 className="text-white font-semibold mb-1">{t('public.register')}</h2>
         <p className="text-gray-300 text-sm mb-3">{t('signup.loginWhy')}</p>
+        {ev.registration_open && ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
         {ev.registration_open ? (
           <Link href={next} className="btn-primary block w-full py-3 text-center">{t('signup.loginToJoin')}</Link>
         ) : (
@@ -237,6 +236,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!me) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
 
   const reg = me.registration && ACTIVE.includes(me.registration.status) ? me.registration : null;
+  const fmtWhen = (iso) => new Date(iso).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
   const memberFree = me.member.state === 'verified' && me.member.has_pass;
   const myFee = me.member.my_fee ?? fee; // priority guests pay the price after their discount
   const guestPays = myFee > 0 && !memberFree;
@@ -291,8 +291,6 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   }
 
   if (reg?.status === 'pending') {
-    const left = minutesLeft(reg.hold_expires_at);
-    const holdUntil = reg.hold_expires_at && new Date(reg.hold_expires_at).toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
     return (
       <div className="flex flex-col gap-3">
         <Steps current={reg.payment_status === 'proof_submitted' ? 'ticket' : 'pay'} guestPays approval={approval} />
@@ -310,8 +308,20 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
                 ⚠️ {t('signup.rejected')}{reg.payment_note ? `: ${reg.payment_note}` : ''}
               </p>
             )}
-            {left != null && (
-              <p className={`text-sm ${left <= 10 ? 'text-orange-300' : 'text-gray-400'}`}>⏱ {t('signup.holdUntil', { time: holdUntil, n: left })}</p>
+            {reg.hold_expires_at && <Countdown until={reg.hold_expires_at} labelKey={reg.pay_later ? 'countdown.payLater' : 'countdown.hold'} tone="sky" />}
+            {!reg.pay_later && <p className="text-xs text-gray-400">{t('signup.holdRule')}</p>}
+            {reg.pay_later && <p className="text-sm text-sky-200">🕒 {t('signup.payLaterChosen')}</p>}
+            {reg.pay_later_until && (
+              <button type="button" className="btn-secondary text-sm" onClick={async () => {
+                try {
+                  await api.post(`/api/events/public/${token}/pay-later`, {});
+                  onChanged();
+                } catch (err) {
+                  window.alert(err.message);
+                }
+              }}>
+                🕒 {t('signup.payLaterBtn', { when: fmtWhen(reg.pay_later_until) })}
+              </button>
             )}
           </>
         )}
@@ -332,6 +342,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <p className="text-white font-bold">{t('signup.requestedTitle')}</p>
         <p className="text-gray-300 text-sm mt-1 max-w-sm">{guestPays ? t('signup.requestedPay', { amount: formatVnd(reg.fee ?? myFee) }) : t('signup.requestedFree')}</p>
         <p className="text-gray-500 text-xs mt-2">{t('signup.requestedNotify')}</p>
+        {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mt-3 w-full" />}
         <button type="button" className="text-red-400 text-sm mt-3" onClick={cancel}>{t('signup.cancelRequest')}</button>
       </div>
     );
@@ -359,7 +370,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     setBusy(true);
     setError('');
     try {
-      await api.post(`/api/events/public/${token}/register`, {});
+      await api.post(`/api/events/public/${token}/register`, payLater ? { pay_later: true } : {});
       onChanged();
     } catch (err) {
       // Kept out by the club: suspended ("to review") until a date, or blocked.
@@ -376,6 +387,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   return (
     <div className="flex flex-col">
       <Steps current="confirm" guestPays={guestPays} approval={approval} />
+      {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}
       <MemberStanding me={me} clubName={ev.club_name} />
       <div className="rounded-lg bg-navy-900 px-3 py-2 text-sm mb-3">
@@ -392,16 +404,28 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         </div>
         {full && <p className="text-yellow-300 text-xs mt-2">{t('public.full')}</p>}
       </div>
+      {/* Pay now (place held 30 minutes) or register now and transfer later (held until the deadline). */}
+      {guestPays && !approval && !full && me.member.pay_later_until && (
+        <fieldset className="mb-3 flex flex-col gap-2">
+          <legend className="text-gray-400 text-xs mb-1">{t('signup.payWhen')}</legend>
+          {[[false, t('signup.payNow')], [true, t('signup.payLaterOpt', { when: fmtWhen(me.member.pay_later_until) })]].map(([v, label]) => (
+            <label key={String(v)} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${payLater === v ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300'}`}>
+              <input type="radio" className="mt-1" name="pay-when" checked={payLater === v} onChange={() => setPayLater(v)} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </fieldset>
+      )}
       <label className="flex items-start gap-2 text-sm text-gray-200 mb-3">
         <input type="checkbox" className="mt-1" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
         <span>{t('signup.agree')}</span>
       </label>
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       <button type="button" className="btn-primary w-full py-3 text-base" disabled={!agree || busy} onClick={register}>
-        {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : guestPays ? t('signup.confirmAndPay') : t('signup.confirm')}
+        {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : guestPays ? (payLater ? t('signup.confirmPayLater') : t('signup.confirmAndPay')) : t('signup.confirm')}
       </button>
       {approval && <p className="text-gray-400 text-xs mt-2 text-center">{t('signup.approvalNote')}</p>}
-      {!approval && guestPays && !full && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
+      {!approval && guestPays && !full && !payLater && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
     </div>
   );
 }

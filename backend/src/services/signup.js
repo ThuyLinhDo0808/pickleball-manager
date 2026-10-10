@@ -16,6 +16,7 @@ const { clubSport, profileLevel } = require('./sport');
 const { notifyPaymentConfirmed, notifyPaymentRejected, notifyPaymentSubmitted, notifySignupRequest } = require('./notify');
 
 const NEW_HOLD_MS = 30 * 60 * 1000; // time to transfer + upload after pressing "register"
+const MIN_PAY_LATER_MS = 30 * 60 * 1000; // "pay later" only when it gives more time than that
 const REJECTED_HOLD_MS = 2 * 3600 * 1000; // time to send a better screenshot
 const ACTIVE = [...HOLDS_PLACE, 'waitlisted', 'requested', 'not_playing'];
 
@@ -26,6 +27,19 @@ const MAX_PROOF = 400000;
 
 function httpError(message, status, code) {
   return Object.assign(new Error(message), { status, code });
+}
+
+// "Đăng ký, chuyển khoản sau": the place is held until the sign-up deadline, or until the
+// event starts when there is none. null = not offered (the event turned it off, or there
+// is no more time than a normal hold).
+function payLaterUntil(event, now = Date.now()) {
+  if (event.allow_pay_later === false) return null;
+  const { eventStartMs } = require('./attendance');
+  const start = eventStartMs(event);
+  const deadline = event.registration_deadline ? Date.parse(event.registration_deadline) : null;
+  const until = deadline && (!start || deadline < start) ? deadline : start;
+  if (!until || until - now <= MIN_PAY_LATER_MS) return null;
+  return new Date(until).toISOString();
 }
 
 // Release holds whose owner never sent a screenshot in time; their places go to the waitlist.
@@ -75,6 +89,9 @@ async function registrationView(event, p) {
     payment_submitted_at: p.payment_submitted_at,
     has_proof: !!p.payment_proof,
     hold_expires_at: p.hold_expires_at,
+    pay_later: !!p.pay_later,
+    // when the place can be held until if the player transfers later (null = not possible)
+    pay_later_until: p.status === 'pending' && !p.pay_later && p.payment_status !== 'proof_submitted' ? payLaterUntil(event) : null,
     // The ticket only exists for players who actually have a confirmed place.
     ticket_code: ['registered', 'checked_in'].includes(p.status) ? p.ticket_code : null,
   };
@@ -116,7 +133,8 @@ function assertOpen(event) {
   }
 }
 
-async function registerOnline(event, userId, profile) {
+// opts.payLater: hold the place now, transfer later (until the sign-up deadline).
+async function registerOnline(event, userId, profile, opts = {}) {
   assertOpen(event);
   if (!profile?.full_name || normalizePhone(profile.phone).length < 9 || !profile.birth_date) {
     throw httpError('Complete your profile (name, phone, birth date) first.', 400, 'profile_required');
@@ -167,11 +185,30 @@ async function registerOnline(event, userId, profile) {
       payment_ref: newPaymentRef(),
       hold_expires_at: new Date(Date.now() + NEW_HOLD_MS).toISOString(),
     });
+    const later = opts.payLater ? payLaterUntil(event) : null;
+    if (later) Object.assign(row, { hold_expires_at: later, pay_later: true });
   }
   const { data, error } = await supabase.from('event_participants').insert(row).select().single();
   if (error) throw error;
   if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
   if (data.status === 'requested') notifySignupRequest(event, data); // Host webhook, in the background
+  return registrationView(event, data);
+}
+
+// Already holding a place and owing the fee: keep it until the deadline, transfer later.
+async function payLater(event, participant) {
+  if (participant.status !== 'pending' || participant.payment_status === 'proof_submitted') {
+    throw httpError('There is no payment waiting for this registration.', 409, 'not_pending');
+  }
+  const until = payLaterUntil(event);
+  if (!until) throw httpError('Paying later is not possible for this event.', 409, 'pay_later_off');
+  const { data, error } = await supabase
+    .from('event_participants')
+    .update({ pay_later: true, hold_expires_at: until })
+    .eq('id', participant.id)
+    .select()
+    .single();
+  if (error) throw error;
   return registrationView(event, data);
 }
 
@@ -244,4 +281,6 @@ module.exports = {
   rejectPayment,
   MAX_PROOF,
   needsApproval,
+  payLaterUntil,
+  payLater,
 };

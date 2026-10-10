@@ -476,6 +476,29 @@ router.post('/clubs/:id/transfer', wrap(async (req, res) => {
   res.json({ club_id: club.id, from: prev.email, to: next.email, audit_id: entry?.id || null });
 }));
 
+// ---- Account handovers (owner only) --------------------------------------------------
+// A Host who wants to delete their account names who takes over their clubs / Xé Vé.
+// Check the new owner is a real person (name, phone, account age), then approve: the
+// clubs and events move; reject with a reason the Host sees.
+const handover = require('../services/handover');
+router.get('/handovers', wrap(async (req, res) => {
+  const status = ['pending', 'approved', 'rejected', 'cancelled', 'all'].includes(req.query.status) ? req.query.status : 'pending';
+  res.json({ items: await handover.list(status) });
+}));
+router.post('/handovers/:id/:decision(approve|reject)', wrap(async (req, res) => {
+  const note = req.body?.note;
+  const h = req.params.decision === 'approve' ? await handover.approve(req.params.id, req.hostEmail, note) : await handover.reject(req.params.id, req.hostEmail, note);
+  const prev = h.from_user ? await loadHost(h.from_user).catch(() => ({ id: h.from_user, email: h.from_email })) : null;
+  const entry = await owner.audit(req, {
+    action: `account.handover_${req.params.decision}`,
+    host: prev,
+    oldValue: { owner_email: h.from_email, clubs: h.clubs, xeve_events: h.xeve_events },
+    newValue: { owner_email: h.to_email, status: h.status },
+    note: h.owner_note,
+  });
+  res.json({ ...h, audit_id: entry?.id || null });
+}));
+
 // ---- System activity (read-only) ---------------------------------------------------
 
 const paging = (req, total) => {
