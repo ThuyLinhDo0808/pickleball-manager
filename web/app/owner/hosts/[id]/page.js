@@ -226,14 +226,19 @@ function ClubRow({ club, onChanged }) {
   return (
     <li className="py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-gray-200 truncate">{club.sport === 'badminton' ? '🏸' : '🏓'} {club.name}</span>
+        <span className="text-gray-200 truncate">
+          {club.sport === 'badminton' ? '🏸' : '🏓'} {club.name}
+          {club.kind === 'community' && <span className="ml-1.5 text-[10px] rounded-full border border-amber-300/60 text-amber-200 px-1.5 py-0.5 align-middle">🎟 {t('creq.kind_community')}</span>}
+        </span>
         <span className="text-gray-400 text-xs">{t('owner.placesLine', { fixed: place(r?.fixed), guest: place(r?.guest) })} · {fmtDate(club.created_at)}</span>
       </div>
       <div className="flex gap-3 mt-1 text-xs">
         {consoleCan(me, 'plans') && <button type="button" className="text-sky-300 hover:underline" onClick={() => setMode(mode === 'addon' ? null : 'addon')}>➕ {t('owner.addonBtn')}</button>}
         {me?.owner && <button type="button" className="text-amber-300 hover:underline" onClick={() => setMode(mode === 'transfer' ? null : 'transfer')}>🔁 {t('owner.transferBtn')}</button>}
+        {me?.owner && <button type="button" className="text-red-300 hover:underline ml-auto" onClick={() => setMode(mode === 'delete' ? null : 'delete')}>🗑 {t('owner.delClubBtn')}</button>}
       </div>
-      {mode && (
+      {mode === 'delete' && <DeleteClub club={club} onDone={() => { setMode(null); onChanged(); }} />}
+      {mode && mode !== 'delete' && (
         <form onSubmit={save} className="mt-2 rounded-lg border border-navy-600 p-2 flex flex-col gap-2">
           {mode === 'addon' ? (
             <div className="grid grid-cols-2 gap-2">
@@ -252,6 +257,58 @@ function ClubRow({ club, onChanged }) {
         </form>
       )}
     </li>
+  );
+}
+
+// Owner only: delete a club / community for good. Shows what goes with it, then asks for
+// the exact name and a reason (kept in the audit log).
+function DeleteClub({ club, onDone }) {
+  const { t } = useI18n();
+  const [preview, setPreview] = useState(null);
+  const [typed, setTyped] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    api.get(`/api/owner/clubs/${club.id}/delete-preview`).then(setPreview).catch((err) => setMsg(err.message));
+  }, [club.id]);
+  const ok = typed.trim() === club.name.trim() && reason.trim();
+  async function run(e) {
+    e.preventDefault();
+    if (!ok) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      await api.post(`/api/owner/clubs/${club.id}/delete`, { confirm: typed.trim(), reason: reason.trim() });
+      onDone();
+    } catch (err) {
+      setMsg(err.message);
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={run} className="mt-2 rounded-lg border border-red-500/50 bg-red-500/5 p-3 flex flex-col gap-2 text-xs">
+      <p className="text-red-200 font-semibold">{t('owner.delClubTitle', { name: club.name })}</p>
+      {preview ? (
+        <ul className="list-disc pl-5 text-gray-300">
+          <li>{t('clubs.delMembers', { n: preview.members })}</li>
+          <li>{t('clubs.delEvents', { n: preview.events })}</li>
+          <li>{t('clubs.delTournaments', { n: preview.tournaments })}</li>
+          <li>{t('clubs.delMoney', { n: preview.transactions })}</li>
+        </ul>
+      ) : !msg && <p className="text-gray-400">{t('common.loading')}</p>}
+      <p className="text-gray-400">{t('owner.delClubHint')}</p>
+      <label className="text-gray-400">{t('clubs.deleteType', { name: club.name })}
+        <input className="input text-sm mt-0.5" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+      </label>
+      <label className="text-gray-400">{t('owner.delClubReason')}
+        <textarea className="input text-sm mt-0.5" rows={2} maxLength={1000} required value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('owner.delClubReasonPh')} />
+      </label>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-red-300">{msg}</span>
+        <button className="rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-semibold px-3 py-1.5" disabled={busy || !ok}>🗑 {t('clubs.deleteForever')}</button>
+      </div>
+    </form>
   );
 }
 

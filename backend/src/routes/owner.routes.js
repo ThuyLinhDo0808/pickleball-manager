@@ -14,6 +14,7 @@ const { schemaStatus, PROBES } = require('../services/schemaCheck');
 const announcements = require('./announcements.routes');
 const promo = require('../services/promo');
 const support = require('../services/support');
+const clubDelete = require('../services/clubDelete');
 
 const router = express.Router();
 const MIGRATION = '20261026090000_owner_console.sql';
@@ -321,7 +322,7 @@ router.get('/hosts/:id', wrap(async (req, res) => {
   const seen = await lastSignIns([u.id]);
   res.json({
     host: { ...hostRow(u, ctx), last_sign_in_at: seen.get(u.id) || null },
-    clubs: (clubs || []).map((c, i) => ({ id: c.id, name: c.name, sport: c.sport, created_at: c.created_at, members: counts[i] ? counts[i].fixed.used + counts[i].guest.used : 0, room: counts[i] })),
+    clubs: (clubs || []).map((c, i) => ({ id: c.id, name: c.name, sport: c.sport, kind: c.kind || 'club', created_at: c.created_at, members: counts[i] ? counts[i].fixed.used + counts[i].guest.used : 0, room: counts[i] })),
     notes: notes || [],
     orders: (orders || []).map((o) => ({ ...billing.present(o), confirmed_at: o.confirmed_at, confirmed_by: o.confirmed_by })),
     audit: log || [],
@@ -474,6 +475,33 @@ router.post('/clubs/:id/transfer', wrap(async (req, res) => {
     note: String(req.body?.note || '').trim() || null,
   });
   res.json({ club_id: club.id, from: prev.email, to: next.email, audit_id: entry?.id || null });
+}));
+
+// Delete a club / community for good (owner only — support staff never get this). Hosts
+// can't always do it themselves (co-admins, a Host who left, abuse…). The owner sees
+// what goes with it, types the name and gives a reason; the audit log keeps a snapshot.
+router.get('/clubs/:id/delete-preview', wrap(async (req, res) => {
+  const club = await loadClub(req.params.id);
+  const host = await loadHost(club.host_id).catch(() => ({ id: club.host_id, email: null }));
+  res.json({ ...(await clubDelete.preview(club)), id: club.id, owner_email: host.email || null });
+}));
+router.post('/clubs/:id/delete', wrap(async (req, res) => {
+  const club = await loadClub(req.params.id);
+  if (String(req.body?.confirm || '').trim() !== String(club.name).trim()) throw fail(400, 'Type the club name to confirm.', 'confirm_name');
+  const reason = String(req.body?.reason || '').trim();
+  if (!reason) throw fail(400, 'Write the reason.', 'reason_required');
+  const host = await loadHost(club.host_id).catch(() => ({ id: club.host_id, email: null }));
+  const snapshot = await clubDelete.preview(club);
+  await clubDelete.remove(club);
+  forgetPlan(club.host_id);
+  const entry = await owner.audit(req, {
+    action: 'club.delete',
+    host,
+    oldValue: { club_id: club.id, club_name: club.name, kind: club.kind || 'club', owner_email: host.email || null, members: snapshot.members, events: snapshot.events, tournaments: snapshot.tournaments, transactions: snapshot.transactions },
+    newValue: { deleted: true },
+    note: reason.slice(0, 1000),
+  });
+  res.json({ deleted: club.id, audit_id: entry?.id || null });
 }));
 
 // ---- Account handovers (owner only) --------------------------------------------------

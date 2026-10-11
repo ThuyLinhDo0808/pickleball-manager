@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { assertCanCreateClub, requireFeature, assertMemberRoom, forgetPlan, getPlan, memberRoom } = require('../services/plan');
 const { supabase } = require('../supabase');
+const clubDelete = require('../services/clubDelete');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
@@ -306,35 +307,24 @@ router.put('/:clubId/images', ownerOnly, async (req, res) => {
 
 // What deleting the club would remove (shown to the Host before they confirm).
 router.get('/:clubId/delete-preview', ownerOnly, async (req, res) => {
-  const count = (table, col = 'club_id') =>
-    supabase.from(table).select('id', { count: 'exact', head: true }).eq(col, req.club.id).then((r) => r.count || 0);
   try {
-    const [members, events, tournaments, transactions] = await Promise.all([
-      count('club_members'),
-      count('events'),
-      count('tournaments'),
-      count('transactions'),
-    ]);
-    res.json({ name: req.club.name, members, events, tournaments, transactions });
+    res.json(await clubDelete.preview(req.club));
   } catch (err) {
     dbError(res, err);
   }
 });
 
-// Delete a club with everything in it. Tournaments go first (their team line-ups point at
-// members, which would otherwise clash while cascading), then the club's sessions (they
-// would otherwise survive as club-less "Xé Vé" events), then the club itself.
+// Delete a club with everything in it (services/clubDelete.js).
 router.delete('/:clubId', ownerOnly, async (req, res) => {
   if (String(req.query.confirm || '').trim() !== req.club.name.trim()) {
     return res.status(400).json({ error: 'Type the club name to confirm.', code: 'confirm_name' });
   }
-  for (const table of ['tournaments', 'events']) {
-    const { error } = await supabase.from(table).delete().eq('club_id', req.club.id);
-    if (error) return dbError(res, error);
+  try {
+    await clubDelete.remove(req.club);
+    res.status(204).end();
+  } catch (err) {
+    dbError(res, err);
   }
-  const { error } = await supabase.from('clubs').delete().eq('id', req.club.id);
-  if (error) return dbError(res, error);
-  res.status(204).end();
 });
 
 // ---- Members CRUD -------------------------------------------------------------

@@ -687,6 +687,12 @@ export const en = {
     roleOperator: "Operations",
   },
   owner: {
+    delClubBtn: "Delete",
+    delClubTitle: "Permanently delete \"{name}\" and everything in it:",
+    delClubHint: "This cannot be undone. Its owner and staff lose it. The owner audit log keeps its name, owner and counts.",
+    delClubReason: "Reason (required, kept in the audit log)",
+    delClubReasonPh: "e.g. The owner asked to delete it on 10/10",
+    act_club_delete: "Club / community deleted",
     tabHandovers: "Handovers",
     tabClubRequests: "Club requests",
     set_club_approval: "Approve new clubs",

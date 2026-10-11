@@ -687,6 +687,12 @@ export const vi = {
     roleOperator: "Vận hành",
   },
   owner: {
+    delClubBtn: "Xoá",
+    delClubTitle: "Xoá vĩnh viễn \"{name}\" cùng toàn bộ dữ liệu:",
+    delClubHint: "Không hoàn tác được. Chủ CLB / cộng đồng và người được phân quyền sẽ không còn thấy nó. Nhật ký Owner giữ lại tên, chủ và số liệu trước khi xoá.",
+    delClubReason: "Lý do (bắt buộc, lưu vào nhật ký)",
+    delClubReasonPh: "VD: Chủ CLB yêu cầu xoá qua Zalo ngày 10/10",
+    act_club_delete: "Xoá CLB / cộng đồng",
     tabHandovers: "Chuyển giao",
     tabClubRequests: "Duyệt CLB",
     set_club_approval: "Duyệt CLB mới",
