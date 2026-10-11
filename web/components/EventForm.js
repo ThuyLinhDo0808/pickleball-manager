@@ -14,7 +14,9 @@ export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 // open = upcoming; completed is also set automatically once the slot is over.
 const STATUSES = ['open', 'completed', 'cancelled'];
 const CANCEL_PRESETS = ['', '2', '6', '12', '24', '48'];
-export const PLAY_FORMATS = ['open', 'men', 'women', 'mixed'];
+// "Tự do" was the same as Mix (nam nữ), so it is gone; a session with neither is Mix.
+export const PLAY_FORMATS = ['men', 'women', 'mixed'];
+const playFormatOf = (v) => (v === 'men' || v === 'women' ? v : 'mixed');
 // What the fee includes: quick picks that fill the "Dịch vụ" line.
 const SERVICE_PICKS = ['balls', 'water', 'fruit', 'towel', 'parking'];
 // What a session costs the Host (balls are bought in the ball store instead).
@@ -40,7 +42,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   allow_pay_later: true,
   repeat_weeks: 1,
   services: '',
-  play_format: '',
+  play_format: 'mixed',
   map_url: '',
   cost_items: [],
   deadline_auto: true,
@@ -110,7 +112,7 @@ export function formFromEvent(ev) {
     allow_pay_later: ev.allow_pay_later !== false,
     services: ev.services || '',
     series_label: ev.series_label || '',
-    play_format: ev.play_format || '',
+    play_format: playFormatOf(ev.play_format),
     map_url: ev.map_url || '',
     cost_items: (ev.cost_items || []).map((c) => ({ category: c.category, amount: String(c.amount), note: c.note || '' })),
     // Auto when the saved deadline is exactly "start minus the cancel deadline".
@@ -165,7 +167,7 @@ export function eventPayload(f) {
     allow_public_registration: f.allow_public_registration,
     allow_pay_later: f.allow_pay_later,
     services: f.services.trim() || null,
-    play_format: f.play_format || null,
+    play_format: f.kind === 'meeting' ? null : playFormatOf(f.play_format),
     map_url: f.map_url.trim() || null,
     cost_items: costList(f.cost_items),
     ...(f.series_label !== undefined ? { series_label: (f.series_label || '').trim() || null } : {}),
@@ -377,9 +379,9 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
           </Field>
           <Field label={t('fmt.label')} span={2} hint={t('fmt.hint')}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-1">
+            <div className="grid grid-cols-3 gap-1.5 mt-1">
               {PLAY_FORMATS.map((k) => (
-                <button key={k} type="button" aria-pressed={(f.play_format || 'open') === k} onClick={() => set({ play_format: k === 'open' ? '' : k })} className={`rounded-lg border px-2 py-2 text-sm ${(f.play_format || 'open') === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                <button key={k} type="button" aria-pressed={playFormatOf(f.play_format) === k} onClick={() => set({ play_format: k })} className={`rounded-lg border px-2 py-2 text-sm ${playFormatOf(f.play_format) === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
                   {t(`fmt.${k}`)}
                 </button>
               ))}
@@ -513,10 +515,10 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                 {Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ / ${t('createx.perPerson')}` : t('createx.free')}
                 {f.services.trim() && <span className="block text-gray-400 text-xs">🎁 {f.services}</span>}
               </dd>
-              {!meeting && f.play_format && (
+              {!meeting && (
                 <>
                   <dt className="text-gray-400">🏓</dt>
-                  <dd className="text-gray-100">{t(`fmt.${f.play_format}`)}</dd>
+                  <dd className="text-gray-100">{t(`fmt.${playFormatOf(f.play_format)}`)}</dd>
                 </>
               )}
               {meeting ? (

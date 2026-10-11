@@ -176,6 +176,7 @@ function insights(d) {
     from,
     to,
     months,
+    patterns: patterns(d, sessionsList, months),
     summary: {
       official: fixed.length,
       ...status,
@@ -196,4 +197,146 @@ function insights(d) {
   };
 }
 
-module.exports = { insights, monthsBetween, played };
+// ---- when and how people play: weekday × hour heatmap, best / worst slots, series,
+// who comes (new, returning, one-off, regulars), no-shows and late cancels ----
+const hourOf = (time) => (time ? Number(String(time).slice(0, 2)) : null);
+// Monday = 0 … Sunday = 6
+const weekdayOf = (ymd) => (new Date(`${ymd}T00:00:00Z`).getUTCDay() + 6) % 7;
+// The hours a session covers: [start, end), at most 6; no end time = the start hour only.
+function hoursOf(e) {
+  const a = hourOf(e.start_time);
+  if (a == null || Number.isNaN(a)) return [];
+  let b = hourOf(e.end_time);
+  if (b == null || Number.isNaN(b) || b <= a) b = a + 1;
+  if (String(e.end_time || '').slice(3, 5) > '00' && b > a) b += 1; // 18:00–19:30 covers 18 and 19
+  return Array.from({ length: Math.min(6, b - a) }, (_, i) => a + i).filter((h) => h < 24);
+}
+const avg = (sum, n, digits = 1) => (n ? Math.round((sum / n) * 10 ** digits) / 10 ** digits : null);
+
+function patterns(d, sessionsList, months) {
+  const { today } = d;
+  const eventById = new Map(d.events.map((e) => [e.id, e]));
+  const memberById = new Map(d.members.map((m) => [m.id, m]));
+  const sess = sessionsList.map((s) => ({ ...s, e: eventById.get(s.event_id) }));
+
+  // Heatmap: each cell = one weekday at one hour. A session counts in every hour it covers.
+  const cells = new Map();
+  for (const s of sess) {
+    const dow = weekdayOf(s.date);
+    for (const h of hoursOf(s.e)) {
+      const c = cells.get(`${dow}-${h}`) || { dow, hour: h, sessions: 0, plays: 0, slots: 0, slotted: 0 };
+      c.sessions += 1;
+      c.plays += s.players;
+      if (s.slots) { c.slots += s.slots; c.slotted += s.players; }
+      cells.set(`${dow}-${h}`, c);
+    }
+  }
+  const heat = [...cells.values()].map((c) => ({ dow: c.dow, hour: c.hour, sessions: c.sessions, plays: c.plays, avg_players: avg(c.plays, c.sessions), fill: c.slots ? Math.round((c.slotted / c.slots) * 100) : null }));
+  const hours = heat.map((c) => c.hour);
+  const ranked = heat.filter((c) => c.sessions > 0).sort((a, b) => b.avg_players - a.avg_players || b.sessions - a.sessions);
+
+  // Per weekday and per start hour.
+  const group = (keyOf) => {
+    const m = new Map();
+    for (const s of sess) {
+      const k = keyOf(s);
+      if (k == null) continue;
+      const r = m.get(k) || { key: k, sessions: 0, plays: 0, fills: [], profit: 0 };
+      r.sessions += 1;
+      r.plays += s.players;
+      if (s.fill != null) r.fills.push(s.fill);
+      r.profit += s.profit;
+      m.set(k, r);
+    }
+    return [...m.values()].map((r) => ({ key: r.key, sessions: r.sessions, plays: r.plays, avg_players: avg(r.plays, r.sessions), avg_fill: r.fills.length ? Math.round(r.fills.reduce((a, b) => a + b, 0) / r.fills.length) : null, profit: r.profit, profit_per_session: Math.round(r.profit / r.sessions) }));
+  };
+  const byWeekday = group((s) => weekdayOf(s.date)).sort((a, b) => a.key - b.key);
+  const byStartHour = group((s) => hourOf(s.e?.start_time)).sort((a, b) => a.key - b.key);
+
+  // How full sessions get.
+  const fill = { full: 0, high: 0, mid: 0, low: 0, open: 0 };
+  for (const s of sess) fill[s.fill == null ? 'open' : s.fill >= 100 ? 'full' : s.fill >= 75 ? 'high' : s.fill >= 50 ? 'mid' : 'low'] += 1;
+
+  // People: everyone who played, members or not (account / phone / name for walk-ins).
+  const heldIds = new Set(sess.map((s) => s.event_id));
+  const byWho = new Map();
+  const reg = new Map(months.map((m) => [m, { month: m, signups: 0, no_show: 0, cancelled: 0 }]));
+  for (const p of d.participants) {
+    const e = eventById.get(p.event_id);
+    if (!e || !heldIds.has(e.id)) continue;
+    const r = reg.get(ym(e.event_date));
+    if (r && ['registered', 'checked_in', 'no_show', 'cancelled', 'pending'].includes(p.status)) {
+      r.signups += 1;
+      if (p.status === 'no_show') r.no_show += 1;
+      if (p.status === 'cancelled') r.cancelled += 1;
+    }
+    if (!p.who || !played(p, e.event_date, today)) continue;
+    const w = byWho.get(p.who) || { who: p.who, name: p.member_id ? memberById.get(p.member_id)?.full_name : p.name, type: p.member_id ? memberById.get(p.member_id)?.member_type || 'guest' : 'walk_in', sessions: 0, first: e.event_date, last: e.event_date, series: new Set() };
+    w.sessions += 1;
+    if (e.event_date < w.first) w.first = e.event_date;
+    if (e.event_date > w.last) w.last = e.event_date;
+    if (e.series_label) w.series.add(e.series_label);
+    byWho.set(p.who, w);
+  }
+  const people = [...byWho.values()];
+  const perMonth = months.map((m) => {
+    const firsts = people.filter((w) => ym(w.first) === m).length;
+    const r = reg.get(m);
+    return { month: m, new_players: firsts, signups: r.signups, no_show: r.no_show, cancelled: r.cancelled, no_show_rate: pct(r.no_show, r.signups), cancel_rate: pct(r.cancelled, r.signups) };
+  });
+  const totals = perMonth.reduce((a, r) => ({ signups: a.signups + r.signups, no_show: a.no_show + r.no_show, cancelled: a.cancelled + r.cancelled }), { signups: 0, no_show: 0, cancelled: 0 });
+  const span = Math.max(1, months.length);
+  const playsBy = { fixed: 0, guest: 0, walk_in: 0 };
+  for (const w of people) playsBy[w.type === 'fixed' ? 'fixed' : w.type === 'walk_in' ? 'walk_in' : 'guest'] += w.sessions;
+
+  // Series (Social Manager communities): sessions, players, fill, money, loyal players.
+  const series = new Map();
+  for (const s of sess) {
+    const label = s.e?.series_label;
+    if (!label) continue;
+    const r = series.get(label) || { label, sessions: 0, plays: 0, fills: [], income: 0, profit: 0, people: new Set() };
+    r.sessions += 1;
+    r.plays += s.players;
+    if (s.fill != null) r.fills.push(s.fill);
+    r.income += s.income;
+    r.profit += s.profit;
+    series.set(label, r);
+  }
+  for (const w of people) for (const l of w.series) series.get(l)?.people.add(w.who);
+  const bySeries = [...series.values()].map((r) => {
+    const ppl = [...r.people].map((id) => byWho.get(id));
+    return {
+      label: r.label,
+      sessions: r.sessions,
+      players: r.people.size,
+      avg_players: avg(r.plays, r.sessions),
+      avg_fill: r.fills.length ? Math.round(r.fills.reduce((a, b) => a + b, 0) / r.fills.length) : null,
+      income: r.income,
+      profit: r.profit,
+      profit_per_session: Math.round(r.profit / r.sessions),
+      returning: pct(ppl.filter((w) => w.sessions >= 2).length, ppl.length),
+    };
+  }).sort((a, b) => b.sessions - a.sessions);
+
+  return {
+    heatmap: { cells: heat, min_hour: hours.length ? Math.min(...hours) : null, max_hour: hours.length ? Math.max(...hours) : null },
+    best_slots: ranked.slice(0, 3),
+    worst_slots: ranked.length > 3 ? ranked.slice(-3).reverse() : [],
+    by_weekday: byWeekday,
+    by_start_hour: byStartHour,
+    fill,
+    people: {
+      unique: people.length,
+      one_off: people.filter((w) => w.sessions === 1).length,
+      returning: people.filter((w) => w.sessions >= 2).length,
+      regulars: people.filter((w) => w.sessions / span >= 4).length,
+      avg_sessions: avg(people.reduce((n, w) => n + w.sessions, 0), people.length),
+      plays_by: playsBy,
+      top: people.sort((a, b) => b.sessions - a.sessions || String(a.name).localeCompare(String(b.name))).slice(0, 10).map((w) => ({ name: w.name || '—', type: w.type, sessions: w.sessions, last: w.last })),
+    },
+    reliability: { ...totals, no_show_rate: pct(totals.no_show, totals.signups), cancel_rate: pct(totals.cancelled, totals.signups), by_month: perMonth },
+    by_series: bySeries,
+  };
+}
+
+module.exports = { insights, monthsBetween, played, patterns, hoursOf, weekdayOf };

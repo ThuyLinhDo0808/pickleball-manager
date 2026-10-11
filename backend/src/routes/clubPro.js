@@ -174,7 +174,11 @@ function mount(router) {
 
       const [members, events, plans] = await Promise.all([
         fetchAll(() => supabase.from('club_members').select('id, full_name, member_type, is_active, joined_on, created_at, user_id').eq('club_id', clubId).order('id')),
-        fetchAll(() => supabase.from('events').select('id, title, event_date, kind, slots, status').eq('club_id', clubId).gte('event_date', start).lte('event_date', end).neq('status', 'cancelled').neq('kind', 'meeting').order('event_date')),
+        // Times (heatmap), series (communities) and fee too; older databases without
+        // series_label fall back to the plain columns.
+        fetchAll(() => supabase.from('events').select('id, title, event_date, start_time, end_time, kind, slots, status, fee_amount, series_label').eq('club_id', clubId).gte('event_date', start).lte('event_date', end).neq('status', 'cancelled').neq('kind', 'meeting').order('event_date')).catch(() =>
+          fetchAll(() => supabase.from('events').select('id, title, event_date, start_time, end_time, kind, slots, status, fee_amount').eq('club_id', clubId).gte('event_date', start).lte('event_date', end).neq('status', 'cancelled').neq('kind', 'meeting').order('event_date'))
+        ),
         fetchAll(() => supabase.from('membership_plans').select('id, name, period').eq('club_id', clubId).order('id')),
       ]);
       const eventIds = events.map((e) => e.id);
@@ -183,7 +187,7 @@ function mount(router) {
       const parts = [];
       for (const ids of chunks(eventIds)) {
         let rows;
-        const withGuest = await supabase.from('event_participants').select('event_id, source_club_member_id, guest_member_id, user_id, status').in('event_id', ids).limit(10000);
+        const withGuest = await supabase.from('event_participants').select('event_id, source_club_member_id, guest_member_id, user_id, status, full_name, phone').in('event_id', ids).limit(10000);
         if (withGuest.error) {
           const plain = await supabase.from('event_participants').select('event_id, source_club_member_id, user_id, status').in('event_id', ids).limit(10000);
           if (plain.error) throw plain.error;
@@ -206,7 +210,13 @@ function mount(router) {
         money.push(...data);
       }
       const byUser = new Map(members.filter((x) => x.user_id).map((x) => [x.user_id, x.id]));
-      const participants = parts.map((p) => ({ event_id: p.event_id, status: p.status, member_id: p.source_club_member_id || p.guest_member_id || (p.user_id && byUser.get(p.user_id)) || null }));
+      // who: a club member (official or guest card), else the account / phone / name, so
+      // walk-ins of a community are still counted as the same person across kèo.
+      const participants = parts.map((p) => {
+        const member_id = p.source_club_member_id || p.guest_member_id || (p.user_id && byUser.get(p.user_id)) || null;
+        const who = member_id ? `m:${member_id}` : p.user_id ? `u:${p.user_id}` : p.phone ? `p:${p.phone}` : p.full_name ? `n:${String(p.full_name).trim().toLowerCase()}` : null;
+        return { event_id: p.event_id, status: p.status, member_id, who, name: p.full_name || null };
+      });
       res.json(insights({ members, events, participants, memberships, plans, money, from: start, to: end, today }));
     } catch (err) {
       dbError(res, err);

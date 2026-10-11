@@ -6,7 +6,6 @@ import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useEnter } from '@/lib/useEnter';
-import { SocialManagerModal } from '@/components/PlanModals';
 
 // "Where am I": the club (or Xé Vé / staff space) the manager pages work on, with the
 // role, and a menu to jump to another space this account manages — or back to the home
@@ -20,11 +19,10 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   const { allClubs, club } = useClubs();
   const clubs = allClubs.filter((c) => c.kind !== 'community');
   const communities = allClubs.filter((c) => c.kind === 'community');
-  const { workspace, staffInfo, plan } = useWorkspace();
+  const { workspace, staffInfo } = useWorkspace();
   // Coordinator or referee: the strongest role this account holds.
   const staffRole = t(staffInfo?.role === 'coordinator' ? 'staff.coordinator' : 'staff.referee');
-  const [smOpen, setSmOpen] = useState(false);
-  const { manageClub, space, standalone } = useEnter();
+  const { manageClub } = useEnter();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
@@ -79,10 +77,6 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   function pickClub(id) {
     setOpen(false);
     manageClub(id);
-  }
-  function pickSpace(ws) {
-    setOpen(false);
-    space(ws);
   }
 
   const row = (active, onClick, avatar, label, sub) => (
@@ -153,11 +147,6 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
               ))}
             </>
           )}
-          <p className="px-2 pt-2 pb-1 text-gray-500 text-[11px] font-semibold uppercase tracking-wide">{t('hub.otherSpaces')}</p>
-          {plan?.social_manager
-            ? row(workspace === 'xeve' && !club, () => { setOpen(false); standalone(); }, <ClubAvatar icon="🎟" size={32} />, t('hub.oneOffKeo'), t('hub.oneOffKeoHint'))
-            : !communities.length && row(false, () => { setOpen(false); setSmOpen(true); }, <ClubAvatar icon="🎟" size={32} />, t('hub.socialManager'), t('hub.smSignUpShort'))}
-          {staffInfo?.is_staff && row(workspace === 'staff', () => pickSpace('staff'), <ClubAvatar icon="🦺" size={32} />, t('hub.staff'), staffRole)}
           <div className="border-t border-navy-700 mt-2 pt-2 grid gap-1">
             <Link href="/home" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-navy-800 text-sm text-white">
               <span className="w-8 text-center" aria-hidden="true">🏠</span>
@@ -173,7 +162,6 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
           </div>
         </div>
       )}
-      <SocialManagerModal open={smOpen} onClose={() => setSmOpen(false)} />
     </div>
   );
 }
