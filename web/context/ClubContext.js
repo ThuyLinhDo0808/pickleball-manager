@@ -116,16 +116,6 @@ export function ClubProvider({ children }) {
     return updated;
   }, []);
 
-  // `confirmName`: the club's name typed by the Host (the server checks it).
-  const deleteClub = useCallback(async (id, confirmName) => {
-    await api.del(`/api/clubs/${id}?confirm=${encodeURIComponent(confirmName || '')}`);
-    const gone = allClubs.find((c) => c.id === id);
-    const kind = kindOf(gone);
-    const next = allClubs.filter((c) => c.id !== id);
-    setClubs(next);
-    setPicked((cur) => (cur[kind] === id ? { ...cur, [kind]: next.find((c) => kindOf(c) === kind)?.id || null } : cur));
-    if (!next.some((c) => kindOf(c) === kind)) writeSaved(kind, null);
-  }, [allClubs]);
 
   const clubs = useMemo(() => allClubs.filter((c) => kindOf(c) === space), [allClubs, space]);
   const club = clubs.find((c) => c.id === picked[space]) || null;
@@ -144,8 +134,8 @@ export function ClubProvider({ children }) {
   }, [sport, setSport, personal]);
 
   const value = useMemo(
-    () => ({ clubs, allClubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub, deleteClub }),
-    [clubs, allClubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub, deleteClub]
+    () => ({ clubs, allClubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub }),
+    [clubs, allClubs, club, isCoAdmin, loading, error, reload, selectClub, createClub, updateClub]
   );
 
   return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>;

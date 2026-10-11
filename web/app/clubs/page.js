@@ -16,7 +16,7 @@ import { todayYmd } from '@/lib/dates';
 export default function ClubsPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const { clubs, club: current, loading, selectClub, updateClub, deleteClub } = useClubs();
+  const { clubs, club: current, loading, selectClub, updateClub } = useClubs();
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [error, setError] = useState('');
@@ -43,66 +43,8 @@ export default function ClubsPage() {
     }
   }
 
-  // Deleting a club: show what goes with it, and ask for the club's name before deleting.
-  const [deleting, setDeleting] = useState(null); // { club, preview }
-  const [typed, setTyped] = useState('');
-  const [delBusy, setDelBusy] = useState(false);
-  const [delError, setDelError] = useState('');
-  async function remove(c) {
-    setTyped('');
-    setDelError('');
-    setDeleting({ club: c, preview: null });
-    try {
-      const preview = await api.get(`/api/clubs/${c.id}/delete-preview`);
-      setDeleting({ club: c, preview });
-    } catch (err) {
-      setDelError(err.message);
-    }
-  }
-  async function confirmDelete() {
-    setDelBusy(true);
-    setDelError('');
-    try {
-      await deleteClub(deleting.club.id, typed);
-      setDeleting(null);
-    } catch (err) {
-      setDelError(err.message);
-    } finally {
-      setDelBusy(false);
-    }
-  }
-
   return (
     <AppShell>
-      <Modal open={!!deleting} title={t('clubs.deleteTitle')} onClose={() => setDeleting(null)}>
-        {deleting && (
-          <div className="flex flex-col gap-3 text-sm">
-            <p className="text-gray-200">{t('clubs.deleteIntro', { name: deleting.club.name })}</p>
-            {deleting.preview && (
-              <ul className="rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-red-200 list-disc list-inside">
-                <li>{t('clubs.delMembers', { n: deleting.preview.members })}</li>
-                <li>{t('clubs.delEvents', { n: deleting.preview.events })}</li>
-                <li>{t('clubs.delTournaments', { n: deleting.preview.tournaments })}</li>
-                <li>{t('clubs.delMoney', { n: deleting.preview.transactions })}</li>
-              </ul>
-            )}
-            <label htmlFor="del-club-name" className="text-gray-300">{t('clubs.deleteType', { name: deleting.club.name })}</label>
-            <input id="del-club-name" className="input" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={deleting.club.name} />
-            {delError && <p className="text-red-400">{delError}</p>}
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setDeleting(null)}>{t('common.cancel')}</button>
-              <button
-                type="button"
-                className="rounded-lg px-3 py-2 font-semibold bg-red-500 text-white disabled:opacity-40"
-                disabled={delBusy || typed.trim() !== deleting.club.name.trim()}
-                onClick={confirmDelete}
-              >
-                🗑 {t('clubs.deleteForever')}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
           <h1 className="text-white text-2xl font-bold">{t('clubs.title')}</h1>
@@ -142,7 +84,6 @@ export default function ClubsPage() {
             onSettings={() => setSettingsId(c.id)}
             onProfile={() => setProfileId(c.id)}
             onRename={() => startRename(c)}
-            onDelete={() => remove(c)}
           />
         ))}
       </div>
@@ -165,7 +106,7 @@ export default function ClubsPage() {
 }
 
 // One club: colour band, initial, sport, quick numbers, and what you can do with it.
-function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSaveRename, onCancelRename, onSelect, onOpen, onSettings, onProfile, onRename, onDelete }) {
+function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSaveRename, onCancelRename, onSelect, onOpen, onSettings, onProfile, onRename }) {
   const { t, lang } = useI18n();
   const { data: members } = useLoad(() => api.get(`/api/clubs/${c.id}/members`).catch(() => null), [c.id]);
   const { data: events } = useLoad(() => api.get(`/api/clubs/${c.id}/events`).catch(() => null), [c.id]);
@@ -240,7 +181,8 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
           <button className="btn-secondary text-sm" onClick={onProfile}>🪪 {t('clubProfile.button')}</button>
           <button className="btn-secondary text-sm" onClick={onSettings}>💳 {t('payments.settings')}</button>
           <button className="btn-secondary text-sm" onClick={onRename}>✏️ {t('clubs.rename')}</button>
-          {owner && <button className="text-red-400 hover:text-red-300 text-sm px-2 ml-auto" onClick={onDelete}>🗑 {t('common.delete')}</button>}
+          {/* Only the app owner deletes clubs / communities (Trang Owner); the Host asks for it. */}
+          {owner && <span className="text-gray-500 text-xs ml-auto self-center" title={t('clubs.deleteByOwnerHint')}>🗑 {t('clubs.deleteByOwner')}</span>}
         </div>
       </div>
     </div>

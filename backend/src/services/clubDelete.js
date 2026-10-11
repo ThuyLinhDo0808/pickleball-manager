@@ -1,5 +1,5 @@
-// Deleting a club / community with everything in it — used by the Host ("CLB của tôi")
-// and by the app owner (/owner/hosts/<id>).
+// Deleting a club / community with everything in it — only the app owner does this
+// (/owner/hosts/<id>); hosts cannot.
 const { supabase } = require('../supabase');
 
 // What goes with it: members, sessions / kèo, tournaments, money entries.

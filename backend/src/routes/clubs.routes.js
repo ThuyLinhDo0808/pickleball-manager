@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const express = require('express');
 const { assertCanCreateClub, requireFeature, assertMemberRoom, forgetPlan, getPlan, memberRoom } = require('../services/plan');
 const { supabase } = require('../supabase');
-const clubDelete = require('../services/clubDelete');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
@@ -306,26 +305,11 @@ router.put('/:clubId/images', ownerOnly, async (req, res) => {
 });
 
 // What deleting the club would remove (shown to the Host before they confirm).
-router.get('/:clubId/delete-preview', ownerOnly, async (req, res) => {
-  try {
-    res.json(await clubDelete.preview(req.club));
-  } catch (err) {
-    dbError(res, err);
-  }
-});
-
-// Delete a club with everything in it (services/clubDelete.js).
-router.delete('/:clubId', ownerOnly, async (req, res) => {
-  if (String(req.query.confirm || '').trim() !== req.club.name.trim()) {
-    return res.status(400).json({ error: 'Type the club name to confirm.', code: 'confirm_name' });
-  }
-  try {
-    await clubDelete.remove(req.club);
-    res.status(204).end();
-  } catch (err) {
-    dbError(res, err);
-  }
-});
+// Clubs and communities are deleted only by the app owner (Trang Owner → Host → 🗑 Xoá,
+// routes/owner.routes.js). Hosts and co-admins get a clear refusal.
+const OWNER_DELETES = { error: 'Only the app owner can delete a club or community. Contact the developer.', code: 'owner_only_delete' };
+router.get('/:clubId/delete-preview', (req, res) => res.status(403).json(OWNER_DELETES));
+router.delete('/:clubId', (req, res) => res.status(403).json(OWNER_DELETES));
 
 // ---- Members CRUD -------------------------------------------------------------
 router.get('/:clubId/members', async (req, res) => {

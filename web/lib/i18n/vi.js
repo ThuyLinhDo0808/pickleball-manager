@@ -279,7 +279,7 @@ export const vi = {
     scope_clubs: 'Toàn bộ các CLB',
     scope_xeve: 'Chỉ kèo Xé Vé',
     matrix: 'Quyền của từng vai trò',
-    matrixNote: 'Trọng tài / điều phối không xem được số điện thoại khách hay tài chính. Chỉ chủ CLB được xóa CLB và phân quyền cho người khác.',
+    matrixNote: "Trọng tài / điều phối không xem được số điện thoại khách hay tài chính. Chỉ chủ CLB được phân quyền cho người khác; xoá CLB / cộng đồng chỉ Owner (nhà phát triển) làm được.",
     can_checkIn: 'Check-in người chơi',
     can_scores: 'Nhập tỷ số',
     can_members: 'Quản lý thành viên',
@@ -1431,6 +1431,8 @@ export const vi = {
     notes: 'Ghi chú thêm',
   },
   clubs: {
+    deleteByOwner: "Muốn xoá? Liên hệ nhà phát triển",
+    deleteByOwnerHint: "Chỉ Owner (nhà phát triển) mới xoá được CLB / cộng đồng, để tránh mất dữ liệu thành viên và tiền.",
     deleteTitle: 'Xóa CLB',
     deleteIntro: 'Xóa CLB "{name}" sẽ xóa vĩnh viễn toàn bộ dữ liệu của CLB, không thể khôi phục:',
     delMembers: '{n} thành viên (kèm gói hội viên, ghi chú)',
@@ -2264,7 +2266,7 @@ export const vi = {
   coadmin: {
     verifyNote: 'Người đó đăng nhập (hoặc đăng ký) bằng đúng email này, xác nhận email, rồi chọn workspace "Club" — CLB được chia sẻ sẽ hiện trong danh sách CLB của họ.',
     title: 'Đồng quản trị · {name}',
-    limited: 'Bạn là đồng quản trị CLB này (chủ CLB: {owner}). Bạn có mọi quyền như chủ CLB, trừ xóa CLB.',
+    limited: "Bạn là đồng quản trị CLB này (chủ CLB: {owner}). Bạn có mọi quyền như chủ CLB, trừ phân quyền cho người khác.",
     banner: 'Bạn là đồng quản trị · {name}',
     bannerHint: 'Chủ CLB: {owner} · Toàn quyền quản lý, trừ xoá CLB và phân quyền cho người khác',
     sharedBy: 'Được chia sẻ bởi {owner}',
