@@ -38,7 +38,7 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
         </div>
         <span className="rounded-full border border-current px-2 py-0.5 text-[11px] font-bold uppercase">{t(`creq.status_${r.status}`)}</span>
       </div>
-      <p className="text-sm mt-2">{t(`creq.statusHint_${r.status}`, { tier: String(r.plan_tier || '').toUpperCase() })}</p>
+      <p className="text-sm mt-2">{t(r.kind === 'community' && r.status === 'approved' ? 'creq.statusHint_approvedCommunity' : `creq.statusHint_${r.status}`, { tier: String(r.plan_tier || '').toUpperCase() })}</p>
       {r.owner_note && <p className="text-sm mt-1 text-gray-200">💬 {t('creq.ownerNote')}: {r.owner_note}</p>}
       {/* The plan is paid with the request: transfer details until the money arrives. */}
       {r.status === 'pending' && pay?.status === 'pending' && (
@@ -56,7 +56,7 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
         {r.status === 'pending' && (
           <button type="button" className="btn-secondary !py-1.5 text-sm" disabled={busy} onClick={() => window.confirm(t('creq.cancelConfirm')) && onCancel(r.id)}>{t('creq.cancel')}</button>
         )}
-        {r.status === 'approved' && <Link href="/home" className="btn-primary !py-1.5 text-sm">{t('creq.openClub')}</Link>}
+        {r.status === 'approved' && <Link href="/home" className="btn-primary !py-1.5 text-sm">{t(r.kind === 'community' ? 'creq.openCommunity' : 'creq.openClub')}</Link>}
       </div>
     </div>
   );

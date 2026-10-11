@@ -53,3 +53,48 @@ test('insights: frequency, active/inactive, retention, renewal, revenue, activit
   assert.strictEqual(game.profit_per_session, 150000); assert.strictEqual(game.avg_fill, 25);
   assert.strictEqual(r.summary.sessions, 3);
 });
+
+test('patterns: weekday × hour heatmap, series, people and no-shows', () => {
+  const { hoursOf, weekdayOf } = require('../src/services/insights');
+  assert.deepEqual(hoursOf({ start_time: '18:00:00', end_time: '19:30:00' }), [18, 19]);
+  assert.deepEqual(hoursOf({ start_time: '06:00', end_time: '08:00' }), [6, 7]);
+  assert.deepEqual(hoursOf({ start_time: '20:00' }), [20]);
+  assert.deepEqual(hoursOf({}), []);
+  assert.equal(weekdayOf('2026-10-05'), 0); // Monday
+  assert.equal(weekdayOf('2026-10-11'), 6); // Sunday
+
+  const events = [
+    { id: 'e1', title: 'A', event_date: '2026-10-05', start_time: '18:00', end_time: '20:00', kind: 'game', slots: 4, series_label: 'Series A' },
+    { id: 'e2', title: 'B', event_date: '2026-10-06', start_time: '06:00', end_time: '07:00', kind: 'game', slots: 4, series_label: 'Series B' },
+  ];
+  const participants = [
+    { event_id: 'e1', status: 'checked_in', member_id: 'm1', who: 'm:m1' },
+    { event_id: 'e1', status: 'registered', member_id: null, who: 'p:0901', name: 'Khách' },
+    { event_id: 'e1', status: 'no_show', member_id: null, who: 'p:0902' },
+    { event_id: 'e2', status: 'checked_in', member_id: 'm1', who: 'm:m1' },
+    { event_id: 'e2', status: 'cancelled', member_id: null, who: 'p:0903' },
+  ];
+  const r = insights({
+    members: [{ id: 'm1', full_name: 'An', member_type: 'fixed', is_active: true, joined_on: '2026-09-01' }],
+    events, participants, memberships: [], plans: [],
+    money: [{ type: 'income', amount: 200000, occurred_on: '2026-10-05', event_id: 'e1' }],
+    from: '2026-09-01', to: '2026-10-31', today: '2026-10-11',
+  }).patterns;
+  const cell = (dow, hour) => r.heatmap.cells.find((c) => c.dow === dow && c.hour === hour);
+  assert.equal(cell(0, 18).plays, 2);
+  assert.equal(cell(0, 19).plays, 2);
+  assert.equal(cell(1, 6).fill, 25);
+  assert.equal(r.heatmap.min_hour, 6);
+  assert.equal(r.heatmap.max_hour, 19);
+  assert.equal(r.best_slots[0].avg_players, 2);
+  assert.equal(r.people.unique, 2);
+  assert.equal(r.people.returning, 1);
+  assert.deepEqual(r.people.plays_by, { fixed: 2, guest: 0, walk_in: 1 });
+  assert.equal(r.reliability.signups, 5);
+  assert.equal(r.reliability.no_show_rate, 20);
+  assert.equal(r.reliability.cancel_rate, 20);
+  const a = r.by_series.find((x) => x.label === 'Series A');
+  assert.equal(a.players, 2);
+  assert.equal(a.profit, 200000);
+  assert.deepEqual(r.fill, { full: 0, high: 0, mid: 1, low: 1, open: 0 });
+});
