@@ -168,7 +168,7 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 
 **Bảng thành viên:**
 - Có kẻ ô ngang/dọc.
-- Các cột: **STT · Họ tên · Giới tính · Năm sinh · DUPR · Loại · Hạng**, cùng **Khu vực (quận) → Thời gian chơi (đã chơi bao lâu) → Trình độ (DUPR)** theo đúng thứ tự này, trạng thái gói và số buổi còn lại. **Không còn cột "Hạng thực tế A–D"**: hạng A–D thay đổi liên tục khi CLB có thêm người (người hạng A hôm nay có thể thành B khi có người giỏi hơn vào), nên hạng giờ chỉ xếp **riêng cho từng giải** (xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments)). Bảng xếp hạng chỉ dựa trên trình độ DUPR / trình Host chấm.
+- Các cột: **STT · Họ tên · Hình thức** (*Cố định* / *Giao lưu*) **· Giới tính · Năm sinh · DUPR · Loại · Hạng**, cùng **Khu vực (quận) → Thời gian chơi (đã chơi bao lâu) → Trình độ (DUPR)** theo đúng thứ tự này, trạng thái gói và số buổi còn lại. **Không còn cột "Hạng thực tế A–D"**: hạng A–D thay đổi liên tục khi CLB có thêm người (người hạng A hôm nay có thể thành B khi có người giỏi hơn vào), nên hạng giờ chỉ xếp **riêng cho từng giải** (xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments)). Bảng xếp hạng chỉ dựa trên trình độ DUPR / trình Host chấm. **DUPR luôn hiện 2 chữ số thập phân** (vd *3.00*, *3.20*, *3.25*) ở mọi nơi.
 - Loại: *Cố định* hoặc *Vãng lai/Giao lưu*.
 - **VIP theo gói**: thành viên cố định có gói đang hiệu lực được gắn sao — gói tháng ⭐, quý ⭐⭐, năm ⭐⭐⭐.
 - **Khách giao lưu** không có gói và không có VIP. Đặc quyền duy nhất của khách là **Ưu tiên** kèm **% giảm giá vé** (Host đặt % trong chi tiết người đó).
@@ -204,6 +204,26 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 **Hình thức "--- Chưa xác định":** khi thêm thành viên bằng tay, ô *Hình thức* có thêm lựa chọn **--- Chưa xác định**. Người đó vào thẳng **Danh sách xin gia nhập CLB** (nguồn *Host thêm tay*), chưa chiếm chỗ của gói; khi duyệt Host chọn cố định hay giao lưu.
 
 **⬇ Xuất Excel** (đầu trang, cần gói có tính năng xuất Excel): tải file `.xlsx` gồm toàn bộ thành viên (cố định, giao lưu, đang xem xét, chờ duyệt) với họ tên, nhóm, hạng, giới tính, ngày sinh, SĐT, trình độ, khu vực, thời gian chơi, tháng vào CLB, đang hoạt động, tài khoản liên kết và ghi chú.
+
+**⬆ Nhập Excel** (đầu trang, chủ / đồng quản trị): thêm nhiều thành viên một lúc từ file Excel.
+1. Bấm **⬇ Tải file mẫu (.xlsx)** trong hộp *Nhập thành viên từ Excel*. File có sheet **Thành viên** (dòng tiêu đề + 2 dòng ví dụ *VD: …*, được bỏ qua khi nhập) và sheet **Hướng dẫn** ghi cách điền từng cột. Các cột giống file *Xuất Excel*, nên file xuất ra sửa xong cũng nhập lại được (cột thừa như STT, Tài khoản bị bỏ qua).
+2. Điền mỗi người một dòng, **giữ nguyên dòng tiêu đề**:
+
+   | Cột | Cách điền |
+   |---|---|
+   | **Họ tên \*** | Bắt buộc |
+   | Hình thức | *Cố định* / *Giao lưu* / *Danh sách chờ* — trống = Cố định |
+   | Hội viên | *VIP* / *Thường* (chỉ thành viên cố định) |
+   | Giới tính | *Nam* / *Nữ* |
+   | Ngày sinh | *dd/mm/yyyy* (vd 15/03/1995) hoặc chỉ năm (1995) |
+   | Số điện thoại | vd 0901234567 (nên để ô dạng Text; mất số 0 đầu thì app tự thêm) |
+   | Trình độ (DUPR) | 1.00 – 8.00, làm tròn 2 chữ số thập phân. CLB cầu lông: *Yếu / TB- / TB / TB+ / Khá / Giỏi* |
+   | Khu vực (quận) | tuỳ ý |
+   | Thời gian chơi | *Dưới 6 tháng* / *6 – 12 tháng* / *12 – 18 tháng* / *Trên 18 tháng* |
+   | Thời gian gia nhập | *mm/yyyy* (vd 09/2026) — trống = tháng này |
+   | Ghi chú | tuỳ ý |
+3. Bấm **📄 Chọn file Excel đã điền**: app kiểm tra từng dòng và hiện bảng *Dòng · Họ tên · Kết quả* — *Sẵn sàng*, *Đã có trong CLB — bỏ qua* (trùng SĐT, hoặc trùng tên khi không có SĐT) hoặc lỗi cụ thể (vd *Ngày sinh sai*).
+4. Bấm **Nhập N thành viên**: từng dòng được thêm như khi bấm *+ Thêm thành viên* (giới hạn thành viên của gói vẫn áp dụng; dòng nào không thêm được thì ghi lý do). Tối đa 500 dòng mỗi lần.
 
 **🔗 Link mời:** bật link mời rồi gửi vào nhóm Zalo/Facebook. Người nhận mở `/invite/<mã>`, xem hồ sơ CLB, đăng nhập và bấm **Xin gia nhập** — không cần Host nhập tay. Họ vào **Danh sách xin gia nhập CLB** với nguồn *Từ link mời*. *Tạo link mới* làm link cũ ngừng hoạt động; bỏ tick *Bật link mời* để tắt. (Khác với link tham gia `/join/…` dùng để mua gói hội viên.)
 
@@ -254,7 +274,7 @@ Loại hoạt động sửa được ở trang *Sửa* của buổi.
 **Form tạo / sửa buổi** (lịch hàng tuần và kèo dùng chung):
 - **Địa điểm + Google Maps**: gõ địa chỉ sân, form hiện **bản đồ nhỏ** của địa chỉ đó và link *🗺 Kiểm tra trên Google Maps*. Có thể dán thêm **Link Google Maps của sân** (Google Maps → Chia sẻ → Sao chép đường liên kết). Người chơi bấm vào địa chỉ ở trang đăng ký `/e/…`, vé `/t/…`, trang CLB, *Tìm CLB* và trang họp `/v/…` → mở **Google Maps chỉ đường tới sân** (dùng link của Host nếu có, không thì tìm theo địa chỉ). Không cần API key.
 - **Luật & tài chính**:
-  - **Nội dung chơi**: *Tự do* / *Full nam* / *Full nữ* / *Mix (nam nữ)* — hiện trên trang đăng ký (chỉ để thông báo, app không chặn theo giới tính).
+  - **Nội dung chơi**: *Full nam* / *Full nữ* / *Mix (nam nữ)* (mặc định *Mix*; bỏ lựa chọn *Tự do* vì trùng với Mix — buổi cũ để *Tự do* giờ hiện là *Mix (nam nữ)*) — hiện trên trang đăng ký (chỉ để thông báo, app không chặn theo giới tính).
   - **Dịch vụ bao gồm trong phí** ngay dưới phí tham gia: gõ tự do hoặc bấm nhanh *Bóng · Nước · Hoa quả · Khăn lạnh · Gửi xe*. Trang đăng ký hiện *🎁 Phí đã gồm: …*.
   - **Hạn đăng ký tự động** (mặc định bật, ô *Tự động theo hạn huỷ*): hạn đăng ký = **giờ bắt đầu trừ hạn chót huỷ kèo**. VD bắt đầu 17:00, hạn huỷ *Trước 12 tiếng* → đóng đăng ký lúc **05:00** cùng ngày; không đặt hạn huỷ → đóng đúng giờ bắt đầu. Lịch hàng tuần: mỗi buổi tự tính theo ngày của nó. Bỏ tick để tự chọn ngày giờ. Thiếu người sát giờ chơi: vào trang buổi bấm **🔓 Mở lại đăng ký** (bỏ hạn cũ, mở link đăng ký) để mời thêm người.
   - **💸 Chi phí mỗi buổi**: thêm các khoản Host phải trả cho **mỗi buổi** (*Thuê sân · Nước · HLV · Khác* — *Khác* bắt buộc ghi chú, VD hoa quả). Khi tạo, app **tự ghi khoản chi vào Sổ thu chi đúng ngày của từng buổi** (nhãn *chi phí buổi*). Sửa chi phí ở form sửa buổi thì các khoản cũ được huỷ và ghi lại theo số mới. (Mua bóng vẫn nhập ở Kho bóng.)
@@ -541,7 +561,7 @@ Bấm **＋ Tạo sự kiện mới**. Nếu đang ở chế độ Ngày thì fo
 | Nhóm | Trường |
 |---|---|
 | **1. Thông tin cơ bản** | Tên kèo · **Ngày** (chọn bằng lịch popover) · Giờ bắt đầu · Giờ kết thúc · Địa điểm + **Link Google Maps** (bản đồ xem trước) · Số sân |
-| **2. Luật & tài chính** | Số chỗ · Phí tham gia · **Nội dung chơi** (Tự do / Full nam / Full nữ / Mix) · **Dịch vụ bao gồm trong phí** · DUPR từ–đến · **Hạn chót huỷ kèo** (xem [5.5](#55-chính-sách-huỷ--hoàn-buổi)) · **Hạn đăng ký** (tự động = giờ bắt đầu − hạn huỷ, hoặc tự chọn) · **Chi phí mỗi buổi** (tự ghi vào Sổ thu chi). Chi tiết: [4.5](#45-tạo-hoạt-động-lịch-sự-kiện-lịch-hàng-tuần-giải-đấu-kèo) |
+| **2. Luật & tài chính** | Số chỗ · Phí tham gia · **Nội dung chơi** (Full nam / Full nữ / Mix) · **Dịch vụ bao gồm trong phí** · DUPR từ–đến · **Hạn chót huỷ kèo** (xem [5.5](#55-chính-sách-huỷ--hoàn-buổi)) · **Hạn đăng ký** (tự động = giờ bắt đầu − hạn huỷ, hoặc tự chọn) · **Chi phí mỗi buổi** (tự ghi vào Sổ thu chi). Chi tiết: [4.5](#45-tạo-hoạt-động-lịch-sự-kiện-lịch-hàng-tuần-giải-đấu-kèo) |
 | **3. Lưu ý** | Ghi chú hiện trên trang đăng ký (vd: sân số 3, chuyển khoản trước 20h…) · Cho phép đăng ký qua link · Cho phép *Đăng ký trước, chuyển khoản sau* (khi có phí) |
 | **4. Trạng thái** | *Nháp → Đang mở → Đã đóng → Đã xong*, hoặc *Đã huỷ* |
 

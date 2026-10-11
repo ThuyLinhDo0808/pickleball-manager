@@ -2,14 +2,16 @@
 // same level columns), shown by name.
 export const BADMINTON_LEVELS = [1, 2, 3, 4, 5, 6];
 
-// "TB+", "Khá"... for a badminton step; the DUPR number as typed for pickleball.
+// "TB+", "Khá"... for a badminton step; for pickleball the DUPR number with two
+// decimals (3 -> "3.00", 3.2 -> "3.20").
 export function levelText(value, sport, t) {
   if (value == null || value === '') return null;
   if (sport === 'badminton') {
     const n = Math.round(Number(value));
     return BADMINTON_LEVELS.includes(n) ? t(`level.b${n}`) : String(value);
   }
-  return String(Number(value));
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(2) : String(value);
 }
 
 // Range shown on an event ("TB → Khá", "3.0 – 3.5").

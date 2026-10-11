@@ -23,6 +23,7 @@ import { todayYmd } from '@/lib/dates';
 import { dmy, isBirthdayMonth, my, tenureLabel } from '@/lib/memberDates';
 import { ReviewModal, ReviewTab, InviteModal } from '@/components/MemberModeration';
 import { exportMembers } from '@/lib/exportExcel';
+import ImportMembers from '@/components/ImportMembers';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
@@ -40,6 +41,7 @@ export default function MembersPage() {
   const room = clubInfo?.member_room;
   const placeText = (r) => (r && r.limit != null ? t('plan.places', { used: r.used, limit: r.limit }) : null);
   const [showAdd, setShowAdd] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -172,6 +174,7 @@ export default function MembersPage() {
             <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>⬇ {t('common.exportExcel')}</button>
             {canManage && (
               <>
+                <button className="btn-secondary text-sm" disabled={!club} onClick={() => setImportOpen(true)}>⬆ {t('imp.button')}</button>
                 <button className="btn-secondary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>
                 <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
                   ＋ {t('members.addMember')}
@@ -299,6 +302,7 @@ export default function MembersPage() {
                       </th>
                       <th className="w-12 text-center">{t('members.no')}</th>
                       <th>{t('common.name')}</th>
+                      <th>{t('members.type')}</th>
                       <th>{t('members.gender')}</th>
                       <th>{t('members.birthDate')}</th>
                       <th>{t('members.joined')}</th>
@@ -353,6 +357,11 @@ export default function MembersPage() {
                               )}
                             </div>
                           </div>
+                        </td>
+                        <td className="whitespace-nowrap">
+                          <span className={`text-xs rounded-full border px-2 py-0.5 ${m.member_type === 'fixed' ? 'border-lime-400/50 text-lime-200' : 'border-sky-400/50 text-sky-200'}`}>
+                            {t(m.member_type === 'fixed' ? 'xlsx.place_fixed' : 'xlsx.place_guest')}
+                          </span>
                         </td>
                         <td className="text-gray-300">{m.gender ? t(`members.${m.gender}`) : '—'}</td>
                         <td className="text-gray-300 whitespace-nowrap">
@@ -421,6 +430,7 @@ export default function MembersPage() {
       />
       <ReviewModal club={club} member={reviewing} open={!!reviewing} onClose={() => setReviewing(null)} onDone={() => { setReviewing(null); reload(); pickTab('review'); }} />
       <InviteModal club={club} open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      {club && <ImportMembers open={importOpen} club={club} members={members} sport={sport} onClose={() => setImportOpen(false)} onDone={() => { reload(); reloadRequests(); }} />}
 
       <Modal open={showAdd} title={t('members.newMember')} onClose={closeAdd}>
         <form onSubmit={addMember} className="grid grid-cols-2 gap-3">
