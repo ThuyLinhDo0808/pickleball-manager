@@ -14,6 +14,7 @@ const ROUTES = [
   ['GET', '/hosts/:id', 'hosts'],
   ['POST', '/hosts/:id/notes', 'hosts'],
   ['GET', '/activity/(clubs|xeve)', 'hosts'],
+  ['GET', '/clubs', 'hosts'],
   ['GET', '/club-requests', 'hosts'],
   ['GET', '/club-requests/:id', 'hosts'],
   ['POST', '/club-requests/:id/(approve|reject)', 'hosts'],
