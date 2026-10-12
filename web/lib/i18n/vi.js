@@ -3628,4 +3628,16 @@ export const vi = {
     err_duration: "Thời gian chơi không đúng mẫu",
     err_joined: "Thời gian gia nhập sai (mm/yyyy)",
   },
+  adopt: {
+    title: "Bạn còn {n} kèo lẻ cũ (tạo trước khi có cộng đồng)",
+    hint: "Chuyển chúng vào \"{name}\" để xem, sửa và thống kê cùng các kèo khác.",
+    open: "Chuyển vào cộng đồng",
+    modalTitle: "Chuyển kèo lẻ vào \"{name}\"",
+    explain: "Kèo cùng người đăng ký, tiền thu chi, trận đấu và phân quyền theo kèo sẽ thuộc cộng đồng này. Link đăng ký của kèo giữ nguyên.",
+    all: "Chọn tất cả",
+    none: "Bỏ chọn",
+    move: "Chuyển {n} kèo",
+    kept: "{n} buổi họp / round robin không chuyển được (cộng đồng không có loại này).",
+    done: "Đã chuyển {n} kèo vào \"{name}\".",
+  },
 };

@@ -311,6 +311,41 @@ const OWNER_DELETES = { error: 'Only the app owner can delete a club or communit
 router.get('/:clubId/delete-preview', (req, res) => res.status(403).json(OWNER_DELETES));
 router.delete('/:clubId', (req, res) => res.status(403).json(OWNER_DELETES));
 
+// ---- One-off kèo (made before communities) -> into this community -------------------
+// The Host's old Xé Vé kèo (no club) move into one of their communities: the kèo, its
+// players, money (linked by event), matches and staff grants all follow the event.
+// Meetings / round robin don't exist in communities, so those stay where they are.
+const NOT_IN_COMMUNITY = ['meeting', 'challenge'];
+async function standaloneOf(hostId) {
+  const { data, error } = await supabase.from('events').select('id, title, event_date, start_time, kind, status').eq('host_id', hostId).is('club_id', null).order('event_date', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+router.get('/:clubId/standalone-events', ownerOnly, async (req, res) => {
+  try {
+    const all = await standaloneOf(req.club.host_id);
+    const movable = (req.club.kind || 'club') === 'community' ? all.filter((e) => !NOT_IN_COMMUNITY.includes(e.kind)) : [];
+    res.json({ events: movable, count: movable.length, kept: all.length - movable.length });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+// Body: { event_ids?: [...] } — none = all of them.
+router.post('/:clubId/standalone-events/adopt', ownerOnly, async (req, res) => {
+  if ((req.club.kind || 'club') !== 'community') return res.status(400).json({ error: 'One-off kèo can only move into a community.', code: 'not_community' });
+  const ids = Array.isArray(req.body?.event_ids) ? req.body.event_ids.filter(isUuid) : null;
+  if (ids && !ids.length) return res.status(400).json({ error: 'Pick at least one kèo.', code: 'nothing_picked' });
+  try {
+    let q = supabase.from('events').update({ club_id: req.club.id }).eq('host_id', req.club.host_id).is('club_id', null).not('kind', 'in', `(${NOT_IN_COMMUNITY.join(',')})`);
+    if (ids) q = q.in('id', ids);
+    const { data, error } = await q.select('id');
+    if (error) throw error;
+    res.json({ moved: data.length });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
 // ---- Members CRUD -------------------------------------------------------------
 router.get('/:clubId/members', async (req, res) => {
   const { data, error } = await supabase
