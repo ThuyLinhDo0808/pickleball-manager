@@ -7,6 +7,8 @@ import StatTile from '@/components/ui/StatTile';
 import AdoptStandalone from '@/components/AdoptStandalone';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { hasFeature, planFor } from '@/lib/planFeatures';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
@@ -44,10 +46,13 @@ function Split({ parts }) {
 export default function CommunityOverview({ children }) {
   const { t } = useI18n();
   const { clubs, club, selectClub } = useClubs();
+  const { plan } = useWorkspace();
   const { data, error, reload } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/community-overview`) : Promise.resolve(null)), [club?.id]);
   const m = data?.members;
   const f = data?.finance;
   const r = data?.regularity;
+  // Only buttons the plan allows (the weekly schedule is a Standard feature).
+  const canWeekly = hasFeature(planFor(club, plan), 'weekly_schedule');
   const rules = data?.rules || { active_days: 30, regular_min: 4 };
 
   return (
@@ -59,7 +64,7 @@ export default function CommunityOverview({ children }) {
         actions={
           <>
             <Link href="/events/create" className="btn-primary text-sm">＋ {t('nav.createGame')}</Link>
-            <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>
+            {canWeekly && <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>}
             <Link href="/club-request?kind=community" className="btn-secondary text-sm">＋ {t('social.newCommunity')}</Link>
           </>
         }

@@ -202,6 +202,12 @@ const COLLAPSE_KEY = 'pickleball_nav_collapsed';
 
 // Pages that work without a club; everything else prompts to create one first.
 const NO_CLUB_OK = ['/clubs', '/account', '/staff-access'];
+// Whole days from today (local) to a 'YYYY-MM-DD' date.
+const daysLeft = (ymd) => {
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((Date.parse(`${ymd}T00:00:00Z`) - today) / 86400000);
+};
 
 function Badge({ n, className = '' }) {
   if (!n) return null;
@@ -360,6 +366,14 @@ export default function AppShell({ children }) {
     setSpace(communityMode ? 'community' : null);
     return () => setSpace(null);
   }, [communityMode, setSpace]);
+
+  // Finance overview (charts) is a Standard page; the ledger is in every plan, so a plan
+  // without the charts opens the ledger instead of an upgrade card titled "Thống kê".
+  const financeLocked =
+    pathname === '/finance' && (workspace === 'club' || communityMode) && !hasFeature(planFor(club, plan), featureForPath('/finance', 'club'));
+  useEffect(() => {
+    if (wsReady && financeLocked) router.replace('/finance/ledger');
+  }, [wsReady, financeLocked, router]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white">{t('common.loading')}</div>;
   if (!user) return null;
@@ -555,6 +569,20 @@ export default function AppShell({ children }) {
                   <div className="text-sky-200 font-semibold truncate">{t(clubRole === 'finance' ? 'coadmin.bannerFinance' : clubRole === 'operator' ? 'coadmin.bannerOperator' : 'coadmin.banner', { name: club?.name || '' })}</div>
                   <div className="text-gray-400 text-xs truncate">{t(clubRole === 'finance' ? 'coadmin.bannerHintFinance' : clubRole === 'operator' ? 'coadmin.bannerHintOperator' : 'coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
                 </div>
+              </div>
+            )}
+            {/* The owner's plan ran out / runs out soon: say so on every manager page, with
+                the way to renew (data stays; adding members / clubs stops when it ends). */}
+            {scoped && !coAdmin && plan?.no_plan && plan.clubs_owned > 0 && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-100" role="alert">
+                <span>⚠️ {t('plan.noPlanClubs')}</span>
+                <Link href="/account" className="btn-primary !py-1 text-sm">{t('plan.renew')}</Link>
+              </div>
+            )}
+            {scoped && !coAdmin && !plan?.no_plan && !plan?.trial && plan?.tier_paid_until && daysLeft(plan.tier_paid_until) <= 7 && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+                <span>⏳ {t('plan.expiringSoon', { tier: String(plan.tier).toUpperCase(), n: daysLeft(plan.tier_paid_until) })}</span>
+                <Link href="/account" className="btn-secondary !py-1 text-sm">{t('plan.renew')}</Link>
               </div>
             )}
             {scoped && <BirthdayBanner clubId={club?.id} />}

@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PlayerShell from '@/components/PlayerShell';
 import { ClubProfileFields, ClubImagesPicker } from '@/components/ClubProfileFields';
-import { useI18n } from '@/context/I18nContext';
+import { useI18n, I18nSpace } from '@/context/I18nContext';
+import { translate } from '@/lib/i18n/core';
 import { useAuth } from '@/context/AuthContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useLoad } from '@/lib/useLoad';
@@ -12,6 +13,7 @@ import { formatVnd } from '@/lib/format';
 import { HIGHLIGHTS, suggestTier } from '@/lib/planFeatures';
 import { VIETNAM } from '@/lib/regions';
 import { PlanPaymentBox } from '@/components/PlanModals';
+import { useEnter } from '@/lib/useEnter';
 
 const PAID = ['basic', 'standard', 'advanced', 'pro'];
 const FALLBACK_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
@@ -28,6 +30,7 @@ const STATUS_TONE = {
 // One past / waiting request.
 function RequestCard({ r, onCancel, onRenew, busy }) {
   const { t } = useI18n();
+  const { manageClub } = useEnter();
   const pay = r.payment;
   return (
     <div className={`rounded-2xl border p-4 ${STATUS_TONE[r.status]}`}>
@@ -56,7 +59,10 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
         {r.status === 'pending' && (
           <button type="button" className="btn-secondary !py-1.5 text-sm" disabled={busy} onClick={() => window.confirm(t('creq.cancelConfirm')) && onCancel(r.id)}>{t('creq.cancel')}</button>
         )}
-        {r.status === 'approved' && <Link href="/home" className="btn-primary !py-1.5 text-sm">{t(r.kind === 'community' ? 'creq.openCommunity' : 'creq.openClub')}</Link>}
+        {/* Straight into the new club / community (its manager pages), not back to the home hub. */}
+        {r.status === 'approved' && (r.club_id
+          ? <button type="button" className="btn-primary !py-1.5 text-sm" onClick={() => manageClub(r.club_id)}>{t(r.kind === 'community' ? 'creq.openCommunity' : 'creq.openClub')}</button>
+          : <Link href="/home" className="btn-primary !py-1.5 text-sm">{t(r.kind === 'community' ? 'creq.openCommunity' : 'creq.openClub')}</Link>)}
       </div>
     </div>
   );
@@ -85,7 +91,7 @@ function KindChooser({ onPick }) {
 }
 
 export default function ClubRequestPage() {
-  const { t } = useI18n();
+  const { t, lang, sport: i18nSport } = useI18n();
   const { user } = useAuth();
   const { plan } = useWorkspace();
   const { data, loading, error, reload } = useLoad(() => (user ? api.get('/api/host/club-requests') : Promise.resolve(null)), [user?.id]);
@@ -124,6 +130,9 @@ export default function ClubRequestPage() {
   const covered = !!plan && plan.tier !== 'free' && !plan.trial && (plan.club_limit == null || plan.clubs_owned < plan.club_limit);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Words about the thing being asked for: "CLB" reads "cộng đồng" for a community.
+  const space = kind === 'community' ? 'community' : null;
+  const tk = (key, params) => (space ? translate(lang, key, params, i18nSport, space) : t(key, params));
   const items = data?.items || [];
   const waiting = items.find((r) => r.status === 'pending');
 
@@ -176,7 +185,7 @@ export default function ClubRequestPage() {
   return (
     <PlayerShell>
       <div className="mx-auto max-w-3xl">
-        <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{t('creq.kicker')}</p>
+        <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{tk('creq.kicker')}</p>
         <h1 className="text-white text-2xl font-bold mt-1">{t(kind === 'community' ? 'creq.titleCommunity' : kind === 'club' ? 'creq.title' : 'creq.titlePick')}</h1>
         <p className="text-gray-400 text-sm mt-1 mb-4">{t(kind === 'community' ? 'creq.introCommunity' : kind === 'club' ? 'creq.intro' : 'creq.introPick')}</p>
 
@@ -215,25 +224,51 @@ export default function ClubRequestPage() {
               {STEPS.map((s, i) => (
                 <li key={s} className="flex-1">
                   <span className={`block h-1.5 rounded-full ${i <= step ? 'bg-lime-400' : 'bg-navy-700'}`} />
-                  <span className={`block mt-1 text-[11px] ${i === step ? 'text-white font-semibold' : 'text-gray-500'}`}>{i + 1}. {t(`creq.step_${s}`)}</span>
+                  <span className={`block mt-1 text-[11px] ${i === step ? 'text-white font-semibold' : 'text-gray-500'}`}>{i + 1}. {tk(`creq.step_${s}`)}</span>
                 </li>
               ))}
             </ol>
 
             {step === 0 && (
               <form onSubmit={next} className="card flex flex-col gap-4">
-                <ClubImagesPicker avatar={avatar} cover={cover} onAvatar={setAvatar} onCover={setCover} name={form.name} />
-                <ClubProfileFields form={form} set={set} withName sports={sports} />
+                <I18nSpace space={space}>
+                  <ClubImagesPicker avatar={avatar} cover={cover} onAvatar={setAvatar} onCover={setCover} name={form.name} />
+                  <ClubProfileFields form={form} set={set} withName sports={sports} />
+                </I18nSpace>
                 <div className="flex justify-end">
                   <button className="btn-primary">{t('onb.next')} →</button>
                 </div>
               </form>
             )}
 
-            {step === 1 && (
+            {step === 1 && covered && (
+              // The account's plan already has room: the new club / community runs on that
+              // plan (its member limits too) — no plan to pick and nothing to pay here.
+              <form onSubmit={next} className="flex flex-col gap-3">
+                <div className="card border-lime-400/50">
+                  <p className="text-white font-semibold">✓ {t('creq.coveredNote', { tier: String(plan.tier).toUpperCase() })}</p>
+                  <p className="text-gray-300 text-sm mt-1">
+                    🏠 {plan.club_limit == null ? t('plan.clubsUnlimited') : t('creq.coveredClubs', { used: plan.clubs_owned, limit: plan.club_limit })}
+                    {' · '}👥 {(limits[plan.tier] || {}).fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: limits[plan.tier].fixed, guest: limits[plan.tier].guest })}
+                  </p>
+                </div>
+                {(limits[plan.tier] || {}).fixed != null && Number(form.member_count) > limits[plan.tier].fixed && (
+                  <p className="rounded-xl border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+                    ⚠ {t('creq.coveredTooSmall', { n: form.member_count, tier: String(plan.tier).toUpperCase(), fixed: limits[plan.tier].fixed, suggested: suggested.toUpperCase() })}{' '}
+                    <Link href="/account" className="underline">{t('creq.upgradeLink')}</Link>
+                  </p>
+                )}
+                <div className="flex justify-between">
+                  <button type="button" className="btn-secondary" onClick={() => setStep(0)}>← {t('onb.back')}</button>
+                  <button className="btn-primary">{t('onb.next')} →</button>
+                </div>
+              </form>
+            )}
+
+            {step === 1 && !covered && (
               <form onSubmit={next} className="flex flex-col gap-3">
                 <p className="rounded-xl border border-lime-400/40 bg-lime-400/5 px-3 py-2 text-sm text-lime-100">
-                  💡 {t('creq.suggestion', { n: form.member_count, tier: suggested.toUpperCase() })}
+                  💡 {tk('creq.suggestion', { n: form.member_count, tier: suggested.toUpperCase() })}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t('creq.step_plan')}>
                   {PAID.map((k) => {
@@ -301,7 +336,7 @@ export default function ClubRequestPage() {
                       ['creq.planPicked', covered ? `${String(plan.tier).toUpperCase()} · ${t('creq.covered')}` : `${tier.toUpperCase()} · ${t('plan.nMonths', { n: form.plan_months })} · ${formatVnd(prices[tier] * form.plan_months)}`],
                     ].map(([k, v]) => (
                       <div key={k} className="contents">
-                        <dt className="text-gray-400">{t(k)}</dt>
+                        <dt className="text-gray-400">{tk(k)}</dt>
                         <dd className="text-white break-words">{v}</dd>
                       </div>
                     ))}

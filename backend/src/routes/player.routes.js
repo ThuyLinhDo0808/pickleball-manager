@@ -224,7 +224,7 @@ async function accountInfo(uid) {
   const v3 = !!u && 'onboarded_at' in u;
   let clubRequest = null;
   if (v3) {
-    const { data } = await supabase.from('club_requests').select('id, name, status, owner_note, club_id, created_at, decided_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(1);
+    const { data } = await supabase.from('club_requests').select('id, name, kind, status, owner_note, club_id, created_at, decided_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(1);
     clubRequest = data?.[0] || null;
   }
   return {
