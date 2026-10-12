@@ -30,6 +30,7 @@ Trình duyệt ──HTTPS──> Web (Vercel, Next.js)        chỉ giữ anon 
 | Web (Next.js) | Content-Security-Policy (chỉ script của chính web, chỉ kết nối tới API + Supabase, chỉ nhúng Google Maps (xem trước địa điểm), không cho trang khác nhúng web, cấm plugin), HSTS, `Referrer-Policy` không gửi link chứa token sang web khác, `Permissions-Policy` chỉ cho camera (quét QR), tắt Image Optimizer không dùng tới. |
 | Thư viện | Next.js 15.5.27 + React 19 (đã vá các lỗ hổng critical của Next 14). `npm audit` backend: 0 lỗ hổng. Web: còn cảnh báo `xlsx` (bản npm 0.18.x, chưa có bản vá trên npm) — `xlsx` giờ **chỉ dùng để xuất** Excel; file người dùng tải lên (Nhập thành viên) được đọc bằng `read-excel-file`, nên lỗ hổng khi đọc file độc hại không áp dụng. |
 | Tài khoản | **Xác thực 2 lớp** (mã TOTP 6 số, kiểm tra ở server, gắn với từng phiên đăng nhập Supabase), bắt buộc cho Owner / nhân viên hỗ trợ và hỏi lại mỗi 12 giờ ở Trang Owner; khoá bí mật mã hoá AES-256-GCM, mã khôi phục lưu băm, mỗi mã dùng một lần, tối đa 10 lần thử / 10 phút. **Email báo đăng nhập từ thiết bị mới.** **Đăng xuất khỏi mọi thiết bị** (API từ chối token phát hành trước thời điểm đó). Trang Owner tự đăng xuất sau 30 phút không thao tác. |
+| Dữ liệu cá nhân | Chính sách bảo mật (`/privacy`) + Điều khoản (`/terms`), đồng ý khi đăng ký và khi đổi phiên bản (lưu `terms_version`, `terms_accepted_at`). Người dùng tự tải dữ liệu (JSON, không chứa bí mật) và tự xoá tài khoản. Ảnh chuyển khoản tự xoá sau `PROOF_RETENTION_DAYS` (90) ngày, thiết bị đăng nhập sau 1 năm. |
 | Secret | `.env*` bị git bỏ qua; đã quét repo + lịch sử git: không có key nào bị commit. |
 
 ## 3. Checklist khi deploy (bắt buộc)
@@ -56,3 +57,17 @@ Bộ test tự động (chạy với backend ở chế độ production) kiểm 
 ## 5. Báo lỗ hổng
 
 Gửi qua nút **Góp ý** trong app (ghi "SECURITY") hoặc email cho chủ dự án. Vui lòng không công khai lỗ hổng trước khi được sửa.
+
+## Xử lý sự cố lộ lọt dữ liệu cá nhân
+
+Áp dụng khi nghi ngờ hoặc phát hiện dữ liệu cá nhân bị truy cập, sao chép, sửa hoặc xoá trái phép (ví dụ lộ `SUPABASE_SERVICE_ROLE_KEY`, tài khoản Owner bị chiếm, lỗi phân quyền để người này xem được dữ liệu người khác).
+
+1. **Khoanh vùng ngay (trong vài giờ):**
+   - Lộ khoá: tạo khoá mới trên Supabase / Resend / Render, cập nhật biến môi trường, deploy lại; khoá cũ vô hiệu. Đổi `MFA_ENC_KEY` chỉ khi chính khoá này bị lộ (mọi người sẽ phải bật lại 2 lớp).
+   - Tài khoản bị chiếm: Owner **đình chỉ** tài khoản đó ở Trang Owner; người dùng bấm **Đăng xuất khỏi mọi thiết bị**, đổi mật khẩu, bật 2 lớp.
+   - Lỗi trong code: tắt tính năng liên quan hoặc deploy bản sửa; nếu cần, bật thông báo chung (Trang Owner → Thông báo) báo bảo trì.
+2. **Ghi lại** (trong một tài liệu riêng, không đưa lên repo): thời điểm phát hiện, cách phát hiện, dữ liệu nào / của bao nhiêu người, khoảng thời gian bị lộ, đã làm gì. Nguồn đối chiếu: log Render, log Supabase, Nhật ký Owner, nhật ký thao tác CLB, bảng `login_devices`.
+3. **Thông báo cơ quan có thẩm quyền** về bảo vệ dữ liệu cá nhân (Bộ Công an — A05) **trong 72 giờ** kể từ khi phát hiện, theo mẫu và kênh quy định hiện hành (Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân — nhờ luật sư xác nhận yêu cầu đang áp dụng).
+4. **Thông báo người bị ảnh hưởng** (email qua Resend + thông báo chung trong app): chuyện gì xảy ra, dữ liệu nào bị ảnh hưởng, app đã làm gì, họ nên làm gì (đổi mật khẩu, bật 2 lớp, cảnh giác tin nhắn giả danh CLB đòi chuyển tiền).
+5. **Sau sự cố:** tìm nguyên nhân gốc, thêm test để lỗi không lặp lại, cập nhật tài liệu này.
+

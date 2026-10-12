@@ -20,6 +20,7 @@ const todayYmd = () => new Date().toISOString().slice(0, 10);
 function errorText(err, t) {
   const code = err?.payload?.code;
   if (err?.status === 429) return t('auth.rateLimit');
+  if (code === 'terms_required') return t('legal.termsRequired');
   const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'email_rate_limit', 'auth_unavailable'];
   return known.includes(code) ? t(`auth.err_${code}`) : err?.message || t('common.error');
 }
@@ -96,6 +97,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   // sign up
   const [f, setF] = useState({ username: '', password: '', password2: '', email: '', birth_date: '', gender: '', region: '' });
+  const [agree, setAgree] = useState(false);
   const [nameState, setNameState] = useState(null); // null | 'checking' | 'free' | 'taken' | 'invalid'
   const set = (k) => (e) => setF({ ...f, [k]: typeof e === 'string' ? e : e.target.value });
 
@@ -173,10 +175,11 @@ export default function SignInPage() {
     setError('');
     if (f.password !== f.password2) return setError(t('auth.passwordMismatch'));
     if (nameState === 'taken') return setError(t('auth.err_username_taken'));
+    if (!agree) return setError(t('legal.termsRequired'));
     setBusy(true);
     try {
       const { password2, ...body } = f;
-      const r = await api.publicPost('/api/public/auth/signup', { ...body, username: f.username.trim().toLowerCase(), origin: window.location.origin });
+      const r = await api.publicPost('/api/public/auth/signup', { ...body, username: f.username.trim().toLowerCase(), origin: window.location.origin, accept_terms: agree });
       if (r.session) {
         await adoptSession(r.session);
         router.replace(nextPath());
@@ -310,7 +313,16 @@ export default function SignInPage() {
                   ))}
                 </div>
               </fieldset>
-              <button type="submit" disabled={busy || nameState === 'taken'} className="btn-primary w-full">{busy ? t('auth.working') : t('auth.createAccount')}</button>
+              <label className="flex items-start gap-2 mb-4 text-sm text-gray-300 cursor-pointer">
+                <input type="checkbox" className="mt-1" required checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+                <span>
+                  {t('legal.agreePrefix')}{' '}
+                  <a href="/terms" target="_blank" rel="noopener" className="text-lime-300 underline underline-offset-2">{t('legal.termsTitle')}</a>{' '}
+                  {t('legal.agreeAnd')}{' '}
+                  <a href="/privacy" target="_blank" rel="noopener" className="text-lime-300 underline underline-offset-2">{t('legal.privacyTitle')}</a>.
+                </span>
+              </label>
+              <button type="submit" disabled={busy || nameState === 'taken' || !agree} className="btn-primary w-full">{busy ? t('auth.working') : t('auth.createAccount')}</button>
               <p className="text-sm text-gray-400 text-center mt-5">
                 {t('auth.haveAccountQ')}{' '}
                 <button type="button" className="text-lime-400 font-semibold hover:underline" onClick={() => go('signIn')}>{t('auth.signIn')}</button>
@@ -338,6 +350,11 @@ export default function SignInPage() {
             </div>
           )}
         </div>
+        <p className="mt-4 text-center text-xs text-gray-500">
+          <a href="/terms" className="hover:text-gray-300 underline underline-offset-2">{t('legal.termsTitle')}</a>
+          {' · '}
+          <a href="/privacy" className="hover:text-gray-300 underline underline-offset-2">{t('legal.privacyTitle')}</a>
+        </p>
       </div>
     </div>
   );

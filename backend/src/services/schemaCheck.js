@@ -39,6 +39,8 @@ const PROBES = [
   { table: 'event_participants', column: 'refunded_at', migration: '20261111090000_participant_refunds.sql' },
   { table: 'user_mfa', column: 'secret_enc', migration: '20261113090000_account_security.sql' },
   { table: 'users', column: 'sessions_revoked_at', migration: '20261113090000_account_security.sql' },
+  { table: 'users', column: 'terms_version', migration: '20261114090000_privacy_consent.sql' },
+  { table: 'event_participants', column: 'proof_purged_at', migration: '20261114090000_privacy_consent.sql' },
   { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
   { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
   { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },

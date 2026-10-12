@@ -6,6 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { supabase } = require('../supabase');
 const { rateLimit } = require('../services/rateLimit');
 const security = require('../services/accountSecurity');
+const { LEGAL_VERSION } = require('../services/privacy');
 
 const router = express.Router();
 
@@ -109,6 +110,7 @@ router.post('/signup', tooMany, mails, async (req, res) => {
   if (!GENDERS.includes(b.gender)) return fail('bad_gender', 'Gender is required.');
   const region = String(b.region || '').trim().slice(0, 80);
   if (!region) return fail('bad_region', 'Region is required.');
+  if (b.accept_terms !== true) return fail('terms_required', 'Accept the Terms and the Privacy Policy to sign up.');
   try {
     const { data: taken } = await supabase.from('users').select('id').eq('username', username).maybeSingle();
     if (taken) return fail('username_taken', 'This username is taken.', 409);
@@ -128,7 +130,11 @@ router.post('/signup', tooMany, mails, async (req, res) => {
     // With email confirmation on, an existing email comes back as a user with no identities.
     if (!data.user || (Array.isArray(data.user.identities) && data.user.identities.length === 0)) return fail('email_taken', 'This email already has an account.', 409);
     // The new-user trigger copies the details; set them here too (older databases, races).
-    const { error: uErr } = await supabase.from('users').upsert({ id: data.user.id, email, ...details }, { onConflict: 'id' });
+    let { error: uErr } = await supabase
+      .from('users')
+      .upsert({ id: data.user.id, email, ...details, terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() }, { onConflict: 'id' });
+    // Database without the consent columns yet: save the rest (the app asks again later).
+    if (uErr && uErr.code !== '23505') ({ error: uErr } = await supabase.from('users').upsert({ id: data.user.id, email, ...details }, { onConflict: 'id' }));
     if (uErr?.code === '23505') {
       await supabase.auth.admin.deleteUser(data.user.id).catch(() => {});
       return fail('username_taken', 'This username is taken.', 409);

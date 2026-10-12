@@ -17,7 +17,7 @@ function interpolate(str, params) {
 // Managing a community (Social Manager) with the club pages: "CLB" reads "cộng đồng".
 // These parts talk about clubs and communities side by side (or about the app, plans,
 // the owner console, the player side), so they keep their words.
-const KEEP_NS = new Set(['creq', 'owner', 'ownerReq', 'plan', 'disc', 'hub', 'onb', 'handover', 'deleteAccount', 'auth', 'welcome', 'leaderboard', 'workspace', 'player', 'signup', 'survey', 'vote', 'join', 'notice', 'social', 'finX', 'acct', 'upgrade']);
+const KEEP_NS = new Set(['legal', 'sec', 'creq', 'owner', 'ownerReq', 'plan', 'disc', 'hub', 'onb', 'handover', 'deleteAccount', 'auth', 'welcome', 'leaderboard', 'workspace', 'player', 'signup', 'survey', 'vote', 'join', 'notice', 'social', 'finX', 'acct', 'upgrade']);
 const SWAP = {
   vi: [
     [/Câu lạc bộ/g, 'Cộng đồng'],
