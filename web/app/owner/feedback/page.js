@@ -31,7 +31,7 @@ export default function OwnerFeedbackPage() {
     }
   };
   return (
-    <OwnerShell title={t('owner.tabFeedback')}>
+    <OwnerShell title={t('owner.tabFeedback')} description={t('owner.desc_feedback')}>
       <div className="flex flex-wrap gap-1.5 mb-3">
         {[...STATUSES, ''].map((s) => (
           <button key={s || 'all'} type="button" onClick={() => { setStatus(s); setPage(1); }} className={`rounded-full px-3 py-1 text-sm border ${status === s ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>

@@ -139,8 +139,7 @@ export default function OwnerPromosPage() {
     reload();
   };
   return (
-    <OwnerShell title={t('owner.tabPromos')}>
-      <p className="text-gray-400 text-sm mb-3">{t('owner.promoHint')}</p>
+    <OwnerShell title={t('owner.tabPromos')} description={t('owner.promoHint')}>
       {adding ? (
         <NewCode onDone={() => { setAdding(false); reload(); }} onCancel={() => setAdding(false)} />
       ) : (

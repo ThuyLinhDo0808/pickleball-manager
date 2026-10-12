@@ -83,7 +83,7 @@ export default function OwnerClubRequestsPage() {
   const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
 
   return (
-    <OwnerShell title={t('owner.tabClubRequests')}>
+    <OwnerShell title={t('owner.tabClubRequests')} description={t('owner.desc_requests')}>
       <p className="text-gray-400 text-sm mb-3">{t('ownerReq.intro')}</p>
       <div className="flex flex-wrap gap-1.5 mb-3">
         {STATUSES.map((s) => (

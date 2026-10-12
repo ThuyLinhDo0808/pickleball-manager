@@ -17,8 +17,7 @@ export default function OwnerAuditPage() {
   const { data, error, reload } = useLoad(() => api.get(`/api/owner/audit?page=${page}${action ? `&action=${action}` : ''}`), [page, action]);
   const pages = data ? Math.max(1, Math.ceil(data.total / data.per)) : 1;
   return (
-    <OwnerShell title={t('owner.tabAudit')}>
-      <p className="text-gray-400 text-sm mb-3">{t('owner.auditHint')}</p>
+    <OwnerShell title={t('owner.tabAudit')} description={t('owner.auditHint')}>
       <select className="input text-sm max-w-xs mb-3" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} aria-label={t('owner.filterAction')}>
         {ACTIONS.map((a) => <option key={a} value={a}>{a ? t(`owner.act_${a.replace('.', '_')}`) : t('owner.allActions')}</option>)}
       </select>
