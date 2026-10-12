@@ -53,7 +53,7 @@ export default function OwnerHandoversPage() {
 
   const rows = data?.items || [];
   return (
-    <OwnerShell title={t('owner.tabHandovers')}>
+    <OwnerShell title={t('owner.tabHandovers')} description={t('owner.desc_handovers')}>
       <p className="text-gray-400 text-sm mb-3">{t('handover.ownerIntro')}</p>
       <div className="flex flex-wrap gap-1.5 mb-3">
         {STATUSES.map((s) => (

@@ -46,7 +46,7 @@ export default function OwnerSystemPage() {
     ['tier_self_serve', 'bg-amber-300'],
   ];
   return (
-    <OwnerShell title={t('owner.tabSystem')}>
+    <OwnerShell title={t('owner.tabSystem')} description={t('owner.desc_system')}>
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {data && (

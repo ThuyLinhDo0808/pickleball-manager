@@ -10,35 +10,53 @@ import { api } from '@/lib/api';
 
 const chip = (on) => `rounded-full px-3 py-1 text-sm border ${on ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`;
 
-// One row: name, kind, owner, plan, members, sessions; owners can delete it here.
+const KIND_CHIP = {
+  community: 'bg-amber-300/15 text-amber-200 ring-amber-300/30',
+  club: 'bg-lime-400/10 text-lime-200 ring-lime-400/25',
+};
+
+// One row of the table; owners can open the delete box under it.
 function Row({ c, onDeleted }) {
   const { t } = useI18n();
   const me = useOwnerMe();
   const [del, setDel] = useState(false);
   return (
-    <li className="py-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-white font-semibold truncate">
-            {c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}
-            <span className={`ml-2 align-middle text-[10px] rounded-full border px-1.5 py-0.5 ${c.kind === 'community' ? 'border-amber-300/60 text-amber-200' : 'border-lime-400/50 text-lime-200'}`}>
-              {c.kind === 'community' ? `🎟 ${t('creq.kind_community')}` : `🏟 ${t('creq.kind_club')}`}
-            </span>
-          </div>
-          <Link href={`/owner/hosts/${c.host_id}`} className="text-gray-400 text-xs hover:text-white">{c.owner_email || '—'}</Link>
-          <span className="text-gray-500 text-xs"> · {t('owner.createdOn', { d: fmtDate(c.created_at) })}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <span className="text-gray-300 tabular-nums">👥 {t('owner.fixedGuest', { f: c.members.fixed, g: c.members.guest })}</span>
-          <span className="text-gray-300 tabular-nums">🗓 {t('owner.clubsEvents', { n: c.events })}{c.last_event ? ` · ${t('owner.clubsLast', { d: fmtDate(c.last_event) })}` : ''}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
+    <>
+      <tr className="border-b border-navy-800 hover:bg-navy-800/40 align-middle">
+        <td className="px-3 py-2.5 max-w-[260px]">
+          <div className="text-white font-semibold truncate">{c.name}</div>
+          <div className="text-gray-500 text-xs">{t(`clubs.sport_${c.sport}`)}</div>
+        </td>
+        <td className="px-3 py-2.5 whitespace-nowrap">
+          <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${KIND_CHIP[c.kind]}`}>{t(c.kind === 'community' ? 'creq.kind_community' : 'creq.kind_club')}</span>
+        </td>
+        <td className="px-3 py-2.5 max-w-[220px]">
+          <Link href={`/owner/hosts/${c.host_id}`} className="text-gray-200 hover:text-amber-200 truncate block">{c.owner_email || '—'}</Link>
+          <span className={`mt-0.5 inline-block rounded px-1.5 text-[10px] font-bold uppercase ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
+        </td>
+        <td className="px-3 py-2.5 tabular-nums whitespace-nowrap">
+          <span className="text-white font-semibold">{c.members.fixed + c.members.guest}</span>
+          <span className="text-gray-500 text-xs"> · {t('owner.fixedGuest', { f: c.members.fixed, g: c.members.guest })}</span>
+        </td>
+        <td className="px-3 py-2.5 tabular-nums whitespace-nowrap">
+          <span className="text-white font-semibold">{c.events}</span>
+          <span className="text-gray-500 text-xs block">{c.last_event ? t('owner.clubsLast', { d: fmtDate(c.last_event) }) : '—'}</span>
+        </td>
+        <td className="px-3 py-2.5 text-gray-400 text-xs whitespace-nowrap">{fmtDate(c.created_at)}</td>
+        <td className="px-3 py-2.5 text-right whitespace-nowrap">
           {me?.owner && (
-            <button type="button" className="text-red-300 hover:underline" onClick={() => setDel(!del)}>🗑 {t('owner.delClubBtn')}</button>
+            <button type="button" onClick={() => setDel(!del)} className={`rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${del ? 'bg-red-500/20 text-red-200 ring-red-400/40' : 'text-red-300 ring-red-400/30 hover:bg-red-500/10'}`}>
+              {t('owner.delClubBtn')}
+            </button>
           )}
-        </div>
-      </div>
-      {del && <DeleteClub club={c} onDone={() => { setDel(false); onDeleted(); }} />}
-    </li>
+        </td>
+      </tr>
+      {del && (
+        <tr className="border-b border-navy-800">
+          <td colSpan={7} className="px-3 pb-3"><DeleteClub club={c} onDone={() => { setDel(false); onDeleted(); }} /></td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -57,12 +75,11 @@ export default function OwnerClubsPage() {
   const { data, error, reload } = useLoad(() => api.get(`/api/owner/clubs?page=${page}&kind=${kind}&sort=${sort}&q=${encodeURIComponent(query)}`), [page, kind, sort, query]);
   const tot = data?.totals;
   return (
-    <OwnerShell title={t('owner.tabClubs')}>
-      <p className="text-gray-400 text-sm mb-3">{t('owner.clubsHint')}</p>
+    <OwnerShell title={t('owner.tabClubs')} description={t('owner.clubsHint')}>
       <div className="flex flex-wrap gap-1.5 mb-2" role="tablist">
         {['all', 'club', 'community'].map((k) => (
           <button key={k} type="button" role="tab" aria-selected={kind === k} className={chip(kind === k)} onClick={() => { setKind(k); setPage(1); }}>
-            {t(`owner.clubsKind_${k}`)}{tot ? ` (${tot[k]})` : ''}
+            {t(`owner.clubsKind_${k}`)}{tot ? <span className="ml-1 opacity-70 tabular-nums">{tot[k]}</span> : null}
           </button>
         ))}
       </div>
@@ -77,9 +94,17 @@ export default function OwnerClubsPage() {
       {data && <p className="text-gray-500 text-xs mb-2">{t('owner.nResults', { n: data.total })}</p>}
       {data && data.rows.length === 0 && <p className="card text-gray-500 text-sm">{t('owner.noResults')}</p>}
       {data && data.rows.length > 0 && (
-        <ul className="card !py-1 divide-y divide-navy-700">
-          {data.rows.map((c) => <Row key={c.id} c={c} onDeleted={reload} />)}
-        </ul>
+        <div className="rounded-xl border border-navy-700 bg-navy-900/60 overflow-x-auto">
+          <table className="w-full text-sm min-w-[860px]">
+            <thead className="text-gray-400 text-xs text-left bg-navy-900">
+              <tr className="border-b border-navy-700">
+                {['colName', 'colKind', 'colOwner', 'colMembers', 'colSessions', 'colCreated'].map((k) => <th key={k} className="px-3 py-2.5 font-medium">{t(`owner.clubs_${k}`)}</th>)}
+                <th className="px-3 py-2.5" />
+              </tr>
+            </thead>
+            <tbody>{data.rows.map((c) => <Row key={c.id} c={c} onDeleted={reload} />)}</tbody>
+          </table>
+        </div>
       )}
       <Pager page={page} pages={data?.pages} onPage={setPage} />
     </OwnerShell>

@@ -79,8 +79,7 @@ export default function OwnerSupportPage() {
     reload();
   };
   return (
-    <OwnerShell title={t('owner.tabSupport')}>
-      <p className="text-gray-400 text-sm mb-4">{t('owner.supportHint')}</p>
+    <OwnerShell title={t('owner.tabSupport')} description={t('owner.supportHint')}>
       <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4 items-start">
         <form onSubmit={add} className="card !p-4 flex flex-col gap-3">
           <h2 className="text-white font-semibold">➕ {t('owner.supportAdd')}</h2>

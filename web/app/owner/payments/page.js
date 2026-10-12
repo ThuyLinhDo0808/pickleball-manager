@@ -62,7 +62,6 @@ function Payments() {
 
   return (
     <>
-      <p className="text-gray-400 text-sm mb-4">{t('admin.hint')}</p>
       <div className="flex flex-wrap items-end gap-2 mb-4">
         <div className="flex flex-wrap gap-1.5">
           {STATUSES.map((s) => (
@@ -129,7 +128,7 @@ function Payments() {
 export default function OwnerPaymentsPage() {
   const { t } = useI18n();
   return (
-    <OwnerShell title={t('admin.title')}>
+    <OwnerShell title={t('admin.title')} description={t('admin.hint')}>
       <Suspense fallback={null}>
         <Payments />
       </Suspense>

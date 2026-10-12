@@ -102,8 +102,7 @@ export default function OwnerActivityPage() {
   const { t } = useI18n();
   const [tab, setTab] = useState('clubs');
   return (
-    <OwnerShell title={t('owner.tabActivity')}>
-      <p className="text-gray-400 text-sm mb-3">{t('owner.activityHint')}</p>
+    <OwnerShell title={t('owner.tabActivity')} description={t('owner.activityHint')}>
       <div className="flex gap-1.5 mb-4" role="tablist">
         {['clubs', 'xeve'].map((k) => <button key={k} type="button" role="tab" aria-selected={tab === k} className={chip(tab === k)} onClick={() => setTab(k)}>{t(`owner.act_tab_${k}`)}</button>)}
       </div>

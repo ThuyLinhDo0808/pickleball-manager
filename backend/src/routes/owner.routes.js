@@ -54,7 +54,29 @@ const wrap = (fn) => async (req, res) => {
   }
 };
 
-router.get('/me', (req, res) => res.json({ owner: !!req.console.owner, support: !!req.console.support, permissions: req.console.permissions, email: req.hostEmail }));
+// Who is using the console, plus how many things wait for them (sidebar badges): plan
+// orders to confirm, club requests, account handovers, new feedback — only the parts
+// this person may open. A count that fails (older database) is just left out.
+router.get('/me', wrap(async (req, res) => {
+  const can = (perm) => support.can(req.console, perm);
+  const count = async (table, status) => {
+    const { count: n, error } = await supabase.from(table).select('id', { count: 'exact', head: true }).eq('status', status);
+    return error ? null : n || 0;
+  };
+  const [payments, clubRequests, handovers, feedback] = await Promise.all([
+    can('payments') ? count('plan_payments', 'pending') : null,
+    can('hosts') ? count('club_requests', 'pending') : null,
+    req.console.owner ? count('account_handovers', 'pending') : null,
+    can('feedback') ? count('feedback', 'new') : null,
+  ]);
+  res.json({
+    owner: !!req.console.owner,
+    support: !!req.console.support,
+    permissions: req.console.permissions,
+    email: req.hostEmail,
+    todo: { payments, club_requests: clubRequests, handovers, feedback },
+  });
+}));
 
 // ---- Support staff (owners only) ----------------------------------------------------
 

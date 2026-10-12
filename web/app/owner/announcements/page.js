@@ -98,8 +98,7 @@ export default function OwnerAnnouncementsPage() {
     reload();
   };
   return (
-    <OwnerShell title={t('owner.tabAnnouncements')}>
-      <p className="text-gray-400 text-sm mb-3">{t('owner.annHint')}</p>
+    <OwnerShell title={t('owner.tabAnnouncements')} description={t('owner.annHint')}>
       {adding ? (
         <Form onDone={() => { setAdding(false); reload(); }} onCancel={() => setAdding(false)} />
       ) : (

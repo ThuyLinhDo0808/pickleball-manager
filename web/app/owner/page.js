@@ -1,37 +1,73 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import OwnerShell, { fmtDate, TIER_BADGE } from '@/components/OwnerShell';
+import OwnerShell, { fmtDate, TIER_BADGE, OwnerIcon, OwnerSection, useOwnerMe } from '@/components/OwnerShell';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 
-// This week vs last week, with the % change (no arrow when there is nothing to compare).
+// This week vs last week: a small coloured pill (no pill when there is nothing to compare).
 function Change({ w }) {
   const { t } = useI18n();
   if (w.change == null) return <span className="text-gray-500 text-xs">{t('owner.lastWeek', { n: w.last })}</span>;
   const up = w.change >= 0;
   return (
-    <span className="text-xs">
-      <span className={up ? 'text-lime-300' : 'text-red-300'}>{up ? '▲' : '▼'} {Math.abs(w.change)}%</span>
-      <span className="text-gray-500"> · {t('owner.lastWeek', { n: w.last })}</span>
+    <span className="flex items-center gap-1.5 text-xs">
+      <span className={`rounded-md px-1.5 py-0.5 font-semibold tabular-nums ${up ? 'bg-lime-400/15 text-lime-300' : 'bg-red-500/15 text-red-300'}`}>{up ? '▲' : '▼'} {Math.abs(w.change)}%</span>
+      <span className="text-gray-500">{t('owner.lastWeek', { n: w.last })}</span>
     </span>
   );
 }
 
-function Tile({ label, value, sub, href }) {
+// One number: small uppercase label, the value, a line under it. Clickable when `href`.
+function Tile({ label, value, sub, href, tone = 'text-white' }) {
   const body = (
     <>
-      <div className="text-gray-400 text-xs">{label}</div>
-      <div className="text-white text-2xl font-bold tabular-nums mt-0.5">{value}</div>
-      {sub && <div className="mt-1">{sub}</div>}
+      <div className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider">{label}</div>
+      <div className={`text-[28px] leading-9 font-bold tabular-nums mt-1 ${tone}`}>{value}</div>
+      <div className="mt-1.5 min-h-[1.25rem]">{sub}</div>
     </>
   );
+  const cls = 'rounded-xl border border-navy-700 bg-navy-900/60 p-4';
   return href ? (
-    <Link href={href} className="card !p-4 hover:border-amber-300/50 block">{body}</Link>
+    <Link href={href} className={`${cls} block transition hover:border-amber-300/40 hover:bg-navy-900`}>{body}</Link>
   ) : (
-    <div className="card !p-4">{body}</div>
+    <div className={cls}>{body}</div>
+  );
+}
+
+// "Cần xử lý": what waits for the owner right now, each linking to its page.
+function Todo() {
+  const { t } = useI18n();
+  const me = useOwnerMe();
+  const items = [
+    ['payments', '/owner/payments', 'payments', 'owner.todo_payments'],
+    ['club_requests', '/owner/club-requests', 'requests', 'owner.todo_requests'],
+    ['handovers', '/owner/handovers', 'handovers', 'owner.todo_handovers'],
+    ['feedback', '/owner/feedback', 'feedback', 'owner.todo_feedback'],
+  ].filter(([k]) => me?.todo?.[k] != null);
+  if (!items.length) return null;
+  const total = items.reduce((n, [k]) => n + (me.todo[k] || 0), 0);
+  return (
+    <OwnerSection title={t('owner.todoTitle')} hint={total ? t('owner.todoHint', { n: total }) : t('owner.todoNone')}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {items.map(([k, href, icon, label]) => {
+          const n = me.todo[k] || 0;
+          return (
+            <Link key={k} href={href} className={`flex items-center gap-3 rounded-xl border p-4 transition ${n ? 'border-amber-300/40 bg-amber-300/5 hover:bg-amber-300/10' : 'border-navy-700 bg-navy-900/40 hover:border-navy-600'}`}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${n ? 'bg-amber-300 text-navy-950' : 'bg-navy-800 text-gray-500'}`}>
+                <OwnerIcon name={icon} className="w-5 h-5" />
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-2xl font-bold tabular-nums leading-7 ${n ? 'text-white' : 'text-gray-500'}`}>{n}</span>
+                <span className="block text-xs text-gray-400 leading-snug">{t(label)}</span>
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </OwnerSection>
   );
 }
 
@@ -40,12 +76,12 @@ function DailyBars({ rows, label }) {
   const { t } = useI18n();
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
-    <div className="card !p-4">
+    <div className="rounded-xl border border-navy-700 bg-navy-900/60 p-4">
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="text-white font-semibold text-sm">{label}</h3>
         <span className="text-gray-500 text-xs">{t('owner.last14')}</span>
       </div>
-      <div className="flex items-end gap-[2px] h-28" role="img" aria-label={`${label}: ${rows.map((r) => `${fmtDate(r.date)} ${r.count}`).join(', ')}`}>
+      <div className="flex items-end gap-[2px] h-28 border-b border-navy-700" role="img" aria-label={`${label}: ${rows.map((r) => `${fmtDate(r.date)} ${r.count}`).join(', ')}`}>
         {rows.map((r) => (
           <div key={r.date} className="group relative flex-1 h-full flex items-end" title={`${fmtDate(r.date)}: ${r.count}`}>
             <div className="w-full rounded-t bg-lime-400/80 group-hover:bg-lime-300" style={{ height: `${Math.max(r.count ? 4 : 0, (r.count / max) * 100)}%` }} />
@@ -91,89 +127,63 @@ export default function OwnerOverview() {
   const { data: d, error } = useLoad(() => api.get('/api/owner/overview'), []);
 
   return (
-    <OwnerShell title={t('owner.tabOverview')}>
+    <OwnerShell title={t('owner.tabOverview')} description={d ? t('owner.totals', { accounts: d.totals.accounts, hosts: d.totals.hosts, clubs: d.totals.clubs, players: d.totals.players }) : null}
+      actions={d?.suspended > 0 ? <Link href="/owner/hosts?filter=suspended" className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-1.5 text-sm text-red-200 hover:bg-red-500/20">{t('owner.suspendedN', { n: d.suspended })}</Link> : null}>
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && (
-        <div className="flex flex-col gap-6">
-          <section>
-            <h2 className="text-gray-300 text-sm font-semibold mb-2">📈 {t('owner.growth')}</h2>
+        <div className="flex flex-col gap-8">
+          <Todo />
+
+          <OwnerSection title={t('owner.growth')} hint={t('owner.growthHint')}>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Tile label={t('owner.newHosts')} value={d.growth.hosts.this} sub={<Change w={d.growth.hosts} />} />
               <Tile label={t('owner.newClubs')} value={d.growth.clubs.this} sub={<Change w={d.growth.clubs} />} />
               <Tile label={t('owner.newPlayers')} value={d.growth.players.this} sub={<Change w={d.growth.players} />} />
-              <Tile
-                label={t('owner.conversion')}
-                value={`${d.conversion.rate}%`}
-                sub={<span className="text-gray-500 text-xs">{t('owner.conversionSub', { paying: d.conversion.paying, hosts: d.conversion.hosts })}</span>}
-                href="/owner/hosts?filter=paying"
-              />
+              <Tile label={t('owner.conversion')} value={`${d.conversion.rate}%`} sub={<span className="text-gray-500 text-xs">{t('owner.conversionSub', { paying: d.conversion.paying, hosts: d.conversion.hosts })}</span>} href="/owner/hosts?filter=paying" />
             </div>
-            <p className="text-gray-500 text-xs mt-2">
-              {t('owner.totals', { accounts: d.totals.accounts, hosts: d.totals.hosts, clubs: d.totals.clubs, players: d.totals.players })}
-              {d.suspended > 0 && <> · <Link href="/owner/hosts?filter=suspended" className="text-red-300 underline">{t('owner.suspendedN', { n: d.suspended })}</Link></>}
-            </p>
-          </section>
+          </OwnerSection>
 
-          <section>
-            <h2 className="text-gray-300 text-sm font-semibold mb-2">🏓 {t('owner.usage')}</h2>
+          <OwnerSection title={t('owner.revenue')} hint={t('owner.revenueHint')} action={<Link href="/owner/payments?status=paid" className="text-amber-300 text-sm hover:underline">{t('owner.seeAll')} →</Link>}>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <Tile label={t('owner.cashMonth', { m: d.revenue.month.split('-').reverse().join('/') })} value={formatVnd(d.revenue.cash_this_month)} tone="text-lime-300" sub={<span className="text-gray-500 text-xs">{t('owner.cashLast', { v: formatVnd(d.revenue.cash_last_month) })}</span>} href="/owner/payments?status=paid" />
+              <Tile label="MRR" value={formatVnd(d.revenue.mrr)} sub={<span className="text-gray-500 text-xs">{t('owner.mrrHint')}</span>} />
+              <Tile label="ARPU" value={formatVnd(d.arpu)} sub={<span className="text-gray-500 text-xs">{t('owner.arpuHint')}</span>} />
+              <Tile label={t('owner.renewalRate')} value={d.revenue.renewal.rate == null ? '—' : `${d.revenue.renewal.rate}%`} sub={<span className="text-gray-500 text-xs">{t('owner.renewalSub', { r: d.revenue.renewal.renewed, l: d.revenue.renewal.lapsed })}</span>} />
+            </div>
+          </OwnerSection>
+
+          <OwnerSection title={t('owner.plansMix')} hint={t('owner.plansMixHint')}>
+            <div className="grid lg:grid-cols-[2fr_1fr] gap-3 items-stretch">
+              <div className="rounded-xl border border-navy-700 bg-navy-900/60 p-4">
+                <TierMix mix={d.tiers} />
+              </div>
+              <Tile label={t('owner.trialConversion')} value={d.trials.rate == null ? '—' : `${d.trials.rate}%`} sub={<span className="text-gray-500 text-xs">{t('owner.trialConvSub', { c: d.trials.converted, e: d.trials.ended })}</span>} />
+            </div>
+          </OwnerSection>
+
+          <OwnerSection title={t('owner.usage')} hint={t('owner.usageHint')} action={<Link href="/owner/activity" className="text-amber-300 text-sm hover:underline">{t('owner.seeAll')} →</Link>}>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Tile label={t('owner.xeveToday')} value={d.usage.xeve.today} />
               <Tile label={t('owner.xeveWeek')} value={d.usage.xeve.this} sub={<Change w={d.usage.xeve} />} />
               <Tile label={t('owner.tourToday')} value={d.usage.tournaments.today} />
               <Tile label={t('owner.tourWeek')} value={d.usage.tournaments.this} sub={<Change w={d.usage.tournaments} />} />
             </div>
-          </section>
-
-          <section>
-            <h2 className="text-gray-300 text-sm font-semibold mb-2">💰 {t('owner.revenue')}</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Tile
-                label={t('owner.cashMonth', { m: d.revenue.month.split('-').reverse().join('/') })}
-                value={formatVnd(d.revenue.cash_this_month)}
-                sub={<span className="text-gray-500 text-xs">{t('owner.cashLast', { v: formatVnd(d.revenue.cash_last_month) })}</span>}
-                href="/owner/payments?status=paid"
-              />
-              <Tile label="MRR" value={formatVnd(d.revenue.mrr)} sub={<span className="text-gray-500 text-xs">{t('owner.mrrHint')}</span>} />
-              <Tile
-                label={t('owner.pendingOrders')}
-                value={d.revenue.pending_orders}
-                sub={d.revenue.pending_orders > 0 ? <span className="text-amber-300 text-xs">{t('owner.goConfirm')} →</span> : null}
-                href="/owner/payments"
-              />
-              <Tile
-                label={t('owner.renewalRate')}
-                value={d.revenue.renewal.rate == null ? '—' : `${d.revenue.renewal.rate}%`}
-                sub={<span className="text-gray-500 text-xs">{t('owner.renewalSub', { r: d.revenue.renewal.renewed, l: d.revenue.renewal.lapsed })}</span>}
-              />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-gray-300 text-sm font-semibold mb-2">💎 {t('owner.plansMix')}</h2>
-            <div className="grid lg:grid-cols-[2fr_1fr] gap-3 items-start">
-              <div className="card !p-4">
-                <TierMix mix={d.tiers} />
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                <Tile label="ARPU" value={formatVnd(d.arpu)} sub={<span className="text-gray-500 text-xs">{t('owner.arpuHint')}</span>} />
-                <Tile
-                  label={t('owner.trialConversion')}
-                  value={d.trials.rate == null ? '—' : `${d.trials.rate}%`}
-                  sub={<span className="text-gray-500 text-xs">{t('owner.trialConvSub', { c: d.trials.converted, e: d.trials.ended })}</span>}
-                />
-              </div>
-            </div>
-          </section>
+          </OwnerSection>
 
           <div className="grid lg:grid-cols-2 gap-3">
-            <section className="card !p-4">
+            <DailyBars rows={d.daily.accounts} label={t('owner.dailyAccounts')} />
+            <DailyBars rows={d.daily.clubs} label={t('owner.dailyClubs')} />
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-3 items-start">
+            <section className="rounded-xl border border-navy-700 bg-navy-900/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
-                <h2 className="text-white font-semibold text-sm">🧪 {t('owner.trialsNow', { n: d.trials.active.length })}</h2>
-                <Link href="/owner/hosts?filter=trial" className="text-amber-300 text-xs">{t('owner.seeAll')} →</Link>
+                <h2 className="text-white font-semibold text-sm">{t('owner.trialsNow', { n: d.trials.active.length })}</h2>
+                <Link href="/owner/hosts?filter=trial" className="text-amber-300 text-xs hover:underline">{t('owner.seeAll')} →</Link>
               </div>
               {d.trials.active.length === 0 ? (
-                <p className="text-gray-500 text-sm">{t('owner.noTrials')}</p>
+                <p className="text-gray-500 text-sm py-2">{t('owner.noTrials')}</p>
               ) : (
                 <ul className="divide-y divide-navy-700">
                   {d.trials.active.slice(0, 8).map((x) => (
@@ -187,23 +197,19 @@ export default function OwnerOverview() {
                 </ul>
               )}
             </section>
-            <DailyBars rows={d.daily.clubs} label={t('owner.dailyClubs')} />
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-3">
-            <section className="card !p-4">
+            <section className="rounded-xl border border-navy-700 bg-navy-900/60 p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
-                <h2 className="text-white font-semibold text-sm">⏰ {t('owner.expiring')}</h2>
+                <h2 className="text-white font-semibold text-sm">{t('owner.expiring')}</h2>
                 <div className="flex gap-1">
                   {[3, 7].map((n) => (
-                    <button key={n} type="button" onClick={() => setDays(n)} className={`rounded-full px-2.5 py-0.5 text-xs border ${days === n ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>
+                    <button key={n} type="button" onClick={() => setDays(n)} className={`rounded-md px-2.5 py-0.5 text-xs border ${days === n ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>
                       {t('owner.inDays', { n })}
                     </button>
                   ))}
                 </div>
               </div>
               {d.expiring.filter((x) => x.days_left <= days).length === 0 ? (
-                <p className="text-gray-500 text-sm">{t('owner.noneExpiring')}</p>
+                <p className="text-gray-500 text-sm py-2">{t('owner.noneExpiring')}</p>
               ) : (
                 <ul className="divide-y divide-navy-700">
                   {d.expiring.filter((x) => x.days_left <= days).map((x) => (
@@ -220,7 +226,6 @@ export default function OwnerOverview() {
                 </ul>
               )}
             </section>
-            <DailyBars rows={d.daily.accounts} label={t('owner.dailyAccounts')} />
           </div>
         </div>
       )}

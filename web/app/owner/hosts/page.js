@@ -129,7 +129,7 @@ function HostList() {
 export default function OwnerHostsPage() {
   const { t } = useI18n();
   return (
-    <OwnerShell title={t('owner.tabHosts')}>
+    <OwnerShell title={t('owner.tabHosts')} description={t('owner.desc_hosts')}>
       <Suspense fallback={null}>
         <HostList />
       </Suspense>
