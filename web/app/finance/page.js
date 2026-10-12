@@ -14,6 +14,7 @@ import { formatVnd } from '@/lib/format';
 import { todayYmd } from '@/lib/dates';
 
 import { categoryLabel, EXPENSE_COLOR, INCOME_COLOR } from '@/lib/finance';
+import LockedFeature from '@/components/LockedFeature';
 
 function Tile({ icon, label, value, tone = 'text-white', sub }) {
   return (

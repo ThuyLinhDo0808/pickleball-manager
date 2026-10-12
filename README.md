@@ -1101,6 +1101,7 @@ supabase/migrations/
 └── 20261109090000_communities.sql                   # Social Manager: clubs.kind ('club' / 'community'), club_requests.kind, events.series_label (Series A, B…); dựng lại v_event_summary
 └── 20261110090000_social_manager_tiers.sql          # Social Manager thành gói riêng 4 cấp: host_subscriptions.sm_tier (ai đã mua add-on cũ → Basic)
 └── 20261111090000_participant_refunds.sql           # hoàn tiền khi huỷ: event_participants.refunded_at, refund_amount, refunded_by, refund_txn_id
+└── 20261112090000_security_lockdown.sql             # bảo mật: khoá quyền anon/authenticated trên schema public, view chạy với quyền người gọi, bật RLS mọi bảng — CHẠY SAU CÙNG
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1131,7 +1132,10 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `SUPABASE_URL` | ✅ | URL project Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Service role key — **bí mật** |
 | `PORT` | | Cổng API (mặc định `4000`; Render tự đặt) |
-| `CORS_ORIGIN` | | Domain web được phép gọi API (mặc định `*`) |
+| `CORS_ORIGIN` | ✅ (production) | Domain web được phép gọi API, ngăn bằng dấu phẩy. Bỏ trống thì dùng `PUBLIC_WEB_URL`. **Khi `NODE_ENV=production` mà không có cả hai (hoặc đặt `*`), API từ chối khởi động** để không vô tình mở API cho mọi trang web. Chạy trên máy (không production) thì cho mọi domain. |
+| `NODE_ENV` | ✓ (production) | Đặt `production` trên Render: ẩn chi tiết lỗi database khỏi người dùng (vẫn ghi trong log) |
+| `TRUST_PROXY_HOPS` | | Số proxy đứng trước API (mặc định 1 — đúng với Render) để rate limit thấy IP thật |
+| `RATE_LIMIT_API` | | Số request / phút / IP cho toàn API (mặc định 600) |
 | `APP_TZ` | | Múi giờ tính ngày/kỳ (mặc định `Asia/Ho_Chi_Minh`) |
 | `ALLOW_TIER_SELF_SERVE` | | `true` cho phép Host tự đổi gói dịch vụ và tự bật Social Manager (không qua thanh toán, chỉ để thử nghiệm). **Để `false` hoặc bỏ trống trên production** để bắt buộc chuyển khoản. Owner có thể ghi đè giá trị này ở **Trang Owner → Hệ thống** (lưu trong bảng `app_settings`, ưu tiên hơn biến môi trường). |
 | `CLUB_APPROVAL` | | Mặc định bật: CLB mới phải gửi yêu cầu và chờ Owner duyệt (`POST /api/clubs` trả `403 club_request_required`). Đặt `false` để ai cũng tạo CLB ngay (chỉ nên dùng khi thử nghiệm). Owner có thể ghi đè ở **Trang Owner → Hệ thống → Duyệt CLB mới** (bảng `app_settings`). |
@@ -1146,7 +1150,7 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `FEEDBACK_WEBHOOK_URL` | | Gửi góp ý dạng JSON tới webhook |
 | `FEEDBACK_WEBHOOK_SECRET` | | Gửi kèm header `X-Feedback-Secret` |
 | `PUBLIC_WEB_URL` | | Địa chỉ web (ví dụ `https://pickleball-manager.vercel.app`) để đưa link vé / link thanh toán / link khảo sát vào tin nhắn. Bỏ trống thì dùng `CORS_ORIGIN` nếu là https. |
-| `SUPABASE_ANON_KEY` | | Tuỳ chọn: anon key của Supabase, backend dùng khi đăng nhập / đăng ký / quên mật khẩu thay cho người dùng (bỏ trống thì dùng service role key). |
+| `SUPABASE_ANON_KEY` | | Nên đặt: anon key của Supabase, backend dùng khi đăng nhập / đăng ký / quên mật khẩu thay cho người dùng (bỏ trống thì dùng service role key). Có key này thì `/health/schema` còn tự kiểm tra **anon key có đọc trộm được bảng không** — đọc được nghĩa là chưa chạy migration `20261112090000_security_lockdown.sql`. |
 | `NOTIFY_FROM_EMAIL` | | Tuỳ chọn: địa chỉ gửi email thông báo cho người chơi (được đẩy lên, xác nhận/từ chối chuyển khoản, huỷ kèo, khảo sát sau buổi). Cần `RESEND_API_KEY` và tên miền đã xác minh trên Resend, ví dụ `Pickleball Manager <thongbao@ten-mien-cua-ban.vn>` — tên hiển thị được thay bằng tên CLB. Mỗi Host còn phải tự bật công tắc trong *Thông báo cho người chơi* (mặc định tắt). Bỏ trống thì chỉ gửi qua Telegram/webhook. |
 | `SURVEY_SWEEP_DISABLED` | | `true` để tắt việc tự gửi khảo sát sau buổi (mặc định bật, kiểm tra 10 phút/lần) |
 
@@ -1334,6 +1338,8 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 ## 17. Nguyên tắc dữ liệu & bảo mật
 
+> Chi tiết các lớp bảo vệ, checklist khi deploy và cách báo lỗ hổng: xem **[SECURITY.md](SECURITY.md)**.
+
 - **Mỗi Host chỉ thấy dữ liệu của mình.** Mọi route backend lọc theo `host_id` lấy từ token. Database cũng bật **Row Level Security** làm lớp bảo vệ thứ hai.
 - **Service role key chỉ ở backend.** Web chỉ giữ anon key và dùng nó để đăng nhập.
 - **Giới hạn gói kiểm tra ở server.** Tạo CLB vượt giới hạn gói trả `402 club_limit`; tạo kèo không thuộc CLB khi chưa có Social Manager trả `402 social_manager_required` — ẩn nút trên giao diện chỉ là lớp phụ.
@@ -1344,6 +1350,9 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 - **Webhook thông báo** chỉ nhận URL https công khai (chặn localhost và mạng nội bộ).
 - **Sổ thu chi chỉ thêm.** Sửa số tiền = huỷ dòng cũ + ghi dòng thay thế (server làm, có liên kết `replaced_by`). Các khoản tự động gắn với nguồn tạo ra chúng.
 - **Lịch sử không ghi đè.** Thay đổi quan trọng được lưu theo dòng thời gian (SCD2).
+- **Anon key công khai không đọc được dữ liệu.** Migration `20261112090000_security_lockdown.sql` gỡ mọi quyền của `anon` / `authenticated` trên schema `public`, cho view chạy với quyền người gọi và bật RLS mọi bảng; chỉ backend (service role) đọc/ghi. `/health/schema` báo nếu migration này chưa chạy.
+- **API có lớp bảo vệ HTTP:** header bảo mật, chỉ nhận gọi từ web của mình (`CORS_ORIGIN`, bắt buộc ở production), giới hạn số request theo IP (chặt hơn ở các thao tác công khai như đăng ký kèo, gửi ảnh chuyển khoản, xin gia nhập, khảo sát; gửi góp ý / yêu cầu mở CLB còn chặt hơn), body tối đa 1 MB, lỗi database nội bộ không lộ ra ngoài (chỉ trả mã `request_id` để tra log). Webhook của Host phải là https công khai và được kiểm tra lại DNS ngay trước khi gửi (chặn trỏ vào mạng nội bộ).
+- **Web có Content-Security-Policy:** chỉ chạy script của chính web, chỉ kết nối tới API + Supabase, chỉ nhúng Google Maps, không cho trang khác nhúng web (chống clickjacking), HSTS. Next.js 15 (đã vá các lỗ hổng của bản 14). File Excel người dùng tải lên (Nhập thành viên) được đọc bằng `read-excel-file`, không dùng thư viện `xlsx` cũ có lỗ hổng khi đọc file độc hại; chỉ nhận `.xlsx`.
 - **Đăng nhập bằng tên đăng nhập** đi qua backend: server đổi tên ra email rồi đăng nhập với Supabase, **không bao giờ trả email về trình duyệt**; sai tên hay sai mật khẩu đều cùng một câu báo lỗi; *Quên mật khẩu* luôn trả lời giống nhau. Giới hạn số lần thử theo máy và theo tên đăng nhập. Link trong email chỉ trỏ về địa chỉ web của app (`CORS_ORIGIN` / `PUBLIC_WEB_URL`).
 - **Quyền owner nằm ở server** (`OWNER_EMAILS`), không lưu trong database. **Nhân viên hỗ trợ** thì lưu trong bảng `support_staff`, nhưng chỉ owner thêm/sửa được và nhân viên không bao giờ có các quyền chỉ-owner (đình chỉ, đổi chủ CLB, hệ thống, nhật ký, quản lý nhân viên) — nên không ai tự nâng mình lên owner qua app. Trang Owner chỉ xem số lượng thành viên của CLB, không xem danh sách hay SĐT thành viên (cả mục *Hoạt động*). Trang *Hệ thống* chỉ báo một kết nối đã cấu hình hay chưa, không bao giờ gửi giá trị khoá về trình duyệt. Chế độ **Xem như Host** chỉ đọc ở cả hai phía (web và server chặn mọi thay đổi), che SĐT trong mọi phản hồi và ghi nhật ký. Bảng `app_settings`, `announcements`, `promo_codes`, `promo_redemptions` bật RLS, không cấp quyền cho `anon`/`authenticated` — chỉ backend đọc/ghi; trang công khai chỉ nhận thông báo đang hiện qua API. Mọi thao tác của owner được ghi vào nhật ký chỉ-ghi-thêm. Nên bật xác thực 2 bước cho email owner và tài khoản Supabase.
 - **Link công khai** (`/e/…`, `/join/…`, `/l/…` bảng điểm) dùng token ngẫu nhiên, có thể tắt hoặc tạo mới. Trang công khai không lộ số điện thoại.
@@ -1360,6 +1369,9 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 
 | Triệu chứng | Cách xử lý |
 |---|---|
+| Backend trên Render không chạy, log ghi `CORS_ORIGIN must list the web address(es) in production` | Đặt `CORS_ORIGIN` = địa chỉ web thật (vd `https://ten-app.vercel.app`, nhiều địa chỉ ngăn bằng dấu phẩy, không dùng `*`) rồi deploy lại. |
+| Khung bản đồ / ảnh CLB không hiện, console báo *Content Security Policy* | Web chỉ cho tải ảnh từ chính web, API (`NEXT_PUBLIC_API_URL`) và https; chỉ cho nhúng Google Maps. Kiểm tra `NEXT_PUBLIC_API_URL` đúng địa chỉ API rồi build lại web. |
+| API trả `429 Too many requests` | Một IP gọi quá nhiều trong 1 phút (chống spam / dò mã). Đợi 1 phút. Nếu cả CLB dùng chung một wifi và bị chặn oan, tăng `RATE_LIMIT_API` trên Render. |
 | Web báo lỗi mạng / `Failed to fetch` | Kiểm tra `NEXT_PUBLIC_API_URL` và `/health` của backend. Kiểm tra `CORS_ORIGIN` có đúng domain web không. |
 | Lần mở đầu tiên trong ngày rất chậm (30–60 giây) | Render free đang "ngủ". Cài cron-job.org gọi `/health` mỗi 10 phút (xem [11.1](#111-giữ-backend-render-luôn-thức-miễn-phí)). |
 | `401 Invalid or expired session` | Đăng xuất rồi đăng nhập lại. Kiểm tra backend và web dùng **cùng** project Supabase. |

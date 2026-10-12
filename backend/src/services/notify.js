@@ -9,6 +9,7 @@
 //     has RESEND_API_KEY + NOTIFY_FROM_EMAIL on a verified domain. Sent under the club's
 //     name, replies go to the Host; a player can opt out (player_profiles.email_notices).
 const { supabase } = require('../supabase');
+const { assertPublicUrl } = require('./safeUrl');
 const { APP_TZ } = require('./stats');
 const { playerEmail } = require('./emailTemplates');
 
@@ -55,10 +56,18 @@ async function participantUserIds(participant) {
 }
 
 async function postWebhook(url, payload) {
+  // SSRF guard: public https only, re-checked against DNS right before sending.
+  try {
+    await assertPublicUrl(url);
+  } catch (err) {
+    console.warn('webhook blocked:', err.message);
+    return 'blocked_url';
+  }
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    redirect: 'manual', // a redirect could point at an internal address
     signal: AbortSignal.timeout(8000),
   });
   return r.ok ? 'sent' : `failed_${r.status}`;
