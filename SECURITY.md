@@ -29,6 +29,7 @@ Trình duyệt ──HTTPS──> Web (Vercel, Next.js)        chỉ giữ anon 
 | Lộ thông tin | Ở production, lỗi database nội bộ chỉ trả "Database error" + `request_id` (chi tiết nằm trong log server). Lỗi dữ liệu do người dùng nhập (ràng buộc, giá trị sai) vẫn hiển thị để sửa. |
 | Web (Next.js) | Content-Security-Policy (chỉ script của chính web, chỉ kết nối tới API + Supabase, chỉ nhúng Google Maps (xem trước địa điểm), không cho trang khác nhúng web, cấm plugin), HSTS, `Referrer-Policy` không gửi link chứa token sang web khác, `Permissions-Policy` chỉ cho camera (quét QR), tắt Image Optimizer không dùng tới. |
 | Thư viện | Next.js 15.5.27 + React 19 (đã vá các lỗ hổng critical của Next 14). `npm audit` backend: 0 lỗ hổng. Web: còn cảnh báo `xlsx` (bản npm 0.18.x, chưa có bản vá trên npm) — `xlsx` giờ **chỉ dùng để xuất** Excel; file người dùng tải lên (Nhập thành viên) được đọc bằng `read-excel-file`, nên lỗ hổng khi đọc file độc hại không áp dụng. |
+| Tài khoản | **Xác thực 2 lớp** (mã TOTP 6 số, kiểm tra ở server, gắn với từng phiên đăng nhập Supabase), bắt buộc cho Owner / nhân viên hỗ trợ và hỏi lại mỗi 12 giờ ở Trang Owner; khoá bí mật mã hoá AES-256-GCM, mã khôi phục lưu băm, mỗi mã dùng một lần, tối đa 10 lần thử / 10 phút. **Email báo đăng nhập từ thiết bị mới.** **Đăng xuất khỏi mọi thiết bị** (API từ chối token phát hành trước thời điểm đó). Trang Owner tự đăng xuất sau 30 phút không thao tác. |
 | Secret | `.env*` bị git bỏ qua; đã quét repo + lịch sử git: không có key nào bị commit. |
 
 ## 3. Checklist khi deploy (bắt buộc)
@@ -46,6 +47,7 @@ Trình duyệt ──HTTPS──> Web (Vercel, Next.js)        chỉ giữ anon 
    - Rate Limits: giữ mặc định hoặc chặt hơn.
 5. **Đổi key đã từng lộ** (ví dụ Resend API key từng dán vào chat): tạo key mới, xoá key cũ.
 6. Bật **2FA** cho tài khoản GitHub, Supabase, Render, Vercel.
+7. **Xác thực 2 lớp trong app:** đặt `MFA_ENC_KEY` trên Render (`openssl rand -hex 32`, giữ cố định, không đổi). Chạy migration `20261113090000_account_security.sql`. Sau khi deploy, mỗi email trong `OWNER_EMAILS` và mỗi nhân viên hỗ trợ vào **Hồ sơ → Bảo mật** bật xác thực 2 lớp (Trang Owner sẽ yêu cầu), cất **mã khôi phục** ở nơi an toàn.
 
 ## 4. Kiểm thử bảo mật
 

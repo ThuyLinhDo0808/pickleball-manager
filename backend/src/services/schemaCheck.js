@@ -37,6 +37,8 @@ const PROBES = [
   { table: 'host_subscriptions', column: 'tier_paid_until', migration: '20261025090000_plan_payments.sql' },
   { table: 'host_subscriptions', column: 'sm_tier', migration: '20261110090000_social_manager_tiers.sql' },
   { table: 'event_participants', column: 'refunded_at', migration: '20261111090000_participant_refunds.sql' },
+  { table: 'user_mfa', column: 'secret_enc', migration: '20261113090000_account_security.sql' },
+  { table: 'users', column: 'sessions_revoked_at', migration: '20261113090000_account_security.sql' },
   { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
   { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
   { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },

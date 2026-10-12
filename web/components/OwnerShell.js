@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -124,14 +124,58 @@ function Brand({ me }) {
 // header, separate from the club / Xé Vé app. Anyone who is not an owner or support staff
 // just sees "not found" (the API answers 404 too). `title`, `description` and `actions`
 // make the page header.
+// The owner console signs itself out after 30 minutes without a click or key press
+// (a shared or forgotten laptop must not stay inside the back office).
+const IDLE_MS = 30 * 60 * 1000;
+function useIdleSignOut(active, signOut) {
+  const out = useRef(signOut);
+  out.current = signOut;
+  useEffect(() => {
+    if (!active) return undefined;
+    let last = Date.now();
+    const touch = () => {
+      last = Date.now();
+    };
+    const events = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((e) => window.addEventListener(e, touch, { passive: true }));
+    const timer = setInterval(async () => {
+      if (Date.now() - last > IDLE_MS) {
+        clearInterval(timer);
+        await Promise.resolve(out.current?.()).catch(() => {});
+        window.location.href = '/sign-in?idle=1';
+      }
+    }, 30 * 1000);
+    return () => {
+      clearInterval(timer);
+      events.forEach((e) => window.removeEventListener(e, touch));
+    };
+  }, [active]);
+}
+
 export default function OwnerShell({ children, title, description, actions }) {
   const { t } = useI18n();
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const pathname = usePathname();
   const [drawer, setDrawer] = useState(false);
   const { data: me, error } = useLoad(() => (user ? api.get('/api/owner/me') : Promise.resolve(null)), [user?.id]);
+  useIdleSignOut(!!me, signOut);
 
   if (loading || (user && !me && !error)) return <div className="min-h-screen bg-navy-950 p-6 text-gray-400 text-sm">{t('common.loading')}</div>;
+  // Owners / support staff need two-step sign-in (MfaGate asks for the code).
+  const mfaCode = error?.payload?.code;
+  if (user && (mfaCode === 'mfa_required' || mfaCode === 'mfa_enroll_required')) {
+    return (
+      <div className="min-h-screen bg-navy-950 flex flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-4xl" aria-hidden="true">🔐</p>
+        <p className="text-white text-lg font-bold">{t(mfaCode === 'mfa_required' ? 'sec.verifyTitle' : 'sec.enrollTitle')}</p>
+        <p className="text-gray-400 text-sm max-w-md">{t(mfaCode === 'mfa_required' ? 'sec.consoleVerify' : 'sec.enrollBody')}</p>
+        <div className="flex gap-2">
+          <Link href="/home" className="btn-secondary text-sm">{t('owner.backToApp')}</Link>
+          {mfaCode === 'mfa_enroll_required' && <Link href="/p/profile#security" className="btn-primary text-sm">{t('sec.goEnable')}</Link>}
+        </div>
+      </div>
+    );
+  }
   if (!user || error) {
     return (
       <div className="min-h-screen bg-navy-950 flex flex-col items-center justify-center gap-3 p-6 text-center">

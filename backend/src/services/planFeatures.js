@@ -44,6 +44,8 @@ const SM_PRICES = { basic: 99000, standard: 199000, advanced: 349000, pro: 59900
 // participants, attendance, check-in), matches (create, players, scores), income and
 // expenses, the member list and activity history.
 const FEATURES = {
+  // BASIC — every paid plan
+  activity_log: 'basic', // who did what in the club (every plan: evidence when money is disputed)
   // STANDARD — running activities and money
   weekly_schedule: 'standard', // weekly schedule: many sessions at once
   membership_plans: 'standard', // membership plans, paid / unpaid, debts
@@ -58,7 +60,6 @@ const FEATURES = {
   // PRO — many operators, custom rights, analysis
   custom_roles: 'pro', // unlimited staff, custom permissions
   duty_roster: 'pro', // shifts / who is on duty
-  activity_log: 'pro', // who did what in the club
   advanced_analytics: 'pro', // retention, active / inactive members, revenue per member…
   full_export: 'pro', // whole-club data export
 };

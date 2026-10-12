@@ -90,6 +90,7 @@ app.use('/api/clubs', requireAuth, clubsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/matches', requireAuth, matchesRoutes);
 app.use('/api/transactions', requireAuth, transactionsRoutes);
+app.use('/api/host/security', requireAuth, require('./routes/security.routes')); // 2-step sign-in, devices, sign out everywhere
 app.use('/api/host', requireAuth, hostRoutes);
 app.use('/api/staff-grants', requireAuth, staffGrantsRoutes);
 app.use('/api/staff', requireAuth, staffRoutes);

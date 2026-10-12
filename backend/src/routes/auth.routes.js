@@ -5,6 +5,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { supabase } = require('../supabase');
 const { rateLimit } = require('../services/rateLimit');
+const security = require('../services/accountSecurity');
 
 const router = express.Router();
 
@@ -74,7 +75,19 @@ router.post('/login', tooMany, perLogin, async (req, res) => {
       return bad();
     }
     const s = data.session;
-    res.json({ session: { access_token: s.access_token, refresh_token: s.refresh_token, expires_in: s.expires_in, expires_at: s.expires_at, token_type: s.token_type } });
+    // Remember the device; a sign-in from a device never seen before is emailed to the
+    // account (not the very first device). Never blocks the sign-in.
+    let mfa = false;
+    try {
+      const seen = await security.recordLogin(data.user.id, req.body?.device_id, req.get('user-agent'), req.ip);
+      if (seen.isNew && !seen.firstEver) {
+        security.emailNewDevice(email, { userAgent: req.get('user-agent'), ip: req.ip, webUrl: webOrigin(req) }).catch(() => {});
+      }
+      mfa = !!(await security.mfaRow(data.user.id))?.enabled_at;
+    } catch {
+      /* not migrated yet */
+    }
+    res.json({ session: { access_token: s.access_token, refresh_token: s.refresh_token, expires_in: s.expires_in, expires_at: s.expires_at, token_type: s.token_type }, mfa_required: mfa });
   } catch (err) {
     console.error('login', err.message);
     res.status(502).json({ error: 'Sign-in is unavailable right now.', code: 'auth_unavailable' });

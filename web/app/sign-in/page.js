@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
+import { deviceId } from '@/lib/device';
 import { api } from '@/lib/api';
 import { REGIONS, ABROAD } from '@/lib/regions';
 
@@ -98,6 +99,11 @@ export default function SignInPage() {
   const [nameState, setNameState] = useState(null); // null | 'checking' | 'free' | 'taken' | 'invalid'
   const set = (k) => (e) => setF({ ...f, [k]: typeof e === 'string' ? e : e.target.value });
 
+  // The owner console signs out after 30 idle minutes and lands here with ?idle=1.
+  const [idleOut, setIdleOut] = useState(false);
+  useEffect(() => {
+    setIdleOut(new URLSearchParams(window.location.search).get('idle') === '1');
+  }, []);
   useEffect(() => {
     if (!loading && user) router.replace(nextPath());
   }, [loading, user, router]);
@@ -150,7 +156,7 @@ export default function SignInPage() {
     setError('');
     setUnconfirmed(false);
     try {
-      const r = await api.publicPost('/api/public/auth/login', { login, password });
+      const r = await api.publicPost('/api/public/auth/login', { login, password, device_id: deviceId() });
       const { error: err } = await adoptSession(r.session);
       if (err) throw err;
       router.replace(nextPath());
@@ -237,6 +243,7 @@ export default function SignInPage() {
           {sub && <p className="text-gray-400 text-sm mt-1 mb-5">{sub}</p>}
 
           {info && <div className="bg-lime-400/10 border border-lime-400/40 text-lime-200 text-sm rounded-lg p-3 mb-4" role="status">{info}</div>}
+          {idleOut && !error && <div className="bg-amber-900/30 border border-amber-600/60 text-amber-100 text-sm rounded-lg p-3 mb-4" role="status">🔒 {t('sec.idleOut')}</div>}
           {error && <div className="bg-red-900/40 border border-red-700 text-red-200 text-sm rounded-lg p-3 mb-4" role="alert">{error}</div>}
           {unconfirmed && (
             <button type="button" className="text-sm text-lime-400 underline mb-4" disabled={busy} onClick={resend}>{t('auth.resend')}</button>
