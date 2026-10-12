@@ -10,7 +10,7 @@ const { assertFeature } = require('../services/plan');
 async function gate(res, scope, feature) {
   if (!scope?.clubId) return true;
   try {
-    await assertFeature(scope.hostId, feature);
+    await assertFeature(scope.hostId, feature, scope.kind);
     return true;
   } catch (err) {
     if (err.status !== 402) throw err;
@@ -62,7 +62,7 @@ const cleanYear = (v) => {
 async function resolveScope(req) {
   if (req.query.scope === 'standalone') return { clubId: null, hostId: req.hostId };
   const access = await clubAccess(req, req.query.club_id);
-  return access ? { clubId: access.club.id, hostId: access.club.host_id } : null;
+  return access ? { clubId: access.club.id, hostId: access.club.host_id, kind: access.club.kind === 'community' ? 'community' : 'club' } : null;
 }
 
 async function scopeEvents(hostId, clubId, fields) {

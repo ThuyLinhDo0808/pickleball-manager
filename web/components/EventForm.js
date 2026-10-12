@@ -280,6 +280,16 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const fmtLocal = (v) => (v ? new Date(v).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—');
   const perSessionCost = costTotal(f.cost_items);
   const maxIncome = Number(f.fee_amount) * Number(f.slots || 0);
+  // Where players pay: the club's account, else the host's. Neither set -> players
+  // cannot pay a fee, so say so before the kèo is opened.
+  const { data: payTo } = useLoad(
+    () => Promise.all([
+      clubId ? api.get(`/api/clubs/${clubId}`).catch(() => null) : null,
+      api.get('/api/host/payment-settings').catch(() => null),
+    ]).then(([c, h]) => ({ ok: !!(c?.bank_account || h?.bank_account) })),
+    [clubId]
+  );
+  const noPayout = Number(f.fee_amount) > 0 && payTo && !payTo.ok;
   const toggleService = (key) => {
     const word = t(`svc.${key}`);
     const parts = f.services.split(',').map((x) => x.trim()).filter(Boolean);
@@ -377,6 +387,11 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           </Field>
           <Field label={t('create.fee')}>
             <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
+            {noPayout && (
+              <p className="mt-1 text-[11px] text-amber-300">
+                ⚠️ {t('create.noPayout')} <Link href="/account#payout" className="underline">{t('create.noPayoutLink')}</Link>
+              </p>
+            )}
           </Field>
           <Field label={t('fmt.label')} span={2} hint={t('fmt.hint')}>
             <div className="grid grid-cols-3 gap-1.5 mt-1">

@@ -18,7 +18,7 @@ async function ready() {
   return !s.missing_migrations.includes(MIGRATION);
 }
 
-const fail = (message, status = 400, code) => Object.assign(new Error(message), { status, code });
+const fail = (message, status = 400, code, extra = {}) => Object.assign(new Error(message), { status, code, ...extra });
 const text = (v, max) => {
   const s = String(v ?? '').trim();
   return s ? s.slice(0, max) : null;
@@ -68,7 +68,7 @@ function cleanRequest(body) {
   if (!p.contact_email) throw fail("Enter the club owner's email.", 400, 'email_required');
   if (!p.member_count) throw fail('Enter how many members the club has.', 400, 'member_count_required');
   if (!p.province) throw fail('Choose the province / city.', 400, 'province_required');
-  const tier = PF.PAID_TIERS.includes(body.plan_tier) ? body.plan_tier : suggestTier(p.member_count);
+  const tier = PF.PAID_TIERS.includes(body.plan_tier) ? body.plan_tier : PF.fitTier(p.member_count, body.kind === 'community' ? 'community' : 'club') || 'basic';
   const months = billing.MONTH_CHOICES.includes(Number(body.plan_months)) ? Number(body.plan_months) : 1;
   return {
     name,
@@ -99,29 +99,42 @@ async function mine(userId) {
   return withPayments(data || []);
 }
 
-// Every new club is paid for: the plan picked is ordered (bank transfer) with the
-// request, unless the account already pays for a plan with room for another club.
-// No free trial. A higher plan while one is paid = an upgrade order (difference only).
-async function orderFor(userId, tier, months) {
-  const plan = await require('./plan').getPlan(userId, { fresh: true });
-  // A plan that is on (paid, or switched on by the app owner) — not a trial code.
-  const room = plan.tier !== 'free' && !plan.trial && (plan.club_limit == null || plan.clubs_owned < plan.club_limit);
-  if (room) return { tier: plan.tier, order: null };
-  const limit = PF.LIMITS[tier].clubs;
-  if (limit != null && plan.clubs_owned >= limit) {
-    throw fail(`The ${tier} plan allows ${limit} club(s); this account already has ${plan.clubs_owned}.`, 400, 'tier_too_small');
+// Every new club / community is paid for. A club uses the Club plan, a community the
+// Social Manager plan (two separate products). The account's running plan covers it only
+// when that plan has room for one more AND its member limit fits the size given;
+// otherwise the plan picked (big enough) is ordered: a new plan, or an upgrade of the
+// running one (the difference for the days left). Never a free trial.
+async function orderFor(userId, tier, months, kind = 'club', memberCount = null) {
+  const P = require('./plan');
+  const plan = await P.getPlan(userId, { fresh: true });
+  const community = kind === 'community';
+  const view = P.planView(plan, community ? 'community' : 'club');
+  const owned = community ? plan.sm.communities_owned : plan.clubs_owned;
+  const roomOf = (t) => {
+    const lim = community ? PF.SM_LIMITS[t].communities : PF.LIMITS[t].clubs;
+    return lim == null || owned < lim;
+  };
+  const needed = PF.fitTier(memberCount, community ? 'community' : 'club') || 'basic';
+  const running = !view.no_plan && !(view.kind === 'club' && plan.trial);
+  if (running && roomOf(view.tier) && PF.rank(view.tier) >= PF.rank(needed)) return { tier: view.tier, order: null, covered: true };
+  // The plan picked must fit both the size and one more club / community.
+  const want = PF.PAID_TIERS.includes(tier) ? tier : needed;
+  if (PF.rank(want) < PF.rank(needed) || !roomOf(want) || (running && PF.rank(want) <= PF.rank(view.tier))) {
+    const min = PF.PAID_TIERS.find((t) => PF.rank(t) >= PF.rank(needed) && roomOf(t) && (!running || PF.rank(t) > PF.rank(view.tier)));
+    throw fail(`Pick ${min ? min.toUpperCase() : 'a bigger plan'} or higher for this ${community ? 'community' : 'club'}.`, 400, 'tier_too_small', { min_tier: min || null, kind });
   }
-  return { tier, order: await billing.createOrder(userId, { kind: 'tier', tier, months }) };
+  const order = await billing.createOrder(userId, { kind: community ? 'social_manager' : 'tier', tier: want, months });
+  return { tier: want, order, covered: false };
 }
 
 async function create(userId, body) {
   const row = cleanRequest(body || {});
   const { data: waiting } = await supabase.from('club_requests').select('id').eq('user_id', userId).eq('status', 'pending').maybeSingle();
   if (waiting) throw fail('You already have a club request waiting for approval.', 409, 'request_pending');
-  const { tier, order } = await orderFor(userId, row.plan_tier, row.plan_months);
+  const { tier, order } = await orderFor(userId, row.plan_tier, row.plan_months, row.kind, row.member_count);
   const { data, error } = await supabase.from('club_requests').insert({ ...row, plan_tier: tier, user_id: userId, payment_id: order?.id || null }).select(LIST_FIELDS).single();
   if (error) {
-    if (order) await billing.cancelOrders(userId, 'tier').catch(() => {});
+    if (order) await billing.cancelOrders(userId, row.kind === 'community' ? 'social_manager' : 'tier').catch(() => {});
     if (error.code === '23505') throw fail('You already have a club request waiting for approval.', 409, 'request_pending');
     throw error;
   }
@@ -137,7 +150,7 @@ async function renewPayment(userId, id) {
     const { data: o } = await supabase.from('plan_payments').select('status').eq('id', r.payment_id).maybeSingle();
     if (o?.status === 'paid') throw fail('This request is already paid.', 409, 'already_paid');
   }
-  const { tier, order } = await orderFor(userId, r.plan_tier, r.plan_months || 1);
+  const { tier, order } = await orderFor(userId, r.plan_tier, r.plan_months || 1, r.kind, r.member_count);
   const { data, error } = await supabase.from('club_requests').update({ plan_tier: tier, payment_id: order?.id || null }).eq('id', id).select(LIST_FIELDS).single();
   if (error) throw error;
   return { ...data, payment: order, plan_covered: !order };
@@ -167,10 +180,23 @@ async function cancelOrder(orderId) {
 
 // ---- the owner's side ----------------------------------------------------------------
 
-// What the requester's account allows today: shown next to each request.
-async function accountCheck(userId) {
+// What the requester's account allows today for this kind of request (Club plan for a
+// club, Social Manager plan for a community): shown next to each request.
+async function accountCheck(userId, kind = 'club') {
   const plan = await require('./plan').getPlan(userId, { fresh: true });
+  if (kind === 'community') {
+    return {
+      product: 'social_manager',
+      tier: plan.sm.tier,
+      trial: null,
+      active_paid: plan.sm.active_paid,
+      clubs_owned: plan.sm.communities_owned,
+      club_limit: plan.sm.community_limit,
+      pending_payment: plan.pending_payments?.social_manager || null,
+    };
+  }
   return {
+    product: 'tier',
     tier: plan.tier,
     trial: plan.trial,
     active_paid: plan.active_paid,
@@ -192,7 +218,7 @@ async function list({ status = 'pending', page = 1, size = 20 } = {}) {
       email: r.users?.email || null,
       username: r.users?.username || null,
       users: undefined,
-      account: r.status === 'pending' ? await accountCheck(r.user_id).catch(() => null) : null,
+      account: r.status === 'pending' ? await accountCheck(r.user_id, r.kind).catch(() => null) : null,
     }))
   );
   const { count: pending } = await supabase.from('club_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending');
@@ -204,7 +230,7 @@ async function detail(id) {
   if (error) throw error;
   if (!data) throw fail('Request not found.', 404, 'not_found');
   const [withPay] = await withPayments([data]);
-  return { ...withPay, email: data.users?.email || null, username: data.users?.username || null, users: undefined, account: await accountCheck(data.user_id).catch(() => null) };
+  return { ...withPay, email: data.users?.email || null, username: data.users?.username || null, users: undefined, account: await accountCheck(data.user_id, data.kind).catch(() => null) };
 }
 
 async function decide(id, decision, { actor, note, confirmPayment = false }) {
@@ -227,12 +253,18 @@ async function decide(id, decision, { actor, note, confirmPayment = false }) {
     if (!confirmPayment) throw fail('The plan for this club is not paid yet.', 409, 'payment_pending');
     await billing.confirmOrder(order.id, actor);
   }
-  const account = await accountCheck(r.user_id);
+  const account = await accountCheck(r.user_id, r.kind);
+  const what = r.kind === 'community' ? 'community' : 'club';
   if (account.tier === 'free' || account.trial) {
-    throw fail('This account has no paid plan for the club: the transfer code must be paid first.', 409, 'payment_missing');
+    throw fail(`This account has no paid plan for the ${what}: the transfer code must be paid first.`, 409, 'payment_missing');
   }
-  if (account.tier !== 'free' && account.club_limit != null && account.clubs_owned >= account.club_limit) {
-    throw fail(`The ${account.tier} plan of this account allows ${account.club_limit} club(s) and it has ${account.clubs_owned}.`, 409, 'club_limit');
+  if (account.club_limit != null && account.clubs_owned >= account.club_limit) {
+    throw fail(`The ${account.tier} plan of this account allows ${account.club_limit} ${what}(s) and it has ${account.clubs_owned}.`, 409, r.kind === 'community' ? 'community_limit' : 'club_limit');
+  }
+  // The plan must also fit the size given in the request.
+  const needed = PF.fitTier(r.member_count, what);
+  if (needed && PF.rank(account.tier) < PF.rank(needed)) {
+    throw fail(`The ${account.tier} plan is too small for ${r.member_count} members (needs ${needed}).`, 409, 'tier_too_small');
   }
   const { data: club, error: cErr } = await supabase
     .from('clubs')

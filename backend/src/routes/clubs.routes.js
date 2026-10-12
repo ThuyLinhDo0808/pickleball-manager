@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
-const { assertCanCreateClub, requireFeature, assertMemberRoom, forgetPlan, getPlan, memberRoom } = require('../services/plan');
+const { assertCanCreateClub, requireFeature, assertMemberRoom, forgetPlan, getPlan, memberRoom, planView, kindOf } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
@@ -27,7 +27,7 @@ const TIERS = ['vip', 'standard'];
 
 // 402 from the plan checks (member_limit / feature_locked), else a normal error.
 function planError(res, err) {
-  if (err.status === 402) return res.status(402).json({ error: err.message, code: err.code, limit: err.limit, used: err.used, member_type: err.member_type, feature: err.feature, min_tier: err.min_tier });
+  if (err.status === 402) return res.status(402).json({ error: err.message, code: err.code, limit: err.limit, used: err.used, member_type: err.member_type, feature: err.feature, min_tier: err.min_tier, kind: err.kind });
   return res.status(err.status || 500).json({ error: err.status ? err.message : 'Something went wrong.' });
 }
 const GENDERS = ['male', 'female'];
@@ -144,12 +144,11 @@ router.get('/', async (req, res) => {
     const shared = await coAdminClubs(req);
     const all = [...data.map((c) => ({ ...c, role: 'owner' })), ...shared.filter((c) => c.host_id !== req.hostId)];
     // Each club carries its owner's plan features, so the menu locks the right pages.
+    // A community carries its owner's Social Manager plan, a club the Club plan.
     const plans = {};
-    for (const h of [...new Set(all.map((c) => c.host_id))]) {
-      const p = await getPlan(h);
-      plans[h] = { tier: p.tier, features: p.features, limits: p.limits, features_enforced: p.features_enforced };
-    }
-    res.json(all.map((c) => ({ ...c, plan: plans[c.host_id] })));
+    for (const h of [...new Set(all.map((c) => c.host_id))]) plans[h] = await getPlan(h);
+    const pick = (v) => ({ kind: v.kind, tier: v.tier, no_plan: v.no_plan, paid_until: v.paid_until, features: v.features, limits: v.limits, features_enforced: v.features_enforced });
+    res.json(all.map((c) => ({ ...c, plan: pick(planView(plans[c.host_id], kindOf(c))) })));
   } catch (err) {
     dbError(res, err);
   }
@@ -168,7 +167,7 @@ router.post('/', async (req, res) => {
   if (!SPORTS.includes(sport)) return res.status(400).json({ error: `sport must be one of ${SPORTS.join(', ')}.` });
   if (sport !== 'pickleball' && !(await sportReady())) return res.status(409).json({ error: 'Run migration 20261012090000_multi_sport_badminton.sql first.' });
   try {
-    await assertCanCreateClub(req.hostId);
+    await assertCanCreateClub(req.hostId, req.body.kind === 'community' ? 'community' : 'club');
   } catch (err) {
     return res.status(err.status).json({ error: err.message, code: err.code, plan: err.plan });
   }
@@ -186,12 +185,12 @@ router.post('/', async (req, res) => {
 // and how many official / guest places are left.
 router.get('/:clubId', async (req, res) => {
   try {
-    const plan = await getPlan(req.club.host_id);
+    const plan = planView(await getPlan(req.club.host_id), kindOf(req.club));
     res.json({
       ...req.club,
       role: req.clubRole || 'owner',
       groups: req.clubGroups ?? null,
-      plan: { tier: plan.tier, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced },
+      plan: { kind: plan.kind, tier: plan.tier, no_plan: plan.no_plan, paid_until: plan.paid_until, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced },
       member_room: await memberRoom(req.club),
     });
   } catch (err) {

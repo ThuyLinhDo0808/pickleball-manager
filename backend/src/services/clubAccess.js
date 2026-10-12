@@ -11,14 +11,16 @@ const activityLog = require('./activityLog');
 const activeToday = (g, today = todayYmd()) => (!g.valid_from || g.valid_from <= today) && (!g.valid_until || g.valid_until >= today);
 
 // Club staff roles (Finance / Operations) only count while the owner's plan includes them.
-async function rolesAllowed(hostId) {
-  const p = await require('./plan').getPlan(hostId);
+async function rolesAllowed(hostId, kind = 'club') {
+  const P = require('./plan');
+  const p = P.planView(await P.getPlan(hostId), kind);
   return !p.features_enforced || !!p.features.staff_roles;
 }
 
 // Custom permissions per person only count on a plan with custom_roles (Pro).
-async function customAllowed(hostId) {
-  const p = await require('./plan').getPlan(hostId);
+async function customAllowed(hostId, kind = 'club') {
+  const P = require('./plan');
+  const p = P.planView(await P.getPlan(hostId), kind);
   return !p.features_enforced || !!p.features.custom_roles;
 }
 
@@ -28,7 +30,14 @@ async function customAllowed(hostId) {
 // swapped to a club owner. Finance / Operations are checked against this request's
 // route (services/clubRoles.js); anything else returns null with req.roleForbidden set,
 // so the caller can answer 403 role_forbidden (or simply not found).
-async function clubAccess(req, clubId, { check = true } = {}) {
+const READS = ['GET', 'HEAD', 'OPTIONS'];
+async function clubAccess(req, clubId, opts = {}) {
+  const access = await clubAccessRaw(req, clubId, opts);
+  // Changes need a running plan (Club plan, or Social Manager for a community).
+  if (access && !READS.includes(req.method)) await require('./plan').assertPlanActive(access.club);
+  return access;
+}
+async function clubAccessRaw(req, clubId, { check = true } = {}) {
   if (!isUuid(clubId)) return null;
   const { data: club, error } = await supabase.from('clubs').select('*').eq('id', clubId).maybeSingle();
   if (error) throw error;
@@ -48,11 +57,11 @@ async function clubAccess(req, clubId, { check = true } = {}) {
     .in('role', CLUB_ROLES)
     .eq('email', req.hostEmail.toLowerCase());
   let grants = (rows || []).filter((g) => activeToday(g));
-  if (grants.some((g) => LIMITED_ROLES.includes(g.role)) && !(await rolesAllowed(club.host_id))) grants = grants.filter((g) => !LIMITED_ROLES.includes(g.role));
+  if (grants.some((g) => LIMITED_ROLES.includes(g.role)) && !(await rolesAllowed(club.host_id, club.kind))) grants = grants.filter((g) => !LIMITED_ROLES.includes(g.role));
   if (!grants.length) return null;
   const roles = [...new Set(grants.map((g) => g.role))];
   const role = roles.includes('co_admin') ? 'co_admin' : roles[0];
-  const custom = grants.some((g) => g.permissions?.length) && (await customAllowed(club.host_id));
+  const custom = grants.some((g) => g.permissions?.length) && (await customAllowed(club.host_id, club.kind));
   if (check && !permitsGrants(grants, req.method, req.originalUrl, req.body, { custom })) {
     req.roleForbidden = true;
     return null;
@@ -74,8 +83,11 @@ async function coAdminClubs(req, roles = CLUB_ROLES) {
     .not('club_id', 'is', null);
   if (error) throw error;
   const live = [];
+  const ids = [...new Set(grants.map((g) => g.club_id))];
+  const { data: kinds } = ids.length ? await supabase.from('clubs').select('id, kind').in('id', ids) : { data: [] };
+  const kindOfClub = new Map((kinds || []).map((c) => [c.id, c.kind]));
   for (const g of grants.filter((x) => activeToday(x))) {
-    if (LIMITED_ROLES.includes(g.role) && !(await rolesAllowed(g.host_id))) continue;
+    if (LIMITED_ROLES.includes(g.role) && !(await rolesAllowed(g.host_id, kindOfClub.get(g.club_id)))) continue;
     live.push(g);
   }
   if (!live.length) return [];
@@ -91,7 +103,7 @@ async function coAdminClubs(req, roles = CLUB_ROLES) {
   const out = [];
   for (const c of clubs) {
     const mine = live.filter((g) => g.club_id === c.id);
-    const custom = mine.some((g) => g.permissions?.length) && (await customAllowed(c.host_id));
+    const custom = mine.some((g) => g.permissions?.length) && (await customAllowed(c.host_id, c.kind));
     out.push({ ...c, role: roleOf(c), groups: effectiveGroups(mine, custom), owner_email: (owners || []).find((u) => u.id === c.host_id)?.email || null });
   }
   return out;
@@ -109,6 +121,10 @@ async function eventAccess(req, event) {
   if (!event) return null;
   const me = req.userId || req.hostId;
   if (event.host_id === me) {
+    if (event.club_id && !READS.includes(req.method)) {
+      const { data: c } = await supabase.from('clubs').select('id, host_id, kind').eq('id', event.club_id).maybeSingle();
+      if (c) await require('./plan').assertPlanActive(c);
+    }
     if (event.club_id) activityLog.mark(req, { id: event.club_id, host_id: me }, 'owner');
     return { hostId: me, coAdmin: false };
   }

@@ -800,8 +800,8 @@ player.get('/clubs/:clubId/rankings', async (req, res) => {
     if (error) throw error;
     if (!me || !me.clubs) return notFound(res, 'Club');
     // The club's plan decides whether rankings are on (Advanced+).
-    const { data: owner } = await supabase.from('clubs').select('host_id').eq('id', clubId).single();
-    const plan = await getPlan(owner.host_id);
+    const { data: owner } = await supabase.from('clubs').select('host_id, kind').eq('id', clubId).single();
+    const plan = require('../services/plan').planView(await getPlan(owner.host_id), owner.kind === 'community' ? 'community' : 'club');
     if (plan.features_enforced && !plan.features.rankings) return res.status(402).json({ error: 'Rankings are not on for this club.', code: 'feature_locked', feature: 'rankings', min_tier: 'advanced' });
     res.json({ ...(await clubStats({ id: clubId }, req.query)), me: me.id });
   } catch (err) {

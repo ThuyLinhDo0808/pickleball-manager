@@ -10,14 +10,15 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { HIGHLIGHTS, suggestTier } from '@/lib/planFeatures';
+import { HIGHLIGHTS } from '@/lib/planFeatures';
 import { VIETNAM } from '@/lib/regions';
-import { PlanPaymentBox } from '@/components/PlanModals';
+import { PlanPaymentBox, productView } from '@/components/PlanModals';
 import { useEnter } from '@/lib/useEnter';
 
 const PAID = ['basic', 'standard', 'advanced', 'pro'];
 const FALLBACK_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
 const FALLBACK_PRICES = { basic: 99000, standard: 199000, advanced: 349000, pro: 599000 };
+const FALLBACK_SM_LIMITS = { basic: { communities: 1, members: 50 }, standard: { communities: 3, members: 200 }, advanced: { communities: 5, members: 500 }, pro: { communities: 10, members: null } };
 const STEPS = ['club', 'plan', 'review'];
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString('vi-VN') : '');
 const STATUS_TONE = {
@@ -120,14 +121,30 @@ export default function ClubRequestPage() {
     if (me?.sports?.length) setForm((f) => (me.sports.includes(f.sport) ? f : { ...f, sport: me.sports[0] }));
   }, [me?.sports?.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Club -> the Club plan; community -> the Social Manager plan (separate products).
+  const product = kind === 'community' ? 'social_manager' : 'tier';
+  const pv = productView(plan, product);
+  const smLimits = plan?.catalog?.sm?.limits || FALLBACK_SM_LIMITS;
   const limits = plan?.catalog?.limits || FALLBACK_LIMITS;
-  const prices = plan?.prices || FALLBACK_PRICES;
+  const priceOf = (k) => (product === 'social_manager' ? plan?.prices?.[`sm_${k}`] ?? FALLBACK_PRICES[k] : (plan?.prices || FALLBACK_PRICES)[k]);
+  const capOf = (k) => (product === 'social_manager' ? smLimits[k]?.members : limits[k]?.fixed); // people the plan allows per club / community
+  const roomOf = (k) => {
+    const lim = product === 'social_manager' ? smLimits[k]?.communities : limits[k]?.clubs;
+    return lim == null || pv.owned < lim;
+  };
   const months = plan?.month_choices || [1, 3, 6, 12];
-  const suggested = useMemo(() => suggestTier(form.member_count, limits) || 'basic', [form.member_count, limits]);
-  const tier = form.plan_tier || suggested;
-  // Every club pays for its plan; an account already paying for a plan with room for
-  // another club is covered.
-  const covered = !!plan && plan.tier !== 'free' && !plan.trial && (plan.club_limit == null || plan.clubs_owned < plan.club_limit);
+  const rank = (k) => PAID.indexOf(k);
+  const needed = useMemo(() => PAID.find((k) => capOf(k) == null || Number(form.member_count || 0) <= capOf(k)) || 'pro', [form.member_count, product, plan]); // eslint-disable-line react-hooks/exhaustive-deps
+  const suggested = PAID.find((k) => rank(k) >= rank(needed) && roomOf(k)) || needed;
+  // The plan running now (not a trial) covers the new one only if it has room for one more
+  // AND its member limit fits the size given; otherwise a bigger plan must be paid
+  // (an upgrade of the running plan, or a new one).
+  const running = !pv.noPlan && !pv.trial;
+  const covered = !!plan && running && roomOf(pv.current) && rank(pv.current) >= rank(needed);
+  const allowed = (k) => rank(k) >= rank(needed) && roomOf(k) && (!running || rank(k) > rank(pv.current));
+  const tier = form.plan_tier && allowed(form.plan_tier) ? form.plan_tier : suggested;
+  const quote = running ? pv.quotes?.[tier] || null : null;
+  const amount = quote ? quote.amount : (priceOf(tier) || 0) * form.plan_months;
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // Words about the thing being asked for: "CLB" reads "cộng đồng" for a community.
@@ -146,7 +163,7 @@ export default function ClubRequestPage() {
     setBusy(true);
     setErr('');
     try {
-      const r = await api.post('/api/host/club-requests', { ...form, kind: kind || 'club', plan_tier: tier, member_count: Number(form.member_count), avatar, cover });
+      const r = await api.post('/api/host/club-requests', { ...form, kind: kind || 'club', plan_tier: covered ? pv.current : tier, member_count: Number(form.member_count), avatar, cover });
       setSent(r);
       reload();
     } catch (e) {
@@ -242,22 +259,17 @@ export default function ClubRequestPage() {
             )}
 
             {step === 1 && covered && (
-              // The account's plan already has room: the new club / community runs on that
-              // plan (its member limits too) — no plan to pick and nothing to pay here.
+              // The running plan has room and fits the size: the new club / community uses
+              // it — no plan to pick and nothing to pay here.
               <form onSubmit={next} className="flex flex-col gap-3">
                 <div className="card border-lime-400/50">
-                  <p className="text-white font-semibold">✓ {t('creq.coveredNote', { tier: String(plan.tier).toUpperCase() })}</p>
+                  <p className="text-white font-semibold">✓ {t(product === 'social_manager' ? 'creq.coveredNoteSm' : 'creq.coveredNote', { tier: pv.current.toUpperCase() })}</p>
                   <p className="text-gray-300 text-sm mt-1">
-                    🏠 {plan.club_limit == null ? t('plan.clubsUnlimited') : t('creq.coveredClubs', { used: plan.clubs_owned, limit: plan.club_limit })}
-                    {' · '}👥 {(limits[plan.tier] || {}).fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: limits[plan.tier].fixed, guest: limits[plan.tier].guest })}
+                    {product === 'social_manager' ? '🎟 ' : '🏠 '}
+                    {pv.limit == null ? t(product === 'social_manager' ? 'plan.communitiesN' : 'plan.clubsUnlimited', { n: '∞' }) : t(product === 'social_manager' ? 'creq.coveredCommunities' : 'creq.coveredClubs', { used: pv.owned, limit: pv.limit })}
+                    {' · '}👥 {capOf(pv.current) == null ? t('plan.membersUnlimited') : product === 'social_manager' ? t('plan.smMembersN', { n: capOf(pv.current) }) : t('plan.membersN', { fixed: limits[pv.current].fixed, guest: limits[pv.current].guest })}
                   </p>
                 </div>
-                {(limits[plan.tier] || {}).fixed != null && Number(form.member_count) > limits[plan.tier].fixed && (
-                  <p className="rounded-xl border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-                    ⚠ {t('creq.coveredTooSmall', { n: form.member_count, tier: String(plan.tier).toUpperCase(), fixed: limits[plan.tier].fixed, suggested: suggested.toUpperCase() })}{' '}
-                    <Link href="/account" className="underline">{t('creq.upgradeLink')}</Link>
-                  </p>
-                )}
                 <div className="flex justify-between">
                   <button type="button" className="btn-secondary" onClick={() => setStep(0)}>← {t('onb.back')}</button>
                   <button className="btn-primary">{t('onb.next')} →</button>
@@ -267,12 +279,22 @@ export default function ClubRequestPage() {
 
             {step === 1 && !covered && (
               <form onSubmit={next} className="flex flex-col gap-3">
-                <p className="rounded-xl border border-lime-400/40 bg-lime-400/5 px-3 py-2 text-sm text-lime-100">
-                  💡 {tk('creq.suggestion', { n: form.member_count, tier: suggested.toUpperCase() })}
-                </p>
+                {running ? (
+                  // The running plan is too small (members or number of clubs / communities):
+                  // creating it needs a bigger plan, paid now.
+                  <p className="rounded-xl border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-100" role="alert">
+                    ⛔ {t(product === 'social_manager' ? 'creq.mustUpgradeSm' : 'creq.mustUpgrade', { tier: pv.current.toUpperCase(), n: form.member_count, min: suggested.toUpperCase() })}
+                  </p>
+                ) : (
+                  <p className="rounded-xl border border-lime-400/40 bg-lime-400/5 px-3 py-2 text-sm text-lime-100">
+                    💡 {tk(product === 'social_manager' ? 'creq.suggestionSm' : 'creq.suggestion', { n: form.member_count, tier: suggested.toUpperCase() })}
+                  </p>
+                )}
                 <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t('creq.step_plan')}>
                   {PAID.map((k) => {
                     const lim = limits[k] || {};
+                    const slim = smLimits[k] || {};
+                    const ok = allowed(k);
                     const on = tier === k;
                     return (
                       <button
@@ -280,23 +302,42 @@ export default function ClubRequestPage() {
                         type="button"
                         role="radio"
                         aria-checked={on}
+                        disabled={!ok}
                         onClick={() => set('plan_tier', k)}
-                        className={`relative text-left rounded-xl border p-3 ${on ? 'border-lime-400 bg-lime-400/10 ring-1 ring-lime-400' : 'border-navy-600 hover:border-navy-500'}`}
+                        className={`relative text-left rounded-xl border p-3 ${!ok ? 'border-navy-700 opacity-40 cursor-not-allowed' : on ? 'border-lime-400 bg-lime-400/10 ring-1 ring-lime-400' : 'border-navy-600 hover:border-navy-500'}`}
                       >
                         {k === suggested && <span className="absolute -top-2 right-2 rounded-full bg-lime-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">{t('creq.suggested')}</span>}
                         <span className="flex items-baseline justify-between gap-2">
                           <span className="text-white font-bold uppercase">{k}</span>
-                          <span className="text-amber-200 text-xs font-semibold">{t('plan.perMonth', { price: formatVnd(prices[k]) })}</span>
+                          <span className="text-amber-200 text-xs font-semibold">{t('plan.perMonth', { price: formatVnd(priceOf(k)) })}</span>
                         </span>
-                        <span className="block text-gray-400 text-xs mt-0.5">{t(`plan.for_${k}`)}</span>
-                        <span className="block text-gray-200 text-xs mt-2">🏠 {lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</span>
-                        <span className="block text-gray-200 text-xs">👥 {lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: lim.fixed, guest: lim.guest })}</span>
+                        <span className="block text-gray-400 text-xs mt-0.5">{t(product === 'social_manager' ? `plan.smFor_${k}` : `plan.for_${k}`)}</span>
+                        {product === 'social_manager' ? (
+                          <>
+                            <span className="block text-gray-200 text-xs mt-2">🎟 {t('plan.communitiesN', { n: slim.communities == null ? '∞' : slim.communities })}</span>
+                            <span className="block text-gray-200 text-xs">👥 {slim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: slim.members })}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="block text-gray-200 text-xs mt-2">🏠 {lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</span>
+                            <span className="block text-gray-200 text-xs">👥 {lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: lim.fixed, guest: lim.guest })}</span>
+                          </>
+                        )}
                         {(HIGHLIGHTS[k] || []).slice(0, 4).map((h) => <span key={h} className="block text-gray-400 text-xs">✓ {t(`plan.${h}`)}</span>)}
-                        {lim.fixed != null && Number(form.member_count) > lim.fixed && <span className="block text-amber-300 text-[11px] mt-1">⚠ {t('creq.tooSmall', { n: lim.fixed })}</span>}
+                        {capOf(k) != null && Number(form.member_count) > capOf(k) && <span className="block text-amber-300 text-[11px] mt-1">⚠ {t(product === 'social_manager' ? 'creq.tooSmallSm' : 'creq.tooSmall', { n: capOf(k) })}</span>}
+                        {running && k === pv.current && <span className="block text-gray-400 text-[11px] mt-1">{t('plan.current')}</span>}
                       </button>
                     );
                   })}
                 </div>
+                {quote ? (
+                  // Upgrading the running plan: the difference for the days left, same end date.
+                  <div className="card">
+                    <p className="text-white text-sm font-semibold">⬆️ {t('plan.upgradeTitleX', { from: quote.from.toUpperCase(), to: quote.to.toUpperCase() })}</p>
+                    <p className="text-gray-300 text-xs mt-1">📅 {t('plan.upgradeLeft', { days: quote.days, date: String(quote.until).split('-').reverse().join('/') })}</p>
+                    <p className="text-gray-300 text-sm mt-2">{t('plan.upgradePay')}: <b className="text-white">{formatVnd(quote.amount)}</b></p>
+                  </div>
+                ) : (
                 <div className="card">
                   <p className="text-white text-sm font-semibold mb-2">{t('creq.months')}</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -306,11 +347,10 @@ export default function ClubRequestPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-gray-300 text-sm mt-2">{t('plan.total')}: <b className="text-white">{formatVnd(prices[tier] * form.plan_months)}</b></p>
+                  <p className="text-gray-300 text-sm mt-2">{t('plan.total')}: <b className="text-white">{formatVnd(amount)}</b></p>
                 </div>
-                <p className={`rounded-xl border px-3 py-2 text-sm ${covered ? 'border-lime-400/50 bg-lime-400/10 text-lime-100' : 'border-amber-300/50 bg-amber-300/10 text-amber-100'}`}>
-                  {covered ? `✓ ${t('creq.coveredNote', { tier: String(plan.tier).toUpperCase() })}` : `💳 ${t('creq.payNote')}`}
-                </p>
+                )}
+                <p className="rounded-xl border px-3 py-2 text-sm border-amber-300/50 bg-amber-300/10 text-amber-100">💳 {t('creq.payNote')}</p>
                 <p className="text-gray-500 text-xs">{t('creq.approvalNote')}</p>
                 <div className="flex justify-between">
                   <button type="button" className="btn-secondary" onClick={() => setStep(0)}>← {t('onb.back')}</button>
@@ -333,7 +373,7 @@ export default function ClubRequestPage() {
                       ['creq.schedule', form.schedule || '—'],
                       ['creq.contactEmail', form.contact_email],
                       ['creq.description', form.description || '—'],
-                      ['creq.planPicked', covered ? `${String(plan.tier).toUpperCase()} · ${t('creq.covered')}` : `${tier.toUpperCase()} · ${t('plan.nMonths', { n: form.plan_months })} · ${formatVnd(prices[tier] * form.plan_months)}`],
+                      ['creq.planPicked', `${product === 'social_manager' ? 'Social Manager ' : ''}${covered ? `${pv.current.toUpperCase()} · ${t('creq.covered')}` : quote ? `${quote.from.toUpperCase()} → ${tier.toUpperCase()} · ${formatVnd(amount)}` : `${tier.toUpperCase()} · ${t('plan.nMonths', { n: form.plan_months })} · ${formatVnd(amount)}`}`],
                     ].map(([k, v]) => (
                       <div key={k} className="contents">
                         <dt className="text-gray-400">{tk(k)}</dt>

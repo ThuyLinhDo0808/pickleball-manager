@@ -1,4 +1,8 @@
 function dbError(res, error, fallback = 'Database error') {
+  // A plan / access answer thrown on purpose (e.g. 402 plan_expired) keeps its status.
+  if (error?.code && [402, 403, 409, 423].includes(error.status)) {
+    return res.status(error.status).json({ error: error.message, code: error.code, ...(error.kind ? { kind: error.kind } : {}) });
+  }
   console.error(error);
   return res.status(400).json({ error: error?.message || fallback });
 }

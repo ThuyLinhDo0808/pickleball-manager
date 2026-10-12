@@ -8,12 +8,13 @@ import { formatVnd } from '@/lib/format';
 // Shown instead of a page (or a section) the plan doesn't include: what it does, which
 // plan has it, and a way to upgrade. `owner = false` for a co-admin / staff member,
 // who can't buy the owner's plan.
-export default function LockedFeature({ feature, compact = false, owner = true }) {
+// `product`: 'tier' (a club, Club plan) or 'social_manager' (a community, Social Manager).
+export default function LockedFeature({ feature, compact = false, owner = true, product = 'tier' }) {
   const { t } = useI18n();
   const { plan } = useWorkspace();
   const [open, setOpen] = useState(false);
   const minTier = plan?.catalog?.features?.[feature] || 'standard';
-  const price = plan?.prices?.[minTier];
+  const price = plan?.prices?.[product === 'social_manager' ? `sm_${minTier}` : minTier];
   return (
     <div className={compact ? 'rounded-xl border border-amber-300/40 bg-amber-300/5 p-3' : 'max-w-lg mx-auto card mt-4 text-center'}>
       <div className={compact ? 'flex items-start gap-3' : ''}>
@@ -22,7 +23,7 @@ export default function LockedFeature({ feature, compact = false, owner = true }
           <h2 className="text-white font-bold">{t(`plan.feat_${feature}`)}</h2>
           <p className="text-gray-300 text-sm mt-1">{t(`plan.featHint_${feature}`)}</p>
           <p className="text-amber-200 text-sm mt-2">
-            {t('plan.needsTier', { tier: minTier.toUpperCase() })}
+            {t('plan.needsTier', { tier: product === 'social_manager' ? `Social Manager ${minTier.toUpperCase()}` : minTier.toUpperCase() })}
             {price != null && <> · {t('plan.perMonth', { price: formatVnd(price) })}</>}
           </p>
           {owner ? (
@@ -34,7 +35,7 @@ export default function LockedFeature({ feature, compact = false, owner = true }
           )}
         </div>
       </div>
-      <UpgradeModal open={open} onClose={() => setOpen(false)} />
+      <UpgradeModal open={open} onClose={() => setOpen(false)} product={product} />
     </div>
   );
 }

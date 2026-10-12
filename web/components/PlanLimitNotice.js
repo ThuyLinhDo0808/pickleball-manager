@@ -10,8 +10,13 @@ export default function PlanLimitNotice() {
   const { t } = useI18n();
   const [hit, setHit] = useState(null);
   const [upgrading, setUpgrading] = useState(false);
+  // A community's limits come from the Social Manager plan, a club's from the Club plan.
+  const [product, setProduct] = useState('tier');
   useEffect(() => {
-    const on = (e) => setHit(e.detail || {});
+    const on = (e) => {
+      setHit(e.detail || {});
+      setProduct(e.detail?.kind === 'community' ? 'social_manager' : 'tier');
+    };
     window.addEventListener('pb:plan-limit', on);
     return () => window.removeEventListener('pb:plan-limit', on);
   }, []);
@@ -19,6 +24,8 @@ export default function PlanLimitNotice() {
   const body =
     hit?.code === 'member_limit' && hit.limit === 0
       ? t('plan.noPlanClubs') // no plan (never bought, or it ended): nothing can be added
+      : hit?.code === 'member_limit' && hit.kind === 'community'
+      ? t('plan.limitCommunity', { n: hit.limit })
       : hit?.code === 'member_limit'
       ? t(hit.member_type === 'guest' ? 'plan.limitGuest' : 'plan.limitFixed', { n: hit.limit })
       : hit?.code === 'role_seats'
@@ -35,7 +42,7 @@ export default function PlanLimitNotice() {
           <button type="button" className="btn-primary text-sm" onClick={() => { setHit(null); setUpgrading(true); }}>💎 {t('plan.seePlans')}</button>
         </div>
       </Modal>
-      <UpgradeModal open={upgrading} onClose={() => setUpgrading(false)} />
+      <UpgradeModal open={upgrading} onClose={() => setUpgrading(false)} product={product} />
     </>
   );
 }

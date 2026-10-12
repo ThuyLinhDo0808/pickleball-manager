@@ -181,6 +181,7 @@ function hostRow(u, ctx) {
     on_trial: S.onTrial(sub, ctx.today),
     billing: S.billingStatus(u.id, ctx.split, sub, ctx.today),
     social_manager: !!sub.social_manager,
+    sm_tier: sub.social_manager ? sub.sm_tier || 'basic' : null,
     social_manager_paid_until: sub.social_manager_paid_until || null,
     suspended_at: u.suspended_at || null,
     suspended_reason: u.suspended_reason || null,
@@ -366,7 +367,7 @@ router.get('/hosts/:id', wrap(async (req, res) => {
   });
 }));
 
-const SUB_FIELDS = ['tier', 'tier_paid_until', 'social_manager', 'social_manager_paid_until'];
+const SUB_FIELDS = ['tier', 'tier_paid_until', 'social_manager', 'sm_tier', 'social_manager_paid_until'];
 const pickSub = (s) => Object.fromEntries(SUB_FIELDS.map((k) => [k, s[k] ?? null]));
 
 // Change plan / end dates / Social Manager, or give extra months (customer care).
@@ -408,6 +409,12 @@ router.patch('/hosts/:id/subscription', wrap(async (req, res) => {
     if (!patch.social_manager) patch.social_manager_paid_until = null;
   }
   if ('social_manager_paid_until' in b) patch.social_manager_paid_until = date(b.social_manager_paid_until, 'social_manager_paid_until');
+  // Social Manager has its own plans (Basic … Pro).
+  if ('sm_tier' in b) {
+    if (!TIERS.includes(b.sm_tier) || b.sm_tier === 'free') throw fail(400, 'sm_tier must be basic, standard, advanced or pro.');
+    patch.sm_tier = b.sm_tier;
+  }
+  if (patch.social_manager === true && !before.sm_tier && !patch.sm_tier) patch.sm_tier = 'basic';
   if (b.sm_add_months != null && b.sm_add_months !== '') {
     const cur = 'social_manager_paid_until' in patch ? patch.social_manager_paid_until : before.social_manager_paid_until;
     patch.social_manager = true;
@@ -441,7 +448,7 @@ router.patch('/hosts/:id/subscription', wrap(async (req, res) => {
   forgetPlan(u.id);
   const orders = [];
   if (paidTier) orders.push(await billing.recordManual({ hostId: u.id, kind: 'tier', tier: after.tier, months: covered(b.add_months, after.tier_paid_until), amount: paidTier, by: req.hostEmail }));
-  if (paidSm) orders.push(await billing.recordManual({ hostId: u.id, kind: 'social_manager', months: covered(b.sm_add_months, after.social_manager_paid_until), amount: paidSm, by: req.hostEmail }));
+  if (paidSm) orders.push(await billing.recordManual({ hostId: u.id, kind: 'social_manager', tier: after.sm_tier || 'basic', months: covered(b.sm_add_months, after.social_manager_paid_until), amount: paidSm, by: req.hostEmail }));
   const paid = orders.map((o) => ({ ref: o.ref, kind: o.kind, months: o.months, amount: o.amount }));
   const entry = await owner.audit(req, { action: 'subscription.update', host: u, oldValue: pickSub(before), newValue: { ...pickSub(after), ...(paid.length ? { paid } : {}) }, note: String(b.note || '').trim() || null });
   res.json({ subscription: pickSub(after), orders: paid, audit_id: entry?.id || null });

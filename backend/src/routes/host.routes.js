@@ -91,7 +91,7 @@ router.post('/club-requests', async (req, res) => {
     await notifyFeedback({ message: `[${r.kind === 'community' ? 'Cộng đồng mới' : 'CLB mới'}] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}${pay}) — vào Trang Owner → Duyệt CLB khi đã nhận tiền.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
     res.status(201).json(r);
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code, ...(err.min_tier !== undefined ? { min_tier: err.min_tier } : {}) });
     dbError(res, err);
   }
 });
@@ -101,7 +101,7 @@ router.post('/club-requests/:id/payment', async (req, res) => {
     if (!(await requestsReady(res))) return;
     res.json(await clubRequests.renewPayment(req.hostId, req.params.id));
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code, ...(err.min_tier !== undefined ? { min_tier: err.min_tier } : {}) });
     dbError(res, err);
   }
 });
@@ -111,7 +111,7 @@ router.post('/club-requests/:id/cancel', async (req, res) => {
     if (!(await requestsReady(res))) return;
     res.json(await clubRequests.cancel(req.hostId, req.params.id));
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code, ...(err.min_tier !== undefined ? { min_tier: err.min_tier } : {}) });
     dbError(res, err);
   }
 });
@@ -134,9 +134,10 @@ router.post('/plan/request', async (req, res) => {
   const ALLOW_SELF_SERVE = await appSettings.selfServe();
   const kind = req.body.kind;
   if (!['social_manager', 'tier'].includes(kind)) return res.status(400).json({ error: 'kind must be social_manager or tier.' });
-  const tier = req.body.tier;
+  // Social Manager has its own four plans too (Basic when none is given).
+  const tier = kind === 'social_manager' && !req.body.tier ? 'basic' : req.body.tier;
   // Every plan is paid; there is no Free plan to ask for.
-  if (kind === 'tier' && !PAID_TIERS.includes(tier)) return res.status(400).json({ error: `tier must be one of ${PAID_TIERS.join(', ')}` });
+  if (!PAID_TIERS.includes(tier)) return res.status(400).json({ error: `tier must be one of ${PAID_TIERS.join(', ')}` });
   try {
     if (!(await plansReady())) return res.status(409).json({ error: 'Run migration 20261018090000_social_manager_plans.sql first.' });
     const now = new Date().toISOString();
@@ -177,7 +178,7 @@ router.post('/plan/request', async (req, res) => {
     }
     const patch = ALLOW_SELF_SERVE
       ? kind === 'social_manager'
-        ? { social_manager: true }
+        ? { social_manager: true, sm_tier: tier }
         : { tier }
       : kind === 'social_manager'
         ? { social_manager_requested_at: now }
@@ -185,7 +186,7 @@ router.post('/plan/request', async (req, res) => {
     const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', req.hostId);
     if (error) throw error;
     if (!ALLOW_SELF_SERVE) {
-      const what = kind === 'social_manager' ? 'Đăng ký Social Manager (Xé Vé)' : payment.upgrade_from ? `Nâng cấp ${payment.upgrade_from} → ${tier} cho ${payment.upgrade_days} ngày còn lại` : `Mua gói ${tier}`;
+      const what = kind === 'social_manager' ? (payment.upgrade_from ? `Nâng cấp Social Manager ${payment.upgrade_from} → ${tier} cho ${payment.upgrade_days} ngày còn lại` : `Mua Social Manager ${tier}`) : payment.upgrade_from ? `Nâng cấp ${payment.upgrade_from} → ${tier} cho ${payment.upgrade_days} ngày còn lại` : `Mua gói ${tier}`;
       const money = `${payment.upgrade_from ? 'phần chênh lệch' : `${payment.months} tháng`} · ${payment.amount.toLocaleString('vi-VN')}đ${payment.discount_amount ? ` (mã ${payment.promo_code}, giảm ${payment.discount_amount.toLocaleString('vi-VN')}đ)` : ''} · nội dung CK ${payment.ref}`;
       await notifyFeedback({ message: `[Yêu cầu gói] ${what} — ${money}. Khi nhận được tiền, vào trang Quản trị → Thanh toán gói để xác nhận.`, contact: req.hostEmail, page: '/admin/payments', userEmail: req.hostEmail }).catch(() => {});
     }
@@ -205,7 +206,7 @@ router.post('/promo/check', async (req, res) => {
     const p = await promo.check(req.hostId, req.body?.code);
     const out = { promo: promo.describe(p) };
     if (p.kind === 'percent' && ['tier', 'social_manager'].includes(req.body?.kind)) {
-      const price = billing.prices()[req.body.kind === 'social_manager' ? 'social_manager' : req.body.tier];
+      const price = billing.priceOf(req.body.kind, req.body.kind === 'social_manager' ? req.body.tier || 'basic' : req.body.tier);
       const months = billing.MONTH_CHOICES.includes(Number(req.body.months)) ? Number(req.body.months) : 1;
       if (price != null) {
         const gross = price * months;

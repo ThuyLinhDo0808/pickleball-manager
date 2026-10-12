@@ -371,6 +371,12 @@ function cleanEventFields(fields) {
 const PLAY_FORMATS = ['men', 'women', 'mixed', 'open'];
 // A Social Manager community runs kèo, training and weekly play — no meetings / round robin.
 const NOT_FOR_COMMUNITY = ['meeting', 'challenge'];
+// The club row's kind ('club' / 'community') for plan checks.
+async function clubKindOf(clubId) {
+  if (!clubId) return null;
+  const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
+  return data;
+}
 async function kindAllowed(clubId, kind) {
   if (!clubId || !NOT_FOR_COMMUNITY.includes(kind)) return true;
   const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
@@ -465,7 +471,7 @@ router.post('/', async (req, res) => {
   // Many club sessions at once (weekly schedule) is a Standard feature.
   if (fields.club_id && ((dates && dates.length > 1) || weeks > 1)) {
     try {
-      await assertFeature(hostId, 'weekly_schedule');
+      await assertFeature(hostId, 'weekly_schedule', await require('../services/plan').kindOf(await clubKindOf(fields.club_id)));
     } catch (err) {
       return res.status(err.status || 500).json({ error: err.message, code: err.code, feature: err.feature, min_tier: err.min_tier });
     }

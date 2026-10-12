@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
@@ -131,8 +132,8 @@ function Checkout({ kind, tier, req, onBack, scroll = false }) {
   const { plan } = useWorkspace();
   const choices = plan?.month_choices || [1, 3, 6, 12];
   const [months, setMonths] = useState(choices[0]);
-  const price = plan?.prices?.[kind === 'social_manager' ? 'social_manager' : tier] ?? 0;
-  const what = kind === 'tier' ? tier.toUpperCase() : 'Social Manager';
+  const price = plan?.prices?.[kind === 'social_manager' ? `sm_${tier || 'basic'}` : tier] ?? 0;
+  const what = kind === 'tier' ? tier.toUpperCase() : `Social Manager ${String(tier || 'basic').toUpperCase()}`;
   // Promo code: checked against this plan and number of months.
   const [code, setCode] = useState('');
   const [promo, setPromo] = useState(null); // { code, percent, discount, amount }
@@ -233,54 +234,82 @@ function UpgradeCheckout({ quote, req, onBack, scroll = false }) {
   );
 }
 
+// One product of the account's plan: 'tier' (Club Manager: clubs) or 'social_manager'
+// (Social Manager: communities). Same shape for both, so one dialog serves both.
+export function productView(plan, product = 'tier') {
+  const sm = product === 'social_manager';
+  const s = plan?.sm || {};
+  return {
+    sm,
+    current: (sm ? s.tier : plan?.tier) || 'free',
+    trial: sm ? null : plan?.trial || null,
+    paidUntil: sm ? s.paid_until : plan?.tier_paid_until,
+    activePaid: sm ? !!s.active_paid : !!plan?.active_paid,
+    quotes: (sm ? s.upgrade_quotes : plan?.upgrade_quotes) || {},
+    price: (tier) => plan?.prices?.[sm ? `sm_${tier}` : tier],
+    limits: (sm ? plan?.catalog?.sm?.limits : plan?.catalog?.limits) || (sm ? {} : DEFAULT_LIMITS),
+    owned: (sm ? s.communities_owned : plan?.clubs_owned) ?? 0,
+    limit: sm ? s.community_limit : plan?.club_limit,
+    pending: plan?.pending_payments?.[sm ? 'social_manager' : 'tier'] || null,
+    noPlan: sm ? !!s.no_plan : !!plan?.no_plan,
+    cancelKind: sm ? 'social_manager_request' : 'upgrade_request',
+  };
+}
+
 // The plans side by side: ask for a bigger one ("you need a bigger plan to run another
-// club"), or go back down to a smaller one when it still fits.
-export function UpgradeModal({ open, onClose }) {
+// club / community"), renew, or go back down to a smaller one when it still fits.
+// product: 'tier' (Club Manager) or 'social_manager' (Social Manager).
+export function UpgradeModal({ open, onClose, product = 'tier' }) {
   const { t } = useI18n();
   const { plan } = useWorkspace();
-  const req = useRequest('tier');
+  const v = productView(plan, product);
+  const req = useRequest(product);
   const [picking, setPicking] = useState(null); // tier being paid for
-  const current = plan?.tier || 'free';
-  const limited = atClubLimit(plan) && current !== 'free';
+  const current = v.current;
+  const limited = !!plan?.enforced && v.limit != null && v.owned >= v.limit && current !== 'free';
   const paid = !plan?.self_serve; // upgrades go through a bank transfer
-  const pending = plan?.pending_payments?.tier;
+  const pending = v.pending;
   const close = () => { req.reset(); setPicking(null); onClose(); };
   const TIERS = plan?.catalog?.tiers || DEFAULT_TIERS;
-  const LIMITS = plan?.catalog?.limits || DEFAULT_LIMITS;
+  const LIMITS = v.limits;
+  const n = (x) => (x == null ? '∞' : x);
   function downgrade(tier) {
-    if (window.confirm(t('plan.downConfirm', { tier: tier.toUpperCase(), n: LIMITS[tier]?.clubs ?? '∞' }))) req.send({ tier });
+    if (window.confirm(t('plan.downConfirm', { tier: tier.toUpperCase(), n: n(v.sm ? LIMITS[tier]?.communities : LIMITS[tier]?.clubs) }))) req.send({ tier });
   }
+  const title = v.sm ? `🎟 ${t('plan.smTitle')}` : `💎 ${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`;
   return (
-    <Modal open={open} title={`💎 ${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`} onClose={close}>
-      {plan?.no_plan && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">⚠️ {plan.clubs_owned ? t('plan.noPlanClubs') : t('plan.noPlanHint')}</p>}
+    <Modal open={open} title={title} onClose={close}>
+      {v.noPlan && (v.sm ? v.owned > 0 : true) && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">⚠️ {v.sm ? t('plan.smNoPlan') : plan?.clubs_owned ? t('plan.noPlanClubs') : t('plan.noPlanHint')}</p>}
       {current !== 'free' && (
-      <p className="text-gray-300 text-sm mb-3">
-          {limited
-            ? t('plan.upgradeBody', { tier: current.toUpperCase(), n: plan?.club_limit ?? '∞', owned: plan?.clubs_owned ?? 0 })
-            : t('plan.changeBody', { tier: current.toUpperCase(), owned: plan?.clubs_owned ?? 0, n: plan?.club_limit ?? '∞' })}
+        <p className="text-gray-300 text-sm mb-3">
+          {v.sm
+            ? t('plan.smChangeBody', { tier: current.toUpperCase(), owned: v.owned, n: n(v.limit) })
+            : limited
+              ? t('plan.upgradeBody', { tier: current.toUpperCase(), n: n(v.limit), owned: v.owned })
+              : t('plan.changeBody', { tier: current.toUpperCase(), owned: v.owned, n: n(v.limit) })}
         </p>
       )}
-      {plan?.expired_tier && <p className="text-red-300 text-sm mb-2">{t('plan.expired', { tier: plan.expired_tier.toUpperCase() })}</p>}
+      {!v.sm && plan?.expired_tier && <p className="text-red-300 text-sm mb-2">{t('plan.expired', { tier: plan.expired_tier.toUpperCase() })}</p>}
       {/* An order already waiting (dialog opened again): its transfer details on top. */}
       {paid && pending && !picking && req.done !== 'downgraded' && (
-        <div className="mb-3"><PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => req.cancel('upgrade_request')} /></div>
+        <div className="mb-3"><PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => req.cancel(v.cancelKind)} /></div>
       )}
       <div className="grid sm:grid-cols-2 gap-2 mb-3">
         {TIERS.map((tier) => {
           const isCurrent = tier === current;
           const higher = TIERS.indexOf(tier) > TIERS.indexOf(current); // no plan ('free') -> every plan is "higher"
-          const quote = plan?.upgrade_quotes?.[tier] || null;
+          const quote = v.quotes[tier] || null;
           const lim = LIMITS[tier] || {};
-          const n = (v) => (v == null ? '∞' : v);
+          const price = v.price(tier);
           // The plan being bought: months + total, then the transfer details, right under its card.
           const checkout = paid && picking === tier && (
             <div key={`${tier}-pay`} className="sm:col-span-2">
               {req.done === 'payment' && pending ? (
-                <PlanPaymentBox scroll payment={pending} busy={req.busy} onCancel={() => { setPicking(null); req.cancel('upgrade_request'); }} />
+                <PlanPaymentBox scroll payment={pending} busy={req.busy} onCancel={() => { setPicking(null); req.cancel(v.cancelKind); }} />
               ) : quote ? (
                 <UpgradeCheckout scroll quote={quote} req={req} onBack={() => setPicking(null)} />
               ) : (
-                <Checkout scroll kind="tier" tier={tier} req={req} onBack={() => setPicking(null)} />
+                <Checkout scroll kind={product} tier={tier} req={req} onBack={() => setPicking(null)} />
               )}
             </div>
           );
@@ -289,33 +318,42 @@ export function UpgradeModal({ open, onClose }) {
               {tier === 'standard' && !isCurrent && <span className="absolute -top-2 right-2 rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-bold text-navy-950">{t('plan.popular')}</span>}
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-white font-bold uppercase">{tier}</span>
-                <span className="text-amber-200 text-xs font-semibold">{plan?.prices?.[tier] != null ? t('plan.perMonth', { price: formatVnd(plan.prices[tier]) }) : ''}</span>
+                <span className="text-amber-200 text-xs font-semibold">{price != null ? t('plan.perMonth', { price: formatVnd(price) }) : ''}</span>
               </div>
-              <div className="text-gray-400 text-xs mt-0.5">{t(`plan.for_${tier}`)}</div>
+              <div className="text-gray-400 text-xs mt-0.5">{t(v.sm ? `plan.smFor_${tier}` : `plan.for_${tier}`)}</div>
               <ul className="text-gray-200 text-xs mt-2 space-y-0.5">
-                <li>🏠 {lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</li>
-                <li>👥 {lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: n(lim.fixed), guest: n(lim.guest) })}</li>
+                {v.sm ? (
+                  <>
+                    <li>🎟 {t('plan.communitiesN', { n: n(lim.communities) })}</li>
+                    <li>👥 {lim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: lim.members })}</li>
+                  </>
+                ) : (
+                  <>
+                    <li>🏠 {lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</li>
+                    <li>👥 {lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: n(lim.fixed), guest: n(lim.guest) })}</li>
+                  </>
+                )}
                 {(HIGHLIGHTS[tier] || []).map((k) => <li key={k} className="text-gray-300">✓ {t(`plan.${k}`)}</li>)}
               </ul>
               <div className="mt-auto pt-2">
                 {isCurrent ? (
                   <>
-                    <div className="text-lime-300 text-xs">✓ {plan?.trial ? t('plan.trialCurrent', { date: fmtDate(plan.trial.ends_on) }) : t('plan.current')}</div>
-                    {!plan?.trial && plan?.tier_paid_until && <div className="text-gray-400 text-[11px]">{t('plan.paidUntil', { date: fmtDate(plan.tier_paid_until) })}</div>}
+                    <div className="text-lime-300 text-xs">✓ {v.trial ? t('plan.trialCurrent', { date: fmtDate(v.trial.ends_on) }) : t('plan.current')}</div>
+                    {!v.trial && v.paidUntil && <div className="text-gray-400 text-[11px]">{t('plan.paidUntil', { date: fmtDate(v.paidUntil) })}</div>}
                     {paid && (
-                      <button type="button" className="btn-secondary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{plan?.trial ? t('plan.buyThis') : t('plan.renew')}</button>
+                      <button type="button" className="btn-secondary !py-1 !px-2 text-xs mt-2 w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{v.trial ? t('plan.buyThis') : t('plan.renew')}</button>
                     )}
                   </>
                 ) : higher ? (
                   <button type="button" className="btn-primary !py-1 !px-2 text-xs w-full" disabled={req.busy} onClick={() => (paid ? setPicking(tier) : req.send({ tier }))}>
                     {plan?.self_serve ? t('plan.switchTo') : quote ? t('plan.upgradeFor', { amount: formatVnd(quote.amount) }) : current === 'free' ? t('plan.buyThis') : t('plan.requestTo')}
                   </button>
-                ) : paid && plan?.active_paid ? (
-                  <p className="text-gray-500 text-[11px] leading-snug">{t('plan.downLater', { date: fmtDate(plan.tier_paid_until) })}</p>
+                ) : paid && v.activePaid ? (
+                  <p className="text-gray-500 text-[11px] leading-snug">{t('plan.downLater', { date: fmtDate(v.paidUntil) })}</p>
                 ) : paid ? (
                   <button type="button" className="btn-secondary !py-1 !px-2 text-xs w-full" disabled={req.busy} onClick={() => setPicking(tier)}>{t('plan.buyThis')}</button>
-                ) : lim.clubs != null && (plan?.clubs_owned ?? 0) > lim.clubs ? (
-                  <p className="text-gray-500 text-[11px] leading-snug">{t('plan.downBlocked', { owned: plan?.clubs_owned ?? 0, n: lim.clubs })}</p>
+                ) : (v.sm ? lim.communities : lim.clubs) != null && v.owned > (v.sm ? lim.communities : lim.clubs) ? (
+                  <p className="text-gray-500 text-[11px] leading-snug">{t('plan.downBlocked', { owned: v.owned, n: v.sm ? lim.communities : lim.clubs })}</p>
                 ) : (
                   <button type="button" className="btn-secondary !py-1 !px-2 text-xs w-full" disabled={req.busy} onClick={() => downgrade(tier)}>
                     ↓ {t('plan.downTo')}
@@ -327,7 +365,7 @@ export function UpgradeModal({ open, onClose }) {
           ];
         })}
       </div>
-      {!paid && plan?.upgrade_requested_at && req.done !== 'downgraded' && (
+      {!v.sm && !paid && plan?.upgrade_requested_at && req.done !== 'downgraded' && (
         <p className="text-amber-300 text-xs mb-2">
           ⏳ {t('plan.requestedOn', { tier: (plan.upgrade_requested_tier || '').toUpperCase() })}{' '}
           <button type="button" className="underline text-gray-300 hover:text-white" disabled={req.busy} onClick={() => req.cancel('upgrade_request')}>{t('plan.cancelRequest')}</button>
@@ -337,7 +375,7 @@ export function UpgradeModal({ open, onClose }) {
       {req.done === 'downgraded' && <p className="text-lime-300 text-sm mb-2">✓ {t('plan.downDone', { tier: current.toUpperCase() })}</p>}
       {req.done === 'applied' && <p className="text-lime-300 text-sm mb-2">✓ {t('plan.applied')}</p>}
       {req.error && <p className="text-red-400 text-sm mb-2">{req.error}</p>}
-      <TrialCode />
+      {!v.sm && <TrialCode />}
       <button type="button" className="btn-secondary w-full" onClick={close}>{t('plan.close')}</button>
     </Modal>
   );
@@ -384,15 +422,16 @@ function TrialCode() {
 
 const SM_FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5'];
 
-// The Social Manager add-on (Xé Vé): what it adds, and the sign-up.
+// Social Manager (play communities): its own plan. Not bought yet -> what it is and the
+// way in (describe a community, pay its plan, the owner approves it). Bought -> the plan,
+// its end date, communities used, and renew / upgrade.
 export function SocialManagerPanel({ compact = false }) {
   const { t } = useI18n();
   const { plan } = useWorkspace();
-  const req = useRequest('social_manager');
-  const [renewing, setRenewing] = useState(false);
-  const active = !!plan?.social_manager;
-  const paid = !plan?.self_serve;
-  const pending = plan?.pending_payments?.social_manager;
+  const v = productView(plan, 'social_manager');
+  const [open, setOpen] = useState(false);
+  const active = !v.noPlan;
+  const lim = v.limits?.[v.current] || {};
   return (
     <div>
       <div className="flex items-start gap-3 mb-3">
@@ -401,13 +440,13 @@ export function SocialManagerPanel({ compact = false }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-white font-bold">Social Manager</h3>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${active ? 'bg-lime-400 text-navy-950' : 'bg-navy-700 text-gray-300'}`}>
-              {active ? t('plan.smActive') : t('plan.smAddon')}
+              {active ? v.current : t('plan.smNone')}
             </span>
           </div>
           <p className="text-gray-400 text-sm">{t('plan.smPitch')}</p>
         </div>
       </div>
-      {!compact && (
+      {!compact && !active && (
         <ul className="grid gap-1.5 text-sm text-gray-200 mb-3">
           {SM_FEATURES.map((k) => (
             <li key={k} className="flex gap-2">
@@ -417,38 +456,33 @@ export function SocialManagerPanel({ compact = false }) {
           ))}
         </ul>
       )}
-      {pending ? (
-        <PlanPaymentBox payment={pending} busy={req.busy} onCancel={() => { setRenewing(false); req.cancel('social_manager_request'); }} />
-      ) : paid && (renewing || (!active && !plan?.social_manager_requested_at)) && plan ? (
-        <Checkout kind="social_manager" req={req} onBack={renewing ? () => setRenewing(false) : null} />
-      ) : active ? (
+      {v.pending && <div className="mb-3"><PlanPaymentBox payment={v.pending} /></div>}
+      {active ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-lime-300 text-sm">
-            ✓ {t('plan.smOn')}
-            {plan?.social_manager_paid_until && <span className="block text-gray-400 text-xs">{t('plan.paidUntil', { date: fmtDate(plan.social_manager_paid_until) })}</span>}
+            ✓ {t('plan.smOnTier', { tier: v.current.toUpperCase() })}
+            {v.paidUntil && <span className="block text-gray-400 text-xs">{t('plan.paidUntil', { date: fmtDate(v.paidUntil) })}</span>}
+            <span className="block text-gray-400 text-xs">🎟 {t('plan.smUsed', { owned: v.owned, n: v.limit == null ? '∞' : v.limit })} · 👥 {lim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: lim.members })}</span>
           </p>
-          {paid && <button type="button" className="btn-secondary !py-1 text-sm" onClick={() => setRenewing(true)}>{t('plan.renew')}</button>}
-          <button
-            type="button"
-            className="text-red-300 hover:text-red-200 text-sm underline"
-            disabled={req.busy}
-            onClick={() => window.confirm(t('plan.smCancelConfirm')) && req.cancel('social_manager')}
-          >
-            {t('plan.smCancel')}
-          </button>
-        </div>
-      ) : req.done === 'requested' || plan?.social_manager_requested_at ? (
-        <div className="rounded-lg border border-amber-300/40 bg-amber-300/5 px-3 py-2 text-amber-200 text-sm flex flex-wrap items-center justify-between gap-2">
-          <span>⏳ {t('plan.smRequested')}</span>
-          <button type="button" className="underline text-gray-300 hover:text-white" disabled={req.busy} onClick={() => req.cancel('social_manager_request')}>{t('plan.cancelRequest')}</button>
+          <div className="flex flex-wrap gap-2">
+            {!plan?.self_serve && <button type="button" className="btn-secondary !py-1 text-sm" onClick={() => setOpen(true)}>{t('plan.smRenewUpgrade')}</button>}
+            <Link href="/club-request?kind=community" className="btn-secondary !py-1 text-sm">＋ {t('social.newCommunity')}</Link>
+          </div>
         </div>
       ) : (
-        <button type="button" className="btn-primary w-full" disabled={req.busy || !plan} onClick={() => req.send()}>
-          🎟 {plan?.self_serve ? t('plan.smActivate') : t('plan.smSignUp')}
-        </button>
+        <>
+          {v.owned > 0 && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">⚠️ {t('plan.smNoPlan')}</p>}
+          <div className="flex flex-wrap gap-2">
+            {v.owned > 0 ? (
+              <button type="button" className="btn-primary" onClick={() => setOpen(true)}>🎟 {t('plan.smBuy')}</button>
+            ) : (
+              <Link href="/club-request?kind=community" className="btn-primary">🎟 {t('plan.smStart')}</Link>
+            )}
+          </div>
+          {v.owned === 0 && <p className="text-gray-500 text-xs mt-2">{t('plan.smStartHint')}</p>}
+        </>
       )}
-      {req.done === 'applied' && <p className="text-lime-300 text-sm mt-2">✓ {t('plan.applied')}</p>}
-      {req.error && <p className="text-red-400 text-sm mt-2">{req.error}</p>}
+      <UpgradeModal open={open} onClose={() => setOpen(false)} product="social_manager" />
     </div>
   );
 }

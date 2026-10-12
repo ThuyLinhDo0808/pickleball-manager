@@ -141,7 +141,7 @@ export default function AccountPage() {
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-gray-400 text-sm min-w-0 flex-1">{clubs.length ? t('acct.manageMore', { n: clubs.length }) : t('acct.manageFirst')}</p>
+            <p className="text-gray-400 text-sm min-w-0 flex-1">{clubs.length ? t('acct.manageMoreBoth', { n: clubs.filter((c) => c.kind !== 'community').length, m: clubs.filter((c) => c.kind === 'community').length }) : t('acct.manageFirst')}</p>
             <Link href="/club-request" className="btn-primary">{lastRequest?.status === 'pending' ? t('acct.manageSeeRequest') : t('acct.manageApply')}</Link>
           </div>
         </SettingsSection>
