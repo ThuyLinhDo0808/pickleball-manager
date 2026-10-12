@@ -559,6 +559,57 @@ router.get('/activity/clubs', wrap(async (req, res) => {
   res.json({ total: rows.length, page: pg.page, pages: pg.pages, rows: rows.slice(pg.from, pg.to) });
 }));
 
+// Every club and play community in the app (owner console → CLB & cộng đồng): kind,
+// owner, members, sessions, last session. ?q= (name / owner email) &kind=all|club|community
+// &sort=new|members|events|name &page=. Deleting stays owner-only (POST /clubs/:id/delete).
+router.get('/clubs', wrap(async (req, res) => {
+  const [clubs, members, events, users, subs] = await Promise.all([
+    fetchAll(() => supabase.from('clubs').select('*').order('created_at', { ascending: false })),
+    fetchAll(() => supabase.from('club_members').select('club_id, member_type').eq('is_active', true).order('club_id')),
+    fetchAll(() => supabase.from('events').select('club_id, event_date').not('club_id', 'is', null).neq('status', 'cancelled').order('club_id')),
+    fetchAll(() => supabase.from('users').select('id, email').order('id')),
+    fetchAll(() => supabase.from('host_subscriptions').select('host_id, tier').order('host_id')),
+  ]);
+  const emailOf = new Map(users.map((u) => [u.id, u.email]));
+  const tierOf = new Map(subs.map((x) => [x.host_id, x.tier]));
+  const mem = new Map();
+  for (const m of members) {
+    const c = mem.get(m.club_id) || { fixed: 0, guest: 0 };
+    c[m.member_type === 'guest' ? 'guest' : 'fixed'] += 1;
+    mem.set(m.club_id, c);
+  }
+  const ev = new Map();
+  for (const e of events) {
+    const c = ev.get(e.club_id) || { count: 0, last: null };
+    c.count += 1;
+    if (!c.last || e.event_date > c.last) c.last = e.event_date;
+    ev.set(e.club_id, c);
+  }
+  let rows = clubs.map((c) => ({
+    id: c.id,
+    name: c.name,
+    kind: c.kind || 'club',
+    sport: c.sport || 'pickleball',
+    host_id: c.host_id,
+    owner_email: emailOf.get(c.host_id) || null,
+    tier: tierOf.get(c.host_id) || 'free',
+    created_at: c.created_at,
+    members: mem.get(c.id) || { fixed: 0, guest: 0 },
+    events: ev.get(c.id)?.count || 0,
+    last_event: ev.get(c.id)?.last || null,
+  }));
+  const totals = { all: rows.length, club: rows.filter((r) => r.kind === 'club').length, community: rows.filter((r) => r.kind === 'community').length };
+  if (['club', 'community'].includes(req.query.kind)) rows = rows.filter((r) => r.kind === req.query.kind);
+  const q = String(req.query.q || '').trim().toLowerCase();
+  if (q) rows = rows.filter((c) => c.name.toLowerCase().includes(q) || (c.owner_email || '').toLowerCase().includes(q));
+  const total = (r) => r.members.fixed + r.members.guest;
+  if (req.query.sort === 'members') rows.sort((a, b) => total(b) - total(a));
+  if (req.query.sort === 'events') rows.sort((a, b) => b.events - a.events);
+  if (req.query.sort === 'name') rows.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  const pg = paging(req, rows.length);
+  res.json({ total: rows.length, totals, page: pg.page, pages: pg.pages, rows: rows.slice(pg.from, pg.to) });
+}));
+
 // Xé Vé games: title, when, status, fill rate. ?when=upcoming|past|all &from&to
 router.get('/activity/xeve', wrap(async (req, res) => {
   const today = S.vnYmd(new Date());
