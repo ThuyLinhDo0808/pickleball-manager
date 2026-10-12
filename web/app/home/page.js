@@ -54,8 +54,8 @@ const STATUS_TONE = {
 export default function HomeHub() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
-  const { staffInfo, plan } = useWorkspace();
-  const { manageClub, space, standalone, memberClub } = useEnter();
+  const { staffInfo } = useWorkspace();
+  const { manageClub, space, memberClub } = useEnter();
   const { data, loading } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -176,17 +176,6 @@ export default function HomeHub() {
               badgeTone={ROLE_TONE.member}
             />
           ))}
-          {/* One-off kèo made before communities existed (Social Manager add-on): a tile like the others. */}
-          {plan?.social_manager && managed.some((c) => c.role === 'owner') && (
-            <SpaceTile
-              onClick={() => standalone()}
-              avatar={<ClubAvatar icon="🎟" ring="ring-2 ring-amber-300/80 ring-offset-2 ring-offset-navy-950" />}
-              label={t('hub.oneOffKeo')}
-              badge={t('hub.roleOwner')}
-              badgeTone={ROLE_TONE.owner}
-              lines={3}
-            />
-          )}
           {/* Club or play community (Social Manager): the request form asks which one first. */}
           <SpaceTile
             href="/club-request"

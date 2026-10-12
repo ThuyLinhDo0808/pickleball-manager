@@ -80,7 +80,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
   - CLB bạn **quản lý** (nhãn *Quản lý*, viền xanh) hoặc **đồng quản trị** → bấm vào là mở **trang quản lý** của CLB đó (Tổng quan, Thành viên, Lịch, Tài chính…).
   - CLB bạn là **thành viên** (nhãn *Thành viên*) → bấm vào là mở **trang thành viên** của CLB (`/c/<id>`, xem 3.2).
   - **＋ Tạo CLB / Cộng đồng mới**: mở trang **Đăng ký câu lạc bộ** (`/club-request`, xem [3.5](#35-đăng-ký-quản-lý-clb-club-request)) — CLB mới chỉ được tạo khi Owner duyệt.
-- **Social Manager (Xé vé)** — không còn thẻ riêng: **cộng đồng xé vé hiện trong dải avatar giống CLB** (viền vàng, nhãn *🎟 Quản lý*); bấm vào là vào trang quản lý cộng đồng thay vì quản lý CLB. Muốn mở cộng đồng mới thì bấm **＋ Tạo CLB / Cộng đồng mới** (cùng một nút với tạo CLB) → bước đầu chọn *Tạo câu lạc bộ* hoặc *Tạo cộng đồng xé vé*. Host đã có add-on Social Manager và còn kèo lẻ cũ (không thuộc cộng đồng) thấy thêm ô **🎟 Kèo lẻ** trong dải avatar.
+- **Social Manager (Xé vé)** — không còn thẻ riêng: **cộng đồng xé vé hiện trong dải avatar giống CLB** (viền vàng, nhãn *🎟 Quản lý*); bấm vào là vào trang quản lý cộng đồng thay vì quản lý CLB. Muốn mở cộng đồng mới thì bấm **＋ Tạo CLB / Cộng đồng mới** (cùng một nút với tạo CLB) → bước đầu chọn *Tạo câu lạc bộ* hoặc *Tạo cộng đồng xé vé*. Không còn ô *Kèo lẻ* riêng trên Trang chủ.
 - **Không gian nhân viên** (chỉ hiện khi bạn là trọng tài / điều phối viên): thẻ mở *Sự kiện của tôi*.
   - Một CLB vừa quản lý vừa là thành viên chỉ hiện ở vai trò quản lý.
 - **Gói hội viên của tôi**: số buổi còn lại ở từng CLB bạn là thành viên.
@@ -118,9 +118,9 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 Club và Xé Vé tách dữ liệu rõ ràng:
 - **Club:** các buổi (event) gắn với CLB đang chọn.
 - **Social Manager — cộng đồng:** các kèo gắn với cộng đồng đang chọn (cộng đồng là một "CLB" loại *cộng đồng*, có đủ mọi tính năng của CLB).
-- **Kèo lẻ (Xé Vé cũ):** các kèo không thuộc CLB / cộng đồng nào (cần add-on Social Manager như trước).
+- **Kèo lẻ (Xé Vé cũ):** kèo không thuộc CLB / cộng đồng nào — không còn hiện trên Trang chủ hay bộ chuyển ngữ cảnh; dữ liệu cũ vẫn được giữ.
 
-**Bộ chuyển ngữ cảnh** chia: *🎟 Social Manager · Cộng đồng* (các cộng đồng), *Đang quản lý* (các CLB) — không còn mục *Không gian khác*; kèo lẻ cũ mở từ ô *🎟 Kèo lẻ* ở Trang chủ, *Sự kiện của tôi* (trọng tài / điều phối viên) mở từ thẻ ở Trang chủ. Chọn một cộng đồng là vào Social Manager của cộng đồng đó; chọn CLB là vào Club Manager. App nhớ riêng CLB và cộng đồng đang chọn. Trang Trang chủ gắn nhãn 🎟 và viền vàng cho cộng đồng.
+**Bộ chuyển ngữ cảnh** chia: *🎟 Social Manager · Cộng đồng* (các cộng đồng), *Đang quản lý* (các CLB) — không còn mục *Không gian khác*; *Sự kiện của tôi* (trọng tài / điều phối viên) mở từ thẻ ở Trang chủ. Chọn một cộng đồng là vào Social Manager của cộng đồng đó; chọn CLB là vào Club Manager. App nhớ riêng CLB và cộng đồng đang chọn. Trang Trang chủ gắn nhãn 🎟 và viền vàng cho cộng đồng.
 
 ### 3.4. Tìm câu lạc bộ (`/discover`)
 Mở từ ô tìm kiếm ở Trang chủ hoặc mục **Tìm CLB** trên thanh điều hướng. Ai cũng xem được (không cần đăng nhập).
@@ -538,7 +538,7 @@ Một Host có thể điều hành **nhiều cụm sân xé vé**; mỗi cụm s
   - Ô *Số dư quỹ* đổi thành **Lợi nhuận dự kiến** của kỳ đang xem = *Thu − Chi + khoản chưa thu* (xem theo năm: Thu − Chi).
   - Thêm **📅 Tổng quan theo ngày** của tháng đang xem: mỗi ngày *số kèo, người chơi, thu, chi, lợi nhuận, khoản chưa thu*, dòng **Cộng** ở cuối. Tiền của kèo tính vào **ngày diễn ra kèo** (dù phí được thu trước); khoản của quỹ cộng đồng tính theo ngày ghi sổ.
   - Bảng *Thu chi từng buổi / kèo* ghi cột **Lợi nhuận**.
-- **Kèo lẻ (Xé Vé cũ)**: kèo không thuộc cộng đồng vẫn dùng như trước ở mục *Kèo lẻ* trong bộ chuyển ngữ cảnh (cần add-on Social Manager). Khi chưa có cộng đồng nào, Social Manager hiện thẻ **🎟 Tạo cộng đồng mới**.
+- **Kèo lẻ (Xé Vé cũ)**: không còn lối vào riêng (đã bỏ ô *Kèo lẻ* ở Trang chủ và mục *Không gian khác* trong bộ chuyển ngữ cảnh). Mọi kèo mới đều tạo trong một cộng đồng. Dữ liệu kèo lẻ cũ vẫn được giữ trong hệ thống (sổ thu chi, chuyển giao tài khoản). Khi chưa có cộng đồng nào, Social Manager hiện thẻ **🎟 Tạo cộng đồng mới**.
 
 ### 5.1. Lịch kèo dạng calendar (`/events`)
 Trang Lịch/Kèo có 4 chế độ xem. App nhớ chế độ bạn chọn lần trước.
