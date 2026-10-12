@@ -358,7 +358,10 @@ const pickSub = (s) => Object.fromEntries(SUB_FIELDS.map((k) => [k, s[k] ?? null
 
 // Change plan / end dates / Social Manager, or give extra months (customer care).
 // Body: { tier?, tier_paid_until?: 'YYYY-MM-DD' | null, add_months?, social_manager?,
-//         social_manager_paid_until?, sm_add_months?, note? }
+//         social_manager_paid_until?, sm_add_months?, paid_amount?, sm_paid_amount?, note? }
+// paid_amount / sm_paid_amount: money received outside the app for this change -> a paid
+// order is recorded so it counts as revenue. Left empty, the change is a gift.
+const MAX_MANUAL_AMOUNT = 100000000;
 router.patch('/hosts/:id/subscription', wrap(async (req, res) => {
   const u = await loadHost(req.params.id);
   const before = await loadSub(u.id);
@@ -397,15 +400,38 @@ router.patch('/hosts/:id/subscription', wrap(async (req, res) => {
     patch.social_manager = true;
     patch.social_manager_paid_until = billing.addMonths(cur && cur >= today ? cur : today, months(b.sm_add_months, 'sm_add_months'));
   }
+  const amount = (v, name) => {
+    if (v == null || v === '') return 0;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0 || n > MAX_MANUAL_AMOUNT) throw fail(400, `${name} must be a whole number of đồng.`, 'bad_amount');
+    return n;
+  };
+  const paidTier = amount(b.paid_amount, 'paid_amount');
+  const paidSm = amount(b.sm_paid_amount, 'sm_paid_amount');
+  if ((paidTier || paidSm) && !support.can(req.console, 'payments')) throw fail(403, 'Recording money needs the payments permission.', 'payments_permission');
   if (!Object.keys(patch).length) throw fail(400, 'Nothing to change.');
+  const tierAfter = patch.tier || before.tier;
+  const smAfter = 'social_manager' in patch ? patch.social_manager : before.social_manager;
+  if (paidTier && tierAfter === 'free') throw fail(400, 'Money for a plan needs a paid tier.', 'paid_needs_tier');
+  if (paidSm && !smAfter) throw fail(400, 'Money for Social Manager needs it switched on.', 'paid_needs_sm');
+  // Months the money covers: the months added, else from today to the new end date.
+  const covered = (added, until) => {
+    if (added) return months(added, 'months');
+    if (until && until > today) return Math.max(1, Math.round(billing.daysBetween(today, until) / 30));
+    return 1;
+  };
   // The owner switched it on by hand: any request the host left waiting is settled.
   if (patch.tier && patch.tier !== 'free') Object.assign(patch, { upgrade_requested_at: null, upgrade_requested_tier: null });
   if (patch.social_manager) patch.social_manager_requested_at = null;
   const { data: after, error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', u.id).select().single();
   if (error) throw error;
   forgetPlan(u.id);
-  const entry = await owner.audit(req, { action: 'subscription.update', host: u, oldValue: pickSub(before), newValue: pickSub(after), note: String(b.note || '').trim() || null });
-  res.json({ subscription: pickSub(after), audit_id: entry?.id || null });
+  const orders = [];
+  if (paidTier) orders.push(await billing.recordManual({ hostId: u.id, kind: 'tier', tier: after.tier, months: covered(b.add_months, after.tier_paid_until), amount: paidTier, by: req.hostEmail }));
+  if (paidSm) orders.push(await billing.recordManual({ hostId: u.id, kind: 'social_manager', months: covered(b.sm_add_months, after.social_manager_paid_until), amount: paidSm, by: req.hostEmail }));
+  const paid = orders.map((o) => ({ ref: o.ref, kind: o.kind, months: o.months, amount: o.amount }));
+  const entry = await owner.audit(req, { action: 'subscription.update', host: u, oldValue: pickSub(before), newValue: { ...pickSub(after), ...(paid.length ? { paid } : {}) }, note: String(b.note || '').trim() || null });
+  res.json({ subscription: pickSub(after), orders: paid, audit_id: entry?.id || null });
 }));
 
 router.post('/hosts/:id/suspend', wrap(async (req, res) => {
@@ -1065,6 +1091,8 @@ router.post('/audit/:id/undo', wrap(async (req, res) => {
   const how = UNDO[entry.action] === 'suspension' ? SUSPENSION : UNDO[entry.action] === 'club_places' ? clubPlaces(entry) : UNDO[entry.action];
   if (!how || !entry.target_host_id) throw fail(400, 'This change cannot be undone here.', 'not_undoable');
   if (entry.undone_at) throw fail(409, 'Already undone.', 'already_undone');
+  // Money was recorded with this change: undoing the dates would leave the paid order behind.
+  if (entry.new_value?.paid?.length) throw fail(400, 'Money was recorded with this change — change the plan by hand instead.', 'has_payment');
   const now = await how.current(entry.target_host_id);
   const unchanged = how === SUSPENSION
     ? sameTime(now.suspended_at, entry.new_value?.suspended_at) && (now.suspended_reason ?? null) === (entry.new_value?.suspended_reason ?? null)

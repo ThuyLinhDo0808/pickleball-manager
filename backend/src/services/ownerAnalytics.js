@@ -135,15 +135,17 @@ function finance(rev, d) {
   const rates = churn.filter((c) => c.start > 0).map((c) => c.rate);
   const avgChurn = rates.length ? Math.round((rates.reduce((a, b) => a + b, 0) / rates.length) * 10) / 10 : null;
   // "Now" uses the subscriptions, the same way as the overview page.
-  const mrrNow = S.mrr(d.subs, paid, d.today);
-  const hostSet = new Set(d.hostIds);
-  const payingNow = d.subs.filter((s) => hostSet.has(s.host_id) && S.isPaying(s) && !S.onTrial(s, d.today)).length;
+  const mrrNow = S.mrr(d.subs.filter((s) => d.payingIds.has(s.host_id)), paid, d.today);
+  // Hosts on a plan the owner gave for free (no paid order covering today) bring no money:
+  // they are counted apart so ARPU is the average of hosts who really pay.
+  const payingNow = d.payingIds.size;
   const arpu = payingNow ? Math.round(mrrNow / payingNow) : 0;
   const hosts = d.hostIds.length;
   return {
     mrr: mrrNow,
     arr: mrrNow * 12,
     paying_hosts: payingNow,
+    gifted_hosts: d.giftedIds.size,
     arpu,
     arpa: hosts ? Math.round(last.mrr / hosts) : 0,
     churn: { by_month: churn, avg: avgChurn },
@@ -181,13 +183,14 @@ function segments(d) {
     const since = last ? Math.round((Date.parse(today) - Date.parse(last)) / DAY) : null;
     const ageDays = created.get(id) ? Math.round((Date.parse(today) - Date.parse(created.get(id))) / DAY) : 0;
     const orders = paid.filter((o) => o.host_id === id);
-    const paying = S.isPaying(sub) && !S.onTrial(sub, today);
+    const paying = d.payingIds.has(id);
     const firstPaid = orders.length ? orders.map((o) => dayOf(o.confirmed_at)).sort()[0] : null;
     const ends = [sub.tier_paid_until, sub.social_manager_paid_until].filter((x) => x && x >= today).sort()[0];
     return {
       id,
       tier: S.onTrial(sub, today) ? 'trial' : sub.tier || 'free',
       paying,
+      gifted: d.giftedIds.has(id),
       cash: cashOf.get(id) || 0,
       orders: orders.length,
       members: membersOf.get(id) || 0,
@@ -222,6 +225,7 @@ function segments(d) {
   const sport = (r) => (r.sports.size > 1 ? 'both' : r.sports.has('badminton') ? 'badminton' : r.sports.size ? 'pickleball' : 'none');
   // Value segments (RFM-style): what to do with each group.
   const value = (r) => {
+    if (r.gifted) return 'gifted';
     if (r.paying && r.ends_in != null && r.ends_in <= 14) return 'expiring';
     if (r.paying && (r.since == null || r.since > 30)) return 'at_risk';
     if (r.paying && r.orders >= 2) return 'loyal';
@@ -240,7 +244,7 @@ function segments(d) {
     by_region: group((r) => (r.provinces.size ? [...r.provinces] : ['—'])).slice(0, 12),
     by_activity: group(activity, ['active', 'cooling', 'dormant', 'never']),
     by_tenure: group(tenure, ['lt1', '1_3', '3_6', '6_12', 'gt12']),
-    by_value: group(value, ['loyal', 'new_paying', 'paying', 'expiring', 'at_risk', 'churned', 'trial', 'free_active', 'free_idle']),
+    by_value: group(value, ['loyal', 'new_paying', 'paying', 'expiring', 'at_risk', 'gifted', 'churned', 'trial', 'free_active', 'free_idle']),
   };
 }
 
@@ -249,14 +253,13 @@ function cohorts(d, months) {
   const hostSet = new Set(d.hostIds);
   const paid = d.orders.filter((o) => o.status === 'paid' && o.confirmed_at);
   const everPaid = new Set(paid.map((o) => o.host_id));
-  const subOf = new Map(d.subs.map((s) => [s.host_id, s]));
   const recent = S.shiftYmd(d.today, -30);
   const activeHosts = new Set(d.events.filter((e) => e.event_date >= recent && e.event_date <= d.today).map((e) => e.host_id));
   const rows = months.slice(-6).map((m) => {
     const accounts = d.users.filter((u) => ym(dayOf(u.created_at)) === m);
     const hosts = accounts.filter((u) => hostSet.has(u.id));
     const ids = hosts.map((u) => u.id);
-    const paying = ids.filter((id) => subOf.get(id) && S.isPaying(subOf.get(id)) && !S.onTrial(subOf.get(id), d.today)).length;
+    const paying = ids.filter((id) => d.payingIds.has(id)).length;
     return {
       month: m,
       accounts: accounts.length,
@@ -268,7 +271,7 @@ function cohorts(d, months) {
     };
   });
   // Each step keeps only the accounts of the step before, so the funnel narrows.
-  const payingIds = new Set(d.hostIds.filter((id) => subOf.get(id) && S.isPaying(subOf.get(id)) && !S.onTrial(subOf.get(id), d.today)));
+  const payingIds = d.payingIds;
   const requested = new Set(d.requests.map((r) => r.user_id));
   const all = d.users.map((u) => u.id);
   const onboarded = d.users.filter((u) => u.onboarded_at || hostSet.has(u.id)).map((u) => u.id);
@@ -282,12 +285,27 @@ function cohorts(d, months) {
   return { cohorts: rows, funnel };
 }
 
+// Hosts on a paid plan today (trial excluded), split into those with a paid order covering
+// today (they pay) and those without one (the owner switched the plan on for free).
+function payingSplit(d) {
+  const hostSet = new Set(d.hostIds);
+  const covered = new Set(d.orders.filter((o) => o.status === 'paid' && o.confirmed_at && covers(o, d.today)).map((o) => o.host_id));
+  const payingIds = new Set();
+  const giftedIds = new Set();
+  for (const s of d.subs) {
+    if (!hostSet.has(s.host_id) || !S.isPaying(s) || S.onTrial(s, d.today)) continue;
+    (covered.has(s.host_id) ? payingIds : giftedIds).add(s.host_id);
+  }
+  return { payingIds, giftedIds };
+}
+
 /**
  * @param {object} d  { today, months: 6|12|24, users, subs, orders, redemptions, clubs,
  *                      members: [{club_id}], events: [{host_id, club_id, event_date}],
  *                      requests: [{user_id}], hostIds: [] }
  */
-function analytics(d) {
+function analytics(input) {
+  const d = { ...input, ...payingSplit(input) };
   const months = lastMonths(ym(d.today), d.months || 12);
   const rev = revenue(d, months);
   const fin = finance(rev, d);

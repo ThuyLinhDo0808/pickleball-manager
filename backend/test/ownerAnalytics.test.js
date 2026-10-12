@@ -83,3 +83,26 @@ test('analytics: revenue by month, churn, segments, funnel narrows', () => {
   for (let i = 1; i < r.funnel.length; i += 1) assert.ok(r.funnel[i].count <= r.funnel[i - 1].count);
   assert.strictEqual(r.cohorts.find((x) => x.month === '2026-10').hosts, 1);
 });
+
+test('analytics: a plan given for free is counted apart from paying hosts', () => {
+  const today = '2026-10-15';
+  const users = ['a', 'b', 'c'].map((id) => ({ id, email: `${id}@x`, created_at: '2026-09-01T00:00:00Z', account_role: 'manager', onboarded_at: '2026-09-01T00:00:00Z' }));
+  const orders = [
+    { id: 1, host_id: 'a', kind: 'tier', tier: 'basic', months: 3, amount: 300000, status: 'paid', created_at: '2026-10-01T00:00:00Z', confirmed_at: '2026-10-01T00:00:00Z' },
+    // c paid long ago; the plan now runs on months the owner added for free
+    { id: 2, host_id: 'c', kind: 'tier', tier: 'basic', months: 1, amount: 100000, status: 'paid', created_at: '2026-01-01T00:00:00Z', confirmed_at: '2026-01-01T00:00:00Z' },
+  ];
+  const subs = [
+    { host_id: 'a', tier: 'basic', tier_paid_until: '2026-12-30' },
+    { host_id: 'b', tier: 'pro', tier_paid_until: '2027-01-01' }, // never paid: a gift
+    { host_id: 'c', tier: 'basic', tier_paid_until: '2026-12-01' },
+  ];
+  const r = analytics({ today, months: 6, users, subs, orders, redemptions: [], clubs: [], members: [], events: [], requests: [], hostIds: ['a', 'b', 'c'] });
+  assert.strictEqual(r.finance.paying_hosts, 1);
+  assert.strictEqual(r.finance.gifted_hosts, 2);
+  assert.strictEqual(r.finance.arpu, 100000); // 300k / 3 months, only host a
+  assert.strictEqual(r.segments.by_value.find((x) => x.key === 'gifted').hosts, 2);
+  const f = Object.fromEntries(r.funnel.map((x) => [x.key, x.count]));
+  assert.strictEqual(f.ever_paid, 2); // a and c, not b
+  assert.strictEqual(f.paying, 1);
+});

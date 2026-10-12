@@ -218,7 +218,7 @@ function Finance({ d }) {
         <Kpi label={t('ana.churn')} value={pctText(f.churn.avg)} tone={f.churn.avg > 10 ? 'text-red-300' : 'text-white'} sub={t('ana.churnHint')} />
         <Kpi label={t('ana.lifetimeM')} value={f.lifetime_months == null ? '—' : t('ana.monthsN', { n: String(f.lifetime_months).replace('.', ',') })} sub={t('ana.lifetimeHint')} />
         <Kpi label="LTV" value={f.ltv == null ? '—' : formatVnd(f.ltv)} sub={t('ana.ltvHint')} />
-        <Kpi label={t('ana.payingHosts')} value={f.paying_hosts} sub={t('ana.payingHint', { n: d.segments.hosts })} />
+        <Kpi label={t('ana.payingHosts')} value={f.paying_hosts} sub={f.gifted_hosts ? t('ana.payingHintGifted', { n: d.segments.hosts, g: f.gifted_hosts }) : t('ana.payingHint', { n: d.segments.hosts })} />
       </div>
 
       <OwnerSection title={t('ana.mrrTrend')} hint={t('ana.mrrTrendHint')}>
@@ -241,7 +241,7 @@ function Finance({ d }) {
   );
 }
 
-const VALUE_TONE = { loyal: 'border-lime-400/40', new_paying: 'border-sky-400/40', paying: 'border-navy-600', expiring: 'border-amber-300/50', at_risk: 'border-red-400/50', churned: 'border-red-400/30', trial: 'border-sky-400/30', free_active: 'border-navy-600', free_idle: 'border-navy-700' };
+const VALUE_TONE = { loyal: 'border-lime-400/40', new_paying: 'border-sky-400/40', paying: 'border-navy-600', expiring: 'border-amber-300/50', at_risk: 'border-red-400/50', gifted: 'border-violet-300/40', churned: 'border-red-400/30', trial: 'border-sky-400/30', free_active: 'border-navy-600', free_idle: 'border-navy-700' };
 
 function Segments({ d }) {
   const { t } = useI18n();
@@ -354,7 +354,7 @@ function exportXlsx(d, t) {
   const add = (name, head, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([head, ...rows]), name);
   add(t('ana.x_revenue'), [t('ana.col_month'), t('ana.col_cash'), t('ana.s_plans'), 'Social Manager', t('ana.s_new'), t('ana.s_renewal'), t('ana.s_upgrade'), t('ana.col_orders'), t('ana.col_discounts'), 'MRR', t('ana.col_paying')],
     d.revenue.by_month.map((m) => [m.month, m.cash, m.plans, m.social_manager, m.new, m.renewal, m.upgrade, m.orders, m.discounts, m.mrr, m.paying_hosts]));
-  add(t('ana.x_finance'), [t('ana.x_metric'), t('ana.x_value')], [['MRR', d.finance.mrr], ['ARR', d.finance.arr], ['ARPU', d.finance.arpu], ['ARPA', d.finance.arpa], [t('ana.churn'), d.finance.churn.avg], ['LTV', d.finance.ltv], [t('ana.payingHosts'), d.finance.paying_hosts]]);
+  add(t('ana.x_finance'), [t('ana.x_metric'), t('ana.x_value')], [['MRR', d.finance.mrr], ['ARR', d.finance.arr], ['ARPU', d.finance.arpu], ['ARPA', d.finance.arpa], [t('ana.churn'), d.finance.churn.avg], ['LTV', d.finance.ltv], [t('ana.payingHosts'), d.finance.paying_hosts], [t('ana.giftedHosts'), d.finance.gifted_hosts || 0]]);
   const seg = [];
   for (const k of ['plan', 'size', 'product', 'activity', 'sport', 'tenure', 'region', 'value']) for (const g of d.segments[`by_${k}`]) seg.push([t(`ana.seg_${k}`), g.key, g.hosts, g.paying, g.paying_rate, g.cash, g.members]);
   add(t('ana.x_segments'), [t('ana.x_dimension'), t('ana.x_group'), 'Host', t('ana.col_paying'), '%', t('ana.col_cash'), t('ana.membersWord')], seg);
