@@ -48,14 +48,34 @@ function hostStarts(clubs, xeveEvents) {
 // On the free trial: the plan still runs until the trial's end date.
 const onTrial = (s, today) => !!s.trial_ends_on && s.tier_paid_until === s.trial_ends_on && (!today || s.trial_ends_on >= today);
 
-// Paying = on a paid tier (not the free trial), or a Social Manager that was paid for.
-const isPaying = (s) => (s.tier && s.tier !== 'free' && !onTrial(s)) || (!!s.social_manager && !!s.social_manager_paid_until);
+// On a plan = a paid tier (not the free trial) or Social Manager switched on. Whether it was
+// really paid for is decided by payingSplit (a paid order covering today).
+const isPaying = (s) => (s.tier && s.tier !== 'free' && !onTrial(s)) || !!s.social_manager;
+
+// The plan as it really is today. A plan past its end date is only switched off in the
+// database the next time the host opens the app (billing.expireIfDue); the owner console
+// must not keep counting it, so expired parts are dropped here the same way.
+function live(s, today) {
+  if (!s) return s;
+  const out = { ...s };
+  if (out.tier && out.tier !== 'free' && out.tier_paid_until && out.tier_paid_until < today) out.tier = 'free';
+  if (out.social_manager && out.social_manager_paid_until && out.social_manager_paid_until < today) out.social_manager = false;
+  return out;
+}
+
+// Paid status of one host: 'paying' (a paid order covers today), 'gifted' (on a plan with
+// no such order), 'trial', or 'none'.
+function billingStatus(id, split, sub, today) {
+  if (split.payingIds.has(id)) return 'paying';
+  if (split.giftedIds.has(id)) return 'gifted';
+  return sub && onTrial(sub, today) ? 'trial' : 'none';
+}
 
 // Organisers on a paid plan today (trial excluded), split into those with a paid order
 // covering today (an order of N months covers N × 30 days from its confirmation) and those
 // without one: the owner switched the plan on / added months for free ("gifted").
 function payingSplit(hostIds, subs, paidOrders, today) {
-  const hostSet = new Set(hostIds);
+  const hostSet = hostIds ? new Set(hostIds) : null;
   const covered = new Set();
   for (const o of paidOrders) {
     const start = dayOf(o.confirmed_at);
@@ -64,7 +84,7 @@ function payingSplit(hostIds, subs, paidOrders, today) {
   const payingIds = new Set();
   const giftedIds = new Set();
   for (const s of subs) {
-    if (!hostSet.has(s.host_id) || !isPaying(s) || onTrial(s, today)) continue;
+    if ((hostSet && !hostSet.has(s.host_id)) || !isPaying(s) || onTrial(s, today)) continue;
     (covered.has(s.host_id) ? payingIds : giftedIds).add(s.host_id);
   }
   return { payingIds, giftedIds };
@@ -110,7 +130,8 @@ function expiring(subs, today, days) {
   const until = shiftYmd(today, days);
   const out = [];
   for (const s of subs) {
-    if (s.tier !== 'free' && s.tier_paid_until && s.tier_paid_until >= today && s.tier_paid_until <= until) {
+    // a trial ending is listed with the trials, not as a plan to renew
+    if (s.tier !== 'free' && !onTrial(s, today) && s.tier_paid_until && s.tier_paid_until >= today && s.tier_paid_until <= until) {
       out.push({ host_id: s.host_id, kind: 'tier', tier: s.tier, until: s.tier_paid_until });
     }
     if (s.social_manager && s.social_manager_paid_until && s.social_manager_paid_until >= today && s.social_manager_paid_until <= until) {
@@ -128,7 +149,8 @@ function renewal(subs, paidOrders, today) {
   const from = shiftYmd(today, -30);
   let lapsed = 0;
   for (const s of subs) {
-    for (const end of [s.tier_paid_until, s.social_manager_paid_until]) if (end && end < today && end >= from) lapsed += 1;
+    const trialEnd = s.trial_ends_on && s.tier_paid_until === s.trial_ends_on; // a trial ending is not a lapsed paid plan
+    for (const end of [trialEnd ? null : s.tier_paid_until, s.social_manager_paid_until]) if (end && end < today && end >= from) lapsed += 1;
   }
   const sorted = [...paidOrders].sort((a, b) => (a.confirmed_at || '').localeCompare(b.confirmed_at || ''));
   const seen = new Set();
@@ -167,15 +189,15 @@ function trials(subs, paidOrders, today) {
 }
 
 // How many accounts on each plan (organisers only), and the average a paying host pays.
-function tierMix(subs, hostIds) {
+function tierMix(subs, hostIds, today) {
   const mix = { free: 0, basic: 0, standard: 0, advanced: 0, pro: 0, trial: 0 };
   const byHost = new Map(subs.map((s) => [s.host_id, s]));
   for (const id of hostIds) {
     const s = byHost.get(id) || { tier: 'free' };
-    if (onTrial(s)) mix.trial += 1;
+    if (onTrial(s, today)) mix.trial += 1;
     else mix[s.tier in mix ? s.tier : 'free'] += 1;
   }
   return mix;
 }
 
-module.exports = { payingSplit, onTrial, trials, tierMix, vnYmd, shiftYmd, mondayOf, weekWindows, weekly, hostStarts, isPaying, conversion, mrr, cashIn, expiring, renewal, daily };
+module.exports = { live, billingStatus, payingSplit, onTrial, trials, tierMix, vnYmd, shiftYmd, mondayOf, weekWindows, weekly, hostStarts, isPaying, conversion, mrr, cashIn, expiring, renewal, daily };

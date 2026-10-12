@@ -142,15 +142,19 @@ router.delete('/support/:email', wrap(async (req, res) => {
 // ---- Data loading ----------------------------------------------------------------
 
 async function loadAll() {
-  const [users, subs, clubs, xeve, profiles, usage] = await Promise.all([
+  const today = S.vnYmd(new Date());
+  const [users, rawSubs, clubs, xeve, profiles, usage, orders] = await Promise.all([
     fetchAll(() => supabase.from('users').select('id, email, full_name, created_at, suspended_at, suspended_reason').order('created_at')),
     fetchAll(() => supabase.from('host_subscriptions').select('*').order('host_id')),
     fetchAll(() => supabase.from('clubs').select('id, host_id, name, sport, created_at').order('created_at')),
     fetchAll(() => supabase.from('events').select('id, host_id, created_at').is('club_id', null).neq('kind', 'meeting').order('created_at')),
     fetchAll(() => supabase.from('player_profiles').select('user_id, phone, full_name').order('user_id')),
     fetchAll(() => supabase.from('v_host_capacity_usage').select('host_id, used').order('host_id')),
+    fetchAll(() => supabase.from('plan_payments').select('host_id, kind, tier, months, amount, status, created_at, confirmed_at').order('created_at')),
   ]);
-  return { users, subs, clubs, xeve, profiles, usage };
+  const subs = rawSubs.map((x) => S.live(x, today));
+  const paid = orders.filter((o) => o.status === 'paid');
+  return { today, users, rawSubs, subs, clubs, xeve, profiles, usage, orders, paid, split: S.payingSplit(null, subs, paid, today) };
 }
 
 async function lastSignIns(ids) {
@@ -174,7 +178,8 @@ function hostRow(u, ctx) {
     tier,
     tier_paid_until: sub.tier_paid_until || null,
     trial_ends_on: sub.trial_ends_on || null,
-    on_trial: S.onTrial(sub, S.vnYmd(new Date())),
+    on_trial: S.onTrial(sub, ctx.today),
+    billing: S.billingStatus(u.id, ctx.split, sub, ctx.today),
     social_manager: !!sub.social_manager,
     social_manager_paid_until: sub.social_manager_paid_until || null,
     suspended_at: u.suspended_at || null,
@@ -193,6 +198,8 @@ function context(all) {
   const count = (rows) => rows.reduce((m, r) => m.set(r.host_id, (m.get(r.host_id) || 0) + 1), new Map());
   const starts = S.hostStarts(all.clubs, all.xeve);
   return {
+    today: all.today,
+    split: all.split,
     subOf: new Map(all.subs.map((s) => [s.host_id, s])),
     profOf: new Map(all.profiles.map((p) => [p.user_id, p])),
     usedOf: new Map(all.usage.map((u) => [u.host_id, u.used])),
@@ -209,11 +216,8 @@ router.get('/overview', wrap(async (req, res) => {
   const today = S.vnYmd(new Date());
   const all = await loadAll();
   const ctx = context(all);
-  const [orders, tournaments] = await Promise.all([
-    fetchAll(() => supabase.from('plan_payments').select('host_id, kind, tier, months, amount, status, created_at, confirmed_at').order('created_at')),
-    fetchAll(() => supabase.from('tournaments').select('id, created_at').order('created_at')),
-  ]);
-  const paid = orders.filter((o) => o.status === 'paid');
+  const tournaments = await fetchAll(() => supabase.from('tournaments').select('id, created_at').order('created_at'));
+  const { orders, paid } = all;
   // Hosts on a plan given for free (no paid order covering today) are counted apart from
   // paying hosts, the same way as the Analytics page.
   const split = S.payingSplit([...ctx.hostIds], all.subs, paid, today);
@@ -244,7 +248,7 @@ router.get('/overview', wrap(async (req, res) => {
       cash_last_month: S.cashIn(paid, prevMonth),
       mrr: mrrNow,
       pending_orders: orders.filter((o) => o.status === 'pending').length,
-      renewal: S.renewal(all.subs, paid, today),
+      renewal: S.renewal(all.rawSubs, paid, today),
     },
     expiring: S.expiring(all.subs, today, 7).map((x) => ({ ...x, email: emailOf.get(x.host_id) || null })),
     daily: {
@@ -253,7 +257,7 @@ router.get('/overview', wrap(async (req, res) => {
     },
     suspended: all.users.filter((u) => u.suspended_at).length,
     // Plans: hosts on each, average a paying host pays per month (ARPU), trials.
-    tiers: S.tierMix(all.subs, [...ctx.hostIds]),
+    tiers: S.tierMix(all.subs, [...ctx.hostIds], today),
     arpu: split.payingIds.size ? Math.round(mrrNow / split.payingIds.size) : 0,
     trials: (() => {
       const t = S.trials(all.subs, paid, today);
@@ -264,7 +268,7 @@ router.get('/overview', wrap(async (req, res) => {
 
 // ---- Hosts -----------------------------------------------------------------------
 
-const FILTERS = ['hosts', 'all', 'paying', 'trial', 'free', 'suspended', 'expiring'];
+const FILTERS = ['hosts', 'all', 'paying', 'gifted', 'trial', 'free', 'suspended', 'expiring'];
 
 router.get('/hosts', wrap(async (req, res) => {
   const today = S.vnYmd(new Date());
@@ -277,12 +281,14 @@ router.get('/hosts', wrap(async (req, res) => {
   let rows = all.users.map((u) => hostRow(u, ctx));
   rows = rows.filter((r) => {
     if (filter === 'hosts' && !r.is_host) return false;
-    if (filter === 'paying' && !S.isPaying({ tier: r.tier, tier_paid_until: r.tier_paid_until, trial_ends_on: r.trial_ends_on, social_manager: r.social_manager, social_manager_paid_until: r.social_manager_paid_until })) return false;
+    // same meaning as the overview / analytics: a paid order covers today
+    if (filter === 'paying' && r.billing !== 'paying') return false;
+    if (filter === 'gifted' && r.billing !== 'gifted') return false;
     if (filter === 'trial' && !r.on_trial) return false;
     if (filter === 'free' && (r.tier !== 'free' || !r.is_host)) return false;
     if (filter === 'suspended' && !r.suspended_at) return false;
     if (filter === 'expiring') {
-      const ends = [r.tier !== 'free' && r.tier_paid_until, r.social_manager && r.social_manager_paid_until].filter(Boolean);
+      const ends = [r.tier !== 'free' && !r.on_trial && r.tier_paid_until, r.social_manager && r.social_manager_paid_until].filter(Boolean);
       if (!ends.some((d) => d >= today && d <= soon)) return false;
     }
     if (!q) return true;
@@ -334,8 +340,14 @@ router.get('/hosts/:id', wrap(async (req, res) => {
   // Member counts per club (a number only — no member details here).
   // Member counts and places per club (numbers only — no member details here).
   const counts = await Promise.all((clubs || []).map((c) => memberRoom(c).catch(() => null)));
+  // The plan as it is today (an expired plan counts as ended even before the host opens the
+  // app), and whether a paid order covers it — the same rules as the lists and overview.
+  const today = S.vnYmd(new Date());
+  const liveSub = sub ? S.live(sub, today) : null;
   const ctx = {
-    subOf: new Map(sub ? [[u.id, sub]] : []),
+    today,
+    split: S.payingSplit(null, liveSub ? [liveSub] : [], (orders || []).filter((o) => o.status === 'paid'), today),
+    subOf: new Map(liveSub ? [[u.id, liveSub]] : []),
     profOf: new Map(prof ? [[u.id, prof]] : []),
     usedOf: new Map(usage ? [[u.id, usage.used]] : []),
     clubCount: new Map([[u.id, (clubs || []).length]]),
@@ -590,10 +602,11 @@ router.get('/activity/clubs', wrap(async (req, res) => {
     fetchAll(() => supabase.from('clubs').select('id, name, sport, host_id, created_at, extra_fixed_members, extra_guest_members').order('created_at', { ascending: false })),
     fetchAll(() => supabase.from('club_members').select('club_id, member_type').eq('is_active', true).order('club_id')),
     fetchAll(() => supabase.from('users').select('id, email').order('id')),
-    fetchAll(() => supabase.from('host_subscriptions').select('host_id, tier').order('host_id')),
+    fetchAll(() => supabase.from('host_subscriptions').select('host_id, tier, tier_paid_until, social_manager, social_manager_paid_until').order('host_id')),
   ]);
   const emailOf = new Map(users.map((u) => [u.id, u.email]));
-  const tierOf = new Map(subs.map((x) => [x.host_id, x.tier]));
+  const today = S.vnYmd(new Date());
+  const tierOf = new Map(subs.map((x) => [x.host_id, S.live(x, today).tier]));
   const count = new Map();
   for (const m of members) {
     const c = count.get(m.club_id) || { fixed: 0, guest: 0 };
@@ -628,7 +641,7 @@ router.get('/analytics', wrap(async (req, res) => {
     safe(fetchAll(() => supabase.from('club_requests').select('user_id').order('created_at'))),
   ]);
   const hostIds = [...S.hostStarts(clubs, xeve).keys()];
-  res.json(analytics({ today, months, users, subs, orders, redemptions, clubs, members, events, requests, hostIds }));
+  res.json(analytics({ today, months, users, subs: subs.map((x) => S.live(x, today)), orders, redemptions, clubs, members, events, requests, hostIds }));
 }));
 
 // Every club and play community in the app (owner console → CLB & cộng đồng): kind,
@@ -640,10 +653,11 @@ router.get('/clubs', wrap(async (req, res) => {
     fetchAll(() => supabase.from('club_members').select('club_id, member_type').eq('is_active', true).order('club_id')),
     fetchAll(() => supabase.from('events').select('club_id, event_date').not('club_id', 'is', null).neq('status', 'cancelled').order('club_id')),
     fetchAll(() => supabase.from('users').select('id, email').order('id')),
-    fetchAll(() => supabase.from('host_subscriptions').select('host_id, tier').order('host_id')),
+    fetchAll(() => supabase.from('host_subscriptions').select('host_id, tier, tier_paid_until, social_manager, social_manager_paid_until').order('host_id')),
   ]);
   const emailOf = new Map(users.map((u) => [u.id, u.email]));
-  const tierOf = new Map(subs.map((x) => [x.host_id, x.tier]));
+  const today = S.vnYmd(new Date());
+  const tierOf = new Map(subs.map((x) => [x.host_id, S.live(x, today).tier]));
   const mem = new Map();
   for (const m of members) {
     const c = mem.get(m.club_id) || { fixed: 0, guest: 0 };
@@ -996,7 +1010,8 @@ router.get('/payments', wrap(async (req, res) => {
     ids.length ? supabase.from('host_subscriptions').select('host_id, tier, tier_paid_until, social_manager, social_manager_paid_until').in('host_id', ids) : { data: [] },
   ]);
   const byId = new Map((users || []).map((u) => [u.id, u]));
-  const subOf = new Map((subs || []).map((s) => [s.host_id, s]));
+  const today = S.vnYmd(new Date());
+  const subOf = new Map((subs || []).map((s) => [s.host_id, S.live(s, today)]));
   const orders = data.map((o) => ({
     ...billing.present(o),
     confirmed_at: o.confirmed_at,

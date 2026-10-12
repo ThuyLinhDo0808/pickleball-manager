@@ -17,7 +17,7 @@ test('conversion counts paid tiers and paid Social Manager; plans with no order 
   const subs = [
     { host_id: 'a', tier: 'basic' },
     { host_id: 'b', tier: 'free', social_manager: true, social_manager_paid_until: '2026-12-01' },
-    { host_id: 'c', tier: 'free', social_manager: true, social_manager_paid_until: null },
+    { host_id: 'c', tier: 'free', social_manager: true, social_manager_paid_until: null }, // SM on with no end, no order: a gift
     { host_id: 'd', tier: 'free' },
     { host_id: 'e', tier: 'pro', tier_paid_until: '2026-12-01' }, // switched on by hand, no order
     { host_id: 'f', tier: 'basic', tier_paid_until: '2026-12-01' }, // last order ran out long ago
@@ -27,7 +27,7 @@ test('conversion counts paid tiers and paid Social Manager; plans with no order 
     { host_id: 'b', kind: 'social_manager', months: 3, confirmed_at: '2026-09-01T03:00:00Z' },
     { host_id: 'f', kind: 'tier', months: 1, confirmed_at: '2026-01-01T03:00:00Z' },
   ];
-  assert.deepStrictEqual(S.conversion(['a', 'b', 'c', 'd', 'e', 'f'], subs, paid, '2026-10-15'), { hosts: 6, paying: 2, gifted: 2, rate: 33.3 });
+  assert.deepStrictEqual(S.conversion(['a', 'b', 'c', 'd', 'e', 'f'], subs, paid, '2026-10-15'), { hosts: 6, paying: 2, gifted: 3, rate: 33.3 });
 });
 
 test('mrr spreads multi-month orders and ignores lapsed or hand-made plans', () => {
@@ -89,4 +89,26 @@ test('trials: active list and conversion after the trial', () => {
   assert.deepStrictEqual([t.ended, t.converted, t.rate], [2, 1, 50]);
   assert.strictEqual(S.isPaying(subs[0]), false, 'a trial is not paying');
   assert.deepStrictEqual(S.tierMix(subs, ['a', 'b', 'c', 'd']), { free: 2, basic: 1, standard: 0, advanced: 0, pro: 0, trial: 1 });
+});
+
+test('live: a plan past its end date counts as ended before the host opens the app', () => {
+  const today = '2026-10-15';
+  const l = S.live({ host_id: 'a', tier: 'pro', tier_paid_until: '2026-10-14', social_manager: true, social_manager_paid_until: '2026-10-15' }, today);
+  assert.deepStrictEqual([l.tier, l.social_manager], ['free', true]);
+  assert.strictEqual(S.live({ host_id: 'b', tier: 'basic', tier_paid_until: null }, today).tier, 'basic'); // no end date
+  // an ended trial is no longer a trial in the plan mix
+  const trialOver = S.live({ host_id: 'c', tier: 'basic', tier_paid_until: '2026-10-10', trial_ends_on: '2026-10-10' }, today);
+  assert.deepStrictEqual(S.tierMix([trialOver], ['c'], today), { free: 1, basic: 0, standard: 0, advanced: 0, pro: 0, trial: 0 });
+});
+
+test('expiring and renewal leave trials out', () => {
+  const today = '2026-10-15';
+  const subs = [
+    { host_id: 't', tier: 'basic', tier_paid_until: '2026-10-17', trial_ends_on: '2026-10-17' }, // trial ending soon
+    { host_id: 'p', tier: 'pro', tier_paid_until: '2026-10-18' },
+    { host_id: 'x', tier: 'free', tier_paid_until: '2026-10-05', trial_ends_on: '2026-10-05' }, // trial ended
+    { host_id: 'y', tier: 'free', tier_paid_until: '2026-10-06' }, // paid plan ran out
+  ];
+  assert.deepStrictEqual(S.expiring(subs, today, 7).map((x) => x.host_id), ['p']);
+  assert.strictEqual(S.renewal(subs, [], today).lapsed, 1);
 });
