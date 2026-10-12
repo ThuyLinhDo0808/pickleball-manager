@@ -12,7 +12,7 @@ const isDateKey = (k) => /_until$/.test(k);
 function Diff({ from, to }) {
   const { t } = useI18n();
   const keys = [...new Set([...Object.keys(from || {}), ...Object.keys(to || {})])].filter(
-    (k) => !/_id$/.test(k) && JSON.stringify(from?.[k] ?? null) !== JSON.stringify(to?.[k] ?? null),
+    (k) => !/_id$/.test(k) && k !== 'paid' && JSON.stringify(from?.[k] ?? null) !== JSON.stringify(to?.[k] ?? null),
   );
   if (!keys.length) return null;
   const show = (k, v) => {
@@ -63,7 +63,7 @@ export function AuditRow({ row, onChanged, showTarget = true }) {
         </div>
         <div className="flex items-center gap-2 text-gray-500 text-xs">
           <span>{fmtTime(row.created_at)} · {row.actor_email}</span>
-          {me?.owner && UNDOABLE.includes(row.action) && !row.undone_at && (
+          {me?.owner && UNDOABLE.includes(row.action) && !row.undone_at && !row.new_value?.paid?.length && (
             <button type="button" className="rounded border border-navy-600 px-2 py-0.5 text-gray-200 hover:border-amber-300" disabled={busy} onClick={undo}>↩ {t('owner.undo')}</button>
           )}
         </div>
@@ -71,6 +71,9 @@ export function AuditRow({ row, onChanged, showTarget = true }) {
       {row.new_value?.club_name && <p className="text-gray-300 text-xs mt-0.5">🏠 {row.new_value.club_name}</p>}
       {row.note && <p className="text-gray-400 text-xs mt-0.5 italic">“{row.note}”</p>}
       {row.action === 'note.add' ? <p className="text-gray-300 text-xs mt-1">{row.new_value?.body}</p> : <Diff from={row.old_value} to={row.new_value} />}
+      {(row.new_value?.paid || []).map((o) => (
+        <p key={o.ref} className="text-lime-300 text-xs mt-0.5">💵 {t('owner.paidRecorded', { amount: Number(o.amount).toLocaleString('vi-VN'), kind: o.kind === 'social_manager' ? 'Social Manager' : t('owner.planShort'), months: o.months, ref: o.ref })}</p>
+      ))}
       {msg && <p className="text-red-300 text-xs mt-1">{msg}</p>}
     </li>
   );

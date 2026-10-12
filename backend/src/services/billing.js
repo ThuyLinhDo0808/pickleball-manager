@@ -37,6 +37,26 @@ const isAdmin = (email) => require('./owner').isOwner(email);
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newRef = () => `PBM${[...crypto.randomBytes(6)].map((b) => ALPHABET[b % ALPHABET.length]).join('')}`;
 
+// Money the owner received outside the app (cash, a transfer without the order code) for a
+// plan they switched on by hand: an order that is already paid, so it counts as revenue.
+// The plan dates are set by the caller; this only records the payment.
+async function recordManual({ hostId, kind, tier, months, amount, by }) {
+  const row = {
+    host_id: hostId,
+    kind,
+    tier: kind === 'tier' ? tier : null,
+    months: Math.min(24, Math.max(1, months || 1)),
+    amount,
+    ref: `TAY${[...crypto.randomBytes(6)].map((b) => ALPHABET[b % ALPHABET.length]).join('')}`,
+    status: 'paid',
+    confirmed_at: new Date().toISOString(),
+    confirmed_by: by || null,
+  };
+  const { data, error } = await supabase.from('plan_payments').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+
 // An order as the Host sees it: amount, bank details and the VietQR image.
 function present(order) {
   if (!order) return null;
@@ -206,4 +226,4 @@ async function expireIfDue(sub) {
   return { ...sub, ...patch, expired_tier: patch.tier ? sub.tier : null, expired_social_manager: 'social_manager' in patch };
 }
 
-module.exports = { activePaid, upgradeQuote, daysBetween, DEFAULT_PRICES, MONTH_CHOICES, prices, operatorBank, isAdmin, present, pendingOrders, createOrder, cancelOrders, confirmOrder, expireIfDue, addMonths, addDays };
+module.exports = { recordManual, activePaid, upgradeQuote, daysBetween, DEFAULT_PRICES, MONTH_CHOICES, prices, operatorBank, isAdmin, present, pendingOrders, createOrder, cancelOrders, confirmOrder, expireIfDue, addMonths, addDays };

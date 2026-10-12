@@ -10,6 +10,7 @@ const PERMISSIONS = ['stats', 'hosts', 'payments', 'plans', 'feedback', 'announc
 // [methods, path under /api/owner, permission]
 const ROUTES = [
   ['GET', '/overview', 'stats'],
+  ['GET', '/analytics', 'stats'],
   ['GET', '/hosts', 'hosts'],
   ['GET', '/hosts/:id', 'hosts'],
   ['POST', '/hosts/:id/notes', 'hosts'],

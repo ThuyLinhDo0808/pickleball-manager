@@ -22,6 +22,8 @@ function PlanEditor({ host, onSaved }) {
     social_manager: host.social_manager,
     social_manager_paid_until: host.social_manager_paid_until || '',
     sm_add_months: '',
+    paid_amount: '',
+    sm_paid_amount: '',
     note: '',
   });
   const [f, setF] = useState(blank);
@@ -40,7 +42,11 @@ function PlanEditor({ host, onSaved }) {
     if (f.social_manager && (f.social_manager_paid_until || null) !== (host.social_manager_paid_until || null)) body.social_manager_paid_until = f.social_manager_paid_until || null;
     if (f.sm_add_months) body.sm_add_months = Number(f.sm_add_months);
     if (Object.keys(body).length === 1) return setMsg(t('owner.nothingChanged'));
-    if (!window.confirm(t('owner.saveAsk'))) return;
+    const money = (v) => Number(String(v).replace(/\D/g, '')) || 0;
+    if (money(f.paid_amount)) body.paid_amount = money(f.paid_amount);
+    if (money(f.sm_paid_amount)) body.sm_paid_amount = money(f.sm_paid_amount);
+    const total = (body.paid_amount || 0) + (body.sm_paid_amount || 0);
+    if (!window.confirm(total ? t('owner.saveAskPaid', { amount: total.toLocaleString('vi-VN') }) : t('owner.saveAskGift'))) return;
     setBusy(true);
     setMsg('');
     try {
@@ -58,7 +64,7 @@ function PlanEditor({ host, onSaved }) {
   return (
     <form onSubmit={save} className="card !p-4">
       <h2 className="text-white font-semibold mb-3">💎 {t('owner.planTitle')}</h2>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-4 gap-3">
         <label className="block">
           <span className={L}>{t('owner.field_tier')}</span>
           <select className="input text-sm" value={f.tier} onChange={set('tier')}>
@@ -77,8 +83,12 @@ function PlanEditor({ host, onSaved }) {
             {[1, 2, 3, 6, 12].map((n) => <option key={n} value={n}>+{n} {t('owner.months')}</option>)}
           </select>
         </label>
+        <label className="block">
+          <span className={L}>{t('owner.paidAmount')}</span>
+          <input className="input text-sm" inputMode="numeric" value={f.paid_amount} disabled={f.tier === 'free'} onChange={set('paid_amount')} placeholder={t('owner.paidAmountPh')} />
+        </label>
       </div>
-      <div className="grid sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-navy-700">
+      <div className="grid sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-navy-700">
         <label className="flex items-center gap-2 text-sm text-gray-200 sm:mt-5">
           <input type="checkbox" checked={f.social_manager} onChange={set('social_manager')} className="h-4 w-4 accent-amber-300" />
           🎟 Social Manager
@@ -94,7 +104,12 @@ function PlanEditor({ host, onSaved }) {
             {[1, 2, 3, 6, 12].map((n) => <option key={n} value={n}>+{n} {t('owner.months')}</option>)}
           </select>
         </label>
+        <label className="block">
+          <span className={L}>{t('owner.paidAmount')}</span>
+          <input className="input text-sm" inputMode="numeric" value={f.sm_paid_amount} disabled={!f.social_manager && !f.sm_add_months} onChange={set('sm_paid_amount')} placeholder={t('owner.paidAmountPh')} />
+        </label>
       </div>
+      <p className="text-gray-500 text-[11px] mt-2">{t('owner.paidAmountHint')}</p>
       <label className="block mt-3">
         <span className={L}>{t('owner.reason')}</span>
         <input className="input text-sm" value={f.note} onChange={set('note')} maxLength={300} placeholder={t('owner.reasonPh')} />
