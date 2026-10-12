@@ -13,14 +13,21 @@ test('weekly: this vs last week with % change (Vietnam time)', () => {
   assert.deepStrictEqual(r, { this: 3, last: 1, change: 200 });
 });
 
-test('conversion counts paid tiers and paid Social Manager', () => {
+test('conversion counts paid tiers and paid Social Manager; plans with no order are gifts', () => {
   const subs = [
     { host_id: 'a', tier: 'basic' },
     { host_id: 'b', tier: 'free', social_manager: true, social_manager_paid_until: '2026-12-01' },
     { host_id: 'c', tier: 'free', social_manager: true, social_manager_paid_until: null },
     { host_id: 'd', tier: 'free' },
+    { host_id: 'e', tier: 'pro', tier_paid_until: '2026-12-01' }, // switched on by hand, no order
+    { host_id: 'f', tier: 'basic', tier_paid_until: '2026-12-01' }, // last order ran out long ago
   ];
-  assert.deepStrictEqual(S.conversion(['a', 'b', 'c', 'd'], subs), { hosts: 4, paying: 2, rate: 50 });
+  const paid = [
+    { host_id: 'a', kind: 'tier', months: 1, confirmed_at: '2026-10-01T03:00:00Z' },
+    { host_id: 'b', kind: 'social_manager', months: 3, confirmed_at: '2026-09-01T03:00:00Z' },
+    { host_id: 'f', kind: 'tier', months: 1, confirmed_at: '2026-01-01T03:00:00Z' },
+  ];
+  assert.deepStrictEqual(S.conversion(['a', 'b', 'c', 'd', 'e', 'f'], subs, paid, '2026-10-15'), { hosts: 6, paying: 2, gifted: 2, rate: 33.3 });
 });
 
 test('mrr spreads multi-month orders and ignores lapsed or hand-made plans', () => {

@@ -285,27 +285,13 @@ function cohorts(d, months) {
   return { cohorts: rows, funnel };
 }
 
-// Hosts on a paid plan today (trial excluded), split into those with a paid order covering
-// today (they pay) and those without one (the owner switched the plan on for free).
-function payingSplit(d) {
-  const hostSet = new Set(d.hostIds);
-  const covered = new Set(d.orders.filter((o) => o.status === 'paid' && o.confirmed_at && covers(o, d.today)).map((o) => o.host_id));
-  const payingIds = new Set();
-  const giftedIds = new Set();
-  for (const s of d.subs) {
-    if (!hostSet.has(s.host_id) || !S.isPaying(s) || S.onTrial(s, d.today)) continue;
-    (covered.has(s.host_id) ? payingIds : giftedIds).add(s.host_id);
-  }
-  return { payingIds, giftedIds };
-}
-
 /**
  * @param {object} d  { today, months: 6|12|24, users, subs, orders, redemptions, clubs,
  *                      members: [{club_id}], events: [{host_id, club_id, event_date}],
  *                      requests: [{user_id}], hostIds: [] }
  */
 function analytics(input) {
-  const d = { ...input, ...payingSplit(input) };
+  const d = { ...input, ...S.payingSplit(input.hostIds, input.subs, input.orders.filter((o) => o.status === 'paid' && o.confirmed_at), input.today) };
   const months = lastMonths(ym(d.today), d.months || 12);
   const rev = revenue(d, months);
   const fin = finance(rev, d);

@@ -753,6 +753,7 @@ export const en = {
     lastWeek: "last week {n}",
     conversion: "Free → paid",
     conversionSub: "{paying}/{hosts} hosts paying",
+    conversionGifted: "+{n} on a free plan (not counted)",
     totals: "Platform: {accounts} accounts · {hosts} hosts · {clubs} clubs · {players} players",
     suspendedN: "{n} suspended account(s)",
     usage: "Activity",

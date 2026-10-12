@@ -140,7 +140,7 @@ export default function OwnerOverview() {
               <Tile label={t('owner.newHosts')} value={d.growth.hosts.this} sub={<Change w={d.growth.hosts} />} />
               <Tile label={t('owner.newClubs')} value={d.growth.clubs.this} sub={<Change w={d.growth.clubs} />} />
               <Tile label={t('owner.newPlayers')} value={d.growth.players.this} sub={<Change w={d.growth.players} />} />
-              <Tile label={t('owner.conversion')} value={`${d.conversion.rate}%`} sub={<span className="text-gray-500 text-xs">{t('owner.conversionSub', { paying: d.conversion.paying, hosts: d.conversion.hosts })}</span>} href="/owner/hosts?filter=paying" />
+              <Tile label={t('owner.conversion')} value={`${d.conversion.rate}%`} sub={<span className="text-gray-500 text-xs">{t('owner.conversionSub', { paying: d.conversion.paying, hosts: d.conversion.hosts })}{d.conversion.gifted ? ` · ${t('owner.conversionGifted', { n: d.conversion.gifted })}` : ''}</span>} href="/owner/hosts?filter=paying" />
             </div>
           </OwnerSection>
 

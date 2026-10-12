@@ -51,12 +51,32 @@ const onTrial = (s, today) => !!s.trial_ends_on && s.tier_paid_until === s.trial
 // Paying = on a paid tier (not the free trial), or a Social Manager that was paid for.
 const isPaying = (s) => (s.tier && s.tier !== 'free' && !onTrial(s)) || (!!s.social_manager && !!s.social_manager_paid_until);
 
-// Free -> paid conversion among organisers.
-function conversion(hostIds, subs) {
-  const byHost = new Map(subs.map((s) => [s.host_id, s]));
+// Organisers on a paid plan today (trial excluded), split into those with a paid order
+// covering today (an order of N months covers N × 30 days from its confirmation) and those
+// without one: the owner switched the plan on / added months for free ("gifted").
+function payingSplit(hostIds, subs, paidOrders, today) {
+  const hostSet = new Set(hostIds);
+  const covered = new Set();
+  for (const o of paidOrders) {
+    const start = dayOf(o.confirmed_at);
+    if (start && start <= today && today < shiftYmd(start, (Number(o.months) || 1) * 30)) covered.add(o.host_id);
+  }
+  const payingIds = new Set();
+  const giftedIds = new Set();
+  for (const s of subs) {
+    if (!hostSet.has(s.host_id) || !isPaying(s) || onTrial(s, today)) continue;
+    (covered.has(s.host_id) ? payingIds : giftedIds).add(s.host_id);
+  }
+  return { payingIds, giftedIds };
+}
+
+// Free -> paid conversion among organisers: only hosts who really pay count; hosts on a
+// gifted plan are reported apart.
+function conversion(hostIds, subs, paidOrders, today) {
+  const { payingIds, giftedIds } = payingSplit(hostIds, subs, paidOrders, today);
   const total = hostIds.length;
-  const paying = hostIds.filter((id) => byHost.get(id) && isPaying(byHost.get(id))).length;
-  return { hosts: total, paying, rate: total ? Math.round((paying / total) * 1000) / 10 : 0 };
+  const paying = payingIds.size;
+  return { hosts: total, paying, gifted: giftedIds.size, rate: total ? Math.round((paying / total) * 1000) / 10 : 0 };
 }
 
 // MRR: each running paid period counts its order's price per month (a 12-month order
@@ -158,4 +178,4 @@ function tierMix(subs, hostIds) {
   return mix;
 }
 
-module.exports = { onTrial, trials, tierMix, vnYmd, shiftYmd, mondayOf, weekWindows, weekly, hostStarts, isPaying, conversion, mrr, cashIn, expiring, renewal, daily };
+module.exports = { payingSplit, onTrial, trials, tierMix, vnYmd, shiftYmd, mondayOf, weekWindows, weekly, hostStarts, isPaying, conversion, mrr, cashIn, expiring, renewal, daily };

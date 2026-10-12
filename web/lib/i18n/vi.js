@@ -753,6 +753,7 @@ export const vi = {
     lastWeek: "tuần trước {n}",
     conversion: "Tỷ lệ lên gói trả phí",
     conversionSub: "{paying}/{hosts} Host đang trả phí",
+    conversionGifted: "+{n} được tặng gói (không tính)",
     totals: "Toàn hệ thống: {accounts} tài khoản · {hosts} Host · {clubs} CLB · {players} người chơi",
     suspendedN: "{n} tài khoản đang bị khoá",
     usage: "Hoạt động",

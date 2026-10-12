@@ -214,6 +214,10 @@ router.get('/overview', wrap(async (req, res) => {
     fetchAll(() => supabase.from('tournaments').select('id, created_at').order('created_at')),
   ]);
   const paid = orders.filter((o) => o.status === 'paid');
+  // Hosts on a plan given for free (no paid order covering today) are counted apart from
+  // paying hosts, the same way as the Analytics page.
+  const split = S.payingSplit([...ctx.hostIds], all.subs, paid, today);
+  const mrrNow = S.mrr(all.subs.filter((x) => split.payingIds.has(x.host_id)), paid, today);
   const playerIds = new Set(all.profiles.map((p) => p.user_id));
   const emailOf = new Map(all.users.map((u) => [u.id, u.email]));
   const month = today.slice(0, 7);
@@ -229,7 +233,7 @@ router.get('/overview', wrap(async (req, res) => {
       accounts: S.weekly(all.users.map((u) => u.created_at), today),
     },
     totals: { accounts: all.users.length, hosts: ctx.hostIds.size, clubs: all.clubs.length, players: playerIds.size },
-    conversion: S.conversion([...ctx.hostIds], all.subs),
+    conversion: S.conversion([...ctx.hostIds], all.subs, paid, today),
     usage: {
       xeve: { today: todayCount(all.xeve), ...S.weekly(all.xeve.map((e) => e.created_at), today) },
       tournaments: { today: todayCount(tournaments), ...S.weekly(tournaments.map((t) => t.created_at), today) },
@@ -238,7 +242,7 @@ router.get('/overview', wrap(async (req, res) => {
       month,
       cash_this_month: S.cashIn(paid, month),
       cash_last_month: S.cashIn(paid, prevMonth),
-      mrr: S.mrr(all.subs, paid, today),
+      mrr: mrrNow,
       pending_orders: orders.filter((o) => o.status === 'pending').length,
       renewal: S.renewal(all.subs, paid, today),
     },
@@ -250,10 +254,7 @@ router.get('/overview', wrap(async (req, res) => {
     suspended: all.users.filter((u) => u.suspended_at).length,
     // Plans: hosts on each, average a paying host pays per month (ARPU), trials.
     tiers: S.tierMix(all.subs, [...ctx.hostIds]),
-    arpu: (() => {
-      const paying = all.subs.filter((x) => S.isPaying(x)).length;
-      return paying ? Math.round(S.mrr(all.subs, paid, today) / paying) : 0;
-    })(),
+    arpu: split.payingIds.size ? Math.round(mrrNow / split.payingIds.size) : 0,
     trials: (() => {
       const t = S.trials(all.subs, paid, today);
       return { ...t, active: t.active.map((x) => ({ ...x, email: emailOf.get(x.host_id) || null })) };
