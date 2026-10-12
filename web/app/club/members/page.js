@@ -39,7 +39,11 @@ export default function MembersPage() {
   // Official / guest places on the club's plan (GET /api/clubs/:id -> member_room).
   const { data: clubInfo } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}`).catch(() => null) : Promise.resolve(null)), [club?.id, members?.length]);
   const room = clubInfo?.member_room;
-  const placeText = (r) => (r && r.limit != null ? t('plan.places', { used: r.used, limit: r.limit }) : null);
+  // A community (Social Manager) has one limit for official + guest together.
+  const placeText = (r) => {
+    const x = room?.kind === 'community' ? room.total : r;
+    return x && x.limit != null ? t(room?.kind === 'community' ? 'plan.placesTotal' : 'plan.places', { used: x.used, limit: x.limit }) : null;
+  };
   const [showAdd, setShowAdd] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());

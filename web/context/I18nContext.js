@@ -45,3 +45,12 @@ export function useI18n() {
   if (!ctx) throw new Error('useI18n must be used within I18nProvider');
   return ctx;
 }
+
+// Part of a page that talks about a community while the rest of the page doesn't (e.g. the
+// request form for a new community): "CLB" words inside read "cộng đồng".
+export function I18nSpace({ space, children }) {
+  const ctx = useI18n();
+  const t = useCallback((key, params) => translate(ctx.lang, key, params, ctx.sport, space), [ctx.lang, ctx.sport, space]);
+  const value = useMemo(() => ({ ...ctx, t, space }), [ctx, t, space]);
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}

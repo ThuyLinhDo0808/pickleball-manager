@@ -4,6 +4,7 @@ import { I18nProvider } from '@/context/I18nContext';
 import { ClubProvider } from '@/context/ClubContext';
 import { WorkspaceProvider } from '@/context/WorkspaceContext';
 import ViewAsBanner from '@/components/ViewAsBanner';
+import OnboardingGate from '@/components/OnboardingGate';
 
 export const metadata = {
   title: 'Pickleball Manager',
@@ -27,6 +28,7 @@ export default function RootLayout({ children }) {
             <WorkspaceProvider>
               <ClubProvider>
                 <ViewAsBanner />
+                <OnboardingGate />
                 {children}
               </ClubProvider>
             </WorkspaceProvider>

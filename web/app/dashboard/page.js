@@ -7,6 +7,8 @@ import { useScope } from '@/lib/useScope';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useClubs } from '@/context/ClubContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { hasFeature, planFor } from '@/lib/planFeatures';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
@@ -85,18 +87,25 @@ function ClubHome({ community = false }) {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const { club } = useClubs();
+  const { plan } = useWorkspace();
   const cid = club?.id;
   const today = todayYmd();
   const month = today.slice(0, 7);
+  // What the club's plan allows: the overview never sends people to a locked page as its
+  // main button, and money still shows on plans without the finance charts.
+  const clubPlan = planFor(club, plan);
+  const canWeekly = hasFeature(clubPlan, 'weekly_schedule');
+  const canStats = hasFeature(clubPlan, 'stats');
 
   const { data: me } = useLoad(() => (user ? safe(api.get('/api/host/me')) : Promise.resolve(null)), [user?.id]);
   const { data: events } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/events`)) : Promise.resolve([])), [cid]);
   const { data: members } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/members`)) : Promise.resolve([])), [cid]);
   const { data: fund } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/fund`)) : Promise.resolve(null)), [cid]);
+  const { data: refunds } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/refunds-due`)) : Promise.resolve([])), [cid]);
   const { data: requests } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/member-requests`)) : Promise.resolve([])), [cid]);
-  const { data: fin } = useLoad(() => (cid ? safe(api.get(`/api/analytics/finance?club_id=${cid}&months=3`)) : Promise.resolve(null)), [cid]);
+  const { data: fin } = useLoad(() => (cid && canStats ? safe(api.get(`/api/analytics/finance?club_id=${cid}&months=3`)) : Promise.resolve(null)), [cid, canStats]);
   const { data: tours } = useLoad(() => (cid ? safe(api.get(`/api/tournaments?club_id=${cid}`)) : Promise.resolve([])), [cid]);
-  const { data: stats } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/stats?period=month&date=${today}&group=club`)) : Promise.resolve(null)), [cid]);
+  const { data: stats } = useLoad(() => (cid && canStats ? safe(api.get(`/api/clubs/${cid}/stats?period=month&date=${today}&group=club`)) : Promise.resolve(null)), [cid, canStats]);
 
   const ev = (events || []).filter((e) => e.status !== 'cancelled');
   const upcoming = ev.filter((e) => e.event_date >= today && e.status !== 'completed').slice(0, 6);
@@ -107,7 +116,12 @@ function ClubHome({ community = false }) {
   const guests = all.filter((m) => m.member_type !== 'fixed');
   const newThisMonth = fixed.filter((m) => (m.joined_on || '').startsWith(month)).length;
   // Money this month (club fund + the club's sessions), and what is still to collect.
-  const thisMonth = (fin?.months || []).find((r) => r.month === month) || { income: 0, expense: 0 };
+  // From the finance charts when the plan has them, else straight from the ledger.
+  const thisMonth = fin?.months
+    ? fin.months.find((r) => r.month === month) || { income: 0, expense: 0 }
+    : (fund?.transactions || [])
+        .filter((x) => String(x.occurred_on || '').startsWith(month))
+        .reduce((acc, x) => ({ ...acc, [x.type]: (acc[x.type] || 0) + Number(x.amount || 0) }), { income: 0, expense: 0 });
   const debtors = fixed.filter((m) => Number(m.debt) > 0).sort((a, b) => Number(b.debt) - Number(a.debt));
   const owed = debtors.reduce((s, m) => s + Number(m.debt || 0), 0);
   // Who is who: VIP plans and priority guests.
@@ -145,6 +159,9 @@ function ClubHome({ community = false }) {
         }
       : null,
     requests?.length ? { href: '/club/members', icon: '📝', text: t('home.todoRequests', { n: requests.length }) } : null,
+    refunds?.length
+      ? { href: `/events/${refunds[0].event_id}`, icon: '💸', text: t('home.todoRefunds', { n: refunds.length, amount: formatVnd(refunds.reduce((s, r) => s + r.amount, 0)), names: refunds.slice(0, 3).map((r) => r.full_name).join(', ') }) }
+      : null,
     debtors.length
       ? { href: '/club/members', icon: '💸', text: t('home.todoDebtNames', { names: debtors.slice(0, 4).map((m) => m.full_name).join(', '), more: debtors.length > 4 ? ` +${debtors.length - 4}` : '' }) }
       : null,
@@ -173,7 +190,7 @@ function ClubHome({ community = false }) {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/events/create" className="btn-primary text-sm">+ {t('nav.createGame')}</Link>
-              <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>
+              {canWeekly && <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>}
               <Link href="/club/members" className="btn-secondary text-sm">{t('nav.members')}</Link>
             </div>
           </div>
@@ -225,7 +242,7 @@ function ClubHome({ community = false }) {
       {/* Money */}
       <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowMoney')}</h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(thisMonth.income)} tone="text-lime-400" href="/finance" />
+        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(thisMonth.income)} tone="text-lime-400" href={canStats ? '/finance' : '/finance/ledger'} />
         <Kpi icon="🧾" label={t('home.kpiExpense')} value={formatVnd(thisMonth.expense)} tone="text-red-300" href="/finance/ledger" />
         <Kpi icon="🏦" label={t('home.kpiFund')} value={formatVnd(fund?.balance || 0)} tone={Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white'} href="/finance/ledger" />
         <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
@@ -240,7 +257,7 @@ function ClubHome({ community = false }) {
             {upcoming.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-gray-400 text-sm mb-3">{t('home.noUpcoming')}</p>
-                <Link href="/events/create/weekly" className="btn-primary text-sm">{t('nav.createWeekly')}</Link>
+                <Link href={canWeekly ? '/events/create/weekly' : '/events/create'} className="btn-primary text-sm">{canWeekly ? t('nav.createWeekly') : `+ ${t('nav.createGame')}`}</Link>
               </div>
             ) : (
               <ul className="flex flex-col divide-y divide-navy-700">

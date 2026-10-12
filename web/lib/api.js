@@ -1,5 +1,6 @@
 'use client';
 import { supabase } from './supabaseClient';
+import { translate, DEFAULT_LANG } from './i18n/core';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -63,6 +64,15 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
   // plans (components/PlanLimitNotice). Page loads (GET) handle 402 themselves.
   if (res.status === 402 && method !== 'GET' && ['member_limit', 'feature_locked', 'role_seats'].includes(data.code) && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pb:plan-limit', { detail: data }));
+    // The notice explains it; the form only says so in the app's language (not the API's
+    // English sentence).
+    let lang = DEFAULT_LANG;
+    try {
+      lang = window.localStorage.getItem('pickleball_lang') || DEFAULT_LANG;
+    } catch {
+      /* ignore */
+    }
+    data.error = `💎 ${translate(lang, 'plan.limitTitle')}`;
   }
   // The app owner suspended this account: the shell shows a notice instead of the app.
   if (res.status === 423 && data.code === 'account_suspended' && typeof window !== 'undefined') {

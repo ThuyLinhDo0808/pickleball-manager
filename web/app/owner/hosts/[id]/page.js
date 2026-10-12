@@ -20,6 +20,7 @@ function PlanEditor({ host, onSaved }) {
     tier_paid_until: host.tier_paid_until || '',
     add_months: '',
     social_manager: host.social_manager,
+    sm_tier: host.sm_tier || 'basic',
     social_manager_paid_until: host.social_manager_paid_until || '',
     sm_add_months: '',
     paid_amount: '',
@@ -29,7 +30,7 @@ function PlanEditor({ host, onSaved }) {
   const [f, setF] = useState(blank);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
-  useEffect(() => setF(blank()), [host.tier, host.tier_paid_until, host.social_manager, host.social_manager_paid_until]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setF(blank()), [host.tier, host.tier_paid_until, host.social_manager, host.sm_tier, host.social_manager_paid_until]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
   async function save(e) {
@@ -39,6 +40,7 @@ function PlanEditor({ host, onSaved }) {
     if ((f.tier_paid_until || null) !== (host.tier_paid_until || null) && f.tier !== 'free') body.tier_paid_until = f.tier_paid_until || null;
     if (f.add_months) body.add_months = Number(f.add_months);
     if (f.social_manager !== host.social_manager) body.social_manager = f.social_manager;
+    if (f.social_manager && f.sm_tier !== (host.sm_tier || 'basic')) body.sm_tier = f.sm_tier;
     if (f.social_manager && (f.social_manager_paid_until || null) !== (host.social_manager_paid_until || null)) body.social_manager_paid_until = f.social_manager_paid_until || null;
     if (f.sm_add_months) body.sm_add_months = Number(f.sm_add_months);
     if (Object.keys(body).length === 1) return setMsg(t('owner.nothingChanged'));
@@ -92,6 +94,9 @@ function PlanEditor({ host, onSaved }) {
         <label className="flex items-center gap-2 text-sm text-gray-200 sm:mt-5">
           <input type="checkbox" checked={f.social_manager} onChange={set('social_manager')} className="h-4 w-4 accent-amber-300" />
           🎟 Social Manager
+          <select className="input !py-1 text-sm !w-auto" value={f.sm_tier} disabled={!f.social_manager} onChange={set('sm_tier')} aria-label={t('owner.smTier')}>
+            {TIERS.filter((x) => x !== 'free').map((x) => <option key={x} value={x}>{x.toUpperCase()}</option>)}
+          </select>
         </label>
         <label className="block">
           <span className={L}>{t('owner.field_social_manager_paid_until')}</span>
@@ -361,8 +366,10 @@ export default function OwnerHostPage() {
               <p className="text-gray-500 text-xs mt-1">{t('owner.joined', { at: fmtDate(h.created_at) })} · {t('owner.lastSeen', { at: fmtTime(h.last_sign_in_at) })}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
-              {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier !== 'free' && h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
+              {h.billing === 'paying' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-lime-400/15 text-lime-200" title={t('owner.billPayingHint')}>💵 {t('owner.billPaying')}</span>}
+              {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>🎁 {t('owner.billGifted')}</span>}
+              {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM {String(h.sm_tier || 'basic').toUpperCase()}{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}
               {h.suspended_at ? <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-200">⛔ {t('owner.suspended')}</span> : <span className="rounded-full px-2.5 py-1 text-xs bg-lime-400/15 text-lime-200">● {t('owner.active')}</span>}
               <ViewAsButton host={h} />
             </div>

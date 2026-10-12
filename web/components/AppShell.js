@@ -8,7 +8,7 @@ import { useClubs } from '@/context/ClubContext';
 import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 import ContextSwitcher from '@/components/ContextSwitcher';
-import { SocialManagerPanel } from '@/components/PlanModals';
+import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import FeedbackButton from '@/components/FeedbackButton';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
@@ -202,6 +202,12 @@ const COLLAPSE_KEY = 'pickleball_nav_collapsed';
 
 // Pages that work without a club; everything else prompts to create one first.
 const NO_CLUB_OK = ['/clubs', '/account', '/staff-access'];
+// Whole days from today (local) to a 'YYYY-MM-DD' date.
+const daysLeft = (ymd) => {
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((Date.parse(`${ymd}T00:00:00Z`) - today) / 86400000);
+};
 
 function Badge({ n, className = '' }) {
   if (!n) return null;
@@ -255,6 +261,30 @@ function LangSelect() {
 }
 
 const SIDEBAR_SCROLL_KEY = 'pickleball_sidebar_scroll';
+
+// A club / community whose plan has ended: nothing to manage until it is renewed. The
+// owner renews here (same plans as on the Account page); staff are told to ask the owner.
+function ExpiredPlan({ product, owner, until }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const sm = product === 'social_manager';
+  return (
+    <div className="max-w-lg mx-auto card mt-4 text-center border-red-400/50" role="alert">
+      <span className="text-4xl block mb-2" aria-hidden="true">⏸️</span>
+      <h1 className="text-white text-xl font-bold">{t(sm ? 'plan.expiredTitleSm' : 'plan.expiredTitle')}</h1>
+      <p className="text-gray-300 text-sm mt-2">{t(sm ? 'plan.expiredBodySm' : 'plan.expiredBody', { date: until ? until.split('-').reverse().join('/') : '' })}</p>
+      {owner ? (
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>💎 {t('plan.renewNow')}</button>
+          <Link href="/home" className="btn-secondary">{t('owner.suspendedHome')}</Link>
+        </div>
+      ) : (
+        <p className="text-gray-400 text-sm mt-3">{t('plan.expiredAskOwner')}</p>
+      )}
+      <UpgradeModal open={open} onClose={() => setOpen(false)} product={product} />
+    </div>
+  );
+}
 
 export default function AppShell({ children }) {
   const { user, loading, signOut } = useAuth();
@@ -361,6 +391,15 @@ export default function AppShell({ children }) {
     return () => setSpace(null);
   }, [communityMode, setSpace]);
 
+  const [renewOpen, setRenewOpen] = useState(false);
+  // Finance overview (charts) is a Standard page; the ledger is in every plan, so a plan
+  // without the charts opens the ledger instead of an upgrade card titled "Thống kê".
+  const financeLocked =
+    pathname === '/finance' && (workspace === 'club' || communityMode) && !hasFeature(planFor(club, plan), featureForPath('/finance', 'club'));
+  useEffect(() => {
+    if (wsReady && financeLocked) router.replace('/finance/ledger');
+  }, [wsReady, financeLocked, router]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white">{t('common.loading')}</div>;
   if (!user) return null;
 
@@ -394,6 +433,8 @@ export default function AppShell({ children }) {
   const lockedHref = (href) => !hasFeature(clubPlan, featureForPath(href, scoped ? 'club' : workspace));
   const pageFeature = featureForPath(pathname, scoped ? 'club' : workspace);
   const pageLocked = !!pageFeature && !hasFeature(clubPlan, pageFeature);
+  // The plan of the club / community being managed has ended (not the account / list pages).
+  const spaceExpired = scoped && !!club && !!clubPlan?.no_plan && clubPlan.features_enforced !== false && !['/account', '/clubs'].some((p) => isActive(p));
   const Gem = ({ href }) => (lockedHref(href) ? <span className="text-[11px]" title={t('plan.locked')} aria-label={t('plan.locked')}>💎</span> : null);
 
   const linkClass = (active, extra = '') =>
@@ -528,8 +569,12 @@ export default function AppShell({ children }) {
             {suspended.reason && <p className="text-red-200 text-sm mt-2">{t('owner.suspendedReason', { reason: suspended.reason })}</p>}
             <Link href="/home" className="btn-secondary text-sm mt-4 inline-block">{t('owner.suspendedHome')}</Link>
           </div>
+        ) : spaceExpired && wsReady ? (
+          // The plan of this club (Club plan) / community (Social Manager) ended: every
+          // manager page stops until it is renewed (Account and the club list stay open).
+          <ExpiredPlan product={mode === 'community' ? 'social_manager' : 'tier'} owner={!coAdmin} until={clubPlan?.paid_until} />
         ) : pageLocked && wsReady ? (
-          <LockedFeature feature={pageFeature} owner={!coAdmin} />
+          <LockedFeature feature={pageFeature} owner={!coAdmin} product={mode === 'community' ? 'social_manager' : 'tier'} />
         ) : !wsReady || !workspace ? null : mode === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
           <div className="max-w-lg mx-auto mt-4 flex flex-col gap-3">
             {/* Social Manager now runs communities (cụm sân): open one like a club. */}
@@ -557,6 +602,15 @@ export default function AppShell({ children }) {
                 </div>
               </div>
             )}
+            {/* The plan of this club / community runs out soon: say so on every manager page,
+                with the way to renew (when it ends, the manager pages stop). */}
+            {scoped && !coAdmin && clubPlan && !clubPlan.no_plan && !(mode !== 'community' && plan?.trial) && clubPlan.paid_until && daysLeft(clubPlan.paid_until) <= 7 && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+                <span>⏳ {t(mode === 'community' ? 'plan.expiringSoonSm' : 'plan.expiringSoon', { tier: String(clubPlan.tier).toUpperCase(), n: daysLeft(clubPlan.paid_until) })}</span>
+                <button type="button" className="btn-secondary !py-1 text-sm" onClick={() => setRenewOpen(true)}>{t('plan.renew')}</button>
+              </div>
+            )}
+            <UpgradeModal open={renewOpen} onClose={() => setRenewOpen(false)} product={mode === 'community' ? 'social_manager' : 'tier'} />
             {scoped && <BirthdayBanner clubId={club?.id} />}
             {children}
           </>

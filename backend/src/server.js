@@ -1,5 +1,20 @@
 require('dotenv').config();
 const express = require('express');
+// Express 4 does not catch errors of async handlers: pass a rejected promise on to the
+// error handler (e.g. 402 plan_expired thrown by a plan check) instead of hanging.
+{
+  const Layer = require('express/lib/router/layer');
+  const handle = Layer.prototype.handle_request;
+  Layer.prototype.handle_request = function handleAsync(req, res, next) {
+    if (this.handle.length > 3) return handle.call(this, req, res, next);
+    try {
+      const out = this.handle(req, res, next);
+      if (out && typeof out.catch === 'function') out.catch(next);
+    } catch (err) {
+      next(err);
+    }
+  };
+}
 const cors = require('cors');
 
 const { requireAuth } = require('./middleware/auth');
@@ -62,6 +77,10 @@ app.use('/api/public', publicRoutes); // no login: club join pages
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));
 app.use((err, req, res, next) => {
+  // Answers thrown on purpose (plan limits, plan ended…) keep their status and code.
+  if (err?.code && [400, 402, 403, 404, 409, 423].includes(err.status)) {
+    return res.status(err.status).json({ error: err.message, code: err.code, ...(err.kind ? { kind: err.kind } : {}) });
+  }
   console.error(err);
   res.status(500).json({ error: 'Internal server error.' });
 });

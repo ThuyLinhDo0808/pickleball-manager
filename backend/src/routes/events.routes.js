@@ -371,6 +371,12 @@ function cleanEventFields(fields) {
 const PLAY_FORMATS = ['men', 'women', 'mixed', 'open'];
 // A Social Manager community runs kèo, training and weekly play — no meetings / round robin.
 const NOT_FOR_COMMUNITY = ['meeting', 'challenge'];
+// The club row's kind ('club' / 'community') for plan checks.
+async function clubKindOf(clubId) {
+  if (!clubId) return null;
+  const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
+  return data;
+}
 async function kindAllowed(clubId, kind) {
   if (!clubId || !NOT_FOR_COMMUNITY.includes(kind)) return true;
   const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
@@ -465,7 +471,7 @@ router.post('/', async (req, res) => {
   // Many club sessions at once (weekly schedule) is a Standard feature.
   if (fields.club_id && ((dates && dates.length > 1) || weeks > 1)) {
     try {
-      await assertFeature(hostId, 'weekly_schedule');
+      await assertFeature(hostId, 'weekly_schedule', await require('../services/plan').kindOf(await clubKindOf(fields.club_id)));
     } catch (err) {
       return res.status(err.status || 500).json({ error: err.message, code: err.code, feature: err.feature, min_tier: err.min_tier });
     }
@@ -1032,6 +1038,47 @@ async function setRoles(event, prior, body) {
   return data;
 }
 
+const refundErr = (message, status, code) => Object.assign(new Error(message), { status, code });
+async function markRefund(req, p) {
+  if (p.status !== 'cancelled' || !p.fee_paid) throw refundErr('Only a cancelled player who paid can be refunded.', 409, 'not_refundable');
+  if (p.refunded_at) throw refundErr('Already marked as refunded.', 409, 'already_refunded');
+  const raw = req.body?.amount ?? p.fee_amount ?? req.event.fee_amount ?? 0;
+  const amount = Math.round(Number(raw));
+  if (!Number.isFinite(amount) || amount < 0 || amount > 100000000) throw refundErr('amount must be a whole number of đồng.', 400, 'bad_amount');
+  let txnId = null;
+  if (amount > 0) {
+    const { data: txn, error: tErr } = await supabase
+      .from('transactions')
+      .insert({ host_id: req.event.host_id, owner_type: 'event', event_id: req.event.id, type: 'expense', category: 'refund', amount, note: `Refund to ${p.full_name}` })
+      .select('id')
+      .single();
+    if (tErr) throw tErr;
+    txnId = txn.id;
+  }
+  const { data, error } = await supabase
+    .from('event_participants')
+    .update({ refunded_at: nowIso(), refund_amount: amount, refunded_by: req.hostEmail || null, refund_txn_id: txnId })
+    .eq('id', p.id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+async function undoRefund(req, p) {
+  if (!p.refunded_at) throw refundErr('Not marked as refunded.', 409, 'not_refunded');
+  if (p.refund_txn_id) {
+    await supabase.from('transactions').update({ is_voided: true, voided_at: nowIso(), void_reason: 'refund mark taken back' }).eq('id', p.refund_txn_id);
+  }
+  const { data, error } = await supabase
+    .from('event_participants')
+    .update({ refunded_at: null, refund_amount: null, refunded_by: null, refund_txn_id: null })
+    .eq('id', p.id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles
 router.post('/:eventId/participants/:participantId/:action', async (req, res) => {
   const { action } = req.params;
@@ -1048,6 +1095,10 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     if (action === 'roles') return res.json(await setRoles(req.event, prior, req.body || {}));
     if (action === 'confirm-payment') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
     if (action === 'reject-payment') return res.json(await signup.rejectPayment(req.event, prior, req.body.note));
+    // A player who paid and cancelled in time got their money back: mark it (and write the
+    // refund to the ledger as an expense), or take the mark back.
+    if (action === 'refund') return res.json(await markRefund(req, prior));
+    if (action === 'refund-undo') return res.json(await undoRefund(req, prior));
     // "Paid" on someone still waiting for confirmation = confirm their payment.
     if (action === 'fee' && req.body.fee_paid && prior.status === 'pending') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
   } catch (err) {

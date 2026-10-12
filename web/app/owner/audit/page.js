@@ -6,7 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const ACTIONS = ['', 'subscription.update', 'payment.confirm', 'payment.cancel', 'account.suspend', 'account.unsuspend', 'club.member_addon', 'club.transfer', 'club.delete', 'note.add', 'feedback.status', 'announcement.create', 'announcement.update', 'setting.update', 'promo.create', 'promo.update', 'host.view_as', 'support.add', 'support.update', 'support.remove', 'undo'];
+const ACTIONS = ['', 'subscription.update', 'payment.confirm', 'payment.cancel', 'account.suspend', 'account.unsuspend', 'club.member_addon', 'club.transfer', 'club.delete', 'club_request.approve', 'club_request.reject', 'account.handover_approve', 'account.handover_reject', 'note.add', 'feedback.status', 'announcement.create', 'announcement.update', 'setting.update', 'promo.create', 'promo.update', 'host.view_as', 'support.add', 'support.update', 'support.remove', 'undo'];
 
 // Every change made in the owner console, newest first. Append-only: entries are
 // never edited or deleted; an undo is a new entry.
@@ -19,7 +19,7 @@ export default function OwnerAuditPage() {
   return (
     <OwnerShell title={t('owner.tabAudit')} description={t('owner.auditHint')}>
       <select className="input text-sm max-w-xs mb-3" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} aria-label={t('owner.filterAction')}>
-        {ACTIONS.map((a) => <option key={a} value={a}>{a ? t(`owner.act_${a.replace('.', '_')}`) : t('owner.allActions')}</option>)}
+        {ACTIONS.map((a) => <option key={a} value={a}>{a ? t(`owner.act_${a.replace(/\./g, '_')}`) : t('owner.allActions')}</option>)}
       </select>
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}

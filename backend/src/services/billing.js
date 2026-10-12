@@ -8,7 +8,12 @@ const { todayYmd } = require('./memberships');
 const promo = require('./promo');
 
 // Monthly price (VND). PLAN_PRICE_<NAME> overrides one, e.g. PLAN_PRICE_BASIC=99000.
-const DEFAULT_PRICES = { ...require('./planFeatures').PRICES, social_manager: 89000 };
+// Social Manager tiers are priced as sm_<tier>; `social_manager` stays as its Basic price.
+const DEFAULT_PRICES = (() => {
+  const PFc = require('./planFeatures');
+  const sm = Object.fromEntries(Object.entries(PFc.SM_PRICES).map(([k, v]) => [`sm_${k}`, v]));
+  return { ...PFc.PRICES, ...sm, social_manager: PFc.SM_PRICES.basic };
+})();
 const MONTH_CHOICES = [1, 3, 6, 12];
 
 function prices() {
@@ -44,7 +49,7 @@ async function recordManual({ hostId, kind, tier, months, amount, by }) {
   const row = {
     host_id: hostId,
     kind,
-    tier: kind === 'tier' ? tier : null,
+    tier: kind === 'tier' ? tier : PF.PAID_TIERS.includes(tier) ? tier : 'basic',
     months: Math.min(24, Math.max(1, months || 1)),
     amount,
     ref: `TAY${[...crypto.randomBytes(6)].map((b) => ALPHABET[b % ALPHABET.length]).join('')}`,
@@ -95,9 +100,21 @@ const daysBetween = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.pa
 // Amounts the Host pays are whole thousands (easy to type in a transfer), rounded up.
 const toThousands = (v) => Math.ceil(Math.max(0, v) / 1000) * 1000;
 
+// One product of the subscription: 'tier' (Club Manager) or 'social_manager' (Social
+// Manager, communities) -> { tier, until }.
+function productOf(sub, kind = 'tier') {
+  if (!sub) return { tier: 'free', until: null };
+  if (kind === 'social_manager') return { tier: sub.social_manager ? (PF.PAID_TIERS.includes(sub.sm_tier) ? sub.sm_tier : 'basic') : 'free', until: sub.social_manager_paid_until || null };
+  return { tier: sub.tier || 'free', until: sub.tier_paid_until || null };
+}
+// Monthly price of a tier of a product.
+const priceOf = (kind, tier) => prices()[kind === 'social_manager' ? `sm_${tier || 'basic'}` : tier];
+
 // A plan the Host is paying for right now (not a trial, not run out).
-function activePaid(sub, today = todayYmd()) {
-  if (!sub || !PF.PAID_TIERS.includes(sub.tier) || !sub.tier_paid_until || sub.tier_paid_until < today) return false;
+function activePaid(sub, today = todayYmd(), kind = 'tier') {
+  const { tier, until } = productOf(sub, kind);
+  if (!PF.PAID_TIERS.includes(tier) || !until || until < today) return false;
+  if (kind !== 'tier') return true;
   const onTrial = !!sub.trial_ends_on && sub.tier_paid_until === sub.trial_ends_on;
   return !onTrial;
 }
@@ -105,12 +122,12 @@ function activePaid(sub, today = todayYmd()) {
 // Moving up while a paid plan runs: pay only the difference between the two monthly
 // prices for the days left (today included); the end date stays the same.
 // Returns null when this is not an upgrade of a running paid plan.
-function upgradeQuote(sub, tier, today = todayYmd()) {
-  if (!activePaid(sub, today) || PF.rank(tier) <= PF.rank(sub.tier)) return null;
-  const p = prices();
-  const days = daysBetween(today, sub.tier_paid_until) + 1;
-  const perDay = (p[tier] - p[sub.tier]) / 30;
-  return { from: sub.tier, to: tier, days, until: sub.tier_paid_until, price_from: p[sub.tier], price_to: p[tier], amount: toThousands(perDay * days) };
+function upgradeQuote(sub, tier, today = todayYmd(), kind = 'tier') {
+  const cur = productOf(sub, kind);
+  if (!activePaid(sub, today, kind) || PF.rank(tier) <= PF.rank(cur.tier)) return null;
+  const days = daysBetween(today, cur.until) + 1;
+  const perDay = (priceOf(kind, tier) - priceOf(kind, cur.tier)) / 30;
+  return { from: cur.tier, to: tier, days, until: cur.until, price_from: priceOf(kind, cur.tier), price_to: priceOf(kind, tier), amount: toThousands(perDay * days) };
 }
 
 // A new order replaces the Host's earlier waiting order of the same kind. A promo code
@@ -119,11 +136,13 @@ function upgradeQuote(sub, tier, today = todayYmd()) {
 // days left); a lower one waits until the current plan ends.
 async function createOrder(hostId, { kind, tier, months, promoCode }) {
   const m = MONTH_CHOICES.includes(Number(months)) ? Number(months) : 1;
-  const price = prices()[kind === 'social_manager' ? 'social_manager' : tier];
+  if (kind === 'social_manager' && !PF.PAID_TIERS.includes(tier)) tier = 'basic';
+  const price = priceOf(kind, tier);
   if (price == null) throw Object.assign(new Error('No price for this plan.'), { status: 400 });
-  if (kind === 'tier') {
+  {
     const { data: sub } = await supabase.from('host_subscriptions').select('*').eq('host_id', hostId).maybeSingle();
-    const quote = upgradeQuote(sub, tier);
+    const quote = upgradeQuote(sub, tier, todayYmd(), kind);
+    const cur = productOf(sub, kind);
     if (quote) {
       await cancelOrders(hostId, kind);
       const row = { host_id: hostId, kind, tier, months: 0, amount: quote.amount, ref: newRef(), upgrade_from: quote.from, upgrade_days: quote.days };
@@ -131,8 +150,8 @@ async function createOrder(hostId, { kind, tier, months, promoCode }) {
       if (error) throw error;
       return present(data);
     }
-    if (activePaid(sub) && PF.rank(tier) < PF.rank(sub.tier)) {
-      throw Object.assign(new Error(`You pay for ${sub.tier} until ${sub.tier_paid_until}. Choose a smaller plan when it ends.`), { status: 409, code: 'downgrade_locked', until: sub.tier_paid_until });
+    if (activePaid(sub, todayYmd(), kind) && PF.rank(tier) < PF.rank(cur.tier)) {
+      throw Object.assign(new Error(`You pay for ${cur.tier} until ${cur.until}. Choose a smaller plan when it ends.`), { status: 409, code: 'downgrade_locked', until: cur.until });
     }
   }
   await cancelOrders(hostId, kind);
@@ -143,7 +162,7 @@ async function createOrder(hostId, { kind, tier, months, promoCode }) {
     promoRow = await promo.check(hostId, promoCode, { kind: 'order' });
     discount = promo.discountFor(promoRow, kind, gross);
   }
-  const row = { host_id: hostId, kind, tier: kind === 'tier' ? tier : null, months: m, amount: gross - discount, ref: newRef() };
+  const row = { host_id: hostId, kind, tier, months: m, amount: gross - discount, ref: newRef() };
   if (promoRow) Object.assign(row, { promo_code_id: promoRow.id, discount_amount: discount });
   const { data, error } = await supabase.from('plan_payments').insert(row).select().single();
   if (error) throw error;
@@ -195,9 +214,14 @@ async function confirmOrder(orderId, adminEmail) {
   } else if (order.kind === 'tier') {
     const from = sub.tier === order.tier && sub.tier_paid_until && sub.tier_paid_until >= today ? sub.tier_paid_until : today;
     patch = { tier: order.tier, tier_paid_until: addMonths(from, order.months), upgrade_requested_at: null, upgrade_requested_tier: null };
+  } else if (order.upgrade_from) {
+    // Social Manager upgrade: the higher plan for the rest of the period already paid.
+    patch = { sm_tier: order.tier, social_manager: true, social_manager_requested_at: null };
   } else {
-    const from = sub.social_manager && sub.social_manager_paid_until && sub.social_manager_paid_until >= today ? sub.social_manager_paid_until : today;
-    patch = { social_manager: true, social_manager_paid_until: addMonths(from, order.months), social_manager_requested_at: null };
+    const smTier = PF.PAID_TIERS.includes(order.tier) ? order.tier : 'basic';
+    const cur = productOf(sub, 'social_manager');
+    const from = cur.tier === smTier && cur.until && cur.until >= today ? cur.until : today;
+    patch = { social_manager: true, sm_tier: smTier, social_manager_paid_until: addMonths(from, order.months), social_manager_requested_at: null };
   }
   const { error } = await supabase.from('host_subscriptions').update(patch).eq('host_id', order.host_id);
   if (error) throw error;
@@ -226,4 +250,4 @@ async function expireIfDue(sub) {
   return { ...sub, ...patch, expired_tier: patch.tier ? sub.tier : null, expired_social_manager: 'social_manager' in patch };
 }
 
-module.exports = { recordManual, activePaid, upgradeQuote, daysBetween, DEFAULT_PRICES, MONTH_CHOICES, prices, operatorBank, isAdmin, present, pendingOrders, createOrder, cancelOrders, confirmOrder, expireIfDue, addMonths, addDays };
+module.exports = { productOf, priceOf, recordManual, activePaid, upgradeQuote, daysBetween, DEFAULT_PRICES, MONTH_CHOICES, prices, operatorBank, isAdmin, present, pendingOrders, createOrder, cancelOrders, confirmOrder, expireIfDue, addMonths, addDays };

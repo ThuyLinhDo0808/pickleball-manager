@@ -21,9 +21,14 @@ const ROLE_ERROR = 'role must be referee, coordinator, co_admin, finance or oper
 
 // 402 when the owner's plan has no Finance / Operations roles, or this club's seats for
 // the role are taken. `except` = a grant being changed (doesn't count against itself).
+// The plan in force for a club or community of this host (Social Manager for a community).
+async function spacePlan(hostId, clubId) {
+  const { data } = clubId ? await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle() : { data: null };
+  return require('../services/plan').planView(await getPlan(hostId), data?.kind === 'community' ? 'community' : 'club');
+}
 async function seatProblem(hostId, role, clubId, except = null) {
   if (!SEAT_ROLES.includes(role)) return null;
-  const plan = await getPlan(hostId);
+  const plan = await spacePlan(hostId, clubId);
   if (!plan.features_enforced) return null;
   if (!plan.features.staff_roles) return { status: 402, body: { error: 'Finance and Operations roles need the Advanced plan or higher.', code: 'feature_locked', feature: 'staff_roles', min_tier: 'advanced' } };
   const seats = plan.role_seats?.[role];
@@ -36,11 +41,11 @@ async function seatProblem(hostId, role, clubId, except = null) {
 }
 // Custom permissions (Pro): permission groups replacing a Finance / Operations role's
 // defaults. [] or null = the role's defaults. -> { value } or { status, body }.
-async function cleanPermissions(hostId, role, value) {
+async function cleanPermissions(hostId, role, value, clubId = null) {
   if (value == null || (Array.isArray(value) && !value.length)) return { value: null };
   if (!SEAT_ROLES.includes(role)) return { status: 400, body: { error: 'Custom permissions are for Finance and Operations roles.', code: 'bad_permissions' } };
   if (!Array.isArray(value) || value.some((g) => !GROUP_NAMES.includes(g))) return { status: 400, body: { error: `permissions: any of ${GROUP_NAMES.join(', ')}.`, code: 'bad_permissions' } };
-  const plan = await getPlan(hostId);
+  const plan = await spacePlan(hostId, clubId);
   if (plan.features_enforced && !plan.features.custom_roles) return { status: 402, body: { error: 'Custom permissions need the Pro plan.', code: 'feature_locked', feature: 'custom_roles', min_tier: 'pro' } };
   return { value: [...new Set(value)] };
 }
@@ -150,7 +155,7 @@ grants.post('/', async (req, res) => {
     const problem = await seatProblem(req.hostId, role, club_id);
     if (problem) return res.status(problem.status).json(problem.body);
   }
-  const perms = await cleanPermissions(req.hostId, role, req.body.permissions);
+  const perms = await cleanPermissions(req.hostId, role, req.body.permissions, club_id);
   if (perms.status) return res.status(perms.status).json(perms.body);
   if (event_id) {
     if (!isUuid(event_id)) return notFound(res, 'Event');
@@ -186,9 +191,9 @@ grants.patch('/:grantId', async (req, res) => {
   }
   // Custom permissions (co-admins always have everything, so theirs are ignored).
   if ('permissions' in req.body) {
-    const { data: cur } = await supabase.from('staff_grants').select('role').eq('id', req.params.grantId).eq('host_id', req.hostId).maybeSingle();
+    const { data: cur } = await supabase.from('staff_grants').select('role, club_id').eq('id', req.params.grantId).eq('host_id', req.hostId).maybeSingle();
     const role = patch.role || cur?.role;
-    const perms = SEAT_ROLES.includes(role) ? await cleanPermissions(req.hostId, role, req.body.permissions) : { value: null };
+    const perms = SEAT_ROLES.includes(role) ? await cleanPermissions(req.hostId, role, req.body.permissions, cur?.club_id) : { value: null };
     if (perms.status) return res.status(perms.status).json(perms.body);
     patch.permissions = perms.value;
   }

@@ -67,6 +67,13 @@ async function overview(club) {
   // Who came when: member id -> sessions in the last 30 days; per series, everyone ever.
   const recent = new Map();
   const series = new Map();
+  // Every series that has a kèo counts, even before anyone has played in it.
+  for (const e of events) {
+    if (!e.series_label || e.status === 'cancelled') continue;
+    const s = series.get(e.series_label) || { label: e.series_label, members: new Set(), active: new Set(), sessions: new Set() };
+    s.sessions.add(e.id);
+    series.set(e.series_label, s);
+  }
   for (const p of parts) {
     const mid = p.source_club_member_id || p.guest_member_id;
     const e = evById.get(p.event_id);

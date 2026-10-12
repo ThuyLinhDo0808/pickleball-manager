@@ -135,9 +135,9 @@ export default function HomeHub() {
 
       {cr && (cr.status === 'pending' || (cr.status !== 'cancelled' && cr.decided_at && Date.now() - Date.parse(cr.decided_at) < 14 * 86400000)) && (
         <Link href="/club-request" className={`card block mb-4 text-sm ${cr.status === 'approved' ? 'border-lime-400/50' : cr.status === 'rejected' ? 'border-red-400/50' : 'border-amber-300/50'}`}>
-          <span className="font-semibold text-white">🏟 {cr.name}</span>
+          <span className="font-semibold text-white">{cr.kind === 'community' ? '🎟' : '🏟'} {cr.name}</span>
           <span className="text-gray-300"> · {t(`creq.status_${cr.status}`)}</span>
-          <span className="block text-gray-400 text-xs mt-0.5">{t(`creq.homeHint_${cr.status}`)}</span>
+          <span className="block text-gray-400 text-xs mt-0.5">{t(cr.kind === 'community' && ['pending', 'approved'].includes(cr.status) ? `creq.homeHintCommunity_${cr.status}` : `creq.homeHint_${cr.status}`)}</span>
         </Link>
       )}
 

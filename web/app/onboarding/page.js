@@ -78,7 +78,11 @@ export default function OnboardingPage() {
     setError('');
     try {
       await api.post('/api/player/onboarding', { sports, role, ...f, gender: f.gender || null });
-      router.replace(role === 'manager' ? '/club-request?from=onboarding' : '/home');
+      // Came from a link (club invite, kèo…): back to it; else managers go on to ask for
+      // their club / community.
+      const next = new URLSearchParams(window.location.search).get('next') || '';
+      const safe = next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/onboarding') ? next : null;
+      router.replace(safe || (role === 'manager' ? '/club-request?from=onboarding' : '/home'));
     } catch (err) {
       setError(err.payload?.code === 'birth_date_required' ? t('onb.errBirth') : err.message);
       setBusy(false);
