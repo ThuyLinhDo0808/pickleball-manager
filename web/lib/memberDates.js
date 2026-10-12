@@ -35,3 +35,15 @@ export function tenureLabel(d, t) {
 }
 
 export const isBirthdayMonth = (d, today = todayYmd()) => !!d && d.slice(5, 7) === today.slice(5, 7);
+
+// What an official (fixed) member's record is still missing — the host adds people
+// quickly with just a name + birth year and fills the rest in later. Guests are
+// never asked (no birthdays for them). Keys match i18n members.miss_<key>.
+export function missingInfo(m) {
+  if (!m || m.member_type !== 'fixed' || m.is_active === false) return [];
+  return [
+    !m.birth_date && 'birthday',
+    !m.phone && 'phone',
+    !m.gender && 'gender',
+  ].filter(Boolean);
+}

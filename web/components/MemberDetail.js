@@ -8,7 +8,8 @@ import VipBadge from '@/components/VipBadge';
 import { MemberExtraFields } from '@/components/MemberExtras';
 import { GuestPerkBadge } from '@/components/GuestColumns';
 import MemberHistory from '@/components/MemberHistory';
-import { dmy, my, tenureLabel } from '@/lib/memberDates';
+import { dmy, missingInfo, my, tenureLabel } from '@/lib/memberDates';
+import BirthInput, { birthFromMember, birthPayload } from '@/components/BirthInput';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -113,7 +114,7 @@ const fromMember = (m) => ({
   tier: m.tier || '',
   guest_perk: m.guest_perk ? 'priority' : '',
   guest_discount_pct: m.guest_discount_pct ?? '',
-  birth_date: m.birth_date || '',
+  birth: birthFromMember(m),
   joined: m.joined_on ? m.joined_on.slice(0, 7) : '',
   is_active: m.is_active !== false,
   district: m.district || '',
@@ -138,6 +139,11 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
         <button type="button" className="btn-secondary !py-1.5 text-sm ml-auto" onClick={() => { setF(fromMember(member)); setOpen(true); }}>
           ✏️ {t('members.edit')}
         </button>
+        {missingInfo(member).length > 0 && (
+          <p className="w-full text-xs text-amber-300">
+            ⚠️ {t('members.incompleteDetail', { fields: missingInfo(member).map((k) => t(`members.miss_${k}`)).join(', ') })}
+          </p>
+        )}
       </div>
     );
   }
@@ -154,7 +160,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       ...(f.member_type === 'guest'
         ? { guest_perk: f.guest_perk || null, guest_discount_pct: f.guest_perk && f.guest_discount_pct !== '' ? Number(f.guest_discount_pct) : null }
         : {}),
-      birth_date: f.birth_date || null,
+      ...birthPayload(f.birth),
       joined_on: f.joined ? `${f.joined}-01` : null,
       is_active: f.is_active,
       district: f.district,
@@ -185,10 +191,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
         <label className="text-xs text-gray-400">{t('common.level')}</label>
         <LevelInput value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
       </div>
-      <div className="min-w-0">
-        <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
-        <input className="input" type="date" value={f.birth_date} onChange={(e) => set({ birth_date: e.target.value })} />
-      </div>
+      <BirthInput id="edit-birth-year" value={f.birth} onChange={(birth) => set({ birth })} required={f.member_type === 'fixed'} />
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('members.type')}</label>
         <select className="input" value={f.member_type} onChange={(e) => set({ member_type: e.target.value })}>
