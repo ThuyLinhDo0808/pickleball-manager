@@ -190,6 +190,8 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 
 **Ngày sinh & thâm niên:**
 - Cột **Ngày sinh** (dd/mm/yyyy; thành viên cũ mới có năm sinh hiện "1990 · thiếu ngày" để Host bổ sung) và **Vào CLB** (tháng/năm + thâm niên, VD "2 năm 3 tháng"). Nhập khi thêm thành viên hoặc sửa trong chi tiết thành viên. Thành viên mới mặc định vào CLB tháng hiện tại.
+- **Thêm nhanh chỉ cần năm sinh:** khi thêm thành viên, ô **Năm sinh** là bắt buộc; **Ngày** và **Tháng** sinh không bắt buộc (chọn đủ cả hai thì mới lưu thành ngày sinh đầy đủ). Host chưa biết ngày sinh vẫn lưu được người chơi ngay, bổ sung sau bằng ✏️ *Sửa thông tin* (khi sửa thành viên chính thức thì năm sinh vẫn bắt buộc; thành viên giao lưu không bắt buộc).
+- **Nhắc chưa đủ thông tin (chỉ thành viên chính thức đang hoạt động):** ai còn thiếu **ngày sinh đầy đủ, số điện thoại hoặc giới tính** có nhãn vàng *Thiếu thông tin* cạnh tên (di chuột để xem thiếu gì). Đầu tab *Thành viên cố định* hiện khung *"N thành viên chính thức chưa đủ thông tin"* — bấm để **lọc ra** những người đó, bấm lần nữa để hiện tất cả. Trong chi tiết thành viên cũng ghi rõ thiếu mục nào. Thành viên giao lưu / khách không bị nhắc (CLB chỉ tổ chức sinh nhật cho thành viên chính thức).
 - Người có **sinh nhật trong tháng** hiện 🎂, và đầu trang có dòng "Sinh nhật tháng này" để CLB chuẩn bị quà.
 - **Nhắc sinh nhật trên web:** ở đầu mọi trang của Host (Club) hiện khung 🎂 khi có thành viên đang hoạt động sinh nhật **hôm nay** (kèm "tròn N tuổi") hoặc **trong 3 ngày tới** ("ngày mai", "còn 2/3 ngày" + ngày). Bấm × để ẩn đến hết hôm nay. Chỉ tính thành viên đã có ngày sinh đầy đủ.
 - Bảng thành viên chỉ để xem thông tin; số buổi còn lại xem ở **Thống kê → Thống kê thành viên**.

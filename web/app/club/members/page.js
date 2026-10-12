@@ -20,14 +20,15 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
-import { dmy, isBirthdayMonth, my, tenureLabel } from '@/lib/memberDates';
+import { dmy, isBirthdayMonth, missingInfo, my, tenureLabel } from '@/lib/memberDates';
+import BirthInput, { birthPayload } from '@/components/BirthInput';
 import { ReviewModal, ReviewTab, InviteModal } from '@/components/MemberModeration';
 import { exportMembers } from '@/lib/exportExcel';
 import ImportMembers from '@/components/ImportMembers';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
-const emptyForm = () => ({ full_name: '', gender: '', birth_date: '', joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '' });
+const emptyForm = () => ({ full_name: '', gender: '', birth: { year: '', month: '', day: '' }, joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '' });
 
 export default function MembersPage() {
   const { t, sport } = useI18n();
@@ -57,6 +58,7 @@ export default function MembersPage() {
   const [gender, setGender] = useState('all');
   const [sortBy, setSortBy] = useState('default');
   const [showInactive, setShowInactive] = useState(true);
+  const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [reviewing, setReviewing] = useState(null); // member being moved to review
   const [inviteOpen, setInviteOpen] = useState(false);
   const { plan } = useWorkspace();
@@ -104,7 +106,8 @@ export default function MembersPage() {
       await api.post(`/api/clubs/${club.id}/members`, {
         ...form,
         dupr_level: form.dupr_level ? Number(form.dupr_level) : null,
-        birth_date: form.birth_date || null,
+        birth: undefined,
+        ...birthPayload(form.birth),
         joined_on: form.joined_month ? `${form.joined_month}-01` : null,
         joined_month: undefined,
         gender: form.gender || null,
@@ -148,11 +151,15 @@ export default function MembersPage() {
   const shownRows = rows
     .filter((m) => (gender === 'all' ? true : m.gender === gender))
     .filter((m) => showInactive || m.is_active)
+    .filter((m) => !onlyIncomplete || missingInfo(m).length > 0)
     .filter((m) => !q || [m.full_name, m.phone, m.district].some((v) => String(v || '').toLowerCase().includes(q)));
   if (sortBy === 'name') shownRows.sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
   if (sortBy === 'level') shownRows.sort((a, b) => (Number(b.dupr_level) || 0) - (Number(a.dupr_level) || 0));
   if (sortBy === 'joined') shownRows.sort((a, b) => (a.joined_on || '9999').localeCompare(b.joined_on || '9999'));
   const inactiveCount = rows.filter((m) => !m.is_active).length;
+  // Official members still missing a birthday / phone / gender (added quickly, to fill in later).
+  const incomplete = fixedRows.filter((m) => missingInfo(m).length > 0);
+  const missText = (m) => missingInfo(m).map((k) => t(`members.miss_${k}`)).join(', ');
   const bdays = all.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
   const activeFixed = fixedRows.filter((m) => m.is_active);
   const vipCount = activeFixed.filter((m) => m.vip_stars > 0).length;
@@ -219,6 +226,19 @@ export default function MembersPage() {
         </button>
       )}
 
+      {tab === 'fixed' && incomplete.length > 0 && (
+        <button
+          type="button"
+          className={`w-full text-left rounded-xl border px-4 py-2.5 mb-3 text-sm ${onlyIncomplete ? 'border-amber-400 bg-amber-400/10' : 'border-amber-400/40 bg-amber-400/5'}`}
+          onClick={() => setOnlyIncomplete((v) => !v)}
+          aria-pressed={onlyIncomplete}
+        >
+          <span className="text-amber-300 font-semibold">⚠️ {t('members.incompleteBanner', { n: incomplete.length })}</span>{' '}
+          <span className="text-gray-300">{t('members.incompleteHint')}</span>
+          <span className="text-lime-400 ml-1">{onlyIncomplete ? t('members.incompleteShowAll') : t('members.incompleteFilter')}</span>
+        </button>
+      )}
+
       {isGuestTab && club && <GuestPerkSettings />}
 
       {!['waiting', 'review'].includes(tab) && (
@@ -274,6 +294,7 @@ export default function MembersPage() {
                           <span className="text-white font-semibold truncate">{m.full_name}</span>
                           {m.member_type === 'fixed' && <VipBadge stars={m.vip_stars} />}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
+                          {missingInfo(m).length > 0 && <span className="text-[10px] leading-4 rounded border border-amber-400/50 text-amber-300 px-1" title={missText(m)}>{t('members.incompleteShort')}</span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
                           {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), levelText(m.dupr_level, sport, t)].filter(Boolean).join(' · ') || '—'}
@@ -347,6 +368,7 @@ export default function MembersPage() {
                                 {m.full_name}
                               </button>
                               {m.member_type === 'fixed' && <VipBadge stars={m.vip_stars} className="ml-1.5" />}
+                              {missingInfo(m).length > 0 && <span className="ml-1.5 text-[10px] leading-4 rounded border border-amber-400/50 text-amber-300 px-1" title={missText(m)}>{t('members.incompleteShort')}</span>}
                               {m.account_email && !m.account_verified && (
                                 <span className="ml-1.5 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>
                               )}
@@ -450,10 +472,7 @@ export default function MembersPage() {
               <option value="female">{t('members.female')}</option>
             </select>
           </div>
-          <div>
-            <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
-            <input className="input" type="date" max={todayYmd()} value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
-          </div>
+          <BirthInput id="add-birth-year" value={form.birth} onChange={(birth) => setForm({ ...form, birth })} />
           <div>
             <label className="text-xs text-gray-400">{t('members.joinedMonth')}</label>
             <input className="input" type="month" value={form.joined_month} onChange={(e) => setForm({ ...form, joined_month: e.target.value })} />
