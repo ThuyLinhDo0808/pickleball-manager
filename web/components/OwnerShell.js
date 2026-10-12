@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 // Line icons (24×24, stroke) for the console menu.
 const ICON = {
   overview: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+  chart: 'M3 3v18h18M7 15l4-4 3 3 6-7',
   hosts: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75',
   clubs: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6',
   requests: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2v0a2 2 0 01-2 2h-2a2 2 0 01-2-2zM9 14l2 2 4-4',
@@ -37,7 +38,7 @@ export function OwnerIcon({ name, className = 'w-[18px] h-[18px]' }) {
 // The menu, in groups. [href, label, icon, permission a support account needs
 // (null = owners only), the `todo` count shown as a badge].
 const GROUPS = [
-  [null, [['/owner', 'owner.tabOverview', 'overview', 'stats']]],
+  [null, [['/owner', 'owner.tabOverview', 'overview', 'stats'], ['/owner/analytics', 'owner.tabAnalytics', 'chart', 'stats']]],
   ['owner.grp_customers', [
     ['/owner/hosts', 'owner.tabHosts', 'hosts', 'hosts'],
     ['/owner/clubs', 'owner.tabClubs', 'clubs', 'hosts'],

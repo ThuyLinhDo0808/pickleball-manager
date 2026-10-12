@@ -581,6 +581,29 @@ router.get('/activity/clubs', wrap(async (req, res) => {
   res.json({ total: rows.length, page: pg.page, pages: pg.pages, rows: rows.slice(pg.from, pg.to) });
 }));
 
+// Business analytics (owner console → Phân tích): revenue, unit economics, customer
+// segments, cohorts, funnel. ?months=6|12|24 (default 12).
+const { analytics } = require('../services/ownerAnalytics');
+router.get('/analytics', wrap(async (req, res) => {
+  const months = [6, 12, 24].includes(Number(req.query.months)) ? Number(req.query.months) : 12;
+  const today = S.vnYmd(new Date());
+  const since = S.shiftYmd(today, -400);
+  const safe = (p) => p.catch(() => []);
+  const [users, subs, orders, redemptions, clubs, members, events, xeve, requests] = await Promise.all([
+    fetchAll(() => supabase.from('users').select('id, email, created_at, account_role, onboarded_at').order('created_at')),
+    fetchAll(() => supabase.from('host_subscriptions').select('*').order('host_id')),
+    fetchAll(() => supabase.from('plan_payments').select('id, host_id, kind, tier, months, amount, status, created_at, confirmed_at, promo_code_id, discount_amount, upgrade_from').order('created_at')),
+    safe(fetchAll(() => supabase.from('promo_redemptions').select('id, host_id, discount_amount, created_at').order('created_at'))),
+    fetchAll(() => supabase.from('clubs').select('id, host_id, kind, sport, province, created_at').order('created_at')),
+    fetchAll(() => supabase.from('club_members').select('club_id').eq('is_active', true).order('id')),
+    fetchAll(() => supabase.from('events').select('host_id, club_id, event_date').gte('event_date', since).neq('status', 'cancelled').order('event_date')),
+    fetchAll(() => supabase.from('events').select('host_id, created_at').is('club_id', null).neq('kind', 'meeting').order('created_at')),
+    safe(fetchAll(() => supabase.from('club_requests').select('user_id').order('created_at'))),
+  ]);
+  const hostIds = [...S.hostStarts(clubs, xeve).keys()];
+  res.json(analytics({ today, months, users, subs, orders, redemptions, clubs, members, events, requests, hostIds }));
+}));
+
 // Every club and play community in the app (owner console → CLB & cộng đồng): kind,
 // owner, members, sessions, last session. ?q= (name / owner email) &kind=all|club|community
 // &sort=new|members|events|name &page=. Deleting stays owner-only (POST /clubs/:id/delete).
