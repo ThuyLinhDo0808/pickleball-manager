@@ -60,6 +60,9 @@ test('analytics: revenue by month, churn, segments, funnel narrows', () => {
   assert.deepStrictEqual(r.revenue.totals.pending, { count: 1, amount: 89000 });
   assert.strictEqual(r.revenue.totals.cancelled.count, 1);
   assert.strictEqual(r.revenue.by_tier.find((x) => x.tier === 'pro').cash, 1200000);
+  // Social Manager has its own plans: an order without a tier (old add-on) counts as Basic
+  assert.deepStrictEqual(r.revenue.by_sm_tier.map((x) => x.tier), ['basic', 'standard', 'advanced', 'pro']);
+  assert.strictEqual(r.revenue.by_tier.some((x) => x.tier === 'social_manager'), false);
   assert.strictEqual(r.revenue.by_length.find((x) => x.months === 12).orders, 1);
   assert.strictEqual(r.revenue.promos.orders, 1);
   assert.strictEqual(r.revenue.top_hosts[0].host_id, 'h2');
@@ -105,4 +108,19 @@ test('analytics: a plan given for free is counted apart from paying hosts', () =
   const f = Object.fromEntries(r.funnel.map((x) => [x.key, x.count]));
   assert.strictEqual(f.ever_paid, 2); // a and c, not b
   assert.strictEqual(f.paying, 1);
+});
+
+test('analytics: Social Manager revenue and hosts by SM plan', () => {
+  const today = '2026-10-15';
+  const users = [{ id: 'a', email: 'a@x', created_at: '2026-09-01T00:00:00Z', account_role: 'manager', onboarded_at: '2026-09-01T00:00:00Z' }];
+  const orders = [
+    { id: 1, host_id: 'a', kind: 'social_manager', tier: 'standard', months: 1, amount: 199000, status: 'paid', created_at: '2026-10-01T00:00:00Z', confirmed_at: '2026-10-01T00:00:00Z' },
+    { id: 2, host_id: 'a', kind: 'social_manager', tier: null, months: 1, amount: 89000, status: 'paid', created_at: '2026-09-01T00:00:00Z', confirmed_at: '2026-09-01T00:00:00Z' },
+  ];
+  const subs = [{ host_id: 'a', tier: 'free', social_manager: true, sm_tier: 'standard', social_manager_paid_until: '2026-10-31' }];
+  const clubs = [{ id: 'c', host_id: 'a', kind: 'community', sport: 'pickleball' }];
+  const r = analytics({ today, months: 6, users, subs, orders, redemptions: [], clubs, members: [], events: [], requests: [], hostIds: ['a'] });
+  const sm = Object.fromEntries(r.revenue.by_sm_tier.map((x) => [x.tier, x]));
+  assert.deepStrictEqual([sm.standard.cash, sm.standard.orders, sm.basic.cash], [199000, 1, 89000]);
+  assert.strictEqual(r.segments.by_sm_plan.find((x) => x.key === 'standard').hosts, 1);
 });

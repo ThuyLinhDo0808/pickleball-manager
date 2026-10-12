@@ -126,6 +126,27 @@ export default function EventDetailPage() {
     reloadFinance();
   }
 
+  // Paid, then cancelled in time: mark the money as given back (kept with when / how much,
+  // and written to the ledger as an expense), or take the mark back.
+  async function refund(p, undo = false) {
+    try {
+      if (undo) {
+        if (!window.confirm(t('slot.refundUndoAsk', { name: p.full_name }))) return;
+        await api.post(`/api/events/${eventId}/participants/${p.id}/refund-undo`, {});
+      } else {
+        const def = Number(p.fee_amount ?? event?.fee_amount ?? 0);
+        const v = window.prompt(t('slot.refundAmountAsk', { name: p.full_name }), String(def));
+        if (v == null) return;
+        const amount = Number(String(v).replace(/\D/g, '')) || 0;
+        await api.post(`/api/events/${eventId}/participants/${p.id}/refund`, { amount });
+      }
+      reloadParticipants();
+      reloadFinance();
+    } catch (err) {
+      setFlash(err.message);
+    }
+  }
+
   async function importFromClub() {
     if (!selectedIds.length) return;
     await api.post(`/api/events/${eventId}/participants/import`, { club_member_ids: selectedIds });
@@ -288,7 +309,7 @@ export default function EventDetailPage() {
           <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} />
           {cancelled.length > 0 && (
-            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} fee={event.fee_amount} />
+            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} onRefund={refund} fee={event.fee_amount} />
           )}
           {event.club_id && <EventSurveys eventId={event.id} />}
           {sheet && (
@@ -340,7 +361,7 @@ export default function EventDetailPage() {
 
 const STATUS_TONE = { checked_in: 'text-lime-400', registered: 'text-gray-300', no_show: 'text-yellow-400', waitlisted: 'text-sky-300', cancelled: 'text-gray-500' };
 
-function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee, onManage }) {
+function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee, onManage }) {
   return (
     <div className="card mb-4">
       <h3 className="text-white font-semibold mb-2">{title}</h3>
@@ -371,9 +392,13 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee, onManage
                       {p.late_cancel && (
                         <span className="text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>
                       )}
-                      {kind === 'cancelled' && p.fee_paid && !p.late_cancel && (
+                      {kind === 'cancelled' && p.fee_paid && !p.late_cancel && (p.refunded_at ? (
+                        <span className="text-[10px] rounded border border-lime-400/60 text-lime-300 px-1" title={p.refunded_by || ''}>
+                          ✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}
+                        </span>
+                      ) : (
                         <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">{t('slot.refundDue')}</span>
-                      )}
+                      ))}
                     </>
                   }
                 />
@@ -385,9 +410,15 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, fee, onManage
                   <span className="text-xs text-gray-500">{t('people.noFee')}</span>
                 ) : p.paid_by_plan && kind !== 'cancelled' ? (
                   <span className="text-xs text-lime-400" title={t('events.paidByPlanHint')}>{t('events.paidByPlan')}</span>
+                ) : kind === 'cancelled' && p.fee_paid && !p.late_cancel && onRefund ? (
+                  p.refunded_at ? (
+                    <button className="text-xs mr-2 text-gray-400 underline" onClick={() => onRefund(p, true)}>{t('slot.refundUndo')}</button>
+                  ) : (
+                    <button className="text-xs mr-2 rounded border border-sky-400/60 px-2 py-0.5 text-sky-200 hover:bg-sky-400/10" onClick={() => onRefund(p)}>💸 {t('slot.markRefunded')}</button>
+                  )
                 ) : (kind !== 'cancelled' || p.late_cancel || p.fee_paid) && (
                   <button className={`text-xs mr-2 ${p.fee_paid ? 'text-lime-400' : 'text-gray-300'}`} onClick={() => onFee(p)}>
-                    {kind === 'cancelled' && p.fee_paid && !p.late_cancel ? t('slot.markRefunded') : p.fee_paid ? t('common.paid') : t('common.unpaid')}
+                    {p.fee_paid ? t('common.paid') : t('common.unpaid')}
                     {kind === 'cancelled' && !p.fee_paid && Number(p.fee_amount ?? fee) > 0 && ` · ${formatVnd(p.fee_amount ?? fee)}`}
                   </button>
                 )}

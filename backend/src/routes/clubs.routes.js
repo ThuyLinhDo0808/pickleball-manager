@@ -615,6 +615,34 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
 
 // Waiting list (DS chờ): accounts linked to a member by phone, join requests from the
 // event page, and guests who asked to join the fixed team in the after-session survey.
+// Players who paid, cancelled in time and still wait for their money back (all sessions
+// of the club / community): the overview's "to do" list links to each session.
+router.get('/:clubId/refunds-due', async (req, res) => {
+  try {
+    const { data: evs, error } = await supabase.from('events').select('id, title, event_date, fee_amount').eq('club_id', req.club.id);
+    if (error) throw error;
+    const ids = (evs || []).map((e) => e.id);
+    if (!ids.length) return res.json([]);
+    const { data: rows, error: pErr } = await supabase
+      .from('event_participants')
+      .select('id, event_id, full_name, fee_amount, late_cancel, refunded_at')
+      .in('event_id', ids)
+      .eq('status', 'cancelled')
+      .eq('fee_paid', true)
+      .is('refunded_at', null);
+    if (pErr) throw pErr;
+    const byId = new Map(evs.map((e) => [e.id, e]));
+    res.json(
+      (rows || [])
+        .filter((p) => !p.late_cancel)
+        .map((p) => ({ id: p.id, event_id: p.event_id, title: byId.get(p.event_id)?.title, event_date: byId.get(p.event_id)?.event_date, full_name: p.full_name, amount: Number(p.fee_amount ?? byId.get(p.event_id)?.fee_amount ?? 0) }))
+        .sort((a, b) => String(a.event_date).localeCompare(String(b.event_date))),
+    );
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
 router.get('/:clubId/member-requests', async (req, res) => {
   const ready = await guestsReady();
   const v3 = await require('../services/clubRequests').ready();

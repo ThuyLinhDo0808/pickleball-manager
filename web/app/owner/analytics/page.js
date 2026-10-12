@@ -174,7 +174,12 @@ function Revenue({ d }) {
         </OwnerSection>
         <OwnerSection title={t('ana.byTier')} hint={t('ana.byTierHint')}>
           <div className={card}>
-            <HBars fmt={formatVnd} items={r.by_tier.map((x) => ({ label: x.tier === 'social_manager' ? 'Social Manager' : x.tier.toUpperCase(), value: x.cash, sub: t('ana.ordersN', { n: x.orders }) }))} />
+            <HBars fmt={formatVnd} items={r.by_tier.filter((x) => x.tier !== 'social_manager').map((x) => ({ label: x.tier.toUpperCase(), value: x.cash, sub: t('ana.ordersN', { n: x.orders }) }))} />
+          </div>
+        </OwnerSection>
+        <OwnerSection title={t('ana.bySmTier')} hint={t('ana.bySmTierHint')}>
+          <div className={card}>
+            <HBars color={C2} fmt={formatVnd} items={(r.by_sm_tier || []).map((x) => ({ label: `SM ${x.tier.toUpperCase()}`, value: x.cash, sub: t('ana.ordersN', { n: x.orders }) }))} />
           </div>
         </OwnerSection>
         <OwnerSection title={t('ana.byLength')} hint={t('ana.byLengthHint')}>
@@ -278,6 +283,7 @@ function Segments({ d }) {
       </OwnerSection>
       <div className="grid lg:grid-cols-2 gap-6">
         {dim('plan', s.by_plan, (k) => (k === 'trial' ? t('ana.trial') : k === 'free' ? t('ana.free') : k.toUpperCase()))}
+        {s.by_sm_plan && dim('sm_plan', s.by_sm_plan, (k) => (k === 'none' ? t('ana.smNone') : `SM ${k.toUpperCase()}`))}
         {dim('size', s.by_size, (k) => t('ana.sizeN', { k }))}
         {dim('product', s.by_product, (k) => t(`ana.prod_${k}`))}
         {dim('activity', s.by_activity, (k) => t(`ana.act_${k}`))}
@@ -354,9 +360,13 @@ function exportXlsx(d, t) {
   const add = (name, head, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([head, ...rows]), name);
   add(t('ana.x_revenue'), [t('ana.col_month'), t('ana.col_cash'), t('ana.s_plans'), 'Social Manager', t('ana.s_new'), t('ana.s_renewal'), t('ana.s_upgrade'), t('ana.col_orders'), t('ana.col_discounts'), 'MRR', t('ana.col_paying')],
     d.revenue.by_month.map((m) => [m.month, m.cash, m.plans, m.social_manager, m.new, m.renewal, m.upgrade, m.orders, m.discounts, m.mrr, m.paying_hosts]));
+  add(t('ana.x_byTier'), [t('ana.x_product'), t('ana.x_group'), t('ana.col_cash'), t('ana.col_orders')], [
+    ...d.revenue.by_tier.filter((x) => x.tier !== 'social_manager').map((x) => ['Club Manager', x.tier, x.cash, x.orders]),
+    ...(d.revenue.by_sm_tier || []).map((x) => ['Social Manager', x.tier, x.cash, x.orders]),
+  ]);
   add(t('ana.x_finance'), [t('ana.x_metric'), t('ana.x_value')], [['MRR', d.finance.mrr], ['ARR', d.finance.arr], ['ARPU', d.finance.arpu], ['ARPA', d.finance.arpa], [t('ana.churn'), d.finance.churn.avg], ['LTV', d.finance.ltv], [t('ana.payingHosts'), d.finance.paying_hosts], [t('ana.giftedHosts'), d.finance.gifted_hosts || 0]]);
   const seg = [];
-  for (const k of ['plan', 'size', 'product', 'activity', 'sport', 'tenure', 'region', 'value']) for (const g of d.segments[`by_${k}`]) seg.push([t(`ana.seg_${k}`), g.key, g.hosts, g.paying, g.paying_rate, g.cash, g.members]);
+  for (const k of ['plan', 'sm_plan', 'size', 'product', 'activity', 'sport', 'tenure', 'region', 'value']) for (const g of d.segments[`by_${k}`] || []) seg.push([t(`ana.seg_${k}`), g.key, g.hosts, g.paying, g.paying_rate, g.cash, g.members]);
   add(t('ana.x_segments'), [t('ana.x_dimension'), t('ana.x_group'), 'Host', t('ana.col_paying'), '%', t('ana.col_cash'), t('ana.membersWord')], seg);
   add(t('ana.x_funnel'), [t('ana.x_step'), t('ana.x_value'), '%'], d.funnel.map((f) => [t(`ana.f_${f.key}`), f.count, f.of_first]));
   add(t('ana.x_cohorts'), [t('ana.col_cohort'), t('ana.col_accounts'), t('ana.col_hosts'), t('ana.col_hostRate'), t('ana.col_everPaid'), t('ana.col_payingNow'), t('ana.col_activeNow')], d.cohorts.map((c) => [c.month, c.accounts, c.hosts, c.host_rate, c.ever_paid, c.paying_now, c.active_now]));

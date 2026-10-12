@@ -85,7 +85,12 @@ function revenue(d, months) {
     const rows = inWindow.filter((o) => o.kind === 'tier' && o.tier === t);
     return { tier: t, cash: sum(rows, (o) => o.amount), orders: rows.length };
   });
-  byTier.push({ tier: 'social_manager', cash: sum(inWindow.filter((o) => o.kind === 'social_manager'), (o) => o.amount), orders: inWindow.filter((o) => o.kind === 'social_manager').length });
+  // Social Manager is its own product with its own four plans (old orders without a tier
+  // were the single add-on: counted as Basic).
+  const bySmTier = TIERS.map((t) => {
+    const rows = inWindow.filter((o) => o.kind === 'social_manager' && (TIERS.includes(o.tier) ? o.tier : 'basic') === t);
+    return { tier: t, cash: sum(rows, (o) => o.amount), orders: rows.length };
+  });
   const byLength = [1, 3, 6, 12].map((n) => {
     const rows = inWindow.filter((o) => Number(o.months) === n);
     return { months: n, cash: sum(rows, (o) => o.amount), orders: rows.length };
@@ -113,6 +118,7 @@ function revenue(d, months) {
     },
     by_sale: ['new', 'renewal', 'upgrade'].map((k) => ({ kind: k, cash: sum(inWindow.filter((o) => sale.get(o.id) === k), (o) => o.amount), orders: inWindow.filter((o) => sale.get(o.id) === k).length })),
     by_tier: byTier,
+    by_sm_tier: bySmTier,
     by_length: byLength,
     promos: { orders: promoRows.length, discounts: sum(promoRows, (o) => o.discount_amount), cash: sum(promoRows, (o) => o.amount), redemptions: d.redemptions.length },
     top_hosts: [...lifetime.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, cash]) => ({ host_id: id, email: emailOf.get(id) || null, cash, orders: paid.filter((o) => o.host_id === id).length })),
@@ -189,6 +195,7 @@ function segments(d) {
     return {
       id,
       tier: S.onTrial(sub, today) ? 'trial' : sub.tier || 'free',
+      sm_tier: sub.social_manager ? (TIERS.includes(sub.sm_tier) ? sub.sm_tier : 'basic') : 'none',
       paying,
       gifted: d.giftedIds.has(id),
       cash: cashOf.get(id) || 0,
@@ -238,6 +245,7 @@ function segments(d) {
   return {
     hosts: rows.length,
     by_plan: group((r) => r.tier, ['free', 'trial', 'basic', 'standard', 'advanced', 'pro']),
+    by_sm_plan: group((r) => r.sm_tier, ['none', 'basic', 'standard', 'advanced', 'pro']),
     by_size: group((r) => size(r.members), ['0', '1-20', '21-50', '51-100', '101-300', '300+']),
     by_product: group(product, ['club', 'community', 'both', 'xeve', 'none']),
     by_sport: group(sport, ['pickleball', 'badminton', 'both', 'none']),

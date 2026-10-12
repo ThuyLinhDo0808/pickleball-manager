@@ -101,6 +101,7 @@ function ClubHome({ community = false }) {
   const { data: events } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/events`)) : Promise.resolve([])), [cid]);
   const { data: members } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/members`)) : Promise.resolve([])), [cid]);
   const { data: fund } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/fund`)) : Promise.resolve(null)), [cid]);
+  const { data: refunds } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/refunds-due`)) : Promise.resolve([])), [cid]);
   const { data: requests } = useLoad(() => (cid ? safe(api.get(`/api/clubs/${cid}/member-requests`)) : Promise.resolve([])), [cid]);
   const { data: fin } = useLoad(() => (cid && canStats ? safe(api.get(`/api/analytics/finance?club_id=${cid}&months=3`)) : Promise.resolve(null)), [cid, canStats]);
   const { data: tours } = useLoad(() => (cid ? safe(api.get(`/api/tournaments?club_id=${cid}`)) : Promise.resolve([])), [cid]);
@@ -158,6 +159,9 @@ function ClubHome({ community = false }) {
         }
       : null,
     requests?.length ? { href: '/club/members', icon: '📝', text: t('home.todoRequests', { n: requests.length }) } : null,
+    refunds?.length
+      ? { href: `/events/${refunds[0].event_id}`, icon: '💸', text: t('home.todoRefunds', { n: refunds.length, amount: formatVnd(refunds.reduce((s, r) => s + r.amount, 0)), names: refunds.slice(0, 3).map((r) => r.full_name).join(', ') }) }
+      : null,
     debtors.length
       ? { href: '/club/members', icon: '💸', text: t('home.todoDebtNames', { names: debtors.slice(0, 4).map((m) => m.full_name).join(', '), more: debtors.length > 4 ? ` +${debtors.length - 4}` : '' }) }
       : null,
