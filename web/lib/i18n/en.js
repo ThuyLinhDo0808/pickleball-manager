@@ -3628,4 +3628,16 @@ export const en = {
     err_duration: "Play time not in the list",
     err_joined: "Bad join month (mm/yyyy)",
   },
+  adopt: {
+    title: "You still have {n} old one-off kèo (made before communities)",
+    hint: "Move them into \"{name}\" to see, edit and count them with your other kèo.",
+    open: "Move into community",
+    modalTitle: "Move one-off kèo into \"{name}\"",
+    explain: "Each kèo moves with its players, money, matches and staff access. Sign-up links stay the same.",
+    all: "Select all",
+    none: "Select none",
+    move: "Move {n} kèo",
+    kept: "{n} meetings / round robins stay (communities do not have them).",
+    done: "Moved {n} kèo into \"{name}\".",
+  },
 };

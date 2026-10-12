@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell';
 import ClubAvatar from '@/components/ClubAvatar';
 import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
+import AdoptStandalone from '@/components/AdoptStandalone';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useLoad } from '@/lib/useLoad';
@@ -43,7 +44,7 @@ function Split({ parts }) {
 export default function CommunityOverview({ children }) {
   const { t } = useI18n();
   const { clubs, club, selectClub } = useClubs();
-  const { data, error } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/community-overview`) : Promise.resolve(null)), [club?.id]);
+  const { data, error, reload } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/community-overview`) : Promise.resolve(null)), [club?.id]);
   const m = data?.members;
   const f = data?.finance;
   const r = data?.regularity;
@@ -82,6 +83,8 @@ export default function CommunityOverview({ children }) {
           ))}
         </div>
       </div>
+
+      {club && <AdoptStandalone club={club} onMoved={reload} />}
 
       {error && <p className="card text-red-300 text-sm mb-4">{error.message}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
