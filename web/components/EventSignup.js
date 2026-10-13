@@ -36,15 +36,28 @@ function Steps({ current, guestPays, approval = false }) {
   );
 }
 
-export function ProfileForm({ profile, onSaved, sport = 'pickleball' }) {
+// "Confirm your email first", with the way to do it (back to this kèo afterwards).
+function VerifyFirst({ code }) {
+  const { t } = useI18n();
+  const here = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/home';
+  return (
+    <>
+      {t(code === 'email_unverified_limit' ? 'everify.limitOne' : 'everify.needed')}{' '}
+      <Link href={`/verify-email?next=${encodeURIComponent(here)}`} className="underline font-semibold text-lime-300">{t('everify.barCta')} →</Link>
+    </>
+  );
+}
+
+// The quick profile a player gives the first time they join a kèo: name, phone, gender and
+// level ("not sure" = blank). Birth date and the rest are asked later.
+export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGender }) {
   const { t } = useI18n();
   const levelKey = sport === 'badminton' ? 'badminton_level' : 'dupr_level'; // the level for this event's sport
   const [f, setF] = useState({
     full_name: profile?.full_name || '',
     phone: profile?.phone || '',
     [levelKey]: profile?.[levelKey] ?? '',
-    birth_date: profile?.birth_date || '',
-    gender: profile?.gender || '',
+    gender: profile?.gender || (['male', 'female'].includes(accountGender) ? accountGender : ''),
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -74,23 +87,21 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball' }) {
         <input className="input" required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
         <p className="text-gray-500 text-xs mt-1">{t('public.phoneHint')}</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="min-w-0">
-          <label className="text-xs text-gray-400">{t('members.birthDate')}</label>
-          <input className="input" required type="date" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={f.birth_date} onChange={(e) => setF({ ...f, birth_date: e.target.value })} />
+      <fieldset>
+        <legend className="text-xs text-gray-400 mb-1">{t('members.gender')} *</legend>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup">
+          {['male', 'female'].map((g) => (
+            <label key={g} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm text-center ${f.gender === g ? 'border-lime-400 bg-lime-400 text-navy-950 font-semibold' : 'border-navy-600 text-gray-200'}`}>
+              <input type="radio" name="pf-gender" value={g} required className="sr-only" checked={f.gender === g} onChange={() => setF({ ...f, gender: g })} />
+              {t(`members.${g}`)}
+            </label>
+          ))}
         </div>
-        <div className="min-w-0">
-          <label className="text-xs text-gray-400">{t('members.gender')}</label>
-          <select className="input" value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
-            <option value="">—</option>
-            <option value="male">{t('members.male')}</option>
-            <option value="female">{t('members.female')}</option>
-          </select>
-        </div>
-      </div>
+      </fieldset>
       <div>
         <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
         <LevelInput sport={sport} value={f[levelKey]} onChange={(v) => setF({ ...f, [levelKey]: v })} />
+        <p className="text-gray-500 text-xs mt-1">{t('signup.levelHint')}</p>
       </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <button className="btn-primary w-full py-3" disabled={busy}>{t('common.save')}</button>
@@ -364,7 +375,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!ev.registration_open) {
     return <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>;
   }
-  if (!me.profile?.full_name || !me.profile?.phone || !me.profile?.birth_date) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} />;
+  if (!me.profile?.full_name || !me.profile?.phone) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} />;
 
   async function register() {
     setBusy(true);
@@ -377,6 +388,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       const p = err.payload || {};
       if (p.code === 'club_suspended') setError(t('notice.signupSuspended', { reason: p.reason || '—', date: p.until ? new Date(p.until).toLocaleDateString('vi-VN') : '' }));
       else if (p.code === 'club_blocked') setError(t('notice.signupBlocked', { reason: p.reason || '—' }));
+      // Email not confirmed yet: one place only / the 48 hours are over.
+      else if (p.code === 'email_unverified_limit' || p.code === 'email_verify_required') setError(<VerifyFirst code={p.code} />);
       else setError(err.message);
     } finally {
       setBusy(false);

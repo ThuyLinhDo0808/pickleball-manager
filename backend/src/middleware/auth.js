@@ -2,6 +2,7 @@ const { supabase } = require('../supabase');
 const { suspensionOf, OPEN_WHEN_SUSPENDED, suspendedResponse } = require('../services/owner');
 const viewAs = require('../services/viewAs');
 const security = require('../services/accountSecurity');
+const emailVerify = require('../services/emailVerify');
 
 // Self-healing: if a host's users/host_subscriptions rows are somehow missing
 // (e.g. account existed before the bootstrap trigger), create them on the fly.
@@ -31,9 +32,15 @@ async function requireAuth(req, res, next) {
     // The signed-in account itself. req.hostId can later be swapped to a club's owner
     // when this account is that club's co-admin (see services/clubAccess.js).
     req.userId = data.user.id;
-    req.hostEmail = data.user.email;
-    // Staff access is granted by email, so only trust an email Supabase has confirmed.
-    req.emailVerified = !!data.user.email_confirmed_at;
+    // An account whose email is not confirmed yet (quick sign-up, see services/emailVerify.js)
+    // gets no rights from its email: no owner / support console, no club roles given by
+    // email. req.hostEmail is then null; req.accountEmail is the address it signed up with.
+    const unverified = await emailVerify.unverifiedSince(data.user.id).catch(() => null);
+    req.accountEmail = data.user.email;
+    req.emailUnverified = !!unverified;
+    req.hostEmail = unverified ? null : data.user.email;
+    // Staff access is granted by email, so only trust an email that has been confirmed.
+    req.emailVerified = !!data.user.email_confirmed_at && !unverified;
     // Which sign-in session this is (two-step sign-in is tied to it) and when the token was
     // issued ("sign out on every device" refuses older ones).
     const info = security.tokenInfo(token);

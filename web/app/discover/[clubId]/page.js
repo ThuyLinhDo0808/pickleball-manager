@@ -95,6 +95,7 @@ export default function DiscoverClubPage() {
             <p className={`mt-3 text-sm ${msg.ok ? 'text-lime-300' : 'text-red-300'}`}>
               {msg.ok ? '✓ ' : ''}{msg.text}
               {msg.code === 'profile_required' && <> <Link href="/p/profile" className="underline">{t('disc.completeProfile')}</Link></>}
+                  {msg.code === 'email_verify_required' && <> <Link href={`/verify-email?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/home')}`} className="underline">{t('everify.barCta')}</Link></>}
             </p>
           )}
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">

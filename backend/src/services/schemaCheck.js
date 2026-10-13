@@ -44,6 +44,7 @@ const PROBES = [
   { table: 'feedback', column: 'category', migration: '20261115090000_feedback_reviews.sql' },
   { table: 'users', column: 'feedback_blocked_at', migration: '20261115090000_feedback_reviews.sql' },
   { table: 'event_surveys', column: 'come_back', migration: '20261115090000_feedback_reviews.sql' },
+  { table: 'users', column: 'email_unverified_since', migration: '20261116090000_email_verify.sql' },
   { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
   { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
   { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },

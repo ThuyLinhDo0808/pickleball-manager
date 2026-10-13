@@ -87,6 +87,7 @@ router.get('/club-requests', async (req, res) => {
 router.post('/club-requests', async (req, res) => {
   try {
     if (!(await requestsReady(res))) return;
+    await require('../services/emailVerify').assertVerified(req.userId); // opening a club needs a confirmed email
     const r = await clubRequests.create(req.hostId, req.body);
     const pay = r.payment ? ` · chờ chuyển khoản ${r.payment.amount.toLocaleString('vi-VN')}đ, mã ${r.payment.ref}` : ' · gói hiện có còn chỗ';
     await notifyFeedback({ message: `[${r.kind === 'community' ? 'Cộng đồng mới' : 'CLB mới'}] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}${pay}) — vào Trang Owner → Duyệt CLB khi đã nhận tiền.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
@@ -283,6 +284,44 @@ router.post('/plan/cancel', async (req, res) => {
     await notifyFeedback({ message: `[Gói] ${what}`, contact: req.hostEmail, page: '/plan', userEmail: req.hostEmail }).catch(() => {});
     res.json({ plan: await getPlan(req.hostId, { fresh: true }) });
   } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// ---- Email check (quick sign-up): status, type the 6-digit code, send a new code ----
+const emailVerify = require('../services/emailVerify');
+const { rateLimit: limiter } = require('../services/rateLimit');
+const codeTries = limiter({ windowMs: 10 * 60 * 1000, max: 10, key: (req) => `vcode:${req.userId}`, code: 'rate_limited' });
+const codeSends = limiter({ windowMs: 15 * 60 * 1000, max: 5, key: (req) => `vsend:${req.userId}`, code: 'code_rate_limit' });
+
+router.get('/account/email-status', async (req, res) => {
+  try {
+    res.json({ email: req.accountEmail, ...(await emailVerify.status(req.userId)) });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// { code } — or nothing, when this session came from the link in the code email.
+router.post('/account/verify-email', codeTries, async (req, res) => {
+  try {
+    if (!(await emailVerify.unverifiedSince(req.userId))) return res.json({ verified: true });
+    if (!req.body?.code && emailVerify.signedInByEmail(req.accessToken)) await emailVerify.markVerified(req.userId);
+    else await emailVerify.verifyCode(req.userId, req.accountEmail, req.body?.code);
+    res.json({ verified: true });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
+router.post('/account/verify-email/send', codeSends, async (req, res) => {
+  try {
+    if (!(await emailVerify.unverifiedSince(req.userId))) return res.json({ verified: true });
+    await emailVerify.sendCode(req.accountEmail, require('./auth.routes').webOrigin(req));
+    res.json({ sent: true });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
     dbError(res, err);
   }
 });

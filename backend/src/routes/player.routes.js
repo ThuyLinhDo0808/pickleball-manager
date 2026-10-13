@@ -169,13 +169,13 @@ function cleanProfile(body, { badminton = false } = {}) {
   // Badminton level (step 1-6), kept apart from DUPR; only once the migration is in.
   const bl = body.badminton_level === '' || body.badminton_level == null ? null : Number(body.badminton_level);
   if (bl != null && !(Number.isInteger(bl) && bl >= 1 && bl <= 6)) throw badRequest('badminton_level must be a step from 1 to 6.');
-  // Full birth date is required (the club uses it for birthdays); the year follows it.
-  const birth = String(body.birth_date || '').slice(0, 10);
+  // Birth date is optional (asked later: birthdays are for club members); checked when given.
+  const birth = String(body.birth_date || '').slice(0, 10) || null;
   const today = new Date().toISOString().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || Number.isNaN(Date.parse(birth)) || birth < '1900-01-01' || birth > today) {
+  if (birth && (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || Number.isNaN(Date.parse(birth)) || birth < '1900-01-01' || birth > today)) {
     throw badRequest('A valid birth date is required.', 400, 'birth_date_required');
   }
-  const year = Number(birth.slice(0, 4));
+  const year = birth ? Number(birth.slice(0, 4)) : body.birth_year ? Number(body.birth_year) || null : null;
   const gender = ['male', 'female'].includes(body.gender) ? body.gender : null;
   let avatar = body.avatar || null;
   if (avatar && !(/^data:image\/(jpeg|png|webp);base64,/.test(avatar) && avatar.length <= 150000)) {
@@ -197,6 +197,11 @@ function blanksFrom(member, profile, sport = 'pickleball') {
 player.put('/profile', async (req, res) => {
   try {
     const p = cleanProfile(req.body, { badminton: await sportReady() });
+    // Gender was asked at sign-up: use it when the form leaves it out.
+    if (!p.gender) {
+      const { data: u } = await supabase.from('users').select('gender').eq('id', req.hostId).maybeSingle();
+      if (['male', 'female'].includes(u?.gender)) p.gender = u.gender;
+    }
     const { data, error } = await supabase
       .from('player_profiles')
       .upsert({ user_id: req.hostId, ...p, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
@@ -326,6 +331,7 @@ player.post('/join/:token', async (req, res) => {
     if (!club) throw badRequest('Club not found.', 404);
     const profile = await getProfile(req.hostId);
     if (!profile?.full_name || !profile?.phone || !profile?.birth_date) throw badRequest('Complete your profile first.', 400, 'profile_required');
+    await require('../services/emailVerify').assertVerified(req.userId);
 
     const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
     if (!isUuid(req.body.plan_id) || !/^\d{4}-\d{2}$/.test(req.body.start_month || '')) {

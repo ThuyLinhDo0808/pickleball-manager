@@ -1,4 +1,4 @@
-// Signing in with a username (or email), signing up with the required details, and
+// Signing in with a username (or email), quick sign-up, and
 // "forgot password". No login needed. Supabase Auth only knows emails, so the server
 // turns a username into its email here — the email is never sent back to the browser.
 const express = require('express');
@@ -7,6 +7,7 @@ const { supabase } = require('../supabase');
 const { rateLimit } = require('../services/rateLimit');
 const security = require('../services/accountSecurity');
 const { LEGAL_VERSION } = require('../services/privacy');
+const emailVerify = require('../services/emailVerify');
 
 const router = express.Router();
 
@@ -95,7 +96,10 @@ router.post('/login', tooMany, perLogin, async (req, res) => {
   }
 });
 
-// Sign up with everything we need: username, password, email, birth date, gender, region.
+// Quick sign-up: username, password, email and gender (birth date and region are asked
+// later, when they are needed). The account works at once — the person is signed in
+// and can hold one place — and the email is confirmed with a 6-digit code
+// (services/emailVerify.js).
 router.post('/signup', tooMany, mails, async (req, res) => {
   const b = req.body || {};
   const username = cleanLogin(b.username);
@@ -105,44 +109,52 @@ router.post('/signup', tooMany, mails, async (req, res) => {
   if (!USERNAME.test(username)) return fail('bad_username', 'Username: 3–30 characters, a–z, 0–9, . or _, starting with a letter.');
   if (password.length < 8 || password.length > 72) return fail('weak_password', 'Password: 8–72 characters.');
   if (!EMAIL.test(email)) return fail('bad_email', 'A valid email is required.');
-  const today = new Date().toISOString().slice(0, 10);
-  if (!YMD.test(String(b.birth_date || '')) || b.birth_date < '1900-01-01' || b.birth_date >= today) return fail('bad_birth_date', 'A valid birth date is required.');
   if (!GENDERS.includes(b.gender)) return fail('bad_gender', 'Gender is required.');
-  const region = String(b.region || '').trim().slice(0, 80);
-  if (!region) return fail('bad_region', 'Region is required.');
+  // Optional now; checked when given.
+  const today = new Date().toISOString().slice(0, 10);
+  const birth = b.birth_date ? String(b.birth_date) : null;
+  if (birth && (!YMD.test(birth) || birth < '1900-01-01' || birth >= today)) return fail('bad_birth_date', 'A valid birth date is required.');
+  const region = String(b.region || '').trim().slice(0, 80) || null;
   if (b.accept_terms !== true) return fail('terms_required', 'Accept the Terms and the Privacy Policy to sign up.');
   try {
     const { data: taken } = await supabase.from('users').select('id').eq('username', username).maybeSingle();
     if (taken) return fail('username_taken', 'This username is taken.', 409);
-    const origin = webOrigin(req);
-    const details = { username, birth_date: b.birth_date, gender: b.gender, region };
-    const { data, error } = await authClient().auth.signUp({
-      email,
-      password,
-      options: { data: details, ...(origin ? { emailRedirectTo: `${origin}/welcome` } : {}) },
-    });
+    const details = { username, gender: b.gender, ...(birth ? { birth_date: birth } : {}), ...(region ? { region } : {}) };
+    const { data: created, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: details });
     if (error) {
-      if (error.code === 'user_already_exists' || /already registered/i.test(error.message || '')) return fail('email_taken', 'This email already has an account.', 409);
+      if (error.code === 'email_exists' || error.code === 'user_already_exists' || /already (been )?registered|already exists/i.test(error.message || '')) return fail('email_taken', 'This email already has an account.', 409);
       if (error.code === 'weak_password') return fail('weak_password', error.message);
-      if (/rate limit/i.test(error.message || '')) return fail('email_rate_limit', error.message, 429);
       throw error;
     }
-    // With email confirmation on, an existing email comes back as a user with no identities.
-    if (!data.user || (Array.isArray(data.user.identities) && data.user.identities.length === 0)) return fail('email_taken', 'This email already has an account.', 409);
+    const userId = created.user.id;
     // The new-user trigger copies the details; set them here too (older databases, races).
-    let { error: uErr } = await supabase
-      .from('users')
-      .upsert({ id: data.user.id, email, ...details, terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() }, { onConflict: 'id' });
-    // Database without the consent columns yet: save the rest (the app asks again later).
-    if (uErr && uErr.code !== '23505') ({ error: uErr } = await supabase.from('users').upsert({ id: data.user.id, email, ...details }, { onConflict: 'id' }));
+    const row = { id: userId, email, ...details, terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString(), email_unverified_since: new Date().toISOString() };
+    let { error: uErr } = await supabase.from('users').upsert(row, { onConflict: 'id' });
+    // Database without the newer columns yet: save the rest.
+    if (uErr && uErr.code !== '23505') ({ error: uErr } = await supabase.from('users').upsert({ id: userId, email, ...details }, { onConflict: 'id' }));
     if (uErr?.code === '23505') {
-      await supabase.auth.admin.deleteUser(data.user.id).catch(() => {});
+      await supabase.auth.admin.deleteUser(userId).catch(() => {});
       return fail('username_taken', 'This username is taken.', 409);
     }
-    const s = data.session;
+    emailVerify.forget(userId);
+    const { data: signed, error: sErr } = await authClient().auth.signInWithPassword({ email, password });
+    if (sErr) throw sErr;
+    try {
+      await security.recordLogin(userId, b.device_id, req.get('user-agent'), req.ip);
+    } catch {
+      /* not migrated yet */
+    }
+    let codeSent = true;
+    await emailVerify.sendCode(email, webOrigin(req)).catch((err) => {
+      codeSent = false;
+      console.error('signup code', err.message);
+    });
+    const s = signed.session;
     res.status(201).json({
-      needs_confirmation: !s,
-      session: s ? { access_token: s.access_token, refresh_token: s.refresh_token, expires_in: s.expires_in, expires_at: s.expires_at, token_type: s.token_type } : null,
+      needs_confirmation: false,
+      verify_email: true,
+      code_sent: codeSent,
+      session: { access_token: s.access_token, refresh_token: s.refresh_token, expires_in: s.expires_in, expires_at: s.expires_at, token_type: s.token_type },
     });
   } catch (err) {
     console.error('signup', err.message);
@@ -179,3 +191,4 @@ router.post('/resend', tooMany, mails, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.webOrigin = webOrigin;

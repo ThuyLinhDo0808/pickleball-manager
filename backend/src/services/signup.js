@@ -136,14 +136,18 @@ function assertOpen(event) {
 // opts.payLater: hold the place now, transfer later (until the sign-up deadline).
 async function registerOnline(event, userId, profile, opts = {}) {
   assertOpen(event);
-  if (!profile?.full_name || normalizePhone(profile.phone).length < 9 || !profile.birth_date) {
-    throw httpError('Complete your profile (name, phone, birth date) first.', 400, 'profile_required');
+  // Name + phone are enough to play (the Host calls the name, matches the transfer and
+  // the person across sessions); birth date and the rest come later.
+  if (!profile?.full_name || normalizePhone(profile.phone).length < 9) {
+    throw httpError('Add your name and phone first.', 400, 'profile_required');
   }
   // Blocked by this Host, or suspended ("to review") in this club: no sign-up.
   await require('./moderation').assertCanJoin(event, { userId, phone: profile.phone });
   await expireHolds(event);
   const { standing, participant: existing } = await myRegistration(event, userId);
   if (existing && ACTIVE.includes(existing.status)) throw httpError('You are already registered for this event.', 409, 'already_registered');
+  // Email not confirmed yet: one upcoming place, inside 48 hours.
+  await require('./emailVerify').assertCanRegister(userId);
 
   // Same phone already on the list (e.g. the Host added them by hand).
   const { data: samePhone } = await supabase.from('event_participants').select('phone').eq('event_id', event.id).in('status', ACTIVE);

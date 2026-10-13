@@ -224,8 +224,11 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
     const { standing, participant } = mine;
     // Guest perk (priority / VIP price) the club gave this player, if any.
     const perks = standing.state === 'verified' ? null : await perksFor(event, { userId: req.userId, phone: profile?.phone });
+    const { data: acct } = await supabase.from('users').select('gender').eq('id', req.userId).maybeSingle();
     res.json({
       profile,
+      account_gender: acct?.gender || null, // asked at sign-up; fills the quick profile form
+      email: await require('../services/emailVerify').status(req.userId).catch(() => null),
       member: {
         guest_perk: perks?.perk || null,
         my_fee: perks?.fee_amount ?? null,
@@ -812,12 +815,19 @@ router.get('/:eventId/participants', async (req, res) => {
   } catch (err) {
     return dbError(res, err);
   }
+  // Accounts whose email is not confirmed yet (quick sign-up): the Host sees a tag.
+  const userIds = [...new Set(data.map((p) => p.user_id).filter(Boolean))];
+  const unverified = new Set();
+  if (userIds.length) {
+    const { data: us } = await supabase.from('users').select('id, email_unverified_since').in('id', userIds);
+    for (const u of us || []) if (u.email_unverified_since) unverified.add(u.id);
+  }
   // screenshots are fetched one at a time (they are large)
   res.json(
     data.map(({ payment_proof, ...p }) => {
       const card = cards.get(p.id) || null;
       // Fixed members pay through their membership plan: their place is always paid.
-      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: card?.member_type === 'fixed' };
+      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: card?.member_type === 'fixed', email_unverified: unverified.has(p.user_id) };
     })
   );
 });

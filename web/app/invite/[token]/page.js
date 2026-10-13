@@ -85,6 +85,7 @@ export default function InvitePage() {
                 <p className="text-red-300 text-sm">
                   {msg.text}
                   {msg.code === 'profile_required' && <> <Link href="/p/profile" className="underline">{t('disc.completeProfile')}</Link></>}
+                  {msg.code === 'email_verify_required' && <> <Link href={`/verify-email?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/home')}`} className="underline">{t('everify.barCta')}</Link></>}
                 </p>
               )}
               <button className="btn-primary" disabled={busy}>🙋 {busy ? t('common.loading') : t('invite.join')}</button>

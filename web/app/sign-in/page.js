@@ -5,7 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { deviceId } from '@/lib/device';
 import { api } from '@/lib/api';
-import { REGIONS, ABROAD } from '@/lib/regions';
 
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
@@ -14,7 +13,6 @@ function nextPath() {
 }
 
 const USERNAME = /^[a-z][a-z0-9._]{2,29}$/;
-const todayYmd = () => new Date().toISOString().slice(0, 10);
 
 // API error code -> words people understand.
 function errorText(err, t) {
@@ -96,7 +94,7 @@ export default function SignInPage() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   // sign up
-  const [f, setF] = useState({ username: '', password: '', password2: '', email: '', birth_date: '', gender: '', region: '' });
+  const [f, setF] = useState({ username: '', password: '', password2: '', email: '', gender: '' });
   const [agree, setAgree] = useState(false);
   const [nameState, setNameState] = useState(null); // null | 'checking' | 'free' | 'taken' | 'invalid'
   const set = (k) => (e) => setF({ ...f, [k]: typeof e === 'string' ? e : e.target.value });
@@ -106,9 +104,11 @@ export default function SignInPage() {
   useEffect(() => {
     setIdleOut(new URLSearchParams(window.location.search).get('idle') === '1');
   }, []);
+  // Just signed up: the page goes on to the email code instead (see signUp below).
+  const [justSignedUp, setJustSignedUp] = useState(false);
   useEffect(() => {
-    if (!loading && user) router.replace(nextPath());
-  }, [loading, user, router]);
+    if (!loading && user && !justSignedUp) router.replace(nextPath());
+  }, [loading, user, router, justSignedUp]);
 
   // /sign-in?mode=signUp opens the sign-up form; a flag in sessionStorage comes from
   // deleting an account; an expired confirmation link comes back with #error_code.
@@ -179,10 +179,12 @@ export default function SignInPage() {
     setBusy(true);
     try {
       const { password2, ...body } = f;
-      const r = await api.publicPost('/api/public/auth/signup', { ...body, username: f.username.trim().toLowerCase(), origin: window.location.origin, accept_terms: agree });
+      const r = await api.publicPost('/api/public/auth/signup', { ...body, username: f.username.trim().toLowerCase(), origin: window.location.origin, accept_terms: agree, device_id: deviceId() });
       if (r.session) {
+        // Signed in at once; next: the 6-digit code (it can be skipped to hold a place first).
+        setJustSignedUp(true);
         await adoptSession(r.session);
-        router.replace(nextPath());
+        router.replace(r.verify_email ? `/verify-email?next=${encodeURIComponent(nextPath())}${r.code_sent === false ? '&resend=1' : ''}` : nextPath());
         return;
       }
       setLogin(f.username.trim().toLowerCase());
@@ -290,16 +292,6 @@ export default function SignInPage() {
                   hint={f.password2 && f.password2 !== f.password ? <span className="text-red-300">{t('auth.passwordMismatch')}</span> : null}
                 >
                   <PasswordInput id="su-pw2" value={f.password2} onChange={set('password2')} autoComplete="new-password" minLength={8} />
-                </Field>
-                <Field label={`${t('auth.birthDate')} *`} htmlFor="su-dob">
-                  <input id="su-dob" className="input" type="date" required min="1900-01-01" max={todayYmd()} value={f.birth_date} onChange={set('birth_date')} />
-                </Field>
-                <Field label={`${t('auth.region')} *`} htmlFor="su-region">
-                  <select id="su-region" className="input" required value={f.region} onChange={set('region')}>
-                    <option value="" disabled>{t('auth.regionPick')}</option>
-                    {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                    <option value={ABROAD}>{t('auth.abroad')}</option>
-                  </select>
                 </Field>
               </div>
               <fieldset className="mb-5">

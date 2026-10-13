@@ -170,6 +170,7 @@ async function joinByInvite(token, userId, body = {}) {
 async function joinClub(club, userId, body, source) {
   const clubId = club.id;
   if (club.host_id === userId) throw fail('This is your club.', 409, 'own_club');
+  await require('./emailVerify').assertVerified(userId); // becoming a member needs a confirmed email
   const { data: profile } = await supabase.from('player_profiles').select('*').eq('user_id', userId).maybeSingle();
   if (!profile?.full_name || normalizePhone(profile.phone).length < 9 || !profile.birth_date) {
     throw fail('Complete your profile first.', 400, 'profile_required');
