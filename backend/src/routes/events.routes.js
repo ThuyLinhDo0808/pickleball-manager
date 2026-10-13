@@ -862,6 +862,10 @@ async function playerCards(event, rows) {
 }
 
 router.get('/:eventId/participants/:participantId/proof', (req, res) => {
+  // Deleted by the retention rule (services/privacy.js): say so instead of "not found".
+  if (!req.participant.payment_proof && req.participant.proof_purged_at) {
+    return res.status(410).json({ error: 'The screenshot was deleted under the retention policy.', code: 'proof_purged', purged_at: req.participant.proof_purged_at });
+  }
   if (!req.participant.payment_proof) return notFound(res, 'Screenshot');
   res.json({ image: req.participant.payment_proof, submitted_at: req.participant.payment_submitted_at, ref: req.participant.payment_ref });
 });
@@ -1138,7 +1142,7 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
         .eq('event_id', req.event.id)
         .eq('category', 'event_fee')
         .eq('is_voided', false)
-        .ilike('note', `Fee from ${prior.full_name}`)
+        .ilike('note', `Fee from ${String(prior.full_name).replace(/[\\%_]/g, (c) => `\\${c}`)}`)
         .limit(1)
         .maybeSingle();
       if (existing) {

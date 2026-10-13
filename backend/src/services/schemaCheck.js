@@ -1,6 +1,7 @@
 // Is the database up to date with this backend? One probe column per migration: when the
 // Host deploys new code but forgets to run a migration, the app says exactly which file
 // to run instead of failing with a cryptic "column ... does not exist".
+const { createClient } = require('@supabase/supabase-js');
 const { supabase } = require('../supabase');
 
 const PROBES = [
@@ -36,6 +37,10 @@ const PROBES = [
   { table: 'host_subscriptions', column: 'tier_paid_until', migration: '20261025090000_plan_payments.sql' },
   { table: 'host_subscriptions', column: 'sm_tier', migration: '20261110090000_social_manager_tiers.sql' },
   { table: 'event_participants', column: 'refunded_at', migration: '20261111090000_participant_refunds.sql' },
+  { table: 'user_mfa', column: 'secret_enc', migration: '20261113090000_account_security.sql' },
+  { table: 'users', column: 'sessions_revoked_at', migration: '20261113090000_account_security.sql' },
+  { table: 'users', column: 'terms_version', migration: '20261114090000_privacy_consent.sql' },
+  { table: 'event_participants', column: 'proof_purged_at', migration: '20261114090000_privacy_consent.sql' },
   { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
   { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
   { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },
@@ -67,6 +72,23 @@ const PROBES = [
   { table: 'v_event_summary', column: 'series_label', migration: '20261109090000_communities.sql' },
 ];
 
+// The security lockdown adds no column: it takes table access away from the public anon
+// key. Probe it the way an attacker would: with the anon key, read a table. Allowed (no
+// error, even an empty list) = the grants are still there = the migration was not run.
+const LOCKDOWN = '20261112090000_security_lockdown.sql';
+async function anonCanRead() {
+  const url = process.env.SUPABASE_URL;
+  const anon = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anon) return false; // nothing to probe with
+  try {
+    const client = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error } = await client.from('clubs').select('id').limit(1);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 const TTL_MS = 60 * 1000;
 let cache = null;
 
@@ -79,6 +101,7 @@ async function schemaStatus() {
       if (error) missing.add(p.migration);
     })
   );
+  if (await anonCanRead()) missing.add(LOCKDOWN);
   const value = { ok: missing.size === 0, missing_migrations: [...missing].sort() };
   cache = { at: Date.now(), value };
   return value;

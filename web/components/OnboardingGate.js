@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
 // Pages a signed-in account may open before finishing the first-visit wizard.
-const OPEN = ['/onboarding', '/sign-in', '/welcome', '/reset-password', '/owner'];
+const OPEN = ['/onboarding', '/sign-in', '/welcome', '/reset-password', '/owner', '/privacy', '/terms'];
 
 // Every signed-in account fills in its sports, role and profile first — also when it
 // arrived through a club invite link or a kèo link. Afterwards it goes back to that page

@@ -1,6 +1,7 @@
 const { supabase } = require('../supabase');
 const { suspensionOf, OPEN_WHEN_SUSPENDED, suspendedResponse } = require('../services/owner');
 const viewAs = require('../services/viewAs');
+const security = require('../services/accountSecurity');
 
 // Self-healing: if a host's users/host_subscriptions rows are somehow missing
 // (e.g. account existed before the bootstrap trigger), create them on the fly.
@@ -33,6 +34,14 @@ async function requireAuth(req, res, next) {
     req.hostEmail = data.user.email;
     // Staff access is granted by email, so only trust an email Supabase has confirmed.
     req.emailVerified = !!data.user.email_confirmed_at;
+    // Which sign-in session this is (two-step sign-in is tied to it) and when the token was
+    // issued ("sign out on every device" refuses older ones).
+    const info = security.tokenInfo(token);
+    req.sessionKey = info.sessionKey;
+    req.tokenIat = info.iat;
+    req.accessToken = token;
+    const blocked = await security.gate(req);
+    if (blocked) return res.status(blocked.status).json(blocked.body);
     // The owner viewing the app as one Host (read-only, see services/viewAs.js).
     if (req.headers['x-view-as']) {
       if (await viewAs.apply(req, res)) return;

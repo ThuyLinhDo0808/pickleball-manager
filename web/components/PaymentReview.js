@@ -23,6 +23,8 @@ export default function PaymentReview({ event, rows, onChanged }) {
       const r = await api.get(`/api/events/${event.id}/participants/${p.id}/proof`);
       setViewing({ p, image: r.image });
     } catch (err) {
+      // Deleted by the retention rule (PROOF_RETENTION_DAYS after the session).
+      if (err.payload?.code === 'proof_purged') return window.alert(t('legal.proofPurged', { date: new Date(err.payload.purged_at).toLocaleDateString('vi-VN') }));
       window.alert(err.message);
     }
   }

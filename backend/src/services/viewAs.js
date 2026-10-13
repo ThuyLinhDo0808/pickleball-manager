@@ -40,6 +40,12 @@ async function apply(req, res) {
     res.status(403).json({ error: 'Not allowed.', code: 'view_as_forbidden' });
     return true;
   }
+  // Same two-step rule as the owner console.
+  const mfa = await require('./accountSecurity').consoleGate(req);
+  if (mfa) {
+    res.status(mfa.status).json(mfa.body);
+    return true;
+  }
   if (!UUID.test(String(target))) {
     res.status(400).json({ error: 'Bad X-View-As.', code: 'view_as_bad' });
     return true;

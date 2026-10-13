@@ -2301,3 +2301,124 @@ alter table public.event_participants add column if not exists refunded_at times
 alter table public.event_participants add column if not exists refund_amount numeric(12,0);
 alter table public.event_participants add column if not exists refunded_by text;
 alter table public.event_participants add column if not exists refund_txn_id uuid references public.transactions(id) on delete set null;
+
+-- ----------------------------------------------------------------------------
+-- SECURITY LOCKDOWN  (migration 20261112090000)
+-- ----------------------------------------------------------------------------
+-- The web app never reads the database directly: every query goes through the API,
+-- which uses the service-role key. The browser only holds the public "anon" key for
+-- sign-in. So the anon / authenticated roles need NO access to the public schema.
+--
+-- 1. Views run with the caller's rights (otherwise a view bypasses row-level security
+--    and anyone holding the anon key could read every club's data through it).
+do $$
+declare v record;
+begin
+  for v in select schemaname, viewname from pg_views where schemaname = 'public' loop
+    execute format('alter view %I.%I set (security_invoker = true)', v.schemaname, v.viewname);
+  end loop;
+end $$;
+
+-- 2. No direct table / view / function access for anon and signed-in browser sessions.
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke all on all tables in schema public from %I', r);
+      execute format('revoke all on all sequences in schema public from %I', r);
+      execute format('revoke execute on all functions in schema public from %I', r);
+      -- objects created later (new migrations) don't get the grant either
+      execute format('alter default privileges in schema public revoke all on tables from %I', r);
+      execute format('alter default privileges in schema public revoke all on sequences from %I', r);
+      execute format('alter default privileges in schema public revoke execute on functions from %I', r);
+      if exists (select 1 from pg_roles where rolname = 'postgres') then
+        execute format('alter default privileges for role postgres in schema public revoke all on tables from %I', r);
+        execute format('alter default privileges for role postgres in schema public revoke all on sequences from %I', r);
+        execute format('alter default privileges for role postgres in schema public revoke execute on functions from %I', r);
+      end if;
+    end if;
+  end loop;
+end $$;
+revoke execute on all functions in schema public from public;
+
+-- 3. Row-level security stays on for every table (defence in depth if a grant comes back).
+do $$
+declare t record;
+begin
+  for t in select tablename from pg_tables where schemaname = 'public' loop
+    execute format('alter table public.%I enable row level security', t.tablename);
+  end loop;
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- ----------------------------------------------------------------------------
+-- ACCOUNT SECURITY  (migration 20261113090000)
+-- ----------------------------------------------------------------------------
+-- Two-step sign-in (authenticator app codes, TOTP), "sign out everywhere", and the
+-- list of devices an account signed in from (new-device email). Only the backend
+-- (service role) reads or writes these tables.
+
+-- Two-step sign-in. The secret is stored encrypted (AES-256-GCM, key in the backend's
+-- MFA_ENC_KEY), recovery codes only as SHA-256 hashes. last_step blocks reusing a code.
+create table if not exists public.user_mfa (
+  user_id        uuid primary key references public.users(id) on delete cascade,
+  secret_enc     text not null,
+  enabled_at     timestamptz,                 -- null = set up started, not confirmed yet
+  recovery_hashes text[] not null default '{}',
+  last_step      bigint not null default 0,  -- last 30-second step used (a code works once)
+  created_at     timestamptz not null default now()
+);
+
+-- Sign-in sessions that passed the second step (one row per Supabase session).
+create table if not exists public.mfa_sessions (
+  session_key  text primary key,
+  user_id      uuid not null references public.users(id) on delete cascade,
+  verified_at  timestamptz not null default now(),
+  expires_at   timestamptz not null
+);
+create index if not exists ix_mfa_sessions_user on public.mfa_sessions (user_id);
+
+-- Devices that signed in (a random id the browser keeps; never the raw IP).
+create table if not exists public.login_devices (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.users(id) on delete cascade,
+  device_hash text not null,
+  user_agent  text,
+  ip_hint     text,                           -- e.g. 113.161.12.x
+  first_seen  timestamptz not null default now(),
+  last_seen   timestamptz not null default now(),
+  unique (user_id, device_hash)
+);
+
+-- "Sign out on every device": tokens issued before this moment are refused.
+alter table public.users add column if not exists sessions_revoked_at timestamptz;
+
+alter table public.user_mfa enable row level security;
+alter table public.mfa_sessions enable row level security;
+alter table public.login_devices enable row level security;
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke all on public.user_mfa, public.mfa_sessions, public.login_devices from %I', r);
+    end if;
+  end loop;
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- ----------------------------------------------------------------------------
+-- PRIVACY: CONSENT + RETENTION  (migration 20261114090000)
+-- ----------------------------------------------------------------------------
+-- Which version of the Terms / Privacy Policy each account accepted, and when.
+alter table public.users add column if not exists terms_version text;
+alter table public.users add column if not exists terms_accepted_at timestamptz;
+-- Transfer screenshots are deleted some time after the session (PROOF_RETENTION_DAYS,
+-- default 90 days); this says when, so the Host sees why the picture is gone.
+alter table public.event_participants add column if not exists proof_purged_at timestamptz;
+create index if not exists ix_participants_has_proof on public.event_participants (event_id) where payment_proof is not null;
+
+notify pgrst, 'reload schema';

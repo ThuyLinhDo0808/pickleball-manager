@@ -1,4 +1,7 @@
 import * as XLSX from 'xlsx';
+// Reading uploaded files goes through read-excel-file (read-only, maintained): the xlsx
+// package from npm (0.18.x) has open advisories for crafted files. xlsx only writes here.
+import readExcelFile from 'read-excel-file/browser';
 import { BADMINTON_LEVELS } from '@/lib/levels';
 
 // Members from an Excel file. The template has the same columns as "Xuất Excel", so an
@@ -42,7 +45,7 @@ function validDate(y, m, d) {
 
 // A cell as a date: Excel date, "28/10/2007", "2007-10-28". Returns 'YYYY-MM-DD' or null.
 function toYmd(v) {
-  if (v instanceof Date && !Number.isNaN(v.getTime())) return ymd(v.getFullYear(), v.getMonth() + 1, v.getDate());
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return ymd(v.getUTCFullYear(), v.getUTCMonth() + 1, v.getUTCDate()); // read-excel-file dates are UTC midnight
   const s = String(v).trim();
   let m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
   if (m && validDate(+m[3], +m[2], +m[1])) return ymd(+m[3], +m[2], +m[1]);
@@ -163,10 +166,10 @@ function rowToBody(get, t, sport) {
 // Reads the first sheet that has a "Họ tên" column. Returns { rows, missing } where each
 // row is { line, body } or { line, name, error }.
 export async function readMemberFile(file, t, sport) {
-  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+  const sheets = await readExcelFile(file);
   const nameHead = norm(t('common.name'));
-  for (const sheetName of wb.SheetNames) {
-    const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: true, defval: '' });
+  for (const { sheet: sheetName, data } of sheets) {
+    const grid = data.map((r) => r.map((c) => (c == null ? '' : c)));
     const hi = grid.findIndex((r) => r.some((c) => [nameHead, 'ho ten', 'ho va ten', 'full name', 'name'].includes(norm(c))));
     if (hi < 0) continue;
     const heads = grid[hi].map(norm);

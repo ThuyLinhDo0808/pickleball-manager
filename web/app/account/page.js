@@ -7,6 +7,7 @@ import NotifySettings from '@/components/NotifySettings';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import DeleteAccount from '@/components/DeleteAccount';
 import AccountDetails from '@/components/AccountDetails';
+import AccountSecurity from '@/components/AccountSecurity';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useClubs } from '@/context/ClubContext';
@@ -19,6 +20,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 
 const SECTIONS = [
+  ['security', '🔐'],
   ['manage', '🏟'],
   ['plan', '💎'],
   ['payout', '🏦'],
@@ -130,6 +132,11 @@ export default function AccountPage() {
       <div className="flex flex-col">
         <SettingsSection id="login" icon="🔑" tone="lime" title={t('auth.detailsTitle')} description={t('auth.detailsHint')}>
           <AccountDetails />
+        </SettingsSection>
+
+        {/* Two-step sign-in, devices, sign out everywhere. */}
+        <SettingsSection id="security" icon="🔐" tone="lime" title={t('acct.s_security')} description={t('sec.sectionHint')}>
+          <AccountSecurity />
         </SettingsSection>
 
         {/* Players become club managers here: a club request the app owner approves. */}

@@ -1,5 +1,7 @@
 'use client';
 import DeleteAccount from '@/components/DeleteAccount';
+import AccountSecurity from '@/components/AccountSecurity';
+import MyData from '@/components/MyData';
 import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -140,6 +142,19 @@ export default function PlayerProfile() {
           {saved && <span className="text-lime-400 text-sm">{t('player.saved')}</span>}
         </div>
       </form>
+
+      {/* Two-step sign-in, devices, sign out everywhere — for every account (players too). */}
+      <section id="security" className="card mt-6 scroll-mt-20">
+        <h2 className="text-white font-bold text-lg mb-1">🔐 {t('acct.s_security')}</h2>
+        <p className="text-gray-400 text-sm mb-4">{t('sec.sectionHint')}</p>
+        <AccountSecurity />
+      </section>
+
+      {/* Download my data (personal data rights) + Terms / Privacy links. */}
+      <section id="my-data" className="card mt-6 scroll-mt-20">
+        <h2 className="text-white font-bold text-lg mb-1">🗂️ {t('legal.myDataTitle')}</h2>
+        <MyData />
+      </section>
 
       <DeleteAccount />
     </PlayerShell>

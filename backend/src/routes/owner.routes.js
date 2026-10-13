@@ -16,6 +16,7 @@ const promo = require('../services/promo');
 const support = require('../services/support');
 const clubDelete = require('../services/clubDelete');
 
+const security = require('../services/accountSecurity');
 const router = express.Router();
 const MIGRATION = '20261026090000_owner_console.sql';
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -27,6 +28,9 @@ router.use(async (req, res, next) => {
   try {
     const access = await support.consoleAccess(req.hostEmail);
     if (!access) return res.status(404).json({ error: 'Not found.' });
+    // Owners and support staff must use two-step sign-in (OWNER_MFA_REQUIRED).
+    const mfa = await security.consoleGate(req);
+    if (mfa) return res.status(mfa.status).json(mfa.body);
     if (access.support) {
       // A suspended support account can't use the console.
       if (await owner.suspensionOf(req.userId)) return res.status(404).json({ error: 'Not found.' });

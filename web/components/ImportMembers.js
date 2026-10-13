@@ -101,7 +101,7 @@ export default function ImportMembers({ open, club, members, sport, onClose, onD
 
         <label className="btn-secondary text-center cursor-pointer">
           📄 {t('imp.pick')}
-          <input type="file" accept=".xlsx,.xls,.csv" className="sr-only" onChange={pick} disabled={busy} />
+          <input type="file" accept=".xlsx" className="sr-only" onChange={pick} disabled={busy} />
         </label>
         {fileError && <p className="text-red-400">{fileError}</p>}
 
