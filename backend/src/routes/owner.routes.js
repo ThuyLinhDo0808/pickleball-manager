@@ -766,38 +766,68 @@ router.post('/club-requests/:id/:decision(approve|reject)', wrap(async (req, res
 
 // ---- Feedback inbox -----------------------------------------------------------------
 
-const FEEDBACK_STATUSES = ['new', 'in_progress', 'closed'];
+const FEEDBACK_STATUSES = ['new', 'in_progress', 'closed', 'spam'];
+const FEEDBACK_CATEGORIES = ['bug', 'ux', 'idea', 'billing', 'privacy'];
 
+// Inbox of "Báo lỗi / Liên hệ": filter by status and by kind; each row says whether its
+// sender is blocked from sending more.
 router.get('/feedback', wrap(async (req, res) => {
   const status = FEEDBACK_STATUSES.includes(req.query.status) ? req.query.status : null;
+  const category = FEEDBACK_CATEGORIES.includes(req.query.category) ? req.query.category : null;
   const per = 50;
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   let q = supabase.from('feedback').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range((page - 1) * per, page * per - 1);
   if (status) q = q.eq('status', status);
+  else q = q.neq('status', 'spam'); // "All" leaves spam out
+  if (category) q = q.eq('category', category);
   const { data, error, count } = await q;
   if (error) throw error;
   const ids = [...new Set(data.map((f) => f.host_id).filter(Boolean))];
-  const { data: users } = ids.length ? await supabase.from('users').select('id, email').in('id', ids) : { data: [] };
-  const emailOf = new Map((users || []).map((u) => [u.id, u.email]));
+  let users = [];
+  if (ids.length) {
+    const r = await supabase.from('users').select('id, email, feedback_blocked_at').in('id', ids);
+    users = r.error ? (await supabase.from('users').select('id, email').in('id', ids)).data || [] : r.data;
+  }
+  const userOf = new Map(users.map((u) => [u.id, u]));
   const counts = {};
   for (const st of FEEDBACK_STATUSES) {
-    const { count: c } = await supabase.from('feedback').select('id', { count: 'exact', head: true }).eq('status', st);
-    counts[st] = c || 0;
+    let c = supabase.from('feedback').select('id', { count: 'exact', head: true }).eq('status', st);
+    if (category) c = c.eq('category', category);
+    counts[st] = (await c).count || 0;
   }
-  res.json({ rows: data.map((f) => ({ ...f, host_email: emailOf.get(f.host_id) || null })), total: count || 0, page, pages: Math.max(1, Math.ceil((count || 0) / per)), counts });
+  const rows = data.map((f) => ({ ...f, host_email: userOf.get(f.host_id)?.email || null, sender_blocked: !!userOf.get(f.host_id)?.feedback_blocked_at }));
+  res.json({ rows, total: count || 0, page, pages: Math.max(1, Math.ceil((count || 0) / per)), counts });
 }));
 
+async function loadFeedback(id) {
+  if (!isUuid(id)) throw fail(404, 'Feedback not found.');
+  const { data } = await supabase.from('feedback').select('*').eq('id', id).maybeSingle();
+  if (!data) throw fail(404, 'Feedback not found.');
+  return data;
+}
+
+// Move between new / in progress / closed, or mark as spam.
 router.patch('/feedback/:id', wrap(async (req, res) => {
-  if (!isUuid(req.params.id)) throw fail(404, 'Feedback not found.');
   const status = req.body?.status;
   if (!FEEDBACK_STATUSES.includes(status)) throw fail(400, `status must be one of ${FEEDBACK_STATUSES.join(', ')}.`);
-  const { data: before } = await supabase.from('feedback').select('*').eq('id', req.params.id).maybeSingle();
-  if (!before) throw fail(404, 'Feedback not found.');
+  const before = await loadFeedback(req.params.id);
   const { data, error } = await supabase.from('feedback').update({ status, status_changed_at: new Date().toISOString() }).eq('id', before.id).select().single();
   if (error) throw error;
   const host = before.host_id ? await loadHost(before.host_id).catch(() => null) : null;
   await owner.audit(req, { action: 'feedback.status', host, oldValue: { status: before.status }, newValue: { status }, note: String(before.message || '').slice(0, 120) });
   res.json(data);
+}));
+
+// Stop (or allow again) the sender of this message from sending more.
+router.post('/feedback/:id/block', wrap(async (req, res) => {
+  const blocked = req.body?.blocked !== false;
+  const fb = await loadFeedback(req.params.id);
+  if (!fb.host_id) throw fail(400, 'This message has no account to block.');
+  const { error } = await supabase.from('users').update({ feedback_blocked_at: blocked ? new Date().toISOString() : null }).eq('id', fb.host_id);
+  if (error) throw error;
+  const host = await loadHost(fb.host_id).catch(() => null);
+  await owner.audit(req, { action: blocked ? 'feedback.block' : 'feedback.unblock', host, oldValue: { blocked: !blocked }, newValue: { blocked }, note: String(fb.message || '').slice(0, 120) });
+  res.json({ user_id: fb.host_id, blocked });
 }));
 
 // ---- Announcements (banner for everyone) -------------------------------------------
@@ -1043,7 +1073,7 @@ router.post('/payments/:id/confirm', wrap(async (req, res) => {
   const after = pickSub(await loadSub(u.id));
   await owner.audit(req, { action: 'payment.confirm', host: u, oldValue: before, newValue: after, note: `${r.order.ref} · ${Number(r.order.amount).toLocaleString('vi-VN')}đ · ${r.order.months} tháng` });
   const what = r.order.kind === 'tier' ? r.order.tier : 'Social Manager';
-  await notifyFeedback({ message: `[Gói] Đã xác nhận thanh toán ${r.order.ref} (${what}, ${r.order.months} tháng)`, contact: req.hostEmail, page: '/owner/payments', userEmail: req.hostEmail }).catch(() => {});
+  await notifyFeedback({ message: `[Gói] Đã xác nhận thanh toán ${r.order.ref} (${what}, ${r.order.months} tháng)`, contact: req.hostEmail, page: '/owner/payments', category: 'billing', userEmail: req.hostEmail }).catch(() => {});
   res.json(r);
 }));
 

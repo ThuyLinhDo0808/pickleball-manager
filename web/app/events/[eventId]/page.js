@@ -392,6 +392,9 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee
                       {p.late_cancel && (
                         <span className="text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>
                       )}
+                      {p.email_unverified && (
+                        <span className="text-[10px] rounded border border-amber-300/60 text-amber-200 px-1" title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>
+                      )}
                       {kind === 'cancelled' && p.fee_paid && !p.late_cancel && (p.refunded_at ? (
                         <span className="text-[10px] rounded border border-lime-400/60 text-lime-300 px-1" title={p.refunded_by || ''}>
                           ✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}

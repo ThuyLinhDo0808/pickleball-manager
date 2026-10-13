@@ -34,6 +34,7 @@ export default function JoinClubPage() {
       setResult(await api.post(`/api/player/join/${token}`, { plan_id: plan.id, start_month: startMonth, count: Number(count) }));
     } catch (err) {
       if (err.payload?.code === 'profile_required') setNeedProfile(true);
+      else if (err.payload?.code === 'email_verify_required') setError(t('everify.needed'));
       else setError(err.message);
     } finally {
       setBusy(false);

@@ -2,6 +2,7 @@
 import DeleteAccount from '@/components/DeleteAccount';
 import AccountSecurity from '@/components/AccountSecurity';
 import MyData from '@/components/MyData';
+import FeedbackButton from '@/components/FeedbackButton';
 import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -154,6 +155,14 @@ export default function PlayerProfile() {
       <section id="my-data" className="card mt-6 scroll-mt-20">
         <h2 className="text-white font-bold text-lg mb-1">🗂️ {t('legal.myDataTitle')}</h2>
         <MyData />
+      </section>
+
+      {/* Players reach the app team from here (no button on every page: the after-session
+          review is where they rate a session). */}
+      <section id="help" className="card mt-6 scroll-mt-20">
+        <h2 className="text-white font-bold text-lg mb-1">🛟 {t('feedback.helpTitle')}</h2>
+        <p className="text-gray-400 text-sm mb-3">{t('feedback.helpHint')}</p>
+        <FeedbackButton className="btn-secondary text-sm">💬 {t('feedback.button')}</FeedbackButton>
       </section>
 
       <DeleteAccount />

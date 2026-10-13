@@ -243,7 +243,7 @@ async function emailAbout(event, participant, kind, ctx) {
   return emailPlayer(ids, playerEmail(kind, { name: participant.full_name, event, clubName: sender.clubName, ...ctx }), sender);
 }
 
-// Guest played a session: thank them and send the survey link (email).
+// Someone played a session: thank them and send the survey link (email).
 async function notifySurvey(event, participant, { clubName, url }) {
   const text =
     `🙏 Cảm ơn ${participant.full_name || 'bạn'} đã đến giao lưu ở ${where(event)}${clubName ? ` cùng ${clubName}` : ''}!\n` +
@@ -260,6 +260,8 @@ async function notifyJoinFromSurvey(event, member) {
 
 module.exports = {
   emailReady,
+  emailSender,
+  emailPlayer,
   notifySurvey,
   notifyJoinFromSurvey,
   notifyEventCancelled,

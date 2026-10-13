@@ -7,6 +7,7 @@ import ViewAsBanner from '@/components/ViewAsBanner';
 import OnboardingGate from '@/components/OnboardingGate';
 import MfaGate from '@/components/MfaGate';
 import ConsentGate from '@/components/ConsentGate';
+import EmailVerifyBanner from '@/components/EmailVerifyBanner';
 
 export const metadata = {
   title: 'Pickleball Manager',
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
             <WorkspaceProvider>
               <ClubProvider>
                 <ViewAsBanner />
+                <EmailVerifyBanner />
                 <OnboardingGate />
                 <MfaGate />
                 <ConsentGate />

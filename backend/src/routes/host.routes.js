@@ -87,6 +87,7 @@ router.get('/club-requests', async (req, res) => {
 router.post('/club-requests', async (req, res) => {
   try {
     if (!(await requestsReady(res))) return;
+    await require('../services/emailVerify').assertVerified(req.userId); // opening a club needs a confirmed email
     const r = await clubRequests.create(req.hostId, req.body);
     const pay = r.payment ? ` · chờ chuyển khoản ${r.payment.amount.toLocaleString('vi-VN')}đ, mã ${r.payment.ref}` : ' · gói hiện có còn chỗ';
     await notifyFeedback({ message: `[${r.kind === 'community' ? 'Cộng đồng mới' : 'CLB mới'}] ${r.name} (${r.province || r.country}, ~${r.member_count} thành viên, gói ${String(r.plan_tier).toUpperCase()}${pay}) — vào Trang Owner → Duyệt CLB khi đã nhận tiền.`, contact: req.hostEmail, page: '/owner/club-requests', userEmail: req.hostEmail }).catch(() => {});
@@ -287,6 +288,44 @@ router.post('/plan/cancel', async (req, res) => {
   }
 });
 
+// ---- Email check (quick sign-up): status, type the 6-digit code, send a new code ----
+const emailVerify = require('../services/emailVerify');
+const { rateLimit: limiter } = require('../services/rateLimit');
+const codeTries = limiter({ windowMs: 10 * 60 * 1000, max: 10, key: (req) => `vcode:${req.userId}`, code: 'rate_limited' });
+const codeSends = limiter({ windowMs: 15 * 60 * 1000, max: 5, key: (req) => `vsend:${req.userId}`, code: 'code_rate_limit' });
+
+router.get('/account/email-status', async (req, res) => {
+  try {
+    res.json({ email: req.accountEmail, ...(await emailVerify.status(req.userId)) });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
+// { code } — or nothing, when this session came from the link in the code email.
+router.post('/account/verify-email', codeTries, async (req, res) => {
+  try {
+    if (!(await emailVerify.unverifiedSince(req.userId))) return res.json({ verified: true });
+    if (!req.body?.code && emailVerify.signedInByEmail(req.accessToken)) await emailVerify.markVerified(req.userId);
+    else await emailVerify.verifyCode(req.userId, req.accountEmail, req.body?.code);
+    res.json({ verified: true });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
+router.post('/account/verify-email/send', codeSends, async (req, res) => {
+  try {
+    if (!(await emailVerify.unverifiedSince(req.userId))) return res.json({ verified: true });
+    await emailVerify.sendCode(req.accountEmail, require('./auth.routes').webOrigin(req));
+    res.json({ sent: true });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
 // The account's sign-in name and personal details (asked at sign-up; older accounts can
 // set a username here to sign in with it instead of the email).
 const ACCOUNT_FIELDS = 'email, username, birth_date, gender, region';
@@ -325,19 +364,38 @@ router.patch('/account', async (req, res) => {
   res.json(data);
 });
 
+// "Báo lỗi / Liên hệ". Signed-in only (plus the slow rate limit in server.js); a kind
+// is required, short or empty notes are refused, one account sends at most
+// FEEDBACK_DAILY_MAX (5) a day, and the Owner can block an account that spams.
+const FEEDBACK_CATEGORIES = ['bug', 'ux', 'idea', 'billing', 'privacy'];
+const FEEDBACK_MIN = 10;
+const FEEDBACK_DAILY_MAX = Number(process.env.FEEDBACK_DAILY_MAX || 5);
+const missingColumn = (e) => e && (e.code === '42703' || e.code === 'PGRST204');
+
 router.post('/feedback', async (req, res) => {
   const message = String(req.body.message || '').trim();
-  const contact = String(req.body.contact || '').trim() || null;
+  const contact = String(req.body.contact || '').trim().slice(0, 200) || null;
   const page = String(req.body.page || '').slice(0, 200) || null;
-  if (!message) return res.status(400).json({ error: 'message is required.' });
+  const device = String(req.body.device || '').slice(0, 300) || null;
+  const category = req.body.category;
+  const userId = req.userId || req.hostId;
+  if (!FEEDBACK_CATEGORIES.includes(category)) return res.status(400).json({ error: 'Choose what this is about.', code: 'category_required' });
+  if (message.length < FEEDBACK_MIN) return res.status(400).json({ error: `Please write at least ${FEEDBACK_MIN} characters.`, code: 'too_short' });
   if (message.length > 4000) return res.status(400).json({ error: 'message is too long (max 4000 characters).' });
-  const { data, error } = await supabase
-    .from('feedback')
-    .insert({ host_id: req.hostId, message: page ? `${message}\n\n[page: ${page}]` : message, contact })
-    .select()
-    .single();
+
+  const { data: me } = await supabase.from('users').select('feedback_blocked_at').eq('id', userId).maybeSingle();
+  if (me?.feedback_blocked_at) return res.status(403).json({ error: 'Sending messages is turned off for this account.', code: 'feedback_blocked' });
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const { count } = await supabase.from('feedback').select('id', { count: 'exact', head: true }).eq('host_id', userId).gte('created_at', since);
+  if ((count || 0) >= FEEDBACK_DAILY_MAX) return res.status(429).json({ error: `At most ${FEEDBACK_DAILY_MAX} messages a day.`, code: 'feedback_daily_limit' });
+
+  let { data, error } = await supabase.from('feedback').insert({ host_id: userId, message, contact, page, device, category }).select('id').single();
+  // Before migration 20261115090000: the old shape (page folded into the message).
+  if (missingColumn(error)) {
+    ({ data, error } = await supabase.from('feedback').insert({ host_id: userId, message: page ? `${message}\n\n[page: ${page}]` : message, contact }).select('id').single());
+  }
   if (error) return dbError(res, error);
-  const delivery = await notifyFeedback({ message, contact, page, userEmail: req.hostEmail });
+  const delivery = await notifyFeedback({ message, contact, page, device, category, userEmail: req.hostEmail });
   res.status(201).json({ id: data.id, ...delivery }); // saved either way; delivery is best-effort
 });
 
@@ -458,7 +516,7 @@ router.get('/account/delete-preview', async (req, res) => {
   try {
     const fp = await accountFootprint(req.userId);
     // Running clubs / Xé Vé: hand them over (approved by the app owner) before deleting.
-    res.json({ email: req.hostEmail, ...fp, must_handover: fp.clubs.length > 0 || fp.xeve_events > 0, handover: await handover.latest(req.userId) });
+    res.json({ email: req.accountEmail || req.hostEmail, ...fp, must_handover: fp.clubs.length > 0 || fp.xeve_events > 0, handover: await handover.latest(req.userId) });
   } catch (err) {
     dbError(res, err);
   }
@@ -470,7 +528,7 @@ const sendErr = (res, err) => (err.status ? res.status(err.status).json({ error:
 // owner checks the new owner is a real person and approves; then the account can go.
 router.post('/account/handover', async (req, res) => {
   try {
-    const h = await handover.request({ id: req.userId, email: req.hostEmail }, req.body || {});
+    const h = await handover.request({ id: req.userId, email: req.accountEmail || req.hostEmail }, req.body || {});
     notifyFeedback({
       message: `[Chuyển giao tài khoản] ${req.hostEmail} muốn chuyển ${h.clubs.length} CLB${h.xeve_events ? ` + ${h.xeve_events} kèo Xé Vé` : ''} cho ${h.to_email} rồi xoá tài khoản — vào Trang Owner → Chuyển giao để xác minh.`,
       contact: req.hostEmail,
@@ -496,7 +554,7 @@ router.post('/account/handover/cancel', async (req, res) => {
 router.delete('/account', async (req, res) => {
   const userId = req.userId;
   const typed = String(req.query.confirm || '').trim().toLowerCase();
-  if (!typed || typed !== String(req.hostEmail || '').trim().toLowerCase()) {
+  if (!typed || typed !== String(req.accountEmail || req.hostEmail || '').trim().toLowerCase()) {
     return res.status(400).json({ error: 'Type your account email to confirm.', code: 'confirm_email' });
   }
   try {

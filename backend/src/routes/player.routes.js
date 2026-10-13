@@ -169,13 +169,13 @@ function cleanProfile(body, { badminton = false } = {}) {
   // Badminton level (step 1-6), kept apart from DUPR; only once the migration is in.
   const bl = body.badminton_level === '' || body.badminton_level == null ? null : Number(body.badminton_level);
   if (bl != null && !(Number.isInteger(bl) && bl >= 1 && bl <= 6)) throw badRequest('badminton_level must be a step from 1 to 6.');
-  // Full birth date is required (the club uses it for birthdays); the year follows it.
-  const birth = String(body.birth_date || '').slice(0, 10);
+  // Birth date is optional (asked later: birthdays are for club members); checked when given.
+  const birth = String(body.birth_date || '').slice(0, 10) || null;
   const today = new Date().toISOString().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || Number.isNaN(Date.parse(birth)) || birth < '1900-01-01' || birth > today) {
+  if (birth && (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || Number.isNaN(Date.parse(birth)) || birth < '1900-01-01' || birth > today)) {
     throw badRequest('A valid birth date is required.', 400, 'birth_date_required');
   }
-  const year = Number(birth.slice(0, 4));
+  const year = birth ? Number(birth.slice(0, 4)) : body.birth_year ? Number(body.birth_year) || null : null;
   const gender = ['male', 'female'].includes(body.gender) ? body.gender : null;
   let avatar = body.avatar || null;
   if (avatar && !(/^data:image\/(jpeg|png|webp);base64,/.test(avatar) && avatar.length <= 150000)) {
@@ -197,6 +197,11 @@ function blanksFrom(member, profile, sport = 'pickleball') {
 player.put('/profile', async (req, res) => {
   try {
     const p = cleanProfile(req.body, { badminton: await sportReady() });
+    // Gender was asked at sign-up: use it when the form leaves it out.
+    if (!p.gender) {
+      const { data: u } = await supabase.from('users').select('gender').eq('id', req.hostId).maybeSingle();
+      if (['male', 'female'].includes(u?.gender)) p.gender = u.gender;
+    }
     const { data, error } = await supabase
       .from('player_profiles')
       .upsert({ user_id: req.hostId, ...p, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
@@ -326,6 +331,7 @@ player.post('/join/:token', async (req, res) => {
     if (!club) throw badRequest('Club not found.', 404);
     const profile = await getProfile(req.hostId);
     if (!profile?.full_name || !profile?.phone || !profile?.birth_date) throw badRequest('Complete your profile first.', 400, 'profile_required');
+    await require('../services/emailVerify').assertVerified(req.userId);
 
     const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
     if (!isUuid(req.body.plan_id) || !/^\d{4}-\d{2}$/.test(req.body.start_month || '')) {
@@ -591,7 +597,7 @@ player.get('/me', async (req, res) => {
 
     const { data: who } = await supabase.from('users').select('username').eq('id', uid).maybeSingle();
     res.json({
-      email: req.hostEmail,
+      email: req.accountEmail || req.hostEmail,
       username: who?.username || null,
       profile,
       checkin_code: profile ? `PBP:${profile.checkin_token}` : null,
@@ -599,6 +605,7 @@ player.get('/me', async (req, res) => {
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      vouchers: await require('../services/race').vouchersOf(uid).catch(() => []),
       notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
       clubs,
@@ -712,7 +719,7 @@ player.get('/home', async (req, res) => {
     const upcoming = await upcomingFor(uid, memberIds);
     const account = await accountInfo(uid);
     res.json({
-      email: req.hostEmail,
+      email: req.accountEmail || req.hostEmail,
       ...account,
       profile: profile ? { full_name: profile.full_name, avatar: profile.avatar, dupr_level: profile.dupr_level, birth_date: profile.birth_date } : null,
       managed_clubs: [
@@ -738,7 +745,7 @@ player.get('/clubs/:clubId', async (req, res) => {
     const uid = req.hostId;
     const { clubId } = req.params;
     if (!isUuid(clubId)) return notFound(res, 'Club');
-    const { data: me, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, description, host_id, bank_code, bank_account, bank_holder)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
+    const { data: me, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, kind, description, host_id, bank_code, bank_account, bank_holder)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
     if (error) throw error;
     if (!me || !me.clubs) return notFound(res, 'Club');
     const today = todayYmd();
@@ -762,7 +769,7 @@ player.get('/clubs/:clubId', async (req, res) => {
       .map((h) => ({ event_id: h.events.id, title: h.events.title, event_date: h.events.event_date, status: h.status, late_cancel: h.late_cancel }))
       .sort((a, b) => b.event_date.localeCompare(a.event_date));
     res.json({
-      club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', description: me.clubs.description || null, contact: owner?.email || null },
+      club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', kind: me.clubs.kind || 'club', description: me.clubs.description || null, contact: owner?.email || null },
       member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on },
       ...summarize(passes || [], today),
       memberships: (passes || []).slice(0, 8).map((p) => ({ period_label: p.period_label, status: p.status, sessions_included: p.sessions_included, sessions_used: p.sessions_used, sessions_remaining: p.sessions_remaining })),
@@ -785,6 +792,21 @@ player.get('/clubs/:clubId', async (req, res) => {
         no_show: history.filter((h) => h.status === 'no_show').length,
       },
     });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Top tháng of a community, as a member sees it (names and points only).
+player.get('/clubs/:clubId/race', async (req, res) => {
+  try {
+    const { clubId } = req.params;
+    if (!isUuid(clubId)) return notFound(res, 'Club');
+    const { data: me } = await supabase.from('club_members').select('id, clubs(*)').eq('club_id', clubId).eq('user_id', req.hostId).maybeSingle();
+    if (!me || !me.clubs) return notFound(res, 'Club');
+    const race = require('../services/race');
+    if (!(await race.ready())) return res.json({ enabled: false });
+    res.json({ ...(await race.playerView(me.clubs, req.hostId)), vouchers: await race.vouchersOf(req.hostId, clubId) });
   } catch (err) {
     fail(res, err);
   }

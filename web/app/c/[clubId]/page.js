@@ -8,6 +8,7 @@ import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import ClubLeaderboard from '@/components/ClubLeaderboard';
+import RaceBoard from '@/components/RaceBoard';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import MapLink from '@/components/MapLink';
@@ -99,6 +100,7 @@ export default function MemberClubPage() {
           { key: 'pass', label: t('hub.tabPass'), icon: '🎫' },
           { key: 'history', label: t('hub.tabHistory'), icon: '🕘', count: data.history.length },
           { key: 'rankings', label: t('hub.tabRankings'), icon: '🏅' },
+          ...(data.club.kind === 'community' ? [{ key: 'race', label: t('race.tab'), icon: '🏆' }] : []),
         ]}
       />
 
@@ -202,6 +204,7 @@ export default function MemberClubPage() {
         </section>
       )}
 
+      {tab === 'race' && <RaceBoard clubId={clubId} />}
       {tab === 'rankings' && <ClubLeaderboard statsUrl={`/api/player/clubs/${clubId}/rankings`} clubName={data.club.name} />}
 
       <p className="text-center mt-6">

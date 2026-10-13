@@ -62,10 +62,10 @@ const KINDS = {
     lines: ['Rất tiếc, Host đã hủy buổi chơi dưới đây.', c.refund ? 'Bạn đã đóng tiền — Host sẽ liên hệ hoàn tiền cho bạn.' : 'Hẹn gặp bạn ở buổi sau!'],
   }),
   survey: (c) => ({
-    subject: `🙏 Cảm ơn bạn đã giao lưu cùng ${c.clubName || 'CLB'}`,
+    subject: `🙏 Cảm ơn bạn đã chơi cùng ${c.clubName || 'CLB'}`,
     tone: '#0284c7',
-    title: 'Cảm ơn bạn đã đến giao lưu!',
-    lines: ['Bạn dành 1 phút đánh giá buổi chơi giúp CLB nhé — góp ý của bạn giúp các buổi sau vui hơn.'],
+    title: 'Cảm ơn bạn đã đến chơi!',
+    lines: ['Bạn dành 1 phút đánh giá buổi chơi (sân, khâu tổ chức, trình độ) giúp CLB nhé — góp ý của bạn giúp các buổi sau vui hơn.'],
     cta: c.surveyUrl ? ['Đánh giá buổi chơi', c.surveyUrl] : null,
   }),
 };

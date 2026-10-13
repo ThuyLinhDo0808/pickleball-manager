@@ -16,19 +16,21 @@ const GROUPS = {
   stats: [
     { href: '/club/attendance', key: 'nav.memberStats', icon: '📋', match: (p) => p.startsWith('/club/attendance') },
     { href: '/club/rankings', key: 'nav.rankings', icon: '🏅', match: (p) => p.startsWith('/club/rankings') },
+    { href: '/club/race', key: 'nav.race', icon: '🏆', match: (p) => p.startsWith('/club/race'), community: true },
+    { href: '/club/reviews', key: 'nav.reviews', icon: '⭐', match: (p) => p.startsWith('/club/reviews') },
     { href: '/club/insights', key: 'nav.insights', icon: '🔬', match: (p) => p.startsWith('/club/insights') },
   ],
 };
 
 export default function SectionTabs({ group }) {
   const { t } = useI18n();
-  const { scoped } = useScope();
+  const { scoped, community } = useScope();
   const pathname = usePathname() || '';
   if (!scoped) return null;
   return (
     <nav className="-mx-4 px-4 md:mx-0 md:px-0 mb-5 overflow-x-auto overflow-y-hidden no-scrollbar border-b border-navy-700">
       <div className="flex gap-1 min-w-max">
-        {GROUPS[group].map((tab) => {
+        {GROUPS[group].filter((tab) => !tab.community || community).map((tab) => {
           const active = tab.match(pathname);
           return (
             <Link
