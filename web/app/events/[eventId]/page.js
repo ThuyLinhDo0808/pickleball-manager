@@ -27,6 +27,8 @@ import { useClubs } from '@/context/ClubContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { exportEventFinance } from '@/lib/exportExcel';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
+import { CancelDialog, CancelHistoryBadge, CancelLine } from '@/components/CancelHistory';
+import { deadlinesOf, eventStartMs, policyText, refundIfCancelNow } from '@/lib/cancelPolicy';
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
@@ -78,16 +80,17 @@ export default function EventDetailPage() {
     reloadEvent();
   }
 
-  async function doAction(p, action) {
+  async function doAction(p, action, body = {}) {
     let res;
     try {
-      res = await api.post(`/api/events/${eventId}/participants/${p.id}/${action}`, {});
+      res = await api.post(`/api/events/${eventId}/participants/${p.id}/${action}`, body);
     } catch (err) {
       setFlash(err.message);
       return;
     }
     if (action === 'cancel') {
-      const parts = [res.late ? t('policy.cancelledLate', { name: p.full_name }) : t('policy.cancelledFree', { name: p.full_name })];
+      const pct = res.refund_percent ?? (res.late ? 0 : 100);
+      const parts = [pct === 100 ? t('policy.cancelledFree', { name: p.full_name }) : pct === 50 ? t('cancelx.hostDoneHalf', { name: p.full_name }) : t('policy.cancelledLate', { name: p.full_name })];
       if (res.promoted) parts.push(t('policy.promoted', { name: res.promoted.full_name }));
       setFlash(parts.join(' '));
     }
@@ -105,6 +108,17 @@ export default function EventDetailPage() {
     reloadParticipants();
     reloadEvent();
     reloadFinance();
+  }
+
+  // The Host cancels for someone: the dialog shows the refund tier and asks why.
+  const [cancelP, setCancelP] = useState(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const askCancel = (p) => setCancelP(p);
+  async function confirmCancel(reason) {
+    setCancelBusy(true);
+    await doAction(cancelP, 'cancel', { reason });
+    setCancelBusy(false);
+    setCancelP(null);
   }
 
   // Quick buttons on a request: confirm (main list) or put on the waitlist.
@@ -134,7 +148,7 @@ export default function EventDetailPage() {
         if (!window.confirm(t('slot.refundUndoAsk', { name: p.full_name }))) return;
         await api.post(`/api/events/${eventId}/participants/${p.id}/refund-undo`, {});
       } else {
-        const def = Number(p.fee_amount ?? event?.fee_amount ?? 0);
+        const def = Math.round((Number(p.fee_amount ?? event?.fee_amount ?? 0) * shareOf(p)) / 100);
         const v = window.prompt(t('slot.refundAmountAsk', { name: p.full_name }), String(def));
         if (v == null) return;
         const amount = Number(String(v).replace(/\D/g, '')) || 0;
@@ -210,7 +224,7 @@ export default function EventDetailPage() {
           )}
           {event.notice && event.kind === 'meeting' && <p className="text-gray-300 text-sm mt-1 whitespace-pre-line">{event.notice}</p>}
           <p className={`text-gray-500 text-xs mt-0.5 ${event.kind === 'meeting' ? 'hidden' : ''}`}>
-            {event.cancel_deadline_hours == null ? t('policy.noneShort') : t('policy.short', { h: event.cancel_deadline_hours })}
+            {policyText(t, event.cancel_deadline_hours, event.cancel_half_hours)}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -306,12 +320,26 @@ export default function EventDetailPage() {
           </div>
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} />
-          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} onCancel={askCancel} />
+          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} onCancel={askCancel} />
           {cancelled.length > 0 && (
             <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} onRefund={refund} fee={event.fee_amount} />
           )}
           {event.club_id && <EventSurveys eventId={event.id} />}
+          {cancelP && (
+            <CancelDialog
+              open
+              host
+              name={cancelP.full_name}
+              percent={refundIfCancelNow({ ...deadlinesOf(eventStartMs(event.event_date, event.start_time), event.cancel_deadline_hours, event.cancel_half_hours), status: cancelP.status })}
+              fee={Number(cancelP.fee_amount ?? event.fee_amount ?? 0)}
+              paid={!!cancelP.fee_paid}
+              usesSession={cancelP.paid_by_plan}
+              busy={cancelBusy}
+              onClose={() => setCancelP(null)}
+              onConfirm={confirmCancel}
+            />
+          )}
           {sheet && (
             <PlaceSheet
               event={event}
@@ -361,7 +389,10 @@ export default function EventDetailPage() {
 
 const STATUS_TONE = { checked_in: 'text-lime-400', registered: 'text-gray-300', no_show: 'text-yellow-400', waitlisted: 'text-sky-300', cancelled: 'text-gray-500' };
 
-function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee, onManage }) {
+// Part of the fee that goes back to a cancelled player (refund tiers; old rows: late = 0%).
+const shareOf = (p) => (p.refund_percent != null ? p.refund_percent : p.late_cancel ? 0 : 100);
+
+function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee, onManage, onCancel }) {
   return (
     <div className="card mb-4">
       <h3 className="text-white font-semibold mb-2">{title}</h3>
@@ -390,12 +421,12 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee
                         <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1" title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>
                       )}
                       {p.late_cancel && (
-                        <span className="text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>
+                        <span className="text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>
                       )}
                       {p.email_unverified && (
                         <span className="text-[10px] rounded border border-amber-300/60 text-amber-200 px-1" title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>
                       )}
-                      {kind === 'cancelled' && p.fee_paid && !p.late_cancel && (p.refunded_at ? (
+                      {kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && (p.refunded_at ? (
                         <span className="text-[10px] rounded border border-lime-400/60 text-lime-300 px-1" title={p.refunded_by || ''}>
                           ✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}
                         </span>
@@ -405,7 +436,14 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee
                     </>
                   }
                 />
+                {kind !== 'cancelled' && p.cancel_history && <div className="mt-0.5"><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></div>}
                 {p.transferred_from && <div className="text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</div>}
+                {kind === 'cancelled' && (p.cancelled_at || p.cancel_reason) && (
+                  <div className="text-gray-400 text-[11px] mt-0.5">
+                    {p.cancelled_at && `${t('cancelx.cancelledAt', { at: new Date(p.cancelled_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })} · `}
+                    <CancelLine item={{ refund_percent: p.refund_percent, by: p.cancelled_by, reason: p.cancel_reason }} fee={Number(p.fee_amount ?? fee ?? 0)} paid={!!p.fee_paid} />
+                  </div>
+                )}
               </td>
               <td className={`text-xs ${STATUS_TONE[p.status]}`}>{t(`player.status_${p.status}`)}</td>
               <td>
@@ -413,7 +451,7 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee
                   <span className="text-xs text-gray-500">{t('people.noFee')}</span>
                 ) : p.paid_by_plan && kind !== 'cancelled' ? (
                   <span className="text-xs text-lime-400" title={t('events.paidByPlanHint')}>{t('events.paidByPlan')}</span>
-                ) : kind === 'cancelled' && p.fee_paid && !p.late_cancel && onRefund ? (
+                ) : kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && onRefund ? (
                   p.refunded_at ? (
                     <button className="text-xs mr-2 text-gray-400 underline" onClick={() => onRefund(p, true)}>{t('slot.refundUndo')}</button>
                   ) : (
@@ -452,7 +490,7 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee
                   </button>
                 )}
                 {kind !== 'cancelled' && (
-                  <button className="text-red-400 text-xs" onClick={() => window.confirm(t('policy.cancelAsk', { name: p.full_name })) && onAction(p, 'cancel')}>
+                  <button className="text-red-400 text-xs" onClick={() => onCancel(p)}>
                     {t('events.cancel')}
                   </button>
                 )}

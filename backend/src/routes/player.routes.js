@@ -6,7 +6,7 @@ const { limitBody } = require('../middleware/checkCapacity');
 const { todayYmd, periodRange, summarize, normalizePhone } = require('../services/memberships');
 const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
-const { cancelDeadline, cancelParticipant } = require('../services/attendance');
+const { cancelDeadline, halfDeadline, cancelParticipant, refundShare, tiersReady } = require('../services/attendance');
 const { emailReady } = require('../services/notify');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
@@ -494,10 +494,11 @@ player.get('/me', async (req, res) => {
 
     // Event history: sign-ups made while logged in + sessions as a club member.
     const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
+    const tiers = await tiersReady();
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
       .select(
-        'id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, clubs(name))'
+        `id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, cancelled_at${tiers ? ', refund_percent, cancel_reason, cancelled_by' : ''}, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours${tiers ? ', cancel_half_hours' : ''}, clubs(name))`
       )
       .or(orFilter)
       .limit(500);
@@ -516,7 +517,14 @@ player.get('/me', async (req, res) => {
         participant_id: r.id,
         can_cancel: upcoming && ['registered', 'waitlisted', 'pending', 'requested'].includes(r.status),
         cancel_deadline: deadline ? deadline.toISOString() : null,
+        half_deadline: halfDeadline(r.events)?.toISOString() || null,
+        fee: Number(r.fee_amount ?? r.events.fee_amount ?? 0),
+        fee_paid: !!r.fee_paid,
         late_cancel: r.late_cancel,
+        // A cancellation: when, why, by whom and how much of the fee comes back.
+        ...(r.status === 'cancelled'
+          ? { cancelled_at: r.cancelled_at || null, cancel_reason: r.cancel_reason || null, cancelled_by: r.cancelled_by || null, refund_percent: refundShare(r) }
+          : {}),
         payment_status: r.payment_status,
         ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null,
         public_token: r.events.public_token,
@@ -548,7 +556,8 @@ player.get('/me', async (req, res) => {
         title: r.events.title,
         event_date: r.events.event_date,
         club_name: r.events.clubs?.name || null,
-        amount: Number(r.fee_amount ?? r.events.fee_amount ?? 0),
+        // A late cancel owes the part of the fee that is not refunded (50% tier: half).
+        amount: Math.round((Number(r.fee_amount ?? r.events.fee_amount ?? 0) * (r.status === 'cancelled' ? 100 - refundShare(r) : 100)) / 100),
         late_cancel: r.status === 'cancelled',
       }))
       .filter((d) => d.amount > 0)
@@ -640,9 +649,10 @@ async function myMemberRows(uid) {
 async function upcomingFor(uid, memberIds, clubId = null) {
   const today = todayYmd();
   const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
+  const tiers = await tiersReady();
   const { data: regs, error } = await supabase
     .from('event_participants')
-    .select('id, status, event_id, ticket_code, payment_status, events!inner(id, title, event_date, start_time, end_time, location, map_url, status, club_id, public_token, allow_public_registration, cancel_deadline_hours)')
+    .select(`id, status, event_id, ticket_code, payment_status, fee_amount, events!inner(id, title, event_date, start_time, end_time, location, map_url, status, club_id, public_token, allow_public_registration, cancel_deadline_hours, fee_amount${tiers ? ', cancel_half_hours' : ''})`)
     .or(orFilter)
     .gte('events.event_date', today)
     .limit(300);
@@ -683,6 +693,8 @@ async function upcomingFor(uid, memberIds, clubId = null) {
         slots: sum.slots ?? null,
         can_cancel: ['registered', 'waitlisted', 'pending', 'requested'].includes(r.status),
         cancel_deadline: deadline ? deadline.toISOString() : null,
+        half_deadline: halfDeadline(e)?.toISOString() || null,
+        fee: Number(r.fee_amount ?? e.fee_amount ?? 0),
       };
     })
     .sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
@@ -867,8 +879,8 @@ player.post('/participations/:participantId/cancel', async (req, res) => {
       throw badRequest('This event can no longer be cancelled here. Please contact the host.', 409, 'event_over');
     }
     if (!['registered', 'waitlisted', 'pending', 'requested'].includes(prior.status)) throw badRequest('Only upcoming registrations can be cancelled.', 409, 'not_cancellable');
-    const r = await cancelParticipant(event, prior);
-    res.json({ status: r.status, late: r.late, pass: r.pass });
+    const r = await cancelParticipant(event, prior, new Date(), { reason: req.body?.reason, by: 'player' });
+    res.json({ status: r.status, late: r.late, refund_percent: r.refund_percent, pass: r.pass });
   } catch (err) {
     fail(res, err);
   }

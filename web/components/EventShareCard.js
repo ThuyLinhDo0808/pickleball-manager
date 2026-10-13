@@ -1,4 +1,5 @@
 'use client';
+import { halfHours, policyText } from '@/lib/cancelPolicy';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
@@ -18,6 +19,7 @@ function formFrom(event) {
     registration_deadline: toLocalInput(event.registration_deadline),
     notice: event.notice || '',
     cancel_deadline_hours: event.cancel_deadline_hours == null ? '' : String(event.cancel_deadline_hours),
+    cancel_half_hours: event.cancel_half_hours == null ? '' : String(event.cancel_half_hours),
   };
 }
 
@@ -53,6 +55,7 @@ export default function EventShareCard({ event, onSaved }) {
         registration_deadline: patch.registration_deadline ? new Date(patch.registration_deadline).toISOString() : null,
         notice: patch.notice?.trim() || null,
         cancel_deadline_hours: patch.cancel_deadline_hours === '' ? null : Number(patch.cancel_deadline_hours),
+        cancel_half_hours: halfHours(patch.cancel_deadline_hours, patch.cancel_half_hours),
       });
       onSaved?.(updated);
     } catch (err) {
@@ -141,14 +144,23 @@ export default function EventShareCard({ event, onSaved }) {
             onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })}
           />
         </div>
-        <div className="sm:col-span-2">
+        <div>
           <label className="text-xs text-gray-400">{t('policy.label')}</label>
           <select className="input" value={form.cancel_deadline_hours} onChange={(e) => setForm({ ...form, cancel_deadline_hours: e.target.value })}>
             {['', '2', '6', '12', '24', '48', ...(['', '2', '6', '12', '24', '48'].includes(form.cancel_deadline_hours) ? [] : [form.cancel_deadline_hours])].map((h) => (
-              <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hours', { h })}</option>
+              <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hoursShort', { h })}</option>
             ))}
           </select>
         </div>
+        <div>
+          <label className="text-xs text-gray-400">{t('policy.halfLabel')}</label>
+          <select className="input" disabled={form.cancel_deadline_hours === ''} value={halfHours(form.cancel_deadline_hours, form.cancel_half_hours) ?? ''} onChange={(e) => setForm({ ...form, cancel_half_hours: e.target.value })}>
+            {['', '1', '2', '3', '4', '6', '12', '24'].filter((h) => h === '' || Number(h) < Number(form.cancel_deadline_hours)).map((h) => (
+              <option key={h} value={h}>{h === '' ? t('policy.noHalf') : t('policy.hoursShort', { h })}</option>
+            ))}
+          </select>
+        </div>
+        {form.cancel_deadline_hours !== '' && <p className="sm:col-span-2 -mt-1 text-xs text-gray-400">📋 {policyText(t, form.cancel_deadline_hours, form.cancel_half_hours)}</p>}
         <div className="sm:col-span-2">
           <label className="text-xs text-gray-400">{t('events.notice')}</label>
           <textarea

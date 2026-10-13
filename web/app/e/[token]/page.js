@@ -1,4 +1,5 @@
 'use client';
+import { policyText } from '@/lib/cancelPolicy';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
 import { useEffect } from 'react';
@@ -109,7 +110,8 @@ export default function PublicEventPage() {
 
       {ev.cancel_deadline_hours != null && (
         <p className="card mb-4 !py-3 text-sm text-gray-300">
-          ⏰ {t('policy.public', { h: ev.cancel_deadline_hours })}
+          ⏰ {policyText(t, ev.cancel_deadline_hours, ev.cancel_half_hours)}.
+          <span className="block text-xs text-gray-500 mt-1">{t('policy.publicNote')}</span>
         </p>
       )}
 

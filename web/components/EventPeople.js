@@ -1,4 +1,5 @@
 'use client';
+import { CancelHistoryBadge } from '@/components/CancelHistory';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
@@ -100,6 +101,7 @@ export function RequestsSection({ rows, onPlace, onOpen }) {
                 {p.card?.member_type ? ` · ${t(p.card.member_type === 'fixed' ? 'events.fixedMember' : 'review.kind_guest')}` : ''}
               </span>
             </button>
+            <CancelHistoryBadge name={p.full_name} history={p.cancel_history} />
             <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => onPlace(p, 'waitlist')}>⏳ {t('place.waitlist')}</button>
             <button type="button" className="btn-primary !py-1 text-xs" onClick={() => onPlace(p, 'main')}>✓ {t('place.main')}</button>
           </li>

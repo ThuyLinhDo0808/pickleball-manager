@@ -2,6 +2,8 @@
 import PlayerNotices from '@/components/PlayerNotices';
 import { levelText } from '@/lib/levels';
 import { useEffect, useState } from 'react';
+import { CancelDialog, CancelLine } from '@/components/CancelHistory';
+import { refundIfCancelNow } from '@/lib/cancelPolicy';
 import Link from 'next/link';
 import PlayerShell from '@/components/PlayerShell';
 import PaymentCard from '@/components/PaymentCard';
@@ -33,6 +35,9 @@ export default function PlayerHome() {
   const { data: me, reload } = useLoad(() => (user ? api.get('/api/player/me') : Promise.resolve(null)), [user?.id]);
   const [qr, setQr] = useState(null);
   const [flash, setFlash] = useState('');
+  const [cancelling, setCancelling] = useState(null); // history row being cancelled
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelErr, setCancelErr] = useState('');
 
   async function setEmailNotices(enabled) {
     try {
@@ -43,15 +48,24 @@ export default function PlayerHome() {
     }
   }
 
-  async function cancelEvent(h) {
-    const late = h.cancel_deadline && new Date() > new Date(h.cancel_deadline) && h.status === 'registered';
-    if (!window.confirm(late ? t('pp.cancelLateAsk', { title: h.title }) : t('pp.cancelAsk', { title: h.title }))) return;
+  function cancelEvent(h) {
+    setCancelErr('');
+    setCancelling(h);
+  }
+  async function doCancel(reason) {
+    const h = cancelling;
+    setCancelBusy(true);
+    setCancelErr('');
     try {
-      const r = await api.post(`/api/player/participations/${h.participant_id}/cancel`, {});
-      setFlash(r.late ? t('pp.cancelledLate') : t('pp.cancelled'));
+      const r = await api.post(`/api/player/participations/${h.participant_id}/cancel`, { reason });
+      setCancelling(null);
+      const pct = r.refund_percent ?? (r.late ? 0 : 100);
+      setFlash(pct === 100 ? t('pp.cancelled') : pct === 50 ? t(h.fee_paid ? 'cancelx.doneHalf' : 'cancelx.doneHalfOwe') : t('pp.cancelledLate'));
       reload();
     } catch (err) {
-      window.alert(err.message);
+      setCancelErr(err.message);
+    } finally {
+      setCancelBusy(false);
     }
   }
 
@@ -238,9 +252,22 @@ export default function PlayerHome() {
       <section className="card">
         <h2 className="text-white font-semibold mb-2">{t('player.history')}</h2>
         {me.history.length === 0 && <p className="text-gray-400 text-sm">{t('player.noHistory')}</p>}
+        {cancelling && (
+          <CancelDialog
+            open
+            percent={refundIfCancelNow({ deadline: cancelling.cancel_deadline, halfDeadline: cancelling.half_deadline, status: cancelling.status })}
+            fee={cancelling.fee}
+            paid={!!cancelling.fee_paid}
+            busy={cancelBusy}
+            error={cancelErr}
+            onClose={() => setCancelling(null)}
+            onConfirm={doCancel}
+          />
+        )}
         <div className="flex flex-col divide-y divide-navy-700">
           {me.history.map((h) => {
             const deadline = h.cancel_deadline && new Date(h.cancel_deadline);
+            const fmtAt = (d) => d.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
             const info = (
               <div className="min-w-0">
                 <div className="text-white text-sm truncate">{h.title}</div>
@@ -251,9 +278,17 @@ export default function PlayerHome() {
                 </div>
                 {h.can_cancel && h.status === 'registered' && deadline && (
                   <div className={`text-[11px] ${new Date() > deadline ? 'text-orange-300' : 'text-gray-500'}`}>
-                    {new Date() > deadline
-                      ? t('pp.pastDeadline')
-                      : t('pp.freeUntil', { at: deadline.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })}
+                    {new Date() <= deadline
+                      ? t('pp.freeUntil', { at: fmtAt(deadline) })
+                      : h.half_deadline && new Date() <= new Date(h.half_deadline)
+                        ? t('cancelx.halfUntil', { at: fmtAt(new Date(h.half_deadline)) })
+                        : t('pp.pastDeadline')}
+                  </div>
+                )}
+                {h.status === 'cancelled' && (h.cancelled_at || h.cancel_reason) && (
+                  <div className="text-[11px] text-gray-500">
+                    {h.cancelled_at && `${t('cancelx.cancelledAt', { at: fmtAt(new Date(h.cancelled_at)) })} · `}
+                    <CancelLine item={{ refund_percent: h.refund_percent, by: h.cancelled_by, reason: h.cancel_reason }} fee={h.fee} paid={!!h.fee_paid} />
                   </div>
                 )}
               </div>
@@ -274,7 +309,7 @@ export default function PlayerHome() {
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-xs ${h.status === 'checked_in' ? 'text-lime-400' : h.status === 'no_show' ? 'text-red-300' : 'text-gray-400'}`}>
                     {t(`player.status_${h.status}`)}
-                    {h.late_cancel && ` · ${t('policy.lateBadge')}`}
+                    {h.late_cancel && h.refund_percent == null && ` · ${t('policy.lateBadge')}`}
                   </span>
                   {h.can_cancel && (
                     <button className="text-red-400 text-xs" onClick={() => cancelEvent(h)}>{t('events.cancel')}</button>
