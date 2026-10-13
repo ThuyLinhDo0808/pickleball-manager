@@ -606,10 +606,9 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 - **Số điện thoại chỉ Host thấy.** Một số điện thoại chỉ có một lượt đăng ký còn hiệu lực mỗi kèo.
 - Link bị chặn khi kèo tắt đăng ký, không ở trạng thái *Đang mở* hoặc đã quá hạn đăng ký.
 
-**Thành viên CLB được xác thực thế nào?** Tài khoản chỉ được tính là thành viên khi **Host đã xác thực**:
+**Tài khoản được tính là thành viên CLB thế nào?**
 - Không cần bấm nút nào: tài khoản có **số điện thoại trùng** số Host đã lưu cho một thành viên thì được gắn vào thành viên đó ngay khi người chơi lưu hồ sơ / mở trang. (Tham gia CLB qua link `/join` cũng gắn tài khoản như vậy.)
-- Host vào **Thành viên** (có banner "n tài khoản chờ xác thực") → bấm tên → **Xác thực**. Host xác nhận thanh toán gói hội viên của người đó cũng coi như đã xác thực.
-- Trong lúc chờ, người chơi vẫn đăng ký được như khách (trả phí).
+- Khớp số điện thoại thì được tính là thành viên **ngay**, không chờ Host. Trường hợp còn chờ (ví dụ mua gói qua link `/join`): Host vào **Thành viên** (banner "n tài khoản chờ xác thực") → bấm tên → **Xác thực**; Host xác nhận thanh toán gói hội viên của người đó cũng coi như đã xác thực. Trong lúc chờ, người chơi vẫn đăng ký được như khách (trả phí).
 
 ### 5.4. Quản lý người chơi trong kèo (`/events/<id>`)
 - **Thanh điều khiển kèo** (Host bấm tay lúc nào cũng được, không phụ thuộc hạn đăng ký):
