@@ -1049,6 +1049,7 @@ Mở http://localhost:3000, đăng ký tài khoản, xác nhận email, chọn w
    - Hoặc New → **Web Service**, đặt *Root Directory* `backend`, *Build* `npm install`, *Start* `npm start`.
    - Điền biến môi trường trong **Environment** (xem [mục 12](#12-biến-môi-trường)).
    - Đặt `CORS_ORIGIN` = domain Vercel của bạn.
+   - Cấu hình production trong `backend/render.yaml`: `NODE_ENV=production` (bắt buộc có `CORS_ORIGIN`, ẩn lỗi nội bộ, Trang Owner cần xác thực 2 lớp), `MFA_ENC_KEY` (tự tạo: `openssl rand -hex 32`, giữ cố định), `SUPABASE_ANON_KEY`, `PUBLIC_WEB_URL`, `OWNER_EMAILS`. **Không** đặt `ALLOW_TIER_SELF_SERVE=true` (Host sẽ tự đổi gói không cần trả tiền). Service đã tạo trước đây: vào **Environment** kiểm tra và xoá `ALLOW_TIER_SELF_SERVE` nếu đang là `true`.
    - Kiểm tra `https://<tên-service>.onrender.com/health`.
    - Gói free của Render "ngủ" sau 15 phút không có request. Để không bị "ngủ", xem [11.1](#111-giữ-backend-render-luôn-thức-miễn-phí).
 3. **Web → Vercel**:

@@ -1,3 +1,6 @@
+# Render Blueprint for the API (production). Values marked `sync: false` are asked for
+# when the Blueprint is created — set them in Render → Environment. Never put secret
+# values in this file. See README §11–§12 and SECURITY.md (deploy checklist).
 services:
   - type: web
     name: pickleball-api
@@ -5,17 +8,36 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
+      # ---- required ----------------------------------------------------------------
+      - key: NODE_ENV
+        value: production # hides internal DB errors; requires CORS_ORIGIN; owner console needs 2-step sign-in
       - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY # secret
         sync: false
-      - key: ALLOW_TIER_SELF_SERVE
-        value: "true"
-      - key: CORS_ORIGIN
+      - key: SUPABASE_ANON_KEY # sign-in on behalf of users + /health/schema checks the DB lockdown
         sync: false
-      # Optional: email feedback to the developer via Resend (https://resend.com)
-      - key: RESEND_API_KEY
+      - key: CORS_ORIGIN # the web address(es), e.g. https://your-app.vercel.app — "*" is refused in production
+        sync: false
+      - key: PUBLIC_WEB_URL # web address used in email / ticket / survey links
+        sync: false
+      - key: OWNER_EMAILS # who may open the owner console (comma-separated)
+        sync: false
+      - key: MFA_ENC_KEY # secret, 64 hex chars (openssl rand -hex 32). Keep it fixed: changing it resets everyone's 2-step sign-in
+        sync: false
+      - key: APP_TZ
+        value: Asia/Ho_Chi_Minh
+      # ALLOW_TIER_SELF_SERVE is left unset on purpose: plans are only switched on after
+      # payment (setting it to "true" would let hosts change plan for free).
+
+      # ---- email (optional but recommended) --------------------------------------------
+      # Resend: confirmation / password emails go through Supabase SMTP; these are the
+      # app's own emails (new-device alerts, waitlist, surveys, feedback).
+      - key: RESEND_API_KEY # secret
+        sync: false
+      - key: NOTIFY_FROM_EMAIL # e.g. Pickleball Manager <no-reply@your-domain.vn> (verified domain)
         sync: false
       - key: FEEDBACK_TO_EMAIL
         sync: false
@@ -26,5 +48,7 @@ services:
         sync: false
       - key: FEEDBACK_WEBHOOK_SECRET
         sync: false
-      - key: APP_TZ
-        value: Asia/Ho_Chi_Minh
+
+      # Optional, defaults are fine: PROOF_RETENTION_DAYS (90), OWNER_MFA_HOURS (12),
+      # RATE_LIMIT_API (600), TRUST_PROXY_HOPS (1). Never set RATE_LIMIT_DISABLED,
+      # RETENTION_SWEEP_DISABLED, ALLOW_INSECURE_WEBHOOKS or OWNER_MFA_REQUIRED=false in production.
