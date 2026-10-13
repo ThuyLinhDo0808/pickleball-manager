@@ -276,7 +276,7 @@ Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh
 Loại hoạt động sửa được ở trang *Sửa* của buổi.
 
 **Form tạo / sửa buổi** (lịch hàng tuần và kèo dùng chung):
-- **Địa điểm + Google Maps**: gõ địa chỉ sân, form hiện **bản đồ nhỏ** của địa chỉ đó và link *🗺 Kiểm tra trên Google Maps*. Có thể dán thêm **Link Google Maps của sân** (Google Maps → Chia sẻ → Sao chép đường liên kết). Người chơi bấm vào địa chỉ ở trang đăng ký `/e/…`, vé `/t/…`, trang CLB, *Tìm CLB* và trang họp `/v/…` → mở **Google Maps chỉ đường tới sân** (dùng link của Host nếu có, không thì tìm theo địa chỉ). Không cần API key.
+- **Địa điểm + Google Maps**: gõ địa chỉ sân, form hiện **bản đồ nhỏ** của địa chỉ đó và link *🗺 Kiểm tra trên Google Maps*. Có thể dán thêm **Link Google Maps của sân** (ô không bắt buộc, không kèm chú thích). Người chơi bấm vào địa chỉ ở trang đăng ký `/e/…`, vé `/t/…`, trang CLB, *Tìm CLB* và trang họp `/v/…` → mở **Google Maps chỉ đường tới sân** (dùng link của Host nếu có, không thì tìm theo địa chỉ). Không cần API key.
 - **Luật & tài chính**:
   - **Nội dung chơi**: *Full nam* / *Full nữ* / *Mix (nam nữ)* (mặc định *Mix*; bỏ lựa chọn *Tự do* vì trùng với Mix — buổi cũ để *Tự do* giờ hiện là *Mix (nam nữ)*) — hiện trên trang đăng ký (chỉ để thông báo, app không chặn theo giới tính).
   - **Dịch vụ bao gồm trong phí** ngay dưới phí tham gia: gõ tự do hoặc bấm nhanh *Bóng · Nước · Hoa quả · Khăn lạnh · Gửi xe*. Trang đăng ký hiện *🎁 Phí đã gồm: …*.
@@ -492,7 +492,7 @@ Khi người chơi đăng ký gói qua link:
 Nhóm **Thống kê** (*Thống kê thành viên · Bảng xếp hạng · Đánh giá buổi chơi · Phân tích nâng cao*) cũng có thanh tab ở đầu trang.
 
 Menu **Thống kê → Thống kê thành viên**. Đầu trang có 5 ô số liệu của kỳ: *số buổi* (đã diễn ra bao nhiêu), *lượt tham gia* (trung bình người/buổi), *đi đều* (thành viên đi ≥ 50% số buổi đã diễn ra), *khách giao lưu* (số lượt đến) và *buổi bảo lưu*. Nút **Xuất Excel (CSV)** ở góc phải. Chọn kỳ *Tháng* (xem chi tiết) hoặc *Năm* (xem tổng quan) bằng nút ‹ ›, hoặc *Tùy chọn* từ ngày – đến ngày. Bảng tự đổi theo kỳ, không cần chọn thêm: **Tháng** → mỗi cột một buổi; **Năm** → 12 cột *T1 … T12* (mỗi cột ghi số buổi của tháng, mỗi ô là số buổi người đó chơi trong tháng); **Tùy chọn** → khoảng ≤ 2 tháng thì theo buổi, dài hơn thì theo tháng. Ba tab:
-- **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). **✓ xanh** = đăng ký + tham gia; **✓ đỏ** = không tham gia mà **không báo** (vắng không báo, hoặc báo muộn sau hạn huỷ, VD sau 12h) — vẫn **tính 1 buổi, không được bảo lưu**; **để trống** = không tham gia (đã báo kịp); `·` = đã đăng ký, chưa điểm danh. Cột **Số buổi** có thanh chia **từng ô theo buổi** của kỳ: xanh = tham gia, đỏ = không tham gia (không bảo lưu), xám = chưa dùng — ở cả bảng tháng lẫn bảng năm (VD: tham gia 1, báo muộn 1 → 2/9, 1 ô xanh + 1 ô đỏ). *Lượt tham gia*, *đi đều* và sắp xếp *Chơi nhiều* chỉ đếm buổi có mặt. Khi sửa điểm danh (ở bảng theo buổi), bấm ô để chuyển *chưa điểm danh → có mặt → vắng không báo*; ở bảng năm, nhắc *chưa điểm danh* sẽ mở tháng có buổi cần sửa. Sắp xếp A→Z hoặc *Chơi nhiều*; hai hàng cuối đếm thành viên và khách có mặt mỗi buổi (bảng năm: mỗi tháng). **Xuất Excel (CSV)**.
+- **Số buổi chơi**: bảng giống file điểm danh Excel — mỗi dòng một thành viên, mỗi cột một buổi (kèm biểu tượng loại hoạt động). **✓ xanh** = đăng ký + tham gia; **✓ đỏ** = không tham gia mà **không báo** (vắng không báo, hoặc báo muộn sau hạn huỷ, VD sau 12h) — vẫn **tính 1 buổi, không được bảo lưu**; **để trống** = không tham gia (đã báo kịp); `·` = đã đăng ký, chưa điểm danh. Cột **Số buổi** có thanh chia **từng ô theo buổi** của kỳ: xanh = tham gia, đỏ = không tham gia (không bảo lưu), xám = chưa dùng — ở cả bảng tháng lẫn bảng năm. Phía trên bảng có **hàng chú giải** bằng ô mẫu (*Có mặt · Vắng không báo / hủy muộn · Báo nghỉ kịp · Đã đăng ký, chưa điểm danh* và *Số buổi: Đã chơi · Vắng · Chưa dùng*) thay cho đoạn giải thích dài (VD: tham gia 1, báo muộn 1 → 2/9, 1 ô xanh + 1 ô đỏ). *Lượt tham gia*, *đi đều* và sắp xếp *Chơi nhiều* chỉ đếm buổi có mặt. Khi sửa điểm danh (ở bảng theo buổi), bấm ô để chuyển *chưa điểm danh → có mặt → vắng không báo*; ở bảng năm, nhắc *chưa điểm danh* sẽ mở tháng có buổi cần sửa. Sắp xếp A→Z hoặc *Chơi nhiều*; hai hàng cuối đếm thành viên và khách có mặt mỗi buổi (bảng năm: mỗi tháng). **Xuất Excel (CSV)**.
 - **Buổi còn lại & bảo lưu**: mỗi gói hội viên trong kỳ — số buổi của gói, đã dùng, còn lại. Gói đã hết kỳ, đã đóng tiền mà còn buổi = số buổi cần **bảo lưu** sang kỳ sau (có tổng).
 - **Khách giao lưu**: người ngoài CLB đã đến các buổi (gộp theo SĐT), đánh dấu từng buổi và tổng số lần đến.
 
@@ -1013,6 +1013,9 @@ Khu quản trị toàn hệ thống dành cho **chủ dự án** (người vận
 **Nhật ký chỉ ghi thêm:** database có trigger chặn xoá và chặn sửa dòng nhật ký (chỉ cho đánh dấu *đã hoàn tác* một lần) — kể cả owner cũng không xoá được trong app.
 
 ---
+
+### 8.8. Cách viết chữ trên giao diện
+Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với người dùng (*bạn*), không xưng *app*, *hệ thống* hay *chúng tôi*; việc tự động được viết ở thể bị động (VD: *Các khoản chi cho mỗi buổi được ghi vào Sổ thu chi đúng ngày của từng buổi*). Người duyệt yêu cầu / chuyển giao được gọi là **Ban quản trị**. Bước thanh toán khi đăng ký CLB ghi: *Vui lòng thanh toán gói đã chọn để hoàn tất đăng ký… CLB được duyệt và gói được kích hoạt ngay khi thanh toán được xác nhận*.
 
 ## 9. Hướng dẫn nhanh theo tình huống
 

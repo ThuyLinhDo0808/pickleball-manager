@@ -196,7 +196,7 @@ function LocationField({ f, set, meeting }) {
       <Field label={meeting ? t('meeting.place') : t('events.location')} span={2}>
         <input className="input" placeholder={meeting ? t('meeting.placePh') : t('create.locationPh')} value={f.location} onChange={(e) => set({ location: e.target.value })} />
       </Field>
-      <Field label={t('map.linkLabel')} span={2} hint={t('map.linkHint')}>
+      <Field label={t('map.linkLabel')} span={2}>
         <input className="input" inputMode="url" placeholder="https://maps.app.goo.gl/…" value={f.map_url} onChange={(e) => set({ map_url: e.target.value })} />
       </Field>
       {(embed || href) && (

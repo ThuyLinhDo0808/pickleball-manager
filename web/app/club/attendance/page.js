@@ -70,6 +70,32 @@ function Mark({ state }) {
   return null;
 }
 
+// Key to the marks and the sessions bar, as small samples instead of a paragraph.
+function Legend() {
+  const { t } = useI18n();
+  const item = (sample, label) => (
+    <span className="inline-flex items-center gap-1.5">
+      {sample}
+      <span>{label}</span>
+    </span>
+  );
+  const swatch = (cls) => <span className={`inline-block w-3 h-2 rounded-sm ${cls}`} />;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 mb-3">
+      {item(<Mark state="attended" />, t('stats.lg_attended'))}
+      {item(<Mark state="absent" />, t('stats.lg_absent'))}
+      {item(<span className="inline-block w-4 h-4 rounded-sm border border-navy-600" />, t('stats.lg_excused'))}
+      {item(<span className="inline-block w-4 text-center text-gray-500">·</span>, t('stats.lg_registered'))}
+      <span className="inline-flex items-center gap-2">
+        <span className="text-gray-500">{t('stats.lg_bar')}</span>
+        {item(swatch('bg-lime-400'), t('stats.lg_barPlayed'))}
+        {item(swatch('bg-red-500'), t('stats.lg_barMissed'))}
+        {item(swatch('bg-navy-600'), t('stats.lg_barUnused'))}
+      </span>
+    </div>
+  );
+}
+
 // Sessions as a bar split into one part per session of the period: green parts for
 // sessions played, red for sessions missed without notice (no-show / late cancel), the
 // rest empty (not used). Many sessions (a year) shrink the
@@ -361,7 +387,7 @@ export default function AttendancePage() {
               </div>
             </div>
           )}
-          <p className="text-gray-500 text-xs mb-2">{t('stats.legend')}</p>
+          <Legend />
           {data.events.length === 0 ? (
             <p className="text-gray-400 text-sm">{t('stats.noSessions')}</p>
           ) : (
