@@ -1,5 +1,6 @@
 'use client';
 import HomeLink from '@/components/HomeLink';
+import Modal from '@/components/Modal';
 import LevelInput from '@/components/LevelInput';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -17,6 +18,8 @@ export default function SurveyPage() {
   const { t, lang, setLang } = useI18n();
   const { data, error, loading, setData } = useLoad(() => api.publicGet(`/api/public/surveys/${token}`), [token]);
   const [showJoin, setShowJoin] = useState(false);
+  const [why, setWhy] = useState(false);
+  const joinQ = (d) => t(d.community ? 'survey.joinCommunity' : 'survey.joinQuestion', { club: d.club_name || 'CLB' });
 
   const langToggle = (
     <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
@@ -77,7 +80,12 @@ export default function SurveyPage() {
         <section className="card mb-4">
           {!showJoin ? (
             <>
-              <p className="text-white font-semibold">{t('survey.joinQuestion', { club: data.club_name || 'CLB' })}</p>
+              <p className="text-white font-semibold">{joinQ(data)}</p>
+              {data.community && (
+                <button type="button" className="text-lime-300 text-sm underline underline-offset-2 mt-1" onClick={() => setWhy(true)}>
+                  💡 {t('survey.whyCta')}
+                </button>
+              )}
               <button type="button" className="btn-primary w-full mt-3 py-3" onClick={() => setShowJoin(true)}>
                 {t('survey.joinCta')} →
               </button>
@@ -88,6 +96,8 @@ export default function SurveyPage() {
         </section>
       )}
 
+      {why && <JoinWhy data={data} onClose={() => setWhy(false)} onJoin={() => { setWhy(false); setShowJoin(true); }} />}
+
       {data.join_requested && (
         <section className="card mb-4 border-lime-400/50">
           <p className="text-lime-300 font-semibold">✓ {t('survey.joinSent')}</p>
@@ -95,6 +105,40 @@ export default function SurveyPage() {
         </section>
       )}
     </div>
+  );
+}
+
+// Communities: why join (shown from the invitation after the review). Only what the app
+// really gives: the Top-month race and its prizes when the Host runs it, the community
+// page, membership plans, and the Host's member perks.
+function JoinWhy({ data, onClose, onJoin }) {
+  const { t } = useI18n();
+  const r = data.race;
+  const prizes = r ? ['1', '2', '3'].filter((k) => r.rewards[k] !== 'none').map((k) => `Top ${k}: ${t(`race.reward_${r.rewards[k]}`)}`).join(' · ') : '';
+  const items = [
+    ...(r ? [['🏆', t('survey.why_race_t'), t('survey.why_race', { min: r.min_sessions })], ['🎁', t('survey.why_prize_t'), prizes]] : []),
+    ['📅', t('survey.why_page_t'), t('survey.why_page')],
+    ['🎫', t('survey.why_plan_t'), t('survey.why_plan')],
+    ['⚡', t('survey.why_perk_t'), t('survey.why_perk')],
+  ];
+  return (
+    <Modal open title={t('survey.whyTitle', { club: data.club_name || '' })} onClose={onClose}>
+      <ul className="flex flex-col gap-3">
+        {items.map(([icon, title, body]) => (
+          <li key={title} className="flex gap-3">
+            <span className="text-2xl leading-none" aria-hidden="true">{icon}</span>
+            <span className="text-sm">
+              <b className="text-white block">{title}</b>
+              <span className="text-gray-300">{body}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-2 justify-end mt-5">
+        <button type="button" className="btn-secondary text-sm" onClick={onClose}>{t('survey.joinLater')}</button>
+        <button type="button" className="btn-primary text-sm" onClick={onJoin}>{t('survey.joinCta')} →</button>
+      </div>
+    </Modal>
   );
 }
 
@@ -204,7 +248,7 @@ function SurveyForm({ token, data, onDone }) {
       </div>
       {!data.is_fixed && (
         <div>
-          <p className="text-white font-semibold">6. {t('survey.joinQuestion', { club: data.club_name || 'CLB' })}</p>
+          <p className="text-white font-semibold">6. {t(data.community ? 'survey.joinCommunity' : 'survey.joinQuestion', { club: data.club_name || 'CLB' })}</p>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <Choice on={join === true} onClick={() => setJoin(true)}>{t('survey.joinYes')}</Choice>
             <Choice on={join === false} onClick={() => setJoin(false)}>{t('survey.joinLater')}</Choice>

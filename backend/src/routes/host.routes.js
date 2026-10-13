@@ -516,7 +516,7 @@ router.get('/account/delete-preview', async (req, res) => {
   try {
     const fp = await accountFootprint(req.userId);
     // Running clubs / Xé Vé: hand them over (approved by the app owner) before deleting.
-    res.json({ email: req.hostEmail, ...fp, must_handover: fp.clubs.length > 0 || fp.xeve_events > 0, handover: await handover.latest(req.userId) });
+    res.json({ email: req.accountEmail || req.hostEmail, ...fp, must_handover: fp.clubs.length > 0 || fp.xeve_events > 0, handover: await handover.latest(req.userId) });
   } catch (err) {
     dbError(res, err);
   }
@@ -528,7 +528,7 @@ const sendErr = (res, err) => (err.status ? res.status(err.status).json({ error:
 // owner checks the new owner is a real person and approves; then the account can go.
 router.post('/account/handover', async (req, res) => {
   try {
-    const h = await handover.request({ id: req.userId, email: req.hostEmail }, req.body || {});
+    const h = await handover.request({ id: req.userId, email: req.accountEmail || req.hostEmail }, req.body || {});
     notifyFeedback({
       message: `[Chuyển giao tài khoản] ${req.hostEmail} muốn chuyển ${h.clubs.length} CLB${h.xeve_events ? ` + ${h.xeve_events} kèo Xé Vé` : ''} cho ${h.to_email} rồi xoá tài khoản — vào Trang Owner → Chuyển giao để xác minh.`,
       contact: req.hostEmail,
@@ -554,7 +554,7 @@ router.post('/account/handover/cancel', async (req, res) => {
 router.delete('/account', async (req, res) => {
   const userId = req.userId;
   const typed = String(req.query.confirm || '').trim().toLowerCase();
-  if (!typed || typed !== String(req.hostEmail || '').trim().toLowerCase()) {
+  if (!typed || typed !== String(req.accountEmail || req.hostEmail || '').trim().toLowerCase()) {
     return res.status(400).json({ error: 'Type your account email to confirm.', code: 'confirm_email' });
   }
   try {

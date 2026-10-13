@@ -229,6 +229,8 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
       profile,
       account_gender: acct?.gender || null, // asked at sign-up; fills the quick profile form
       email: await require('../services/emailVerify').status(req.userId).catch(() => null),
+      // A Top-month voucher this player could use here (shown with a tick on the sign-up).
+      voucher: participant && participant.status !== 'cancelled' ? null : await require('../services/race').usableVoucher(event, req.userId).then((v) => (v ? { id: v.id, kind: v.kind, rank: v.rank, month: v.month, expires_on: v.expires_on } : null)).catch(() => null),
       member: {
         guest_perk: perks?.perk || null,
         my_fee: perks?.fee_amount ?? null,
@@ -257,7 +259,7 @@ router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
   try {
     const profile = await playerProfile(req.userId);
     await linkByPhone(req.userId, profile);
-    res.status(201).json(await signup.registerOnline(event, req.userId, profile, { payLater: req.body?.pay_later === true }));
+    res.status(201).json(await signup.registerOnline(event, req.userId, profile, { payLater: req.body?.pay_later === true, useVoucher: req.body?.use_voucher !== false }));
   } catch (err) {
     fail(res, err);
   }

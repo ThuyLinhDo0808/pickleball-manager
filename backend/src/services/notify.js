@@ -260,6 +260,8 @@ async function notifyJoinFromSurvey(event, member) {
 
 module.exports = {
   emailReady,
+  emailSender,
+  emailPlayer,
   notifySurvey,
   notifyJoinFromSurvey,
   notifyEventCancelled,

@@ -92,6 +92,7 @@ async function registrationView(event, p) {
     pay_later: !!p.pay_later,
     // when the place can be held until if the player transfers later (null = not possible)
     pay_later_until: p.status === 'pending' && !p.pay_later && p.payment_status !== 'proof_submitted' ? payLaterUntil(event) : null,
+    voucher_discount: p.voucher_id ? p.voucher_discount || 0 : null,
     // The ticket only exists for players who actually have a confirmed place.
     ticket_code: ['registered', 'checked_in'].includes(p.status) ? p.ticket_code : null,
   };
@@ -182,6 +183,13 @@ async function registerOnline(event, userId, profile, opts = {}) {
     if (perks.priority) row.priority = true;
     if (perks.fee_amount != null) row.fee_amount = perks.fee_amount;
   }
+  // Top-month voucher (communities): free kèo / 50% off, taken off the fee now. Members
+  // whose pass covers the session pay nothing, so they keep their voucher.
+  let claimed = null;
+  if (opts.useVoucher !== false && !(isMember && standing.pass)) {
+    claimed = await require('./race').claimVoucher(event, userId, feeFor(event, row)).catch(() => null);
+    if (claimed) Object.assign(row, { fee_amount: claimed.fee, voucher_id: claimed.voucher.id, voucher_discount: claimed.discount });
+  }
   if (!approval && hasPlace && (await needsOnlinePayment(event, row))) {
     Object.assign(row, {
       status: 'pending',
@@ -193,7 +201,11 @@ async function registerOnline(event, userId, profile, opts = {}) {
     if (later) Object.assign(row, { hold_expires_at: later, pay_later: true });
   }
   const { data, error } = await supabase.from('event_participants').insert(row).select().single();
-  if (error) throw error;
+  if (error) {
+    if (claimed) await require('./race').releaseVoucher(claimed.voucher.id);
+    throw error;
+  }
+  if (claimed) await require('./race').attachVoucher(claimed.voucher.id, data.id);
   if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
   if (data.status === 'requested') notifySignupRequest(event, data); // Host webhook, in the background
   return registrationView(event, data);

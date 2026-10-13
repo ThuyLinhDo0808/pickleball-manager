@@ -1258,6 +1258,37 @@ router.get('/:clubId/birthdays', async (req, res) => {
   res.json(birthdays.upcoming(data, within));
 });
 
+// Cuộc đua Top tháng (communities): this month's / a past month's table, settings, vouchers.
+const race = require('../services/race');
+const raceManager = (req) => ['owner', 'co_admin'].includes(req.clubRole || 'owner');
+router.get('/:clubId/race', async (req, res) => {
+  try {
+    if (!(await race.ready())) return res.status(409).json({ error: `Run migration ${race.MIGRATION} first.`, code: 'migration_required' });
+    res.json(await race.hostView(req.club, req.query.month));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+router.patch('/:clubId/race', async (req, res) => {
+  try {
+    if (!raceManager(req)) return res.status(403).json(ROLE_FORBIDDEN);
+    res.json(await race.updateSettings(req.club, req.body || {}));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+router.post('/:clubId/race/vouchers/:voucherId', async (req, res) => {
+  try {
+    if (!raceManager(req)) return res.status(403).json(ROLE_FORBIDDEN);
+    if (!isUuid(req.params.voucherId)) return notFound(res, 'Voucher');
+    res.json(await race.voucherAction(req.club, req.params.voucherId, req.body || {}));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    dbError(res, err);
+  }
+});
+
 // After-session reviews of this club over the last 3 / 6 / 12 months (every plan).
 router.get('/:clubId/surveys', async (req, res) => {
   try {

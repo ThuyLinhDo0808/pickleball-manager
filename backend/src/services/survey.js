@@ -92,7 +92,7 @@ async function participantByToken(token) {
   if (!isUuid(token) || !(await guestsReady())) throw httpError('Survey not found.', 404, 'not_found');
   const { data: p } = await supabase
     .from('event_participants')
-    .select('*, events(*, clubs(name))')
+    .select('*, events(*, clubs(*))')
     .eq('survey_token', token)
     .maybeSingle();
   const event = p?.events;
@@ -118,6 +118,9 @@ async function surveyView(token) {
   return {
     event: { title: event.title, event_date: event.event_date, start_time: event.start_time, location: event.location },
     club_name: event.clubs?.name || null,
+    // Communities invite to join after the review, with the reasons (Top tháng and its prizes).
+    community: event.clubs?.kind === 'community',
+    race: event.clubs?.race_enabled ? { min_sessions: require('./race').MIN_SESSIONS, rewards: require('./race').settingsOf(event.clubs).rewards } : null,
     sport,
     player_name: p.full_name,
     open: started,

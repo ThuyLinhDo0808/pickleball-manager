@@ -139,6 +139,7 @@ NAV_BY_WORKSPACE.community = [
       { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
       { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
       { href: '/leaderboard', key: 'nav.globalRank', icon: 'rankings' },
+      { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
       { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
     ],

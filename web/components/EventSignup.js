@@ -211,6 +211,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [payLater, setPayLater] = useState(false);
+  const [useVoucher, setUseVoucher] = useState(true);
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30000); // hold countdown
@@ -381,7 +382,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     setBusy(true);
     setError('');
     try {
-      await api.post(`/api/events/public/${token}/register`, payLater ? { pay_later: true } : {});
+      await api.post(`/api/events/public/${token}/register`, { ...(payLater && paysNow ? { pay_later: true } : {}), ...(me.voucher ? { use_voucher: useVoucher } : {}) });
       onChanged();
     } catch (err) {
       // Kept out by the club: suspended ("to review") until a date, or blocked.
@@ -397,9 +398,13 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   }
 
   const full = ev.main_count >= ev.slots;
+  // Top-month voucher: what this sign-up would cost with it.
+  const v = me.voucher && !memberFree && myFee > 0 ? me.voucher : null;
+  const withVoucher = v ? (v.kind === 'free' ? 0 : myFee - Math.round(myFee / 2)) : myFee;
+  const paysNow = guestPays && !(v && useVoucher && withVoucher === 0); // a free-kèo voucher skips payment
   return (
     <div className="flex flex-col">
-      <Steps current="confirm" guestPays={guestPays} approval={approval} />
+      <Steps current="confirm" guestPays={paysNow} approval={approval} />
       {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}
       <MemberStanding me={me} clubName={ev.club_name} />
@@ -417,8 +422,17 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         </div>
         {full && <p className="text-yellow-300 text-xs mt-2">{t('public.full')}</p>}
       </div>
+      {v && (
+        <label className="flex items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-gray-100 mb-3 cursor-pointer">
+          <input type="checkbox" className="mt-1" checked={useVoucher} onChange={(e) => setUseVoucher(e.target.checked)} />
+          <span>
+            🎁 {t('race.useVoucher', { rank: v.rank, m: `${Number(v.month.slice(5))}/${v.month.slice(0, 4)}`, what: t(`race.reward_${v.kind}`) })}
+            {useVoucher && <span className="block text-xs text-amber-200 mt-0.5">{t('race.youPayNow', { amount: withVoucher > 0 ? formatVnd(withVoucher) : t('public.free') })}</span>}
+          </span>
+        </label>
+      )}
       {/* Pay now (place held 30 minutes) or register now and transfer later (held until the deadline). */}
-      {guestPays && !approval && !full && me.member.pay_later_until && (
+      {paysNow && !approval && !full && me.member.pay_later_until && (
         <fieldset className="mb-3 flex flex-col gap-2">
           <legend className="text-gray-400 text-xs mb-1">{t('signup.payWhen')}</legend>
           {[[false, t('signup.payNow')], [true, t('signup.payLaterOpt', { when: fmtWhen(me.member.pay_later_until) })]].map(([v, label]) => (
@@ -435,10 +449,10 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       </label>
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       <button type="button" className="btn-primary w-full py-3 text-base" disabled={!agree || busy} onClick={register}>
-        {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : guestPays ? (payLater ? t('signup.confirmPayLater') : t('signup.confirmAndPay')) : t('signup.confirm')}
+        {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : paysNow ? (payLater ? t('signup.confirmPayLater') : t('signup.confirmAndPay')) : t('signup.confirm')}
       </button>
       {approval && <p className="text-gray-400 text-xs mt-2 text-center">{t('signup.approvalNote')}</p>}
-      {!approval && guestPays && !full && !payLater && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
+      {!approval && paysNow && !full && !payLater && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
     </div>
   );
 }

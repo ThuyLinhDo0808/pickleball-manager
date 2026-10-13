@@ -597,7 +597,7 @@ player.get('/me', async (req, res) => {
 
     const { data: who } = await supabase.from('users').select('username').eq('id', uid).maybeSingle();
     res.json({
-      email: req.hostEmail,
+      email: req.accountEmail || req.hostEmail,
       username: who?.username || null,
       profile,
       checkin_code: profile ? `PBP:${profile.checkin_token}` : null,
@@ -605,6 +605,7 @@ player.get('/me', async (req, res) => {
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      vouchers: await require('../services/race').vouchersOf(uid).catch(() => []),
       notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
       clubs,
@@ -718,7 +719,7 @@ player.get('/home', async (req, res) => {
     const upcoming = await upcomingFor(uid, memberIds);
     const account = await accountInfo(uid);
     res.json({
-      email: req.hostEmail,
+      email: req.accountEmail || req.hostEmail,
       ...account,
       profile: profile ? { full_name: profile.full_name, avatar: profile.avatar, dupr_level: profile.dupr_level, birth_date: profile.birth_date } : null,
       managed_clubs: [
@@ -744,7 +745,7 @@ player.get('/clubs/:clubId', async (req, res) => {
     const uid = req.hostId;
     const { clubId } = req.params;
     if (!isUuid(clubId)) return notFound(res, 'Club');
-    const { data: me, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, description, host_id, bank_code, bank_account, bank_holder)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
+    const { data: me, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, kind, description, host_id, bank_code, bank_account, bank_holder)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
     if (error) throw error;
     if (!me || !me.clubs) return notFound(res, 'Club');
     const today = todayYmd();
@@ -768,7 +769,7 @@ player.get('/clubs/:clubId', async (req, res) => {
       .map((h) => ({ event_id: h.events.id, title: h.events.title, event_date: h.events.event_date, status: h.status, late_cancel: h.late_cancel }))
       .sort((a, b) => b.event_date.localeCompare(a.event_date));
     res.json({
-      club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', description: me.clubs.description || null, contact: owner?.email || null },
+      club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', kind: me.clubs.kind || 'club', description: me.clubs.description || null, contact: owner?.email || null },
       member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on },
       ...summarize(passes || [], today),
       memberships: (passes || []).slice(0, 8).map((p) => ({ period_label: p.period_label, status: p.status, sessions_included: p.sessions_included, sessions_used: p.sessions_used, sessions_remaining: p.sessions_remaining })),
@@ -791,6 +792,21 @@ player.get('/clubs/:clubId', async (req, res) => {
         no_show: history.filter((h) => h.status === 'no_show').length,
       },
     });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Top tháng of a community, as a member sees it (names and points only).
+player.get('/clubs/:clubId/race', async (req, res) => {
+  try {
+    const { clubId } = req.params;
+    if (!isUuid(clubId)) return notFound(res, 'Club');
+    const { data: me } = await supabase.from('club_members').select('id, clubs(*)').eq('club_id', clubId).eq('user_id', req.hostId).maybeSingle();
+    if (!me || !me.clubs) return notFound(res, 'Club');
+    const race = require('../services/race');
+    if (!(await race.ready())) return res.json({ enabled: false });
+    res.json({ ...(await race.playerView(me.clubs, req.hostId)), vouchers: await race.vouchersOf(req.hostId, clubId) });
   } catch (err) {
     fail(res, err);
   }
