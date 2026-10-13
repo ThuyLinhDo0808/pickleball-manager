@@ -197,9 +197,8 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 - Bảng thành viên chỉ để xem thông tin; số buổi còn lại xem ở **Thống kê → Thống kê thành viên**.
 
 **Hai tab: "Đã là thành viên" và "Danh sách xin gia nhập CLB":**
-- Khi người chơi bấm *Tôi là thành viên CLB* trên trang đăng ký kèo, app tìm thành viên có cùng SĐT:
-  - **Khớp SĐT** → tài khoản được gắn vào thành viên đó, chờ Host xác nhận.
-  - **Không khớp** → tạo một **yêu cầu vào CLB** mới (chưa hiện trong danh sách chính).
+- **Không có nút "Tôi là thành viên".** Người Host đã thêm sẵn (có số điện thoại) khi tự tạo tài khoản và nhập SĐT vào hồ sơ thì app **tự gắn tài khoản** vào đúng dòng thành viên đó (so theo 9 chữ số cuối), không cần bấm gì. SĐT không trùng thì người đó là khách — Host sửa SĐT của thành viên cho đúng (đừng để họ *Xin gia nhập* lại, sẽ thành hai dòng).
+- **Danh sách xin gia nhập CLB** nhận yêu cầu từ: *Xin gia nhập* (trang tìm CLB, link mời) và *"muốn vào team cố định"* sau buổi chơi.
 - Host nhận thông báo qua webhook (loại `member_request`), menu **Thành viên** hiện **số đỏ** đếm người đang chờ, và trang Thành viên có dòng nhắc.
 - Tab **Danh sách xin gia nhập CLB** hiện tên tài khoản, email, SĐT, DUPR và loại yêu cầu:
   - **Duyệt** → thành viên đã xác thực, đăng ký kèo như thành viên (dùng buổi trong gói, không trả phí).
@@ -608,7 +607,7 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 - Link bị chặn khi kèo tắt đăng ký, không ở trạng thái *Đang mở* hoặc đã quá hạn đăng ký.
 
 **Thành viên CLB được xác thực thế nào?** Tài khoản chỉ được tính là thành viên khi **Host đã xác thực**:
-- Người chơi bấm **"Tôi là thành viên — gửi Host xác thực"** trên trang kèo. App tìm thành viên có cùng số điện thoại và gắn tài khoản vào, trạng thái *chờ xác thực*. (Tham gia CLB qua link `/join` cũng gắn tài khoản như vậy.)
+- Không cần bấm nút nào: tài khoản có **số điện thoại trùng** số Host đã lưu cho một thành viên thì được gắn vào thành viên đó ngay khi người chơi lưu hồ sơ / mở trang. (Tham gia CLB qua link `/join` cũng gắn tài khoản như vậy.)
 - Host vào **Thành viên** (có banner "n tài khoản chờ xác thực") → bấm tên → **Xác thực**. Host xác nhận thanh toán gói hội viên của người đó cũng coi như đã xác thực.
 - Trong lúc chờ, người chơi vẫn đăng ký được như khách (trả phí).
 
@@ -1477,7 +1476,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Host báo "Tài khoản đang tạm khoá" | Owner đã đình chỉ tài khoản (lý do hiện trong khung). Mở `/owner/hosts` → lọc *Bị khoá* → mở Host → **Mở khoá**. |
 | Người chơi không nhận được email thông báo | Kiểm tra: Host đã bật công tắc *Gửi email thông báo cho người chơi*; không còn cảnh báo vàng (đã đặt `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` trên tên miền đã xác minh); người chơi chưa *Tắt email*. Xem trạng thái gửi trong Resend → Emails; nhắc người chơi kiểm tra thư mục Spam. |
 | Đăng ký tài khoản mới báo **"Database error saving new user"** | Một trigger trên `auth.users` bị lỗi. Chạy migration `20261003090000_signup_safety_member_dates.sql` (trigger của app không còn làm hỏng việc đăng ký). Nếu vẫn lỗi, trong Supabase SQL Editor chạy `select tgname, tgfoid::regproc from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;` — trigger nào **không phải** `trg_new_auth_user` (VD `on_auth_user_created` tạo từ mẫu Supabase) thì xoá: `drop trigger <tên> on auth.users;`. Xem lỗi chi tiết ở **Logs → Postgres**. |
-| Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số trong danh sách thành viên thì nút "Tôi là thành viên" mới tìm được. |
+| Người chơi không đăng ký được như thành viên | Tài khoản chưa được Host xác thực: vào **Thành viên** → bấm tên → **Xác thực**. Số điện thoại trong hồ sơ người chơi phải trùng số Host lưu trong danh sách thành viên (9 chữ số cuối) thì tài khoản mới tự gắn vào. |
 | Khách chuyển khoản rồi nhưng chỗ bị huỷ | Quá 30 phút (hoặc 2 giờ sau khi bị từ chối) mà chưa gửi ảnh thì chỗ tự nhả. Host thêm tay người đó rồi bấm *Đã thu tiền mặt* / *đã thu phí*. |
 | Trang thanh toán không hiện VietQR | Chưa cài tài khoản nhận tiền: **Tài khoản → Tài khoản nhận tiền (kèo)**, hoặc tài khoản của CLB trong *CLB của tôi → Thanh toán*. |
 | Đồng quản trị không thấy CLB, hoặc bấm vào CLB lại ra "Tạo CLB đầu tiên" / "Chưa có CLB" | Họ phải đăng nhập bằng **đúng email** được cấp và **xác nhận email**. Kiểm tra quyền còn trong thời hạn *từ – đến*. Bản cũ chỉ tải danh sách CLB lúc đăng nhập nên quyền cấp sau đó chưa hiện — bản mới tự tải lại; nếu vẫn chưa thấy, tải lại trang. |
