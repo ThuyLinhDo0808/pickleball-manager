@@ -1,4 +1,6 @@
 'use client';
+import { CancelDialog } from '@/components/CancelHistory';
+import { deadlinesOf, eventStartMs, refundIfCancelNow } from '@/lib/cancelPolicy';
 import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -212,6 +214,9 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const [error, setError] = useState('');
   const [payLater, setPayLater] = useState(false);
   const [useVoucher, setUseVoucher] = useState(true);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelErr, setCancelErr] = useState('');
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30000); // hold countdown
@@ -254,20 +259,41 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const guestPays = myFee > 0 && !memberFree;
   const approval = !!me.member.needs_approval;
 
-  async function cancel() {
-    // Past the free-cancellation deadline (event time is local; players are in the same timezone).
-    const start = new Date(`${ev.event_date}T${(ev.start_time || '00:00').slice(0, 5)}`);
-    const late = ev.cancel_deadline_hours != null && reg.status === 'registered' && Date.now() > start - ev.cancel_deadline_hours * 3600000;
-    const msg = late ? t('signup.cancelAskPolicy') : t('signup.cancelAsk');
-    if (!window.confirm(msg)) return;
+  // Cancel: a dialog says what comes back under the refund tiers and asks why (optional).
+  const startMs = eventStartMs(ev.event_date, ev.start_time);
+  const cancelPercent = reg ? refundIfCancelNow({ ...deadlinesOf(startMs, ev.cancel_deadline_hours, ev.cancel_half_hours), status: reg.status }) : 100;
+  function cancel() {
+    setCancelErr('');
+    setCancelOpen(true);
+  }
+  async function doCancel(reason) {
+    setCancelBusy(true);
+    setCancelErr('');
     try {
-      const r = await api.post(`/api/player/participations/${reg.id}/cancel`, {});
-      window.alert(r.late ? t('pp.cancelledLate') : reg.fee_paid ? t('signup.cancelledRefund') : t('pp.cancelled'));
+      const r = await api.post(`/api/player/participations/${reg.id}/cancel`, { reason });
+      setCancelOpen(false);
+      const pct = r.refund_percent ?? (r.late ? 0 : 100);
+      window.alert(pct === 100 ? (reg.fee_paid ? t('signup.cancelledRefund') : t('pp.cancelled')) : pct === 50 ? t(reg.fee_paid ? 'cancelx.doneHalf' : 'cancelx.doneHalfOwe') : t('pp.cancelledLate'));
       onChanged();
     } catch (err) {
-      window.alert(err.message);
+      setCancelErr(err.message);
+    } finally {
+      setCancelBusy(false);
     }
   }
+  const cancelUi = reg && (
+    <CancelDialog
+      open={cancelOpen}
+      percent={cancelPercent}
+      fee={Number(reg.fee ?? myFee) || 0}
+      paid={!!reg.fee_paid}
+      usesSession={memberFree}
+      busy={cancelBusy}
+      error={cancelErr}
+      onClose={() => setCancelOpen(false)}
+      onConfirm={doCancel}
+    />
+  );
 
   // ---- already registered -----------------------------------------------------
   if (reg?.status === 'registered' || reg?.status === 'checked_in') {
@@ -296,6 +322,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
           <div className="flex flex-col items-center gap-2 mt-4">
             <p className="text-gray-400 text-xs max-w-xs">{t('signup.noTransfer')}</p>
             <button type="button" className="text-red-400 text-sm" onClick={cancel}>{t('events.cancel')}</button>
+            {cancelUi}
           </div>
         )}
       </div>
@@ -341,6 +368,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         {reg.payment_status !== 'proof_submitted' && <p className="text-white text-sm font-semibold">{t('signup.afterTransfer')}</p>}
         <ProofUpload token={token} reg={reg} onChanged={onChanged} />
         <button type="button" className="text-red-400 text-sm self-center" onClick={cancel}>{t('events.cancel')}</button>
+            {cancelUi}
       </div>
     );
   }
@@ -356,6 +384,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <p className="text-gray-500 text-xs mt-2">{t('signup.requestedNotify')}</p>
         {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mt-3 w-full" />}
         <button type="button" className="text-red-400 text-sm mt-3" onClick={cancel}>{t('signup.cancelRequest')}</button>
+        {cancelUi}
       </div>
     );
   }
@@ -368,6 +397,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         {guestPays && <p className="text-gray-300 text-sm mt-1">{t('signup.waitPayLater', { amount: formatVnd(reg.fee ?? myFee) })}</p>}
         <p className="text-gray-500 text-xs mt-2">{t('signup.waitNotify')}</p>
         <button type="button" className="text-red-400 text-sm mt-3" onClick={cancel}>{t('events.cancel')}</button>
+            {cancelUi}
       </div>
     );
   }

@@ -9,11 +9,13 @@ import { todayYmd } from '@/lib/dates';
 import { mapsEmbed, mapsHref } from '@/lib/maps';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { halfHours, policyText } from '@/lib/cancelPolicy';
 
 export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 // open = upcoming; completed is also set automatically once the slot is over.
 const STATUSES = ['open', 'completed', 'cancelled'];
 const CANCEL_PRESETS = ['', '2', '6', '12', '24', '48'];
+const HALF_PRESETS = ['', '1', '2', '3', '4', '6', '12', '24'];
 // "Tự do" was the same as Mix (nam nữ), so it is gone; a session with neither is Mix.
 export const PLAY_FORMATS = ['men', 'women', 'mixed'];
 const playFormatOf = (v) => (v === 'men' || v === 'women' ? v : 'mixed');
@@ -36,6 +38,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   fee_amount: 0,
   registration_deadline: '',
   cancel_deadline_hours: '12',
+  cancel_half_hours: '6',
   notice: '',
   status: 'open',
   allow_public_registration: true,
@@ -106,6 +109,7 @@ export function formFromEvent(ev) {
     fee_amount: ev.fee_amount ?? 0,
     registration_deadline: toLocalInput(ev.registration_deadline),
     cancel_deadline_hours: ev.cancel_deadline_hours == null ? '' : String(ev.cancel_deadline_hours),
+    cancel_half_hours: ev.cancel_half_hours == null ? '' : String(ev.cancel_half_hours),
     notice: ev.notice || '',
     status: ['draft', 'closed'].includes(ev.status) ? 'open' : ev.status,
     allow_public_registration: !!ev.allow_public_registration,
@@ -145,6 +149,7 @@ export function eventPayload(f) {
       status: f.status,
       allow_public_registration: false,
       cancel_deadline_hours: null,
+      cancel_half_hours: null,
     };
   }
   const deadline = f.deadline_auto ? autoDeadline(f.event_date, f.start_time, f.cancel_deadline_hours) : f.registration_deadline;
@@ -162,6 +167,7 @@ export function eventPayload(f) {
     fee_amount: Number(f.fee_amount || 0),
     registration_deadline: deadline ? new Date(deadline).toISOString() : null,
     cancel_deadline_hours: f.cancel_deadline_hours === '' ? null : Number(f.cancel_deadline_hours),
+    cancel_half_hours: halfHours(f.cancel_deadline_hours, f.cancel_half_hours),
     notice: f.notice.trim() || null,
     status: f.status,
     allow_public_registration: f.allow_public_registration,
@@ -421,11 +427,19 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('events.levelMax')}>
             <LevelInput value={f.level_max} onChange={(v) => set({ level_max: v })} placeholder="—" />
           </Field>
-          <Field label={t('policy.label')} span={2} hint={f.cancel_deadline_hours === '' ? t('policy.noneHint') : t('policy.hint', { h: f.cancel_deadline_hours })}>
+          <Field label={t('policy.label')} hint={f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
             <select className="input" value={f.cancel_deadline_hours} onChange={(e) => set({ cancel_deadline_hours: e.target.value })}>
-              {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hours', { h })}</option>)}
+              {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hoursShort', { h })}</option>)}
             </select>
           </Field>
+          {f.cancel_deadline_hours !== '' && (
+            <Field label={t('policy.halfLabel')}>
+              <select className="input" value={halfHours(f.cancel_deadline_hours, f.cancel_half_hours) ?? ''} onChange={(e) => set({ cancel_half_hours: e.target.value })}>
+                {HALF_PRESETS.filter((h) => h === '' || Number(h) < Number(f.cancel_deadline_hours)).map((h) => <option key={h} value={h}>{h === '' ? t('policy.noHalf') : t('policy.hoursShort', { h })}</option>)}
+              </select>
+            </Field>
+          )}
+          {f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">📋 {policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
           <Field label={t('events.deadline')} span={2}>
             <label className="flex items-center gap-2 text-sm text-gray-200 mt-1">
               <input type="checkbox" checked={f.deadline_auto} onChange={(e) => set({ deadline_auto: e.target.checked, registration_deadline: e.target.checked ? f.registration_deadline : f.registration_deadline || autoAt })} />
@@ -544,7 +558,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               ) : (
                 <>
                   <dt className="text-gray-400">⏳</dt>
-                  <dd className="text-gray-100">{f.cancel_deadline_hours === '' ? t('policy.none') : t('policy.hours', { h: f.cancel_deadline_hours })}</dd>
+                  <dd className="text-gray-100">{f.cancel_deadline_hours === '' ? t('policy.none') : policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}</dd>
                   <dt className="text-gray-400">📝</dt>
                   <dd className="text-gray-100">{f.deadline_auto ? (autoAt ? (sessions > 1 ? t('dl.previewEach', { time: autoAt.slice(11, 16) }) : fmtLocal(autoAt)) : '—') : fmtLocal(f.registration_deadline)}</dd>
                   <dt className="text-gray-400">🔗</dt>

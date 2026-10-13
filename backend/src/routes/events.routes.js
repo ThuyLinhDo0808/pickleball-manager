@@ -14,6 +14,7 @@ const {
   promoteParticipant,
   checkInByCode,
   setPlace,
+  tiersReady,
 } = require('../services/attendance');
 const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
@@ -44,7 +45,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
-  'cancel_deadline_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
+  'cancel_deadline_hours', 'cancel_half_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
 ];
 
 // Short links: /e/<8 characters> stands for the event's full public token.
@@ -344,6 +345,15 @@ function cleanEventFields(fields) {
     else if (!(Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 168)) return 'cancel_deadline_hours must be 0-168.';
     else fields.cancel_deadline_hours = Number(v);
   }
+  // 50% refund tier: fewer hours than the full-refund one, else dropped (no 50% tier).
+  if ('cancel_half_hours' in fields) {
+    const v = fields.cancel_half_hours;
+    if (v === '' || v == null) fields.cancel_half_hours = null;
+    else if (!(Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 168)) return 'cancel_half_hours must be 0-168.';
+    else fields.cancel_half_hours = Number(v);
+    const full = 'cancel_deadline_hours' in fields ? fields.cancel_deadline_hours : undefined;
+    if (full === null || (full != null && fields.cancel_half_hours != null && fields.cancel_half_hours >= full)) fields.cancel_half_hours = null;
+  }
   if (fields.start_time && fields.end_time && fields.end_time <= fields.start_time) return 'end_time must be after start_time.';
   if ('services' in fields) {
     const v = fields.services == null ? '' : String(fields.services).trim();
@@ -390,7 +400,7 @@ async function kindAllowed(clubId, kind) {
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
   'auto_approve', 'allow_pay_later', 'series_label', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
-  'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'allow_public_registration', 'cost_items',
+  'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'allow_public_registration', 'cost_items',
 ];
 
 function addDays(ymd, days) {
@@ -455,11 +465,12 @@ router.post('/', async (req, res) => {
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
+  if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   const hostId = await hostForClub(req, fields.club_id);
   if (!hostId) return notFound(res, 'Club');
   if (!(await kindAllowed(fields.club_id, fields.kind))) return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
@@ -703,11 +714,12 @@ router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'kind',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
+  if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }
@@ -824,12 +836,19 @@ router.get('/:eventId/participants', async (req, res) => {
     const { data: us } = await supabase.from('users').select('id, email_unverified_since').in('id', userIds);
     for (const u of us || []) if (u.email_unverified_since) unverified.add(u.id);
   }
+  // How often each player cancelled / didn't come before (same club or community).
+  let history = new Map();
+  try {
+    history = await require('../services/cancelHistory').cancelHistory(req.event, data);
+  } catch (err) {
+    console.error('cancel history', err.message); // the list still loads without it
+  }
   // screenshots are fetched one at a time (they are large)
   res.json(
     data.map(({ payment_proof, ...p }) => {
       const card = cards.get(p.id) || null;
       // Fixed members pay through their membership plan: their place is always paid.
-      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: card?.member_type === 'fixed', email_unverified: unverified.has(p.user_id) };
+      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: card?.member_type === 'fixed', email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null };
     })
   );
 });
@@ -1058,7 +1077,10 @@ const refundErr = (message, status, code) => Object.assign(new Error(message), {
 async function markRefund(req, p) {
   if (p.status !== 'cancelled' || !p.fee_paid) throw refundErr('Only a cancelled player who paid can be refunded.', 409, 'not_refundable');
   if (p.refunded_at) throw refundErr('Already marked as refunded.', 409, 'already_refunded');
-  const raw = req.body?.amount ?? p.fee_amount ?? req.event.fee_amount ?? 0;
+  // Default: the refund tier of the cancellation (100% / 50%) of what they paid.
+  const share = require('../services/attendance').refundShare(p);
+  if (share === 0) throw refundErr('Cancelled too late: no refund under the cancel policy.', 409, 'no_refund');
+  const raw = req.body?.amount ?? Math.round((Number(p.fee_amount ?? req.event.fee_amount ?? 0) * share) / 100);
   const amount = Math.round(Number(raw));
   if (!Number.isFinite(amount) || amount < 0 || amount > 100000000) throw refundErr('amount must be a whole number of đồng.', 400, 'bad_amount');
   let txnId = null;
@@ -1102,7 +1124,7 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
 
   try {
     if (ATTENDANCE_ACTIONS.includes(action)) return res.json(await setAttendance(req.event, prior, action));
-    if (action === 'cancel') return res.json(await cancelParticipant(req.event, prior));
+    if (action === 'cancel') return res.json(await cancelParticipant(req.event, prior, new Date(), { reason: req.body?.reason, by: 'host' }));
     if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
     // The sheet on a name: where they are (main / waitlist / waiting for approval / not playing)…

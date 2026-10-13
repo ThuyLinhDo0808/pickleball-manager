@@ -615,17 +615,18 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
 
 // Waiting list (DS chờ): accounts linked to a member by phone, join requests from the
 // event page, and guests who asked to join the fixed team in the after-session survey.
-// Players who paid, cancelled in time and still wait for their money back (all sessions
-// of the club / community): the overview's "to do" list links to each session.
+// Players who paid, cancelled with a refund due (100% or 50% under the cancel policy) and still
+// wait for their money back (all sessions of the club / community): the overview's "to do" list links to each session.
 router.get('/:clubId/refunds-due', async (req, res) => {
   try {
     const { data: evs, error } = await supabase.from('events').select('id, title, event_date, fee_amount').eq('club_id', req.club.id);
     if (error) throw error;
     const ids = (evs || []).map((e) => e.id);
     if (!ids.length) return res.json([]);
+    const { refundShare, tiersReady } = require('../services/attendance');
     const { data: rows, error: pErr } = await supabase
       .from('event_participants')
-      .select('id, event_id, full_name, fee_amount, late_cancel, refunded_at')
+      .select(`id, event_id, full_name, fee_amount, late_cancel, refunded_at${(await tiersReady()) ? ', refund_percent' : ''}`)
       .in('event_id', ids)
       .eq('status', 'cancelled')
       .eq('fee_paid', true)
@@ -634,8 +635,8 @@ router.get('/:clubId/refunds-due', async (req, res) => {
     const byId = new Map(evs.map((e) => [e.id, e]));
     res.json(
       (rows || [])
-        .filter((p) => !p.late_cancel)
-        .map((p) => ({ id: p.id, event_id: p.event_id, title: byId.get(p.event_id)?.title, event_date: byId.get(p.event_id)?.event_date, full_name: p.full_name, amount: Number(p.fee_amount ?? byId.get(p.event_id)?.fee_amount ?? 0) }))
+        .filter((p) => refundShare(p) > 0) // 100% or 50% back under the cancel policy
+        .map((p) => ({ id: p.id, event_id: p.event_id, title: byId.get(p.event_id)?.title, event_date: byId.get(p.event_id)?.event_date, full_name: p.full_name, refund_percent: refundShare(p), amount: Math.round((Number(p.fee_amount ?? byId.get(p.event_id)?.fee_amount ?? 0) * refundShare(p)) / 100) }))
         .sort((a, b) => String(a.event_date).localeCompare(String(b.event_date))),
     );
   } catch (err) {

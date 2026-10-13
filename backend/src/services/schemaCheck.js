@@ -47,6 +47,8 @@ const PROBES = [
   { table: 'users', column: 'email_unverified_since', migration: '20261116090000_email_verify.sql' },
   { table: 'race_vouchers', column: 'kind', migration: '20261117090000_community_race.sql' },
   { table: 'clubs', column: 'race_enabled', migration: '20261117090000_community_race.sql' },
+  { table: 'event_participants', column: 'refund_percent', migration: '20261118090000_cancel_refund_tiers.sql' },
+  { table: 'events', column: 'cancel_half_hours', migration: '20261118090000_cancel_refund_tiers.sql' },
   { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
   { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
   { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },

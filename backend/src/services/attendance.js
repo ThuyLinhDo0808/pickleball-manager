@@ -89,8 +89,40 @@ function cancelDeadline(event) {
 }
 
 function isLateCancel(event, prior, now = new Date()) {
+  return refundPercent(event, prior, now) < 100;
+}
+
+// Refund tiers for a main-list player who cancels (Club + Social Manager):
+//   before cancel_deadline_hours (e.g. 12h)  → 100% back
+//   before cancel_half_hours (e.g. 6h)       → 50% back
+//   later                                    → nothing back (a late cancel)
+// No policy on the event, or not on the main list (waitlist, waiting to pay) → 100%.
+function halfDeadline(event) {
+  if (event.cancel_deadline_hours == null || event.cancel_half_hours == null) return null;
+  const h = Number(event.cancel_half_hours);
+  if (!(h < Number(event.cancel_deadline_hours))) return null;
+  return new Date(eventStartMs(event) - h * 3600000);
+}
+function refundPercent(event, prior, now = new Date()) {
   const deadline = cancelDeadline(event);
-  return !!deadline && MAIN_LIST.includes(prior.status) && now > deadline;
+  if (!deadline || !MAIN_LIST.includes(prior.status) || now <= deadline) return 100;
+  const half = halfDeadline(event);
+  return half && now <= half ? 50 : 0;
+}
+
+// What a cancelled player paid back / still owes, from the fee and the refund tier.
+// Older rows without refund_percent: a late cancel = 0%, otherwise 100%.
+function refundShare(p) {
+  if (p.refund_percent != null) return Number(p.refund_percent);
+  return p.late_cancel ? 0 : 100;
+}
+
+let tiersCache = null;
+async function tiersReady() {
+  if (tiersCache && Date.now() - tiersCache.at < 60000) return tiersCache.ok;
+  const { error } = await supabase.from('event_participants').select('refund_percent, cancel_reason, cancelled_by').limit(1);
+  tiersCache = { ok: !error, at: Date.now() };
+  return !error;
 }
 
 // Status for someone getting a place: straight in, or 'pending' while an online guest pays.
@@ -161,18 +193,27 @@ async function promoteNext(event) {
   return promoted;
 }
 
-// Cancel a registration, by the Host or by the player. Cancellation policy:
-//  - before the event's deadline (or no deadline): free — a used session is given back;
-//  - after it: marked late_cancel — a club member's session is still used and the
-//    fee is still owed. The Host can waive it afterwards (waiveLateCancel).
+// Cancel a registration, by the Host or by the player. Cancellation policy (refundPercent):
+//  - 100% (before the deadline, or no deadline): free — a used session is given back;
+//  - 50% / 0%: marked late_cancel — a club member's session is still used; a guest gets
+//    half / none of the fee back (or still owes the other half / all of it).
+//    The Host can waive it afterwards (waiveLateCancel).
+// The reason, who cancelled and the refund are kept for the player's history and so the
+// Host sees how often someone cancels when they sign up again.
 // A freed main-list place goes to the next waitlisted player. A guest still waiting for
 // payment confirmation ('pending') cancels for free: they never had a confirmed place.
-async function cancelParticipant(event, prior, now = new Date()) {
+async function cancelParticipant(event, prior, now = new Date(), opts = {}) {
   if (prior.status === 'cancelled') throw httpError('This registration is already cancelled.', 400, 'already_cancelled');
-  const late = isLateCancel(event, prior, now);
+  const percent = refundPercent(event, prior, now);
+  const late = percent < 100;
+  const patch = { status: 'cancelled', cancelled_at: now.toISOString(), late_cancel: late };
+  if (await tiersReady()) {
+    const reason = String(opts.reason || '').trim().slice(0, 300);
+    Object.assign(patch, { refund_percent: percent, cancel_reason: reason || null, cancelled_by: opts.by === 'host' ? 'host' : opts.by === 'player' ? 'player' : null });
+  }
   const { data: updated, error } = await supabase
     .from('event_participants')
-    .update({ status: 'cancelled', cancelled_at: now.toISOString(), late_cancel: late })
+    .update(patch)
     .eq('id', prior.id)
     .select()
     .single();
@@ -187,6 +228,7 @@ async function cancelParticipant(event, prior, now = new Date()) {
   return {
     ...updated,
     late,
+    refund_percent: percent,
     pass: pass && { period_label: pass.period_label, unlimited: pass.sessions_included === 0, sessions_remaining: pass.sessions_remaining },
     promoted: promoted && { id: promoted.id, full_name: promoted.full_name },
   };
@@ -195,7 +237,9 @@ async function cancelParticipant(event, prior, now = new Date()) {
 // Host forgives a late cancellation: session back, nothing owed.
 async function waiveLateCancel(event, prior) {
   if (!(prior.status === 'cancelled' && prior.late_cancel)) throw httpError('Only late cancellations can be waived.', 400, 'not_late');
-  const { data, error } = await supabase.from('event_participants').update({ late_cancel: false }).eq('id', prior.id).select().single();
+  const patch = { late_cancel: false };
+  if (await tiersReady()) patch.refund_percent = 100;
+  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
   if (error) throw error;
   if (prior.source_club_member_id && event.club_id) await releaseSession(prior.source_club_member_id, event.id);
   return data;
@@ -273,6 +317,10 @@ module.exports = {
   setAttendance,
   cancelDeadline,
   isLateCancel,
+  halfDeadline,
+  refundPercent,
+  refundShare,
+  tiersReady,
   cancelParticipant,
   waiveLateCancel,
   promoteParticipant,
