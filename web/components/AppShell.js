@@ -65,6 +65,7 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
         { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+        { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
         { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
       ],
     },
@@ -138,6 +139,7 @@ NAV_BY_WORKSPACE.community = [
       { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
       { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
       { href: '/leaderboard', key: 'nav.globalRank', icon: 'rankings' },
+      { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
       { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
     ],
   },
@@ -178,12 +180,12 @@ const TABS_BY_WORKSPACE = {
 // Club staff with a limited role see only their pages (the API refuses the rest anyway).
 const ROLE_PAGES = {
   finance: ['/finance', '/finance/ledger', '/finance/plans', '/club/roster', '/account'],
-  operator: ['/club/members', '/events', '/club/attendance', '/club/rankings', '/finance/inventory', '/club/roster', '/account'],
+  operator: ['/club/members', '/events', '/club/attendance', '/club/rankings', '/club/reviews', '/finance/inventory', '/club/roster', '/account'],
 };
 // With custom permissions (Pro) the menu follows the person's permission groups.
 const GROUP_PAGES = {
   members: ['/club/members', '/club/attendance'],
-  events: ['/events'],
+  events: ['/events', '/club/reviews'],
   matches: ['/events'],
   rankings: ['/club/rankings'],
   inventory: ['/finance/inventory'],

@@ -1258,6 +1258,16 @@ router.get('/:clubId/birthdays', async (req, res) => {
   res.json(birthdays.upcoming(data, within));
 });
 
+// After-session reviews of this club over the last 3 / 6 / 12 months (every plan).
+router.get('/:clubId/surveys', async (req, res) => {
+  try {
+    const months = [3, 6, 12].includes(Number(req.query.months)) ? Number(req.query.months) : 6;
+    res.json(await require('../services/survey').clubSurveys(req.club.id, { months, today: todayYmd() }));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
 // Pro tools: activity log, duty roster, advanced analytics.
 require('./clubPro').mount(router);
 

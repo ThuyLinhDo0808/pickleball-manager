@@ -25,6 +25,7 @@ const ROUTES = [
   ['POST', '/payments/:id/(confirm|cancel)', 'payments'],
   ['GET', '/feedback', 'feedback'],
   ['PATCH', '/feedback/:id', 'feedback'],
+  ['POST', '/feedback/:id/block', 'feedback'],
   ['GET POST', '/announcements', 'announcements'],
   ['PATCH', '/announcements/:id', 'announcements'],
   ['GET POST', '/promos', 'promos'],

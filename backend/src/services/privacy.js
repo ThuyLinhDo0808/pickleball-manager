@@ -60,9 +60,9 @@ async function exportMyData(userId) {
       .limit(2000)
   );
   const surveys = signups.length
-    ? await q(supabase.from('event_surveys').select('participant_id, rating, level_fit, comment, wants_join, created_at').in('participant_id', signups.map((p) => p.id)))
+    ? await q(supabase.from('event_surveys').select('*').in('participant_id', signups.map((p) => p.id)))
     : [];
-  const feedback = await q(supabase.from('feedback').select('message, contact, created_at').eq('host_id', userId));
+  const feedback = await q(supabase.from('feedback').select('*').eq('host_id', userId));
   const devices = await q(supabase.from('login_devices').select('user_agent, ip_hint, first_seen, last_seen').eq('user_id', userId));
   const clubsOwned = await q(supabase.from('clubs').select('name, kind, created_at').eq('host_id', userId));
   const [mfa] = await q(supabase.from('user_mfa').select('enabled_at').eq('user_id', userId));

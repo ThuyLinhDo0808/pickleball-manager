@@ -325,19 +325,38 @@ router.patch('/account', async (req, res) => {
   res.json(data);
 });
 
+// "Báo lỗi / Liên hệ". Signed-in only (plus the slow rate limit in server.js); a kind
+// is required, short or empty notes are refused, one account sends at most
+// FEEDBACK_DAILY_MAX (5) a day, and the Owner can block an account that spams.
+const FEEDBACK_CATEGORIES = ['bug', 'ux', 'idea', 'billing', 'privacy'];
+const FEEDBACK_MIN = 10;
+const FEEDBACK_DAILY_MAX = Number(process.env.FEEDBACK_DAILY_MAX || 5);
+const missingColumn = (e) => e && (e.code === '42703' || e.code === 'PGRST204');
+
 router.post('/feedback', async (req, res) => {
   const message = String(req.body.message || '').trim();
-  const contact = String(req.body.contact || '').trim() || null;
+  const contact = String(req.body.contact || '').trim().slice(0, 200) || null;
   const page = String(req.body.page || '').slice(0, 200) || null;
-  if (!message) return res.status(400).json({ error: 'message is required.' });
+  const device = String(req.body.device || '').slice(0, 300) || null;
+  const category = req.body.category;
+  const userId = req.userId || req.hostId;
+  if (!FEEDBACK_CATEGORIES.includes(category)) return res.status(400).json({ error: 'Choose what this is about.', code: 'category_required' });
+  if (message.length < FEEDBACK_MIN) return res.status(400).json({ error: `Please write at least ${FEEDBACK_MIN} characters.`, code: 'too_short' });
   if (message.length > 4000) return res.status(400).json({ error: 'message is too long (max 4000 characters).' });
-  const { data, error } = await supabase
-    .from('feedback')
-    .insert({ host_id: req.hostId, message: page ? `${message}\n\n[page: ${page}]` : message, contact })
-    .select()
-    .single();
+
+  const { data: me } = await supabase.from('users').select('feedback_blocked_at').eq('id', userId).maybeSingle();
+  if (me?.feedback_blocked_at) return res.status(403).json({ error: 'Sending messages is turned off for this account.', code: 'feedback_blocked' });
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const { count } = await supabase.from('feedback').select('id', { count: 'exact', head: true }).eq('host_id', userId).gte('created_at', since);
+  if ((count || 0) >= FEEDBACK_DAILY_MAX) return res.status(429).json({ error: `At most ${FEEDBACK_DAILY_MAX} messages a day.`, code: 'feedback_daily_limit' });
+
+  let { data, error } = await supabase.from('feedback').insert({ host_id: userId, message, contact, page, device, category }).select('id').single();
+  // Before migration 20261115090000: the old shape (page folded into the message).
+  if (missingColumn(error)) {
+    ({ data, error } = await supabase.from('feedback').insert({ host_id: userId, message: page ? `${message}\n\n[page: ${page}]` : message, contact }).select('id').single());
+  }
   if (error) return dbError(res, error);
-  const delivery = await notifyFeedback({ message, contact, page, userEmail: req.hostEmail });
+  const delivery = await notifyFeedback({ message, contact, page, device, category, userEmail: req.hostEmail });
   res.status(201).json({ id: data.id, ...delivery }); // saved either way; delivery is best-effort
 });
 

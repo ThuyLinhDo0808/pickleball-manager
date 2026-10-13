@@ -8,9 +8,10 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatDay, hhmm } from '@/lib/dates';
 
-// After-session survey a guest gets by Telegram / email / the player portal (no login).
-// Stars, did the level suit you, a comment, and finally "Do you want to join our fixed
-// team?" — yes leads to a short member form that lands in the club's waiting list.
+// After-session review everyone checked in gets by email / the player portal (no login).
+// Overall stars, stars for the court and the organisation, did the level suit you, would
+// you come back, a private note to the Host, and — guests only — "Do you want to join our
+// fixed team?": yes leads to a short member form that lands in the club's waiting list.
 export default function SurveyPage() {
   const { token } = useParams();
   const { t, lang, setLang } = useI18n();
@@ -110,9 +111,33 @@ function Choice({ on, onClick, children }) {
   );
 }
 
+// 1–5 stars. `optional`: tapping the chosen star again clears it.
+function Stars({ value, onChange, size = 'text-3xl', label, optional }) {
+  return (
+    <div className="flex gap-1" role="radiogroup" aria-label={label}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          role="radio"
+          aria-checked={value === n}
+          aria-label={`${n}/5`}
+          onClick={() => onChange(optional && value === n ? 0 : n)}
+          className={`${size} leading-none px-1 ${n <= value ? 'text-amber-300' : 'text-navy-600 hover:text-navy-500'}`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SurveyForm({ token, data, onDone }) {
   const { t } = useI18n();
   const [rating, setRating] = useState(0);
+  const [court, setCourt] = useState(0);
+  const [org, setOrg] = useState(0);
+  const [back, setBack] = useState('');
   const [fit, setFit] = useState('');
   const [comment, setComment] = useState('');
   const [join, setJoin] = useState(null);
@@ -125,7 +150,7 @@ function SurveyForm({ token, data, onDone }) {
     setBusy(true);
     setErr('');
     try {
-      onDone(await api.publicPost(`/api/public/surveys/${token}`, { rating, level_fit: fit || null, comment, wants_join: join === true }));
+      onDone(await api.publicPost(`/api/public/surveys/${token}`, { rating, court_rating: court || null, organization_rating: org || null, come_back: back || null, level_fit: fit || null, comment, wants_join: join === true }));
     } catch (x) {
       setErr(x.message);
     } finally {
@@ -137,24 +162,23 @@ function SurveyForm({ token, data, onDone }) {
     <form onSubmit={submit} className="card mb-4 flex flex-col gap-4">
       <div>
         <p className="text-white font-semibold">1. {t('survey.qStars')}</p>
-        <div className="flex gap-1 mt-2" role="radiogroup">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              role="radio"
-              aria-checked={rating === n}
-              aria-label={`${n}/5`}
-              onClick={() => setRating(n)}
-              className={`text-3xl leading-none px-1 ${n <= rating ? 'text-amber-300' : 'text-navy-600 hover:text-navy-500'}`}
-            >
-              ★
-            </button>
-          ))}
+        <div className="mt-2"><Stars value={rating} onChange={setRating} label={t('survey.qStars')} /></div>
+      </div>
+      <div>
+        <p className="text-white font-semibold">2. {t('survey.qDetail')}</p>
+        <div className="mt-2 flex flex-col gap-2 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-gray-300">🏟 {t('survey.qCourt')}</span>
+            <Stars value={court} onChange={setCourt} size="text-2xl" label={t('survey.qCourt')} optional />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-gray-300">📋 {t('survey.qOrg')} <span className="text-gray-500 text-xs">({t('survey.qOrgHint')})</span></span>
+            <Stars value={org} onChange={setOrg} size="text-2xl" label={t('survey.qOrg')} optional />
+          </div>
         </div>
       </div>
       <div>
-        <p className="text-white font-semibold">2. {t('survey.qLevel')}</p>
+        <p className="text-white font-semibold">3. {t('survey.qLevel')}</p>
         <div className="grid grid-cols-3 gap-2 mt-2">
           {['easy', 'right', 'hard'].map((k) => (
             <Choice key={k} on={fit === k} onClick={() => setFit(fit === k ? '' : k)}>
@@ -164,12 +188,23 @@ function SurveyForm({ token, data, onDone }) {
         </div>
       </div>
       <div>
-        <label htmlFor="survey-comment" className="text-white font-semibold">3. {t('survey.qComment')}</label>
+        <p className="text-white font-semibold">4. {t('survey.qComeBack')}</p>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          {['yes', 'maybe', 'no'].map((k) => (
+            <Choice key={k} on={back === k} onClick={() => setBack(back === k ? '' : k)}>
+              {t(`survey.back_${k}`)}
+            </Choice>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label htmlFor="survey-comment" className="text-white font-semibold">5. {t('survey.qComment')}</label>
+        <p className="text-gray-500 text-xs mt-0.5">🔒 {t('survey.commentHint')}</p>
         <textarea id="survey-comment" className="input mt-2 min-h-[5rem]" maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t('survey.commentPlaceholder')} />
       </div>
       {!data.is_fixed && (
         <div>
-          <p className="text-white font-semibold">4. {t('survey.joinQuestion', { club: data.club_name || 'CLB' })}</p>
+          <p className="text-white font-semibold">6. {t('survey.joinQuestion', { club: data.club_name || 'CLB' })}</p>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <Choice on={join === true} onClick={() => setJoin(true)}>{t('survey.joinYes')}</Choice>
             <Choice on={join === false} onClick={() => setJoin(false)}>{t('survey.joinLater')}</Choice>
