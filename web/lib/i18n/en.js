@@ -1,6 +1,11 @@
 export const en = {
   appName: 'Pickleball Manager',
   nav: {
+    memFixed: "Regular members",
+    memGuests: "Guest members",
+    memReview: "Under review",
+    memRequests: "Join requests",
+    memDupr: "DUPR link",
     commOverview: "Overview",
     commMembers: "Members",
     communities: "My communities",

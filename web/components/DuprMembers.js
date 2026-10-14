@@ -39,6 +39,7 @@ export default function DuprMembers({ club }) {
   const [result, setResult] = useState(null);
   const [showFree, setShowFree] = useState(false);
 
+  if (error?.payload?.code === 'not_pickleball') return <p className="card text-gray-300 text-sm">{t('dupr.onlyPickleball')}</p>;
   if (error) return <p className="card text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
   if (!data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
 

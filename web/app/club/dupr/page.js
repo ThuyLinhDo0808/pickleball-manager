@@ -45,7 +45,7 @@ export default function DuprStatsPage() {
         icon="📈"
         title={t('dupr.title')}
         subtitle={club?.name}
-        actions={<Link href="/club/members?tab=dupr" className="btn-secondary text-sm">👥 {t('dupr.manageIds')}</Link>}
+        actions={<Link href="/club/members/dupr" className="btn-secondary text-sm">👥 {t('dupr.manageIds')}</Link>}
       />
       <SectionTabs group="stats" />
       {notPickleball ? (
@@ -78,7 +78,7 @@ export default function DuprStatsPage() {
               <Segmented items={['change', 'rating']} value={sort} onChange={setSort} label={(k) => t(`dupr.sort_${k}`)} />
             </div>
             {players.length === 0 ? (
-              <p className="text-gray-500 text-sm px-4 pb-4">{t('dupr.noLinked')} <Link href="/club/members?tab=dupr" className="underline text-lime-300">{t('dupr.manageIds')}</Link></p>
+              <p className="text-gray-500 text-sm px-4 pb-4">{t('dupr.noLinked')} <Link href="/club/members/dupr" className="underline text-lime-300">{t('dupr.manageIds')}</Link></p>
             ) : (
               <div className="table-wrap">
                 <table className="w-full text-sm">

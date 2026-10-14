@@ -100,9 +100,9 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 ### 3.3. Không gian quản lý
 | Không gian | Dành cho | Menu |
 |---|---|---|
-| **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · Thành viên (tab **DUPR** ở CLB pickleball) · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo, **Lịch trực** 💎Pro) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, **DUPR** (thống kê, CLB pickleball), **Đánh giá buổi chơi**, **Phân tích nâng cao** 💎Pro) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, **Nhật ký thao tác**, Tài khoản) |
+| **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · **Thành viên ▸** (Thành viên cố định, Thành viên giao lưu, Xem xét thêm, Xin gia nhập, **Liên kết DUPR** (CLB pickleball)) · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo, **Lịch trực** 💎Pro) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, **DUPR** (thống kê, CLB pickleball), **Đánh giá buổi chơi**, **Phân tích nâng cao** 💎Pro) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (CLB của tôi, Phân quyền, **Nhật ký thao tác**, Tài khoản) |
 | **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Tạo kèo · **Trận đấu** (`/xeve/matches`) · **Xếp hạng toàn hệ thống** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi, **Kho bóng** riêng của kèo Xé Vé) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
-| **Social Manager — cộng đồng xé vé** (chọn một cộng đồng trong bộ chuyển ngữ cảnh) | Chủ / người quản lý cụm sân xé vé | Tổng quan (mỗi cụm sân một tab, xem [5.0](#50-social-manager-cộng-đồng-xé-vé)) · Thành viên · **Tạo hoạt động ▸** (Kèo Xé Vé, Tạo kèo, Tạo lịch chơi hàng tuần, Tạo giải đấu, Lịch trực) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, Xếp hạng toàn hệ thống, **Top tháng**, **DUPR** (thống kê, pickleball), Đánh giá buổi chơi, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (Cộng đồng của tôi, Phân quyền, Nhật ký thao tác, Tài khoản) |
+| **Social Manager — cộng đồng xé vé** (chọn một cộng đồng trong bộ chuyển ngữ cảnh) | Chủ / người quản lý cụm sân xé vé | Tổng quan (mỗi cụm sân một tab, xem [5.0](#50-social-manager-cộng-đồng-xé-vé)) · **Thành viên ▸** (như CLB) · **Tạo hoạt động ▸** (Kèo Xé Vé, Tạo kèo, Tạo lịch chơi hàng tuần, Tạo giải đấu, Lịch trực) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, Xếp hạng toàn hệ thống, **Top tháng**, **DUPR** (thống kê, pickleball), Đánh giá buổi chơi, Phân tích) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Cài đặt ▸** (Cộng đồng của tôi, Phân quyền, Nhật ký thao tác, Tài khoản) |
 | **Sự kiện của tôi** | Điều phối viên / Trọng tài | Sự kiện được giao (+ giải được giao bấm điểm) |
 
 **Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Điều phối viên* / *Trọng tài* — đúng vai trò mạnh nhất bạn đang được cấp). Bấm vào để đổi sang CLB khác bạn quản lý, sang **Social Manager (Xé vé)** (chưa có gói thì mở phần đăng ký) / Sự kiện của tôi, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc **tạo CLB mới** (đủ giới hạn gói thì hiện bảng nâng cấp). Mở trang Xé Vé khi chưa có Social Manager sẽ thấy phần giới thiệu + nút đăng ký thay cho nội dung. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
@@ -128,7 +128,7 @@ Mở từ ô tìm kiếm ở Trang chủ hoặc mục **Tìm CLB** trên thanh �
 - **Tìm theo:** tên CLB / sân / khu vực (ô chữ), **quốc gia**, **tỉnh / thành phố** (34 tỉnh thành mới khi chọn Việt Nam, gõ tay với nước khác), **quận / huyện**, **môn** (Pickleball / Cầu lông). Kết quả 24 CLB mỗi lần, nút *Xem thêm*.
 - **Mỗi CLB** hiện ảnh nền, ảnh đại diện, khu vực, lịch sinh hoạt, mô tả ngắn, số thành viên và số buổi sắp tới (kèm ngày gần nhất).
 - **Trang CLB** (`/discover/<clubId>`): hồ sơ CLB (địa điểm, khu vực, lịch định kỳ, mô tả) và **Lịch sắp tới**: buổi CLB mở đăng ký qua link có nút **Đăng ký tham gia** (mở trang đăng ký kèo `/e/…` như thường lệ); buổi khác ghi *Chỉ thành viên* hoặc *Đã đóng đăng ký*.
-- **🙋 Xin gia nhập CLB**: cần đăng nhập, **email đã xác nhận** và hồ sơ có họ tên, SĐT, ngày sinh. Nhập lời nhắn → yêu cầu vào **Thành viên → Danh sách xin gia nhập CLB** của CLB với nguồn *Từ tìm kiếm CLB* (chưa chiếm chỗ của gói cho tới khi được duyệt). Người đang bị *Xem xét thêm* hoặc bị CLB chặn không gửi được yêu cầu. Chủ CLB **Duyệt** (thành chính thức hoặc giao lưu) hoặc **Từ chối** (người chưa từng chơi ở CLB thì bản ghi tạo cho yêu cầu bị xoá). Trạng thái hiện ngay trên trang: *Đã gửi yêu cầu* / *Bạn là thành viên* / *CLB của bạn*.
+- **🙋 Xin gia nhập CLB**: cần đăng nhập, **email đã xác nhận** và hồ sơ có họ tên, SĐT, ngày sinh. Nhập lời nhắn → yêu cầu vào **Thành viên ▸ Xin gia nhập** của CLB với nguồn *Từ tìm kiếm CLB* (chưa chiếm chỗ của gói cho tới khi được duyệt). Người đang bị *Xem xét thêm* hoặc bị CLB chặn không gửi được yêu cầu. Chủ CLB **Duyệt** (thành chính thức hoặc giao lưu) hoặc **Từ chối** (người chưa từng chơi ở CLB thì bản ghi tạo cho yêu cầu bị xoá). Trạng thái hiện ngay trên trang: *Đã gửi yêu cầu* / *Bạn là thành viên* / *CLB của bạn*.
 - Chỉ CLB **bật "Hiện trong tìm kiếm"** (mặc định bật) và chủ không bị đình chỉ mới hiện. Chủ CLB sửa hồ sơ hiển thị ở **CLB của tôi → 🪪 Hồ sơ CLB** (xem [4.1](#41-clb-của-tôi-clubs)).
 
 ### 3.5. Đăng ký CLB / cộng đồng (`/club-request`)
@@ -165,7 +165,19 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 
 ### 4.3. Thành viên (`/club/members`)
 
-**Đầu trang** có 5 ô số liệu (trên điện thoại vuốt ngang): *Thành viên cố định* (số đang hoạt động), *VIP*, *Thành viên giao lưu* (số khách ưu tiên), *Chờ duyệt* và *Sinh nhật tháng này*. Bấm ô Cố định / Giao lưu / Chờ duyệt để mở đúng tab. Ba tab nằm ngay dưới, có số đếm từng tab.
+**Đầu trang** có 5 ô số liệu (trên điện thoại vuốt ngang): *Thành viên cố định* (số đang hoạt động), *VIP*, *Thành viên giao lưu* (số khách ưu tiên), *Chờ duyệt* và *Sinh nhật tháng này*. Bấm ô Cố định / Giao lưu / Chờ duyệt để mở đúng tab.
+
+**Thành viên là một nhóm menu** (như *Tạo hoạt động*): trên thanh bên mở ra 5 mục, mỗi mục là một trang riêng có đường dẫn riêng, và cũng là hàng tab ngay dưới các ô số liệu (kèm số đếm):
+
+| Mục | Đường dẫn |
+|---|---|
+| Thành viên cố định | `/club/members` |
+| Thành viên giao lưu | `/club/members/guests` |
+| Xem xét thêm | `/club/members/review` |
+| Xin gia nhập (số đỏ = yêu cầu chờ duyệt, hiện cả trên tiêu đề nhóm khi đang thu gọn) | `/club/members/requests` |
+| Liên kết DUPR (CLB pickleball, xem [4.7b](#47b-dupr--liên-kết-điểm-trình-gửi-trận-thống-kê)) | `/club/members/dupr` |
+
+Trên điện thoại các mục nằm trong nhóm *Thành viên* của bảng **Thêm**. Link cũ dạng `/club/members?tab=…` tự chuyển sang trang tương ứng.
 
 **Thanh công cụ** của danh sách: ô **tìm kiếm** (tên, SĐT, khu vực), lọc **giới tính**, **sắp xếp** (mặc định / tên A→Z / trình độ cao→thấp / vào CLB lâu nhất) và nút hiện/ẩn người ngừng hoạt động. Khi tick chọn người, một **thanh xoá** màu đỏ hiện lên (đếm số người đã chọn, nút *Bỏ chọn*, nút *Xoá*). Trên **điện thoại** danh sách hiện dạng thẻ (ảnh/chữ cái đầu, khu vực, thời gian chơi, trình độ, thâm niên, cờ nội bộ); trên máy tính là bảng đầy đủ.
 
@@ -201,7 +213,7 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 - **Không có nút "Tôi là thành viên".** Người Host đã thêm sẵn (có số điện thoại) khi tự tạo tài khoản và nhập SĐT vào hồ sơ thì app **tự gắn tài khoản** vào đúng dòng thành viên đó (so theo 9 chữ số cuối), không cần bấm gì. SĐT không trùng thì người đó là khách — Host sửa SĐT của thành viên cho đúng (đừng để họ *Xin gia nhập* lại, sẽ thành hai dòng).
 - **Danh sách xin gia nhập CLB** nhận yêu cầu từ: *Xin gia nhập* (trang tìm CLB, link mời) và *"muốn vào team cố định"* sau buổi chơi.
 - Host nhận thông báo qua webhook (loại `member_request`), menu **Thành viên** hiện **số đỏ** đếm người đang chờ, và trang Thành viên có dòng nhắc.
-- Tab **Danh sách xin gia nhập CLB** hiện tên tài khoản, email, SĐT, DUPR và loại yêu cầu:
+- Mục **Xin gia nhập** hiện tên tài khoản, email, SĐT, DUPR và loại yêu cầu:
   - **Duyệt** → thành viên đã xác thực, đăng ký kèo như thành viên (dùng buổi trong gói, không trả phí).
   - **Từ chối** → yêu cầu mới bị xoá; nếu là khớp SĐT thì chỉ gỡ liên kết tài khoản (thành viên vẫn giữ). Người đó đăng ký như khách.
 
@@ -335,7 +347,7 @@ Chỉ có ở CLB / cộng đồng **pickleball**. Chưa cần API của DUPR: d
 
 **1. DUPR ID của người chơi.** Người chơi mở app DUPR → bấm **nút chia sẻ** ở góc trên bên phải → **Copy DUPR ID** (vd `YN9N0G`), rồi dán vào ô **DUPR ID** trong **Hồ sơ** (`/p/profile`). ID được gắn vào các CLB pickleball họ đang là thành viên; nếu CLB đã có danh sách DUPR chứa ID đó thì **liên kết ngay**, điểm hiện luôn. Host cũng nhập / sửa ID cho thành viên (bấm vào ô ID ở tab DUPR). Một ID chỉ thuộc một người trong CLB (trùng thì báo lỗi); ID Host đã nhập không bị người chơi ghi đè.
 
-**2. Thành viên → tab DUPR** (`/club/members?tab=dupr`; chủ CLB, đồng quản trị, quyền *Thành viên*):
+**2. Thành viên ▸ Liên kết DUPR** (`/club/members/dupr`; chủ CLB, đồng quản trị, quyền *Thành viên*):
 - **Cập nhật từ DUPR**: trên DUPR, mở club → xuất **danh sách thành viên** (CSV có `duprId, name, singles, doubles, …`; email và SĐT DUPR đã che nên không dùng) → **Chọn file thành viên DUPR**. Không có bước xác nhận: thành viên được **liên kết tự động theo DUPR ID** (không đoán theo tên).
   - Dòng trùng trong file chỉ tính một lần. Danh sách club DUPR được lưu lại: lần nhập sau (vd club tăng từ 80 lên 150 người) chỉ **70 ID mới** được ghép với người mới, 80 ID cũ chỉ cập nhật điểm.
   - Kết quả ghi rõ: *số người trong file (dòng trùng bỏ qua)*, *ID mới / ID đã có*, *liên kết mới: tên…*, *cập nhật điểm / không đổi*; cảnh báo nếu *tên trên DUPR khác tên trong CLB* (chỉ để kiểm tra, không chặn), *hai thành viên cùng một ID* (chưa liên kết ai), *có ID nhưng chưa vào club DUPR* (mời họ vào club trên DUPR).
@@ -348,7 +360,7 @@ Chỉ có ở CLB / cộng đồng **pickleball**. Chưa cần API của DUPR: d
   - **⬇ Tải file CSV (N trận)** tạo file theo đúng mẫu **Import Matches via CSV** của DUPR (`matchType, event, date, playerA1, playerA1DuprId, playerA1ExternalId, …, teamAGame1…teamBGame5, location, scoreType`; tối đa 5 ván; trận đơn để trống người thứ 2). *Cách tính điểm* (Side-out / Rally) chỉ hỏi khi có trận không bấm điểm trực tiếp; trận bấm điểm trực tiếp dùng đúng cách đã bấm.
   - Trên DUPR: club → **Matches → Add Matches → Import Matches via CSV** → chọn file → **Upload** (mục này do DUPR bật cho club). Tải lên xong bấm **✓ Đánh dấu N trận đã tải lên** để lần sau không gửi trùng.
 
-**Thống kê → DUPR** (`/club/dupr`) chỉ để xem số liệu (chọn kỳ 1 / 3 / 6 / 12 tháng; nút *Quản lý DUPR ID* dẫn sang tab DUPR của Thành viên):
+**Thống kê → DUPR** (`/club/dupr`) chỉ để xem số liệu (chọn kỳ 1 / 3 / 6 / 12 tháng; nút *Quản lý DUPR ID* dẫn sang *Thành viên ▸ Liên kết DUPR*):
 - Ô số liệu: *Đã liên kết DUPR x/y*, *Điểm đôi trung bình* (ngày cập nhật), *Tăng / giảm* (số người ▲ / ▼), *Trận đã gửi DUPR* (đã gửi / có tỷ số).
 - **Điểm DUPR của thành viên**: điểm đôi + độ tin cậy, *± trong kỳ*, *lần thay đổi gần nhất*, đường **diễn biến** nhỏ, điểm đơn; sắp xếp theo mức thay đổi hoặc theo điểm.
 - **Trận đấu và DUPR**: thanh theo tháng chia màu *Đã gửi / Chờ gửi / Thiếu DUPR ID / Chưa có tỷ số*; bảng theo loại trận (*Kèo / buổi chơi*, *Trận CLB*, *Giải đấu*); danh sách **người chơi chưa có DUPR ID** làm trận không gửi được (kèm số trận).

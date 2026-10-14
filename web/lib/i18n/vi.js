@@ -1,6 +1,11 @@
 export const vi = {
   appName: 'Quản Lý Pickleball',
   nav: {
+    memFixed: "Thành viên cố định",
+    memGuests: "Thành viên giao lưu",
+    memReview: "Xem xét thêm",
+    memRequests: "Xin gia nhập",
+    memDupr: "Liên kết DUPR",
     commOverview: "Tổng quan",
     commMembers: "Thành viên",
     communities: "Cộng đồng của tôi",
