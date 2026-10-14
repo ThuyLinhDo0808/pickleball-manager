@@ -11,7 +11,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-const empty = { full_name: '', phone: '', dupr_level: '', badminton_level: '', gender: '', birth_date: '', avatar: null };
+const empty = { full_name: '', phone: '', dupr_level: '', dupr_id: '', badminton_level: '', gender: '', birth_date: '', avatar: null };
 
 // Shrink a photo to a 256px square JPEG data URL (~20-40 KB) so it can live in the profile row.
 function resizePhoto(file) {
@@ -49,7 +49,7 @@ export default function PlayerProfile() {
       setEmail(me.email);
       if (me.profile) {
         const p = me.profile;
-        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', badminton_level: p.badminton_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
+        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', dupr_id: p.dupr_id || '', badminton_level: p.badminton_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
       }
     });
   }, [user?.id]);
@@ -119,6 +119,20 @@ export default function PlayerProfile() {
         <div>
           <label className="text-xs text-gray-400">{t('level.pickleballProfile')}</label>
           <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={form.dupr_level} onChange={set('dupr_level')} />
+        </div>
+        <div className="col-span-2">
+          <label className="text-xs text-gray-400" htmlFor="dupr-id">{t('dupr.idLabel')}</label>
+          <input
+            id="dupr-id"
+            className="input uppercase tracking-wider"
+            maxLength={10}
+            autoCapitalize="characters"
+            autoComplete="off"
+            placeholder={t('dupr.idPh')}
+            value={form.dupr_id}
+            onChange={(e) => setForm({ ...form, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })}
+          />
+          <p className="text-gray-500 text-xs mt-1">{t('dupr.idHow')}</p>
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('level.badmintonProfile')}</label>

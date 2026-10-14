@@ -1290,6 +1290,113 @@ router.post('/:clubId/race/vouchers/:voucherId', async (req, res) => {
   }
 });
 
+// ---- DUPR (no partner API): member list import, members' DUPR IDs, match export --------
+const dupr = require('../services/dupr');
+const duprErr = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
+async function duprGate(req, res) {
+  if (!(await dupr.ready())) {
+    res.status(409).json({ error: `Run migration ${dupr.MIGRATION} first.`, code: 'migration_required' });
+    return false;
+  }
+  if ((req.club.sport || 'pickleball') !== 'pickleball') {
+    res.status(400).json({ error: 'DUPR is for pickleball clubs.', code: 'not_pickleball' });
+    return false;
+  }
+  return true;
+}
+const ymd = (v, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : fallback);
+
+router.get('/:clubId/dupr', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    const { data, error } = await supabase.from('club_members').select('dupr_id, dupr_verified_at, dupr_synced_at').eq('club_id', req.club.id);
+    if (error) throw error;
+    const synced = (data || []).map((m) => m.dupr_synced_at).filter(Boolean).sort();
+    res.json({
+      dupr_club_id: req.club.dupr_club_id || null,
+      members: (data || []).length,
+      linked: (data || []).filter((m) => m.dupr_id && m.dupr_verified_at).length,
+      last_sync: synced.length ? synced[synced.length - 1] : null,
+    });
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.patch('/:clubId/dupr', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    if (!['owner', 'co_admin'].includes(req.clubRole || 'owner')) return res.status(403).json(ROLE_FORBIDDEN);
+    const v = String(req.body?.dupr_club_id ?? '').trim().slice(0, 40) || null;
+    const { error } = await supabase.from('clubs').update({ dupr_club_id: v }).eq('id', req.club.id);
+    if (error) throw error;
+    res.json({ dupr_club_id: v });
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.post('/:clubId/dupr/preview', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.preview(req.club, req.body?.csv));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.post('/:clubId/dupr/apply', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.apply(req.club, req.body?.csv, req.body?.links));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.patch('/:clubId/members/:memberId/dupr', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    if (!isUuid(req.params.memberId)) return notFound(res, 'Member');
+    res.json(await dupr.setMemberId(req.club, req.params.memberId, req.body?.dupr_id));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+// Matches of a period, ready for DUPR or not (and why).
+router.get('/:clubId/dupr/matches', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+    const from = ymd(req.query.from, today.slice(0, 8) + '01');
+    const to = ymd(req.query.to, today);
+    res.json({ from, to, matches: await dupr.clubMatches(req.club, from, to, req.query.all === '1') });
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+// The CSV in DUPR's import template (ready matches only), optionally limited to `items`.
+router.post('/:clubId/dupr/matches/csv', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    const b = req.body || {};
+    const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+    let list = await dupr.clubMatches(req.club, ymd(b.from, '2000-01-01'), ymd(b.to, today), !!b.all);
+    if (Array.isArray(b.items) && b.items.length) {
+      const want = new Set(b.items.map((i) => `${i?.kind}:${i?.id}`));
+      list = list.filter((m) => want.has(`${m.kind}:${m.id}`));
+    }
+    const ready = list.filter((m) => m.ready);
+    res.json({ csv: dupr.matchesCsv(req.club, ready, b.score_type === 'RALLY' ? 'RALLY' : 'SIDEOUT'), count: ready.length, items: ready.map((m) => ({ kind: m.kind, id: m.id })) });
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.post('/:clubId/dupr/matches/mark', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.markExported(req.club, req.body?.items, req.body?.exported !== false));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+
 // After-session reviews of this club over the last 3 / 6 / 12 months (every plan).
 router.get('/:clubId/surveys', async (req, res) => {
   try {

@@ -42,6 +42,10 @@ const BALL_USE = (body) => ['use', 'broken'].includes(body?.kind);
 const GROUPS = {
   // Members: list, basic info, attendance and check-in of passes.
   members: [
+    // DUPR: import the DUPR Club member list, members' DUPR IDs, export matches.
+    ['GET', '/api/clubs/:id/dupr(/matches)?'],
+    ['POST', '/api/clubs/:id/dupr/(preview|apply|matches/csv|matches/mark)'],
+    ['PATCH', '/api/clubs/:id/members/:id/dupr'],
     ['GET', '/api/clubs/:id/members/:id/memberships'],
     ['GET', '/api/clubs/:id/attendance'],
     ['POST', '/api/clubs/:id/attendance/edits'],

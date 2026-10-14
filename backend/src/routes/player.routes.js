@@ -197,6 +197,9 @@ function blanksFrom(member, profile, sport = 'pickleball') {
 player.put('/profile', async (req, res) => {
   try {
     const p = cleanProfile(req.body, { badminton: await sportReady() });
+    // DUPR ID (DUPR app → share button → "Copy DUPR ID"); only when the form sends it.
+    const duprSvc = require('../services/dupr');
+    if ('dupr_id' in (req.body || {}) && (await duprSvc.ready())) p.dupr_id = duprSvc.cleanId(req.body.dupr_id);
     // Gender was asked at sign-up: use it when the form leaves it out.
     if (!p.gender) {
       const { data: u } = await supabase.from('users').select('gender').eq('id', req.hostId).maybeSingle();
@@ -213,8 +216,12 @@ player.put('/profile', async (req, res) => {
     // Fill blanks on the player's club records (never overwrite what the Host entered).
     const { data: mine } = await supabase.from('club_members').select('*').eq('user_id', req.hostId);
     for (const m of mine || []) {
-      const patch = blanksFrom(m, p, await clubSport(m.club_id));
+      const sport = await clubSport(m.club_id);
+      const patch = blanksFrom(m, p, sport);
       if (Object.keys(patch).length) await supabase.from('club_members').update(patch).eq('id', m.id);
+      // A new DUPR ID goes onto pickleball club records that don't have one yet (the Host
+      // confirms it when importing the club's DUPR member list). Taken in that club = skip.
+      if (p.dupr_id && sport === 'pickleball' && !m.dupr_id) await supabase.from('club_members').update({ dupr_id: p.dupr_id }).eq('id', m.id);
     }
     res.json(data);
   } catch (err) {
@@ -251,6 +258,9 @@ player.post('/onboarding', async (req, res) => {
     if (!sports.length) throw badRequest('Choose at least one sport.', 400, 'sports_required');
     const role = req.body.role === 'manager' ? 'manager' : 'player';
     const p = cleanProfile(req.body, { badminton: await sportReady() });
+    // DUPR ID (DUPR app → share button → "Copy DUPR ID"); only when the form sends it.
+    const duprSvc = require('../services/dupr');
+    if ('dupr_id' in (req.body || {}) && (await duprSvc.ready())) p.dupr_id = duprSvc.cleanId(req.body.dupr_id);
     if (!sports.includes('pickleball')) p.dupr_level = null;
     if (!sports.includes('badminton') && 'badminton_level' in p) p.badminton_level = null;
     const { data: old } = await supabase.from('player_profiles').select('avatar').eq('user_id', req.hostId).maybeSingle();

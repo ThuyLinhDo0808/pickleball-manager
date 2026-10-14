@@ -65,6 +65,7 @@ const NAV_BY_WORKSPACE = {
       children: [
         { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
         { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
+        { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
         { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
         { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
       ],
@@ -140,6 +141,7 @@ NAV_BY_WORKSPACE.community = [
       { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
       { href: '/leaderboard', key: 'nav.globalRank', icon: 'rankings' },
       { href: '/club/race', key: 'nav.race', icon: 'trophy' },
+      { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
       { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
     ],
@@ -181,11 +183,11 @@ const TABS_BY_WORKSPACE = {
 // Club staff with a limited role see only their pages (the API refuses the rest anyway).
 const ROLE_PAGES = {
   finance: ['/finance', '/finance/ledger', '/finance/plans', '/club/roster', '/account'],
-  operator: ['/club/members', '/events', '/club/attendance', '/club/rankings', '/club/reviews', '/finance/inventory', '/club/roster', '/account'],
+  operator: ['/club/members', '/club/dupr', '/events', '/club/attendance', '/club/rankings', '/club/reviews', '/finance/inventory', '/club/roster', '/account'],
 };
 // With custom permissions (Pro) the menu follows the person's permission groups.
 const GROUP_PAGES = {
-  members: ['/club/members', '/club/attendance'],
+  members: ['/club/members', '/club/dupr', '/club/attendance'],
   events: ['/events', '/club/reviews'],
   matches: ['/events'],
   rankings: ['/club/rankings'],
@@ -423,7 +425,7 @@ export default function AppShell({ children }) {
   const roleOk = (href) => !rolePages || rolePages.includes(href);
   const NAV = (NAV_BY_WORKSPACE[mode] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
-    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href)) } : g))
+    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport)) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
   const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
