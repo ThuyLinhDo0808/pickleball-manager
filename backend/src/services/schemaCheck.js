@@ -53,6 +53,7 @@ const PROBES = [
   { table: 'matches', column: 'dupr_exported_at', migration: '20261119090000_dupr_link.sql' },
   { table: 'club_dupr_roster', column: 'dupr_id', migration: '20261120090000_dupr_auto.sql' },
   { table: 'dupr_rating_history', column: 'doubles', migration: '20261120090000_dupr_auto.sql' },
+  { table: 'clubs', column: 'map_url', migration: '20261121090000_club_map_url.sql' },
   { table: 'users', column: 'suspended_at', migration: '20261026090000_owner_console.sql' },
   { table: 'owner_audit_logs', column: 'old_value', migration: '20261026090000_owner_console.sql' },
   { table: 'host_subscriptions', column: 'trial_ends_on', migration: '20261027090000_plans_v2.sql' },

@@ -777,7 +777,7 @@ player.get('/clubs/:clubId', async (req, res) => {
     const uid = req.hostId;
     const { clubId } = req.params;
     if (!isUuid(clubId)) return notFound(res, 'Club');
-    const { data: me, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, kind, description, host_id, bank_code, bank_account, bank_holder)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
+    const { data: me, error } = await supabase.from('club_members').select('*, clubs(*)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
     if (error) throw error;
     if (!me || !me.clubs) return notFound(res, 'Club');
     const today = todayYmd();
@@ -801,7 +801,7 @@ player.get('/clubs/:clubId', async (req, res) => {
       .map((h) => ({ event_id: h.events.id, title: h.events.title, event_date: h.events.event_date, status: h.status, late_cancel: h.late_cancel }))
       .sort((a, b) => b.event_date.localeCompare(a.event_date));
     res.json({
-      club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', kind: me.clubs.kind || 'club', description: me.clubs.description || null, contact: owner?.email || null },
+      club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', kind: me.clubs.kind || 'club', description: me.clubs.description || null, address: me.clubs.address || null, map_url: me.clubs.map_url || null, contact: owner?.email || null },
       member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on },
       ...summarize(passes || [], today),
       memberships: (passes || []).slice(0, 8).map((p) => ({ period_label: p.period_label, status: p.status, sessions_included: p.sessions_included, sessions_used: p.sessions_used, sessions_remaining: p.sessions_remaining })),

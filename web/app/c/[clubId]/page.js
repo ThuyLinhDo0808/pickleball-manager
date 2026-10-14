@@ -77,9 +77,10 @@ export default function MemberClubPage() {
             </div>
           </div>
         </div>
-        {(club.description || club.contact) && (
+        {(club.description || club.contact || club.address || club.map_url) && (
           <div className="px-4 pb-4 text-sm text-gray-300">
             {club.description && <p className="mb-1">{club.description}</p>}
+            {(club.address || club.map_url) && <p className="mb-1"><MapLink location={club.address} mapUrl={club.map_url} /></p>}
             {club.contact && <p className="text-gray-500 text-xs">✉️ {t('hub.contact')}: {club.contact}</p>}
           </div>
         )}

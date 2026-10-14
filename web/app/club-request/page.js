@@ -98,7 +98,7 @@ export default function ClubRequestPage() {
   const { data, loading, error, reload } = useLoad(() => (user ? api.get('/api/host/club-requests') : Promise.resolve(null)), [user?.id]);
   const { data: me } = useLoad(() => (user ? api.get('/api/host/me').catch(() => null) : Promise.resolve(null)), [user?.id]);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ name: '', sport: 'pickleball', country: VIETNAM, province: '', district: '', address: '', schedule: '', description: '', contact_email: '', member_count: '', plan_tier: '', plan_months: 1 });
+  const [form, setForm] = useState({ name: '', sport: 'pickleball', country: VIETNAM, province: '', district: '', address: '', map_url: '', schedule: '', description: '', contact_email: '', member_count: '', plan_tier: '', plan_months: 1 });
   const [avatar, setAvatar] = useState(null);
   const [cover, setCover] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -369,6 +369,7 @@ export default function ClubRequestPage() {
                       ['creq.sport', t(`onb.sport_${form.sport}`)],
                       ['creq.memberCount', form.member_count],
                       ['creq.address', form.address],
+                      ['creq.mapUrl', form.map_url ? <a href={form.map_url} target="_blank" rel="noopener noreferrer" className="text-lime-300 underline break-all">{form.map_url}</a> : '—'],
                       ['creq.where', [form.district, form.province, form.country].filter(Boolean).join(', ')],
                       ['creq.schedule', form.schedule || '—'],
                       ['creq.contactEmail', form.contact_email],

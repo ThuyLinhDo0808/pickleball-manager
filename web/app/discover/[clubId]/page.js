@@ -99,7 +99,7 @@ export default function DiscoverClubPage() {
             </p>
           )}
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-            <div><dt className="text-gray-500 text-xs">{t('creq.address')}</dt><dd className="text-gray-100">📍 {c.address || '—'}</dd></div>
+            <div><dt className="text-gray-500 text-xs">{t('creq.address')}</dt><dd className="text-gray-100">{c.address || c.map_url ? <MapLink location={c.address} mapUrl={c.map_url} className="text-gray-100" /> : '—'}</dd></div>
             <div><dt className="text-gray-500 text-xs">{t('creq.where')}</dt><dd className="text-gray-100">{[c.district, c.province, c.country].filter(Boolean).join(', ') || '—'}</dd></div>
             <div className="sm:col-span-2"><dt className="text-gray-500 text-xs">{t('creq.schedule')}</dt><dd className="text-gray-100">🗓 {c.schedule || t('disc.noSchedule')}</dd></div>
           </dl>

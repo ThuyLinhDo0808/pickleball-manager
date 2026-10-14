@@ -89,6 +89,11 @@ export function ClubProfileFields({ form, set, withName = false, sports = null }
         <input className="input" required minLength={2} maxLength={200} value={form.address || ''} onChange={(e) => set('address', e.target.value)} placeholder={t('creq.addressPh')} />
       </Field>
       <div className="sm:col-span-2">
+        <Field label={t('creq.mapUrl')} hint={t('creq.mapUrlHint')}>
+          <input className="input" type="url" inputMode="url" maxLength={500} pattern="https://.*" value={form.map_url || ''} onChange={(e) => set('map_url', e.target.value.trim())} placeholder="https://maps.app.goo.gl/…" />
+        </Field>
+      </div>
+      <div className="sm:col-span-2">
         <Field label={t('creq.schedule')} hint={t('creq.scheduleHint')}>
           <input className="input" maxLength={300} value={form.schedule || ''} onChange={(e) => set('schedule', e.target.value)} placeholder={t('creq.schedulePh')} />
         </Field>

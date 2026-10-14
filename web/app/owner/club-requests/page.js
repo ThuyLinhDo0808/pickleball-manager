@@ -111,6 +111,7 @@ export default function OwnerClubRequestsPage() {
             </div>
             <div className="mt-2 grid gap-x-4 gap-y-0.5 text-sm text-gray-200 sm:grid-cols-2">
               <span>📍 {[r.address, r.district, r.province, r.country].filter(Boolean).join(', ')}</span>
+              {r.map_url && <a href={r.map_url} target="_blank" rel="noopener noreferrer" className="text-lime-300 hover:underline">🧭 {t('map.open')}</a>}
               <span>👥 {t('ownerReq.members', { n: r.member_count })}</span>
               <span>🗓 {r.schedule || '—'}</span>
               <span>✉️ {r.contact_email}</span>
