@@ -12,7 +12,121 @@ import { formatVnd } from '@/lib/format';
 
 const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
 
-// Plan, end dates, Social Manager and gift months, in one form.
+// Plan, end dates, Social Manager and gift months, in one form: one block per product
+// (Club Manager, Social Manager), a preview of what will change, the reason, Save.
+const PAID = TIERS.filter((x) => x !== 'free');
+const EXTEND = [1, 2, 3, 6, 12];
+const todayYmd = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+function addMonthsYmd(ymd, n) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(d, last));
+  return target.toISOString().slice(0, 10);
+}
+const dmy = (ymd) => (ymd ? ymd.split('-').reverse().join('/') : '—');
+const money = (v) => Number(String(v || '').replace(/\D/g, '')) || 0;
+
+function StatusPill({ on, until }) {
+  const { t } = useI18n();
+  let cls = 'border-navy-500 text-gray-400';
+  let text = t('owner.st_none');
+  if (on) {
+    if (!until) {
+      cls = 'border-lime-400/50 text-lime-300';
+      text = t('owner.st_noEnd');
+    } else {
+      const days = Math.round((Date.parse(until) - Date.parse(todayYmd())) / 86400000);
+      if (days < 0) {
+        cls = 'border-red-400/60 text-red-300';
+        text = t('owner.st_expired', { date: dmy(until) });
+      } else {
+        cls = days <= 7 ? 'border-amber-300/60 text-amber-200' : 'border-lime-400/50 text-lime-300';
+        text = t('owner.st_daysLeft', { n: days, date: dmy(until) });
+      }
+    }
+  }
+  return <span className={`text-[11px] rounded-full border px-2 py-0.5 whitespace-nowrap ${cls}`}>{text}</span>;
+}
+
+function TierChips({ value, options, onChange, disabled, label }) {
+  const { t } = useI18n();
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      {options.map((x) => (
+        <button
+          key={x}
+          type="button"
+          role="radio"
+          aria-checked={value === x}
+          disabled={disabled}
+          onClick={() => onChange(x)}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold tracking-wide transition disabled:opacity-40 ${value === x ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+        >
+          {x === 'free' ? t('owner.f_free') : x.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// One product: plan, end date, quick extension, money received.
+function ProductBlock({ icon, title, on, current, tier, tierOptions, onTier, until, onUntil, months, onMonths, paid, onPaid, newEnd, disabled, toggle, offHint }) {
+  const { t } = useI18n();
+  const L = 'block text-gray-400 text-xs font-medium mb-1.5';
+  return (
+    <section className="rounded-xl border border-navy-700 bg-navy-900/40">
+      <header className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-navy-700">
+        <span className="text-lg" aria-hidden="true">{icon}</span>
+        <h3 className="text-white font-semibold">{title}</h3>
+        <StatusPill on={current.on} until={current.until} />
+        {toggle && <span className="ml-auto">{toggle}</span>}
+      </header>
+      {on ? (
+        <div className="p-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <span className={L}>{t('owner.fTier')}</span>
+            <TierChips value={tier} options={tierOptions} onChange={onTier} label={t('owner.fTier')} />
+          </div>
+          <label className="block">
+            <span className={L}>{t('owner.fUntil')}</span>
+            <input className="input text-sm" type="date" value={disabled ? '' : until} disabled={disabled || !!months} onChange={(e) => onUntil(e.target.value)} />
+            <span className="block text-gray-500 text-[11px] mt-1">{months ? t('owner.untilByExtend') : t('owner.noEndHint')}</span>
+          </label>
+          <div>
+            <span className={L}>{t('owner.fExtend')}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {EXTEND.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={Number(months) === n}
+                  onClick={() => onMonths(Number(months) === n ? '' : String(n))}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs tabular-nums transition disabled:opacity-40 ${Number(months) === n ? 'border-sky-400 bg-sky-400/10 text-sky-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+                >
+                  +{n} {t('owner.months')}
+                </button>
+              ))}
+            </div>
+            {newEnd && <span className="block text-sky-200 text-xs mt-1.5">→ {t('owner.newEnd', { date: dmy(newEnd) })}</span>}
+          </div>
+          <label className="block">
+            <span className={L}>{t('owner.fPaid')}</span>
+            <span className="relative block">
+              <input className="input text-sm !pr-8 tabular-nums" inputMode="numeric" value={paid} disabled={disabled} onChange={(e) => onPaid(e.target.value.replace(/[^\d.]/g, ''))} placeholder="0" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" aria-hidden="true">đ</span>
+            </span>
+            <span className="block text-gray-500 text-[11px] mt-1">{money(paid) ? t('owner.paidAsRevenue') : t('owner.paidEmptyGift')}</span>
+          </label>
+        </div>
+      ) : (
+        <p className="px-4 py-3 text-gray-400 text-sm">{offHint}</p>
+      )}
+    </section>
+  );
+}
+
 function PlanEditor({ host, onSaved }) {
   const { t } = useI18n();
   const blank = () => ({
@@ -31,23 +145,40 @@ function PlanEditor({ host, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   useEffect(() => setF(blank()), [host.tier, host.tier_paid_until, host.social_manager, host.sm_tier, host.social_manager_paid_until]); // eslint-disable-line react-hooks/exhaustive-deps
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+  const put = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
+
+  // What Save sends (same rules as before).
+  const body = { note: f.note };
+  if (f.tier !== host.tier) body.tier = f.tier;
+  if ((f.tier_paid_until || null) !== (host.tier_paid_until || null) && f.tier !== 'free') body.tier_paid_until = f.tier_paid_until || null;
+  if (f.add_months && f.tier !== 'free') body.add_months = Number(f.add_months);
+  if (f.social_manager !== host.social_manager) body.social_manager = f.social_manager;
+  if (f.social_manager && f.sm_tier !== (host.sm_tier || 'basic')) body.sm_tier = f.sm_tier;
+  if (f.social_manager && (f.social_manager_paid_until || null) !== (host.social_manager_paid_until || null)) body.social_manager_paid_until = f.social_manager_paid_until || null;
+  if (f.social_manager && f.sm_add_months) body.sm_add_months = Number(f.sm_add_months);
+  const changed = Object.keys(body).length > 1;
+  if (changed && f.tier !== 'free' && money(f.paid_amount)) body.paid_amount = money(f.paid_amount);
+  if (changed && f.social_manager && money(f.sm_paid_amount)) body.sm_paid_amount = money(f.sm_paid_amount);
+  const total = (body.paid_amount || 0) + (body.sm_paid_amount || 0);
+
+  // Preview of the new end dates (the server computes the same way).
+  const today = todayYmd();
+  const extendFrom = (cur) => (cur && cur >= today ? cur : today);
+  const tierEnd = body.add_months ? addMonthsYmd(extendFrom(f.tier_paid_until || host.tier_paid_until), body.add_months) : null;
+  const smEnd = body.sm_add_months ? addMonthsYmd(extendFrom(f.social_manager_paid_until || host.social_manager_paid_until), body.sm_add_months) : null;
+
+  const changes = [];
+  if (body.tier) changes.push(t('owner.ch_tier', { from: host.tier === 'free' ? t('owner.f_free') : host.tier.toUpperCase(), to: body.tier === 'free' ? t('owner.f_free') : body.tier.toUpperCase() }));
+  if (tierEnd) changes.push(t('owner.ch_extend', { what: 'Club Manager', n: body.add_months, date: dmy(tierEnd) }));
+  else if ('tier_paid_until' in body) changes.push(t('owner.ch_until', { what: 'Club Manager', date: body.tier_paid_until ? dmy(body.tier_paid_until) : t('owner.st_noEnd') }));
+  if ('social_manager' in body) changes.push(body.social_manager ? t('owner.ch_smOn') : t('owner.ch_smOff'));
+  if (body.sm_tier) changes.push(t('owner.ch_smTier', { to: body.sm_tier.toUpperCase() }));
+  if (smEnd) changes.push(t('owner.ch_extend', { what: 'Social Manager', n: body.sm_add_months, date: dmy(smEnd) }));
+  else if ('social_manager_paid_until' in body) changes.push(t('owner.ch_until', { what: 'Social Manager', date: body.social_manager_paid_until ? dmy(body.social_manager_paid_until) : t('owner.st_noEnd') }));
 
   async function save(e) {
     e.preventDefault();
-    const body = { note: f.note };
-    if (f.tier !== host.tier) body.tier = f.tier;
-    if ((f.tier_paid_until || null) !== (host.tier_paid_until || null) && f.tier !== 'free') body.tier_paid_until = f.tier_paid_until || null;
-    if (f.add_months) body.add_months = Number(f.add_months);
-    if (f.social_manager !== host.social_manager) body.social_manager = f.social_manager;
-    if (f.social_manager && f.sm_tier !== (host.sm_tier || 'basic')) body.sm_tier = f.sm_tier;
-    if (f.social_manager && (f.social_manager_paid_until || null) !== (host.social_manager_paid_until || null)) body.social_manager_paid_until = f.social_manager_paid_until || null;
-    if (f.sm_add_months) body.sm_add_months = Number(f.sm_add_months);
-    if (Object.keys(body).length === 1) return setMsg(t('owner.nothingChanged'));
-    const money = (v) => Number(String(v).replace(/\D/g, '')) || 0;
-    if (money(f.paid_amount)) body.paid_amount = money(f.paid_amount);
-    if (money(f.sm_paid_amount)) body.sm_paid_amount = money(f.sm_paid_amount);
-    const total = (body.paid_amount || 0) + (body.sm_paid_amount || 0);
+    if (!changed) return setMsg(t('owner.nothingChanged'));
     if (!window.confirm(total ? t('owner.saveAskPaid', { amount: total.toLocaleString('vi-VN') }) : t('owner.saveAskGift'))) return;
     setBusy(true);
     setMsg('');
@@ -62,66 +193,80 @@ function PlanEditor({ host, onSaved }) {
     }
   }
 
-  const L = 'block text-gray-400 text-xs mb-1';
+  const smSwitch = (
+    <label className="inline-flex items-center gap-2 cursor-pointer text-xs text-gray-300">
+      {f.social_manager ? t('owner.smOn') : t('owner.smOff')}
+      <input type="checkbox" role="switch" className="sr-only peer" checked={f.social_manager} onChange={(e) => put('social_manager')(e.target.checked)} aria-label="Social Manager" />
+      <span className="relative w-9 h-5 rounded-full bg-navy-600 peer-checked:bg-amber-300 transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-lime-400" />
+    </label>
+  );
+
   return (
-    <form onSubmit={save} className="card !p-4">
-      <h2 className="text-white font-semibold mb-3">💎 {t('owner.planTitle')}</h2>
-      <div className="grid sm:grid-cols-4 gap-3">
-        <label className="block">
-          <span className={L}>{t('owner.field_tier')}</span>
-          <select className="input text-sm" value={f.tier} onChange={set('tier')}>
-            {TIERS.map((x) => <option key={x} value={x}>{x === 'free' ? t('owner.f_free') : x.toUpperCase()}</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className={L}>{t('owner.field_tier_paid_until')}</span>
-          <input className="input text-sm" type="date" value={f.tier === 'free' ? '' : f.tier_paid_until} disabled={f.tier === 'free'} onChange={set('tier_paid_until')} />
-          <span className="text-gray-500 text-[11px]">{t('owner.noEndHint')}</span>
-        </label>
-        <label className="block">
-          <span className={L}>{t('owner.giftMonths')}</span>
-          <select className="input text-sm" value={f.add_months} disabled={f.tier === 'free'} onChange={set('add_months')}>
-            <option value="">—</option>
-            {[1, 2, 3, 6, 12].map((n) => <option key={n} value={n}>+{n} {t('owner.months')}</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className={L}>{t('owner.paidAmount')}</span>
-          <input className="input text-sm" inputMode="numeric" value={f.paid_amount} disabled={f.tier === 'free'} onChange={set('paid_amount')} placeholder={t('owner.paidAmountPh')} />
-        </label>
+    <form onSubmit={save} className="card !p-4 flex flex-col gap-4">
+      <div>
+        <h2 className="text-white font-semibold">💎 {t('owner.planTitle')}</h2>
+        <p className="text-gray-400 text-xs mt-0.5">{t('owner.planHint')}</p>
       </div>
-      <div className="grid sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-navy-700">
-        <label className="flex items-center gap-2 text-sm text-gray-200 sm:mt-5">
-          <input type="checkbox" checked={f.social_manager} onChange={set('social_manager')} className="h-4 w-4 accent-amber-300" />
-          🎟 Social Manager
-          <select className="input !py-1 text-sm !w-auto" value={f.sm_tier} disabled={!f.social_manager} onChange={set('sm_tier')} aria-label={t('owner.smTier')}>
-            {TIERS.filter((x) => x !== 'free').map((x) => <option key={x} value={x}>{x.toUpperCase()}</option>)}
-          </select>
-        </label>
+
+      <ProductBlock
+        icon="🏟"
+        title="Club Manager"
+        on
+        current={{ on: host.tier !== 'free', until: host.tier_paid_until }}
+        tier={f.tier}
+        tierOptions={TIERS}
+        onTier={(v) => setF((x) => ({ ...x, tier: v, ...(v === 'free' ? { add_months: '', paid_amount: '' } : {}) }))}
+        until={f.tier_paid_until}
+        onUntil={put('tier_paid_until')}
+        months={f.add_months}
+        onMonths={put('add_months')}
+        paid={f.paid_amount}
+        onPaid={put('paid_amount')}
+        newEnd={tierEnd}
+        disabled={f.tier === 'free'}
+      />
+      <ProductBlock
+        icon="🎟"
+        title="Social Manager"
+        on={f.social_manager}
+        current={{ on: host.social_manager, until: host.social_manager_paid_until }}
+        tier={f.sm_tier}
+        tierOptions={PAID}
+        onTier={put('sm_tier')}
+        until={f.social_manager_paid_until}
+        onUntil={put('social_manager_paid_until')}
+        months={f.sm_add_months}
+        onMonths={put('sm_add_months')}
+        paid={f.sm_paid_amount}
+        onPaid={put('sm_paid_amount')}
+        newEnd={smEnd}
+        toggle={smSwitch}
+        offHint={t('owner.smOffHint')}
+      />
+
+      <p className="text-gray-500 text-xs flex gap-2"><span aria-hidden="true">ℹ️</span><span>{t('owner.paidAmountHint')}</span></p>
+
+      <div className="rounded-xl border border-navy-700 bg-navy-900/40 p-4 flex flex-col gap-3">
+        <div>
+          <p className="text-gray-400 text-xs font-medium mb-1">{t('owner.changesTitle')}</p>
+          {changes.length ? (
+            <ul className="text-sm text-gray-100 list-disc pl-5 space-y-0.5">
+              {changes.map((c) => <li key={c}>{c}</li>)}
+              <li className={total ? 'text-lime-300' : 'text-gray-400'}>{total ? t('owner.ch_paid', { amount: total.toLocaleString('vi-VN') }) : t('owner.ch_gift')}</li>
+            </ul>
+          ) : (
+            <p className="text-gray-500 text-sm">{t('owner.nothingChanged')}</p>
+          )}
+        </div>
         <label className="block">
-          <span className={L}>{t('owner.field_social_manager_paid_until')}</span>
-          <input className="input text-sm" type="date" value={f.social_manager ? f.social_manager_paid_until : ''} disabled={!f.social_manager} onChange={set('social_manager_paid_until')} />
+          <span className="block text-gray-400 text-xs font-medium mb-1.5">{t('owner.reason')}</span>
+          <input className="input text-sm" value={f.note} onChange={(e) => put('note')(e.target.value)} maxLength={300} placeholder={t('owner.reasonPh')} />
         </label>
-        <label className="block">
-          <span className={L}>{t('owner.giftMonthsSm')}</span>
-          <select className="input text-sm" value={f.sm_add_months} onChange={set('sm_add_months')}>
-            <option value="">—</option>
-            {[1, 2, 3, 6, 12].map((n) => <option key={n} value={n}>+{n} {t('owner.months')}</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className={L}>{t('owner.paidAmount')}</span>
-          <input className="input text-sm" inputMode="numeric" value={f.sm_paid_amount} disabled={!f.social_manager && !f.sm_add_months} onChange={set('sm_paid_amount')} placeholder={t('owner.paidAmountPh')} />
-        </label>
-      </div>
-      <p className="text-gray-500 text-[11px] mt-2">{t('owner.paidAmountHint')}</p>
-      <label className="block mt-3">
-        <span className={L}>{t('owner.reason')}</span>
-        <input className="input text-sm" value={f.note} onChange={set('note')} maxLength={300} placeholder={t('owner.reasonPh')} />
-      </label>
-      <div className="flex items-center justify-between gap-2 mt-3">
-        <span className="text-sm text-gray-300">{msg}</span>
-        <button className="btn-primary text-sm" disabled={busy}>{t('common.save')}</button>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {msg && <span className="text-sm text-gray-300 mr-auto" role="status">{msg}</span>}
+          {changed && <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => { setF(blank()); setMsg(''); }}>{t('owner.reset')}</button>}
+          <button className="btn-primary text-sm" disabled={busy || !changed}>{busy ? t('common.loading') : t('owner.savePlan')}</button>
+        </div>
       </div>
     </form>
   );

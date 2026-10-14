@@ -42,6 +42,10 @@ const BALL_USE = (body) => ['use', 'broken'].includes(body?.kind);
 const GROUPS = {
   // Members: list, basic info, attendance and check-in of passes.
   members: [
+    // DUPR: import the DUPR Club member list, members' DUPR IDs.
+    ['GET', '/api/clubs/:id/dupr(/members)?'],
+    ['POST', '/api/clubs/:id/dupr/import'],
+    ['PATCH', '/api/clubs/:id/members/:id/dupr'],
     ['GET', '/api/clubs/:id/members/:id/memberships'],
     ['GET', '/api/clubs/:id/attendance'],
     ['POST', '/api/clubs/:id/attendance/edits'],
@@ -67,10 +71,14 @@ const GROUPS = {
     ['POST', '/api/live/:id/(start|result)'],
     ['POST', '/api/live/:id/:id/(event|undo|save)'],
     ['PATCH', '/api/live/:id/:id'],
+    // DUPR: export the matches of an event / tournament.
+    ['GET', '/api/clubs/:id/dupr(/matches)?'],
+    ['POST', '/api/clubs/:id/dupr/matches/(csv|mark)'],
   ],
   // Rankings and statistics (view).
   rankings: [
     ['GET', '/api/clubs/:id/(rankings|stats)'],
+    ['GET', '/api/clubs/:id/dupr(/stats)?'],
     ['GET', '/api/analytics/player-form'],
   ],
   // Balls: counts, log use.

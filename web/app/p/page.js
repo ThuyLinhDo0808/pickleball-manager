@@ -1,4 +1,5 @@
 'use client';
+import DuprCard from '@/components/DuprCard';
 import PlayerNotices from '@/components/PlayerNotices';
 import { levelText } from '@/lib/levels';
 import { useEffect, useState } from 'react';
@@ -240,8 +241,19 @@ export default function PlayerHome() {
       </section>
 
       <section className="card mb-4">
-        <h2 className="text-white font-semibold mb-1">{t('player.dupr')}</h2>
-        {me.dupr_history?.length ? <DuprChart data={me.dupr_history} /> : <p className="text-gray-400 text-sm">{t('player.noDupr')}</p>}
+        <h2 className="text-white font-semibold mb-2">{t('player.dupr')}</h2>
+        {me.dupr && (
+          <div className="mb-3">
+            <DuprCard dupr={me.dupr} />
+          </div>
+        )}
+        {me.dupr?.history?.length > 1 ? (
+          <DuprChart data={me.dupr.history.map((h) => ({ date: h.date, dupr: h.doubles, source: 'club' })).filter((h) => h.dupr != null)} />
+        ) : me.dupr_history?.length ? (
+          <DuprChart data={me.dupr_history} />
+        ) : (
+          !me.dupr?.linked && <p className="text-gray-400 text-sm">{t('player.noDupr')}</p>
+        )}
       </section>
 
       <section className="card mb-4">

@@ -1,4 +1,5 @@
 'use client';
+import DuprCard from '@/components/DuprCard';
 import DeleteAccount from '@/components/DeleteAccount';
 import AccountSecurity from '@/components/AccountSecurity';
 import MyData from '@/components/MyData';
@@ -11,7 +12,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-const empty = { full_name: '', phone: '', dupr_level: '', badminton_level: '', gender: '', birth_date: '', avatar: null };
+const empty = { full_name: '', phone: '', dupr_level: '', dupr_id: '', badminton_level: '', gender: '', birth_date: '', avatar: null };
 
 // Shrink a photo to a 256px square JPEG data URL (~20-40 KB) so it can live in the profile row.
 function resizePhoto(file) {
@@ -42,14 +43,16 @@ export default function PlayerProfile() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [dupr, setDupr] = useState(null); // ratings from the clubs' DUPR imports
 
   useEffect(() => {
     if (!user) return;
     api.get('/api/player/me').then((me) => {
       setEmail(me.email);
+      setDupr(me.dupr || null);
       if (me.profile) {
         const p = me.profile;
-        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', badminton_level: p.badminton_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
+        setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', dupr_id: p.dupr_id || '', badminton_level: p.badminton_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
       }
     });
   }, [user?.id]);
@@ -74,6 +77,7 @@ export default function PlayerProfile() {
     try {
       await api.put('/api/player/profile', form);
       setSaved(true);
+      api.get('/api/player/me').then((me) => setDupr(me.dupr || null)).catch(() => {});
       // Came here from a join page? Go back to finish joining.
       const next = new URLSearchParams(window.location.search).get('next');
       if (next && next.startsWith('/') && !next.startsWith('//')) router.push(next);
@@ -119,6 +123,25 @@ export default function PlayerProfile() {
         <div>
           <label className="text-xs text-gray-400">{t('level.pickleballProfile')}</label>
           <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={form.dupr_level} onChange={set('dupr_level')} />
+        </div>
+        <div className="col-span-2">
+          <label className="text-xs text-gray-400" htmlFor="dupr-id">{t('dupr.idLabel')}</label>
+          <input
+            id="dupr-id"
+            className="input uppercase tracking-wider"
+            maxLength={10}
+            autoCapitalize="characters"
+            autoComplete="off"
+            placeholder={t('dupr.idPh')}
+            value={form.dupr_id}
+            onChange={(e) => setForm({ ...form, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })}
+          />
+          <p className="text-gray-500 text-xs mt-1">{t('dupr.idHow')}</p>
+          {dupr && (dupr.linked || dupr.dupr_id) && (
+            <div className="mt-2">
+              <DuprCard dupr={dupr} showLink={false} />
+            </div>
+          )}
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('level.badmintonProfile')}</label>
