@@ -71,12 +71,18 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 ## 3. Trang chủ & các không gian làm việc
 
 ### 3.0. Trang giới thiệu (`/`)
-Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **trang giới thiệu** (đã đăng nhập thì vào thẳng *Trang chủ* `/home`). Thanh trên cùng có các mục *Dành cho ai · Tính năng · Bắt đầu · Câu hỏi*, nút đổi **VI / EN**, **Đăng nhập** và **Đăng ký**. Nội dung:
-- **Phần đầu:** tiêu đề *Sân chơi của bạn, vận hành chuyên nghiệp.*, nút **Tạo tài khoản miễn phí** (mở form đăng ký) và **Tìm CLB gần bạn**; hình minh hoạ bảng điều khiển, bảng điểm trực tiếp, thẻ điểm DUPR và vé QR (vẽ bằng giao diện, không dùng ảnh ngoài).
-- **Dải tính năng nổi bật**, **Dành cho ai** (Người chơi · Club Manager · Social Manager, mỗi thẻ có danh sách việc làm được và nút bắt đầu).
-- **4 tính năng chính** xen kẽ chữ / hình: đăng ký & thanh toán, giải đấu & bấm điểm, DUPR, tài chính.
-- **Ba bước để ra sân**, lưới 8 tính năng phụ, **Câu hỏi thường gặp** (bấm để mở), khối kêu gọi cuối trang và chân trang (Tìm CLB, Điều khoản, Chính sách bảo mật, Đăng nhập).
-- **Hiệu ứng:** phần đầu cao đúng một màn hình; nền phát sáng chuyển động chậm; vùng sáng chạy theo con trỏ chuột; cụm hình minh hoạ nghiêng 3D theo chuột; quả bóng pickleball nảy ngang sân; tỷ số trực tiếp tự nhảy; số liệu tự đếm lên khi cuộn tới; tiêu đề có vệt sáng chạy; nút chính phát sáng; dải tính năng chạy ngang liên tục (rê chuột để dừng); các khối hiện dần khi cuộn; thẻ Club Manager có viền sáng chạy quanh. Máy bật chế độ *giảm chuyển động* (prefers-reduced-motion) thì tắt hết hiệu ứng. Nội dung trải rộng tới 1440px, màn hình lớn hơn có khoảng trống đều hai bên.
+Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **trang giới thiệu** (đã đăng nhập thì vào thẳng *Trang chủ* `/home`). Trang không phải cuộn dài: nội dung chia thành **6 cảnh toàn màn hình**, mỗi lần chỉ hiện một cảnh.
+- **Chuyển cảnh:** lăn chuột một nấc, vuốt lên / xuống, phím **↑ ↓ / PageUp / PageDown / Space**, hai nút **↑ ↓** ở góc phải dưới hoặc các vạch bên phải màn hình (rê chuột để thấy tên cảnh). **Home / End** về cảnh đầu / cuối.
+- **6 cảnh:** *01 Mở đầu* (tiêu đề, **Tạo tài khoản miễn phí**, **Tìm CLB gần bạn**, bảng điều khiển minh hoạ) · *02 Người chơi* · *03 Club Manager* · *04 Social Manager* · *05 Thi đấu & DUPR* · *06 Bắt đầu* (3 bước, nút **Bắt đầu ngay / Tôi đã có tài khoản**, **Câu hỏi thường gặp** bấm để mở — khung câu hỏi tự cuộn bên trong, liên kết Tìm CLB · Điều khoản · Chính sách bảo mật).
+- **Thanh trên cùng:** logo, **EN / VI**, **Đăng nhập**, **Đăng ký** và nút **Mục lục** — mở màn hình mục lục liệt kê 6 cảnh bằng chữ lớn (bấm để nhảy tới), kèm mô tả ngắn từng cảnh, nút đăng ký / đăng nhập và các liên kết. **Esc** để đóng.
+- **Góc trái dưới:** số cảnh lớn (*02 / 06*) cùng tên cảnh và thanh tiến độ.
+- **Hiệu ứng chuyển cảnh:** chữ tiêu đề trồi lên từng từ khỏi mặt nạ, cảnh cũ trượt lên rồi biến mất; hình minh hoạ xoay vào từ dưới, mờ dần thành rõ; một dải sáng quét ngang màn hình theo hướng di chuyển; số cảnh lăn đổi; số lớn viền mờ ở nền đổi theo cảnh.
+- **Sân 3D phía sau:** một sân pickleball vẽ bằng đường kẻ, "máy quay" lướt sang góc nhìn khác ở mỗi cảnh (nghiêng, xoay, phóng to, nhìn từ trên xuống); quả bóng nảy trên sân và đổi chỗ theo cảnh; quầng sáng nền đổi màu theo cảnh. Rê chuột thì sân và hình minh hoạ nghiêng nhẹ theo.
+- **Lần đầu mở trong một tab:** màn hình đếm 0 → 100 rồi kéo lên như tấm rèm; những lần sau bỏ qua.
+- **Con trỏ chuột:** có vòng tròn mảnh đi theo, phóng to khi rê lên nút / liên kết (chỉ máy dùng chuột).
+- Số liệu minh hoạ tự đếm, cột biểu đồ và thanh chỗ trống mọc lên, tỷ số tự chạy, đường điểm DUPR tự vẽ — khi cảnh đó hiện ra.
+- **Điện thoại / màn hình thấp** (rộng dưới 768px hoặc cao dưới 600px): 6 cảnh xếp dọc, cuộn bình thường; mỗi cảnh vẫn chạy hiệu ứng xuất hiện khi cuộn tới và sân 3D phía sau đổi góc theo cảnh đang xem.
+- Máy bật chế độ *giảm chuyển động* (prefers-reduced-motion) thì tắt hiệu ứng: không màn hình đếm, không con trỏ riêng, chuyển cảnh tức thì. Mọi hình minh hoạ vẽ bằng giao diện, không dùng ảnh ngoài.
 - **Trang đăng nhập / đăng ký** (`/sign-in`) cùng phong cách: màn hình chia đôi — bên trái (máy tính) là logo, tiêu đề, thẻ minh hoạ DUPR và tỷ số trực tiếp trên nền sân phát sáng; bên phải là khung đăng nhập với nút chuyển **Đăng nhập / Đăng ký**, liên kết **← Về trang giới thiệu** và nút đổi **VI / EN**. Trên điện thoại chỉ còn khung đăng nhập với logo ở trên.
 
 ### 3.1. Trang chủ (`/home`) — mọi vai trò ở một chỗ
