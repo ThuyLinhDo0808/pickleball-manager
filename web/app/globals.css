@@ -162,3 +162,65 @@ body {
 }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* ---- Landing page effects (all off with prefers-reduced-motion) ---------------------- */
+.lp-reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+.lp-reveal.lp-in { opacity: 1; transform: none; }
+.lp-reveal.lp-grow { transform: scaleY(0); transform-origin: bottom; }
+.lp-reveal.lp-grow.lp-in { transform: scaleY(1); }
+
+@keyframes lp-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.lp-rise { animation: lp-rise .9s cubic-bezier(.2,.7,.2,1) both; }
+
+/* glowing blobs drifting behind a section */
+.lp-blob { position: absolute; border-radius: 9999px; filter: blur(80px); opacity: .5; will-change: transform; }
+.lp-blob-a { width: 38rem; height: 38rem; left: 55%; top: -10%; background: rgba(182,240,59,.22); animation: lp-drift-a 18s ease-in-out infinite; }
+.lp-blob-b { width: 30rem; height: 30rem; left: -8%; top: 35%; background: rgba(56,189,248,.14); animation: lp-drift-b 22s ease-in-out infinite; }
+.lp-blob-c { width: 26rem; height: 26rem; left: 30%; top: 70%; background: rgba(52,211,153,.12); animation: lp-drift-a 26s ease-in-out infinite reverse; }
+@keyframes lp-drift-a { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-8%, 10%) scale(1.15); } }
+@keyframes lp-drift-b { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(12%, -8%) scale(.9); } }
+
+/* spotlight following the pointer */
+.lp-spot::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(600px circle at var(--mx, 70%) var(--my, 30%), rgba(182,240,59,.10), transparent 60%); transition: background .1s; z-index: 0; }
+
+/* bouncing ball: x moves linearly across, y bounces */
+.lp-ball-x { animation: lp-ball-x 9s linear infinite; }
+.lp-ball-y { animation: lp-ball-y 1.5s cubic-bezier(.5,0,.5,1) infinite alternate; }
+.lp-ball-spin { animation: lp-spin 1.6s linear infinite; }
+@keyframes lp-ball-x { from { transform: translateX(-60px); } to { transform: translateX(calc(100vw + 60px)); } }
+@keyframes lp-ball-y { from { transform: translateY(-90px); } to { transform: translateY(0); } }
+@keyframes lp-spin { to { transform: rotate(360deg); } }
+
+/* score digit pops when it changes */
+@keyframes lp-pop { 0% { transform: scale(1.6); color: #fff; } 100% { transform: scale(1); } }
+.lp-pop { display: inline-block; animation: lp-pop .45s ease-out; }
+
+/* headline accent: moving sheen across the gradient text */
+.lp-shimmer-text { background-image: linear-gradient(90deg, #b6f03b 0%, #d9f99d 25%, #6ee7b7 50%, #b6f03b 75%, #d9f99d 100%); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: lp-rise .9s cubic-bezier(.2,.7,.2,1) both, lp-sheen 6s linear infinite; }
+@keyframes lp-sheen { to { background-position: 200% center; } }
+
+/* primary button: soft pulsing glow + light sweep on hover */
+.lp-btn-glow { box-shadow: 0 8px 30px rgba(182,240,59,.35); animation: lp-glow 3s ease-in-out infinite; }
+.lp-btn-glow::after { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); transform: translateX(-120%); transition: transform .7s; }
+.lp-btn-glow:hover::after { transform: translateX(120%); }
+@keyframes lp-glow { 0%,100% { box-shadow: 0 8px 30px rgba(182,240,59,.30); } 50% { box-shadow: 0 8px 46px rgba(182,240,59,.55); } }
+
+/* scroll hint dot */
+.lp-scroll-hint span { animation: lp-scroll 1.8s ease-in-out infinite; }
+@keyframes lp-scroll { 0% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(14px); opacity: 0; } 100% { opacity: 0; } }
+
+/* marquee */
+.lp-marquee-track { animation: lp-marquee 28s linear infinite; }
+@keyframes lp-marquee { to { transform: translateX(-50%); } }
+
+/* featured card: a light running around its border */
+.lp-border-shine { isolation: isolate; }
+.lp-border-shine::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; background: conic-gradient(from var(--lp-angle, 0deg), transparent 0 70%, #b6f03b 80%, transparent 90%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: lp-angle 5s linear infinite; z-index: -1; }
+@property --lp-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes lp-angle { to { --lp-angle: 360deg; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal, .lp-reveal.lp-grow { opacity: 1; transform: none; transition: none; }
+  .lp-rise, .lp-shimmer-text, .lp-btn-glow, .lp-blob, .lp-ball-x, .lp-ball-y, .lp-ball-spin, .lp-pop, .lp-marquee-track, .lp-scroll-hint span, .lp-border-shine::before { animation: none !important; }
+  .lp-ball-x { display: none !important; }
+}

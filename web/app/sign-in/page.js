@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { deviceId } from '@/lib/device';
 import { api } from '@/lib/api';
+import { Aurora, CourtLines, Logo, LiveScoreMock, DuprMock } from '@/components/Landing';
 
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
@@ -58,33 +59,38 @@ function PasswordInput({ id, value, onChange, autoComplete, minLength }) {
 }
 
 // Left side on wide screens: what the app is for.
+// Left half on large screens: the same look as the landing page (glows, court lines, product
+// cards) with what the account gives you.
 function BrandPanel() {
   const { t } = useI18n();
   return (
-    <div className="hidden lg:flex flex-col justify-between rounded-l-2xl bg-gradient-to-br from-lime-400/15 via-navy-800 to-navy-900 p-10 border-r border-navy-700">
-      <div>
-        <div className="flex items-center gap-3">
-          <span className="h-11 w-11 rounded-xl bg-lime-400 text-navy-950 flex items-center justify-center text-2xl" aria-hidden="true">🏓</span>
-          <span className="text-lime-400 font-bold text-xl">{t('appName')}</span>
+    <aside className="relative hidden lg:flex flex-col justify-between gap-10 overflow-hidden border-r border-white/5 bg-navy-900/40 p-12 xl:p-16">
+      <Aurora />
+      <CourtLines />
+      <Link href="/" className="relative z-10 w-fit" aria-label={t('auth.toLanding')}><Logo className="text-lg" /></Link>
+      <div className="relative z-10">
+        <h2 className="lp-rise max-w-lg text-4xl xl:text-[2.9rem] font-black leading-[1.08] tracking-tight text-white">{t('auth.heroTitle')}</h2>
+        <p className="lp-rise mt-4 max-w-md text-lg text-gray-300" style={{ animationDelay: '120ms' }}>{t('auth.heroBody')}</p>
+        <div className="relative mt-10 h-48 max-w-md" aria-hidden="true">
+          <DuprMock className="absolute left-0 top-0 w-48 lp-float-slow" />
+          <LiveScoreMock className="absolute right-0 top-14 w-48 lp-float" />
         </div>
-        <h2 className="text-white text-3xl font-bold leading-tight mt-10">{t('auth.heroTitle')}</h2>
-        <p className="text-gray-300 mt-3">{t('auth.heroBody')}</p>
       </div>
-      <ul className="space-y-3 text-sm text-gray-200 mt-10">
-        {['hero1', 'hero2', 'hero3'].map((k) => (
-          <li key={k} className="flex items-start gap-2">
-            <span className="text-lime-400 mt-0.5" aria-hidden="true">✓</span>
+      <ul className="relative z-10 space-y-3 text-sm text-gray-200">
+        {['hero1', 'hero2', 'hero3'].map((k, i) => (
+          <li key={k} className="lp-rise flex items-start gap-3" style={{ animationDelay: `${300 + i * 120}ms` }}>
+            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-lime-400/15 text-xs text-lime-300" aria-hidden="true">✓</span>
             {t(`auth.${k}`)}
           </li>
         ))}
       </ul>
-    </div>
+    </aside>
   );
 }
 
 export default function SignInPage() {
   const { user, loading, adoptSession } = useAuth();
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const router = useRouter();
   const [mode, setMode] = useState('signIn'); // signIn | signUp | forgot | sent
   const [error, setError] = useState('');
@@ -237,20 +243,31 @@ export default function SignInPage() {
   const sub = { signIn: t('auth.signInSub'), signUp: t('auth.signUpSub'), forgot: t('auth.forgotSub'), sent: '' }[mode];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-navy-950 px-4 py-8">
-      <div className={`w-full ${mode === 'signUp' ? 'max-w-4xl' : 'max-w-3xl'} mb-3`}>
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
-          <span aria-hidden="true">←</span> {t('auth.toLanding')}
-        </Link>
-      </div>
-      <div className={`w-full ${mode === 'signUp' ? 'max-w-4xl' : 'max-w-3xl'} grid lg:grid-cols-[5fr_6fr] rounded-2xl border border-navy-700 bg-navy-900 shadow-2xl shadow-black/40`}>
-        <BrandPanel />
-        <div className="p-6 sm:p-8">
-          <div className="lg:hidden flex items-center gap-2 mb-6">
-            <span className="h-9 w-9 rounded-lg bg-lime-400 text-navy-950 flex items-center justify-center text-xl" aria-hidden="true">🏓</span>
-            <span className="text-lime-400 font-bold text-lg">{t('appName')}</span>
-          </div>
-          <h1 className="text-white text-2xl font-bold">{title}</h1>
+    <div className="min-h-screen bg-navy-950 lg:grid lg:grid-cols-[1.05fr_1fr]">
+      <BrandPanel />
+      <div className="relative flex min-h-screen flex-col overflow-hidden">
+        <div className="lg:hidden"><Aurora /></div>
+        <div className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-8 h-16">
+          <Link href="/" className="lg:hidden" aria-label={t('auth.toLanding')}><Logo className="text-base" /></Link>
+          <Link href="/" className="hidden lg:inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
+            <span aria-hidden="true">←</span> {t('auth.toLanding')}
+          </Link>
+          <button type="button" onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="h-9 rounded-full border border-white/10 px-3 text-xs font-semibold text-gray-300 hover:text-white" aria-label={t('landing.switchLang')}>
+            {lang === 'vi' ? 'EN' : 'VI'}
+          </button>
+        </div>
+        <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-8 sm:px-8">
+        <div className={`lp-rise w-full ${mode === 'signUp' ? 'max-w-xl' : 'max-w-md'} rounded-3xl border border-white/10 bg-navy-900/80 p-6 sm:p-9 shadow-2xl shadow-black/40 backdrop-blur-xl`}>
+          {(mode === 'signIn' || mode === 'signUp') && (
+            <div className="mb-7 grid grid-cols-2 rounded-full border border-white/10 bg-navy-950/60 p-1 text-sm font-semibold" role="tablist">
+              {['signIn', 'signUp'].map((m) => (
+                <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => go(m)} className={`h-10 rounded-full transition ${mode === m ? 'bg-lime-400 text-navy-950 shadow-[0_4px_20px_rgba(182,240,59,0.35)]' : 'text-gray-300 hover:text-white'}`}>
+                  {t(m === 'signIn' ? 'auth.signIn' : 'auth.signUp')}
+                </button>
+              ))}
+            </div>
+          )}
+          <h1 className="text-white text-3xl font-black tracking-tight">{title}</h1>
           {sub && <p className="text-gray-400 text-sm mt-1 mb-5">{sub}</p>}
 
           {info && <div className="bg-lime-400/10 border border-lime-400/40 text-lime-200 text-sm rounded-lg p-3 mb-4" role="status">{info}</div>}
@@ -348,7 +365,8 @@ export default function SignInPage() {
             </div>
           )}
         </div>
-        <p className="mt-4 text-center text-xs text-gray-500">
+        </div>
+        <p className="relative z-10 pb-6 text-center text-xs text-gray-500">
           <a href="/terms" className="hover:text-gray-300 underline underline-offset-2">{t('legal.termsTitle')}</a>
           {' · '}
           <a href="/privacy" className="hover:text-gray-300 underline underline-offset-2">{t('legal.privacyTitle')}</a>
