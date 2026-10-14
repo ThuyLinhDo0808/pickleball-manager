@@ -264,6 +264,17 @@ html { scroll-behavior: smooth; }
 .lp-pre { clip-path: inset(0 0 0 0); transition: clip-path 1s var(--lp-ease, ease); }
 .lp-pre.out { clip-path: inset(0 0 100% 0); }
 
+/* curtain between the landing page and sign-in */
+.lp-curtain { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; pointer-events: auto; clip-path: inset(0 0 0 0); }
+.lp-curtain[data-c="open"] { clip-path: inset(0 0 100% 0); pointer-events: none; transition: clip-path .9s var(--lp-ease, cubic-bezier(.77,0,.18,1)); }
+.lp-curtain[data-c="ready"] { clip-path: inset(100% 0 0 0); }
+.lp-curtain[data-c="close"] { clip-path: inset(0 0 0 0); transition: clip-path .7s var(--lp-ease, cubic-bezier(.77,0,.18,1)); }
+.lp-curtain-bar { transform-origin: left; animation: lp-bar .7s var(--lp-ease, ease) both; }
+@keyframes lp-bar { from { transform: scaleX(0); } to { transform: none; } }
+
+/* mode switch on sign-in: hidden parts snap back without passing through view */
+.lp-snap[data-state="future"] .lp-w > span, .lp-snap[data-state="future"] .lp-f, .lp-snap[data-state="future"] .lp-v { transition: none; }
+
 /* pointer ring (mouse only) */
 .lp-cursor { position: fixed; left: 0; top: 0; z-index: 70; pointer-events: none; border-radius: 9999px; opacity: 0; }
 .lp-cursor.on { opacity: 1; }
@@ -278,4 +289,5 @@ html { scroll-behavior: smooth; }
   .lp-v { filter: none !important; }
   .lp-par, .lp-tilt { transform: none !important; }
   .lp-sweep, .lp-cursor { display: none !important; }
+  .lp-curtain { transition: none !important; }
 }

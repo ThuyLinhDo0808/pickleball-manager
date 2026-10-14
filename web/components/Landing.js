@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 
@@ -37,12 +38,12 @@ const ActiveCtx = createContext(true);
 // Camera for the court behind the scenes (rotateX, rotateZ, scale, shift x/y), where the ball
 // sits on it (% of the court), and the colour of the glow — one set per scene.
 const SCENES = [
-  { key: 'intro', cam: [60, -28, 1.15, '20%', '6%'], ball: [52, 70], glow: ['#B6F03B', '#38BDF8'] },
-  { key: 'players', cam: [56, 34, 1.45, '-24%', '6%'], ball: [32, 30], glow: ['#38BDF8', '#B6F03B'] },
-  { key: 'club', cam: [0, 0, 0.85, '-26%', '2%'], ball: [72, 38], glow: ['#B6F03B', '#34D399'] },
-  { key: 'social', cam: [66, 90, 1.3, '-6%', '16%'], ball: [50, 52], glow: ['#FBBF24', '#B6F03B'] },
-  { key: 'play', cam: [48, -52, 1.8, '22%', '-4%'], ball: [40, 74], glow: ['#A78BFA', '#38BDF8'] },
-  { key: 'start', cam: [74, 0, 1, '4%', '46%'], ball: [50, 30], glow: ['#B6F03B', '#34D399'] },
+  { key: 'intro', cam: [60, -28, 1.15, '16vw', '4vh'], ball: [52, 70], glow: ['#B6F03B', '#38BDF8'] },
+  { key: 'players', cam: [56, 34, 1.45, '18vw', '6vh'], ball: [32, 30], glow: ['#38BDF8', '#B6F03B'] },
+  { key: 'club', cam: [0, 0, 0.85, '-20vw', '2vh'], ball: [72, 38], glow: ['#B6F03B', '#34D399'] },
+  { key: 'social', cam: [66, 90, 1.3, '16vw', '10vh'], ball: [50, 52], glow: ['#FBBF24', '#B6F03B'] },
+  { key: 'play', cam: [48, -52, 1.8, '18vw', '-2vh'], ball: [40, 74], glow: ['#A78BFA', '#38BDF8'] },
+  { key: 'start', cam: [74, 0, 1, '4vw', '30vh'], ball: [50, 30], glow: ['#B6F03B', '#34D399'] },
 ];
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -324,14 +325,13 @@ function Bracket() {
 
 // ---- the 3D court behind every scene ----------------------------------------------------------
 
-function Stage({ idx }) {
-  const s = SCENES[idx];
+export function Stage({ scene: s, idx = 0, ghost }) {
   const [rx, rz, cs, cx, cy] = s.cam;
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
       <span className="lp-glow" style={{ left: `${idx % 2 ? 8 : 58}%`, top: `${idx % 3 === 1 ? 50 : 4}%`, backgroundColor: s.glow[0] }} />
       <span className="lp-glow lp-glow-2" style={{ left: `${idx % 2 ? 62 : 2}%`, top: `${idx % 2 ? 0 : 56}%`, backgroundColor: s.glow[1] }} />
-      <span key={`n${idx}`} className="lp-ghost absolute right-[4vw] bottom-[2vh] select-none">{pad(idx + 1)}</span>
+      {ghost && <span key={ghost} className="lp-ghost absolute right-[4vw] bottom-[2vh] select-none">{ghost}</span>}
       <div className="lp-par absolute inset-0 [perspective:1400px]">
         <div className="absolute left-1/2 top-1/2 h-0 w-0 [transform-style:preserve-3d]">
           <div className="lp-cam" style={{ '--rx': `${rx}deg`, '--rz': `${rz}deg`, '--cs': cs, '--cx': cx, '--cy': cy }}>
@@ -368,7 +368,7 @@ function Stage({ idx }) {
 // ---- scene building blocks -------------------------------------------------------------------
 
 // A heading whose words rise one by one out of a mask.
-function Words({ text, base = 0, step = 45, className = '' }) {
+export function Words({ text, base = 0, step = 45, className = '' }) {
   return text.split(' ').map((w, i) => (
     <span key={i}>
       <span className="lp-w">
@@ -379,7 +379,7 @@ function Words({ text, base = 0, step = 45, className = '' }) {
 }
 
 // Fades and slides in after the heading; `d` staggers (ms).
-function F({ d = 0, as: Tag = 'div', className = '', children, ...rest }) {
+export function F({ d = 0, as: Tag = 'div', className = '', children, ...rest }) {
   return (
     <Tag className={`lp-f ${className}`} style={{ '--d': `${d}ms` }} {...rest}>
       {children}
@@ -397,13 +397,13 @@ function Eyebrow({ n, children }) {
   );
 }
 
-function Bullets({ keys, d = 300 }) {
+// Three short tags in place of a list of features.
+function Chips({ keys, d = 250 }) {
   const { t } = useI18n();
   return (
-    <ul className="mt-6 grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+    <ul className="mt-7 flex flex-wrap gap-2">
       {keys.map((k, i) => (
-        <F as="li" key={k} d={d + i * 60} className="flex gap-2.5 text-sm text-gray-200 leading-snug">
-          <span className="mt-0.5 text-lime-400" aria-hidden="true">✓</span>
+        <F as="li" key={k} d={d + i * 70} className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-gray-200">
           {t(k)}
         </F>
       ))}
@@ -451,7 +451,7 @@ function IntroScene() {
           <span className="block"><Words text={t('landing.hero_title_1')} /></span>
           <span className="block"><Words text={t('landing.hero_title_2')} base={180} className="lp-sheen-text" /></span>
         </h1>
-        <F d={250} as="p" className="mt-7 max-w-xl text-lg leading-relaxed text-gray-300 xl:text-xl">{t('landing.hero_sub')}</F>
+        <F d={250} as="p" className="mt-7 max-w-md text-xl leading-relaxed text-gray-300">{t('landing.hero_short')}</F>
         <F d={380} className="mt-9 flex flex-wrap gap-3">
           <Link href={SIGN_UP} className="lp-btn-glow group relative inline-flex h-12 items-center overflow-hidden rounded-full bg-lime-400 px-7 text-base font-bold text-navy-950">
             <span className="relative z-10">{t('landing.hero_cta')} <span className="inline-block transition-transform group-hover:translate-x-1">→</span></span>
@@ -460,7 +460,6 @@ function IntroScene() {
             {t('landing.hero_cta2')}
           </Link>
         </F>
-        <F d={480} as="p" className="mt-6 text-sm text-gray-400">✓ {t('landing.hero_note')}</F>
       </div>
       <div className="lp-v relative hidden lg:block" aria-hidden="true">
         <div className="lp-tilt relative pb-24 pt-12">
@@ -474,7 +473,7 @@ function IntroScene() {
   );
 }
 
-function RoleScene({ n, k, count, visual, flip, primary }) {
+function RoleScene({ n, k, visual, flip, primary }) {
   const { t } = useI18n();
   return (
     <Split
@@ -483,8 +482,8 @@ function RoleScene({ n, k, count, visual, flip, primary }) {
         <>
           <Eyebrow n={n}>{t(`landing.${k}_tag`)}</Eyebrow>
           <h2 className={`mt-6 ${H2}`}><Words text={t(`landing.${k}_title`)} /></h2>
-          <F d={200} as="p" className="mt-5 max-w-xl text-lg leading-relaxed text-gray-300">{t(`landing.${k}_desc`)}</F>
-          <Bullets keys={Array.from({ length: count }, (_, i) => `landing.${k}${i + 1}`)} />
+          <F d={150} as="p" className="mt-5 max-w-md text-xl leading-relaxed text-gray-300">{t(`landing.${k}_short`)}</F>
+          <Chips keys={[1, 2, 3].map((i) => `landing.${k}_k${i}`)} />
           <Cta href={SIGN_UP} primary={primary}>{t(`landing.${k}_cta`)}</Cta>
         </>
       }
@@ -501,8 +500,8 @@ function PlayScene() {
         <>
           <Eyebrow n={5}>{t('landing.play_eyebrow')}</Eyebrow>
           <h2 className={`mt-6 ${H2}`}><Words text={t('landing.play_title')} /></h2>
-          <F d={200} as="p" className="mt-5 max-w-xl text-lg leading-relaxed text-gray-300">{t('landing.play_desc')}</F>
-          <Bullets keys={['landing.f2_b1', 'landing.f2_b2', 'landing.f3_b1', 'landing.f3_b3']} />
+          <F d={150} as="p" className="mt-5 max-w-md text-xl leading-relaxed text-gray-300">{t('landing.play_short')}</F>
+          <Chips keys={[1, 2, 3].map((i) => `landing.play_k${i}`)} />
           <Cta href={SIGN_UP}>{t('landing.c_cta')}</Cta>
         </>
       }
@@ -524,13 +523,13 @@ function StartScene() {
       <div>
         <Eyebrow n={6}>{t('landing.how_eyebrow')}</Eyebrow>
         <h2 className={`mt-6 ${H2}`}><Words text={t('landing.cta_title')} /></h2>
-        <F d={150} as="p" className="mt-5 max-w-xl text-lg text-gray-300">{t('landing.cta_sub')}</F>
-        <ol className="mt-8 grid gap-4 sm:grid-cols-3">
+        <F d={150} as="p" className="mt-5 max-w-md text-xl text-gray-300">{t('landing.cta_short')}</F>
+        <ol className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-300">
           {[1, 2, 3].map((n) => (
-            <F as="li" key={n} d={250 + n * 90} className="border-t border-white/15 pt-4">
-              <span className="text-xs font-bold tabular-nums text-lime-400">{pad(n)}</span>
-              <p className="mt-1 font-bold text-white">{t(`landing.step${n}_t`)}</p>
-              <p className="mt-1 text-sm leading-relaxed text-gray-400">{t(`landing.step${n}_d`)}</p>
+            <F as="li" key={n} d={200 + n * 90} className="flex items-center gap-3">
+              <span className="font-bold tabular-nums text-lime-400">{pad(n)}</span>
+              {t(`landing.step${n}_t`)}
+              {n < 3 && <span className="text-gray-600" aria-hidden="true">→</span>}
             </F>
           ))}
         </ol>
@@ -544,7 +543,7 @@ function StartScene() {
       <F d={300} className="min-w-0">
         <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">{t('landing.faq_title')}</h3>
         <div data-lp-scroll className="lp-faq mt-4 flex max-h-[min(52vh,30rem)] flex-col overflow-y-auto overscroll-contain border-t border-white/10 pr-2">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
+          {[1, 2, 3, 4].map((n) => (
             <details key={n} className="group border-b border-white/10 py-3.5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-white">
                 {t(`landing.q${n}`)}
@@ -570,20 +569,19 @@ function SceneBody({ k }) {
     case 'intro':
       return <IntroScene />;
     case 'players':
-      return <RoleScene n={2} k="p" count={4} visual={<div className="relative py-6"><PhoneSignup /><div className="absolute right-[6%] bottom-0 w-28 rotate-6 [transform:translateZ(70px)]"><TicketMock className="lp-float" /></div></div>} />;
+      return <RoleScene n={2} k="p" visual={<div className="relative py-6"><PhoneSignup /><div className="absolute right-[6%] bottom-0 w-28 rotate-6 [transform:translateZ(70px)]"><TicketMock className="lp-float" /></div></div>} />;
     case 'club':
       return (
         <RoleScene
           n={3}
           k="c"
-          count={5}
           flip
           primary
           visual={<div className="relative pb-14 pt-4"><FinanceCard /><div className="absolute -bottom-2 -right-4 w-60 [transform:translateZ(70px)]"><RolesCard /></div></div>}
         />
       );
     case 'social':
-      return <RoleScene n={4} k="s" count={5} visual={<div className="relative pb-14 pt-4"><SeriesCard /><div className="absolute -bottom-10 -left-6 w-48 [transform:translateZ(70px)]"><ProfitCard /></div></div>} />;
+      return <RoleScene n={4} k="s" visual={<div className="relative pb-14 pt-4"><SeriesCard /><div className="absolute -bottom-10 -left-6 w-48 [transform:translateZ(70px)]"><ProfitCard /></div></div>} />;
     case 'play':
       return <PlayScene />;
     default:
@@ -793,6 +791,52 @@ function Preloader({ onDone }) {
   );
 }
 
+// Moving between the landing page and sign-in: a curtain lifts when the page opens, and rises
+// from the bottom before leaving (`leave(href)`).
+export function useCurtain() {
+  const router = useRouter();
+  const [c, setC] = useState('cover'); // cover → open; ready → close when leaving
+  useEffect(() => {
+    if (reducedMotion()) {
+      setC('open');
+      return undefined;
+    }
+    const id = setTimeout(() => setC('open'), 80);
+    return () => clearTimeout(id);
+  }, []);
+  const leave = useCallback(
+    (href) => {
+      if (reducedMotion()) return router.push(href);
+      setC('ready');
+      requestAnimationFrame(() => requestAnimationFrame(() => setC('close')));
+      setTimeout(() => router.push(href), 720);
+      return undefined;
+    },
+    [router],
+  );
+  const curtain = (
+    <div className="lp-curtain bg-navy-950" data-c={c} aria-hidden="true">
+      <span className="flex flex-col items-center gap-4">
+        <Logo className="text-lg" />
+        <span className="lp-curtain-bar h-px w-24 bg-lime-400" />
+      </span>
+    </div>
+  );
+  return { curtain, leave };
+}
+
+// Plain left clicks on these links play the curtain first.
+export function curtainClick(leave, prefixes) {
+  return (e) => {
+    const a = e.target.closest?.('a[href]');
+    if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target) return;
+    const href = a.getAttribute('href');
+    if (!prefixes.some((p) => href === p || href.startsWith(`${p}?`) || href.startsWith(`${p}/`))) return;
+    e.preventDefault();
+    leave(href);
+  };
+}
+
 // ---- the page --------------------------------------------------------------------------------
 
 export default function Landing() {
@@ -808,6 +852,7 @@ export default function Landing() {
   const idxRef = useRef(0);
   const menuRef = useRef(false);
   const { t } = useI18n();
+  const { curtain, leave } = useCurtain();
 
   // First visit in this tab plays the counter; later visits (and reduced motion) skip it.
   useEffect(() => {
@@ -955,9 +1000,9 @@ export default function Landing() {
   };
 
   return (
-    <div ref={rootRef} onPointerMove={onMove} className={`lp-root relative bg-navy-950 text-gray-200 ${deck ? 'lp-deck h-[100svh] overflow-hidden' : 'overflow-x-hidden'}`}>
+    <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/sign-in'])} className={`lp-root relative bg-navy-950 text-gray-200 ${deck ? 'lp-deck h-[100svh] overflow-hidden' : 'overflow-x-hidden'}`}>
       {preload && <Preloader onDone={preloadDone} />}
-      <Stage idx={idx} />
+      <Stage scene={SCENES[idx]} idx={idx} ghost={pad(idx + 1)} />
       {deck && sweep > 0 && <span key={sweep} className={`lp-sweep ${dir > 0 ? 'down' : 'up'}`} aria-hidden="true" />}
       <Header onMenu={() => setMenu((v) => !v)} menuOpen={menu} />
       <Menu open={menu} idx={idx} onPick={(i) => (deck ? go(i) : (setMenu(false), rootRef.current?.querySelector(`[data-scene="${i}"]`)?.scrollIntoView({ behavior: 'smooth' })))} onClose={() => setMenu(false)} />
@@ -982,6 +1027,7 @@ export default function Landing() {
       </main>
       {deck && <DeckControls idx={idx} go={go} />}
       <Cursor />
+      {curtain}
     </div>
   );
 }

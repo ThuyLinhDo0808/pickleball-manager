@@ -1,12 +1,12 @@
 'use client';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { deviceId } from '@/lib/device';
 import { api } from '@/lib/api';
-import { Aurora, CourtLines, Logo, LiveScoreMock, DuprMock } from '@/components/Landing';
+import { Logo, Stage, Words, F, useCurtain, curtainClick } from '@/components/Landing';
 
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
@@ -58,35 +58,15 @@ function PasswordInput({ id, value, onChange, autoComplete, minLength }) {
   );
 }
 
-// Left side on wide screens: what the app is for.
-// Left half on large screens: the same look as the landing page (glows, court lines, product
-// cards) with what the account gives you.
-function BrandPanel() {
-  const { t } = useI18n();
-  return (
-    <aside className="relative hidden lg:flex flex-col justify-between gap-10 overflow-hidden border-r border-white/5 bg-navy-900/40 p-12 xl:p-16">
-      <Aurora />
-      <CourtLines />
-      <Link href="/" className="relative z-10 w-fit" aria-label={t('auth.toLanding')}><Logo className="text-lg" /></Link>
-      <div className="relative z-10">
-        <h2 className="lp-rise max-w-lg text-4xl xl:text-[2.9rem] font-black leading-[1.08] tracking-tight text-white">{t('auth.heroTitle')}</h2>
-        <p className="lp-rise mt-4 max-w-md text-lg text-gray-300" style={{ animationDelay: '120ms' }}>{t('auth.heroBody')}</p>
-        <div className="relative mt-10 h-48 max-w-md" aria-hidden="true">
-          <DuprMock className="absolute left-0 top-0 w-48 lp-float-slow" />
-          <LiveScoreMock className="absolute right-0 top-14 w-48 lp-float" />
-        </div>
-      </div>
-      <ul className="relative z-10 space-y-3 text-sm text-gray-200">
-        {['hero1', 'hero2', 'hero3'].map((k, i) => (
-          <li key={k} className="lp-rise flex items-start gap-3" style={{ animationDelay: `${300 + i * 120}ms` }}>
-            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-lime-400/15 text-xs text-lime-300" aria-hidden="true">✓</span>
-            {t(`auth.${k}`)}
-          </li>
-        ))}
-      </ul>
-    </aside>
-  );
-}
+// The court behind the form changes its camera with the form (same look as the landing page).
+const AUTH_SCENES = {
+  signIn: { cam: [58, -30, 1.25, '-12vw', '14vh'], ball: [48, 68], glow: ['#B6F03B', '#38BDF8'] },
+  signUp: { cam: [52, 36, 1.5, '-14vw', '10vh'], ball: [34, 30], glow: ['#38BDF8', '#B6F03B'] },
+  forgot: { cam: [0, 0, 0.8, '-22vw', '6vh'], ball: [70, 40], glow: ['#FBBF24', '#B6F03B'] },
+  sent: { cam: [70, 90, 1.2, '-14vw', '16vh'], ball: [50, 50], glow: ['#34D399', '#B6F03B'] },
+};
+const ORDER = ['signIn', 'signUp', 'forgot', 'sent'];
+const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 export default function SignInPage() {
   const { user, loading, adoptSession } = useAuth();
@@ -152,11 +132,44 @@ export default function SignInPage() {
     return () => clearTimeout(id);
   }, [f.username, mode]);
 
-  const go = (m) => {
-    setMode(m);
-    setError('');
-    setInfo('');
-    setUnconfirmed(false);
+  // Switching form plays a scene change: the heading and the card leave upwards, the court
+  // moves its camera, then the new heading and card come in.
+  const [state, setState] = useState('future'); // future → active; past while leaving
+  const [sweep, setSweep] = useState({ n: 0, dir: 1 });
+  const timers = useRef([]);
+  useEffect(() => {
+    const id = setTimeout(() => setState('active'), reduced() ? 0 : 350);
+    const list = timers.current;
+    return () => {
+      clearTimeout(id);
+      list.forEach(clearTimeout);
+    };
+  }, []);
+  const go = (m, note = '') => {
+    const apply = () => {
+      setMode(m);
+      setError('');
+      setInfo(note);
+      setUnconfirmed(false);
+    };
+    if (m === mode || reduced()) return apply();
+    setSweep((x) => ({ n: x.n + 1, dir: ORDER.indexOf(m) > ORDER.indexOf(mode) ? 1 : -1 }));
+    setState('past');
+    timers.current.push(
+      setTimeout(() => {
+        apply();
+        setState('future');
+        timers.current.push(setTimeout(() => setState('active'), 40));
+      }, 520),
+    );
+    return undefined;
+  };
+  const { curtain, leave } = useCurtain();
+  const rootRef = useRef(null);
+  const onMove = (e) => {
+    if (reduced() || e.pointerType !== 'mouse' || !rootRef.current) return;
+    rootRef.current.style.setProperty('--px', (e.clientX / window.innerWidth - 0.5).toFixed(3));
+    rootRef.current.style.setProperty('--py', (e.clientY / window.innerHeight - 0.5).toFixed(3));
   };
 
   async function signIn(e) {
@@ -195,8 +208,7 @@ export default function SignInPage() {
         return;
       }
       setLogin(f.username.trim().toLowerCase());
-      setInfo(t('auth.checkEmailTo', { email: f.email }));
-      setMode('sent');
+      go('sent', t('auth.checkEmailTo', { email: f.email }));
     } catch (err) {
       setError(errorText(err, t));
     } finally {
@@ -239,27 +251,38 @@ export default function SignInPage() {
     invalid: <span className="text-amber-200">{t('auth.usernameRule')}</span>,
   }[nameState] || <span className="text-gray-500">{t('auth.usernameRule')}</span>;
 
-  const title = { signIn: t('auth.welcomeBack'), signUp: t('auth.createAccount'), forgot: t('auth.forgotTitle'), sent: t('auth.checkInbox') }[mode];
-  const sub = { signIn: t('auth.signInSub'), signUp: t('auth.signUpSub'), forgot: t('auth.forgotSub'), sent: '' }[mode];
+  const title = t(`auth.scene_${mode}`);
 
   return (
-    <div className="min-h-screen bg-navy-950 lg:grid lg:grid-cols-[1.05fr_1fr]">
-      <BrandPanel />
-      <div className="relative flex min-h-screen flex-col overflow-hidden">
-        <div className="lg:hidden"><Aurora /></div>
-        <div className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-8 h-16">
-          <Link href="/" className="lg:hidden" aria-label={t('auth.toLanding')}><Logo className="text-base" /></Link>
-          <Link href="/" className="hidden lg:inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
+    <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/'])} className="lp-root relative flex min-h-[100svh] flex-col overflow-x-hidden bg-navy-950">
+      <Stage scene={AUTH_SCENES[mode]} idx={ORDER.indexOf(mode)} />
+      {sweep.n > 0 && <span key={sweep.n} className={`lp-sweep ${sweep.dir > 0 ? 'down' : 'up'}`} aria-hidden="true" />}
+      <header className="relative z-20 mx-auto flex h-20 w-full max-w-[1440px] items-center gap-3 px-5 sm:px-10 lg:px-16">
+        <Link href="/" aria-label={t('auth.toLanding')}><Logo className="text-base" /></Link>
+        <div className="ml-auto flex items-center gap-2">
+          <Link href="/" className="hidden items-center gap-1.5 rounded-full px-3 h-9 text-sm text-gray-300 hover:text-white sm:inline-flex">
             <span aria-hidden="true">←</span> {t('auth.toLanding')}
           </Link>
-          <button type="button" onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="h-9 rounded-full border border-white/10 px-3 text-xs font-semibold text-gray-300 hover:text-white" aria-label={t('landing.switchLang')}>
+          <button type="button" onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="h-9 rounded-full border border-white/15 px-3 text-xs font-semibold text-gray-300 hover:text-white" aria-label={t('landing.switchLang')}>
             {lang === 'vi' ? 'EN' : 'VI'}
           </button>
         </div>
-        <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-8 sm:px-8">
-        <div className={`lp-rise w-full ${mode === 'signUp' ? 'max-w-xl' : 'max-w-md'} rounded-3xl border border-white/10 bg-navy-900/80 p-6 sm:p-9 shadow-2xl shadow-black/40 backdrop-blur-xl`}>
+      </header>
+      <main data-state={state} className="lp-snap relative z-10 mx-auto grid w-full max-w-[1440px] flex-1 content-center items-center gap-8 px-5 pb-10 sm:px-10 lg:grid-cols-[1fr_minmax(0,32rem)] lg:gap-16 lg:px-16">
+        <div>
+          <F d={0} as="p" className="hidden items-center gap-3 text-xs font-bold uppercase tracking-[0.25em] text-lime-300 lg:flex">
+            <span className="tabular-nums text-gray-500">{String(ORDER.indexOf(mode) + 1).padStart(2, '0')}</span>
+            <span className="h-px w-10 bg-lime-400/60" aria-hidden="true" />
+            {t('landing.hero_eyebrow')}
+          </F>
+          <h1 className="text-[clamp(2.4rem,3.4vw+2.4vh,6rem)] font-black leading-[0.98] tracking-tight text-white [text-wrap:balance] lg:mt-6">
+            <Words text={title} />
+          </h1>
+        </div>
+        <div className={`lp-v w-full justify-self-center ${mode === 'signUp' ? 'max-w-xl' : 'max-w-md'} lg:justify-self-end`}>
+        <div className="rounded-3xl border border-white/10 bg-navy-900/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
           {(mode === 'signIn' || mode === 'signUp') && (
-            <div className="mb-7 grid grid-cols-2 rounded-full border border-white/10 bg-navy-950/60 p-1 text-sm font-semibold" role="tablist">
+            <div className="mb-6 grid grid-cols-2 rounded-full border border-white/10 bg-navy-950/60 p-1 text-sm font-semibold" role="tablist">
               {['signIn', 'signUp'].map((m) => (
                 <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => go(m)} className={`h-10 rounded-full transition ${mode === m ? 'bg-lime-400 text-navy-950 shadow-[0_4px_20px_rgba(182,240,59,0.35)]' : 'text-gray-300 hover:text-white'}`}>
                   {t(m === 'signIn' ? 'auth.signIn' : 'auth.signUp')}
@@ -267,8 +290,7 @@ export default function SignInPage() {
               ))}
             </div>
           )}
-          <h1 className="text-white text-3xl font-black tracking-tight">{title}</h1>
-          {sub && <p className="text-gray-400 text-sm mt-1 mb-5">{sub}</p>}
+          {mode === 'forgot' && <p className="mb-5 text-sm text-gray-400">{t('auth.forgotSub')}</p>}
 
           {info && <div className="bg-lime-400/10 border border-lime-400/40 text-lime-200 text-sm rounded-lg p-3 mb-4" role="status">{info}</div>}
           {idleOut && !error && <div className="bg-amber-900/30 border border-amber-600/60 text-amber-100 text-sm rounded-lg p-3 mb-4" role="status">🔒 {t('sec.idleOut')}</div>}
@@ -366,12 +388,13 @@ export default function SignInPage() {
           )}
         </div>
         </div>
-        <p className="relative z-10 pb-6 text-center text-xs text-gray-500">
-          <a href="/terms" className="hover:text-gray-300 underline underline-offset-2">{t('legal.termsTitle')}</a>
-          {' · '}
-          <a href="/privacy" className="hover:text-gray-300 underline underline-offset-2">{t('legal.privacyTitle')}</a>
-        </p>
-      </div>
+      </main>
+      <p className="relative z-10 pb-6 text-center text-xs text-gray-500">
+        <a href="/terms" className="hover:text-gray-300 underline underline-offset-2">{t('legal.termsTitle')}</a>
+        {' · '}
+        <a href="/privacy" className="hover:text-gray-300 underline underline-offset-2">{t('legal.privacyTitle')}</a>
+      </p>
+      {curtain}
     </div>
   );
 }
