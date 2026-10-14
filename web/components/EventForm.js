@@ -255,7 +255,7 @@ function CostItems({ items, onChange, sessions }) {
 // automatic deadline is counted from on a weekly schedule (its first session).
 // `community` + `clubId`: a Social Manager community — the kèo can belong to a series
 // (Series A, B…), picked from the community's existing ones or typed new.
-export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null, seriesCount = 0, deadlineDate = null, community = false, clubId = null }) {
+export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null, seriesCount = 0, deadlineDate = null, community = false, clubId = null, prefillFromClub = true }) {
   const { t, lang } = useI18n();
   const [f, setF] = useState(() => ({ apply_to: seriesCount > 0 ? 'series' : 'one', ...initial }));
   const [busy, setBusy] = useState(false);
@@ -296,6 +296,16 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     [clubId]
   );
   const noPayout = Number(f.fee_amount) > 0 && payTo && !payTo.ok;
+  // A new kèo starts at the club's courts: address and Google Maps link from Hồ sơ CLB.
+  useEffect(() => {
+    if (!clubId || !prefillFromClub) return;
+    let alive = true;
+    api.get(`/api/clubs/${clubId}`).then((c) => {
+      if (!alive || !c) return;
+      setF((x) => (x.location || x.map_url ? x : { ...x, location: c.address || '', map_url: c.map_url || '' }));
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [clubId, prefillFromClub]);
   const toggleService = (key) => {
     const word = t(`svc.${key}`);
     const parts = f.services.split(',').map((x) => x.trim()).filter(Boolean);

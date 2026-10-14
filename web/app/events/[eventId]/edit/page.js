@@ -45,6 +45,7 @@ export default function EditEventPage() {
           seriesCount={event.series_upcoming || 0}
           community={workspace === 'xeve' && !!event.club_id}
           clubId={event.club_id}
+          prefillFromClub={false}
         />
       )}
     </AppShell>

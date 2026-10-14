@@ -48,6 +48,13 @@ const PUBLIC_EVENT_FIELDS = [
   'cancel_deadline_hours', 'cancel_half_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
 ];
 
+// The club's Google Maps link: used for an event that has no link of its own.
+async function clubMapUrl(clubId) {
+  if (!clubId || !(await require('../services/clubRequests').mapReady())) return null;
+  const { data } = await supabase.from('clubs').select('map_url').eq('id', clubId).maybeSingle();
+  return data?.map_url || null;
+}
+
 // Short links: /e/<8 characters> stands for the event's full public token.
 router.param('publicToken', async (req, res, next, token) => {
   if (isUuid(token) || !/^[0-9a-z]{6,12}$/i.test(token || '')) return next();
@@ -91,6 +98,7 @@ router.get('/public/:publicToken', async (req, res) => {
 
   res.json({
     ...pick(event, PUBLIC_EVENT_FIELDS),
+    map_url: event.map_url || (await clubMapUrl(event.club_id).catch(() => null)),
     sport: await clubSport(event.club_id), // levels show as DUPR or badminton steps
     registration_open: !closedCode,
     closed_code: closedCode,
@@ -525,7 +533,7 @@ router.post('/', async (req, res) => {
 router.get('/:eventId', async (req, res) => {
   // The Host is always shown among the organizers ("Người tổ chức"), playing or not.
   const host = await hostPerson(req.event.host_id).catch(() => null);
-  const base = { ...req.event, host_name: host?.full_name || null };
+  const base = { ...req.event, host_name: host?.full_name || null, club_map_url: req.event.map_url ? null : await clubMapUrl(req.event.club_id).catch(() => null) };
   if (!req.event.series_id) return res.json(base);
   const { count, error } = await supabase
     .from('events')
