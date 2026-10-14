@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -236,7 +237,12 @@ export default function SignInPage() {
   const sub = { signIn: t('auth.signInSub'), signUp: t('auth.signUpSub'), forgot: t('auth.forgotSub'), sent: '' }[mode];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-950 px-4 py-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-navy-950 px-4 py-8">
+      <div className={`w-full ${mode === 'signUp' ? 'max-w-4xl' : 'max-w-3xl'} mb-3`}>
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
+          <span aria-hidden="true">←</span> {t('auth.toLanding')}
+        </Link>
+      </div>
       <div className={`w-full ${mode === 'signUp' ? 'max-w-4xl' : 'max-w-3xl'} grid lg:grid-cols-[5fr_6fr] rounded-2xl border border-navy-700 bg-navy-900 shadow-2xl shadow-black/40`}>
         <BrandPanel />
         <div className="p-6 sm:p-8">

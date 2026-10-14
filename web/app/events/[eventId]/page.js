@@ -217,7 +217,7 @@ export default function EventDetailPage() {
             {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
             {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`}
           </p>
-          {(event.location || event.map_url) && <MapLink location={event.location} mapUrl={event.map_url} />}
+          {(event.location || event.map_url || event.club_map_url) && <MapLink location={event.location} mapUrl={event.map_url || event.club_map_url} />}
           {(event.play_format || event.services || event.series_id) && (
             <p className="text-gray-400 text-xs mt-0.5">
               {[event.series_id && `🔁 ${t('series.badge')}`, event.play_format && `🏓 ${t(`fmt.${event.play_format}`)}`, event.services && `🎁 ${event.services}`].filter(Boolean).join(' · ')}

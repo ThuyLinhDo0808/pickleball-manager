@@ -70,6 +70,14 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 
 ## 3. Trang chủ & các không gian làm việc
 
+### 3.0. Trang giới thiệu (`/`)
+Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **trang giới thiệu** (đã đăng nhập thì vào thẳng *Trang chủ* `/home`). Thanh trên cùng có các mục *Dành cho ai · Tính năng · Bắt đầu · Câu hỏi*, nút đổi **VI / EN**, **Đăng nhập** và **Đăng ký**. Nội dung:
+- **Phần đầu:** tiêu đề *Sân chơi của bạn, vận hành chuyên nghiệp.*, nút **Tạo tài khoản miễn phí** (mở form đăng ký) và **Tìm CLB gần bạn**; hình minh hoạ bảng điều khiển, bảng điểm trực tiếp, thẻ điểm DUPR và vé QR (vẽ bằng giao diện, không dùng ảnh ngoài).
+- **Dải tính năng nổi bật**, **Dành cho ai** (Người chơi · Club Manager · Social Manager, mỗi thẻ có danh sách việc làm được và nút bắt đầu).
+- **4 tính năng chính** xen kẽ chữ / hình: đăng ký & thanh toán, giải đấu & bấm điểm, DUPR, tài chính.
+- **Ba bước để ra sân**, lưới 8 tính năng phụ, **Câu hỏi thường gặp** (bấm để mở), khối kêu gọi cuối trang và chân trang (Tìm CLB, Điều khoản, Chính sách bảo mật, Đăng nhập).
+- Trang đăng nhập / đăng ký có liên kết **← Về trang giới thiệu**.
+
 ### 3.1. Trang chủ (`/home`) — mọi vai trò ở một chỗ
 Đăng nhập xong (và khi mở địa chỉ gốc `/`) app luôn mở **Trang chủ**. Tài khoản mới đăng nhập lần đầu được đưa qua trang **Chào mừng** (`/onboarding`, xem [8.1](#81-đăng-nhập-đăng-ký-quên-mật-khẩu-sign-in)) trước — trừ khi đang mở link kèo / link mời (vào thẳng kèo). Lời chào gọi bạn bằng **tên đăng nhập** (không bao giờ bằng email; chưa có tên đăng nhập thì dùng họ tên). Trên trang chủ chỉ có **2 vai trò**: **Host** (CLB bạn quản lý) và **Thành viên** (CLB bạn tham gia chơi):
 
@@ -290,7 +298,7 @@ Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh
 Loại hoạt động sửa được ở trang *Sửa* của buổi.
 
 **Form tạo / sửa buổi** (lịch hàng tuần và kèo dùng chung):
-- **Địa điểm + Google Maps**: gõ địa chỉ sân, form hiện **bản đồ nhỏ** của địa chỉ đó và link *🗺 Kiểm tra trên Google Maps*. Có thể dán thêm **Link Google Maps của sân** (ô không bắt buộc, không kèm chú thích). Người chơi bấm vào địa chỉ ở trang đăng ký `/e/…`, vé `/t/…`, trang CLB, *Tìm CLB* và trang họp `/v/…` → mở **Google Maps chỉ đường tới sân** (dùng link của Host nếu có, không thì tìm theo địa chỉ). Không cần API key.
+- **Địa điểm + Google Maps**: gõ địa chỉ sân, form hiện **bản đồ nhỏ** của địa chỉ đó và link *🗺 Kiểm tra trên Google Maps*. Có thể dán thêm **Link Google Maps của sân** (ô không bắt buộc, không kèm chú thích). Người chơi bấm vào địa chỉ ở trang đăng ký `/e/…`, vé `/t/…`, trang CLB, *Tìm CLB* và trang họp `/v/…` → mở **Google Maps chỉ đường tới sân** (dùng link của kèo nếu có; không có thì dùng **link Google Maps của CLB / cộng đồng** ở *Hồ sơ CLB*; không có nữa thì tìm theo địa chỉ). Trang chi tiết kèo của Host (`/events/<id>`) cũng hiện địa chỉ kèm **🧭 Chỉ đường** theo cùng thứ tự. **Tạo kèo / lịch hàng tuần mới** thì ô *Địa điểm* và *Link Google Maps* được điền sẵn từ Hồ sơ CLB (sửa lại được; sửa kèo cũ thì không tự điền). Không cần API key.
 - **Luật & tài chính**:
   - **Nội dung chơi**: *Full nam* / *Full nữ* / *Mix (nam nữ)* (mặc định *Mix*; bỏ lựa chọn *Tự do* vì trùng với Mix — buổi cũ để *Tự do* giờ hiện là *Mix (nam nữ)*) — hiện trên trang đăng ký (chỉ để thông báo, app không chặn theo giới tính).
   - **Dịch vụ bao gồm trong phí** ngay dưới phí tham gia: gõ tự do hoặc bấm nhanh *Bóng · Nước · Hoa quả · Khăn lạnh · Gửi xe*. Trang đăng ký hiện *🎁 Phí đã gồm: …*.

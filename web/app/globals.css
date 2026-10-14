@@ -149,3 +149,16 @@ body {
 .no-spin { -moz-appearance: textfield; appearance: textfield; }
 .no-spin::-webkit-outer-spin-button,
 .no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Landing page: cards that drift gently (off for people who prefer less motion). */
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.lp-float { animation: lp-float 6s ease-in-out infinite; }
+.lp-float-slow { animation: lp-float 8s ease-in-out infinite 1s; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-float, .lp-float-slow { animation: none; }
+}
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
