@@ -199,7 +199,9 @@ player.put('/profile', async (req, res) => {
     const p = cleanProfile(req.body, { badminton: await sportReady() });
     // DUPR ID (DUPR app → share button → "Copy DUPR ID"); only when the form sends it.
     const duprSvc = require('../services/dupr');
-    if ('dupr_id' in (req.body || {}) && (await duprSvc.ready())) p.dupr_id = duprSvc.cleanId(req.body.dupr_id);
+    const duprOn = 'dupr_id' in (req.body || {}) && (await duprSvc.ready());
+    if (duprOn) p.dupr_id = duprSvc.cleanId(req.body.dupr_id);
+    const { data: before } = duprOn ? await supabase.from('player_profiles').select('dupr_id').eq('user_id', req.hostId).maybeSingle() : { data: null };
     // Gender was asked at sign-up: use it when the form leaves it out.
     if (!p.gender) {
       const { data: u } = await supabase.from('users').select('gender').eq('id', req.hostId).maybeSingle();
@@ -219,10 +221,10 @@ player.put('/profile', async (req, res) => {
       const sport = await clubSport(m.club_id);
       const patch = blanksFrom(m, p, sport);
       if (Object.keys(patch).length) await supabase.from('club_members').update(patch).eq('id', m.id);
-      // A new DUPR ID goes onto pickleball club records that don't have one yet (the Host
-      // confirms it when importing the club's DUPR member list). Taken in that club = skip.
-      if (p.dupr_id && sport === 'pickleball' && !m.dupr_id) await supabase.from('club_members').update({ dupr_id: p.dupr_id }).eq('id', m.id);
     }
+    // DUPR ID onto the player's pickleball club records, linked at once where the club's DUPR
+    // list has it (the Host's own entry is never overwritten).
+    if (duprOn && (before?.dupr_id || null) !== (p.dupr_id || null)) await duprSvc.applyProfileId(req.hostId, before?.dupr_id || null, p.dupr_id || null);
     res.json(data);
   } catch (err) {
     fail(res, err);
@@ -627,6 +629,11 @@ player.get('/me', async (req, res) => {
       vouchers: await require('../services/race').vouchersOf(uid).catch(() => []),
       notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
+      // DUPR ratings from the clubs' DUPR imports (null before the migration).
+      dupr: await (async () => {
+        const d = require('../services/dupr');
+        return (await d.ready()) ? d.playerDupr(uid) : null;
+      })().catch(() => null),
       clubs,
       history: history.slice(0, 50),
       form,

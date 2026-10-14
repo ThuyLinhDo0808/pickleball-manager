@@ -187,10 +187,10 @@ const ROLE_PAGES = {
 };
 // With custom permissions (Pro) the menu follows the person's permission groups.
 const GROUP_PAGES = {
-  members: ['/club/members', '/club/dupr', '/club/attendance'],
+  members: ['/club/members', '/club/attendance'],
   events: ['/events', '/club/reviews'],
   matches: ['/events'],
-  rankings: ['/club/rankings'],
+  rankings: ['/club/rankings', '/club/dupr'],
   inventory: ['/finance/inventory'],
   finance_view: ['/finance', '/finance/ledger', '/finance/plans'],
   finance_edit: ['/finance', '/finance/ledger', '/finance/plans'],

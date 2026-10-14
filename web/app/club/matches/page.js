@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
+import DuprExport from '@/components/DuprExport';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -42,6 +43,7 @@ export default function ClubMatchesPage() {
       </div>
 
       {loading ? <p className="text-gray-400 text-sm">{t('common.loading')}</p> : <MatchList matches={matches || []} onChanged={reload} />}
+      {club && (club.sport || 'pickleball') === 'pickleball' && <DuprExport clubId={club.id} scope={{ scope: 'club' }} fileName={`dupr-${club.name}`} reloadKey={JSON.stringify((matches || []).map((m) => [m.id, m.team1_score, m.team2_score]))} />}
 
       <Modal open={showAdd} title={t('matches.add')} onClose={() => setShowAdd(false)}>
         {showAdd && club && (

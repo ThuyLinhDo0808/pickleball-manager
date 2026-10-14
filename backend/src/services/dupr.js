@@ -1,12 +1,13 @@
 // DUPR without the partner API (pickleball clubs):
 //  - players give their DUPR ID (DUPR app → share button → "Copy DUPR ID");
-//  - the Host exports the DUPR Club's member list (CSV) and imports it here: members are
-//    matched by DUPR ID (never by name), the Host confirms, ratings are copied in;
-//  - matches played in the app are exported in DUPR's "Import Matches via CSV" template,
-//    and marked as exported so they are not sent twice.
+//  - the Host exports the DUPR Club's member list (CSV) and imports it here: the list is kept
+//    per club, and members are linked automatically by DUPR ID (never by name), ratings copied
+//    in and kept as history;
+//  - matches of an event / tournament are exported in DUPR's "Import Matches via CSV"
+//    template, and marked as exported so they are not sent twice.
 const { supabase } = require('../supabase');
 
-const MIGRATION = '20261119090000_dupr_link.sql';
+const MIGRATION = '20261119090000_dupr_link.sql + 20261120090000_dupr_auto.sql';
 const ID_RE = /^[A-Z0-9]{4,10}$/;
 
 function httpError(message, status, code) {
@@ -17,8 +18,9 @@ let readyCache = null;
 async function ready() {
   if (readyCache && Date.now() - readyCache.at < 60000) return readyCache.ok;
   const { error } = await supabase.from('club_members').select('dupr_id').limit(1);
-  readyCache = { ok: !error, at: Date.now() };
-  return !error;
+  const { error: e2 } = error ? { error } : await supabase.from('club_dupr_roster').select('dupr_id').limit(1);
+  readyCache = { ok: !error && !e2, at: Date.now() };
+  return readyCache.ok;
 }
 
 // "yn9n0g " -> "YN9N0G"; '' -> null; anything else that is not an ID -> error.
@@ -83,9 +85,14 @@ function parseMembersCsv(text) {
   if (at.id < 0 || at.d < 0) throw httpError('This is not a DUPR club member list (needs the duprId and doubles columns).', 400, 'not_dupr_members');
   const out = [];
   const seen = new Set();
+  let duplicates = 0;
   for (const r of rows.slice(1)) {
     const id = String(r[at.id] || '').trim().toUpperCase();
-    if (!ID_RE.test(id) || seen.has(id)) continue;
+    if (!ID_RE.test(id)) continue;
+    if (seen.has(id)) {
+      duplicates++; // the same person twice in the file: counted once
+      continue;
+    }
     seen.add(id);
     out.push({
       dupr_id: id,
@@ -99,6 +106,7 @@ function parseMembersCsv(text) {
   }
   if (!out.length) throw httpError('No DUPR IDs found in the file.', 400, 'no_rows');
   if (out.length > 3000) throw httpError('At most 3000 members per file.', 400, 'too_many');
+  out.duplicates = duplicates;
   return out;
 }
 
@@ -124,152 +132,207 @@ function nameFits(duprName, fullName) {
   if (words.length) return words.every((part) => f.includes(part));
   return d.every((part) => f.some((w) => w[0] === part));
 }
-function nameScore(duprName, fullName) {
-  const d = fold(duprName);
-  const f = fold(fullName);
-  let s = 0;
-  for (const part of d) if (f.some((w) => (part.length === 1 ? w[0] === part : w === part))) s += part.length === 1 ? 1 : 2;
-  return s;
-}
 
 // ---- members ----------------------------------------------------------------------------
 async function clubMembers(club) {
   const { data, error } = await supabase
     .from('club_members')
     .select('id, full_name, member_type, is_active, user_id, dupr_level, dupr_id, dupr_name, dupr_doubles, dupr_doubles_rel, dupr_singles, dupr_singles_rel, dupr_synced_at, dupr_verified_at')
-    .eq('club_id', club.id)
-    ;
+    .eq('club_id', club.id);
   if (error) throw error;
   const userIds = [...new Set((data || []).map((m) => m.user_id).filter(Boolean))];
   const { data: profiles } = userIds.length ? await supabase.from('player_profiles').select('user_id, dupr_id').in('user_id', userIds) : { data: [] };
   const byUser = new Map((profiles || []).map((p) => [p.user_id, p.dupr_id]));
   // The ID the member uses: the one on the club record, else the one in their own profile.
-  return (data || []).map((m) => ({ ...m, claimed: m.dupr_id || byUser.get(m.user_id) || null, from_profile: !m.dupr_id && !!byUser.get(m.user_id) }));
+  return (data || []).map((m) => ({ ...m, claimed: m.dupr_id || byUser.get(m.user_id) || null }));
 }
 
-// What importing this file would do. Nothing is saved.
-async function preview(club, text) {
+const num = (v) => (v == null ? null : Number(v));
+
+// Copy a DUPR Club row onto a member: ID, name on DUPR, ratings; the doubles rating becomes the
+// member's level (the level used everywhere in the app). A changed rating goes to the history.
+// Returns 'new' (first link), 'changed', or 'same'.
+async function linkRow(club, m, row, now) {
+  const first = !(m.dupr_id === row.dupr_id && m.dupr_synced_at);
+  const changed = first || num(m.dupr_doubles) !== row.doubles || num(m.dupr_singles) !== row.singles;
+  const patch = {
+    dupr_id: row.dupr_id,
+    dupr_name: row.name || null,
+    dupr_doubles: row.doubles,
+    dupr_doubles_rel: row.doubles_rel,
+    dupr_singles: row.singles,
+    dupr_singles_rel: row.singles_rel,
+    dupr_synced_at: now,
+    dupr_verified_at: !first && m.dupr_verified_at ? m.dupr_verified_at : now,
+  };
+  if (row.doubles != null) patch.dupr_level = Math.round(row.doubles * 100) / 100;
+  const { error } = await supabase.from('club_members').update(patch).eq('id', m.id);
+  if (error) throw error;
+  if (changed) {
+    const { error: hErr } = await supabase.from('dupr_rating_history').insert({ club_id: club.id, club_member_id: m.id, dupr_id: row.dupr_id, doubles: row.doubles, singles: row.singles, recorded_at: now });
+    if (hErr) throw hErr;
+  }
+  return first ? 'new' : changed ? 'changed' : 'same';
+}
+
+// The Host imports the DUPR Club member export. Everything is automatic and by DUPR ID only:
+//  - repeated IDs in the file count once;
+//  - the club's DUPR list is kept (club_dupr_roster): IDs seen before are refreshed, new IDs
+//    are added — so a file of 150 after one of 80 adds 70 new IDs;
+//  - members whose ID (typed by the Host or by the player in their profile) is in the file are
+//    linked (new IDs) or get their ratings refreshed (IDs already linked);
+//  - an ID claimed by two members of the club links nobody until the Host fixes it.
+async function importRoster(club, text, userId) {
   const rows = parseMembersCsv(text);
+  const now = new Date().toISOString();
+  const { data: known, error: kErr } = await supabase.from('club_dupr_roster').select('dupr_id').eq('club_id', club.id);
+  if (kErr) throw kErr;
+  const knownIds = new Set((known || []).map((r) => r.dupr_id));
+  const fresh = rows.filter((r) => !knownIds.has(r.dupr_id));
+  const payload = (r) => ({ club_id: club.id, dupr_id: r.dupr_id, name: r.name || null, doubles: r.doubles, doubles_rel: r.doubles_rel, singles: r.singles, singles_rel: r.singles_rel, last_seen_at: now });
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase.from('club_dupr_roster').upsert(rows.slice(i, i + 500).map(payload), { onConflict: 'club_id,dupr_id' });
+    if (error) throw error;
+  }
+
   const byId = new Map(rows.map((r) => [r.dupr_id, r]));
   const members = await clubMembers(club);
   const claims = new Map();
-  for (const m of members) if (m.claimed) claims.set(m.claimed, [...(claims.get(m.claimed) || []), m.id]);
-
-  const matched = [];
-  const notInFile = [];
-  for (const m of members) {
-    if (!m.claimed) continue;
-    const row = byId.get(m.claimed);
-    const dup = claims.get(m.claimed).length > 1;
-    if (!row) {
-      notInFile.push({ member_id: m.id, full_name: m.full_name, dupr_id: m.claimed });
+  for (const m of members) if (m.claimed) claims.set(m.claimed, [...(claims.get(m.claimed) || []), m]);
+  const out = { rows: rows.length, duplicates: rows.duplicates || 0, new_ids: fresh.length, known_ids: rows.length - fresh.length, linked_new: [], updated: 0, unchanged: 0, conflicts: [], not_in_club: [] };
+  for (const [id, ms] of claims) {
+    if (ms.length > 1) {
+      out.conflicts.push({ dupr_id: id, names: ms.map((m) => m.full_name) });
       continue;
     }
-    matched.push({
-      member_id: m.id,
-      full_name: m.full_name,
-      member_type: m.member_type,
-      dupr_id: m.claimed,
-      dupr_name: row.name,
-      doubles: row.doubles,
-      doubles_rel: row.doubles_rel,
-      singles: row.singles,
-      singles_rel: row.singles_rel,
-      old_doubles: m.dupr_doubles ?? null,
-      level: m.dupr_level ?? null,
-      verified: !!m.dupr_verified_at && m.dupr_id === m.claimed,
-      from_profile: m.from_profile,
-      name_fits: nameFits(row.name, m.full_name),
-      duplicate: dup,
-    });
-  }
-  const linked = new Set(matched.map((x) => x.dupr_id));
-  const free = members.filter((m) => !m.claimed);
-  const unlinked = rows
-    .filter((r) => !linked.has(r.dupr_id) && !claims.has(r.dupr_id))
-    .map((r) => ({
-      ...r,
-      suggestions: free
-        .map((m) => ({ member_id: m.id, full_name: m.full_name, score: nameScore(r.name, m.full_name) }))
-        .filter((x) => x.score >= 2)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 3),
-    }));
-  return {
-    total: rows.length,
-    matched: matched.sort((a, b) => Number(a.name_fits) - Number(b.name_fits) || a.full_name.localeCompare(b.full_name)),
-    unlinked,
-    not_in_file: notInFile,
-    free_members: free.map((m) => ({ member_id: m.id, full_name: m.full_name })),
-  };
-}
-
-// Save: links = [{ member_id, dupr_id }] the Host confirmed (matched rows they kept ticked and
-// file rows they paired with a member). Ratings come from the file; the doubles rating
-// becomes the member's level (the level used everywhere in the app).
-async function apply(club, text, links) {
-  const rows = parseMembersCsv(text);
-  const byId = new Map(rows.map((r) => [r.dupr_id, r]));
-  const members = await clubMembers(club);
-  const byMember = new Map(members.map((m) => [m.id, m]));
-  if (!Array.isArray(links) || !links.length) throw httpError('Choose at least one member.', 400, 'nothing');
-  const usedIds = new Set();
-  const usedMembers = new Set();
-  const plan = [];
-  for (const l of links) {
-    const m = byMember.get(l?.member_id);
-    const id = cleanId(l?.dupr_id);
-    const row = id && byId.get(id);
-    if (!m || !row) throw httpError('A selected member or DUPR ID is not in this club / file.', 400, 'bad_link');
-    if (usedIds.has(id) || usedMembers.has(m.id)) throw httpError(`DUPR ID ${id} is chosen twice.`, 400, 'duplicate');
-    usedIds.add(id);
-    usedMembers.add(m.id);
-    plan.push({ m, row });
-  }
-  // An ID already on another member of this club (not part of this import) stays theirs.
-  const taken = members.filter((m) => m.dupr_id && usedIds.has(m.dupr_id) && !usedMembers.has(m.id));
-  if (taken.length) throw httpError(`DUPR ID ${taken[0].dupr_id} already belongs to ${taken[0].full_name}.`, 409, 'taken');
-
-  const now = new Date().toISOString();
-  let levels = 0;
-  for (const { m, row } of plan) {
-    const patch = {
-      dupr_id: row.dupr_id,
-      dupr_name: row.name || null,
-      dupr_doubles: row.doubles,
-      dupr_doubles_rel: row.doubles_rel,
-      dupr_singles: row.singles,
-      dupr_singles_rel: row.singles_rel,
-      dupr_synced_at: now,
-      dupr_verified_at: m.dupr_verified_at && m.dupr_id === row.dupr_id ? m.dupr_verified_at : now,
-    };
-    if (row.doubles != null) {
-      const lvl = Math.round(row.doubles * 100) / 100;
-      if (Number(m.dupr_level) !== lvl) levels++;
-      patch.dupr_level = lvl;
+    const m = ms[0];
+    const row = byId.get(id);
+    if (!row) {
+      out.not_in_club.push({ member_id: m.id, full_name: m.full_name, dupr_id: id });
+      continue;
     }
-    const { error } = await supabase.from('club_members').update(patch).eq('id', m.id);
-    if (error) throw error;
+    const r = await linkRow(club, m, row, now);
+    if (r === 'new') out.linked_new.push({ member_id: m.id, full_name: m.full_name, dupr_id: id, dupr_name: row.name, name_fits: nameFits(row.name, m.full_name) });
+    else if (r === 'changed') out.updated++;
+    else out.unchanged++;
   }
-  return { linked: plan.length, levels_changed: levels };
+  out.unclaimed = [...new Set([...knownIds, ...byId.keys()])].filter((id) => !claims.has(id)).length;
+  await supabase.from('club_dupr_imports').insert({ club_id: club.id, rows_total: out.rows, duplicates: out.duplicates, new_ids: out.new_ids, linked_new: out.linked_new.length, updated: out.updated, created_by: userId || null, created_at: now });
+  return out;
 }
 
-// Host sets / clears a member's DUPR ID by hand (checked against the file on next import).
+// A member got a DUPR ID (from the Host, or from the player's profile): when the club's DUPR
+// list already has it, link right away — no waiting for the next file.
+async function attachFromRoster(club, memberId) {
+  const { data: m } = await supabase.from('club_members').select('id, dupr_id, dupr_synced_at, dupr_verified_at, dupr_doubles, dupr_singles').eq('id', memberId).maybeSingle();
+  if (!m?.dupr_id) return null;
+  const { data: row } = await supabase.from('club_dupr_roster').select('dupr_id, name, doubles, doubles_rel, singles, singles_rel').eq('club_id', club.id).eq('dupr_id', m.dupr_id).maybeSingle();
+  if (!row) return null;
+  return linkRow(club, m, { ...row, doubles: num(row.doubles), singles: num(row.singles) }, new Date().toISOString());
+}
+
+const CLEARED = { dupr_name: null, dupr_doubles: null, dupr_doubles_rel: null, dupr_singles: null, dupr_singles_rel: null, dupr_synced_at: null, dupr_verified_at: null };
+
+// Host sets / clears a member's DUPR ID by hand.
 async function setMemberId(club, memberId, raw) {
   const id = cleanId(raw);
   if (id) {
     const { data: other } = await supabase.from('club_members').select('id, full_name').eq('club_id', club.id).eq('dupr_id', id).neq('id', memberId).maybeSingle();
     if (other) throw httpError(`DUPR ID ${id} already belongs to ${other.full_name}.`, 409, 'taken');
   }
-  const patch = id
-    ? { dupr_id: id }
-    : { dupr_id: null, dupr_name: null, dupr_doubles: null, dupr_doubles_rel: null, dupr_singles: null, dupr_singles_rel: null, dupr_synced_at: null, dupr_verified_at: null };
   const { data: cur } = await supabase.from('club_members').select('dupr_id').eq('id', memberId).eq('club_id', club.id).maybeSingle();
   if (!cur) throw httpError('Member not found.', 404, 'not_found');
-  if (id && cur.dupr_id !== id) Object.assign(patch, { dupr_name: null, dupr_verified_at: null });
-  const { data, error } = await supabase.from('club_members').update(patch).eq('id', memberId).select().single();
+  const patch = id ? (cur.dupr_id === id ? { dupr_id: id } : { dupr_id: id, ...CLEARED }) : { dupr_id: null, ...CLEARED };
+  const { error } = await supabase.from('club_members').update(patch).eq('id', memberId);
   if (error) throw error;
+  if (id) await attachFromRoster(club, memberId);
+  const { data } = await supabase.from('club_members').select('*').eq('id', memberId).single();
   return data;
+}
+
+// The player saved a DUPR ID in their profile: put it on their pickleball club records that have
+// none (or still carry the old one from the profile) and link where the club's DUPR list has it.
+// An ID already used by someone else in a club is left alone there (`skipped`).
+async function applyProfileId(userId, oldId, newId) {
+  const { data: mine } = await supabase.from('club_members').select('id, club_id, dupr_id, clubs(id, sport)').eq('user_id', userId);
+  const skipped = [];
+  for (const m of mine || []) {
+    const club = m.clubs;
+    if (!club || (club.sport || 'pickleball') !== 'pickleball') continue;
+    if (m.dupr_id && m.dupr_id !== oldId) continue; // the Host's own entry wins
+    if (m.dupr_id === newId) {
+      if (newId) await attachFromRoster(club, m.id);
+      continue;
+    }
+    if (newId) {
+      const { data: other } = await supabase.from('club_members').select('id').eq('club_id', club.id).eq('dupr_id', newId).neq('id', m.id).maybeSingle();
+      if (other) {
+        skipped.push(club.id);
+        continue;
+      }
+    }
+    const { error } = await supabase.from('club_members').update(newId ? { dupr_id: newId, ...CLEARED } : { dupr_id: null, ...CLEARED }).eq('id', m.id);
+    if (error) throw error;
+    if (newId) await attachFromRoster(club, m.id);
+  }
+  return { skipped };
+}
+
+// The DUPR tab of the members page: every member with their ID, ratings, last change and status,
+// plus the DUPR Club members nobody in the club has claimed yet.
+async function memberBoard(club) {
+  let members = await clubMembers(club);
+  // Someone whose ID is on the club's DUPR list but not linked yet (e.g. joined the club after
+  // typing the ID in their profile): link now.
+  const { data: roster0 } = await supabase.from('club_dupr_roster').select('dupr_id, name, doubles, doubles_rel, singles, singles_rel').eq('club_id', club.id);
+  const rosterById = new Map((roster0 || []).map((r) => [r.dupr_id, { ...r, doubles: num(r.doubles), singles: num(r.singles) }]));
+  const claimCount = new Map();
+  for (const m of members) if (m.claimed) claimCount.set(m.claimed, (claimCount.get(m.claimed) || 0) + 1);
+  const heal = members.filter((m) => m.claimed && !m.dupr_synced_at && rosterById.has(m.claimed) && claimCount.get(m.claimed) === 1);
+  if (heal.length) {
+    const now = new Date().toISOString();
+    for (const m of heal) await linkRow(club, m, rosterById.get(m.claimed), now);
+    members = await clubMembers(club);
+  }
+  const ids = members.map((m) => m.id);
+  const { data: hist } = ids.length ? await supabase.from('dupr_rating_history').select('club_member_id, doubles, singles, recorded_at').in('club_member_id', ids).order('recorded_at', { ascending: true }) : { data: [] };
+  const byMember = new Map();
+  for (const h of hist || []) byMember.set(h.club_member_id, [...(byMember.get(h.club_member_id) || []), h]);
+  const { data: roster } = await supabase.from('club_dupr_roster').select('dupr_id, name, doubles, singles, first_seen_at').eq('club_id', club.id);
+  const rosterIds = new Set((roster || []).map((r) => r.dupr_id));
+  const claimed = new Set(members.map((m) => m.claimed).filter(Boolean));
+  const counts = new Map();
+  for (const m of members) if (m.claimed) counts.set(m.claimed, (counts.get(m.claimed) || 0) + 1);
+  const list = members.map((m) => {
+    const h = byMember.get(m.id) || [];
+    const prev = h.length > 1 ? h[h.length - 2] : null;
+    const linked = !!(m.dupr_id && m.dupr_synced_at);
+    const status = !m.claimed ? 'none' : counts.get(m.claimed) > 1 ? 'conflict' : linked && rosterIds.has(m.claimed) ? 'linked' : 'not_in_club';
+    return {
+      id: m.id,
+      full_name: m.full_name,
+      member_type: m.member_type,
+      is_active: m.is_active,
+      dupr_id: m.claimed,
+      from_profile: !m.dupr_id && !!m.claimed,
+      dupr_name: m.dupr_name,
+      name_fits: m.dupr_name ? nameFits(m.dupr_name, m.full_name) : null,
+      doubles: num(m.dupr_doubles),
+      doubles_rel: m.dupr_doubles_rel,
+      singles: num(m.dupr_singles),
+      singles_rel: m.dupr_singles_rel,
+      synced_at: m.dupr_synced_at,
+      change: prev && m.dupr_doubles != null && prev.doubles != null ? Math.round((Number(m.dupr_doubles) - Number(prev.doubles)) * 1000) / 1000 : null,
+      status,
+    };
+  });
+  const { data: last } = await supabase.from('club_dupr_imports').select('rows_total, duplicates, new_ids, linked_new, updated, created_at').eq('club_id', club.id).order('created_at', { ascending: false }).limit(1);
+  return {
+    members: list,
+    unclaimed: (roster || []).filter((r) => !claimed.has(r.dupr_id)).map((r) => ({ dupr_id: r.dupr_id, name: r.name, doubles: num(r.doubles), singles: num(r.singles), first_seen_at: r.first_seen_at })).sort((a, b) => String(b.first_seen_at).localeCompare(String(a.first_seen_at)) || String(a.name).localeCompare(String(b.name))),
+    roster_size: (roster || []).length,
+    last_import: last?.[0] || null,
+  };
 }
 
 // ---- matches -> DUPR "Import Matches via CSV" ------------------------------------------
@@ -291,24 +354,35 @@ function gamesOf(m) {
   return [[Number(m.team1_score), Number(m.team2_score)]];
 }
 
-// Every scored match of the club in [from, to]: club matches, matches inside its events,
-// tournament matches (pairs) and team-league sub-matches.
-async function clubMatches(club, from, to, includeExported) {
+// Every match of the club (scored or not): club matches, matches inside its events (kèo,
+// sessions, meetings), tournament matches (pairs) and team-league sub-matches.
+// opts: { from, to } dates, { event } one event only, { tournament } one tournament only,
+// { clubOnly } the club's own matches (outside events and tournaments), { all } include
+// matches already sent to DUPR.
+async function clubMatches(club, opts = {}) {
+  const from = opts.from || '2000-01-01';
+  const to = opts.to || '2999-12-31';
+  const includeExported = !!opts.all;
   const members = new Map();
   const memberIds = new Set();
   const out = [];
-  const end = `${to}T23:59:59+07:00`;
-  const start = `${from}T00:00:00+07:00`;
 
   // 1. Club matches and event matches.
-  const { data: evs } = await supabase.from('events').select('id, title, location, event_date').eq('club_id', club.id).gte('event_date', from).lte('event_date', to);
-  const evById = new Map((evs || []).map((e) => [e.id, e]));
-  const ors = [`club_id.eq.${club.id}`];
-  if (evById.size) ors.push(`event_id.in.(${[...evById.keys()].join(',')})`);
-  let q = supabase.from('matches').select('id, club_id, event_id, match_type, played_at, created_at, team1_score, team2_score, games, dupr_exported_at').or(ors.join(','));
-  const { data: ms, error } = await q.limit(5000);
-  if (error) throw error;
-  const inRange = (ms || []).filter((m) => {
+  let ms = [];
+  let evById = new Map();
+  if (!opts.tournament) {
+    let eq = supabase.from('events').select('id, title, location, event_date').eq('club_id', club.id);
+    eq = opts.event ? eq.eq('id', opts.event) : eq.gte('event_date', from).lte('event_date', to);
+    const { data: evs } = opts.clubOnly ? { data: [] } : await eq;
+    evById = new Map((evs || []).map((e) => [e.id, e]));
+    if (opts.event && !evById.size) throw httpError('Event not found.', 404, 'not_found');
+    const ors = opts.event ? [] : [`club_id.eq.${club.id}`];
+    if (evById.size) ors.push(`event_id.in.(${[...evById.keys()].join(',')})`);
+    const { data, error } = await supabase.from('matches').select('id, club_id, event_id, match_type, played_at, created_at, team1_score, team2_score, games, dupr_exported_at').or(ors.join(',')).limit(5000);
+    if (error) throw error;
+    ms = data || [];
+  }
+  const inRange = ms.filter((m) => {
     const day = m.event_id && evById.get(m.event_id) ? evById.get(m.event_id).event_date : ymdOf(m.played_at || m.created_at);
     return day && day >= from && day <= to && (includeExported || !m.dupr_exported_at);
   });
@@ -331,11 +405,14 @@ async function clubMatches(club, from, to, includeExported) {
           if (mid) memberIds.add(mid);
           return { member_id: mid, name: part?.full_name || '?', user_id: part?.user_id || null };
         });
-    out.push({ kind: 'match', id: m.id, date: ev?.event_date || ymdOf(m.played_at), event: ev?.title || null, location: ev?.location || null, a: team(1), b: team(2), games: gamesOf(m), exported_at: m.dupr_exported_at });
+    out.push({ kind: 'match', source: ev ? 'event' : 'club', id: m.id, date: ev?.event_date || ymdOf(m.played_at), event: ev?.title || null, location: ev?.location || null, a: team(1), b: team(2), games: gamesOf(m), exported_at: m.dupr_exported_at });
   }
 
   // 2. Tournaments of the club.
-  const { data: tours } = await supabase.from('tournaments').select('id, name, kind, event_date, location').eq('club_id', club.id);
+  let tq = supabase.from('tournaments').select('id, name, kind, event_date, location').eq('club_id', club.id);
+  if (opts.tournament) tq = tq.eq('id', opts.tournament);
+  const { data: tours } = opts.event || opts.clubOnly ? { data: [] } : await tq;
+  if (opts.tournament && !(tours || []).length) throw httpError('Tournament not found.', 404, 'not_found');
   const tourIds = (tours || []).map((t) => t.id);
   if (tourIds.length) {
     const tourById = new Map(tours.map((t) => [t.id, t]));
@@ -353,7 +430,7 @@ async function clubMatches(club, from, to, includeExported) {
       if (!day || day < from || day > to || (!includeExported && m.dupr_exported_at)) continue;
       const t1 = teamById.get(m.team1_id) || {};
       const t2 = teamById.get(m.team2_id) || {};
-      out.push({ kind: 'tournament', id: m.id, date: day, event: t.name, location: t.location, a: pl(t1.player1_id, t1.player2_id), b: pl(t2.player1_id, t2.player2_id), games: gamesOf(m), scoring: scoringOf(m.id, null), exported_at: m.dupr_exported_at });
+      out.push({ kind: 'tournament', source: 'tournament', id: m.id, date: day, event: t.name, location: t.location, a: pl(t1.player1_id, t1.player2_id), b: pl(t2.player1_id, t2.player2_id), games: gamesOf(m), scoring: scoringOf(m.id, null), exported_at: m.dupr_exported_at });
     }
     const leagueFixtures = (tms || []).filter((m) => tourById.get(m.tournament_id)?.kind === 'team');
     if (leagueFixtures.length) {
@@ -364,7 +441,7 @@ async function clubMatches(club, from, to, includeExported) {
         const t = tourById.get(f.tournament_id);
         const day = dayOfT(t, s.played_at || f.played_at);
         if (!day || day < from || day > to || (!includeExported && s.dupr_exported_at)) continue;
-        out.push({ kind: 'sub', id: s.id, date: day, event: t.name, location: t.location, a: pl(s.team1_p1, s.team1_p2), b: pl(s.team2_p1, s.team2_p2), games: gamesOf(s), scoring: scoringOf(f.id, s.id), exported_at: s.dupr_exported_at });
+        out.push({ kind: 'sub', source: 'tournament', id: s.id, date: day, event: t.name, location: t.location, a: pl(s.team1_p1, s.team1_p2), b: pl(s.team2_p1, s.team2_p2), games: gamesOf(s), scoring: scoringOf(f.id, s.id), exported_at: s.dupr_exported_at });
       }
     }
   }
@@ -391,6 +468,7 @@ async function clubMatches(club, from, to, includeExported) {
       const missing = [...a, ...b].filter((p) => !p.dupr_id).map((p) => p.name);
       return {
         kind: x.kind,
+        source: x.source,
         id: x.id,
         date: x.date,
         event: x.event,
@@ -432,7 +510,7 @@ function matchesCsv(club, list, defaultScoring = 'SIDEOUT') {
 
 const TABLE = { match: 'matches', tournament: 'tournament_matches', sub: 'tournament_sub_matches' };
 async function markExported(club, items, exported) {
-  const list = await clubMatches(club, '2000-01-01', '2999-12-31', true);
+  const list = await clubMatches(club, { all: true });
   const allowed = new Set(list.map((m) => `${m.kind}:${m.id}`));
   let n = 0;
   for (const kind of Object.keys(TABLE)) {
@@ -445,4 +523,119 @@ async function markExported(club, items, exported) {
   return { updated: n };
 }
 
-module.exports = { MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, preview, apply, setMemberId, clubMatches, matchesCsv, markExported, TEMPLATE };
+// ---- statistics (the DUPR page under Thống kê) ------------------------------------------
+const round3 = (v) => (v == null ? null : Math.round(v * 1000) / 1000);
+const monthsAgo = (n) => {
+  const d = new Date(Date.now() + 7 * 3600000);
+  d.setUTCMonth(d.getUTCMonth() - n);
+  return d.toISOString().slice(0, 10);
+};
+
+// Ratings of linked members over the period (start → now, last change, trend points), and the
+// club's matches of the period: sent to DUPR, ready to send, blocked (who lacks an ID), no score.
+async function stats(club, { months = 3 } = {}) {
+  const from = monthsAgo(months);
+  const startIso = `${from}T00:00:00+07:00`;
+  const { data: mem, error } = await supabase
+    .from('club_members')
+    .select('id, full_name, is_active, dupr_id, dupr_doubles, dupr_doubles_rel, dupr_singles, dupr_synced_at')
+    .eq('club_id', club.id);
+  if (error) throw error;
+  const linked = (mem || []).filter((m) => m.dupr_id && m.dupr_synced_at);
+  const ids = linked.map((m) => m.id);
+  const { data: hist } = ids.length ? await supabase.from('dupr_rating_history').select('club_member_id, doubles, singles, recorded_at').in('club_member_id', ids).order('recorded_at', { ascending: true }) : { data: [] };
+  const byMember = new Map();
+  for (const h of hist || []) byMember.set(h.club_member_id, [...(byMember.get(h.club_member_id) || []), h]);
+  const players = linked.map((m) => {
+    const h = byMember.get(m.id) || [];
+    const before = h.filter((x) => x.recorded_at < startIso);
+    const inside = h.filter((x) => x.recorded_at >= startIso);
+    const base = (before.length ? before[before.length - 1] : inside[0]) || null; // rating at the start of the period
+    const now = num(m.dupr_doubles);
+    const prev = h.length > 1 ? num(h[h.length - 2].doubles) : null;
+    return {
+      member_id: m.id,
+      full_name: m.full_name,
+      dupr_id: m.dupr_id,
+      doubles: now,
+      doubles_rel: m.dupr_doubles_rel,
+      singles: num(m.dupr_singles),
+      start: base ? num(base.doubles) : null,
+      change: base && now != null && base.doubles != null ? round3(now - Number(base.doubles)) : null,
+      last_change: prev != null && now != null ? round3(now - prev) : null,
+      points: [...(base && before.length ? [base] : []), ...inside].map((x) => ({ date: ymdOf(x.recorded_at), doubles: num(x.doubles), singles: num(x.singles) })),
+    };
+  });
+  const rated = players.filter((p) => p.doubles != null);
+  const { data: imports } = await supabase.from('club_dupr_imports').select('rows_total, duplicates, new_ids, linked_new, updated, created_at').eq('club_id', club.id).order('created_at', { ascending: false }).limit(12);
+
+  const list = await clubMatches(club, { from, all: true });
+  const scored = list.filter((m) => !m.no_score);
+  const block = new Map();
+  for (const m of scored) if (!m.exported_at && !m.ready) for (const n of m.missing) block.set(n, (block.get(n) || 0) + 1);
+  const bucket = (arr) => ({
+    total: arr.length,
+    exported: arr.filter((m) => m.exported_at).length,
+    ready: arr.filter((m) => !m.exported_at && m.ready).length,
+    blocked: arr.filter((m) => !m.exported_at && !m.ready && !m.no_score).length,
+    no_score: arr.filter((m) => m.no_score).length,
+  });
+  const byMonth = {};
+  for (const m of list) (byMonth[String(m.date).slice(0, 7)] = byMonth[String(m.date).slice(0, 7)] || []).push(m);
+  return {
+    months,
+    from,
+    members: { total: (mem || []).length, linked: linked.length, with_id: (mem || []).filter((m) => m.dupr_id).length },
+    ratings: {
+      avg_doubles: rated.length ? round3(rated.reduce((s2, p) => s2 + p.doubles, 0) / rated.length) : null,
+      up: players.filter((p) => p.change > 0).length,
+      down: players.filter((p) => p.change < 0).length,
+      same: players.filter((p) => p.change === 0).length,
+    },
+    players: players.sort((a, b) => (b.change ?? -99) - (a.change ?? -99) || (b.doubles ?? 0) - (a.doubles ?? 0)),
+    imports: imports || [],
+    matches: {
+      ...bucket(list),
+      by_source: Object.fromEntries(['event', 'club', 'tournament'].map((k) => [k, bucket(list.filter((m) => m.source === k))])),
+      by_month: Object.keys(byMonth).sort().map((k) => ({ month: k, ...bucket(byMonth[k]) })),
+      blockers: [...block.entries()].map(([name, n]) => ({ name, matches: n })).sort((a, b) => b.matches - a.matches).slice(0, 10),
+    },
+  };
+}
+
+// ---- the player's own DUPR (player pages) ------------------------------------------------
+// The newest ratings any of their clubs imported, and the history across clubs.
+async function playerDupr(userId) {
+  const { data: prof } = await supabase.from('player_profiles').select('dupr_id').eq('user_id', userId).maybeSingle();
+  const { data: mine } = await supabase.from('club_members').select('id, dupr_id, dupr_name, dupr_doubles, dupr_doubles_rel, dupr_singles, dupr_singles_rel, dupr_synced_at, clubs(name)').eq('user_id', userId);
+  const synced = (mine || []).filter((m) => m.dupr_id && m.dupr_synced_at).sort((a, b) => String(b.dupr_synced_at).localeCompare(String(a.dupr_synced_at)));
+  const top = synced[0] || null;
+  const dupr_id = prof?.dupr_id || top?.dupr_id || null;
+  if (!top) return { dupr_id, linked: false };
+  const ids = synced.filter((m) => m.dupr_id === top.dupr_id).map((m) => m.id);
+  const { data: hist } = await supabase.from('dupr_rating_history').select('doubles, singles, recorded_at').in('club_member_id', ids).order('recorded_at', { ascending: true }).limit(500);
+  const history = [];
+  for (const h of hist || []) {
+    const pt = { date: ymdOf(h.recorded_at), doubles: num(h.doubles), singles: num(h.singles) };
+    const last = history[history.length - 1];
+    if (last && last.doubles === pt.doubles && last.singles === pt.singles) continue; // same rating seen by another club
+    history.push(pt);
+  }
+  const prev = history.length > 1 ? history[history.length - 2] : null;
+  return {
+    dupr_id: top.dupr_id,
+    linked: true,
+    dupr_name: top.dupr_name,
+    doubles: num(top.dupr_doubles),
+    doubles_rel: top.dupr_doubles_rel,
+    singles: num(top.dupr_singles),
+    singles_rel: top.dupr_singles_rel,
+    synced_at: top.dupr_synced_at,
+    club_name: top.clubs?.name || null,
+    doubles_change: prev && prev.doubles != null && top.dupr_doubles != null ? round3(Number(top.dupr_doubles) - prev.doubles) : null,
+    singles_change: prev && prev.singles != null && top.dupr_singles != null ? round3(Number(top.dupr_singles) - prev.singles) : null,
+    history: history.slice(-50),
+  };
+}
+
+module.exports = { MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, clubMatches, matchesCsv, markExported, stats, playerDupr, TEMPLATE };

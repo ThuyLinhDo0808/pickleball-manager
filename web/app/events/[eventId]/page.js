@@ -1,4 +1,5 @@
 'use client';
+import DuprExport from '@/components/DuprExport';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
@@ -365,6 +366,7 @@ export default function EventDetailPage() {
             <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
           </div>
           <MatchList matches={matches || []} onChanged={reloadMatches} />
+          {event.club_id && sport === 'pickleball' && <DuprExport clubId={event.club_id} scope={{ event: eventId }} fileName={`dupr-${event.event_date}`} reloadKey={JSON.stringify((matches || []).map((m) => [m.id, m.team1_score, m.team2_score]))} />}
           <Modal open={showMatch} title={t('matches.add')} onClose={() => setShowMatch(false)}>
             {showMatch && (
               <MatchForm

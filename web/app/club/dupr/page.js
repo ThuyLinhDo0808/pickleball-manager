@@ -1,308 +1,112 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
 import SectionTabs from '@/components/ui/SectionTabs';
+import StatTile from '@/components/ui/StatTile';
+import KpiRow from '@/components/ui/KpiRow';
+import Segmented from '@/components/ui/Segmented';
+import { Change } from '@/components/DuprMembers';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const fmtDay = (d) => (d ? d.split('-').reverse().join('/') : '—');
 const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
-const todayYmd = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
-const TABS = ['members', 'import', 'matches'];
+const fmtMonth = (m) => `${Number(m.slice(5))}/${m.slice(2, 4)}`;
+// Match states, in the order they are stacked; each has its own colour and a label in the legend.
+const STATES = [
+  { key: 'exported', color: '#a3e635' },
+  { key: 'ready', color: '#38bdf8' },
+  { key: 'blocked', color: '#fbbf24' },
+  { key: 'no_score', color: '#6b7280' },
+];
 
-// DUPR without the partner API (pickleball): members' DUPR IDs and ratings, importing the
-// DUPR Club member list, and exporting matches in DUPR's "Import Matches via CSV" template.
-export default function DuprPage() {
+// Thống kê → DUPR (pickleball): statistics only — members' DUPR ratings going up / down, and
+// the club's matches: sent to DUPR, ready, blocked by a missing DUPR ID, without a score.
+// Managing IDs and importing the DUPR list live in Thành viên → DUPR; sending matches lives in
+// each kèo / session / tournament.
+export default function DuprStatsPage() {
   const { t } = useI18n();
   const { club } = useDefaultClub();
-  const [tab, setTab] = useState('members');
-  const { data: info, error, reload } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/dupr`) : Promise.resolve(null)), [club?.id]);
+  const [months, setMonths] = useState(3);
+  const [sort, setSort] = useState('change');
+  const { data: d, error } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}/dupr/stats?months=${months}`) : Promise.resolve(null)), [club?.id, months]);
   const notPickleball = error?.payload?.code === 'not_pickleball' || (club?.sport && club.sport !== 'pickleball');
+
+  const players = d ? [...d.players].sort((a, b) => (sort === 'rating' ? (b.doubles ?? -1) - (a.doubles ?? -1) : (b.change ?? -99) - (a.change ?? -99) || (b.doubles ?? -1) - (a.doubles ?? -1))) : [];
+  const m = d?.matches;
+  const scored = m ? m.total - m.no_score : 0;
 
   return (
     <AppShell>
-      <PageHeader icon="📈" title={t('dupr.title')} subtitle={club?.name} />
+      <PageHeader
+        icon="📈"
+        title={t('dupr.title')}
+        subtitle={club?.name}
+        actions={<Link href="/club/members?tab=dupr" className="btn-secondary text-sm">👥 {t('dupr.manageIds')}</Link>}
+      />
       <SectionTabs group="stats" />
       {notPickleball ? (
         <p className="card text-gray-300 text-sm">{t('dupr.onlyPickleball')}</p>
       ) : error ? (
         <p className="card text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>
+      ) : !d ? (
+        <p className="text-gray-400 text-sm">{t('common.loading')}</p>
       ) : (
-        <>
-          {info && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-              <div className="card !py-3">
-                <p className="text-gray-400 text-xs">{t('dupr.statLinked')}</p>
-                <p className="text-white text-2xl font-bold">{info.linked}<span className="text-gray-500 text-base font-normal">/{info.members}</span></p>
-              </div>
-              <div className="card !py-3">
-                <p className="text-gray-400 text-xs">{t('dupr.statSync')}</p>
-                <p className="text-white text-lg font-semibold">{info.last_sync ? new Date(info.last_sync).toLocaleDateString('vi-VN') : '—'}</p>
-              </div>
-              <ClubIdCard club={club} value={info.dupr_club_id} onSaved={reload} />
-            </div>
-          )}
-          <div className="flex gap-1 border-b border-navy-700 mb-4 overflow-x-auto no-scrollbar">
-            {TABS.map((k) => (
-              <button key={k} type="button" onClick={() => setTab(k)} className={`-mb-px border-b-2 px-4 py-2 text-sm whitespace-nowrap ${tab === k ? 'border-lime-400 text-lime-300 font-semibold' : 'border-transparent text-gray-400 hover:text-white'}`}>
-                {t(`dupr.tab_${k}`)}
-              </button>
-            ))}
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-gray-400 text-sm">{t('dupr.period', { from: d.from.split('-').reverse().join('/') })}</p>
+            <Segmented items={[1, 3, 6, 12]} value={months} onChange={setMonths} label={(k) => t('dupr.monthsN', { n: k })} />
           </div>
-          {club && tab === 'members' && <MembersTab club={club} onChanged={reload} />}
-          {club && tab === 'import' && <ImportTab club={club} onDone={() => { reload(); setTab('members'); }} />}
-          {club && tab === 'matches' && <MatchesTab club={club} />}
-        </>
-      )}
-    </AppShell>
-  );
-}
 
-function ClubIdCard({ club, value, onSaved }) {
-  const { t } = useI18n();
-  const [v, setV] = useState(value || '');
-  const [busy, setBusy] = useState(false);
-  useEffect(() => setV(value || ''), [value]);
-  const canEdit = !club?.role || ['owner', 'co_admin'].includes(club.role);
-  const save = async () => {
-    setBusy(true);
-    try {
-      await api.patch(`/api/clubs/${club.id}/dupr`, { dupr_club_id: v });
-      onSaved();
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="card !py-3 col-span-2 sm:col-span-1">
-      <label className="text-gray-400 text-xs" htmlFor="dupr-club">{t('dupr.clubId')}</label>
-      <div className="flex gap-2 mt-1">
-        <input id="dupr-club" className="input !py-1.5" value={v} disabled={!canEdit} placeholder={t('dupr.clubIdPh')} onChange={(e) => setV(e.target.value)} />
-        {canEdit && v !== (value || '') && <button type="button" className="btn-primary !py-1 text-sm" disabled={busy} onClick={save}>{t('common.save')}</button>}
-      </div>
-    </div>
-  );
-}
+          <KpiRow cols={4}>
+            <StatTile icon="🔗" label={t('dupr.statLinked')} value={`${d.members.linked}/${d.members.total}`} sub={t('dupr.withId', { n: d.members.with_id })} />
+            <StatTile icon="🎯" label={t('dupr.avgDoubles')} value={d.ratings.avg_doubles != null ? d.ratings.avg_doubles.toFixed(3) : '—'} tone="text-lime-300" sub={d.imports[0] ? t('dupr.updatedOn', { date: new Date(d.imports[0].created_at).toLocaleDateString('vi-VN') }) : t('dupr.neverImported')} />
+            <StatTile icon="📊" label={t('dupr.upDown')} value={<><span className="text-lime-300">▲{d.ratings.up}</span> <span className="text-red-300">▼{d.ratings.down}</span></>} sub={t('dupr.sameN', { n: d.ratings.same })} />
+            <StatTile icon="📤" label={t('dupr.sentLabel')} value={`${m.exported}/${scored}`} tone="text-sky-300" sub={m.blocked ? t('dupr.blockedN', { n: m.blocked }) : t('dupr.readyN', { n: m.ready })} />
+          </KpiRow>
 
-// ---- members ---------------------------------------------------------------------------
-function statusOf(m) {
-  if (m.dupr_id && m.dupr_verified_at) return 'linked';
-  if (m.dupr_id) return 'pending';
-  return 'none';
-}
-const STATUS_TONE = { linked: 'border-lime-400/60 text-lime-300', pending: 'border-amber-300/60 text-amber-200', none: 'border-navy-500 text-gray-400' };
-
-function MembersTab({ club, onChanged }) {
-  const { t } = useI18n();
-  const [filter, setFilter] = useState('all');
-  const [edit, setEdit] = useState(null); // { id, value }
-  const [err, setErr] = useState('');
-  const { data: members, reload } = useLoad(() => api.get(`/api/clubs/${club.id}/members`), [club.id]);
-  const list = (members || []).filter((m) => filter === 'all' || statusOf(m) === filter);
-  const counts = (members || []).reduce((c, m) => ({ ...c, [statusOf(m)]: (c[statusOf(m)] || 0) + 1 }), {});
-
-  const saveId = async () => {
-    setErr('');
-    try {
-      await api.patch(`/api/clubs/${club.id}/members/${edit.id}/dupr`, { dupr_id: edit.value });
-      setEdit(null);
-      reload();
-      onChanged();
-    } catch (e) {
-      setErr(e.message);
-    }
-  };
-
-  return (
-    <section className="card">
-      <p className="text-gray-400 text-sm mb-3">{t('dupr.membersHint')}</p>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {['all', 'linked', 'pending', 'none'].map((f) => (
-          <button key={f} type="button" onClick={() => setFilter(f)} className={`text-xs rounded-full border px-3 py-1 ${filter === f ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300'}`}>
-            {t(`dupr.filter_${f}`)} {f === 'all' ? (members || []).length : counts[f] || 0}
-          </button>
-        ))}
-      </div>
-      {err && <p className="text-red-400 text-sm mb-2">{err}</p>}
-      <div className="table-wrap">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-gray-400 text-xs text-left border-b border-navy-700">
-              <th className="py-2 pr-2">{t('dupr.col_member')}</th>
-              <th className="py-2 pr-2">{t('dupr.col_id')}</th>
-              <th className="py-2 pr-2">{t('dupr.col_duprName')}</th>
-              <th className="py-2 pr-2 text-right">{t('dupr.col_doubles')}</th>
-              <th className="py-2 pr-2 text-right">{t('dupr.col_singles')}</th>
-              <th className="py-2">{t('dupr.col_status')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((m) => {
-              const st = statusOf(m);
-              return (
-                <tr key={m.id} className="border-b border-navy-800">
-                  <td className="py-2 pr-2 text-white">{m.full_name}</td>
-                  <td className="py-2 pr-2">
-                    {edit?.id === m.id ? (
-                      <span className="flex gap-1">
-                        <input className="input !py-1 !w-28 uppercase" autoFocus maxLength={10} value={edit.value} onChange={(e) => setEdit({ ...edit, value: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} onKeyDown={(e) => e.key === 'Enter' && saveId()} />
-                        <button type="button" className="text-lime-300 text-xs" onClick={saveId}>{t('common.save')}</button>
-                        <button type="button" className="text-gray-400 text-xs" onClick={() => setEdit(null)}>✕</button>
-                      </span>
-                    ) : (
-                      <button type="button" className="font-mono text-gray-200 hover:underline" onClick={() => setEdit({ id: m.id, value: m.dupr_id || '' })}>
-                        {m.dupr_id || <span className="text-gray-500 font-sans">+ {t('dupr.addId')}</span>}
-                      </button>
-                    )}
-                  </td>
-                  <td className="py-2 pr-2 text-gray-300">{m.dupr_name || '—'}</td>
-                  <td className="py-2 pr-2 text-right tabular-nums">
-                    {m.dupr_synced_at ? <span className="text-white">{fmtRating(m.dupr_doubles)}</span> : '—'}
-                    {m.dupr_doubles_rel != null && m.dupr_synced_at && <span className="block text-[11px] text-gray-500">{t('dupr.rel', { n: m.dupr_doubles_rel })}</span>}
-                  </td>
-                  <td className="py-2 pr-2 text-right tabular-nums text-gray-300">{m.dupr_synced_at ? fmtRating(m.dupr_singles) : '—'}</td>
-                  <td className="py-2">
-                    <span className={`text-[11px] rounded border px-1.5 py-0.5 whitespace-nowrap ${STATUS_TONE[st]}`}>{t(`dupr.status_${st}`)}</span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {!list.length && <p className="text-gray-500 text-sm mt-2">—</p>}
-    </section>
-  );
-}
-
-// ---- import the DUPR Club member list ------------------------------------------------
-function ImportTab({ club, onDone }) {
-  const { t } = useI18n();
-  const [csv, setCsv] = useState('');
-  const [fileName, setFileName] = useState('');
-  const [pv, setPv] = useState(null);
-  const [keep, setKeep] = useState({}); // member_id -> bool (matched rows)
-  const [pair, setPair] = useState({}); // dupr_id -> member_id (file rows not linked yet)
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const [done, setDone] = useState(null);
-
-  const pick = async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setErr('');
-    setDone(null);
-    setFileName(f.name);
-    const text = await f.text();
-    setCsv(text);
-    setBusy(true);
-    try {
-      const r = await api.post(`/api/clubs/${club.id}/dupr/preview`, { csv: text });
-      setPv(r);
-      setKeep(Object.fromEntries(r.matched.map((m) => [m.member_id, !m.duplicate && (m.verified || m.name_fits)])));
-      setPair({});
-    } catch (e2) {
-      setErr(e2.message);
-      setPv(null);
-    } finally {
-      setBusy(false);
-      e.target.value = '';
-    }
-  };
-
-  const links = pv
-    ? [
-        ...pv.matched.filter((m) => keep[m.member_id]).map((m) => ({ member_id: m.member_id, dupr_id: m.dupr_id })),
-        ...Object.entries(pair).filter(([, mid]) => mid).map(([dupr_id, member_id]) => ({ member_id, dupr_id })),
-      ]
-    : [];
-  const pickedMembers = new Set(Object.values(pair).filter(Boolean));
-
-  const apply = async () => {
-    setBusy(true);
-    setErr('');
-    try {
-      const r = await api.post(`/api/clubs/${club.id}/dupr/apply`, { csv, links });
-      setDone(r);
-      setPv(null);
-      setCsv('');
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-4">
-      <section className="card">
-        <h2 className="text-white font-semibold">{t('dupr.importTitle')}</h2>
-        <ol className="text-gray-300 text-sm list-decimal pl-5 mt-2 space-y-1">
-          <li>{t('dupr.importStep1')}</li>
-          <li>{t('dupr.importStep2')}</li>
-          <li>{t('dupr.importStep3')}</li>
-        </ol>
-        <label className="btn-primary inline-block mt-3 cursor-pointer">
-          📂 {busy && !pv ? t('common.loading') : t('dupr.chooseFile')}
-          <input type="file" accept=".csv,text/csv" className="hidden" onChange={pick} />
-        </label>
-        {fileName && <span className="ml-2 text-gray-400 text-xs">{fileName}</span>}
-        {err && <p className="text-red-400 text-sm mt-2">{err}</p>}
-        {done && (
-          <p className="text-lime-300 text-sm mt-3">
-            ✓ {t('dupr.importDone', { n: done.linked, l: done.levels_changed })}{' '}
-            <button type="button" className="underline" onClick={onDone}>{t('dupr.seeMembers')}</button>
-          </p>
-        )}
-      </section>
-
-      {pv && (
-        <>
-          <section className="card">
-            <h3 className="text-white font-semibold">{t('dupr.matchedTitle', { n: pv.matched.length, total: pv.total })}</h3>
-            <p className="text-gray-400 text-xs mb-2">{t('dupr.matchedHint')}</p>
-            {pv.matched.length === 0 ? (
-              <p className="text-gray-500 text-sm">{t('dupr.matchedNone')}</p>
+          {/* Ratings per member */}
+          <section className="card !p-0 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
+              <div>
+                <h2 className="text-white font-semibold">{t('dupr.ratingsTitle')}</h2>
+                <p className="text-gray-400 text-xs mt-0.5">{t('dupr.ratingsHint')}</p>
+              </div>
+              <Segmented items={['change', 'rating']} value={sort} onChange={setSort} label={(k) => t(`dupr.sort_${k}`)} />
+            </div>
+            {players.length === 0 ? (
+              <p className="text-gray-500 text-sm px-4 pb-4">{t('dupr.noLinked')} <Link href="/club/members?tab=dupr" className="underline text-lime-300">{t('dupr.manageIds')}</Link></p>
             ) : (
               <div className="table-wrap">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-gray-400 text-xs text-left border-b border-navy-700">
-                      <th className="py-2 w-8" />
-                      <th className="py-2 pr-2">{t('dupr.col_member')}</th>
-                      <th className="py-2 pr-2">{t('dupr.col_id')}</th>
-                      <th className="py-2 pr-2">{t('dupr.col_duprName')}</th>
-                      <th className="py-2 text-right">{t('dupr.col_doubles')}</th>
+                      <th className="py-2 px-4 font-medium">{t('dupr.col_member')}</th>
+                      <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_doubles')}</th>
+                      <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_change', { n: months })}</th>
+                      <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_last')}</th>
+                      <th className="py-2 pr-3 font-medium">{t('dupr.col_trend')}</th>
+                      <th className="py-2 pr-4 font-medium text-right">{t('dupr.col_singles')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pv.matched.map((m) => (
-                      <tr key={m.member_id} className={`border-b border-navy-800 ${!m.name_fits || m.duplicate ? 'bg-amber-300/5' : ''}`}>
-                        <td className="py-2">
-                          <input type="checkbox" aria-label={m.full_name} checked={!!keep[m.member_id]} disabled={m.duplicate} onChange={(e) => setKeep({ ...keep, [m.member_id]: e.target.checked })} />
+                    {players.map((p) => (
+                      <tr key={p.member_id} className="border-b border-navy-800 last:border-0 tabular-nums">
+                        <td className="py-2 px-4">
+                          <span className="text-white">{p.full_name}</span>
+                          <span className="block font-mono text-[11px] text-gray-500">{p.dupr_id}</span>
                         </td>
-                        <td className="py-2 pr-2 text-white">
-                          {m.full_name}
-                          {m.from_profile && <span className="block text-[11px] text-gray-500">{t('dupr.fromProfile')}</span>}
+                        <td className="py-2 pr-3 text-right">
+                          <span className="text-white font-semibold">{fmtRating(p.doubles)}</span>
+                          {p.doubles_rel != null && <span className="block text-[11px] text-gray-500">{t('dupr.rel', { n: p.doubles_rel })}</span>}
                         </td>
-                        <td className="py-2 pr-2 font-mono text-gray-200">{m.dupr_id}</td>
-                        <td className="py-2 pr-2">
-                          <span className="text-gray-200">{m.dupr_name}</span>
-                          {m.duplicate ? (
-                            <span className="block text-[11px] text-red-300">⚠ {t('dupr.duplicate')}</span>
-                          ) : !m.name_fits ? (
-                            <span className="block text-[11px] text-amber-200">⚠ {t('dupr.nameMismatch')}</span>
-                          ) : m.verified ? (
-                            <span className="block text-[11px] text-lime-300">✓ {t('dupr.status_linked')}</span>
-                          ) : null}
-                        </td>
-                        <td className="py-2 text-right tabular-nums">
-                          {m.old_doubles != null && Number(m.old_doubles) !== m.doubles && <span className="text-gray-500 line-through mr-1">{fmtRating(m.old_doubles)}</span>}
-                          <span className="text-white">{fmtRating(m.doubles)}</span>
-                        </td>
+                        <td className="py-2 pr-3 text-right">{p.change ? <Change v={p.change} className="!text-sm" /> : <span className="text-gray-500">—</span>}</td>
+                        <td className="py-2 pr-3 text-right">{p.last_change ? <Change v={p.last_change} /> : <span className="text-gray-500 text-xs">—</span>}</td>
+                        <td className="py-2 pr-3"><Spark points={p.points} label={t('dupr.trendOf', { name: p.full_name })} /></td>
+                        <td className="py-2 pr-4 text-right text-gray-300">{fmtRating(p.singles)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -311,177 +115,143 @@ function ImportTab({ club, onDone }) {
             )}
           </section>
 
-          {pv.unlinked.length > 0 && (
-            <section className="card">
-              <h3 className="text-white font-semibold">{t('dupr.unlinkedTitle', { n: pv.unlinked.length })}</h3>
-              <p className="text-gray-400 text-xs mb-2">{t('dupr.unlinkedHint')}</p>
-              <div className="flex flex-col divide-y divide-navy-800 max-h-[28rem] overflow-y-auto">
-                {pv.unlinked.map((r) => {
-                  const options = [...r.suggestions, ...pv.free_members.filter((m) => !r.suggestions.some((s) => s.member_id === m.member_id))];
-                  return (
-                    <div key={r.dupr_id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
-                      <span className="min-w-0 flex-1">
-                        <span className="text-white">{r.name}</span> <span className="font-mono text-gray-400 text-xs">{r.dupr_id}</span>
-                        <span className="text-gray-500 text-xs"> · {fmtRating(r.doubles)}</span>
-                      </span>
-                      <select className="input !py-1 !w-56 text-sm" value={pair[r.dupr_id] || ''} onChange={(e) => setPair({ ...pair, [r.dupr_id]: e.target.value })}>
-                        <option value="">{t('dupr.noPair')}</option>
-                        {options.map((m) => (
-                          <option key={m.member_id} value={m.member_id} disabled={pickedMembers.has(m.member_id) && pair[r.dupr_id] !== m.member_id}>
-                            {r.suggestions.some((s) => s.member_id === m.member_id) ? '★ ' : ''}{m.full_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })}
+          {/* Matches and DUPR */}
+          <section className="card">
+            <h2 className="text-white font-semibold">{t('dupr.matchesTitle')}</h2>
+            <p className="text-gray-400 text-xs mt-0.5">{t('dupr.matchesHint')}</p>
+            <Legend />
+            {m.total === 0 ? (
+              <p className="text-gray-500 text-sm mt-3">{t('dupr.noMatches')}</p>
+            ) : (
+              <>
+                <div className="mt-3 flex flex-col gap-2">
+                  {m.by_month.map((row) => (
+                    <StackRow key={row.month} label={fmtMonth(row.month)} row={row} max={Math.max(...m.by_month.map((x) => x.total))} />
+                  ))}
+                </div>
+                <div className="table-wrap mt-4">
+                  <table className="w-full text-sm tabular-nums">
+                    <thead>
+                      <tr className="text-gray-400 text-xs text-left border-b border-navy-700">
+                        <th className="py-2 pr-3 font-medium">{t('dupr.col_source')}</th>
+                        <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_total')}</th>
+                        {STATES.map((s) => <th key={s.key} className="py-2 pr-3 font-medium text-right">{t(`dupr.state_${s.key}`)}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {['event', 'club', 'tournament'].filter((k) => m.by_source[k].total).map((k) => (
+                        <tr key={k} className="border-b border-navy-800 last:border-0">
+                          <td className="py-2 pr-3 text-white">{t(`dupr.source_${k}`)}</td>
+                          <td className="py-2 pr-3 text-right text-white">{m.by_source[k].total}</td>
+                          {STATES.map((s) => <td key={s.key} className="py-2 pr-3 text-right text-gray-200">{m.by_source[k][s.key] || '—'}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            {m.blockers.length > 0 && (
+              <div className="mt-4 rounded-xl border border-amber-300/40 bg-amber-300/5 p-3">
+                <p className="text-amber-200 text-sm font-semibold">⚠ {t('dupr.blockersTitle')}</p>
+                <p className="text-gray-400 text-xs mt-0.5">{t('dupr.blockersHint')}</p>
+                <ul className="mt-2 flex flex-wrap gap-2 text-sm">
+                  {m.blockers.map((b) => (
+                    <li key={b.name} className="rounded-full border border-navy-600 px-2.5 py-0.5 text-gray-200">
+                      {b.name} <span className="text-gray-400 text-xs">· {t('dupr.nMatches', { n: b.matches })}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </section>
-          )}
+            )}
+          </section>
 
-          {pv.not_in_file.length > 0 && (
-            <section className="card border-amber-300/40">
-              <h3 className="text-amber-200 font-semibold">{t('dupr.notInFileTitle', { n: pv.not_in_file.length })}</h3>
-              <p className="text-gray-400 text-xs mb-2">{t('dupr.notInFileHint')}</p>
-              <p className="text-gray-200 text-sm">{pv.not_in_file.map((m) => `${m.full_name} (${m.dupr_id})`).join(' · ')}</p>
-            </section>
-          )}
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="button" className="btn-primary" disabled={busy || !links.length} onClick={apply}>{busy ? t('common.loading') : t('dupr.applyN', { n: links.length })}</button>
-            <button type="button" className="btn-secondary" disabled={busy} onClick={() => setPv(null)}>{t('common.cancel')}</button>
-          </div>
-        </>
+          {/* Import history */}
+          <section className="card">
+            <h2 className="text-white font-semibold mb-2">{t('dupr.importsTitle')}</h2>
+            {d.imports.length === 0 ? (
+              <p className="text-gray-500 text-sm">{t('dupr.neverImported')}</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="w-full text-sm tabular-nums">
+                  <thead>
+                    <tr className="text-gray-400 text-xs text-left border-b border-navy-700">
+                      <th className="py-2 pr-3 font-medium">{t('dupr.col_date')}</th>
+                      <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_rows')}</th>
+                      <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_newIds')}</th>
+                      <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_linkedNew')}</th>
+                      <th className="py-2 pr-3 font-medium text-right">{t('dupr.col_updated')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.imports.map((x) => (
+                      <tr key={x.created_at} className="border-b border-navy-800 last:border-0">
+                        <td className="py-2 pr-3 text-gray-200">{new Date(x.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                        <td className="py-2 pr-3 text-right text-gray-200">{x.rows_total}{x.duplicates > 0 && <span className="text-gray-500 text-xs"> (−{x.duplicates})</span>}</td>
+                        <td className="py-2 pr-3 text-right text-gray-200">{x.new_ids}</td>
+                        <td className="py-2 pr-3 text-right text-lime-300">{x.linked_new}</td>
+                        <td className="py-2 pr-3 text-right text-gray-200">{x.updated}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
       )}
+    </AppShell>
+  );
+}
+
+function Legend() {
+  const { t } = useI18n();
+  return (
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-gray-300">
+      {STATES.map((s) => (
+        <li key={s.key} className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: s.color }} aria-hidden="true" />
+          {t(`dupr.state_${s.key}`)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// One month: a stacked bar (sent / ready / blocked / no score), 2px gaps between segments.
+function StackRow({ label, row, max }) {
+  const { t } = useI18n();
+  const tip = STATES.map((s) => `${t(`dupr.state_${s.key}`)}: ${row[s.key]}`).join(' · ');
+  return (
+    <div className="flex items-center gap-3 text-xs" title={tip}>
+      <span className="w-10 shrink-0 text-gray-400 tabular-nums">{label}</span>
+      <div className="flex-1 flex gap-[2px] h-4" role="img" aria-label={`${label}: ${tip}`} style={{ maxWidth: `${(row.total / max) * 100}%` }}>
+        {STATES.filter((s) => row[s.key] > 0).map((s, i, arr) => (
+          <span key={s.key} className={`h-full ${i === arr.length - 1 ? 'rounded-r' : ''} ${i === 0 ? 'rounded-l' : ''}`} style={{ background: s.color, flex: row[s.key] }} />
+        ))}
+      </div>
+      <span className="w-8 text-right text-gray-300 tabular-nums">{row.total}</span>
     </div>
   );
 }
 
-// ---- export matches -----------------------------------------------------------------------
-function MatchesTab({ club }) {
-  const { t } = useI18n();
-  const today = todayYmd();
-  const [from, setFrom] = useState(today.slice(0, 8) + '01');
-  const [to, setTo] = useState(today);
-  const [all, setAll] = useState(false);
-  const [scoreType, setScoreType] = useState('SIDEOUT');
-  const [lastExport, setLastExport] = useState(null); // { items, count }
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const { data, reload } = useLoad(() => api.get(`/api/clubs/${club.id}/dupr/matches?from=${from}&to=${to}${all ? '&all=1' : ''}`), [club.id, from, to, all]);
-  const list = data?.matches || [];
-  const ready = list.filter((m) => m.ready && !m.exported_at);
-  const missing = list.filter((m) => !m.ready && !m.no_score);
-
-  const download = async () => {
-    setBusy(true);
-    setErr('');
-    try {
-      const r = await api.post(`/api/clubs/${club.id}/dupr/matches/csv`, { from, to, score_type: scoreType, items: ready.map((m) => ({ kind: m.kind, id: m.id })) });
-      const blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `dupr-matches-${from}-${to}.csv`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      setLastExport({ items: r.items, count: r.count });
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const mark = async (items, exported) => {
-    setBusy(true);
-    setErr('');
-    try {
-      await api.post(`/api/clubs/${club.id}/dupr/matches/mark`, { items, exported });
-      if (exported) setLastExport(null);
-      reload();
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const team = (ps) => ps.map((p) => p.name).join(' / ');
-
+// Small doubles-rating trend line (one point per import where the rating changed).
+function Spark({ points, label }) {
+  const vals = (points || []).map((p) => p.doubles).filter((v) => v != null);
+  if (vals.length < 2) return <span className="text-gray-600 text-xs">—</span>;
+  const w = 84;
+  const h = 24;
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const span = hi - lo || 1;
+  const xy = vals.map((v, i) => [2 + (i * (w - 4)) / (vals.length - 1), h - 3 - ((v - lo) / span) * (h - 6)]);
+  const up = vals[vals.length - 1] >= vals[0];
+  const color = up ? '#a3e635' : '#f87171';
   return (
-    <div className="flex flex-col gap-4">
-      <section className="card">
-        <h2 className="text-white font-semibold">{t('dupr.exportTitle')}</h2>
-        <ol className="text-gray-300 text-sm list-decimal pl-5 mt-2 space-y-1">
-          <li>{t('dupr.exportStep1')}</li>
-          <li>{t('dupr.exportStep2')}</li>
-          <li>{t('dupr.exportStep3')}</li>
-        </ol>
-        <p className="text-gray-500 text-xs mt-2">{t('dupr.exportNote')}</p>
-        <div className="flex flex-wrap items-end gap-3 mt-3">
-          <label className="text-xs text-gray-400">
-            {t('dupr.from')}
-            <input type="date" className="input !py-1.5 mt-1" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label className="text-xs text-gray-400">
-            {t('dupr.to')}
-            <input type="date" className="input !py-1.5 mt-1" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
-          </label>
-          <label className="text-xs text-gray-400">
-            {t('dupr.scoreType')}
-            <select className="input !py-1.5 mt-1" value={scoreType} onChange={(e) => setScoreType(e.target.value)}>
-              <option value="SIDEOUT">{t('dupr.sideout')}</option>
-              <option value="RALLY">{t('dupr.rally')}</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-300 pb-2">
-            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
-            {t('dupr.showExported')}
-          </label>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-3">
-          <button type="button" className="btn-primary" disabled={busy || !ready.length} onClick={download}>⬇ {t('dupr.downloadN', { n: ready.length })}</button>
-          {lastExport && lastExport.count > 0 && (
-            <button type="button" className="btn-secondary" disabled={busy} onClick={() => mark(lastExport.items, true)}>✓ {t('dupr.markN', { n: lastExport.count })}</button>
-          )}
-        </div>
-        {lastExport && lastExport.count > 0 && <p className="text-amber-200 text-xs mt-2">{t('dupr.markHint')}</p>}
-        {err && <p className="text-red-400 text-sm mt-2">{err}</p>}
-        {missing.length > 0 && <p className="text-amber-200 text-sm mt-3">⚠ {t('dupr.missingN', { n: missing.length })}</p>}
-      </section>
-
-      <section className="card">
-        {list.length === 0 ? (
-          <p className="text-gray-500 text-sm">{t('dupr.noMatches')}</p>
-        ) : (
-          <div className="flex flex-col divide-y divide-navy-800">
-            {list.map((m) => (
-              <div key={`${m.kind}:${m.id}`} className="py-2.5 flex flex-wrap items-start gap-x-3 gap-y-1 text-sm">
-                <span className="text-gray-400 text-xs w-20 shrink-0 pt-0.5">{fmtDay(m.date)}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="text-white">{team(m.a)}</span> <span className="text-gray-500">vs</span> <span className="text-white">{team(m.b)}</span>
-                  <span className="block text-gray-500 text-xs">
-                    {m.event || '—'} · {m.type === 'S' ? t('dupr.singles') : t('dupr.doubles')}
-                    {m.games.length > 0 && ` · ${m.games.map(([a, b]) => `${a}-${b}`).join(', ')}`}
-                  </span>
-                </span>
-                <span className="text-xs shrink-0">
-                  {m.exported_at ? (
-                    <span className="text-gray-400">
-                      ✓ {t('dupr.exportedOn', { date: new Date(m.exported_at).toLocaleDateString('vi-VN') })}{' '}
-                      <button type="button" className="underline" disabled={busy} onClick={() => mark([{ kind: m.kind, id: m.id }], false)}>{t('dupr.unmark')}</button>
-                    </span>
-                  ) : m.ready ? (
-                    <span className="text-lime-300">{t('dupr.ready')}</span>
-                  ) : m.no_score ? (
-                    <span className="text-gray-500">{t('dupr.noScore')}</span>
-                  ) : (
-                    <span className="text-amber-200">{t('dupr.missing', { names: m.missing.join(', ') })}</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`${label}: ${vals.map((v) => v.toFixed(3)).join(' → ')}`}>
+      <title>{vals.map((v) => v.toFixed(3)).join(' → ')}</title>
+      <polyline points={xy.map((p) => p.join(',')).join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={xy[xy.length - 1][0]} cy={xy[xy.length - 1][1]} r="2.5" fill={color} />
+    </svg>
   );
 }

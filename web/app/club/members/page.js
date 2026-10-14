@@ -1,7 +1,7 @@
 'use client';
 import LevelInput from '@/components/LevelInput';
 import { levelText } from '@/lib/levels';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
@@ -25,6 +25,7 @@ import BirthInput, { birthPayload } from '@/components/BirthInput';
 import { ReviewModal, ReviewTab, InviteModal } from '@/components/MemberModeration';
 import { exportMembers } from '@/lib/exportExcel';
 import ImportMembers from '@/components/ImportMembers';
+import DuprMembers from '@/components/DuprMembers';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
@@ -54,6 +55,11 @@ export default function MembersPage() {
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState('fixed');
+  // Deep link (e.g. from Thống kê → DUPR): /club/members?tab=dupr
+  useEffect(() => {
+    const want = new URLSearchParams(window.location.search).get('tab');
+    if (['fixed', 'guest', 'review', 'waiting', 'dupr'].includes(want)) setTab(want);
+  }, []);
   const [query, setQuery] = useState('');
   const [gender, setGender] = useState('all');
   const [sortBy, setSortBy] = useState('default');
@@ -212,13 +218,16 @@ export default function MembersPage() {
           { key: 'guest', label: t('requests.tabGuest'), icon: '🤝', count: guestRows.length },
           { key: 'review', label: t('mod.tab'), icon: '⚠️', count: reviewRows.length },
           { key: 'waiting', label: t('requests.tabWaiting'), icon: '📝', alert: pending.length },
+          // DUPR (pickleball): members' DUPR IDs and ratings, import of the DUPR Club list.
+          ...((club?.sport || 'pickleball') === 'pickleball' ? [{ key: 'dupr', label: 'DUPR', icon: '📈' }] : []),
         ]}
       />
 
       {tab === 'waiting' && <MemberRequests club={club} requests={pending} onChanged={() => { reloadRequests(); reload(); }} />}
+      {tab === 'dupr' && club && <DuprMembers club={club} />}
       {tab === 'review' && club && <ReviewTab club={club} members={reviewRows} onChanged={() => { reloadRequests(); reload(); }} />}
 
-      {!['waiting', 'review'].includes(tab) && pending.length > 0 && (
+      {!['waiting', 'review', 'dupr'].includes(tab) && pending.length > 0 && (
         <button className="w-full text-left rounded-xl border border-yellow-400/40 bg-yellow-400/5 px-4 py-2.5 mb-3 text-sm" onClick={() => pickTab('waiting')}>
           <span className="text-yellow-300 font-semibold">📝 {t('requests.banner', { n: pending.length })}</span>{' '}
           <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
@@ -241,7 +250,7 @@ export default function MembersPage() {
 
       {isGuestTab && club && <GuestPerkSettings />}
 
-      {!['waiting', 'review'].includes(tab) && (
+      {!['waiting', 'review', 'dupr'].includes(tab) && (
         <section className="card !p-0 overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
             <div className="relative flex-1 min-w-[12rem]">

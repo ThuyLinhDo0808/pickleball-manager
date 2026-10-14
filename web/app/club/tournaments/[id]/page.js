@@ -1,5 +1,6 @@
 'use client';
 import Podium from '@/components/Podium';
+import DuprExport from '@/components/DuprExport';
 import { gamesText } from '@/components/GamesInput';
 import ScoreEntry from '@/components/ScoreEntry';
 import { minutesText } from '@/lib/live';
@@ -342,6 +343,15 @@ export default function TournamentPage() {
         </>
         );
       })()}
+
+      {tour.club_id && sport === 'pickleball' && (
+        <DuprExport
+          clubId={tour.club_id}
+          scope={{ tournament: id }}
+          fileName={`dupr-${tour.name}`}
+          reloadKey={JSON.stringify(tour.matches.map((m) => [m.id, m.team1_score, m.team2_score, (m.subs || []).map((x) => x.team1_score)]))}
+        />
+      )}
 
       <Modal open={!!scoring} title={t('tournaments.enterScore')} onClose={() => setScoring(null)}>
         {scoring && <ScoreForm match={scoring} teamName={teamName} onSave={saveScore} onClear={clearScore} onCancel={() => setScoring(null)} />}

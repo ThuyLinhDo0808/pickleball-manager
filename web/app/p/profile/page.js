@@ -1,4 +1,5 @@
 'use client';
+import DuprCard from '@/components/DuprCard';
 import DeleteAccount from '@/components/DeleteAccount';
 import AccountSecurity from '@/components/AccountSecurity';
 import MyData from '@/components/MyData';
@@ -42,11 +43,13 @@ export default function PlayerProfile() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [dupr, setDupr] = useState(null); // ratings from the clubs' DUPR imports
 
   useEffect(() => {
     if (!user) return;
     api.get('/api/player/me').then((me) => {
       setEmail(me.email);
+      setDupr(me.dupr || null);
       if (me.profile) {
         const p = me.profile;
         setForm({ ...empty, ...p, dupr_level: p.dupr_level ?? '', dupr_id: p.dupr_id || '', badminton_level: p.badminton_level ?? '', birth_date: p.birth_date || '', gender: p.gender || '' });
@@ -74,6 +77,7 @@ export default function PlayerProfile() {
     try {
       await api.put('/api/player/profile', form);
       setSaved(true);
+      api.get('/api/player/me').then((me) => setDupr(me.dupr || null)).catch(() => {});
       // Came here from a join page? Go back to finish joining.
       const next = new URLSearchParams(window.location.search).get('next');
       if (next && next.startsWith('/') && !next.startsWith('//')) router.push(next);
@@ -133,6 +137,11 @@ export default function PlayerProfile() {
             onChange={(e) => setForm({ ...form, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })}
           />
           <p className="text-gray-500 text-xs mt-1">{t('dupr.idHow')}</p>
+          {dupr && (dupr.linked || dupr.dupr_id) && (
+            <div className="mt-2">
+              <DuprCard dupr={dupr} showLink={false} />
+            </div>
+          )}
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('level.badmintonProfile')}</label>

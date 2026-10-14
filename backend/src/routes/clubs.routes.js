@@ -1306,17 +1306,20 @@ async function duprGate(req, res) {
 }
 const ymd = (v, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : fallback);
 
+// Overview: club DUPR ID, members linked, the club's DUPR list size, last import.
 router.get('/:clubId/dupr', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
-    const { data, error } = await supabase.from('club_members').select('dupr_id, dupr_verified_at, dupr_synced_at').eq('club_id', req.club.id);
+    const { data, error } = await supabase.from('club_members').select('dupr_id, dupr_synced_at').eq('club_id', req.club.id);
     if (error) throw error;
-    const synced = (data || []).map((m) => m.dupr_synced_at).filter(Boolean).sort();
+    const { count } = await supabase.from('club_dupr_roster').select('dupr_id', { count: 'exact', head: true }).eq('club_id', req.club.id);
+    const { data: last } = await supabase.from('club_dupr_imports').select('created_at').eq('club_id', req.club.id).order('created_at', { ascending: false }).limit(1);
     res.json({
       dupr_club_id: req.club.dupr_club_id || null,
       members: (data || []).length,
-      linked: (data || []).filter((m) => m.dupr_id && m.dupr_verified_at).length,
-      last_sync: synced.length ? synced[synced.length - 1] : null,
+      linked: (data || []).filter((m) => m.dupr_id && m.dupr_synced_at).length,
+      roster_size: count || 0,
+      last_sync: last?.[0]?.created_at || null,
     });
   } catch (err) {
     duprErr(res, err);
@@ -1334,18 +1337,20 @@ router.patch('/:clubId/dupr', async (req, res) => {
     duprErr(res, err);
   }
 });
-router.post('/:clubId/dupr/preview', async (req, res) => {
+// The DUPR tab of the members page.
+router.get('/:clubId/dupr/members', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
-    res.json(await dupr.preview(req.club, req.body?.csv));
+    res.json(await dupr.memberBoard(req.club));
   } catch (err) {
     duprErr(res, err);
   }
 });
-router.post('/:clubId/dupr/apply', async (req, res) => {
+// Import the DUPR Club member export: links members automatically by DUPR ID.
+router.post('/:clubId/dupr/import', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
-    res.json(await dupr.apply(req.club, req.body?.csv, req.body?.links));
+    res.json(await dupr.importRoster(req.club, req.body?.csv, req.hostId));
   } catch (err) {
     duprErr(res, err);
   }
@@ -1359,14 +1364,33 @@ router.patch('/:clubId/members/:memberId/dupr', async (req, res) => {
     duprErr(res, err);
   }
 });
-// Matches of a period, ready for DUPR or not (and why).
+// DUPR statistics (Thống kê → DUPR): ratings up / down, matches sent or not.
+router.get('/:clubId/dupr/stats', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    const months = [1, 3, 6, 12].includes(Number(req.query.months)) ? Number(req.query.months) : 3;
+    res.json(await dupr.stats(req.club, { months }));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+// Matches of one event (kèo / session) or one tournament — or of a period — ready for DUPR or
+// not (and why).
+const duprScope = (src) => {
+  const o = { all: src.all === '1' || src.all === true };
+  if (isUuid(src.event)) o.event = src.event;
+  else if (isUuid(src.tournament)) o.tournament = src.tournament;
+  else if (src.scope === 'club') o.clubOnly = true;
+  else {
+    o.from = ymd(src.from, '2000-01-01');
+    o.to = ymd(src.to, '2999-12-31');
+  }
+  return o;
+};
 router.get('/:clubId/dupr/matches', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
-    const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
-    const from = ymd(req.query.from, today.slice(0, 8) + '01');
-    const to = ymd(req.query.to, today);
-    res.json({ from, to, matches: await dupr.clubMatches(req.club, from, to, req.query.all === '1') });
+    res.json({ matches: await dupr.clubMatches(req.club, duprScope(req.query)) });
   } catch (err) {
     duprErr(res, err);
   }
@@ -1376,8 +1400,7 @@ router.post('/:clubId/dupr/matches/csv', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
     const b = req.body || {};
-    const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
-    let list = await dupr.clubMatches(req.club, ymd(b.from, '2000-01-01'), ymd(b.to, today), !!b.all);
+    let list = await dupr.clubMatches(req.club, duprScope(b));
     if (Array.isArray(b.items) && b.items.length) {
       const want = new Set(b.items.map((i) => `${i?.kind}:${i?.id}`));
       list = list.filter((m) => want.has(`${m.kind}:${m.id}`));
