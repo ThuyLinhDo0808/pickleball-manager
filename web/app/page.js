@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import Landing from '@/components/Landing';
 
 // When Supabase can't use our /welcome link (not in its Redirect URLs) it sends the
 // confirmation result to the Site URL root instead. Grab it before the auth client
@@ -18,10 +19,11 @@ export default function Home() {
   useEffect(() => {
     if (LANDING) return window.location.replace(LANDING);
     if (loading) return;
-    if (!user) return router.replace('/sign-in');
-    // Everyone lands on the home hub: all their clubs and roles in one place.
-    router.replace('/home');
+    // Signed in: everyone lands on the home hub (all their clubs and roles in one place).
+    // Visitors see the landing page, then go on to sign up / sign in from it.
+    if (user) router.replace('/home');
   }, [loading, user, router]);
 
-  return <div className="min-h-screen bg-navy-950" />;
+  if (LANDING || loading || user) return <div className="min-h-screen bg-navy-950" />;
+  return <Landing />;
 }

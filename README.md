@@ -70,6 +70,14 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 
 ## 3. Trang chủ & các không gian làm việc
 
+### 3.0. Trang giới thiệu (`/`)
+Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **trang giới thiệu** (đã đăng nhập thì vào thẳng *Trang chủ* `/home`). Thanh trên cùng có các mục *Dành cho ai · Tính năng · Bắt đầu · Câu hỏi*, nút đổi **VI / EN**, **Đăng nhập** và **Đăng ký**. Nội dung:
+- **Phần đầu:** tiêu đề *Sân chơi của bạn, vận hành chuyên nghiệp.*, nút **Tạo tài khoản miễn phí** (mở form đăng ký) và **Tìm CLB gần bạn**; hình minh hoạ bảng điều khiển, bảng điểm trực tiếp, thẻ điểm DUPR và vé QR (vẽ bằng giao diện, không dùng ảnh ngoài).
+- **Dải tính năng nổi bật**, **Dành cho ai** (Người chơi · Club Manager · Social Manager, mỗi thẻ có danh sách việc làm được và nút bắt đầu).
+- **4 tính năng chính** xen kẽ chữ / hình: đăng ký & thanh toán, giải đấu & bấm điểm, DUPR, tài chính.
+- **Ba bước để ra sân**, lưới 8 tính năng phụ, **Câu hỏi thường gặp** (bấm để mở), khối kêu gọi cuối trang và chân trang (Tìm CLB, Điều khoản, Chính sách bảo mật, Đăng nhập).
+- Trang đăng nhập / đăng ký có liên kết **← Về trang giới thiệu**.
+
 ### 3.1. Trang chủ (`/home`) — mọi vai trò ở một chỗ
 Đăng nhập xong (và khi mở địa chỉ gốc `/`) app luôn mở **Trang chủ**. Tài khoản mới đăng nhập lần đầu được đưa qua trang **Chào mừng** (`/onboarding`, xem [8.1](#81-đăng-nhập-đăng-ký-quên-mật-khẩu-sign-in)) trước — trừ khi đang mở link kèo / link mời (vào thẳng kèo). Lời chào gọi bạn bằng **tên đăng nhập** (không bao giờ bằng email; chưa có tên đăng nhập thì dùng họ tên). Trên trang chủ chỉ có **2 vai trò**: **Host** (CLB bạn quản lý) và **Thành viên** (CLB bạn tham gia chơi):
 
