@@ -123,6 +123,8 @@ Club và Xé Vé tách dữ liệu rõ ràng:
 
 **Bộ chuyển ngữ cảnh** chia: *🎟 Social Manager · Cộng đồng* (các cộng đồng), *Đang quản lý* (các CLB) — không còn mục *Không gian khác*; *Sự kiện của tôi* (trọng tài / điều phối viên) mở từ thẻ ở Trang chủ. Chọn một cộng đồng là vào Social Manager của cộng đồng đó; chọn CLB là vào Club Manager. App nhớ riêng CLB và cộng đồng đang chọn. Trang Trang chủ gắn nhãn 🎟 và viền vàng cho cộng đồng.
 
+**Nút ← Quay lại:** mọi trang không nằm trên menu / thanh tab (chi tiết kèo, trang đăng ký CLB / cộng đồng, trang mời, trang nhập vé…) có nút **← Quay lại** ở đầu trang. Nút đưa về trang vừa xem; nếu trang được mở thẳng từ link chia sẻ hoặc tab mới thì về trang cha gần nhất trên menu (vd chi tiết kèo → *Lịch sự kiện*, trang người chơi → *Trang chủ*). Các trang trên menu không có nút này; vài trang có sẵn nút quay lại riêng (chi tiết giải đấu, sửa kèo, trang CLB) giữ nguyên nút đó. Trang Điều khoản / Chính sách cũng dùng nút này.
+
 ### 3.4. Tìm câu lạc bộ (`/discover`)
 Mở từ ô tìm kiếm ở Trang chủ hoặc mục **Tìm CLB** trên thanh điều hướng. Ai cũng xem được (không cần đăng nhập).
 - **Tìm theo:** tên CLB / sân / khu vực (ô chữ), **quốc gia**, **tỉnh / thành phố** (34 tỉnh thành mới khi chọn Việt Nam, gõ tay với nước khác), **quận / huyện**, **môn** (Pickleball / Cầu lông). Kết quả 24 CLB mỗi lần, nút *Xem thêm*.

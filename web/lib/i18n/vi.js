@@ -1822,6 +1822,7 @@ export const vi = {
     t10b: "Các điều khoản này theo pháp luật Việt Nam. Tranh chấp được ưu tiên giải quyết bằng thương lượng; nếu không được, giải quyết tại cơ quan có thẩm quyền tại Việt Nam. Liên hệ: {contact}.",
   },
   common: {
+    goBack: "Quay lại",
     close: "Đóng",
     save: 'Lưu',
     cancel: 'Hủy',

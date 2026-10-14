@@ -1,4 +1,5 @@
 'use client';
+import BackButton from '@/components/BackButton';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -305,7 +306,27 @@ function ExpiredPlan({ product, owner, until }) {
   );
 }
 
-export default function AppShell({ children }) {
+// Pages reached from the menu or the phone tab bar: no "← Quay lại" there.
+const TOP_LEVEL = new Set(
+  [
+    ...Object.values(NAV_BY_WORKSPACE).flatMap((items) => items.flatMap((i) => (i.children ? i.children : [i]))),
+    ...Object.values(TABS_BY_WORKSPACE).flat(),
+  ].flatMap((i) => [i.href, ...(i.also || [])])
+);
+TOP_LEVEL.add('/dashboard');
+// Where "← Quay lại" goes when there is no page to go back to: the nearest menu page above.
+function backFallback(pathname) {
+  const parts = pathname.split('/').filter(Boolean);
+  while (parts.length > 1) {
+    parts.pop();
+    const p = `/${parts.join('/')}`;
+    if (TOP_LEVEL.has(p)) return p;
+  }
+  return '/dashboard';
+}
+
+// back: false = page has its own way back; a string = where to go when there is no history.
+export default function AppShell({ children, back }) {
   const { user, loading, signOut } = useAuth();
   const { t, setSpace } = useI18n();
   const { clubs, club, isCoAdmin, loading: clubsLoading, reload: reloadClubs } = useClubs();
@@ -634,6 +655,7 @@ export default function AppShell({ children }) {
             )}
             <UpgradeModal open={renewOpen} onClose={() => setRenewOpen(false)} product={mode === 'community' ? 'social_manager' : 'tier'} />
             {scoped && <BirthdayBanner clubId={club?.id} />}
+            {back !== false && !TOP_LEVEL.has(pathname) && <BackButton fallback={typeof back === 'string' ? back : backFallback(pathname)} />}
             {children}
           </>
         )}

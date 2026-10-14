@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import BackButton from '@/components/BackButton';
 import { useI18n } from '@/context/I18nContext';
 import { LEGAL_EFFECTIVE, LEGAL_VERSION, PRIVACY_CONTACT, PROOF_RETENTION_DAYS } from '@/lib/legal';
 
@@ -34,7 +35,7 @@ export default function LegalDoc({ kind, count }) {
     <main className="min-h-screen bg-navy-950 text-gray-200">
       <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
         <div className="flex items-center justify-between gap-3 mb-6">
-          <Link href="/" className="text-sm text-gray-400 hover:text-white">{t('legal.back')}</Link>
+          <BackButton fallback="/" className="!mb-0" />
           <div className="flex gap-1">
             {(langs || ['vi', 'en']).map((l) => (
               <button key={l} type="button" onClick={() => setLang(l)} className={`text-xs rounded-full border px-2.5 py-0.5 uppercase ${lang === l ? 'border-lime-400 text-lime-300' : 'border-navy-600 text-gray-400'}`}>{l}</button>

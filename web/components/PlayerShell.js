@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
+import BackButton from '@/components/BackButton';
 
 // The personal side of the app: the home hub (all clubs and roles), my activity
 // (QR, history, form) and my profile. Club management lives in AppShell; a club the
@@ -23,7 +24,9 @@ function Icon({ d, className = 'w-5 h-5' }) {
   );
 }
 
-export default function PlayerShell({ children, requireAuth = true, sport = 'pickleball' }) {
+// back: false = page has its own way back (or is a step-by-step flow); a string = where to go
+// when there is no history. Tab pages (Trang chủ, Tìm CLB, Hoạt động, Hồ sơ) have none.
+export default function PlayerShell({ children, requireAuth = true, sport = 'pickleball', back }) {
   const { user, loading, signOut } = useAuth();
   const { t, lang, setLang, setSport } = useI18n();
   // Personal pages speak the sport of the club shown (member page) or the default one;
@@ -65,7 +68,10 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
           )}
         </div>
       </header>
-      <main className="max-w-4xl mx-auto p-4 pb-tabbar sm:pb-safe-4">{children}</main>
+      <main className="max-w-4xl mx-auto p-4 pb-tabbar sm:pb-safe-4">
+        {back !== false && !NAV.some((n) => n.href === pathname) && <BackButton fallback={typeof back === 'string' ? back : '/home'} />}
+        {children}
+      </main>
 
       {/* Phone tab bar */}
       {user && (

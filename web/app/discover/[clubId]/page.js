@@ -59,7 +59,7 @@ export default function DiscoverClubPage() {
   const here = `/discover/${clubId}`;
 
   return (
-    <PlayerShell requireAuth={false}>
+    <PlayerShell requireAuth={false} back={false}>
       <Link href="/discover" className="text-gray-400 hover:text-white text-sm">← {t('disc.back')}</Link>
       <section className="mt-2 overflow-hidden rounded-2xl border border-navy-700 bg-navy-900/70">
         <div className="relative h-36 sm:h-48 bg-gradient-to-br from-navy-800 via-navy-900 to-lime-900/30">
