@@ -9,7 +9,9 @@ const { findClubPerson } = require('./guests');
 const fail = (message, status = 400, code) => Object.assign(new Error(message), { status, code });
 const SPORTS = ['pickleball', 'badminton'];
 const PAGE = 24;
-const CLUB_FIELDS = 'id, host_id, name, sport, description, country, province, district, address, schedule, member_count_hint, avatar_version, cover_version, created_at';
+const BASE_FIELDS = 'id, host_id, name, sport, description, country, province, district, address, schedule, member_count_hint, avatar_version, cover_version, created_at';
+// map_url only once its migration has run.
+const clubFields = async () => `${BASE_FIELDS}${(await require('./clubRequests').mapReady()) ? ', map_url' : ''}`;
 // Words typed in the search box go into a PostgREST filter: keep letters, digits, spaces.
 const term = (v) => String(v ?? '').normalize('NFC').replace(/[^\p{L}\p{N}\s.'-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
 
@@ -44,6 +46,7 @@ const present = (c, counts) => ({
   province: c.province,
   district: c.district,
   address: c.address,
+  map_url: c.map_url || null,
   schedule: c.schedule,
   member_count: counts?.members ?? null,
   member_count_hint: c.member_count_hint,
@@ -56,7 +59,7 @@ const present = (c, counts) => ({
 // { q, country, province, district, sport, page } -> { items, page, more }
 async function search(params = {}) {
   const page = Math.max(1, Math.min(50, parseInt(params.page, 10) || 1));
-  let query = supabase.from('clubs').select(CLUB_FIELDS).eq('is_listed', true);
+  let query = supabase.from('clubs').select(await clubFields()).eq('is_listed', true);
   const q = term(params.q);
   if (q) {
     const like = `"*${q}*"`;
@@ -78,7 +81,7 @@ async function search(params = {}) {
 }
 
 async function listedClub(clubId) {
-  const { data, error } = await supabase.from('clubs').select(CLUB_FIELDS).eq('id', clubId).eq('is_listed', true).maybeSingle();
+  const { data, error } = await supabase.from('clubs').select(await clubFields()).eq('id', clubId).eq('is_listed', true).maybeSingle();
   if (error) throw error;
   if (!data || (await suspendedHosts([data.host_id])).size) throw fail('Club not found.', 404, 'not_found');
   return data;
@@ -154,7 +157,7 @@ async function requestJoin(clubId, userId, body = {}) {
 // The club behind an invite link (only while the link is switched on).
 async function inviteClub(token) {
   if (!/^[0-9a-f-]{36}$/i.test(String(token || ''))) throw fail('Invite not found.', 404, 'not_found');
-  const { data, error } = await supabase.from('clubs').select(`${CLUB_FIELDS}, invite_enabled`).eq('invite_token', token).maybeSingle();
+  const { data, error } = await supabase.from('clubs').select(`${await clubFields()}, invite_enabled`).eq('invite_token', token).maybeSingle();
   if (error) throw error;
   if (!data || !data.invite_enabled || (await suspendedHosts([data.host_id])).size) throw fail('Invite not found.', 404, 'not_found');
   const counts = await countsFor([data.id]);

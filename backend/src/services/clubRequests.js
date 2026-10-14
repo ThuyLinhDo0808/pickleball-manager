@@ -13,6 +13,19 @@ const MAX_AVATAR = 200000;
 const MAX_COVER = 600000;
 
 const MIGRATION = '20261104090000_club_requests_discovery.sql';
+// Google Maps link of the courts (clubs.map_url / club_requests.map_url).
+const MAP_MIGRATION = '20261121090000_club_map_url.sql';
+async function mapReady() {
+  const s = await require('./schemaCheck').schemaStatus();
+  return !s.missing_migrations.includes(MAP_MIGRATION);
+}
+function cleanMapUrl(v) {
+  const u = v == null ? '' : String(v).trim();
+  if (!u) return null;
+  if (u.length > 500 || !/^https:\/\/\S+$/i.test(u)) throw fail('The map link must be an https link (Google Maps).', 400, 'bad_map_url');
+  return u;
+}
+
 async function ready() {
   const s = await require('./schemaCheck').schemaStatus();
   return !s.missing_migrations.includes(MIGRATION);
@@ -45,6 +58,7 @@ function cleanProfile(body, { partial = false } = {}) {
   if (has('district')) out.district = text(body.district, 80);
   if (has('address')) out.address = text(body.address, 200);
   if (has('schedule')) out.schedule = text(body.schedule, 300);
+  if (has('map_url')) out.map_url = cleanMapUrl(body.map_url);
   if (has('description')) out.description = text(body.description, 1000);
   if (has('contact_email')) {
     const e = text(body.contact_email, 200);
@@ -129,6 +143,7 @@ async function orderFor(userId, tier, months, kind = 'club', memberCount = null)
 
 async function create(userId, body) {
   const row = cleanRequest(body || {});
+  if (!(await mapReady())) delete row.map_url;
   const { data: waiting } = await supabase.from('club_requests').select('id').eq('user_id', userId).eq('status', 'pending').maybeSingle();
   if (waiting) throw fail('You already have a club request waiting for approval.', 409, 'request_pending');
   const { tier, order } = await orderFor(userId, row.plan_tier, row.plan_months, row.kind, row.member_count);
@@ -207,7 +222,7 @@ async function accountCheck(userId, kind = 'club') {
 }
 
 async function list({ status = 'pending', page = 1, size = 20 } = {}) {
-  let q = supabase.from('club_requests').select(`${LIST_FIELDS}, user_id, decided_by, users(email, username)`, { count: 'exact' });
+  let q = supabase.from('club_requests').select(`${LIST_FIELDS}${(await mapReady()) ? ', map_url' : ''}, user_id, decided_by, users(email, username)`, { count: 'exact' });
   if (status !== 'all') q = q.eq('status', status);
   const from = (Math.max(1, page) - 1) * size;
   const { data, error, count } = await q.order('created_at', { ascending: false }).range(from, from + size - 1);
@@ -278,6 +293,7 @@ async function decide(id, decision, { actor, note, confirmPayment = false }) {
       province: r.province,
       district: r.district,
       address: r.address,
+      ...(r.map_url ? { map_url: r.map_url } : {}),
       schedule: r.schedule,
       member_count_hint: r.member_count,
       contact_email: r.contact_email,
@@ -302,4 +318,4 @@ async function decide(id, decision, { actor, note, confirmPayment = false }) {
   return { request: data, club };
 }
 
-module.exports = { MIGRATION, ready, renewPayment, suggestTier, cleanProfile, cleanImage, cleanRequest, mine, create, cancel, list, detail, decide, MAX_AVATAR, MAX_COVER };
+module.exports = { MIGRATION, ready, mapReady, renewPayment, suggestTier, cleanProfile, cleanImage, cleanRequest, mine, create, cancel, list, detail, decide, MAX_AVATAR, MAX_COVER };

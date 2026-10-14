@@ -222,13 +222,14 @@ router.patch('/:clubId', async (req, res) => {
   const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc', 'invite_enabled']);
   if ('invite_enabled' in fields) fields.invite_enabled = !!fields.invite_enabled;
   // The club's profile in the club search (where, when, how big, listed or not).
-  const PROFILE = ['country', 'province', 'district', 'address', 'schedule', 'contact_email', 'member_count', 'is_listed'];
+  const PROFILE = ['country', 'province', 'district', 'address', 'map_url', 'schedule', 'contact_email', 'member_count', 'is_listed'];
   if (PROFILE.some((k) => k in (req.body || {}))) {
     const CR = require('../services/clubRequests');
     if (!(await CR.ready())) return res.status(409).json({ error: `Run migration ${CR.MIGRATION} first.` });
     try {
       const p = CR.cleanProfile(req.body, { partial: true });
       delete p.description;
+      if ('map_url' in p && !(await CR.mapReady())) delete p.map_url;
       if ('member_count' in p) {
         p.member_count_hint = p.member_count;
         delete p.member_count;

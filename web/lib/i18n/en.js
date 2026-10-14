@@ -3744,6 +3744,8 @@ export const en = {
     districtPh: "e.g. Tay Ho",
     address: "Where you play",
     addressPh: "Court name, street address",
+    mapUrl: "Google Maps link of the courts",
+    mapUrlHint: "Open Google Maps → find the courts → Share → Copy link, then paste it here. Players tap \"Directions\" to open the map. Optional.",
     where: "Area",
     schedule: "Regular schedule",
     scheduleHint: "Optional.",

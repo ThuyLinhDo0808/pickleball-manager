@@ -16,6 +16,7 @@ export default function ClubProfileSettings({ club, onDone }) {
     province: club.province || '',
     district: club.district || '',
     address: club.address || '',
+    map_url: club.map_url || '',
     schedule: club.schedule || '',
     description: club.description || '',
     contact_email: club.contact_email || '',

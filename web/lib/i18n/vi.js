@@ -3744,6 +3744,8 @@ export const vi = {
     districtPh: "VD: Tây Hồ",
     address: "Địa điểm sinh hoạt",
     addressPh: "Tên sân, số nhà, đường",
+    mapUrl: "Link Google Maps của sân",
+    mapUrlHint: "Mở Google Maps → tìm sân → Chia sẻ → Sao chép đường liên kết, rồi dán vào đây. Người chơi bấm \"Chỉ đường\" để mở bản đồ. Không bắt buộc.",
     where: "Khu vực",
     schedule: "Thời gian sinh hoạt định kỳ",
     scheduleHint: "Không bắt buộc.",
