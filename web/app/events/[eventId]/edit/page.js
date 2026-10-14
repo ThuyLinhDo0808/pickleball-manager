@@ -26,7 +26,7 @@ export default function EditEventPage() {
 
   const active = (people || []).filter((p) => ['registered', 'checked_in', 'pending', 'waitlisted'].includes(p.status)).length;
   return (
-    <AppShell>
+    <AppShell back={false}>
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-white text-2xl font-bold">{t('manage.editTitle')}</h1>
         <Link href={`/events/${eventId}`} className="text-gray-400 text-sm hover:text-white">← {event?.title || ''}</Link>

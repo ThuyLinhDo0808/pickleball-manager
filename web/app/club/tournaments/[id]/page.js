@@ -128,7 +128,7 @@ export default function TournamentPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell back={false}>
       <Link href="/club/tournaments" className="text-gray-400 text-sm hover:text-white inline-block mb-2">← {t('tournaments.allList')}</Link>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0">

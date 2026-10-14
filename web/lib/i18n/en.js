@@ -1822,6 +1822,7 @@ export const en = {
     t10b: "These terms are governed by Vietnamese law. Disputes are first settled by negotiation; otherwise by the competent authority in Vietnam. Contact: {contact}.",
   },
   common: {
+    goBack: "Back",
     close: "Close",
     save: 'Save',
     cancel: 'Cancel',

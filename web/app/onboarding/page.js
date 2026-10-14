@@ -90,7 +90,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <PlayerShell>
+    <PlayerShell back={false}>
       <div className="mx-auto max-w-xl">
         <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{t('onb.kicker')}</p>
         <h1 className="text-white text-2xl font-bold mt-1">{t(`onb.title_${STEPS[step]}`)}</h1>

@@ -61,7 +61,7 @@ export default function MemberClubPage() {
   const sessionsLeft = data.membership_state === 'active' ? (data.sessions_unlimited ? '∞' : data.sessions_remaining) : '—';
 
   return (
-    <PlayerShell sport={club.sport}>
+    <PlayerShell sport={club.sport} back={false}>
       <Link href="/home" className="text-gray-400 text-sm hover:text-white inline-block mb-3">← {t('hub.navHome')}</Link>
 
       <section className="card !p-0 overflow-hidden mb-4">
