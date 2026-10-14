@@ -215,11 +215,14 @@ player.put('/profile', async (req, res) => {
     if (error) throw error;
     await linkByPhone(req.hostId, data); // a club already has this phone -> member there
 
-    // Fill blanks on the player's club records (never overwrite what the Host entered).
+    // Fill blanks on the player's club records (never overwrite what the Host entered), except
+    // the name, which follows the player's profile once the Host has confirmed the account.
     const { data: mine } = await supabase.from('club_members').select('*').eq('user_id', req.hostId);
     for (const m of mine || []) {
       const sport = await clubSport(m.club_id);
       const patch = blanksFrom(m, p, sport);
+      // The player's own name is the one shown in clubs linked to their account.
+      if (p.full_name && m.account_verified && m.full_name !== p.full_name) patch.full_name = p.full_name;
       if (Object.keys(patch).length) await supabase.from('club_members').update(patch).eq('id', m.id);
     }
     // DUPR ID onto the player's pickleball club records, linked at once where the club's DUPR
