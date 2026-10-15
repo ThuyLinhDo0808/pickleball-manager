@@ -89,6 +89,12 @@ export default function RacePage() {
             </div>
             <div className="flex flex-wrap items-end gap-4 mt-3 text-sm">
               <label>
+                <span className="text-xs text-gray-400">{t('race.minSessions')}</span>
+                <select className="input mt-1 !w-40" value={s.min_sessions} disabled={!canEdit} onChange={(e) => save({ min_sessions: Number(e.target.value) })}>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{t('race.minSessionsN', { n })}</option>)}
+                </select>
+              </label>
+              <label>
                 <span className="text-xs text-gray-400">{t('race.voucherDays')}</span>
                 <select className="input mt-1 !w-36" value={s.voucher_days} disabled={!canEdit} onChange={(e) => save({ voucher_days: Number(e.target.value) })}>
                   {[7, 14, 30, 45, 60, 90].map((n) => <option key={n} value={n}>{t('race.days', { n })}</option>)}

@@ -17,6 +17,9 @@ async function fetchAll(build) {
   }
 }
 
+// A club's main session: part of its weekly schedule (made as a series, or a weekly session).
+const isMainSession = (ev) => !!ev && (ev.kind === 'weekly' || !!ev.series_id);
+
 function shiftDay(ymd, days) {
   const d = new Date(`${ymd}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -26,7 +29,9 @@ function shiftDay(ymd, days) {
 // Every scored-or-not match of the club in `bounds` (null = all time): club matches and
 // matches inside the club's sessions (players linked back to club members by `personOf`).
 // Each carries `day`, its local date.
-async function clubMatches(clubId, bounds, personOf) {
+// mainOnly (clubs): only the club's main sessions — its weekly schedule. Kèo the club opens
+// on other days count as xé vé, not for the club's internal ranking.
+async function clubMatches(clubId, bounds, personOf, { mainOnly = false } = {}) {
   const inRange = (ymd) => !bounds || (ymd >= bounds.from && ymd <= bounds.to);
   // Pad the UTC window by a day each side, then filter exactly on the local date.
   const matches = (
@@ -47,7 +52,7 @@ async function clubMatches(clubId, bounds, personOf) {
     await fetchAll(() => {
       let q = supabase
         .from('matches')
-        .select(`id, played_at, team1_score, team2_score, events!inner(club_id), match_players(team, event_participants(source_club_member_id${linkGuests ? ', guest_member_id' : ''}))`)
+        .select(`id, played_at, team1_score, team2_score, events!inner(club_id, kind, series_id), match_players(team, event_participants(source_club_member_id${linkGuests ? ', guest_member_id' : ''}))`)
         .eq('events.club_id', clubId)
         .order('id');
       if (bounds) q = q.gte('played_at', `${shiftDay(bounds.from, -1)}T00:00:00Z`).lte('played_at', `${shiftDay(bounds.to, 1)}T23:59:59Z`);
@@ -59,14 +64,17 @@ async function clubMatches(clubId, bounds, personOf) {
       day: localDate(m.played_at),
       match_players: m.match_players.map((p) => ({ team: p.team, club_member_id: personOf(p.event_participants) })),
     }))
-    .filter((m) => inRange(m.day));
+    .filter((m) => inRange(m.day) && (!mainOnly || isMainSession(m.events)));
   return [...matches, ...sessionMatches];
 }
 
 async function clubStats(club, query = {}) {
   const period = PERIODS.includes(query.period) ? query.period : 'month';
   const date = /^\d{4}-\d{2}-\d{2}$/.test(query.date || '') ? query.date : todayYmd();
-  const minMatches = Math.min(Math.max(parseInt(query.min_matches, 10) || DEFAULT_MIN_MATCHES, 1), 50);
+  // The Host's minimum (Thống kê → Bảng xếp hạng); ?min_matches= overrides for one view.
+  const { data: cfg } = await supabase.from('clubs').select('*').eq('id', club.id).maybeSingle();
+  const minMatches = Math.min(Math.max(parseInt(query.min_matches, 10) || cfg?.rank_min_matches || DEFAULT_MIN_MATCHES, 1), 50);
+  const mainOnly = (cfg?.kind || 'club') !== 'community';
   const bounds = periodBounds(period, date);
 
   // Two leaderboards: the club community (fixed members) and the guests. No group = all.
@@ -78,7 +86,7 @@ async function clubStats(club, query = {}) {
   const linkGuests = await guestsReady(); // guests in sessions are linked by guest_member_id
   const personOf = (p) => p?.source_club_member_id || (linkGuests ? p?.guest_member_id : null) || null;
 
-  const matches = await clubMatches(club.id, bounds, personOf);
+  const matches = await clubMatches(club.id, bounds, personOf, { mainOnly });
 
   const checkIns = await fetchAll(() => {
     let q = supabase
@@ -101,7 +109,9 @@ async function clubStats(club, query = {}) {
     attendance[who] = (attendance[who] || 0) + 1;
   }
 
-  const rankings = aggregate(matches, members);
+  // Ranked by win rate (wins / matches) among players with enough matches; then more
+  // matches, then point difference. The rest are listed after, without a place.
+  const rankings = rankByWinRate(aggregate(matches, members), minMatches);
   const ids = new Set(members.map((m) => m.id));
   return {
     period,
@@ -113,8 +123,17 @@ async function clubStats(club, query = {}) {
     rankings,
     awards: awards(rankings, attendance, members, minMatches),
     // Weeks at No. 1 of this leaderboard, since the club's first match.
-    weeks_at_top: weeksAtTop(bounds ? await clubMatches(club.id, null, personOf) : matches, members),
+    weeks_at_top: weeksAtTop(bounds ? await clubMatches(club.id, null, personOf, { mainOnly }) : matches, members),
+    min_matches: minMatches,
+    main_only: mainOnly,
   };
 }
 
-module.exports = { clubStats, clubMatches, fetchAll };
+function rankByWinRate(rows, minMatches) {
+  const order = (a, b) => b.win_rate - a.win_rate || b.matches_played - a.matches_played || b.point_diff - a.point_diff || a.full_name.localeCompare(b.full_name, 'vi');
+  const ranked = rows.filter((r) => r.matches_played >= minMatches).sort(order).map((r, i) => ({ ...r, rank: i + 1, eligible: true }));
+  const rest = rows.filter((r) => r.matches_played < minMatches).sort(order).map((r) => ({ ...r, rank: null, eligible: false }));
+  return [...ranked, ...rest];
+}
+
+module.exports = { clubStats, clubMatches, fetchAll, rankByWinRate };

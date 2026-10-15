@@ -122,7 +122,7 @@ const fromMember = (m) => ({
   play_duration: m.play_duration || '',
 });
 
-function MemberEdit({ member, busy, onSave, autoEdit = false }) {
+function MemberEdit({ member, busy, onSave, autoEdit = false, community = false }) {
   const { t, sport } = useI18n();
   const [open, setOpen] = useState(autoEdit);
   const [f, setF] = useState(() => fromMember(member));
@@ -157,8 +157,9 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       gender: f.gender || null,
       dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level),
       member_type: f.member_type,
-      tier: f.member_type === 'fixed' ? f.tier || null : null,
-      ...(f.member_type === 'guest'
+      tier: f.member_type === 'fixed' && !community ? f.tier || null : null,
+      // Community: anyone can be "khách ưu tiên" (VIP = holding a pass, not a field).
+      ...(f.member_type === 'guest' || community
         ? { guest_perk: f.guest_perk || null, guest_discount_pct: f.guest_perk && f.guest_discount_pct !== '' ? Number(f.guest_discount_pct) : null }
         : {}),
       ...birthPayload(f.birth),
@@ -201,7 +202,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
         </select>
       </div>
       <div className="min-w-0">
-        {f.member_type === 'fixed' ? (
+        {f.member_type === 'fixed' && !community ? (
           <>
             <label className="text-xs text-gray-400">{t('members.tier')}</label>
             <select className="input" value={f.tier} onChange={(e) => set({ tier: e.target.value })}>
@@ -224,7 +225,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
           </>
         )}
       </div>
-      {f.member_type === 'guest' && f.guest_perk && (
+      {(f.member_type === 'guest' || community) && f.guest_perk && (
         <div className="col-span-2">
           <label htmlFor="md-discount" className="text-xs text-gray-400">{t('guests.discountLabel')}</label>
           <div className="flex flex-wrap items-center gap-2">
@@ -274,6 +275,60 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
   );
 }
 
+// Two records of one person (e.g. typed in by hand + signed up by themselves): move this one's
+// sign-ups, matches, passes… into the other and remove it. Same name first.
+const nameKey = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/\s+/g, ' ').trim();
+function MergeDuplicate({ club, member, onDone }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [into, setInto] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const { data: all } = useLoad(() => (open ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve(null)), [open, club.id]);
+  const others = (all || [])
+    .filter((m) => m.id !== member.id && !(m.user_id && member.user_id && m.user_id !== member.user_id))
+    .sort((a, b) => (nameKey(b.full_name) === nameKey(member.full_name)) - (nameKey(a.full_name) === nameKey(member.full_name)) || a.full_name.localeCompare(b.full_name, 'vi'));
+  const same = others.filter((m) => nameKey(m.full_name) === nameKey(member.full_name));
+  const go = async () => {
+    const target = others.find((m) => m.id === into);
+    if (!target || !window.confirm(t('mergeDup.ask', { name: member.full_name, target: target.full_name }))) return;
+    setBusy(true);
+    setErr('');
+    try {
+      await api.post(`/api/clubs/${club.id}/members/${member.id}/merge`, { into, any: true });
+      onDone();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="rounded-xl border border-navy-600 p-3 text-sm">
+      <button type="button" className="w-full text-left flex items-center justify-between gap-2" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span className="font-semibold text-white">🔗 {t('mergeDup.title')}</span>
+        <span className="text-gray-400 text-xs" aria-hidden="true">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="mt-2">
+          <p className="text-gray-400 text-xs">{t('mergeDup.hint')}</p>
+          {same.length > 0 && <p className="text-amber-200 text-xs mt-1">⚠ {t('mergeDup.sameName', { n: same.length })}</p>}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <select className="input !w-auto !py-1.5 text-sm" value={into} onChange={(e) => setInto(e.target.value)} aria-label={t('mergeDup.into')}>
+              <option value="">{t('mergeDup.into')}</option>
+              {others.map((m) => (
+                <option key={m.id} value={m.id}>{m.full_name}{m.user_id ? ' · 👤' : ''}{m.phone ? ` · …${String(m.phone).slice(-3)}` : ''}</option>
+              ))}
+            </select>
+            <button type="button" className="btn-secondary !py-1.5 text-sm" disabled={busy || !into} onClick={go}>{t('mergeDup.btn')}</button>
+          </div>
+          {err && <p className="text-red-300 text-xs mt-1">{err}</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function MemberDetail({ club, member, onClose, onChanged, autoEdit = false, onReview = null }) {
   const { t, sport } = useI18n();
   const open = !!member;
@@ -296,6 +351,9 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
   if (!open) return null;
 
   const planName = (id) => plans?.find((p) => p.id === id)?.name || '';
+  // Community: anyone can buy a pass ("khách VIP"); clubs: fixed members only.
+  const community = club?.kind === 'community';
+  const canPass = member.member_type === 'fixed' || community;
 
   async function run(fn) {
     setBusy(true);
@@ -337,13 +395,13 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             {member.member_type === 'fixed' && member.tier && ` · ${t(`members.${member.tier}`)}`}
           </span>
           {member.member_type === 'fixed' && <VipBadge stars={member.vip_stars} />}
-          {member.member_type !== 'fixed' && member.guest_perk && <GuestPerkBadge perk={member.guest_perk} pct={member.guest_discount_pct} />}
+          {(member.member_type !== 'fixed' || club?.kind === 'community') && member.guest_perk && <GuestPerkBadge perk={member.guest_perk} pct={member.guest_discount_pct} />}
           {member.phone && <a href={`tel:${member.phone}`} className="text-lime-400">{member.phone}</a>}
           {member.dupr_level != null && <span>{levelTag(member.dupr_level, sport, t)}</span>}
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
 
-        <MemberEdit key={member.id} member={member} busy={busy} onSave={patchMember} autoEdit={autoEdit} />
+        <MemberEdit community={club?.kind === 'community'} key={member.id} member={member} busy={busy} onSave={patchMember} autoEdit={autoEdit} />
 
         {member.account_email && (
           <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">
@@ -414,15 +472,16 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-white font-semibold text-sm">{t('membership.title')}</h3>
-            {member.member_type === 'fixed' && (
+            {canPass && (
               <button type="button" className="text-lime-400 text-sm" onClick={() => setShowRegister((s) => !s)}>
                 {showRegister ? t('common.cancel') : `+ ${t('membership.register')}`}
               </button>
             )}
           </div>
-          {member.member_type !== 'fixed' && <p className="text-gray-400 text-xs mb-2">{t('membership.guestNoPlans')}</p>}
+          {!canPass && <p className="text-gray-400 text-xs mb-2">{t('membership.guestNoPlans')}</p>}
+          {community && <p className="text-gray-400 text-xs mb-2">{t('social.vipHint')}</p>}
 
-          {showRegister && plans && member.member_type === 'fixed' && (
+          {showRegister && plans && canPass && (
             <div className="mb-3">
               <RegisterForm
                 club={club}
@@ -437,7 +496,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             </div>
           )}
 
-          {(passes || []).length === 0 && !showRegister && member.member_type === 'fixed' && <p className="text-gray-400 text-sm">{t('membership.none')}</p>}
+          {(passes || []).length === 0 && !showRegister && canPass && <p className="text-gray-400 text-sm">{t('membership.none')}</p>}
           <div className="flex flex-col gap-2">
             {(passes || []).map((p) => {
               const unlimited = p.sessions_included === 0;
@@ -503,6 +562,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         </section>
 
         <MemberHistory key={member.id} club={club} member={member} />
+        <MergeDuplicate club={club} member={member} onDone={() => { onChanged(); onClose(); }} />
       </div>
     </Modal>
   );

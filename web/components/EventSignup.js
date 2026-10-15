@@ -473,9 +473,20 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
           ))}
         </fieldset>
       )}
+      {/* Xé vé (a community's or a one-off kèo): the rules every player agrees to. */}
+      {ev.xeve && (
+        <section className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2.5 mb-3 text-sm" aria-labelledby="xeve-rules">
+          <p id="xeve-rules" className="font-semibold text-sky-200">📋 {t('social.rulesTitle')}</p>
+          <ul className="mt-1 list-disc pl-5 text-gray-200 space-y-0.5">
+            <li>⏰ {t('social.rule1')}</li>
+            <li>🧭 {t('social.rule2')}</li>
+            <li>🔔 {t('social.rule3')}</li>
+          </ul>
+        </section>
+      )}
       <label className="flex items-start gap-2 text-sm text-gray-200 mb-3">
         <input type="checkbox" className="mt-1" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-        <span>{t('signup.agree')}</span>
+        <span>{ev.xeve ? t('social.rulesAgree') : t('signup.agree')}</span>
       </label>
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       <button type="button" className="btn-primary w-full py-3 text-base" disabled={!agree || busy} onClick={register}>

@@ -82,7 +82,7 @@ router.get('/public/:publicToken', async (req, res) => {
 
   const { data: people, error: pErr } = await supabase
     .from('event_participants')
-    .select('full_name, dupr_level, status, joined_at, is_organizer')
+    .select('id, full_name, dupr_level, status, joined_at, is_organizer, user_id, source_club_member_id, guest_member_id')
     .eq('event_id', event.id)
     // Players with a place or on the waitlist (not requests waiting for the Host, nor organizers who don't play).
     .not('status', 'in', '(cancelled,no_show,requested,not_playing)')
@@ -100,12 +100,68 @@ router.get('/public/:publicToken', async (req, res) => {
     ...pick(event, PUBLIC_EVENT_FIELDS),
     map_url: event.map_url || (await clubMapUrl(event.club_id).catch(() => null)),
     sport: await clubSport(event.club_id), // levels show as DUPR or badminton steps
+    // Xé vé (a community's kèo, or a one-off kèo): the page shows the rules to agree to.
+    xeve: !event.club_id || (await supabase.from('clubs').select('kind').eq('id', event.club_id).maybeSingle()).data?.kind === 'community',
     registration_open: !closedCode,
     closed_code: closedCode,
-    participants: people.map(({ joined_at, ...p }) => p),
+    participants: await publicPlayerInfo(event, people).catch((err) => {
+      console.error('public player info', err.message);
+      return people.map((p) => ({ full_name: p.full_name, dupr_level: p.dupr_level, status: p.status, is_organizer: p.is_organizer }));
+    }),
     public_token: event.public_token,
   });
 });
+
+// What the sign-up page shows for each player: gender, DUPR doubles rating + reliability
+// (from the club's DUPR import) and how many of their matches recorded here were sent to DUPR.
+// No phone, email or ids.
+async function publicPlayerInfo(event, people) {
+  const memberIds = [...new Set(people.map((p) => p.source_club_member_id || p.guest_member_id).filter(Boolean))];
+  const userIds = [...new Set(people.map((p) => p.user_id).filter(Boolean))];
+  const [{ data: members }, { data: profiles }] = await Promise.all([
+    memberIds.length || (userIds.length && event.club_id)
+      ? supabase.from('club_members').select('*').or([memberIds.length ? `id.in.(${memberIds.join(',')})` : null, userIds.length && event.club_id ? `and(club_id.eq.${event.club_id},user_id.in.(${userIds.join(',')}))` : null].filter(Boolean).join(','))
+      : { data: [] },
+    userIds.length ? supabase.from('player_profiles').select('user_id, gender').in('user_id', userIds) : { data: [] },
+  ]);
+  const byId = new Map((members || []).map((m) => [m.id, m]));
+  const byUser = new Map((members || []).filter((m) => m.user_id && m.club_id === event.club_id).map((m) => [m.user_id, m]));
+  const genderOf = new Map((profiles || []).map((x) => [x.user_id, x.gender]));
+  const memberOf = (p) => byId.get(p.source_club_member_id || p.guest_member_id) || (p.user_id && byUser.get(p.user_id)) || null;
+  // Matches sent to DUPR, per member (club matches and kèo matches they played in).
+  const mids = [...new Set(people.map((p) => memberOf(p)?.id).filter(Boolean))];
+  const duprCount = new Map();
+  if (mids.length) {
+    const { data: rows } = await supabase.from('event_participants').select('id, source_club_member_id, guest_member_id').or(`source_club_member_id.in.(${mids.join(',')}),guest_member_id.in.(${mids.join(',')})`).limit(5000);
+    const memberOfPid = new Map((rows || []).map((r) => [r.id, r.source_club_member_id || r.guest_member_id]));
+    const pids = [...memberOfPid.keys()];
+    const ors = [`club_member_id.in.(${mids.join(',')})`];
+    if (pids.length) ors.push(`event_participant_id.in.(${pids.slice(0, 2000).join(',')})`);
+    const { data: mp } = await supabase.from('match_players').select('match_id, club_member_id, event_participant_id, matches!inner(dupr_exported_at)').or(ors.join(',')).not('matches.dupr_exported_at', 'is', null).limit(10000);
+    const seen = new Map();
+    for (const r of mp || []) {
+      const mid = r.club_member_id || memberOfPid.get(r.event_participant_id);
+      if (!mid) continue;
+      if (!seen.has(mid)) seen.set(mid, new Set());
+      seen.get(mid).add(r.match_id);
+    }
+    for (const [k, v] of seen) duprCount.set(k, v.size);
+  }
+  return people.map((p) => {
+    const m = memberOf(p);
+    const g = m?.gender || genderOf.get(p.user_id) || null;
+    return {
+      full_name: p.full_name,
+      dupr_level: p.dupr_level,
+      status: p.status,
+      is_organizer: p.is_organizer,
+      gender: g === 'male' || g === 'female' ? g : null,
+      dupr: m?.dupr_doubles != null ? Number(m.dupr_doubles) : null,
+      dupr_rel: m?.dupr_doubles_rel ?? null,
+      dupr_matches: m ? duprCount.get(m.id) || 0 : null,
+    };
+  });
+}
 
 // ---- Meeting vote link (/v/<token>) ---------------------------------------------
 // A club meeting / get-together shared by link: anyone sees what, when, where, the fee
@@ -859,12 +915,28 @@ router.get('/:eventId/participants', async (req, res) => {
   } catch (err) {
     console.error('cancel history', err.message); // the list still loads without it
   }
+  // Who plays on a pass. Clubs: fixed members pay through their membership plan.
+  // Communities: only "khách VIP" — a paid pass (month / quarter / year) covering the date;
+  // regulars and drop-ins pay per kèo.
+  let vip = new Map(); // member -> pass period (month / quarter / year)
+  const community = req.event.club_id ? (await supabase.from('clubs').select('kind').eq('id', req.event.club_id).maybeSingle()).data?.kind === 'community' : false;
+  if (community) {
+    const ids = [...new Set([...cards.values()].map((c) => c?.member_id).filter(Boolean))];
+    if (ids.length) {
+      const { data: passes } = await supabase.from('v_membership_status').select('club_member_id, plan_id').in('club_member_id', ids).eq('status', 'paid').lte('starts_on', req.event.event_date).gte('ends_on', req.event.event_date);
+      const planIds = [...new Set((passes || []).map((x) => x.plan_id))];
+      const { data: plans } = planIds.length ? await supabase.from('membership_plans').select('id, period').in('id', planIds) : { data: [] };
+      const periodOf = new Map((plans || []).map((x) => [x.id, x.period]));
+      vip = new Map((passes || []).map((x) => [x.club_member_id, periodOf.get(x.plan_id) || null]));
+    }
+  }
   // screenshots are fetched one at a time (they are large)
   res.json(
     data.map(({ payment_proof, ...p }) => {
-      const card = cards.get(p.id) || null;
-      // Fixed members pay through their membership plan: their place is always paid.
-      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: card?.member_type === 'fixed', email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null };
+      const c = cards.get(p.id) || null;
+      const card = c && community ? { ...c, vip: vip.has(c.member_id), vip_period: vip.get(c.member_id) || null } : c;
+      const paidByPlan = community ? !!card?.vip : card?.member_type === 'fixed';
+      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: paidByPlan, email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null };
     })
   );
 });
@@ -1002,11 +1074,24 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
     });
   }
 
-  const { data: members, error: mErr } = await supabase
+  const { data: found, error: mErr } = await supabase
     .from('club_members')
     .select('*')
     .in('id', memberIds);
   if (mErr) return dbError(res, mErr);
+  // Already on this event (any list but cancelled): not added a second time.
+  const { data: onList, error: oErr } = await supabase
+    .from('event_participants')
+    .select('source_club_member_id, guest_member_id, user_id, phone')
+    .eq('event_id', req.event.id)
+    .neq('status', 'cancelled');
+  if (oErr) return dbError(res, oErr);
+  const tel = (v) => String(v || '').replace(/\D/g, '').replace(/^84/, '0');
+  const taken = new Set((onList || []).flatMap((p) => [p.source_club_member_id, p.guest_member_id]).filter(Boolean));
+  const takenUsers = new Set((onList || []).map((p) => p.user_id).filter(Boolean));
+  const takenPhones = new Set((onList || []).map((p) => tel(p.phone)).filter((x) => x.length >= 9));
+  const members = (found || []).filter((m) => !taken.has(m.id) && !(m.user_id && takenUsers.has(m.user_id)) && !(tel(m.phone).length >= 9 && takenPhones.has(tel(m.phone))));
+  if (!members.length) return res.status(409).json({ error: 'Everyone picked is already on this event.', code: 'already_on_event' });
 
   const { count } = await supabase
     .from('event_participants')

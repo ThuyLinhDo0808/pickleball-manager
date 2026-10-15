@@ -11,8 +11,10 @@ const STATUS_TONE = {
   not_in_club: 'border-amber-300/60 text-amber-200',
   conflict: 'border-red-400/60 text-red-300',
   none: 'border-navy-500 text-gray-400',
+  manual: 'border-sky-400/60 text-sky-300',
 };
-const FILTERS = ['all', 'linked', 'not_in_club', 'none', 'conflict'];
+const FILTERS = ['all', 'linked', 'manual', 'not_in_club', 'none', 'conflict'];
+const nameKey = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/\s+/g, ' ').trim();
 
 export function Change({ v, className = '' }) {
   if (v == null || v === 0) return null;
@@ -38,12 +40,15 @@ export default function DuprMembers({ club }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [showFree, setShowFree] = useState(false);
+  const [score, setScore] = useState(null); // { id, doubles, rel, singles } typed by hand
 
   if (error?.payload?.code === 'not_pickleball') return <p className="card text-gray-300 text-sm">{t('dupr.onlyPickleball')}</p>;
   if (error) return <p className="card text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
   if (!data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
 
   const members = data.members;
+  // Same name twice: probably one person with two records (e.g. added by hand + signed up).
+  const nameCount = members.reduce((m, x) => m.set(nameKey(x.full_name), (m.get(nameKey(x.full_name)) || 0) + 1), new Map());
   const counts = members.reduce((c, m) => ({ ...c, [m.status]: (c[m.status] || 0) + 1 }), {});
   const q = query.trim().toLowerCase();
   const list = members
@@ -79,23 +84,40 @@ export default function DuprMembers({ club }) {
     }
   };
 
+  const saveScore = async () => {
+    setErr('');
+    try {
+      await api.patch(`/api/clubs/${club.id}/members/${score.id}/dupr-score`, { doubles: score.doubles, doubles_rel: score.rel, singles: score.singles });
+      setScore(null);
+      await reload();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Update from DUPR */}
+      {/* Update from DUPR: the round trip, step by step */}
       <section className="card">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="min-w-0 sm:flex-1">
-            <h2 className="text-white font-semibold">{t('duprm.importTitle')}</h2>
-            <p className="text-gray-400 text-sm mt-1">{t('duprm.importHint')}</p>
-            <p className="text-gray-500 text-xs mt-1">
-              {t('duprm.lastImport', { date: fmtDate(data.last_import?.created_at), n: data.roster_size })}
-            </p>
-          </div>
-          <label className={`btn-primary text-sm cursor-pointer self-start shrink-0 ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
-            📂 {busy ? t('common.loading') : t('duprm.chooseFile')}
-            <input type="file" accept=".csv,text/csv" className="hidden" onChange={pick} />
-          </label>
-        </div>
+        <h2 className="text-white font-semibold">{t('duprm.importTitle')}</h2>
+        <p className="text-gray-400 text-sm mt-1">{t('duprm.flowIntro')}</p>
+        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((n) => (
+            <li key={n} className={`rounded-xl border p-3 ${n === 4 ? 'border-lime-400/50 bg-lime-400/5' : 'border-navy-600 bg-navy-900/50'}`}>
+              <p className="text-xs font-bold text-lime-300">{t('duprm.stepN', { n })} · {t(`duprm.step${n}Where`)}</p>
+              <p className="text-white text-sm font-semibold mt-1">{t(`duprm.step${n}Title`)}</p>
+              <p className="text-gray-400 text-xs mt-1">{t(`duprm.step${n}Body`)}</p>
+              {n === 4 && (
+                <label className={`btn-primary text-sm cursor-pointer inline-block mt-2 ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
+                  📂 {busy ? t('common.loading') : t('duprm.chooseFile')}
+                  <input type="file" accept=".csv,text/csv" className="hidden" onChange={pick} />
+                </label>
+              )}
+            </li>
+          ))}
+        </ol>
+        <p className="text-gray-500 text-xs mt-2">{t('duprm.lastImport', { date: fmtDate(data.last_import?.created_at), n: data.roster_size })}</p>
+        <p className="text-sky-200 text-xs mt-2 rounded-lg border border-sky-400/30 bg-sky-400/5 px-2.5 py-2">💡 {t('duprm.manualTip')}</p>
         {err && <p className="text-red-400 text-sm mt-2">{err}</p>}
         {result && <ImportResult r={result} />}
         <ClubIdField club={club} value={info?.dupr_club_id} onSaved={reloadInfo} />
@@ -128,7 +150,10 @@ export default function DuprMembers({ club }) {
             <tbody>
               {list.map((m) => (
                 <tr key={m.id} className={`border-b border-navy-800 last:border-0 ${m.is_active ? '' : 'opacity-50'}`}>
-                  <td className="py-2 px-3 text-white">{m.full_name}</td>
+                  <td className="py-2 px-3 text-white">
+                    {m.full_name}
+                    {nameCount.get(nameKey(m.full_name)) > 1 && <span className="block text-[11px] text-amber-200" title={t('duprm.dupHint')}>⚠ {t('duprm.dupName')}</span>}
+                  </td>
                   <td className="py-2 pr-3">
                     {edit?.id === m.id ? (
                       <span className="flex items-center gap-1">
@@ -148,7 +173,15 @@ export default function DuprMembers({ club }) {
                     {m.name_fits === false && <span className="block text-[11px] text-amber-200" title={t('duprm.nameDiffHint')}>⚠ {t('dupr.nameMismatch')}</span>}
                   </td>
                   <td className="py-2 pr-3 text-right tabular-nums">
-                    {m.status === 'linked' ? (
+                    {score?.id === m.id ? (
+                      <span className="flex flex-wrap items-center justify-end gap-1">
+                        <input className="input !py-1 !w-20 text-right" type="number" step="0.001" min="1" max="8" autoFocus placeholder={t('dupr.col_doubles')} aria-label={t('dupr.col_doubles')} value={score.doubles} onChange={(e) => setScore({ ...score, doubles: e.target.value })} />
+                        <input className="input !py-1 !w-16 text-right" type="number" step="1" min="0" max="100" placeholder="%" aria-label={t('duprm.relLabel')} value={score.rel} onChange={(e) => setScore({ ...score, rel: e.target.value })} />
+                        <input className="input !py-1 !w-20 text-right" type="number" step="0.001" min="1" max="8" placeholder={t('dupr.col_singles')} aria-label={t('dupr.col_singles')} value={score.singles} onChange={(e) => setScore({ ...score, singles: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && saveScore()} />
+                        <button type="button" className="text-lime-300 text-xs" onClick={saveScore}>{t('common.save')}</button>
+                        <button type="button" className="text-gray-400 text-xs" onClick={() => setScore(null)} aria-label={t('common.cancel')}>✕</button>
+                      </span>
+                    ) : m.status === 'linked' ? (
                       <>
                         <span className="text-white font-semibold">{fmtRating(m.doubles)}</span>
                         <span className="block leading-tight">
@@ -157,10 +190,22 @@ export default function DuprMembers({ club }) {
                         </span>
                       </>
                     ) : (
-                      <span className="text-gray-600">—</span>
+                      <button type="button" className="text-right hover:underline" title={t('duprm.typeScoreHint')} onClick={() => setScore({ id: m.id, doubles: m.doubles ?? '', rel: m.doubles_rel ?? '', singles: m.singles ?? '' })}>
+                        {m.status === 'manual' ? (
+                          <>
+                            <span className="text-white font-semibold">{fmtRating(m.doubles)}</span>
+                            {m.doubles_rel != null && <span className="block text-[11px] text-gray-500">{t('dupr.rel', { n: m.doubles_rel })}</span>}
+                          </>
+                        ) : (
+                          <span className="text-gray-500 text-xs">
+                            + {t('duprm.typeScore')}
+                            {m.self_level != null && <span className="block text-[11px] text-gray-600">{t('duprm.selfLevel', { v: m.self_level })}</span>}
+                          </span>
+                        )}
+                      </button>
                     )}
                   </td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-gray-300">{m.status === 'linked' ? fmtRating(m.singles) : '—'}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-gray-300">{['linked', 'manual'].includes(m.status) && m.singles != null ? fmtRating(m.singles) : '—'}</td>
                   <td className="py-2 pr-3">
                     <span className={`text-[11px] rounded border px-1.5 py-0.5 whitespace-nowrap ${STATUS_TONE[m.status]}`}>{t(`duprm.status_${m.status}`)}</span>
                   </td>

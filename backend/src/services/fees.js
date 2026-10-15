@@ -34,7 +34,8 @@ async function memberStanding(event, userId) {
     .eq('user_id', userId)
     .maybeSingle();
   if (!member) return { state: 'none', member: null, pass: null };
-  if (member.member_type === 'guest') return { state: 'guest', member, pass: null };
+  // A guest (community: khách vãng lai) may hold a pass too ("khách VIP"): the pass pays.
+  if (member.member_type === 'guest') return { state: 'guest', member, pass: member.account_verified !== false ? await activePass(member.id, event.event_date) : null };
   if (!member.account_verified) return { state: 'pending', member, pass: null };
   return { state: 'verified', member, pass: await activePass(member.id, event.event_date) };
 }

@@ -30,6 +30,7 @@ import ImportMembers from '@/components/ImportMembers';
 import DuprMembers from '@/components/DuprMembers';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import CommunitySuggestions from '@/components/CommunitySuggestions';
 
 const emptyForm = () => ({ full_name: '', gender: '', birth: { year: '', month: '', day: '' }, joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '' });
 
@@ -213,6 +214,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         <StatTile icon="📝" label={t('memx.waiting')} value={pending.length} tone={pending.length ? 'text-yellow-300' : 'text-white'} sub={pending.length ? t('memx.needReview') : t('memx.nothing')} onClick={() => pickTab('waiting')} active={tab === 'waiting'} />
         <StatTile icon="🎂" label={t('memx.birthdays')} value={bdays.length} tone="text-pink-300" sub={bdays.slice(0, 2).map((m) => `${m.full_name.split(' ').pop()} ${m.birth_date.slice(8, 10)}/${m.birth_date.slice(5, 7)}`).join(', ') || '—'} />
       </KpiRow>
+      {isCommunity && <CommunitySuggestions club={club} onChanged={reload} />}
 
       <UnderlineTabs
         value={tab}
@@ -305,7 +307,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-white font-semibold truncate">{m.full_name}</span>
-                          {m.member_type === 'fixed' && <VipBadge stars={m.vip_stars} />}
+                          {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
                           {missingInfo(m).length > 0 && <span className="text-[10px] leading-4 rounded border border-amber-400/50 text-amber-300 px-1" title={missText(m)}>{t('members.incompleteShort')}</span>}
                         </span>
@@ -317,9 +319,9 @@ export default function MembersPage({ tab = 'fixed' }) {
                             ? `${t('guests.played')}: ${m.guest_stats?.played ?? 0}`
                             : m.joined_on ? `${t('members.joined')} ${my(m.joined_on)} · ${tenureLabel(m.joined_on, t)}` : ''}
                         </span>
-                        {(m.flags?.length > 0 || (isGuestTab && m.guest_perk)) && (
+                        {(m.flags?.length > 0 || ((isGuestTab || isCommunity) && m.guest_perk)) && (
                           <span className="flex flex-wrap gap-1 mt-1">
-                            {isGuestTab && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
+                            {(isGuestTab || isCommunity) && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
                             {(m.flags || []).map((f) => <span key={f} className={`text-[10px] leading-4 rounded border px-1 ${FLAG_STYLE[f]}`}>{t(`flags.${f}`)}</span>)}
                           </span>
                         )}
@@ -381,7 +383,8 @@ export default function MembersPage({ tab = 'fixed' }) {
                               >
                                 {m.full_name}
                               </button>
-                              {m.member_type === 'fixed' && <VipBadge stars={m.vip_stars} className="ml-1.5" />}
+                              {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} className="ml-1.5" />}
+                              {isCommunity && !isGuestTab && m.guest_perk && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
                               {missingInfo(m).length > 0 && <span className="ml-1.5 text-[10px] leading-4 rounded border border-amber-400/50 text-amber-300 px-1" title={missText(m)}>{t('members.incompleteShort')}</span>}
                               {m.account_email && !m.account_verified && (
                                 <span className="ml-1.5 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>

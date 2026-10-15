@@ -5,7 +5,7 @@ const { supabase } = require('../supabase');
 const { todayYmd } = require('./memberships');
 
 const ACTIVE_DAYS = 30; // inactive = no activity in the community for a month or more
-const REGULAR_MIN = 4; // "thường xuyên" = at least this many sessions in those 30 days
+const REGULAR_MIN = 3; // "thường xuyên" = more than this many sessions in those 30 days
 const PLAYED = ['registered', 'checked_in'];
 const OWES = ['registered', 'checked_in', 'pending'];
 
@@ -61,7 +61,7 @@ async function overview(club) {
   const extra = csReady ? ', level_key, dupr_level, play_duration' : '';
   const [events, members] = await Promise.all([
     all(() => supabase.from('events').select(`id, event_date, series_label, fee_amount, status${csReady ? ', level_keys' : ''}`).eq('club_id', club.id).order('id')),
-    all(() => supabase.from('club_members').select(`id, member_type, is_active, join_requested${extra}`).eq('club_id', club.id).order('id')),
+    all(() => supabase.from('club_members').select(`id, member_type, is_active, join_requested, guest_perk${extra}`).eq('club_id', club.id).order('id')),
   ]);
   const ids = events.map((e) => e.id);
   let parts = [];
@@ -72,6 +72,13 @@ async function overview(club) {
   const evById = new Map(events.map((e) => [e.id, e]));
   const roster = members.filter((m) => !m.join_requested);
   const known = new Set(roster.map((m) => m.id));
+  // "Khách VIP": a paid pass (month / quarter / year) covering today.
+  const vipIds = new Set();
+  for (let i = 0; i < roster.length; i += 300) {
+    const { data: passes, error } = await supabase.from('memberships').select('club_member_id').in('club_member_id', roster.slice(i, i + 300).map((m) => m.id)).eq('status', 'paid').lte('starts_on', today).gte('ends_on', today);
+    if (error) throw error;
+    for (const x of passes || []) vipIds.add(x.club_member_id);
+  }
 
   // Who came when: member id -> sessions in the last 30 days; per series, everyone ever.
   const recent = new Map();
@@ -100,7 +107,7 @@ async function overview(club) {
     }
   }
   const active = roster.filter((m) => recent.has(m.id)).length;
-  const regular = roster.filter((m) => (monthly.get(m.id) || 0) >= regularMin).length;
+  const regular = roster.filter((m) => (monthly.get(m.id) || 0) > regularMin).length;
   const playedMonth = roster.filter((m) => monthly.has(m.id)).length;
 
   // Members per level (trình độ) and the kèo marked for each level.
@@ -134,6 +141,8 @@ async function overview(club) {
       total: roster.length,
       fixed: roster.filter((m) => m.member_type === 'fixed').length,
       guest: roster.filter((m) => m.member_type === 'guest').length,
+      vip: roster.filter((m) => vipIds.has(m.id)).length,
+      priority: roster.filter((m) => m.guest_perk).length,
       active,
       inactive: roster.length - active,
       by_level: [...byLevel.values()].map((r) => ({ ...r, inactive: r.members - r.active })),

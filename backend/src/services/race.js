@@ -1,8 +1,8 @@
-// Cuộc đua Top tháng (Social Manager communities). Fixed members score points in the
-// community's kèo of the month:
+// Cuộc đua Top tháng (Social Manager communities). Every active member (regular, drop-in,
+// VIP…) scores points in the community's kèo of the month:
 //   +1 per kèo checked in · +2 per match won · −2 per no-show (absent without notice).
-// To win, a member needs at least MIN_SESSIONS kèo in the month and must have been a
-// fixed member since the 15th. Ties: more kèo, then more wins. With level groups on,
+// To win, a member needs at least the Host's minimum of kèo in the month (race_min_sessions,
+// default MIN_SESSIONS) and must have been a member since the 15th. Ties: more kèo, then more wins. With level groups on,
 // each group (by level) has its own top 3.
 // When the month is over the app closes it (race_results) and gives the top 3 a
 // voucher (Host's choice: free kèo / 50% off) that is taken off the fee at sign-up.
@@ -66,7 +66,7 @@ function settingsOf(club) {
     split_levels: !!club.race_split_levels,
     rewards: cleanRewards(club.race_rewards),
     voucher_days: club.race_voucher_days || 30,
-    min_sessions: MIN_SESSIONS,
+    min_sessions: club.race_min_sessions || MIN_SESSIONS,
     join_by_day: JOIN_BY_DAY,
     points: POINTS,
   };
@@ -80,18 +80,21 @@ function groupOf(level, sport) {
 }
 
 // The month's table: every active fixed member with their points, and who can win.
+// In the community since: the earlier of joining and the date the Host set as "since" (fixed_since).
+const sinceOf = (m) => [m.fixed_since, m.created_at].filter(Boolean).sort((a, b) => new Date(a) - new Date(b))[0] || null;
+
 async function standings(club, month) {
   const sport = await clubSport(club.id);
   const from = `${month}-01`;
   const to = monthEnd(month);
   const [{ data: members, error: mErr }, { data: events, error: eErr }] = await Promise.all([
-    supabase.from('club_members').select('id, full_name, user_id, dupr_level, member_type, is_active, fixed_since, created_at').eq('club_id', club.id).eq('member_type', 'fixed').eq('is_active', true).limit(5000),
+    supabase.from('club_members').select('id, full_name, user_id, dupr_level, member_type, is_active, fixed_since, created_at').eq('club_id', club.id).eq('is_active', true).limit(5000),
     supabase.from('events').select('id').eq('club_id', club.id).gte('event_date', from).lte('event_date', to).neq('status', 'cancelled').neq('kind', 'meeting').limit(2000),
   ]);
   if (mErr) throw mErr;
   if (eErr) throw eErr;
   const rows = new Map(
-    (members || []).map((m) => [m.id, { club_member_id: m.id, full_name: m.full_name, user_id: m.user_id, level: m.dupr_level, sessions: 0, wins: 0, no_shows: 0, points: 0, member_since: m.fixed_since || m.created_at }])
+    (members || []).map((m) => [m.id, { club_member_id: m.id, full_name: m.full_name, user_id: m.user_id, level: m.dupr_level, sessions: 0, wins: 0, no_shows: 0, points: 0, member_since: sinceOf(m) }])
   );
   const eventIds = (events || []).map((e) => e.id);
   const byUser = new Map((members || []).filter((m) => m.user_id).map((m) => [m.user_id, m.id]));
@@ -133,7 +136,7 @@ async function standings(club, month) {
   const list = [...rows.values()].map((r) => {
     const points = r.sessions * POINTS.checkin + r.wins * POINTS.win + r.no_shows * POINTS.no_show;
     const joinedInTime = !!r.member_since && new Date(r.member_since) <= deadline;
-    return { ...r, points, group: club.race_split_levels ? groupOf(r.level, sport) : null, eligible: r.sessions >= MIN_SESSIONS && joinedInTime, joined_in_time: joinedInTime };
+    return { ...r, points, group: club.race_split_levels ? groupOf(r.level, sport) : null, eligible: r.sessions >= (club.race_min_sessions || MIN_SESSIONS) && joinedInTime, joined_in_time: joinedInTime };
   });
   const order = (a, b) => b.points - a.points || b.sessions - a.sessions || b.wins - a.wins || String(a.full_name).localeCompare(String(b.full_name), 'vi');
   const keys = club.race_split_levels ? (GROUPS[sport] || GROUPS.pickleball).map((g) => g.key) : [null];
@@ -321,6 +324,11 @@ async function updateSettings(club, body) {
     if (body.enabled && !club.race_started_on) patch.race_started_on = `${thisMonth()}-01`;
   }
   if ('split_levels' in body) patch.race_split_levels = !!body.split_levels;
+  if ('min_sessions' in body) {
+    const n = Number(body.min_sessions);
+    if (!Number.isInteger(n) || n < 1 || n > 31) throw httpError('min_sessions must be 1–31.', 400, 'bad_min_sessions');
+    patch.race_min_sessions = n;
+  }
   if ('rewards' in body) patch.race_rewards = cleanRewards(body.rewards);
   if ('voucher_days' in body) {
     const d = Number(body.voucher_days);

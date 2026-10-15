@@ -53,7 +53,7 @@ export default function CommunityOverview({ children }) {
   const r = data?.regularity;
   // Only buttons the plan allows (the weekly schedule is a Standard feature).
   const canWeekly = hasFeature(planFor(club, plan), 'weekly_schedule');
-  const rules = data?.rules || { active_days: 30, regular_min: 4 };
+  const rules = data?.rules || { active_days: 30, regular_min: 3 };
 
   return (
     <AppShell>
@@ -98,7 +98,7 @@ export default function CommunityOverview({ children }) {
         <>
           <Section icon="👥" title={t('social.secMembers')} hint={t('social.secMembersHint', { d: rules.active_days })} href="/club/members">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.fixedGuest', { f: m.fixed, g: m.guest })} />
+              <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.typeSplit', { v: m.vip ?? 0, p: m.priority ?? 0, f: m.fixed, g: m.guest })} />
               <StatTile icon="🟢" label={t('social.active')} value={m.active} tone="text-lime-300" sub={t('social.activeSub', { d: rules.active_days })} />
               <StatTile icon="💤" label={t('social.inactive')} value={m.inactive} tone="text-gray-300" sub={t('social.inactiveSub', { d: rules.active_days })} />
               <StatTile icon="📶" label={t('social.levelCount')} value={(m.by_level || []).length} tone="text-sky-300" sub={rules.level_mode && rules.level_mode !== 'none' ? t(`cpanel.mode_${rules.level_mode}`) : t('social.levelNone')} />
@@ -156,7 +156,7 @@ export default function CommunityOverview({ children }) {
           <Section icon="🔁" title={t('social.secRegular')} hint={t('social.secRegularHint', { n: rules.regular_min, d: 30 })} href="/club/attendance">
             <div className="grid grid-cols-3 gap-3 mb-3">
               <StatTile icon="⭐" label={t('social.regular')} value={r.regular} tone="text-lime-300" sub={t('social.regularSub', { n: rules.regular_min })} />
-              <StatTile icon="🙂" label={t('social.irregular')} value={r.irregular} tone="text-sky-300" sub={t('social.irregularSub', { n: rules.regular_min - 1 })} />
+              <StatTile icon="🙂" label={t('social.irregular')} value={r.irregular} tone="text-sky-300" sub={t('social.irregularSub', { n: rules.regular_min })} />
               <StatTile icon="💤" label={t('social.inactive')} value={r.inactive} tone="text-gray-300" />
             </div>
             <Split parts={[{ key: 'r', value: r.regular, color: 'bg-lime-400' }, { key: 'i', value: r.irregular, color: 'bg-sky-400' }, { key: 'n', value: r.inactive, color: 'bg-navy-600' }]} />

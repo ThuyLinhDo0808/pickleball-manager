@@ -1,10 +1,14 @@
 // The community control panel (Social Manager): each Host sets their own rules.
-//  * Regulars ("khách thường xuyên") = at least `regular.min` sessions in the last 30 days;
-//    with `regular.auto` on, members move between regular and drop-in ("vãng lai") by
-//    themselves. Stored as member_type fixed / guest, like a club's fixed / guest members.
+//  * Regulars ("khách thường xuyên") = more than `regular.min` sessions played in the last
+//    30 days (default: more than 3); the rest are drop-ins ("vãng lai"). Stored as
+//    member_type fixed / guest. By default the Host gets suggestions (who should move) and
+//    decides; with `regular.auto` on, members move by themselves.
+//  * "Khách VIP" = holds a paid pass (month / quarter / year) — not a type: the pass pays
+//    and loses a session at each check-in. "Khách ưu tiên" = guest_perk 'priority'.
 //  * `active_days`: no session for that many days = "không hoạt động".
 //  * Levels ("trình độ"), one of:
-//      manual     — names the Host makes up (Series A, B, C…) and assigns by hand,
+//      manual     — names the Host makes up (Series A, B, C…) and assigns by hand; each may
+//                   carry a DUPR range (dupr_min – dupr_max) that fills a kèo's DUPR limits,
 //      score      — from the member's DUPR (badminton: level 1-6), by lower bounds,
 //      experience — from how long they have played (< 6 months, 6-12, 12-18, > 18).
 //    Kèo can be marked for some levels; the overview counts members per level.
@@ -21,7 +25,7 @@ const REGULAR_DAYS = 30; // "a month"
 const NEW_GRACE_DAYS = 30; // someone just added is not moved down before they had a month
 const MAX_LEVELS = 12;
 
-const DEFAULTS = { regular: { auto: true, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] } };
+const DEFAULTS = { regular: { auto: false, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] } };
 
 const fail = (message, code) => Object.assign(new Error(message), { status: 400, code });
 
@@ -54,8 +58,8 @@ const newKey = () => crypto.randomBytes(4).toString('hex');
 // Validate what the panel sends. `sport` decides the score range (DUPR 1-8, badminton 1-6).
 function clean(body, sport) {
   const regular = {
-    auto: body?.regular?.auto !== false,
-    min: intIn(body?.regular?.min ?? DEFAULTS.regular.min, 1, 31, 'bad_regular_min'),
+    auto: body?.regular?.auto === true,
+    min: intIn(body?.regular?.min ?? DEFAULTS.regular.min, 0, 30, 'bad_regular_min'),
   };
   const active_days = intIn(body?.active_days ?? DEFAULTS.active_days, 7, 180, 'bad_active_days');
   const mode = body?.levels?.mode ?? 'none';
@@ -77,6 +81,16 @@ function clean(body, sport) {
     while (seenKey.has(key)) key = newKey();
     seenKey.add(key);
     const out = { key, label };
+    if (mode === 'manual') {
+      // Optional DUPR range of the level ("Series A: 3.0 – 3.5").
+      const num = (v) => (v === '' || v == null ? null : Number(v));
+      const lo = num(it?.dupr_min);
+      const hi = num(it?.dupr_max);
+      for (const v of [lo, hi]) if (v != null && !(Number.isFinite(v) && v >= 0 && v <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_level_range');
+      if (lo != null && hi != null && hi < lo) throw fail('The upper score is below the lower one.', 'bad_level_range');
+      out.dupr_min = lo == null ? null : Math.round(lo * 100) / 100;
+      out.dupr_max = hi == null ? null : Math.round(hi * 100) / 100;
+    }
     if (mode === 'score') {
       const v = it?.min === '' || it?.min == null ? null : Number(it.min);
       if (v != null && !(Number.isFinite(v) && v >= 0 && v <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_level_min');
@@ -147,21 +161,52 @@ async function all(build) {
   }
 }
 
-// Sessions each member played in the last 30 days (sign-ups that were not cancelled).
+// Sessions each member played in the last 30 days: kèo already held (today or before) they
+// were on and did not cancel / miss. One per kèo, even if listed twice.
 async function recentCounts(clubId) {
   const today = todayYmd();
   const since = addDays(today, -REGULAR_DAYS);
   const events = await all(() => supabase.from('events').select('id').eq('club_id', clubId).gte('event_date', since).lte('event_date', today).neq('status', 'cancelled').order('id'));
-  const counts = new Map();
+  const seen = new Map(); // member -> Set(event)
   const ids = events.map((e) => e.id);
   for (let i = 0; i < ids.length; i += 150) {
-    const rows = await all(() => supabase.from('event_participants').select('status, source_club_member_id, guest_member_id').in('event_id', ids.slice(i, i + 150)).order('id'));
+    const rows = await all(() => supabase.from('event_participants').select('event_id, status, source_club_member_id, guest_member_id').in('event_id', ids.slice(i, i + 150)).order('id'));
     for (const p of rows) {
       const mid = p.source_club_member_id || p.guest_member_id;
-      if (mid && PLAYED.includes(p.status)) counts.set(mid, (counts.get(mid) || 0) + 1);
+      if (!mid || !PLAYED.includes(p.status)) continue;
+      if (!seen.has(mid)) seen.set(mid, new Set());
+      seen.get(mid).add(p.event_id);
     }
   }
-  return counts;
+  return new Map([...seen].map(([k, v]) => [k, v.size]));
+}
+
+// Who should move, by the Host's rule (more than `min` sessions = regular). Nobody new
+// (added this month) or holding a pass for today is suggested down.
+async function proposals(club) {
+  const settings = await forClub(club.id);
+  const today = todayYmd();
+  const graceFrom = addDays(today, -NEW_GRACE_DAYS);
+  const [members, counts] = await Promise.all([
+    all(() => supabase.from('club_members').select('id, full_name, member_type, is_active, join_requested, review_started_at, created_at').eq('club_id', club.id).order('id')),
+    recentCounts(club.id),
+  ]);
+  const roster = members.filter((m) => m.is_active && !m.join_requested && !m.review_started_at);
+  const up = [];
+  const down = [];
+  for (const m of roster) {
+    const n = counts.get(m.id) || 0;
+    const regular = n > settings.regular.min;
+    if (regular && m.member_type === 'guest') up.push({ id: m.id, full_name: m.full_name, sessions: n });
+    if (!regular && m.member_type === 'fixed' && String(m.created_at).slice(0, 10) < graceFrom) down.push({ id: m.id, full_name: m.full_name, sessions: n });
+  }
+  if (down.length) {
+    const { data: passes, error } = await supabase.from('memberships').select('club_member_id').in('club_member_id', down.map((d) => d.id)).eq('status', 'paid').lte('starts_on', today).gte('ends_on', today);
+    if (error) throw error;
+    const keep = new Set((passes || []).map((p) => p.club_member_id));
+    down.splice(0, down.length, ...down.filter((d) => !keep.has(d.id)));
+  }
+  return { settings, roster, up, down };
 }
 
 // Move members between regular (fixed) and drop-in (guest) by the Host's rule. Never moves
@@ -176,36 +221,17 @@ async function reclassify(club, { force = false } = {}) {
   lastRun.set(club.id, Date.now());
   const settings = await forClub(club.id);
   if (!settings.regular.auto && !force) return null;
-  const today = todayYmd();
-  const graceFrom = addDays(today, -NEW_GRACE_DAYS);
-  const [members, counts] = await Promise.all([
-    all(() => supabase.from('club_members').select('id, member_type, is_active, join_requested, created_at').eq('club_id', club.id).order('id')),
-    recentCounts(club.id),
-  ]);
-  const roster = members.filter((m) => m.is_active && !m.join_requested);
-  const up = [];
-  const down = [];
-  for (const m of roster) {
-    const regular = (counts.get(m.id) || 0) >= settings.regular.min;
-    if (regular && m.member_type === 'guest') up.push(m.id);
-    if (!regular && m.member_type === 'fixed' && String(m.created_at).slice(0, 10) < graceFrom) down.push(m.id);
-  }
-  // Holding a pass for today keeps them regular.
-  if (down.length) {
-    const { data: passes, error } = await supabase.from('memberships').select('club_member_id').in('club_member_id', down).lte('starts_on', today).gte('ends_on', today);
-    if (error) throw error;
-    const keep = new Set((passes || []).map((p) => p.club_member_id));
-    down.splice(0, down.length, ...down.filter((id) => !keep.has(id)));
-  }
+  const { roster, up, down } = await proposals(club);
+  // "Khách ưu tiên" stays ưu tiên either way (the Host chose it).
   if (up.length) {
-    const { error } = await supabase.from('club_members').update({ member_type: 'fixed', guest_perk: null }).in('id', up);
+    const { error } = await supabase.from('club_members').update({ member_type: 'fixed' }).in('id', up.map((x) => x.id));
     if (error) throw error;
   }
   if (down.length) {
-    const { error } = await supabase.from('club_members').update({ member_type: 'guest', tier: null }).in('id', down);
+    const { error } = await supabase.from('club_members').update({ member_type: 'guest', tier: null }).in('id', down.map((x) => x.id));
     if (error) throw error;
   }
   return { checked: roster.length, to_regular: up.length, to_dropin: down.length, min: settings.regular.min };
 }
 
-module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, ready, resolve, clean, levelOf, forClub, save, reclassify, recentCounts, forget };
+module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, ready, resolve, clean, levelOf, forClub, save, reclassify, proposals, recentCounts, forget };

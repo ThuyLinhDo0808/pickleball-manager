@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
@@ -11,6 +11,7 @@ import ClubLeaderboard from '@/components/ClubLeaderboard';
 import RaceBoard from '@/components/RaceBoard';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
+import { translate } from '@/lib/i18n/core';
 import MapLink from '@/components/MapLink';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -25,11 +26,27 @@ const MY_TONE = {
   waitlisted: 'bg-sky-400/10 text-sky-300 border-sky-400/50',
 };
 
-// A club seen by one of its members (not its managers): my pass, the club's coming
-// sessions (sign up with one tap), my sign-ups, my history there and the club's rankings.
+const PHASES = ['done', 'live', 'soon', 'later'];
+const SOON_DAYS = 7;
+// Where a session is in time (the device's clock): over, on now, within SOON_DAYS, or later.
+// No end time = 2 hours; an end before the start = past midnight.
+function phaseOf(e, now) {
+  const at = (hm) => new Date(`${e.event_date}T${String(hm).slice(0, 5)}:00`);
+  const start = at(e.start_time || '00:00');
+  let end = e.end_time ? at(e.end_time) : new Date(start.getTime() + (e.start_time ? 2 : 24) * 3600e3);
+  if (end <= start) end = new Date(end.getTime() + 86400e3);
+  if (now >= end) return 'done';
+  if (now >= start) return 'live';
+  return start - now <= SOON_DAYS * 86400e3 ? 'soon' : 'later';
+}
+
+// A club seen by one of its members (not its managers): my pass, the club's
+// sessions by time (sign up with one tap), my sign-ups, my history there and the club's rankings.
 export default function MemberClubPage() {
   const { clubId } = useParams();
-  const { t, lang } = useI18n();
+  const { t: tBase, lang } = useI18n();
+  // A community reads as one ("Lịch cộng đồng", thường xuyên / vãng lai), set once the data is in.
+  let t = tBase;
   const { data, loading, error, setData } = useLoad(() => api.get(`/api/player/clubs/${clubId}`), [clubId]);
   const [voteError, setVoteError] = useState('');
   // Meetings: one tap to say I'm coming / not coming (tap again to take it back).
@@ -43,6 +60,12 @@ export default function MemberClubPage() {
     }
   }
   const [tab, setTab] = useState('schedule');
+  const [phase, setPhase] = useState(null); // schedule filter; null = first group with sessions
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   if (loading && !data) return <PlayerShell><p className="text-gray-400">{t('common.loading')}</p></PlayerShell>;
   if (error || !data) {
@@ -57,7 +80,15 @@ export default function MemberClubPage() {
   }
 
   const { club, member } = data;
+  const community = club.kind === 'community';
+  if (community) t = (key, params) => translate(lang, key, params, club.sport, 'community');
   const today = todayYmd();
+  // Schedule split by time: done / on now / within SOON_DAYS / later.
+  const groups = { done: [], live: [], soon: [], later: [] };
+  for (const e of [...(data.past_events || []), ...data.events]) groups[phaseOf(e, now)].push(e);
+  groups.done.sort((a, b) => `${b.event_date}${b.start_time || ''}`.localeCompare(`${a.event_date}${a.start_time || ''}`));
+  const shownPhase = phase || ['live', 'soon', 'later', 'done'].find((k) => groups[k].length) || 'soon';
+  const shown = groups[shownPhase];
   const sessionsLeft = data.membership_state === 'active' ? (data.sessions_unlimited ? '∞' : data.sessions_remaining) : '—';
 
   return (
@@ -73,6 +104,8 @@ export default function MemberClubPage() {
             <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs">
               <span className="rounded-full bg-navy-700 px-2 py-0.5 font-bold uppercase tracking-wide text-gray-200">{t('hub.roleMember')}</span>
               <span className="text-gray-400">{member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</span>
+              {community && data.membership_state === 'active' && <span className="rounded-full bg-amber-300/20 px-2 py-0.5 font-bold text-amber-200">👑 {t('social.vip')}</span>}
+              {community && member.guest_perk && <span className="rounded-full bg-lime-400/15 px-2 py-0.5 font-bold text-lime-200">⚡ {t('social.priority')}</span>}
               {member.account_verified === false && <span className="text-yellow-300">⏳ {t('verify.pendingPlayer')}</span>}
             </div>
           </div>
@@ -107,10 +140,27 @@ export default function MemberClubPage() {
 
       {tab === 'schedule' && (
         <div className="flex flex-col gap-2">
-          {data.events.length === 0 && <p className="card text-gray-400 text-sm">{t('hub.noClubEvents')}</p>}
+          <div className="flex flex-wrap gap-1.5 mb-1" role="tablist" aria-label={t('hub.tabSchedule')}>
+            {PHASES.map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={shownPhase === k}
+                onClick={() => setPhase(k)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${shownPhase === k ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+              >
+                {k === 'live' && groups.live.length ? <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-400 align-middle animate-pulse" aria-hidden="true" /> : null}
+                {t(`hub.phase_${k}`)} <span className="tabular-nums opacity-70">{groups[k].length}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-gray-500 text-xs -mt-1 mb-1">{t(`hub.phaseHint_${shownPhase}`, { n: SOON_DAYS })}</p>
+          {shown.length === 0 && <p className="card text-gray-400 text-sm">{t(`hub.phaseEmpty_${shownPhase}`)}</p>}
           {voteError && <p className="text-red-400 text-sm">{voteError}</p>}
-          {data.events.map((e) => {
+          {shown.map((e) => {
             const full = e.slots && e.main_count >= e.slots;
+            const ended = shownPhase === 'done';
             return (
               <div key={e.id} className="card !p-0 overflow-hidden flex">
                 <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 bg-navy-900 py-3">
@@ -119,7 +169,10 @@ export default function MemberClubPage() {
                   <span className="text-[11px] text-gray-500">{e.event_date === today ? t('hub.today') : `${Number(e.event_date.slice(5, 7))}/${e.event_date.slice(2, 4)}`}</span>
                 </div>
                 <div className="min-w-0 flex-1 p-3">
-                  <div className="text-white font-semibold truncate">{KIND_ICON[e.kind] ? `${KIND_ICON[e.kind]} ` : ''}{e.title}</div>
+                  <div className="text-white font-semibold truncate">
+                    {shownPhase === 'live' && <span className="mr-1.5 rounded-full bg-red-500/20 px-2 py-0.5 text-[11px] font-bold text-red-200 align-middle">● {t('hub.phase_live')}</span>}
+                    {KIND_ICON[e.kind] ? `${KIND_ICON[e.kind]} ` : ''}{e.title}
+                  </div>
                   <div className="text-gray-400 text-xs truncate">
                     {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''}
                     {Number(e.fee_amount) > 0 ? ` · ${formatVnd(e.fee_amount)}` : ''}
@@ -127,7 +180,9 @@ export default function MemberClubPage() {
                   {(e.location || e.map_url) && <MapLink location={e.location} mapUrl={e.map_url} className="text-gray-400 text-xs" />}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {e.slots && e.kind !== 'meeting' ? <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${full ? 'bg-amber-400/15 text-amber-300' : 'bg-navy-700 text-gray-200'}`}>{e.main_count}/{e.slots}{e.waitlist_count ? ` · +${e.waitlist_count}` : ''}</span> : null}
-                    {e.kind === 'meeting' ? (
+                    {ended ? (
+                      e.my_status ? <span className={`rounded-full border px-2 py-0.5 text-xs ${MY_TONE[e.my_status] || 'border-navy-600 text-gray-300'}`}>{t(`player.status_${e.my_status}`)}</span> : <span className="text-gray-500 text-xs">{t('hub.endedNoSignup')}</span>
+                    ) : e.kind === 'meeting' ? (
                       <>
                         <span className="text-gray-300 text-xs">{t('meeting.question')}</span>
                         {['yes', 'no'].map((c) => (

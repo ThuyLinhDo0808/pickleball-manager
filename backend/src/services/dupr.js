@@ -233,6 +233,31 @@ async function attachFromRoster(club, memberId) {
 
 const CLEARED = { dupr_name: null, dupr_doubles: null, dupr_doubles_rel: null, dupr_singles: null, dupr_singles_rel: null, dupr_synced_at: null, dupr_verified_at: null };
 
+// Host types a member's DUPR rating by hand (a player not in the club on DUPR: the Host reads it
+// in the DUPR app). It becomes the member's level, like an imported one. The next DUPR file
+// import that has this member replaces it. Empty = clear.
+async function setMemberScore(club, memberId, body = {}) {
+  const rating = (v, name) => {
+    if (v === '' || v == null) return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 1 || n > 8) throw httpError(`${name} must be 1.000–8.000.`, 400, 'bad_rating');
+    return Math.round(n * 1000) / 1000;
+  };
+  const doubles = rating(body.doubles, 'Doubles');
+  const singles = rating(body.singles, 'Singles');
+  let rel = body.doubles_rel === '' || body.doubles_rel == null ? null : Number(body.doubles_rel);
+  if (rel != null && !(Number.isInteger(rel) && rel >= 0 && rel <= 100)) throw httpError('Reliability must be 0–100.', 400, 'bad_rel');
+  if (doubles == null) rel = null;
+  const { data: cur } = await supabase.from('club_members').select('id, dupr_synced_at').eq('id', memberId).eq('club_id', club.id).maybeSingle();
+  if (!cur) throw httpError('Member not found.', 404, 'not_found');
+  if (cur.dupr_synced_at) throw httpError('This member is linked to the club DUPR list: the rating comes from the DUPR file.', 409, 'linked');
+  const patch = { dupr_doubles: doubles, dupr_doubles_rel: rel, dupr_singles: singles, ...(doubles != null ? { dupr_level: Math.min(8, Math.round(doubles * 100) / 100) } : {}) };
+  const { error } = await supabase.from('club_members').update(patch).eq('id', memberId);
+  if (error) throw error;
+  const { data } = await supabase.from('club_members').select('*').eq('id', memberId).single();
+  return data;
+}
+
 // Host sets / clears a member's DUPR ID by hand.
 async function setMemberId(club, memberId, raw) {
   const id = cleanId(raw);
@@ -307,7 +332,9 @@ async function memberBoard(club) {
     const h = byMember.get(m.id) || [];
     const prev = h.length > 1 ? h[h.length - 2] : null;
     const linked = !!(m.dupr_id && m.dupr_synced_at);
-    const status = !m.claimed ? 'none' : counts.get(m.claimed) > 1 ? 'conflict' : linked && rosterIds.has(m.claimed) ? 'linked' : 'not_in_club';
+    // 'manual': not on the club's DUPR list, the Host typed the rating (seen in the DUPR app).
+    const manual = !linked && m.dupr_doubles != null;
+    const status = m.claimed && counts.get(m.claimed) > 1 ? 'conflict' : linked && rosterIds.has(m.claimed) ? 'linked' : manual ? 'manual' : !m.claimed ? 'none' : 'not_in_club';
     return {
       id: m.id,
       full_name: m.full_name,
@@ -322,6 +349,7 @@ async function memberBoard(club) {
       singles: num(m.dupr_singles),
       singles_rel: m.dupr_singles_rel,
       synced_at: m.dupr_synced_at,
+      self_level: m.dupr_level == null ? null : Number(m.dupr_level), // level on the member / player profile (self-rated)
       change: prev && m.dupr_doubles != null && prev.doubles != null ? Math.round((Number(m.dupr_doubles) - Number(prev.doubles)) * 1000) / 1000 : null,
       status,
     };
@@ -638,4 +666,5 @@ async function playerDupr(userId) {
   };
 }
 
-module.exports = { MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, clubMatches, matchesCsv, markExported, stats, playerDupr, TEMPLATE };
+module.exports = {
+  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, clubMatches, matchesCsv, markExported, stats, playerDupr, TEMPLATE };

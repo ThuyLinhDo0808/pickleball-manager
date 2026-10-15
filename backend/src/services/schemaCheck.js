@@ -87,6 +87,7 @@ const PROBES = [
   { table: 'clubs', column: 'community_settings', migration: '20261123090000_community_settings.sql' },
   { table: 'events', column: 'level_keys', migration: '20261123090000_community_settings.sql' },
   { table: 'user_mfa', column: 'reset_at', migration: '20261124090000_mfa_reset.sql' },
+  { table: 'clubs', column: 'rank_min_matches', migration: '20261125090000_rank_settings.sql' },
 ];
 
 // The security lockdown adds no column: it takes table access away from the public anon

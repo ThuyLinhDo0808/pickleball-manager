@@ -68,7 +68,7 @@ export function ClubProfileFields({ form, set, withName = false, sports = null }
           }}
         >
           {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          <option value="__other">{t('creq.countryOther')}</option>
+          {other && <option value="__other">{t('creq.countryOther')}</option>}
         </select>
         {other && <input className="input mt-2" required maxLength={60} placeholder={t('creq.countryPh')} value={form.country || ''} onChange={(e) => set('country', e.target.value)} />}
       </Field>

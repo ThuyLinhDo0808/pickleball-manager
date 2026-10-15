@@ -129,6 +129,41 @@ function downloadCsv(name, rows) {
   URL.revokeObjectURL(a.href);
 }
 
+// Men / women: active members (by type) and the people who came in the period.
+function GenderCard({ g }) {
+  const { t } = useI18n();
+  const rows = ['members', 'fixed', 'guest', 'came'].map((k) => ({ k, ...g[k], total: g[k].male + g[k].female + g[k].unknown }));
+  const pct = (n, total) => (total ? Math.round((100 * n) / total) : 0);
+  return (
+    <section className="card !py-3 mb-4" aria-labelledby="gender-title">
+      <h2 id="gender-title" className="text-white font-semibold text-sm">🚻 {t('gender.title')}</h2>
+      <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+        {rows.map((r) => (
+          <div key={r.k}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2 text-xs">
+              <span className="text-gray-300">{t(`gender.${r.k}`)}</span>
+              <span className="text-gray-400 tabular-nums">
+                <span className="text-sky-300">{t('gender.male')} {r.male}</span> · <span className="text-pink-300">{t('gender.female')} {r.female}</span>
+                {r.unknown > 0 && <> · {t('gender.unknown')} {r.unknown}</>}
+              </span>
+            </div>
+            <div className="mt-1 flex h-2.5 overflow-hidden rounded-full bg-navy-700" role="img" aria-label={`${t(`gender.${r.k}`)}: ${t('gender.male')} ${r.male}, ${t('gender.female')} ${r.female}, ${t('gender.unknown')} ${r.unknown}`}>
+              {r.total > 0 && (
+                <>
+                  <span className="h-full bg-sky-400" style={{ width: `${pct(r.male, r.total)}%` }} />
+                  <span className="h-full bg-pink-400 border-l-2 border-navy-800" style={{ width: `${pct(r.female, r.total)}%` }} />
+                </>
+              )}
+            </div>
+            {r.total > 0 && <p className="mt-0.5 text-[11px] text-gray-500 tabular-nums">{pct(r.male, r.total)}% · {pct(r.female, r.total)}%</p>}
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] text-gray-500">{t('gender.hint')}</p>
+    </section>
+  );
+}
+
 export default function AttendancePage() {
   const { t } = useI18n();
   const { club } = useDefaultClub();
@@ -340,6 +375,8 @@ export default function AttendancePage() {
           <StatTile icon="🎫" label={t('statx.carry')} value={view.carry} tone="text-pink-300" sub={t('statx.carrySub')} />
         </KpiRow>
       )}
+
+      {data?.gender && <GenderCard g={data.gender} />}
 
       <UnderlineTabs
         value={tab}

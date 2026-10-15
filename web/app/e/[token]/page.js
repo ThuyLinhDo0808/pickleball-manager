@@ -37,6 +37,44 @@ function Info({ label, value }) {
 
 // Player-facing page opened from the link the Host posts in Zalo/Telegram. Anyone can read
 // it; signing up needs an account (member vs guest, payment, ticket).
+// Players on the main list / waitlist: gender, DUPR doubles rating, its reliability and the
+// matches recorded here that were sent to DUPR (badminton: the level instead of DUPR).
+function PlayerTable({ rows, sport, muted = false }) {
+  const { t } = useI18n();
+  const badminton = sport === 'badminton';
+  const chip = 'rounded border border-navy-600 px-1.5 py-px whitespace-nowrap';
+  return (
+    <>
+      <ol className="flex flex-col divide-y divide-navy-700">
+        {rows.map((p, i) => (
+          <li key={i} className="py-2 text-sm">
+            <div className={muted ? 'text-gray-400' : 'text-gray-200'}>
+              <span className="text-gray-500 w-6 inline-block">{i + 1}.</span>
+              {p.full_name}
+              {p.status === 'pending' && <span className="ml-2 text-[11px] text-sky-300">({t('signup.pendingShort')})</span>}
+            </div>
+            <div className="mt-1 ml-6 flex flex-wrap gap-1.5 text-[11px] text-gray-400 tabular-nums">
+              {p.gender && <span className={`${chip} ${p.gender === 'male' ? 'text-sky-300' : 'text-pink-300'}`}>{t(`members.${p.gender}`)}</span>}
+              {!badminton && p.dupr != null ? (
+                <>
+                  <span className={chip}>{t('public.colDupr')} <b className="text-lime-300">{p.dupr.toFixed(3)}</b></span>
+                  {p.dupr_rel != null && <span className={chip}>{t('public.colRel')} {p.dupr_rel}%</span>}
+                </>
+              ) : p.dupr_level != null ? (
+                <span className={chip} title={badminton ? undefined : t('public.selfLevel')}>{badminton ? t('public.colLevel') : t('public.selfShort')} {levelText(p.dupr_level, sport, t)}</span>
+              ) : (
+                !badminton && <span className={`${chip} text-gray-500`}>{t('public.noDupr')}</span>
+              )}
+              {!badminton && p.dupr_matches != null && <span className={chip}>{t('public.duprMatchesN', { n: p.dupr_matches })}</span>}
+            </div>
+          </li>
+        ))}
+      </ol>
+      {!badminton && rows.some((p) => p.dupr == null && p.dupr_level != null) && <p className="mt-1 text-[11px] text-gray-500">{t('public.selfLevel')}</p>}
+    </>
+  );
+}
+
 export default function PublicEventPage() {
   const { token } = useParams();
   const { t, lang, setLang, setSport } = useI18n();
@@ -131,31 +169,13 @@ export default function PublicEventPage() {
           {t('public.players')} <span className="text-gray-400 font-normal">({main.length}/{ev.slots})</span>
         </h2>
         {main.length === 0 && <p className="text-gray-400 text-sm">{t('public.nobody')}</p>}
-        <ol className="flex flex-col divide-y divide-navy-700">
-          {main.map((p, i) => (
-            <li key={i} className="flex items-center justify-between py-2 text-sm">
-              <span className="text-gray-200">
-                <span className="text-gray-500 w-6 inline-block">{i + 1}.</span>
-                {p.full_name}
-                {p.status === 'pending' && <span className="ml-2 text-[11px] text-sky-300">({t('signup.pendingShort')})</span>}
-              </span>
-              {p.dupr_level != null && <span className="text-gray-400 text-xs">{levelText(p.dupr_level, ev.sport, t)}</span>}
-            </li>
-          ))}
-        </ol>
+        {main.length > 0 && <PlayerTable rows={main} sport={ev.sport} />}
         {waitlist.length > 0 && (
           <>
             <h3 className="text-gray-300 text-sm font-semibold mt-4 mb-1">
               {t('events.waitlist')} ({waitlist.length})
             </h3>
-            <ol className="flex flex-col divide-y divide-navy-700">
-              {waitlist.map((p, i) => (
-                <li key={i} className="py-2 text-sm text-gray-400">
-                  <span className="text-gray-500 w-6 inline-block">{i + 1}.</span>
-                  {p.full_name}
-                </li>
-              ))}
-            </ol>
+            <PlayerTable rows={waitlist} sport={ev.sport} muted />
           </>
         )}
       </section>
