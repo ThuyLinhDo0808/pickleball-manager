@@ -11,6 +11,7 @@ import ClubLeaderboard from '@/components/ClubLeaderboard';
 import RaceBoard from '@/components/RaceBoard';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
+import { translate } from '@/lib/i18n/core';
 import MapLink from '@/components/MapLink';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -43,7 +44,9 @@ function phaseOf(e, now) {
 // sessions by time (sign up with one tap), my sign-ups, my history there and the club's rankings.
 export default function MemberClubPage() {
   const { clubId } = useParams();
-  const { t, lang } = useI18n();
+  const { t: tBase, lang } = useI18n();
+  // A community reads as one ("Lịch cộng đồng", thường xuyên / vãng lai), set once the data is in.
+  let t = tBase;
   const { data, loading, error, setData } = useLoad(() => api.get(`/api/player/clubs/${clubId}`), [clubId]);
   const [voteError, setVoteError] = useState('');
   // Meetings: one tap to say I'm coming / not coming (tap again to take it back).
@@ -77,6 +80,8 @@ export default function MemberClubPage() {
   }
 
   const { club, member } = data;
+  const community = club.kind === 'community';
+  if (community) t = (key, params) => translate(lang, key, params, club.sport, 'community');
   const today = todayYmd();
   // Schedule split by time: done / on now / within SOON_DAYS / later.
   const groups = { done: [], live: [], soon: [], later: [] };
@@ -99,6 +104,8 @@ export default function MemberClubPage() {
             <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs">
               <span className="rounded-full bg-navy-700 px-2 py-0.5 font-bold uppercase tracking-wide text-gray-200">{t('hub.roleMember')}</span>
               <span className="text-gray-400">{member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</span>
+              {community && data.membership_state === 'active' && <span className="rounded-full bg-amber-300/20 px-2 py-0.5 font-bold text-amber-200">👑 {t('social.vip')}</span>}
+              {community && member.guest_perk && <span className="rounded-full bg-lime-400/15 px-2 py-0.5 font-bold text-lime-200">⚡ {t('social.priority')}</span>}
               {member.account_verified === false && <span className="text-yellow-300">⏳ {t('verify.pendingPlayer')}</span>}
             </div>
           </div>

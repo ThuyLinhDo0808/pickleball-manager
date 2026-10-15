@@ -164,7 +164,11 @@ export default function EventDetailPage() {
 
   async function importFromClub() {
     if (!selectedIds.length) return;
-    await api.post(`/api/events/${eventId}/participants/import`, { club_member_ids: selectedIds });
+    try {
+      await api.post(`/api/events/${eventId}/participants/import`, { club_member_ids: selectedIds });
+    } catch (err) {
+      setFlash(err.payload?.code === 'already_on_event' ? t('events.alreadyOnEvent') : err.message);
+    }
     setSelectedIds([]);
     setShowImport(false);
     reloadParticipants();
@@ -180,6 +184,8 @@ export default function EventDetailPage() {
   if (!event) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
 
   const main = (participants || []).filter((p) => ['registered', 'checked_in', 'no_show'].includes(p.status));
+  // Members already on this kèo (any list but cancelled): not offered again in "Import from club".
+  const onEvent = new Set((participants || []).filter((p) => p.status !== 'cancelled').flatMap((p) => [p.source_club_member_id, p.guest_member_id, p.card?.member_id]).filter(Boolean));
   const pending = (participants || []).filter((p) => p.status === 'pending');
   // Guests with a perk go first off the waitlist, so show them first.
   const waitlist = (participants || []).filter((p) => p.status === 'waitlisted').sort((a, b) => Number(!!b.priority) - Number(!!a.priority));
@@ -246,7 +252,7 @@ export default function EventDetailPage() {
             onClick={() => setTab(tb)}
             className={`px-2 py-2 rounded-lg text-sm truncate ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
           >
-            {tb === 'details' ? t('events.tabDetails') : tb === 'participants' ? `${t('nav.members')} (${main.length})` : tb === 'matches' ? `${t('matches.title')} (${(matches || []).length})` : t('nav.finance')}
+            {tb === 'details' ? t('events.tabDetails') : tb === 'participants' ? `${t('events.tabPlayers')} (${main.length})` : tb === 'matches' ? `${t('matches.title')} (${(matches || []).length})` : t('nav.finance')}
           </button>
         ))}
       </div>
@@ -279,7 +285,7 @@ export default function EventDetailPage() {
             <div className="card mb-4">
               <p className="text-gray-400 text-sm mb-2">{t('events.importFromClub')}</p>
               <div className="max-h-48 overflow-y-auto flex flex-col gap-1">
-                {(clubMembers || []).filter((m) => m.is_active).map((m) => (
+                {(clubMembers || []).filter((m) => m.is_active && !onEvent.has(m.id)).map((m) => (
                   <label key={m.id} className="flex items-center gap-2 text-sm text-gray-200">
                     <input
                       type="checkbox"

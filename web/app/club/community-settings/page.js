@@ -102,7 +102,7 @@ export default function CommunitySettingsPage() {
         <Card icon="🔁" title={t('cpanel.regularTitle')} hint={t('cpanel.regularHint')}>
           <label className="flex flex-wrap items-center gap-2 text-sm text-gray-200">
             {t('cpanel.regularFrom')}
-            <input type="number" min={1} max={31} className="input !w-20 !py-1.5 text-center" value={s.regular.min} onChange={(e) => set({ regular: { ...s.regular, min: e.target.value } })} />
+            <input type="number" min={0} max={30} className="input !w-20 !py-1.5 text-center" value={s.regular.min} onChange={(e) => set({ regular: { ...s.regular, min: e.target.value } })} />
             {t('cpanel.regularUnit')}
           </label>
           <p className="mt-1 text-xs text-gray-500">{t('cpanel.dropinBelow', { n: s.regular.min || '?' })}</p>

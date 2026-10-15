@@ -100,6 +100,8 @@ router.get('/public/:publicToken', async (req, res) => {
     ...pick(event, PUBLIC_EVENT_FIELDS),
     map_url: event.map_url || (await clubMapUrl(event.club_id).catch(() => null)),
     sport: await clubSport(event.club_id), // levels show as DUPR or badminton steps
+    // Xé vé (a community's kèo, or a one-off kèo): the page shows the rules to agree to.
+    xeve: !event.club_id || (await supabase.from('clubs').select('kind').eq('id', event.club_id).maybeSingle()).data?.kind === 'community',
     registration_open: !closedCode,
     closed_code: closedCode,
     participants: people.map(({ joined_at, ...p }) => p),
@@ -859,12 +861,25 @@ router.get('/:eventId/participants', async (req, res) => {
   } catch (err) {
     console.error('cancel history', err.message); // the list still loads without it
   }
+  // Who plays on a pass. Clubs: fixed members pay through their membership plan.
+  // Communities: only "khách VIP" — a paid pass (month / quarter / year) covering the date;
+  // regulars and drop-ins pay per kèo.
+  let vip = new Set();
+  const community = req.event.club_id ? (await supabase.from('clubs').select('kind').eq('id', req.event.club_id).maybeSingle()).data?.kind === 'community' : false;
+  if (community) {
+    const ids = [...new Set([...cards.values()].map((c) => c?.member_id).filter(Boolean))];
+    if (ids.length) {
+      const { data: passes } = await supabase.from('v_membership_status').select('club_member_id').in('club_member_id', ids).eq('status', 'paid').lte('starts_on', req.event.event_date).gte('ends_on', req.event.event_date);
+      vip = new Set((passes || []).map((x) => x.club_member_id));
+    }
+  }
   // screenshots are fetched one at a time (they are large)
   res.json(
     data.map(({ payment_proof, ...p }) => {
-      const card = cards.get(p.id) || null;
-      // Fixed members pay through their membership plan: their place is always paid.
-      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: card?.member_type === 'fixed', email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null };
+      const c = cards.get(p.id) || null;
+      const card = c && community ? { ...c, vip: vip.has(c.member_id) } : c;
+      const paidByPlan = community ? !!card?.vip : card?.member_type === 'fixed';
+      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: paidByPlan, email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null };
     })
   );
 });
@@ -1002,11 +1017,24 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
     });
   }
 
-  const { data: members, error: mErr } = await supabase
+  const { data: found, error: mErr } = await supabase
     .from('club_members')
     .select('*')
     .in('id', memberIds);
   if (mErr) return dbError(res, mErr);
+  // Already on this event (any list but cancelled): not added a second time.
+  const { data: onList, error: oErr } = await supabase
+    .from('event_participants')
+    .select('source_club_member_id, guest_member_id, user_id, phone')
+    .eq('event_id', req.event.id)
+    .neq('status', 'cancelled');
+  if (oErr) return dbError(res, oErr);
+  const tel = (v) => String(v || '').replace(/\D/g, '').replace(/^84/, '0');
+  const taken = new Set((onList || []).flatMap((p) => [p.source_club_member_id, p.guest_member_id]).filter(Boolean));
+  const takenUsers = new Set((onList || []).map((p) => p.user_id).filter(Boolean));
+  const takenPhones = new Set((onList || []).map((p) => tel(p.phone)).filter((x) => x.length >= 9));
+  const members = (found || []).filter((m) => !taken.has(m.id) && !(m.user_id && takenUsers.has(m.user_id)) && !(tel(m.phone).length >= 9 && takenPhones.has(tel(m.phone))));
+  if (!members.length) return res.status(409).json({ error: 'Everyone picked is already on this event.', code: 'already_on_event' });
 
   const { count } = await supabase
     .from('event_participants')

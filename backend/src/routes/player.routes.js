@@ -415,7 +415,9 @@ player.post('/join/:token', async (req, res) => {
     if (!member) {
       const { willExceed } = await limitBody(club.host_id, 1);
       if (willExceed) throw badRequest('This club is full right now. Please contact the host.', 403);
-      if (!(await hasMemberRoom(club, 'fixed'))) throw badRequest('This club is full right now. Please contact the host.', 403, 'member_limit');
+      // Community: buying a pass makes a "khách VIP", not a regular (that comes from playing).
+      const newType = (club.kind || 'club') === 'community' ? 'guest' : 'fixed';
+      if (!(await hasMemberRoom(club, newType))) throw badRequest('This club is full right now. Please contact the host.', 403, 'member_limit');
       const { data: created, error } = await supabase
         .from('club_members')
         .insert({
@@ -428,7 +430,7 @@ player.post('/join/:token', async (req, res) => {
           gender: profile.gender,
           birth_year: profile.birth_year,
           birth_date: profile.birth_date || null,
-          member_type: 'fixed',
+          member_type: newType,
         })
         .select()
         .single();
@@ -841,7 +843,7 @@ player.get('/clubs/:clubId', async (req, res) => {
       .sort((a, b) => b.event_date.localeCompare(a.event_date));
     res.json({
       club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', kind: me.clubs.kind || 'club', description: me.clubs.description || null, address: me.clubs.address || null, map_url: me.clubs.map_url || null, contact: owner?.email || null },
-      member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on },
+      member: { full_name: me.full_name, member_type: me.member_type, account_verified: me.account_verified, joined_on: me.joined_on, guest_perk: me.guest_perk || null },
       ...summarize(passes || [], today),
       memberships: (passes || []).slice(0, 8).map((p) => ({ period_label: p.period_label, status: p.status, sessions_included: p.sessions_included, sessions_used: p.sessions_used, sessions_remaining: p.sessions_remaining })),
       events: (events || []).map((e) => ({

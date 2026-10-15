@@ -58,7 +58,12 @@ async function perksFor(event, { userId = null, phone = null } = {}) {
   if (!event.club_id || !(await guestsReady())) return none;
   const member = await findClubPerson(event.club_id, { userId, phone });
   // ('vip' is a perk from before migration 20261013090000: treated as priority.)
-  if (!member || member.member_type === 'fixed' || !['priority', 'vip'].includes(member.guest_perk)) return { ...none, member };
+  if (!member || !['priority', 'vip'].includes(member.guest_perk)) return { ...none, member };
+  // Clubs: only guests have perks. Communities: regulars can be "khách ưu tiên" too.
+  if (member.member_type === 'fixed') {
+    const { data: club } = await supabase.from('clubs').select('kind').eq('id', event.club_id).maybeSingle();
+    if ((club?.kind || 'club') !== 'community') return { ...none, member };
+  }
   const pct = Number(member.guest_discount_pct || 0);
   return { member, perk: 'priority', priority: true, discount_pct: pct || null, fee_amount: discountedFee(event.fee_amount, pct) };
 }

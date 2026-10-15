@@ -163,7 +163,8 @@ async function registerOnline(event, userId, profile, opts = {}) {
     .in('status', HOLDS_PLACE);
   const hasPlace = (count || 0) < event.slots;
 
-  const isMember = standing.state === 'verified';
+  // A pass holder ("VIP") plays on the pass even when listed as a guest.
+  const isMember = standing.state === 'verified' || (standing.state === 'guest' && !!standing.pass);
   const row = {
     event_id: event.id,
     user_id: userId,
@@ -177,8 +178,9 @@ async function registerOnline(event, userId, profile, opts = {}) {
   // The Host checks new players first (level, who they are): no place or payment yet.
   const approval = needsApproval(event, standing);
   if (approval) row.status = 'requested';
-  // Guest perks: VIP pays the club's VIP price; priority/VIP go first off the waitlist.
-  if (!isMember) {
+  // Guest perks: priority goes first off the waitlist (+ the % off). Communities: regulars
+  // can be priority too.
+  if (!isMember || standing.member?.guest_perk) {
     const perks = await perksFor(event, { userId, phone: profile.phone });
     if (perks.priority) row.priority = true;
     if (perks.fee_amount != null) row.fee_amount = perks.fee_amount;

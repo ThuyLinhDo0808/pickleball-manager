@@ -122,7 +122,7 @@ const fromMember = (m) => ({
   play_duration: m.play_duration || '',
 });
 
-function MemberEdit({ member, busy, onSave, autoEdit = false }) {
+function MemberEdit({ member, busy, onSave, autoEdit = false, community = false }) {
   const { t, sport } = useI18n();
   const [open, setOpen] = useState(autoEdit);
   const [f, setF] = useState(() => fromMember(member));
@@ -157,8 +157,9 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
       gender: f.gender || null,
       dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level),
       member_type: f.member_type,
-      tier: f.member_type === 'fixed' ? f.tier || null : null,
-      ...(f.member_type === 'guest'
+      tier: f.member_type === 'fixed' && !community ? f.tier || null : null,
+      // Community: anyone can be "khách ưu tiên" (VIP = holding a pass, not a field).
+      ...(f.member_type === 'guest' || community
         ? { guest_perk: f.guest_perk || null, guest_discount_pct: f.guest_perk && f.guest_discount_pct !== '' ? Number(f.guest_discount_pct) : null }
         : {}),
       ...birthPayload(f.birth),
@@ -201,7 +202,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
         </select>
       </div>
       <div className="min-w-0">
-        {f.member_type === 'fixed' ? (
+        {f.member_type === 'fixed' && !community ? (
           <>
             <label className="text-xs text-gray-400">{t('members.tier')}</label>
             <select className="input" value={f.tier} onChange={(e) => set({ tier: e.target.value })}>
@@ -224,7 +225,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false }) {
           </>
         )}
       </div>
-      {f.member_type === 'guest' && f.guest_perk && (
+      {(f.member_type === 'guest' || community) && f.guest_perk && (
         <div className="col-span-2">
           <label htmlFor="md-discount" className="text-xs text-gray-400">{t('guests.discountLabel')}</label>
           <div className="flex flex-wrap items-center gap-2">
@@ -296,6 +297,9 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
   if (!open) return null;
 
   const planName = (id) => plans?.find((p) => p.id === id)?.name || '';
+  // Community: anyone can buy a pass ("khách VIP"); clubs: fixed members only.
+  const community = club?.kind === 'community';
+  const canPass = member.member_type === 'fixed' || community;
 
   async function run(fn) {
     setBusy(true);
@@ -337,13 +341,13 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             {member.member_type === 'fixed' && member.tier && ` · ${t(`members.${member.tier}`)}`}
           </span>
           {member.member_type === 'fixed' && <VipBadge stars={member.vip_stars} />}
-          {member.member_type !== 'fixed' && member.guest_perk && <GuestPerkBadge perk={member.guest_perk} pct={member.guest_discount_pct} />}
+          {(member.member_type !== 'fixed' || club?.kind === 'community') && member.guest_perk && <GuestPerkBadge perk={member.guest_perk} pct={member.guest_discount_pct} />}
           {member.phone && <a href={`tel:${member.phone}`} className="text-lime-400">{member.phone}</a>}
           {member.dupr_level != null && <span>{levelTag(member.dupr_level, sport, t)}</span>}
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
 
-        <MemberEdit key={member.id} member={member} busy={busy} onSave={patchMember} autoEdit={autoEdit} />
+        <MemberEdit community={club?.kind === 'community'} key={member.id} member={member} busy={busy} onSave={patchMember} autoEdit={autoEdit} />
 
         {member.account_email && (
           <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">
@@ -414,15 +418,16 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-white font-semibold text-sm">{t('membership.title')}</h3>
-            {member.member_type === 'fixed' && (
+            {canPass && (
               <button type="button" className="text-lime-400 text-sm" onClick={() => setShowRegister((s) => !s)}>
                 {showRegister ? t('common.cancel') : `+ ${t('membership.register')}`}
               </button>
             )}
           </div>
-          {member.member_type !== 'fixed' && <p className="text-gray-400 text-xs mb-2">{t('membership.guestNoPlans')}</p>}
+          {!canPass && <p className="text-gray-400 text-xs mb-2">{t('membership.guestNoPlans')}</p>}
+          {community && <p className="text-gray-400 text-xs mb-2">{t('social.vipHint')}</p>}
 
-          {showRegister && plans && member.member_type === 'fixed' && (
+          {showRegister && plans && canPass && (
             <div className="mb-3">
               <RegisterForm
                 club={club}
@@ -437,7 +442,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             </div>
           )}
 
-          {(passes || []).length === 0 && !showRegister && member.member_type === 'fixed' && <p className="text-gray-400 text-sm">{t('membership.none')}</p>}
+          {(passes || []).length === 0 && !showRegister && canPass && <p className="text-gray-400 text-sm">{t('membership.none')}</p>}
           <div className="flex flex-col gap-2">
             {(passes || []).map((p) => {
               const unlimited = p.sessions_included === 0;

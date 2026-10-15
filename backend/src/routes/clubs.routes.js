@@ -563,7 +563,8 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   if ('guest_perk' in fields) {
     fields.guest_perk = fields.guest_perk || null;
     if (fields.guest_perk && !PERKS.includes(fields.guest_perk)) return res.status(400).json({ error: 'Guests can only get the priority perk.', code: 'perk' });
-    if (fields.guest_perk && (fields.member_type || req.member.member_type) !== 'guest') {
+    // Clubs: perks are for guests. Communities: any player can be a "khách ưu tiên".
+    if (fields.guest_perk && (fields.member_type || req.member.member_type) !== 'guest' && (req.club.kind || 'club') !== 'community') {
       return res.status(400).json({ error: 'Perks are for guests only.' });
     }
   }
@@ -623,7 +624,7 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
     return res.status(400).json({ error: 'tier can only be set on fixed members.' });
   }
   if (fields.member_type === 'guest') fields.tier = null; // clear tier if downgraded to guest
-  if (fields.member_type === 'fixed' && req.member.guest_perk) fields.guest_perk = null; // perks are for guests
+  if (fields.member_type === 'fixed' && req.member.guest_perk && (req.club.kind || 'club') !== 'community' && !('guest_perk' in req.body)) fields.guest_perk = null; // club perks are for guests
   if (req.body.unlink_account === true) {
     fields.user_id = null; // detach the player's login
     fields.account_verified = false;
@@ -1156,6 +1157,18 @@ router.post('/:clubId/community-settings/reclassify', async (req, res) => {
   }
 });
 
+// Suggestions for the Host: who played more than the rule (→ thường xuyên) or not enough
+// (→ vãng lai) in the last 30 days. Nothing moves until the Host says so.
+router.get('/:clubId/community-settings/suggestions', async (req, res) => {
+  try {
+    if ((req.club.kind || 'club') !== 'community' || !(await communitySettings.ready())) return res.json({ up: [], down: [], min: null });
+    const { settings, up, down } = await communitySettings.proposals(req.club);
+    res.json({ up, down, min: settings.regular.min, auto: settings.regular.auto });
+  } catch (err) {
+    settingsFail(res, err);
+  }
+});
+
 router.get('/:clubId/fund', async (req, res) => {
   const { data: balanceRow, error: balErr } = await supabase
     .from('v_club_fund_balance')
@@ -1328,8 +1341,34 @@ router.get('/:clubId/attendance', async (req, res) => {
     cells,
     guests: [...guestRows.values()],
     passes,
+    gender: genderBreakdown(members, people),
   });
 });
+
+// Men / women among the club's active members (by type), and among the people who came in
+// the period (one count per person). No gender on record = "unknown".
+function genderBreakdown(members, people) {
+  const blank = () => ({ male: 0, female: 0, unknown: 0 });
+  const g = (v) => (v === 'male' || v === 'female' ? v : 'unknown');
+  const out = { members: blank(), fixed: blank(), guest: blank(), came: blank() };
+  for (const m of members) {
+    if (!m.is_active || m.join_requested) continue;
+    out.members[g(m.gender)] += 1;
+    out[m.member_type === 'fixed' ? 'fixed' : 'guest'][g(m.gender)] += 1;
+  }
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const byUser = new Map(members.filter((m) => m.user_id).map((m) => [m.user_id, m]));
+  const seen = new Set();
+  for (const p of people) {
+    if (p.status !== 'checked_in') continue;
+    const m = byId.get(p.source_club_member_id || p.guest_member_id) || (p.user_id && byUser.get(p.user_id)) || null;
+    const key = m ? `m:${m.id}` : `p:${String(p.phone || '').replace(/\D/g, '').slice(-9) || String(p.full_name).trim().toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.came[g(m?.gender)] += 1;
+  }
+  return out;
+}
 
 // Host fixes the attendance grid (late check-in, wrong tick). The page sends every change
 // at once after the Host confirms them. Same rules as checking in at the court: a club
