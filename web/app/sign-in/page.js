@@ -275,7 +275,7 @@ export default function SignInPage() {
             <span className="h-px w-10 bg-lime-400/60" aria-hidden="true" />
             {t('landing.hero_eyebrow')}
           </F>
-          <h1 className="text-[clamp(2.4rem,3.4vw+2.4vh,6rem)] font-black leading-[0.98] tracking-tight text-white [text-wrap:balance] lg:mt-6">
+          <h1 className="text-[clamp(2.4rem,3.4vw+2.4vh,6rem)] font-extrabold leading-[1.04] tracking-tight text-white [text-wrap:balance] lg:mt-6">
             <Words text={title} />
           </h1>
         </div>
