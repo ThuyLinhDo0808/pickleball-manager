@@ -190,6 +190,9 @@ html { scroll-behavior: smooth; }
 
 /* headline accent: moving sheen across the gradient text */
 .lp-sheen-text { background-image: linear-gradient(90deg, #b6f03b 0%, #d9f99d 25%, #6ee7b7 50%, #b6f03b 75%, #d9f99d 100%); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: lp-sheen 6s linear infinite; }
+/* The gradient is painted only inside the text's box: with a tight line-height the tails of g / y / p
+   (and stacked Vietnamese marks) fall outside it and show blank. Grow the box, not the layout. */
+.lp-sheen-text { padding: .18em .04em .3em; margin: -.18em -.04em -.3em; }
 @keyframes lp-sheen { to { background-position: 200% center; } }
 
 /* scenes: full screen, one at a time on big screens; stacked on small ones */
