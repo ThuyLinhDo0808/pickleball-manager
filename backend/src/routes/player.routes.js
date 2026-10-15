@@ -815,10 +815,15 @@ player.get('/clubs/:clubId', async (req, res) => {
     if (error) throw error;
     if (!me || !me.clubs) return notFound(res, 'Club');
     const today = todayYmd();
-    const [{ data: passes }, { data: events }, { data: owner }] = await Promise.all([
+    const EVENT_COLS = 'id, title, kind, event_date, start_time, end_time, location, map_url, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration';
+    // Finished sessions of the last 30 days ("Đã xong" on the schedule).
+    const since = new Date(`${today}T00:00:00Z`);
+    since.setUTCDate(since.getUTCDate() - 30);
+    const [{ data: passes }, { data: events }, { data: owner }, { data: pastEvents }] = await Promise.all([
       supabase.from('v_membership_status').select('*').eq('club_member_id', me.id).order('starts_on', { ascending: false }),
-      supabase.from('v_event_summary').select('id, title, kind, event_date, start_time, end_time, location, map_url, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration').eq('club_id', clubId).gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(30),
+      supabase.from('v_event_summary').select(EVENT_COLS).eq('club_id', clubId).gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(30),
       supabase.from('users').select('email').eq('id', me.clubs.host_id).maybeSingle(),
+      supabase.from('v_event_summary').select(EVENT_COLS).eq('club_id', clubId).lt('event_date', today).gte('event_date', since.toISOString().slice(0, 10)).neq('status', 'cancelled').order('event_date', { ascending: false }).order('start_time', { ascending: false }).limit(20),
     ]);
     const mine = await upcomingFor(uid, [me.id], clubId);
     // Meetings: the club votes who comes instead of signing up.
@@ -850,6 +855,7 @@ player.get('/clubs/:clubId', async (req, res) => {
             }
           : {}),
       })),
+      past_events: (pastEvents || []).map((e) => ({ ...e, public_token: null, my_status: history.find((h) => h.event_id === e.id)?.status || null })),
       my_upcoming: mine,
       history: history.slice(0, 30),
       stats: {

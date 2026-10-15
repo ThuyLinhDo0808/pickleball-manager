@@ -108,7 +108,7 @@ Thanh điều hướng cá nhân: **Trang chủ · Tìm CLB** (`/discover`) **·
 
 ### 3.2. Trang CLB cho thành viên (`/c/<clubId>`)
 Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được. Gồm: ảnh/tên CLB, nhãn *Thành viên* (+ *chờ xác thực* nếu CLB chưa duyệt), liên hệ; 4 ô số liệu (buổi còn lại, buổi đã đăng ký, buổi đã chơi, công nợ) và 4 tab:
-- **Lịch CLB**: các buổi sắp tới của CLB, số chỗ, trạng thái của bạn (✓ đã đăng ký…), nút **Đăng ký** / **Vào danh sách chờ** (mở trang đăng ký `/e/…`). Buổi CLB không mở đăng ký qua link hiện "CLB tự xếp danh sách".
+- **Lịch CLB**: chia 4 nhóm bằng nút chọn — **Đã xong** (các buổi kết thúc trong 30 ngày qua, kèm trạng thái của bạn: *Đã chơi / Vắng…*), **Đang diễn ra** (đang trong giờ chơi, có nhãn đỏ), **Sắp diễn ra** (bắt đầu trong 7 ngày tới), **Chưa diễn ra** (xa hơn 7 ngày); mỗi nút có số buổi, mặc định mở nhóm *Đang diễn ra* (nếu có) rồi tới *Sắp diễn ra*. Buổi không ghi giờ kết thúc tính là 2 tiếng. Mỗi buổi: số chỗ, trạng thái của bạn (✓ đã đăng ký…), nút **Đăng ký** / **Vào danh sách chờ** (mở trang đăng ký `/e/…`). Buổi CLB không mở đăng ký qua link hiện "CLB tự xếp danh sách".
 - **Gói của tôi**: các kỳ gói, đã đóng / chưa đóng, đã dùng x/y buổi.
 - **Lịch sử**: các buổi đã qua (đã chơi / vắng / huỷ muộn) kèm tổng.
 - **🏆 Top tháng** (chỉ ở **cộng đồng**): bảng *Cuộc đua Top tháng* của tháng đang chạy (xem [5.0b](#50b-cuộc-đua-top-tháng--voucher-tự-động)) — luật tính điểm, quà, điểm của từng người (dòng của bạn có nhãn *bạn*) và voucher bạn đang có. Cộng đồng chưa bật thì báo *chưa bật Cuộc đua Top tháng*.
