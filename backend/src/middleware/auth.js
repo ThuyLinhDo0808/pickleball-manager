@@ -49,6 +49,9 @@ async function requireAuth(req, res, next) {
     req.accessToken = token;
     const blocked = await security.gate(req);
     if (blocked) return res.status(blocked.status).json(blocked.body);
+    // Managers (club / community / kèo hosts and club staff) need two-step sign-in on.
+    const enroll = await security.managerGate(req);
+    if (enroll) return res.status(enroll.status).json(enroll.body);
     // The owner viewing the app as one Host (read-only, see services/viewAs.js).
     if (req.headers['x-view-as']) {
       if (await viewAs.apply(req, res)) return;

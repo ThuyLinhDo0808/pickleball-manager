@@ -69,7 +69,6 @@ export default function MemberRequests({ club, requests, members = [], onChanged
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const [choice, setChoice] = useState({}); // id -> { member_type, tier }
-  const community = club?.kind === 'community';
 
   async function act(m, action) {
     const name = m.account_name || m.full_name;
@@ -79,13 +78,8 @@ export default function MemberRequests({ club, requests, members = [], onChanged
     setError('');
     try {
       const pick = choice[m.id] || { member_type: '', tier: '' };
-      // "---": a community sorts them by sessions played; a club must pick the type first.
-      if (action === 'approve' && m.join_requested && !pick.member_type && !community) {
-        setError(t('requests.pickType', { name }));
-        setBusy(null);
-        return;
-      }
-      const body = action === 'approve' && m.join_requested ? { member_type: pick.member_type || 'auto', tier: pick.tier || null } : {};
+      // "---": approve them into "Xem xét thêm" and decide the type later.
+      const body = action === 'approve' && m.join_requested ? { member_type: pick.member_type || 'review', tier: pick.tier || null } : {};
       await api.post(`/api/clubs/${club.id}/members/${m.id}/${action}`, body);
       window.dispatchEvent(new Event('member-requests-changed'));
       onChanged();
@@ -160,7 +154,7 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                   <label className="text-xs text-gray-400 flex flex-col gap-0.5">
                     {t('members.type')}
                     <select className="input !py-1 text-sm" value={pick.member_type} onChange={(e) => setPick({ member_type: e.target.value, tier: e.target.value === 'fixed' ? pick.tier : '' })}>
-                      <option value="">{community ? `--- ${t('requests.autoType')}` : '---'}</option>
+                      <option value="">--- {t('requests.toReview')}</option>
                       <option value="fixed">{t('members.fixed')}</option>
                       <option value="guest">{t('members.guest')}</option>
                     </select>

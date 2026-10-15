@@ -192,7 +192,7 @@ export function ReviewTab({ club, members, onChanged }) {
                 <p className="text-amber-200 text-sm">“{m.review_reason}”</p>
                 <p className="text-gray-400 text-xs mt-0.5">
                   {t('mod.since', { date: fmtDate(m.review_started_at) })} ·{' '}
-                  {left > 0 ? t('mod.leftDays', { n: left, date: fmtDate(m.review_until) }) : <span className="text-lime-300">{t('mod.ended')}</span>}
+                  {!m.review_until ? <span className="text-yellow-300">{t('mod.undecided')}</span> : left > 0 ? t('mod.leftDays', { n: left, date: fmtDate(m.review_until) }) : <span className="text-lime-300">{t('mod.ended')}</span>}
                 </p>
               </div>
               <div className="flex flex-wrap items-end gap-2 w-full sm:w-auto">

@@ -208,11 +208,4 @@ async function reclassify(club, { force = false } = {}) {
   return { checked: roster.length, to_regular: up.length, to_dropin: down.length, min: settings.regular.min };
 }
 
-// Type for a member approved with "---" in a community: by their sessions so far.
-async function typeFor(club, memberId) {
-  const settings = await forClub(club.id);
-  const counts = await recentCounts(club.id);
-  return (counts.get(memberId) || 0) >= settings.regular.min ? 'fixed' : 'guest';
-}
-
-module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, ready, resolve, clean, levelOf, forClub, save, reclassify, typeFor, recentCounts, forget };
+module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, ready, resolve, clean, levelOf, forClub, save, reclassify, recentCounts, forget };

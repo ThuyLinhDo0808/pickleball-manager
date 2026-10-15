@@ -407,10 +407,12 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
   // "---" (not decided yet): the person goes to the waiting list; the type is picked
   // when they are approved (and only then takes a place in the plan).
   const waiting = member_type === 'waiting';
-  const nextType = member_type === 'guest' ? 'guest' : 'fixed';
+  // "---": straight into "Xem xét thêm" until the Host decides (needs the moderation migration).
+  const undecided = member_type === 'review' && (await moderation.ready());
+  const nextType = member_type === 'guest' || undecided ? 'guest' : 'fixed';
   if (tier && (nextType !== 'fixed' || waiting)) tier = null; // guests are never tiered
   try {
-    if (!waiting) await assertMemberRoom(req.club, nextType);
+    if (!waiting && !undecided) await assertMemberRoom(req.club, nextType);
   } catch (err) {
     return planError(res, err);
   }
@@ -443,6 +445,13 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
     .select()
     .single();
   if (error) return dbError(res, error);
+  if (undecided) {
+    try {
+      return res.status(201).json(await moderation.hold(req.club, data, req.hostEmail));
+    } catch (err) {
+      return dbError(res, err);
+    }
+  }
   res.status(201).json(data);
 });
 
@@ -708,10 +717,23 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
   if (!m.user_id && !m.join_requested) return res.status(400).json({ error: 'No player account is linked to this member.' });
   const patch = { join_requested: false };
   if (m.user_id) patch.account_verified = true;
+  // "---": accepted into the club / community but into "Xem xét thêm" until the Host decides.
+  if (m.join_requested && req.body?.member_type === 'review' && (await moderation.ready())) {
+    const { data, error } = await supabase
+      .from('club_members')
+      .update({ join_requested: false, member_type: 'guest', tier: null, ...(m.user_id ? { account_verified: true } : {}) })
+      .eq('id', m.id)
+      .select()
+      .single();
+    if (error) return dbError(res, error);
+    try {
+      return res.json(await moderation.hold(req.club, data, req.hostEmail));
+    } catch (err) {
+      return dbError(res, err);
+    }
+  }
   if (m.join_requested) {
-    // "---" in a community: regular or drop-in by the sessions they played so far.
-    const auto = req.body?.member_type === 'auto' && (req.club.kind || 'club') === 'community';
-    const type = auto ? await require('../services/communitySettings').typeFor(req.club, m.id) : req.body?.member_type === 'guest' ? 'guest' : 'fixed';
+    const type = req.body?.member_type === 'guest' ? 'guest' : 'fixed';
     // Joining (or moving to another type) takes a place within the plan's limits.
     try {
       await assertMemberRoom(req.club, type, m.is_active && m.member_type === type ? 0 : 1);

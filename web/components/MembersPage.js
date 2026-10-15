@@ -125,13 +125,10 @@ export default function MembersPage({ tab = 'fixed' }) {
         gender: form.gender || null,
         tier: form.tier || null,
       });
-      const toWaiting = form.member_type === 'waiting';
+      const toReview = form.member_type === 'review';
       closeAdd();
       reload();
-      if (toWaiting) {
-        reloadRequests();
-        pickTab('waiting');
-      }
+      if (toReview) pickTab('review');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -536,9 +533,9 @@ export default function MembersPage({ tab = 'fixed' }) {
             >
               <option value="fixed">{t('members.fixed')}</option>
               <option value="guest">{t('members.guest')}</option>
-              <option value="waiting">--- {t('members.undecided')}</option>
+              <option value="review">--- {t('members.undecided')}</option>
             </select>
-            {form.member_type === 'waiting' && <p className="text-yellow-300 text-[11px] mt-1">{t('members.undecidedHint')}</p>}
+            {form.member_type === 'review' && <p className="text-yellow-300 text-[11px] mt-1">{t('members.undecidedHint')}</p>}
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('members.tier')}</label>
