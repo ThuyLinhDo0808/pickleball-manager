@@ -82,7 +82,7 @@ router.get('/public/:publicToken', async (req, res) => {
 
   const { data: people, error: pErr } = await supabase
     .from('event_participants')
-    .select('full_name, dupr_level, status, joined_at, is_organizer')
+    .select('id, full_name, dupr_level, status, joined_at, is_organizer, user_id, source_club_member_id, guest_member_id')
     .eq('event_id', event.id)
     // Players with a place or on the waitlist (not requests waiting for the Host, nor organizers who don't play).
     .not('status', 'in', '(cancelled,no_show,requested,not_playing)')
@@ -104,10 +104,64 @@ router.get('/public/:publicToken', async (req, res) => {
     xeve: !event.club_id || (await supabase.from('clubs').select('kind').eq('id', event.club_id).maybeSingle()).data?.kind === 'community',
     registration_open: !closedCode,
     closed_code: closedCode,
-    participants: people.map(({ joined_at, ...p }) => p),
+    participants: await publicPlayerInfo(event, people).catch((err) => {
+      console.error('public player info', err.message);
+      return people.map((p) => ({ full_name: p.full_name, dupr_level: p.dupr_level, status: p.status, is_organizer: p.is_organizer }));
+    }),
     public_token: event.public_token,
   });
 });
+
+// What the sign-up page shows for each player: gender, DUPR doubles rating + reliability
+// (from the club's DUPR import) and how many of their matches recorded here were sent to DUPR.
+// No phone, email or ids.
+async function publicPlayerInfo(event, people) {
+  const memberIds = [...new Set(people.map((p) => p.source_club_member_id || p.guest_member_id).filter(Boolean))];
+  const userIds = [...new Set(people.map((p) => p.user_id).filter(Boolean))];
+  const [{ data: members }, { data: profiles }] = await Promise.all([
+    memberIds.length || (userIds.length && event.club_id)
+      ? supabase.from('club_members').select('*').or([memberIds.length ? `id.in.(${memberIds.join(',')})` : null, userIds.length && event.club_id ? `and(club_id.eq.${event.club_id},user_id.in.(${userIds.join(',')}))` : null].filter(Boolean).join(','))
+      : { data: [] },
+    userIds.length ? supabase.from('player_profiles').select('user_id, gender').in('user_id', userIds) : { data: [] },
+  ]);
+  const byId = new Map((members || []).map((m) => [m.id, m]));
+  const byUser = new Map((members || []).filter((m) => m.user_id && m.club_id === event.club_id).map((m) => [m.user_id, m]));
+  const genderOf = new Map((profiles || []).map((x) => [x.user_id, x.gender]));
+  const memberOf = (p) => byId.get(p.source_club_member_id || p.guest_member_id) || (p.user_id && byUser.get(p.user_id)) || null;
+  // Matches sent to DUPR, per member (club matches and kèo matches they played in).
+  const mids = [...new Set(people.map((p) => memberOf(p)?.id).filter(Boolean))];
+  const duprCount = new Map();
+  if (mids.length) {
+    const { data: rows } = await supabase.from('event_participants').select('id, source_club_member_id, guest_member_id').or(`source_club_member_id.in.(${mids.join(',')}),guest_member_id.in.(${mids.join(',')})`).limit(5000);
+    const memberOfPid = new Map((rows || []).map((r) => [r.id, r.source_club_member_id || r.guest_member_id]));
+    const pids = [...memberOfPid.keys()];
+    const ors = [`club_member_id.in.(${mids.join(',')})`];
+    if (pids.length) ors.push(`event_participant_id.in.(${pids.slice(0, 2000).join(',')})`);
+    const { data: mp } = await supabase.from('match_players').select('match_id, club_member_id, event_participant_id, matches!inner(dupr_exported_at)').or(ors.join(',')).not('matches.dupr_exported_at', 'is', null).limit(10000);
+    const seen = new Map();
+    for (const r of mp || []) {
+      const mid = r.club_member_id || memberOfPid.get(r.event_participant_id);
+      if (!mid) continue;
+      if (!seen.has(mid)) seen.set(mid, new Set());
+      seen.get(mid).add(r.match_id);
+    }
+    for (const [k, v] of seen) duprCount.set(k, v.size);
+  }
+  return people.map((p) => {
+    const m = memberOf(p);
+    const g = m?.gender || genderOf.get(p.user_id) || null;
+    return {
+      full_name: p.full_name,
+      dupr_level: p.dupr_level,
+      status: p.status,
+      is_organizer: p.is_organizer,
+      gender: g === 'male' || g === 'female' ? g : null,
+      dupr: m?.dupr_doubles != null ? Number(m.dupr_doubles) : null,
+      dupr_rel: m?.dupr_doubles_rel ?? null,
+      dupr_matches: m ? duprCount.get(m.id) || 0 : null,
+    };
+  });
+}
 
 // ---- Meeting vote link (/v/<token>) ---------------------------------------------
 // A club meeting / get-together shared by link: anyone sees what, when, where, the fee

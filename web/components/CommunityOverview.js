@@ -98,7 +98,7 @@ export default function CommunityOverview({ children }) {
         <>
           <Section icon="👥" title={t('social.secMembers')} hint={t('social.secMembersHint', { d: rules.active_days })} href="/club/members">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.fixedGuest', { f: m.fixed, g: m.guest })} />
+              <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.typeSplit', { v: m.vip ?? 0, p: m.priority ?? 0, f: m.fixed, g: m.guest })} />
               <StatTile icon="🟢" label={t('social.active')} value={m.active} tone="text-lime-300" sub={t('social.activeSub', { d: rules.active_days })} />
               <StatTile icon="💤" label={t('social.inactive')} value={m.inactive} tone="text-gray-300" sub={t('social.inactiveSub', { d: rules.active_days })} />
               <StatTile icon="📶" label={t('social.levelCount')} value={(m.by_level || []).length} tone="text-sky-300" sub={rules.level_mode && rules.level_mode !== 'none' ? t(`cpanel.mode_${rules.level_mode}`) : t('social.levelNone')} />
