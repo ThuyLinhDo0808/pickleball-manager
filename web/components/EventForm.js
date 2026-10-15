@@ -1,4 +1,5 @@
 'use client';
+import { rangeOfKeys } from '@/lib/levelRange';
 import LevelInput from '@/components/LevelInput';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -282,6 +283,17 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const meeting = f.kind === 'meeting';
   const { data: cs } = useLoad(() => (community && clubId ? api.get(`/api/clubs/${clubId}/community-settings`).catch(() => null) : Promise.resolve(null)), [community, clubId]);
   const levelItems = cs?.ready && cs.settings?.levels?.mode !== 'none' ? cs.settings.levels.items : [];
+  // Picking levels fills the DUPR limits from their ranges (control panel); still editable.
+  const pickLevel = (key) => {
+    const keys = (f.level_keys || []).includes(key) ? f.level_keys.filter((k) => k !== key) : [...(f.level_keys || []), key];
+    const r = keys.length ? rangeOfKeys(cs.settings.levels, keys) : null;
+    const wasAuto = !(f.level_keys || []).length || !!rangeOfKeys(cs.settings.levels, f.level_keys || []);
+    const patch = { level_keys: keys };
+    if (r) Object.assign(patch, { level_min: r.min ?? '', level_max: r.max ?? '' });
+    else if (!keys.length && wasAuto) Object.assign(patch, { level_min: '', level_max: '' });
+    set(patch);
+  };
+  const levelRangeAuto = !!(f.level_keys || []).length && !!levelItems.length && !!rangeOfKeys(cs.settings.levels, f.level_keys);
   const autoAt = autoDeadline(deadlineDate || f.event_date, f.start_time, f.cancel_deadline_hours);
   const fmtLocal = (v) => (v ? new Date(v).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—');
   const perSessionCost = costTotal(f.cost_items);
@@ -366,7 +378,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                   {levelItems.map((it) => {
                     const on = (f.level_keys || []).includes(it.key);
                     return (
-                      <button key={it.key} type="button" aria-pressed={on} onClick={() => set({ level_keys: on ? f.level_keys.filter((k) => k !== it.key) : [...(f.level_keys || []), it.key] })} className={`rounded-full border px-3 py-1 text-xs ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300'}`}>
+                      <button key={it.key} type="button" aria-pressed={on} onClick={() => pickLevel(it.key)} className={`rounded-full border px-3 py-1 text-xs ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300'}`}>
                         {it.label}
                       </button>
                     );
@@ -436,7 +448,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               })}
             </div>
           </Field>
-          <Field label={t('events.levelMin')}>
+          <Field label={t('events.levelMin')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null}>
             <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
           </Field>
           <Field label={t('events.levelMax')}>

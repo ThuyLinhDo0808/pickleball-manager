@@ -4,7 +4,8 @@
 //    themselves. Stored as member_type fixed / guest, like a club's fixed / guest members.
 //  * `active_days`: no session for that many days = "không hoạt động".
 //  * Levels ("trình độ"), one of:
-//      manual     — names the Host makes up (Series A, B, C…) and assigns by hand,
+//      manual     — names the Host makes up (Series A, B, C…) and assigns by hand; each may
+//                   carry a DUPR range (dupr_min – dupr_max) that fills a kèo's DUPR limits,
 //      score      — from the member's DUPR (badminton: level 1-6), by lower bounds,
 //      experience — from how long they have played (< 6 months, 6-12, 12-18, > 18).
 //    Kèo can be marked for some levels; the overview counts members per level.
@@ -77,6 +78,16 @@ function clean(body, sport) {
     while (seenKey.has(key)) key = newKey();
     seenKey.add(key);
     const out = { key, label };
+    if (mode === 'manual') {
+      // Optional DUPR range of the level ("Series A: 3.0 – 3.5").
+      const num = (v) => (v === '' || v == null ? null : Number(v));
+      const lo = num(it?.dupr_min);
+      const hi = num(it?.dupr_max);
+      for (const v of [lo, hi]) if (v != null && !(Number.isFinite(v) && v >= 0 && v <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_level_range');
+      if (lo != null && hi != null && hi < lo) throw fail('The upper score is below the lower one.', 'bad_level_range');
+      out.dupr_min = lo == null ? null : Math.round(lo * 100) / 100;
+      out.dupr_max = hi == null ? null : Math.round(hi * 100) / 100;
+    }
     if (mode === 'score') {
       const v = it?.min === '' || it?.min == null ? null : Number(it.min);
       if (v != null && !(Number.isFinite(v) && v >= 0 && v <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_level_min');

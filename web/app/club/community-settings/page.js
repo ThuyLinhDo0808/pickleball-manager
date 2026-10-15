@@ -13,7 +13,7 @@ const DURATIONS = ['lt6', '6_12', '12_18', 'gt18'];
 
 // Ready-made level sets the Host can start from (then rename / change).
 function preset(mode, sport, t) {
-  if (mode === 'manual') return ['A', 'B', 'C', 'D'].map((l) => ({ label: `Series ${l}` }));
+  if (mode === 'manual') return ['A', 'B', 'C', 'D'].map((l) => ({ label: `Series ${l}`, dupr_min: '', dupr_max: '' }));
   if (mode === 'score') {
     return sport === 'badminton'
       ? [{ label: t('cpanel.p_new'), min: null }, { label: t('cpanel.p_mid'), min: 3 }, { label: t('cpanel.p_good'), min: 5 }]
@@ -147,10 +147,19 @@ export default function CommunitySettingsPage() {
                 <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg bg-navy-900 px-3 py-2">
                   <span className="w-6 text-xs text-gray-500 tabular-nums">{i + 1}.</span>
                   <input className="input !w-44 !py-1.5 text-sm" maxLength={30} placeholder={t('cpanel.levelName')} aria-label={t('cpanel.levelName')} value={it.label} onChange={(e) => setItem(i, { label: e.target.value })} />
+                  {mode === 'manual' && (
+                    <span className="flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
+                      {t(sport === 'badminton' ? 'cpanel.rangeStep' : 'cpanel.rangeDupr')}
+                      <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-24 !py-1.5 text-sm" placeholder="—" aria-label={t('cpanel.rangeFromAria', { name: it.label })} value={it.dupr_min ?? ''} onChange={(e) => setItem(i, { dupr_min: e.target.value })} />
+                      {t('cpanel.rangeTo')}
+                      <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-24 !py-1.5 text-sm" placeholder="—" aria-label={t('cpanel.rangeToAria', { name: it.label })} value={it.dupr_max ?? ''} onChange={(e) => setItem(i, { dupr_max: e.target.value })} />
+                    </span>
+                  )}
                   {mode === 'score' && (
                     <label className="flex items-center gap-1.5 text-xs text-gray-400">
                       {t(sport === 'badminton' ? 'cpanel.fromStep' : 'cpanel.fromScore')}
                       <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-28 !py-1.5 text-sm" placeholder={i === 0 ? t('cpanel.lowest') : ''} value={it.min ?? ''} onChange={(e) => setItem(i, { min: e.target.value === '' ? null : e.target.value })} />
+                      <span className="text-gray-500">{items[i + 1]?.min != null && items[i + 1]?.min !== '' ? t('cpanel.toNext', { n: items[i + 1].min }) : t('cpanel.andUp')}</span>
                     </label>
                   )}
                   {mode === 'experience' && (
@@ -170,7 +179,7 @@ export default function CommunitySettingsPage() {
                 </div>
               ))}
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn-secondary !py-1.5 text-xs" disabled={items.length >= 12} onClick={() => setLevels({ items: [...items, { label: '', ...(mode === 'experience' ? { buckets: [] } : {}), ...(mode === 'score' ? { min: '' } : {}) }] })}>＋ {t('cpanel.addLevel')}</button>
+                <button type="button" className="btn-secondary !py-1.5 text-xs" disabled={items.length >= 12} onClick={() => setLevels({ items: [...items, { label: '', ...(mode === 'experience' ? { buckets: [] } : {}), ...(mode === 'score' ? { min: '' } : {}), ...(mode === 'manual' ? { dupr_min: '', dupr_max: '' } : {}) }] })}>＋ {t('cpanel.addLevel')}</button>
                 <button type="button" className="text-xs text-gray-400 underline" onClick={() => setLevels({ items: preset(mode, sport, t) })}>{t('cpanel.usePreset')}</button>
               </div>
               <p className="text-xs text-gray-500">{t(`cpanel.howUsed_${mode}`)}</p>
