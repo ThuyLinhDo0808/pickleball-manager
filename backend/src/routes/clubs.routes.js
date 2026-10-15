@@ -668,6 +668,9 @@ router.get('/:clubId/member-requests', async (req, res) => {
       return { key: m.id, user_id: m.user_id, phone: p?.phone || m.phone };
     }))
     .catch(() => ({}));
+  // Waiting requests that look like a member the Host typed in: offered for merging.
+  const accountNames = visible.map((m) => ({ ...m, account_name: (profiles || []).find((x) => x.user_id === m.user_id)?.full_name || null }));
+  const matches = (await require('../services/memberLink').ready()) ? await require('../services/memberLink').matchesFor(req.club.id, accountNames).catch(() => ({})) : {};
   res.json(
     visible.map(({ users, ...m }) => {
       const p = (profiles || []).find((x) => x.user_id === m.user_id);
@@ -675,7 +678,7 @@ router.get('/:clubId/member-requests', async (req, res) => {
       // by the Host with type "---"; survey = guest asked in the after-session survey;
       // request = "I'm a member" with no match; link = phone matched
       const source = ['search', 'manual', 'invite'].includes(m.join_source) ? m.join_source : m.join_requested_at ? 'survey' : m.join_requested ? 'request' : 'link';
-      return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null, past: past[m.id] || null };
+      return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null, past: past[m.id] || null, matches: matches[m.id] || [] };
     })
   );
 });
@@ -740,6 +743,48 @@ router.post('/:clubId/members/:memberId/reject', async (req, res) => {
   const { error } = await supabase.from('club_members').update(unlink).eq('id', m.id);
   if (error) return dbError(res, error);
   res.json({ unlinked: true });
+});
+
+// ---- Link a player account to a member the Host typed in (phone did not match) -------------
+const memberLink = require('../services/memberLink');
+const linkFail = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
+router.get('/:clubId/members/:memberId/link', async (req, res) => {
+  try {
+    res.json(await memberLink.status(req.member));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+// A personal link for this member (shown once; a new one replaces the old).
+router.post('/:clubId/members/:memberId/link', async (req, res) => {
+  try {
+    res.status(201).json(await memberLink.createLink(req.club, req.member, req.userId));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+// Name the player's account (username or email); they confirm it on their side.
+router.post('/:clubId/members/:memberId/link-request', async (req, res) => {
+  try {
+    res.status(201).json(await memberLink.requestByLogin(req.club, req.member, req.body?.login, req.userId));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+router.delete('/:clubId/members/:memberId/link', async (req, res) => {
+  try {
+    res.json(await memberLink.cancel(req.member));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+// Merge a waiting join request into the member the Host already had (one person, one row).
+router.post('/:clubId/members/:memberId/merge', async (req, res) => {
+  try {
+    res.json(await memberLink.mergeInto(req.club, req.member, req.body?.into));
+  } catch (err) {
+    linkFail(res, err);
+  }
 });
 
 router.delete('/:clubId/members/:memberId', async (req, res) => {

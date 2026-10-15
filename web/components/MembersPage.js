@@ -105,6 +105,8 @@ export default function MembersPage({ tab = 'fixed' }) {
   async function addMember(e) {
     e.preventDefault();
     if (!club) return;
+    // Without a phone their account can't link up by itself later: ask once, still allow it.
+    if (!String(form.phone || '').trim() && !window.confirm(t('members.noPhoneAsk'))) return;
     setBusy(true);
     setError('');
     try {
@@ -222,7 +224,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         ]}
       />
 
-      {tab === 'waiting' && <MemberRequests club={club} requests={pending} onChanged={() => { reloadRequests(); reload(); }} />}
+      {tab === 'waiting' && <MemberRequests club={club} requests={pending} members={members || []} onChanged={() => { reloadRequests(); reload(); }} />}
       {tab === 'dupr' && club && <DuprMembers club={club} />}
       {tab === 'review' && club && <ReviewTab club={club} members={reviewRows} onChanged={() => { reloadRequests(); reload(); }} />}
 
@@ -492,6 +494,7 @@ export default function MembersPage({ tab = 'fixed' }) {
           <div>
             <label className="text-xs text-gray-400">{t('common.phone')}</label>
             <input className="input" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <p className="mt-1 text-[11px] text-gray-500">{t('members.phoneLinkHint')}</p>
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('members.type')}</label>

@@ -19,7 +19,52 @@ const SOURCE_STYLE = {
   manual: 'border-gray-400/60 text-gray-300',
 };
 
-export default function MemberRequests({ club, requests, onChanged }) {
+// A request from someone the Host already typed in (no phone match): merge the request into
+// that member, so one person stays one row (history, passes and the account together).
+function MergeBox({ club, m, members, busy, onMerge }) {
+  const { t } = useI18n();
+  const [other, setOther] = useState('');
+  const free = members.filter((x) => !x.user_id && !x.join_requested && x.id !== m.id);
+  if (!m.user_id || m.account_verified || (!m.matches?.length && !free.length)) return null;
+  const name = m.account_name || m.full_name;
+  const merge = (target) => window.confirm(t('requests.mergeAsk', { name, member: target.full_name })) && onMerge(m, target.id);
+  return (
+    <div className="mt-2 rounded-lg border border-sky-400/30 bg-sky-400/5 px-3 py-2 text-sm">
+      {m.matches?.length > 0 && (
+        <>
+          <p className="text-sky-200">🔗 {t('requests.maybeMember')}</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {m.matches.map((x) => (
+              <button key={x.id} type="button" disabled={busy} onClick={() => merge(x)} className="rounded-full border border-sky-400/50 px-3 py-1 text-xs text-sky-100 hover:bg-sky-400/10">
+                {x.full_name}
+                {x.birth_year ? ` · ${x.birth_year}` : ''} → {t('requests.mergeBtn')}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {free.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select className="input !w-auto !py-1 text-xs" value={other} onChange={(e) => setOther(e.target.value)} aria-label={t('requests.mergeOther')}>
+            <option value="">{t('requests.mergeOther')}</option>
+            {free.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.full_name}
+                {x.birth_year ? ` (${x.birth_year})` : ''}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="text-xs font-semibold text-sky-200 underline disabled:opacity-40" disabled={busy || !other} onClick={() => merge(free.find((x) => x.id === other))}>
+            {t('requests.mergeBtn')}
+          </button>
+        </div>
+      )}
+      <p className="mt-1.5 text-[11px] text-gray-400">{t('requests.mergeHint')}</p>
+    </div>
+  );
+}
+
+export default function MemberRequests({ club, requests, members = [], onChanged }) {
   const { t, sport } = useI18n();
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
@@ -35,6 +80,20 @@ export default function MemberRequests({ club, requests, onChanged }) {
       const pick = choice[m.id] || { member_type: 'fixed', tier: '' };
       const body = action === 'approve' && m.join_requested ? { member_type: pick.member_type, tier: pick.tier || null } : {};
       await api.post(`/api/clubs/${club.id}/members/${m.id}/${action}`, body);
+      window.dispatchEvent(new Event('member-requests-changed'));
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function merge(m, into) {
+    setBusy(m.id);
+    setError('');
+    try {
+      await api.post(`/api/clubs/${club.id}/members/${m.id}/merge`, { into });
       window.dispatchEvent(new Event('member-requests-changed'));
       onChanged();
     } catch (err) {
@@ -86,6 +145,7 @@ export default function MemberRequests({ club, requests, onChanged }) {
                 {m.join_note && <p className="text-gray-200 text-sm mt-1 rounded bg-navy-900 px-2 py-1">“{m.join_note}”</p>}
                 {/* Removed / reviewed here before (kept when the club changes manager). */}
                 <PastWarning past={m.past} />
+                <MergeBox club={club} m={m} members={members} busy={busy === m.id} onMerge={merge} />
                 <p className="text-gray-600 text-xs mt-0.5">{t('requests.since', { date: new Date(m.join_requested_at || m.created_at).toLocaleDateString('vi-VN') })}</p>
               </div>
               {m.join_requested && (
