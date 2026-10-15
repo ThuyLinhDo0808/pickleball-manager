@@ -3,6 +3,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
+// Plus Jakarta Sans, self-hosted from the package (the CSP allows only our own fonts); it has
+// the Vietnamese subset, so accents in big headings stay clean.
+import '@fontsource/plus-jakarta-sans/400.css';
+import '@fontsource/plus-jakarta-sans/500.css';
+import '@fontsource/plus-jakarta-sans/600.css';
+import '@fontsource/plus-jakarta-sans/700.css';
+import '@fontsource/plus-jakarta-sans/800.css';
 
 // The public landing page ("/") for visitors who are not signed in. Instead of one long page it
 // is a short deck of full-screen "scenes": a wheel turn, a swipe, the arrow keys or the dots move
@@ -425,7 +432,7 @@ function Cta({ href, children, primary, d = 600 }) {
   );
 }
 
-const H2 = '[text-wrap:balance] text-[clamp(2.2rem,3.2vw+2.2vh,4.6rem)] font-black leading-[1.02] tracking-tight text-white';
+const H2 = '[text-wrap:balance] text-[clamp(2.2rem,3.2vw+2.2vh,4.6rem)] font-extrabold leading-[1.05] tracking-tight text-white';
 
 function Split({ text, visual, flip }) {
   return (
@@ -447,7 +454,7 @@ function IntroScene() {
           <span className="relative flex h-2 w-2" aria-hidden="true"><span className="absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-lime-400" /></span>
           {t('landing.hero_eyebrow')}
         </F>
-        <h1 className="mt-7 text-[clamp(2.6rem,2.7vw+2.2vh,5.4rem)] font-black leading-[0.98] [text-wrap:balance] tracking-tight text-white">
+        <h1 className="mt-7 text-[clamp(2.6rem,2.7vw+2.2vh,5.4rem)] font-extrabold leading-[1.04] [text-wrap:balance] tracking-tight text-white">
           <span className="block"><Words text={t('landing.hero_title_1')} /></span>
           <span className="block"><Words text={t('landing.hero_title_2')} base={180} className="lp-sheen-text" /></span>
         </h1>

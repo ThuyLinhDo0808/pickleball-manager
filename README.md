@@ -82,6 +82,7 @@ Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **tra
 - **Con trỏ chuột:** có vòng tròn mảnh đi theo, phóng to khi rê lên nút / liên kết (chỉ máy dùng chuột).
 - Số liệu minh hoạ tự đếm, cột biểu đồ và thanh chỗ trống mọc lên, tỷ số tự chạy, đường điểm DUPR tự vẽ — khi cảnh đó hiện ra.
 - **Điện thoại / màn hình thấp** (rộng dưới 768px hoặc cao dưới 600px): 6 cảnh xếp dọc, cuộn bình thường; mỗi cảnh vẫn chạy hiệu ứng xuất hiện khi cuộn tới và sân 3D phía sau đổi góc theo cảnh đang xem.
+- **Font chữ:** trang giới thiệu và trang đăng nhập / đăng ký dùng font **Plus Jakarta Sans** (nét hiện đại, có bộ chữ tiếng Việt), tải kèm web (không gọi Google Fonts). Tiêu đề lớn có đủ chỗ cho dấu và phần chân chữ (g, p, y, ệ) khi chữ trồi lên.
 - Máy bật chế độ *giảm chuyển động* (prefers-reduced-motion) thì tắt hiệu ứng: không màn hình đếm, không con trỏ riêng, chuyển cảnh tức thì. Mọi hình minh hoạ vẽ bằng giao diện, không dùng ảnh ngoài.
 - **Trang đăng nhập / đăng ký** (`/sign-in`) cùng kiểu: chung sân 3D phía sau, tiêu đề lớn bên trái, khung form bên phải. Chi tiết ở [8.1](#81-đăng-nhập-đăng-ký-quên-mật-khẩu-sign-in).
 - **Chuyển trang:** bấm *Đăng nhập / Đăng ký* trên trang giới thiệu (hoặc *← Về trang giới thiệu* / logo trên trang đăng nhập) thì một tấm rèm kéo lên từ dưới che màn hình rồi mở ra ở trang mới.

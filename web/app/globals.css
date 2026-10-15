@@ -193,14 +193,16 @@ html { scroll-behavior: smooth; }
 @keyframes lp-sheen { to { background-position: 200% center; } }
 
 /* scenes: full screen, one at a time on big screens; stacked on small ones */
-.lp-root { --lp-ease: cubic-bezier(.77,0,.18,1); --px: 0; --py: 0; }
+.lp-root { --lp-ease: cubic-bezier(.77,0,.18,1); --px: 0; --py: 0; font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; word-spacing: .06em; }
+.lp-root h1, .lp-root h2 { letter-spacing: -0.03em; word-spacing: .02em; }
 .lp-scene { position: relative; min-height: 100svh; display: flex; }
 @media (min-width: 768px) and (min-height: 600px) {
   .lp-deck .lp-scene { position: absolute; inset: 0; min-height: 0; visibility: hidden; transition: visibility 0s linear 1.1s; }
   .lp-deck .lp-scene[data-state="active"] { visibility: visible; transition-delay: 0s; }
 }
 /* words rise out of a mask; leave upward when the scene goes */
-.lp-w { display: inline-block; overflow: hidden; vertical-align: top; padding: .16em .04em .12em; margin: -.16em -.04em -.12em; }
+/* padding keeps accents above and descenders (g, p, y, ệ) below inside the mask */
+.lp-w { display: inline-block; overflow: hidden; vertical-align: top; padding: .22em .05em .26em; margin: -.22em -.05em -.26em; }
 .lp-w > span { display: inline-block; transform: translate3d(0,118%,0) rotate(4deg); transform-origin: left bottom; transition: transform 1.1s var(--lp-ease); }
 [data-state="active"] .lp-w > span { transform: none; transition-delay: calc(var(--d, 0ms) + 300ms); }
 [data-state="past"] .lp-w > span { transform: translate3d(0,-118%,0); transition-duration: .7s; }

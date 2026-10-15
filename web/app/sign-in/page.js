@@ -62,7 +62,7 @@ function PasswordInput({ id, value, onChange, autoComplete, minLength }) {
 const AUTH_SCENES = {
   signIn: { cam: [58, -30, 1.25, '-12vw', '14vh'], ball: [48, 68], glow: ['#B6F03B', '#38BDF8'] },
   signUp: { cam: [52, 36, 1.5, '-14vw', '10vh'], ball: [34, 30], glow: ['#38BDF8', '#B6F03B'] },
-  forgot: { cam: [0, 0, 0.8, '-22vw', '6vh'], ball: [70, 40], glow: ['#FBBF24', '#B6F03B'] },
+  forgot: { cam: [0, 0, 0.8, '4vw', '6vh'], ball: [70, 40], glow: ['#FBBF24', '#B6F03B'] },
   sent: { cam: [70, 90, 1.2, '-14vw', '16vh'], ball: [50, 50], glow: ['#34D399', '#B6F03B'] },
 };
 const ORDER = ['signIn', 'signUp', 'forgot', 'sent'];
@@ -275,7 +275,7 @@ export default function SignInPage() {
             <span className="h-px w-10 bg-lime-400/60" aria-hidden="true" />
             {t('landing.hero_eyebrow')}
           </F>
-          <h1 className="text-[clamp(2.4rem,3.4vw+2.4vh,6rem)] font-black leading-[0.98] tracking-tight text-white [text-wrap:balance] lg:mt-6">
+          <h1 className="text-[clamp(2.4rem,3.4vw+2.4vh,6rem)] font-extrabold leading-[1.04] tracking-tight text-white [text-wrap:balance] lg:mt-6">
             <Words text={title} />
           </h1>
         </div>
