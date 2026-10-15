@@ -458,7 +458,7 @@ function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee
                 {p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0 ? (
                   <span className="text-xs text-gray-500">{t('people.noFee')}</span>
                 ) : p.paid_by_plan && kind !== 'cancelled' ? (
-                  <span className="text-xs text-lime-400" title={t('events.paidByPlanHint')}>{t('events.paidByPlan')}</span>
+                  <span className="text-xs text-lime-400" title={t('events.paidByPlanHint')}>{p.card?.vip ? t(`events.usesPass_${p.card.vip_period || 'any'}`) : t('events.paidByPlan')}</span>
                 ) : kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && onRefund ? (
                   p.refunded_at ? (
                     <button className="text-xs mr-2 text-gray-400 underline" onClick={() => onRefund(p, true)}>{t('slot.refundUndo')}</button>

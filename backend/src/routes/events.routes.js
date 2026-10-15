@@ -864,20 +864,23 @@ router.get('/:eventId/participants', async (req, res) => {
   // Who plays on a pass. Clubs: fixed members pay through their membership plan.
   // Communities: only "khách VIP" — a paid pass (month / quarter / year) covering the date;
   // regulars and drop-ins pay per kèo.
-  let vip = new Set();
+  let vip = new Map(); // member -> pass period (month / quarter / year)
   const community = req.event.club_id ? (await supabase.from('clubs').select('kind').eq('id', req.event.club_id).maybeSingle()).data?.kind === 'community' : false;
   if (community) {
     const ids = [...new Set([...cards.values()].map((c) => c?.member_id).filter(Boolean))];
     if (ids.length) {
-      const { data: passes } = await supabase.from('v_membership_status').select('club_member_id').in('club_member_id', ids).eq('status', 'paid').lte('starts_on', req.event.event_date).gte('ends_on', req.event.event_date);
-      vip = new Set((passes || []).map((x) => x.club_member_id));
+      const { data: passes } = await supabase.from('v_membership_status').select('club_member_id, plan_id').in('club_member_id', ids).eq('status', 'paid').lte('starts_on', req.event.event_date).gte('ends_on', req.event.event_date);
+      const planIds = [...new Set((passes || []).map((x) => x.plan_id))];
+      const { data: plans } = planIds.length ? await supabase.from('membership_plans').select('id, period').in('id', planIds) : { data: [] };
+      const periodOf = new Map((plans || []).map((x) => [x.id, x.period]));
+      vip = new Map((passes || []).map((x) => [x.club_member_id, periodOf.get(x.plan_id) || null]));
     }
   }
   // screenshots are fetched one at a time (they are large)
   res.json(
     data.map(({ payment_proof, ...p }) => {
       const c = cards.get(p.id) || null;
-      const card = c && community ? { ...c, vip: vip.has(c.member_id) } : c;
+      const card = c && community ? { ...c, vip: vip.has(c.member_id), vip_period: vip.get(c.member_id) || null } : c;
       const paidByPlan = community ? !!card?.vip : card?.member_type === 'fixed';
       return { ...p, has_proof: !!payment_proof, card, paid_by_plan: paidByPlan, email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null };
     })

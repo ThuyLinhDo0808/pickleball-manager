@@ -2184,6 +2184,10 @@ export const en = {
     tabDetails: 'Details',
     fixedMember: 'Fixed',
     paidByPlan: 'Paid (plan)',
+    usesPass_month: "Monthly pass",
+    usesPass_quarter: "Quarterly pass",
+    usesPass_year: "Yearly pass",
+    usesPass_any: "On pass",
     alreadyOnEvent: "Everyone picked is already on this kèo.",
     tabPlayers: "Members",
     paidByPlanHint: 'Fixed members pay through their membership plan.',
@@ -4787,7 +4791,6 @@ export const en = {
   },
   space: {
     community: {
-      "events.paidByPlan": "On VIP pass",
       "hub.tabSchedule": "Community schedule",
       "hub.noClubEvents": "The community has no sessions coming up.",
       "events.tabPlayers": "Player list",

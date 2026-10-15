@@ -2184,6 +2184,10 @@ export const vi = {
     tabDetails: 'Chi tiết',
     fixedMember: 'Cố định',
     paidByPlan: 'Đã thu (gói)',
+    usesPass_month: "Dùng vé tháng",
+    usesPass_quarter: "Dùng vé quý",
+    usesPass_year: "Dùng vé năm",
+    usesPass_any: "Dùng vé",
     alreadyOnEvent: "Những người đã chọn đều đã có trong kèo này.",
     tabPlayers: "Thành viên",
     paidByPlanHint: 'Thành viên cố định trả theo gói hội viên.',
@@ -4787,7 +4791,6 @@ export const vi = {
   },
   space: {
     community: {
-      "events.paidByPlan": "Trừ vé VIP",
       "hub.tabSchedule": "Lịch cộng đồng",
       "hub.noClubEvents": "Cộng đồng chưa có buổi nào sắp tới.",
       "events.tabPlayers": "Danh sách người chơi",
@@ -4821,7 +4824,7 @@ export const vi = {
       "members.guest": "Vãng lai",
       "members.openHint": "Bấm vào tên để xem chi tiết, gói hội viên và ghi chú; bấm ✏️ để sửa thông tin. Đổi Hình thức sang Vãng lai sẽ chuyển người đó sang tab Khách vãng lai.",
       "events.fixedMember": "Thường xuyên",
-      "events.paidByPlanHint": "Khách VIP: buổi này trừ vào vé tháng / quý / năm (trừ khi check-in).",
+      "events.paidByPlanHint": "Khách VIP: buổi này dùng vé tháng / quý / năm đã mua — không thu tiền kèo; trừ 1 buổi khi check-in.",
       "rankings.group_club": "Khách thường xuyên",
       "rankings.group_guest": "Khách vãng lai",
       "reviews.wantJoin": "Muốn vào nhóm khách thường xuyên",
