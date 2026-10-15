@@ -348,6 +348,12 @@ router.post('/:clubId/standalone-events/adopt', ownerOnly, async (req, res) => {
 
 // ---- Members CRUD -------------------------------------------------------------
 router.get('/:clubId/members', async (req, res) => {
+  // A community moves members between regular and drop-in by its own rule (at most every
+  // 10 minutes); its level (trình độ) is worked out from the Host's settings.
+  const CS = require('../services/communitySettings');
+  const community = (req.club.kind || 'club') === 'community';
+  if (community) await CS.reclassify(req.club).catch((err) => console.error('reclassify failed', err));
+  const settings = community ? await CS.forClub(req.club.id).catch(() => null) : null;
   const { data, error } = await supabase
     .from('club_members')
     .select('*, users(email)')
@@ -374,10 +380,11 @@ router.get('/:clubId/members', async (req, res) => {
     account_email: users?.email || null,
     ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
     ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
+    ...(settings && settings.levels.mode !== 'none' ? { level: CS.levelOf(m, settings) } : {}),
   }));
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
   if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
-    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining'];
+    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
   res.json(rows);
@@ -400,10 +407,12 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
   // "---" (not decided yet): the person goes to the waiting list; the type is picked
   // when they are approved (and only then takes a place in the plan).
   const waiting = member_type === 'waiting';
-  const nextType = member_type === 'guest' ? 'guest' : 'fixed';
+  // "---": straight into "Xem xét thêm" until the Host decides (needs the moderation migration).
+  const undecided = member_type === 'review' && (await moderation.ready());
+  const nextType = member_type === 'guest' || undecided ? 'guest' : 'fixed';
   if (tier && (nextType !== 'fixed' || waiting)) tier = null; // guests are never tiered
   try {
-    if (!waiting) await assertMemberRoom(req.club, nextType);
+    if (!waiting && !undecided) await assertMemberRoom(req.club, nextType);
   } catch (err) {
     return planError(res, err);
   }
@@ -436,6 +445,13 @@ router.post('/:clubId/members', checkCapacity(), async (req, res) => {
     .select()
     .single();
   if (error) return dbError(res, error);
+  if (undecided) {
+    try {
+      return res.status(201).json(await moderation.hold(req.club, data, req.hostEmail));
+    } catch (err) {
+      return dbError(res, err);
+    }
+  }
   res.status(201).json(data);
 });
 
@@ -565,6 +581,18 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
     fields.guest_discount_pct = null;
   }
   if ('flags' in fields) fields.flags = (Array.isArray(fields.flags) ? fields.flags : []).filter((f) => FLAGS.includes(f));
+  // Level picked by hand (communities whose levels are named by the Host).
+  if ('level_key' in req.body) {
+    const CS = require('../services/communitySettings');
+    if (await CS.ready()) {
+      const key = req.body.level_key || null;
+      const settings = await CS.forClub(req.club.id);
+      if (key && !(settings.levels.mode === 'manual' && settings.levels.items.some((i) => i.key === key))) {
+        return res.status(400).json({ error: 'Unknown level.', code: 'bad_level' });
+      }
+      fields.level_key = key;
+    }
+  }
   // Reactivating a member, or moving one to the other type, takes a place on the plan.
   {
     const nextType = fields.member_type === 'guest' ? 'guest' : fields.member_type === 'fixed' ? 'fixed' : req.member.member_type;
@@ -668,6 +696,9 @@ router.get('/:clubId/member-requests', async (req, res) => {
       return { key: m.id, user_id: m.user_id, phone: p?.phone || m.phone };
     }))
     .catch(() => ({}));
+  // Waiting requests that look like a member the Host typed in: offered for merging.
+  const accountNames = visible.map((m) => ({ ...m, account_name: (profiles || []).find((x) => x.user_id === m.user_id)?.full_name || null }));
+  const matches = (await require('../services/memberLink').ready()) ? await require('../services/memberLink').matchesFor(req.club.id, accountNames).catch(() => ({})) : {};
   res.json(
     visible.map(({ users, ...m }) => {
       const p = (profiles || []).find((x) => x.user_id === m.user_id);
@@ -675,7 +706,7 @@ router.get('/:clubId/member-requests', async (req, res) => {
       // by the Host with type "---"; survey = guest asked in the after-session survey;
       // request = "I'm a member" with no match; link = phone matched
       const source = ['search', 'manual', 'invite'].includes(m.join_source) ? m.join_source : m.join_requested_at ? 'survey' : m.join_requested ? 'request' : 'link';
-      return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null, past: past[m.id] || null };
+      return { ...m, source, account_email: users?.email || null, account_name: p?.full_name || null, account_phone: p?.phone || null, past: past[m.id] || null, matches: matches[m.id] || [] };
     })
   );
 });
@@ -686,6 +717,21 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
   if (!m.user_id && !m.join_requested) return res.status(400).json({ error: 'No player account is linked to this member.' });
   const patch = { join_requested: false };
   if (m.user_id) patch.account_verified = true;
+  // "---": accepted into the club / community but into "Xem xét thêm" until the Host decides.
+  if (m.join_requested && req.body?.member_type === 'review' && (await moderation.ready())) {
+    const { data, error } = await supabase
+      .from('club_members')
+      .update({ join_requested: false, member_type: 'guest', tier: null, ...(m.user_id ? { account_verified: true } : {}) })
+      .eq('id', m.id)
+      .select()
+      .single();
+    if (error) return dbError(res, error);
+    try {
+      return res.json(await moderation.hold(req.club, data, req.hostEmail));
+    } catch (err) {
+      return dbError(res, err);
+    }
+  }
   if (m.join_requested) {
     const type = req.body?.member_type === 'guest' ? 'guest' : 'fixed';
     // Joining (or moving to another type) takes a place within the plan's limits.
@@ -740,6 +786,48 @@ router.post('/:clubId/members/:memberId/reject', async (req, res) => {
   const { error } = await supabase.from('club_members').update(unlink).eq('id', m.id);
   if (error) return dbError(res, error);
   res.json({ unlinked: true });
+});
+
+// ---- Link a player account to a member the Host typed in (phone did not match) -------------
+const memberLink = require('../services/memberLink');
+const linkFail = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
+router.get('/:clubId/members/:memberId/link', async (req, res) => {
+  try {
+    res.json(await memberLink.status(req.member));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+// A personal link for this member (shown once; a new one replaces the old).
+router.post('/:clubId/members/:memberId/link', async (req, res) => {
+  try {
+    res.status(201).json(await memberLink.createLink(req.club, req.member, req.userId));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+// Name the player's account (username or email); they confirm it on their side.
+router.post('/:clubId/members/:memberId/link-request', async (req, res) => {
+  try {
+    res.status(201).json(await memberLink.requestByLogin(req.club, req.member, req.body?.login, req.userId));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+router.delete('/:clubId/members/:memberId/link', async (req, res) => {
+  try {
+    res.json(await memberLink.cancel(req.member));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+// Merge a waiting join request into the member the Host already had (one person, one row).
+router.post('/:clubId/members/:memberId/merge', async (req, res) => {
+  try {
+    res.json(await memberLink.mergeInto(req.club, req.member, req.body?.into));
+  } catch (err) {
+    linkFail(res, err);
+  }
 });
 
 router.delete('/:clubId/members/:memberId', async (req, res) => {
@@ -1036,6 +1124,35 @@ router.get('/:clubId/community-overview', async (req, res) => {
     res.json(await require('../services/community').overview(req.club));
   } catch (err) {
     dbError(res, err);
+  }
+});
+
+// ---- Community control panel: regular / drop-in rule, inactive days, levels ----------------
+const communitySettings = require('../services/communitySettings');
+const settingsFail = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
+router.get('/:clubId/community-settings', async (req, res) => {
+  try {
+    res.json({ ready: await communitySettings.ready(), settings: await communitySettings.forClub(req.club.id), defaults: communitySettings.DEFAULTS, durations: communitySettings.DURATIONS, sport: req.club.sport || 'pickleball', kind: req.club.kind || 'club' });
+  } catch (err) {
+    settingsFail(res, err);
+  }
+});
+router.put('/:clubId/community-settings', async (req, res) => {
+  try {
+    const settings = await communitySettings.save(req.club, req.body || {});
+    const moved = await communitySettings.reclassify(req.club, { force: settings.regular.auto });
+    res.json({ settings, moved });
+  } catch (err) {
+    settingsFail(res, err);
+  }
+});
+// "Update now": apply the regular / drop-in rule at once (even with auto off).
+router.post('/:clubId/community-settings/reclassify', async (req, res) => {
+  try {
+    if ((req.club.kind || 'club') !== 'community') return res.status(400).json({ error: 'Only communities have this.', code: 'not_community' });
+    res.json(await communitySettings.reclassify(req.club, { force: true }));
+  } catch (err) {
+    settingsFail(res, err);
   }
 });
 

@@ -64,4 +64,4 @@ async function linkByPhone(userId, profile) {
   }
 }
 
-module.exports = { linkByPhone, phoneLinkReady: ready, MIGRATION };
+module.exports = { linkByPhone, phoneLinkReady: ready, blanksFrom, MIGRATION };

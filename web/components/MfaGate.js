@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -8,17 +9,26 @@ import { useI18n } from '@/context/I18nContext';
 
 // Two-step sign-in prompt. The API answers 403 mfa_required when this sign-in session
 // still needs the code from the authenticator app (lib/api.js fires `pb:mfa`); 403
-// mfa_enroll_required when the owner console needs two-step sign-in turned on first.
+// mfa_enroll_required when the owner console — or managing a club / community (scope
+// 'manager') — needs two-step sign-in turned on first.
 export default function MfaGate() {
   const { t } = useI18n();
   const { user, signOut } = useAuth();
   const [need, setNeed] = useState(null); // 'mfa_required' | 'mfa_enroll_required'
+  const [scope, setScope] = useState(null); // 'manager': managing a club / community
+  const pathname = usePathname() || '';
+  // Player pages (home, profile where it is turned on, kèo / club pages) stay usable; the
+  // manager prompt shows on the manager pages only.
+  const playerPage = ['/home', '/p', '/c/', '/e/', '/t/', '/s/', '/v/', '/l/', '/discover', '/claim', '/invite', '/join', '/verify-email', '/onboarding', '/privacy', '/terms', '/club-request', '/leaderboard'].some((x) => pathname === x || pathname.startsWith(x.endsWith('/') ? x : `${x}/`));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const on = (e) => setNeed((cur) => (cur === 'mfa_required' ? cur : e.detail?.code || 'mfa_required'));
+    const on = (e) => {
+      setNeed((cur) => (cur === 'mfa_required' ? cur : e.detail?.code || 'mfa_required'));
+      if (e.detail?.code === 'mfa_enroll_required') setScope(e.detail?.scope || null);
+    };
     window.addEventListener('pb:mfa', on);
     return () => window.removeEventListener('pb:mfa', on);
   }, []);
@@ -40,6 +50,21 @@ export default function MfaGate() {
       setError(c === 'mfa_bad_code' ? t('sec.badCode') : c === 'mfa_code_reused' ? t('sec.codeReused') : c === 'rate_limited' ? t('sec.tooMany') : err.message);
       setBusy(false);
     }
+  }
+
+  // Managing a club / community: no way around it — turn it on, or go back to the home page.
+  if (need === 'mfa_enroll_required' && scope === 'manager') {
+    if (playerPage) return null;
+    return (
+      <Modal open title={`🔐 ${t('sec.enrollTitle')}`} onClose={() => {}}>
+        <p className="text-gray-300 text-sm mb-2">{t('sec.enrollManagerBody')}</p>
+        <p className="text-gray-500 text-xs mb-4">{t('sec.enrollManagerHint')}</p>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <a href="/home" className="btn-secondary text-sm">{t('sec.backHome')}</a>
+          <Link href="/p/profile#security" className="btn-primary text-sm" onClick={() => setNeed(null)}>{t('sec.goEnable')}</Link>
+        </div>
+      </Modal>
+    );
   }
 
   if (need === 'mfa_enroll_required') {

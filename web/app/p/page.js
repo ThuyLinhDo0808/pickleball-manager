@@ -1,6 +1,7 @@
 'use client';
 import DuprCard from '@/components/DuprCard';
 import PlayerNotices from '@/components/PlayerNotices';
+import LinkRequests from '@/components/LinkRequests';
 import { levelText } from '@/lib/levels';
 import { useEffect, useState } from 'react';
 import { CancelDialog, CancelLine } from '@/components/CancelHistory';
@@ -92,6 +93,7 @@ export default function PlayerHome() {
   return (
     <PlayerShell>
       <PlayerNotices notices={me.notices || []} />
+      <LinkRequests onChanged={reload} />
       <div className="flex items-center gap-3 mb-4">
         {p?.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element

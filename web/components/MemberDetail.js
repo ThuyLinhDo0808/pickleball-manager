@@ -14,6 +14,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd, thisMonth } from '@/lib/format';
+import MemberLink from '@/components/MemberLink';
 
 export const FLAGS = ['unpaid', 'late', 'attitude'];
 export const FLAG_STYLE = {
@@ -375,6 +376,9 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             </button>
           </div>
         )}
+
+        {/* No account yet (phone did not match): a personal link, or name their account. */}
+        {!member.user_id && <MemberLink club={club} member={member} onChanged={onChanged} />}
 
         <section>
           <h3 className="text-white font-semibold text-sm mb-2">{t('flags.title')}</h3>

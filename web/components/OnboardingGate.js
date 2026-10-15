@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 // (/e, the vote page /v, the survey /s, tickets /t), club invite / join links and the
 // email code skip it: a player who came to play only gives name, phone and level on the
 // kèo page itself; the wizard comes when they open the rest of the app.
-const OPEN = ['/onboarding', '/sign-in', '/welcome', '/reset-password', '/owner', '/privacy', '/terms', '/verify-email', '/e', '/v', '/s', '/t', '/invite', '/join', '/l'];
+const OPEN = ['/onboarding', '/sign-in', '/welcome', '/reset-password', '/owner', '/privacy', '/terms', '/verify-email', '/e', '/v', '/s', '/t', '/invite', '/join', '/l', '/claim'];
 
 // Every other page: the signed-in account fills in its sports, role and profile first,
 // then goes back to that page (/onboarding?next=…).

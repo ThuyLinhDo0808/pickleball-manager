@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import LevelInput from '@/components/LevelInput';
 import { levelText } from '@/lib/levels';
 import { useState } from 'react';
@@ -39,6 +40,10 @@ export default function MembersPage({ tab = 'fixed' }) {
   const router = useRouter();
   const { t, sport } = useI18n();
   const { club } = useDefaultClub();
+  // A community's control panel: its levels (trình độ) show as a column here.
+  const isCommunity = club?.kind === 'community';
+  const { data: cs } = useLoad(() => (club && isCommunity ? api.get(`/api/clubs/${club.id}/community-settings`).catch(() => null) : Promise.resolve(null)), [club?.id, isCommunity]);
+  const levelCfg = cs?.ready && cs.settings?.levels?.mode !== 'none' ? cs.settings.levels : null;
   const { data: members, loading, reload } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])),
     [club?.id]
@@ -105,6 +110,8 @@ export default function MembersPage({ tab = 'fixed' }) {
   async function addMember(e) {
     e.preventDefault();
     if (!club) return;
+    // Without a phone their account can't link up by itself later: ask once, still allow it.
+    if (!String(form.phone || '').trim() && !window.confirm(t('members.noPhoneAsk'))) return;
     setBusy(true);
     setError('');
     try {
@@ -118,13 +125,10 @@ export default function MembersPage({ tab = 'fixed' }) {
         gender: form.gender || null,
         tier: form.tier || null,
       });
-      const toWaiting = form.member_type === 'waiting';
+      const toReview = form.member_type === 'review';
       closeAdd();
       reload();
-      if (toWaiting) {
-        reloadRequests();
-        pickTab('waiting');
-      }
+      if (toReview) pickTab('review');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -190,6 +194,7 @@ export default function MembersPage({ tab = 'fixed' }) {
             <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>⬇ {t('common.exportExcel')}</button>
             {canManage && (
               <>
+                {isCommunity && <Link href="/club/community-settings" className="btn-secondary text-sm">🎛 {t('cpanel.short')}</Link>}
                 <button className="btn-secondary text-sm" disabled={!club} onClick={() => setImportOpen(true)}>⬆ {t('imp.button')}</button>
                 <button className="btn-secondary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>
                 <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
@@ -222,7 +227,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         ]}
       />
 
-      {tab === 'waiting' && <MemberRequests club={club} requests={pending} onChanged={() => { reloadRequests(); reload(); }} />}
+      {tab === 'waiting' && <MemberRequests club={club} requests={pending} members={members || []} onChanged={() => { reloadRequests(); reload(); }} />}
       {tab === 'dupr' && club && <DuprMembers club={club} />}
       {tab === 'review' && club && <ReviewTab club={club} members={reviewRows} onChanged={() => { reloadRequests(); reload(); }} />}
 
@@ -341,7 +346,8 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <th>{t('members.joined')}</th>
                       <th>{t('memberX.district')}</th>
                       <th>{t('memberX.playDuration')}</th>
-                      <th>{t('common.level')}</th>
+                      <th>{t('members.colScore')}</th>
+                      {levelCfg && <th>{t('members.colLevel')}</th>}
                       {isGuestTab ? (
                         <>
                           <th>{t('guests.played')}</th>
@@ -417,6 +423,30 @@ export default function MembersPage({ tab = 'fixed' }) {
                         <td className="text-gray-300 whitespace-nowrap">{m.district || '—'}</td>
                         <td className="text-gray-300 whitespace-nowrap">{playDurationText(m.play_duration, t) || '—'}</td>
                         <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
+                        {levelCfg && (
+                          <td className="text-gray-200 whitespace-nowrap" onClick={(e) => levelCfg.mode === 'manual' && e.stopPropagation()}>
+                            {levelCfg.mode === 'manual' ? (
+                              <select
+                                className="input !w-auto !py-1 text-sm"
+                                aria-label={`${t('members.colLevel')}: ${m.full_name}`}
+                                value={m.level_key || ''}
+                                onChange={async (e) => {
+                                  try {
+                                    await api.patch(`/api/clubs/${club.id}/members/${m.id}`, { level_key: e.target.value || null });
+                                    reload();
+                                  } catch (err) {
+                                    window.alert(err.message);
+                                  }
+                                }}
+                              >
+                                <option value="">—</option>
+                                {levelCfg.items.map((it) => <option key={it.key} value={it.key}>{it.label}</option>)}
+                              </select>
+                            ) : (
+                              m.level?.label || <span className="text-gray-500">—</span>
+                            )}
+                          </td>
+                        )}
                         {isGuestTab ? (
                           <>
                             <td className="text-gray-300 whitespace-nowrap">
@@ -492,6 +522,7 @@ export default function MembersPage({ tab = 'fixed' }) {
           <div>
             <label className="text-xs text-gray-400">{t('common.phone')}</label>
             <input className="input" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <p className="mt-1 text-[11px] text-gray-500">{t('members.phoneLinkHint')}</p>
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('members.type')}</label>
@@ -502,9 +533,9 @@ export default function MembersPage({ tab = 'fixed' }) {
             >
               <option value="fixed">{t('members.fixed')}</option>
               <option value="guest">{t('members.guest')}</option>
-              <option value="waiting">--- {t('members.undecided')}</option>
+              <option value="review">--- {t('members.undecided')}</option>
             </select>
-            {form.member_type === 'waiting' && <p className="text-yellow-300 text-[11px] mt-1">{t('members.undecidedHint')}</p>}
+            {form.member_type === 'review' && <p className="text-yellow-300 text-[11px] mt-1">{t('members.undecidedHint')}</p>}
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('members.tier')}</label>

@@ -22,7 +22,6 @@ export default function DiscoverClubPage() {
   const { data, error, loading } = useLoad(() => api.publicGet(`/api/public/discover/clubs/${clubId}`), [clubId]);
   const { data: rel, reload: reloadRel } = useLoad(() => (user ? api.get(`/api/player/discover/${clubId}`).catch(() => null) : Promise.resolve(null)), [clubId, user?.id]);
   const [asking, setAsking] = useState(false);
-  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
@@ -31,7 +30,7 @@ export default function DiscoverClubPage() {
     setBusy(true);
     setMsg(null);
     try {
-      await api.post(`/api/player/discover/${clubId}/join`, { note });
+      await api.post(`/api/player/discover/${clubId}/join`);
       setAsking(false);
       setMsg({ ok: true, text: t('disc.askSent') });
       reloadRel();
@@ -143,10 +142,6 @@ export default function DiscoverClubPage() {
       <Modal open={asking} title={t('disc.askTitle', { club: c.name })} onClose={() => setAsking(false)}>
         <form onSubmit={askToJoin} className="flex flex-col gap-3">
           <p className="text-gray-300 text-sm">{t('disc.askBody')}</p>
-          <label className="block">
-            <span className="text-xs text-gray-300">{t('disc.askNote')}</span>
-            <textarea className="input mt-1" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('disc.askNotePh')} />
-          </label>
           {msg && !msg.ok && <p className="text-red-300 text-sm">{msg.text}</p>}
           <div className="flex gap-2 justify-end">
             <button type="button" className="btn-secondary" onClick={() => setAsking(false)}>{t('common.cancel')}</button>

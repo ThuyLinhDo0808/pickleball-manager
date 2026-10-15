@@ -76,6 +76,22 @@ async function review(club, m, body, actor) {
   return data;
 }
 
+// "---" (type not decided yet): straight into "to review" with no end date and no warning
+// to the player; the Host later brings them back as official / guest, or removes them.
+const UNDECIDED = 'Chưa xác định hình thức (---)';
+async function hold(club, m, actor) {
+  if (inReview(m)) return m;
+  const { data, error } = await supabase
+    .from('club_members')
+    .update({ review_started_at: new Date().toISOString(), review_until: null, review_reason: UNDECIDED, review_from: 'waiting' })
+    .eq('id', m.id)
+    .select()
+    .single();
+  if (error) throw error;
+  await log(club, m, { action: 'review', reason: UNDECIDED, from_type: placeOf(m), to_type: 'review' }, actor);
+  return data;
+}
+
 // Back from review: as an official member, a guest, or into the waiting list.
 async function restore(club, m, body, actor) {
   if (!inReview(m)) throw fail('This member is not under review.', 409, 'not_in_review');
@@ -207,4 +223,6 @@ async function markRead(userId, id) {
   return { ok: true };
 }
 
-module.exports = { MIGRATION, ready, placeOf, review, restore, remove, blocksOf, unblock, history, pastOf, assertCanJoin, noticesFor, markRead };
+module.exports = {
+  hold,
+  UNDECIDED, MIGRATION, ready, placeOf, review, restore, remove, blocksOf, unblock, history, pastOf, assertCanJoin, noticesFor, markRead };

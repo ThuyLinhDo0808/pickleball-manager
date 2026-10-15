@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import PlayerNotices from '@/components/PlayerNotices';
+import LinkRequests from '@/components/LinkRequests';
 
 // One tile of the "spaces" strip: a club (managed or played in), Xé Vé, staff, or "+".
 function SpaceTile({ onClick, href, avatar, label, badge, badgeTone, lines = 2 }) {
@@ -56,7 +57,7 @@ export default function HomeHub() {
   const { user } = useAuth();
   const { staffInfo } = useWorkspace();
   const { manageClub, space, memberClub } = useEnter();
-  const { data, loading } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
+  const { data, loading, reload } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const router = useRouter();
@@ -94,6 +95,7 @@ export default function HomeHub() {
     <PlayerShell>
       <AnnouncementBanner className="mb-4" />
       <PlayerNotices notices={data.notices || []} />
+      <LinkRequests onChanged={reload} />
       {/* Greeting */}
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="min-w-0">

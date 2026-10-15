@@ -49,7 +49,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   map_url: '',
   cost_items: [],
   deadline_auto: true,
-  series_label: '',
+  level_keys: [],
 });
 
 // Registration closes when the cancel-for-free window starts: start time minus the cancel
@@ -115,7 +115,7 @@ export function formFromEvent(ev) {
     allow_public_registration: !!ev.allow_public_registration,
     allow_pay_later: ev.allow_pay_later !== false,
     services: ev.services || '',
-    series_label: ev.series_label || '',
+    level_keys: ev.level_keys || [],
     play_format: playFormatOf(ev.play_format),
     map_url: ev.map_url || '',
     cost_items: (ev.cost_items || []).map((c) => ({ category: c.category, amount: String(c.amount), note: c.note || '' })),
@@ -176,7 +176,7 @@ export function eventPayload(f) {
     play_format: f.kind === 'meeting' ? null : playFormatOf(f.play_format),
     map_url: f.map_url.trim() || null,
     cost_items: costList(f.cost_items),
-    ...(f.series_label !== undefined ? { series_label: (f.series_label || '').trim() || null } : {}),
+    ...(Array.isArray(f.level_keys) ? { level_keys: f.level_keys } : {}),
   };
 }
 
@@ -253,8 +253,8 @@ function CostItems({ items, onChange, sessions }) {
 // `seriesCount`: on edit, how many other upcoming sessions share this weekly schedule
 // (the Host chooses this session only, or all of them). `deadlineDate`: the day the
 // automatic deadline is counted from on a weekly schedule (its first session).
-// `community` + `clubId`: a Social Manager community — the kèo can belong to a series
-// (Series A, B…), picked from the community's existing ones or typed new.
+// `community` + `clubId`: a Social Manager community — the kèo can be for some of the
+// levels (trình độ) set in the community's control panel.
 export default function EventForm({ initial, onSubmit, submitLabel, cancelHref = '/events', showRepeat = false, disabled = false, warning = null, kinds = null, dateField = null, lockTitle = false, showStatus = false, sessions = null, seriesCount = 0, deadlineDate = null, community = false, clubId = null, prefillFromClub = true }) {
   const { t, lang } = useI18n();
   const [f, setF] = useState(() => ({ apply_to: seriesCount > 0 ? 'series' : 'one', ...initial }));
@@ -280,8 +280,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   }
 
   const meeting = f.kind === 'meeting';
-  const { data: clubEvents } = useLoad(() => (community && clubId ? api.get(`/api/clubs/${clubId}/events`).catch(() => []) : Promise.resolve([])), [community, clubId]);
-  const seriesOptions = [...new Set((clubEvents || []).map((e) => e.series_label).filter(Boolean))].sort();
+  const { data: cs } = useLoad(() => (community && clubId ? api.get(`/api/clubs/${clubId}/community-settings`).catch(() => null) : Promise.resolve(null)), [community, clubId]);
+  const levelItems = cs?.ready && cs.settings?.levels?.mode !== 'none' ? cs.settings.levels.items : [];
   const autoAt = autoDeadline(deadlineDate || f.event_date, f.start_time, f.cancel_deadline_hours);
   const fmtLocal = (v) => (v ? new Date(v).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—');
   const perSessionCost = costTotal(f.cost_items);
@@ -359,16 +359,21 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <input className="input" type="time" value={f.end_time} onChange={(e) => set({ end_time: e.target.value })} />
           </Field>
           <LocationField f={f} set={set} meeting={meeting} />
-          {community && !meeting && (
-            <Field label={t('social.seriesLabel')} span={2} hint={t('social.seriesHint')}>
-              <input className="input" list="series-options" maxLength={40} placeholder={t('social.seriesPh')} value={f.series_label || ''} onChange={(e) => set({ series_label: e.target.value })} />
-              <datalist id="series-options">{seriesOptions.map((o) => <option key={o} value={o} />)}</datalist>
-              {seriesOptions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {seriesOptions.map((o) => (
-                    <button key={o} type="button" onClick={() => set({ series_label: o })} className={`rounded-full border px-2.5 py-0.5 text-xs ${f.series_label === o ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300'}`}>{o}</button>
-                  ))}
+          {community && !meeting && cs?.ready && (
+            <Field label={t('cpanel.forLevels')} span={2} hint={levelItems.length ? t('cpanel.forLevelsHint') : null}>
+              {levelItems.length ? (
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('cpanel.forLevels')}>
+                  {levelItems.map((it) => {
+                    const on = (f.level_keys || []).includes(it.key);
+                    return (
+                      <button key={it.key} type="button" aria-pressed={on} onClick={() => set({ level_keys: on ? f.level_keys.filter((k) => k !== it.key) : [...(f.level_keys || []), it.key] })} className={`rounded-full border px-3 py-1 text-xs ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300'}`}>
+                        {it.label}
+                      </button>
+                    );
+                  })}
                 </div>
+              ) : (
+                <p className="text-xs text-gray-400">{t('cpanel.noLevelsYet')} <a href="/club/community-settings" className="text-lime-400 underline">{t('cpanel.title')}</a></p>
               )}
             </Field>
           )}

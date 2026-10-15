@@ -15,7 +15,6 @@ export default function InvitePage() {
   const { t } = useI18n();
   const { user } = useAuth();
   const { data: c, error, loading } = useLoad(() => api.publicGet(`/api/public/invite/${token}`), [token]);
-  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -25,7 +24,7 @@ export default function InvitePage() {
     setBusy(true);
     setMsg(null);
     try {
-      await api.post(`/api/player/invite/${token}/join`, { note });
+      await api.post(`/api/player/invite/${token}/join`);
       setDone(true);
     } catch (err) {
       const code = err.payload?.code;
@@ -77,10 +76,6 @@ export default function InvitePage() {
           ) : (
             <form onSubmit={join} className="flex flex-col gap-3">
               <p className="text-gray-300 text-sm">{t('disc.askBody')}</p>
-              <label className="block">
-                <span className="text-xs text-gray-300">{t('disc.askNote')}</span>
-                <textarea className="input mt-1" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('disc.askNotePh')} />
-              </label>
               {msg && (
                 <p className="text-red-300 text-sm">
                   {msg.text}

@@ -166,6 +166,7 @@ NAV_BY_WORKSPACE.community = [
     key: 'nav.groupSettings',
     icon: 'clubs',
     children: [
+      { href: '/club/community-settings', key: 'nav.commPanel', icon: 'chart' },
       { href: '/clubs', key: 'nav.communities', icon: 'clubs' },
       { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
       { href: '/club/activity-log', key: 'nav.activityLog', icon: 'plans' },

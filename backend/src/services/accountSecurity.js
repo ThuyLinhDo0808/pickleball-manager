@@ -192,6 +192,36 @@ async function consoleGate(req) {
   return null;
 }
 
+// Club / community managers (owners of a club or community, club staff with a role, hosts
+// of one-off kèo) must have two-step sign-in on before they manage anything, like the
+// owner console. Players are not affected. HOST_MFA_REQUIRED (default: on in production).
+const hostNeedsMfa = () => (process.env.HOST_MFA_REQUIRED ?? (process.env.NODE_ENV === 'production' ? 'true' : 'false')) === 'true';
+// Manager APIs. The player side and the account pages (/api/host/me, account, plan,
+// club requests, notifications, security, privacy…) stay open so they can turn it on.
+const MANAGER_PATHS = [/^\/api\/(clubs|matches|transactions|staff-grants|staff|tournaments|analytics|live|inventory)(\/|$)/, /^\/api\/events(\/|$)(?!public\/)/, /^\/api\/host\/(payment-settings|subscription)(\/|$)/];
+const managerCache = new Map();
+async function isManager(req) {
+  const hit = managerCache.get(req.userId);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.value;
+  const [{ count: clubs }, { count: games }, grants] = await Promise.all([
+    supabase.from('clubs').select('id', { count: 'exact', head: true }).eq('host_id', req.userId),
+    supabase.from('events').select('id', { count: 'exact', head: true }).eq('host_id', req.userId).is('club_id', null),
+    req.emailVerified && req.hostEmail
+      ? supabase.from('staff_grants').select('id', { count: 'exact', head: true }).eq('email', req.hostEmail.toLowerCase()).in('role', ['co_admin', 'finance', 'operator'])
+      : Promise.resolve({ count: 0 }),
+  ]);
+  const value = (clubs || 0) + (games || 0) + (grants.count || 0) > 0;
+  managerCache.set(req.userId, { at: Date.now(), value });
+  return value;
+}
+async function managerGate(req) {
+  if (!hostNeedsMfa() || req.mfaOn !== false) return null; // on already (or tables not there yet)
+  const path = (req.originalUrl || '').split('?')[0];
+  if (!MANAGER_PATHS.some((re) => re.test(path))) return null;
+  if (!(await isManager(req))) return null;
+  return { status: 403, body: { error: 'Turn on two-step sign-in to manage your club / community.', code: 'mfa_enroll_required', scope: 'manager' } };
+}
+
 async function markVerified(userId, sessionKey) {
   const expires = new Date(Date.now() + SESSION_DAYS * 86400_000).toISOString();
   const { error } = await supabase
@@ -396,6 +426,8 @@ module.exports = {
   gate,
   consoleGate,
   consoleNeedsMfa,
+  managerGate,
+  hostNeedsMfa,
   stateOf,
   forget,
   mfaRow,

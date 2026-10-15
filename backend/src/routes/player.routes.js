@@ -142,6 +142,15 @@ publicRoutes.get('/discover/clubs/:clubId/:kind(avatar|cover)', async (req, res)
   }
 });
 
+// A member's personal link (no login to see it): which club and which member it is for.
+publicRoutes.get('/member-link/:token', async (req, res) => {
+  try {
+    res.json(await require('../services/memberLink').peek(req.params.token));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // Invite link (no login to see it): the club it leads to.
 publicRoutes.get('/invite/:token', async (req, res) => {
   try {
@@ -307,6 +316,31 @@ player.post('/discover/:clubId/join', async (req, res) => {
     res.status(201).json(await discover.requestJoin(req.params.clubId, req.hostId, req.body || {}));
   } catch (err) {
     if (err.code === 'member_limit') return res.status(403).json({ error: 'This club is full right now.', code: 'member_limit' });
+    fail(res, err);
+  }
+});
+
+// "This is me": join the account to the member behind a personal link.
+player.post('/member-link/:token', async (req, res) => {
+  try {
+    res.json(await require('../services/memberLink').claim(req.params.token, req.hostId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+// A club asked to link this account to one of its members: confirm or decline.
+player.get('/link-requests', async (req, res) => {
+  try {
+    res.json(await require('../services/memberLink').pendingFor(req.hostId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+player.post('/link-requests/:id', async (req, res) => {
+  if (!isUuid(req.params.id)) return notFound(res, 'Request');
+  try {
+    res.json(await require('../services/memberLink').answer(req.hostId, req.params.id, req.body?.accept === true));
+  } catch (err) {
     fail(res, err);
   }
 });
