@@ -16,10 +16,11 @@ export default function MfaGate() {
   const { user, signOut } = useAuth();
   const [need, setNeed] = useState(null); // 'mfa_required' | 'mfa_enroll_required'
   const [scope, setScope] = useState(null); // 'manager': managing a club / community
+  const [resetAt, setResetAt] = useState(null); // an Owner reset (lost phone) is waiting
   const pathname = usePathname() || '';
   // Player pages (home, profile where it is turned on, kèo / club pages) stay usable; the
   // manager prompt shows on the manager pages only.
-  const playerPage = ['/home', '/p', '/c/', '/e/', '/t/', '/s/', '/v/', '/l/', '/discover', '/claim', '/invite', '/join', '/verify-email', '/onboarding', '/privacy', '/terms', '/club-request', '/leaderboard'].some((x) => pathname === x || pathname.startsWith(x.endsWith('/') ? x : `${x}/`));
+  const playerPage = ['/home', '/p', '/c/', '/e/', '/t/', '/s/', '/v/', '/l/', '/discover', '/claim', '/invite', '/join', '/verify-email', '/onboarding', '/privacy', '/terms', '/club-request', '/leaderboard', '/mfa-reset'].some((x) => pathname === x || pathname.startsWith(x.endsWith('/') ? x : `${x}/`));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -28,6 +29,7 @@ export default function MfaGate() {
     const on = (e) => {
       setNeed((cur) => (cur === 'mfa_required' ? cur : e.detail?.code || 'mfa_required'));
       if (e.detail?.code === 'mfa_enroll_required') setScope(e.detail?.scope || null);
+      if (e.detail?.code === 'mfa_required') setResetAt(e.detail?.reset_at || null);
     };
     window.addEventListener('pb:mfa', on);
     return () => window.removeEventListener('pb:mfa', on);
@@ -97,6 +99,11 @@ export default function MfaGate() {
           required
         />
         <p className="text-[11px] text-gray-500 mt-1">{t('sec.recoveryHint')}</p>
+        {resetAt ? (
+          <p className="text-[11px] text-amber-200 mt-2">⏳ {t('sec.resetWaiting', { at: new Date(resetAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) })}</p>
+        ) : (
+          <p className="text-[11px] text-gray-500 mt-2">{t('sec.lostAll')}</p>
+        )}
         {error && <p className="text-red-300 text-sm mt-2" role="alert">{error}</p>}
         <div className="flex flex-wrap gap-2 justify-between mt-4">
           <button type="button" className="btn-secondary text-sm" onClick={() => signOut()}>{t('nav.signOut')}</button>

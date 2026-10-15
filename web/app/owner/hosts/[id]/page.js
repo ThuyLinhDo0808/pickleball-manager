@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import DeleteClub from '@/components/OwnerDeleteClub';
+import OwnerMfaReset from '@/components/OwnerMfaReset';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import OwnerShell, { fmtDate, fmtTime, TIER_BADGE, useOwnerMe, consoleCan } from '@/components/OwnerShell';
@@ -528,7 +529,10 @@ export default function OwnerHostPage() {
 
           <div className="grid lg:grid-cols-[2fr_1fr] gap-4 items-start">
             <Gate perm="plans"><PlanEditor host={h} onSaved={reload} /></Gate>
-            <Gate owner><SuspendBox host={h} onChanged={reload} /></Gate>
+            <div className="flex flex-col gap-4">
+              <Gate owner><SuspendBox host={h} onChanged={reload} /></Gate>
+              <Gate owner><OwnerMfaReset host={h} onChanged={reload} /></Gate>
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-4 items-start">

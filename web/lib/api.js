@@ -77,7 +77,7 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
   // Two-step sign-in: this session still needs the code (or the account must turn it on
   // first, for the owner console). components/MfaGate asks for it.
   if (res.status === 403 && ['mfa_required', 'mfa_enroll_required'].includes(data.code) && typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('pb:mfa', { detail: { code: data.code, scope: data.scope || null } }));
+    window.dispatchEvent(new CustomEvent('pb:mfa', { detail: { code: data.code, scope: data.scope || null, reset_at: data.reset_at || null } }));
   }
   // The app owner suspended this account: the shell shows a notice instead of the app.
   if (res.status === 423 && data.code === 'account_suspended' && typeof window !== 'undefined') {

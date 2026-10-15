@@ -5,6 +5,7 @@
 //   POST   /mfa/verify    {code}   pass the second step for this sign-in session
 //   POST   /mfa/disable   {code}   turn two-step off (not for owner / support accounts)
 //   POST   /mfa/recovery  {code}   new recovery codes (old ones stop working)
+//   POST   /mfa/reset-cancel       stop a reset the Owner started (needs this sign-in's code)
 //   POST   /logout-all             sign out on every device
 //   DELETE /devices/:id            forget a device (the next sign-in there emails again)
 // These answer even before the second step is passed (see accountSecurity.gate).
@@ -33,8 +34,10 @@ const wrap = (fn) => async (req, res) => {
   }
 };
 
-// Owners and support staff must keep two-step sign-in on.
-const mustUseMfa = async (req) => security.consoleNeedsMfa() && !!(await support.consoleAccess(req.hostEmail));
+// Owners and support staff must keep two-step sign-in on; so do club / community managers
+// (HOST_MFA_REQUIRED).
+const mustUseMfa = async (req) =>
+  (security.consoleNeedsMfa() && !!(await support.consoleAccess(req.hostEmail))) || (security.hostNeedsMfa() && (await security.isManager(req)));
 
 router.get('/', wrap(async (req, res) => {
   const row = await security.mfaRow(req.userId);
@@ -45,6 +48,8 @@ router.get('/', wrap(async (req, res) => {
       enabled_at: row?.enabled_at || null,
       verified: !!verifiedAt,
       recovery_left: row?.enabled_at ? (row.recovery_hashes || []).length : 0,
+      // An Owner reset waiting to take effect (lost phone): when, and when it was asked.
+      reset: row?.enabled_at && row.reset_at ? { at: row.reset_at, requested_at: row.reset_requested_at } : null,
     },
     required: await mustUseMfa(req),
     devices: await security.devices(req.userId),
@@ -73,6 +78,18 @@ router.post('/mfa/disable', codeTries, wrap(async (req, res) => {
 
 router.post('/mfa/recovery', codeTries, wrap(async (req, res) => {
   res.json({ ok: true, recovery_codes: await security.regenerateRecovery(req.userId, req.body?.code) });
+}));
+
+router.post('/mfa/reset-cancel', wrap(async (req, res) => {
+  // Only someone who still has the code (or a recovery code) for this sign-in can stop it.
+  const at = await security.sessionVerifiedAt(req.userId, req.sessionKey);
+  if (!at) return res.status(403).json({ error: 'Enter the code from your authenticator app.', code: 'mfa_required' });
+  const stopped = await security.cancelReset(req.userId);
+  if (stopped) {
+    const { data: u } = await supabase.from('users').select('id, email').eq('id', req.userId).maybeSingle();
+    await require('../services/owner').audit({ hostEmail: req.hostEmail }, { action: 'mfa.reset_cancel', host: u, note: 'Huỷ bởi chủ tài khoản' });
+  }
+  res.json({ ok: true, stopped });
 }));
 
 router.post('/logout-all', wrap(async (req, res) => {
