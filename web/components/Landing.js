@@ -3,13 +3,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
-// Be Vietnam Pro, self-hosted from the package (the CSP allows only our own fonts); drawn for
-// Vietnamese, so stacked accents sit cleanly in big headings.
-import '@fontsource/be-vietnam-pro/400.css';
-import '@fontsource/be-vietnam-pro/500.css';
-import '@fontsource/be-vietnam-pro/600.css';
-import '@fontsource/be-vietnam-pro/700.css';
-import '@fontsource/be-vietnam-pro/800.css';
+// Plus Jakarta Sans, self-hosted from the package (the CSP allows only our own fonts); it has
+// the Vietnamese subset, so accents in big headings stay clean.
+import '@fontsource/plus-jakarta-sans/400.css';
+import '@fontsource/plus-jakarta-sans/500.css';
+import '@fontsource/plus-jakarta-sans/600.css';
+import '@fontsource/plus-jakarta-sans/700.css';
+import '@fontsource/plus-jakarta-sans/800.css';
 
 // The public landing page ("/") for visitors who are not signed in. Instead of one long page it
 // is a short deck of full-screen "scenes": a wheel turn, a swipe, the arrow keys or the dots move
