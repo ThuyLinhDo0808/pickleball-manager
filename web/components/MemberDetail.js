@@ -275,6 +275,60 @@ function MemberEdit({ member, busy, onSave, autoEdit = false, community = false 
   );
 }
 
+// Two records of one person (e.g. typed in by hand + signed up by themselves): move this one's
+// sign-ups, matches, passes… into the other and remove it. Same name first.
+const nameKey = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/\s+/g, ' ').trim();
+function MergeDuplicate({ club, member, onDone }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [into, setInto] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const { data: all } = useLoad(() => (open ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve(null)), [open, club.id]);
+  const others = (all || [])
+    .filter((m) => m.id !== member.id && !(m.user_id && member.user_id && m.user_id !== member.user_id))
+    .sort((a, b) => (nameKey(b.full_name) === nameKey(member.full_name)) - (nameKey(a.full_name) === nameKey(member.full_name)) || a.full_name.localeCompare(b.full_name, 'vi'));
+  const same = others.filter((m) => nameKey(m.full_name) === nameKey(member.full_name));
+  const go = async () => {
+    const target = others.find((m) => m.id === into);
+    if (!target || !window.confirm(t('mergeDup.ask', { name: member.full_name, target: target.full_name }))) return;
+    setBusy(true);
+    setErr('');
+    try {
+      await api.post(`/api/clubs/${club.id}/members/${member.id}/merge`, { into, any: true });
+      onDone();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="rounded-xl border border-navy-600 p-3 text-sm">
+      <button type="button" className="w-full text-left flex items-center justify-between gap-2" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span className="font-semibold text-white">🔗 {t('mergeDup.title')}</span>
+        <span className="text-gray-400 text-xs" aria-hidden="true">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="mt-2">
+          <p className="text-gray-400 text-xs">{t('mergeDup.hint')}</p>
+          {same.length > 0 && <p className="text-amber-200 text-xs mt-1">⚠ {t('mergeDup.sameName', { n: same.length })}</p>}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <select className="input !w-auto !py-1.5 text-sm" value={into} onChange={(e) => setInto(e.target.value)} aria-label={t('mergeDup.into')}>
+              <option value="">{t('mergeDup.into')}</option>
+              {others.map((m) => (
+                <option key={m.id} value={m.id}>{m.full_name}{m.user_id ? ' · 👤' : ''}{m.phone ? ` · …${String(m.phone).slice(-3)}` : ''}</option>
+              ))}
+            </select>
+            <button type="button" className="btn-secondary !py-1.5 text-sm" disabled={busy || !into} onClick={go}>{t('mergeDup.btn')}</button>
+          </div>
+          {err && <p className="text-red-300 text-xs mt-1">{err}</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function MemberDetail({ club, member, onClose, onChanged, autoEdit = false, onReview = null }) {
   const { t, sport } = useI18n();
   const open = !!member;
@@ -508,6 +562,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         </section>
 
         <MemberHistory key={member.id} club={club} member={member} />
+        <MergeDuplicate club={club} member={member} onDone={() => { onChanged(); onClose(); }} />
       </div>
     </Modal>
   );

@@ -8,7 +8,7 @@ import { api, clubImage } from '@/lib/api';
 import { formatDay } from '@/lib/dates';
 import { COUNTRIES, PROVINCES, VIETNAM } from '@/lib/regions';
 
-const EMPTY = { q: '', country: '', province: '', district: '', sport: '' };
+const EMPTY = { q: '', country: VIETNAM, province: '', district: '', sport: '' };
 
 // One club in the results: cover strip, avatar, where / when, members, next session.
 function ClubCard({ c }) {
@@ -57,7 +57,7 @@ export default function DiscoverPage() {
     setBusy(true);
     setError('');
     try {
-      const qs = new URLSearchParams(Object.entries({ ...filters, page: p }).filter(([, v]) => v !== '' && v != null));
+      const qs = new URLSearchParams(Object.entries({ ...filters, page: p }).filter(([k, v]) => v !== '' && v != null && k !== 'country') /* Vietnam only for now: clubs with no country on file still show */);
       const r = await api.publicGet(`/api/public/discover/clubs?${qs}`);
       setItems((x) => (p === 1 ? r.items : [...x, ...r.items]));
       setMore(r.more);
@@ -81,7 +81,7 @@ export default function DiscoverPage() {
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value, ...(k === 'country' ? { province: '' } : {}) }));
   function submit(e) {
     e.preventDefault();
-    const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v));
+    const qs = new URLSearchParams(Object.entries(f).filter(([k, v]) => v && k !== 'country'));
     window.history.replaceState(null, '', `/discover${qs.toString() ? `?${qs}` : ''}`);
     run(f);
   }
@@ -100,7 +100,6 @@ export default function DiscoverPage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <select className="input text-sm" value={f.country} onChange={set('country')} aria-label={t('creq.country')}>
-            <option value="">{t('disc.anyCountry')}</option>
             {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           {vn ? (

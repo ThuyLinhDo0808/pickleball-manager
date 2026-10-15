@@ -288,9 +288,13 @@ async function matchesFor(clubId, requests) {
 }
 
 // The Host merges a waiting request (`source`) into the member they already had.
-async function mergeInto(club, source, targetId) {
+// Merge `source` into `target` (same person, two records): the sign-ups, matches, passes…
+// of `source` move to `target`, which keeps its own details and gets the missing ones; the
+// account goes with them. Used for a join request typed in before (`source` = the request)
+// and for any two duplicate records of the club (Host's choice, `any`).
+async function mergeInto(club, source, targetId, { any = false } = {}) {
   await assertReady();
-  if (!source.user_id || source.account_verified) throw fail('Only a waiting request with an account can be merged.', 400, 'not_pending');
+  if (!any && (!source.user_id || source.account_verified)) throw fail('Only a waiting request with an account can be merged.', 400, 'not_pending');
   if (!targetId || targetId === source.id) throw fail('Pick the member to merge into.', 400, 'target_required');
   const { data: target, error } = await supabase.from('club_members').select('*').eq('id', targetId).eq('club_id', club.id).maybeSingle();
   if (error) throw error;
@@ -301,7 +305,7 @@ async function mergeInto(club, source, targetId) {
     if (target[k] == null && source[k] != null) fill[k] = source[k];
   }
   await mergeRows(source, target);
-  const patch = { ...fill, user_id: source.user_id, account_verified: true };
+  const patch = { ...fill, ...(source.user_id ? { user_id: source.user_id, account_verified: true } : {}) };
   if (await phoneLinkReady()) patch.unlinked_user_id = null;
   const { data, error: uErr } = await supabase.from('club_members').update(patch).eq('id', target.id).select().single();
   if (uErr) throw uErr;

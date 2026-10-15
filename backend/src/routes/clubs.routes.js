@@ -825,7 +825,7 @@ router.delete('/:clubId/members/:memberId/link', async (req, res) => {
 // Merge a waiting join request into the member the Host already had (one person, one row).
 router.post('/:clubId/members/:memberId/merge', async (req, res) => {
   try {
-    res.json(await memberLink.mergeInto(req.club, req.member, req.body?.into));
+    res.json(await memberLink.mergeInto(req.club, req.member, req.body?.into, { any: req.body?.any === true }));
   } catch (err) {
     linkFail(res, err);
   }
@@ -1419,6 +1419,19 @@ router.get('/:clubId/birthdays', async (req, res) => {
 // Cuộc đua Top tháng (communities): this month's / a past month's table, settings, vouchers.
 const race = require('../services/race');
 const raceManager = (req) => ['owner', 'co_admin'].includes(req.clubRole || 'owner');
+
+// Rankings: matches a player needs in the period to get a place (owner / co-admin).
+router.put('/:clubId/rank-settings', async (req, res) => {
+  if (!raceManager(req)) return res.status(403).json(ROLE_FORBIDDEN);
+  const n = Number(req.body?.rank_min_matches);
+  if (!Number.isInteger(n) || n < 1 || n > 50) return res.status(400).json({ error: 'rank_min_matches must be 1–50.', code: 'bad_min_matches' });
+  const { error } = await supabase.from('clubs').update({ rank_min_matches: n }).eq('id', req.club.id);
+  if (error) {
+    if (/rank_min_matches|schema cache|does not exist/i.test(error.message || '')) return res.status(409).json({ error: 'Run migration 20261125090000_rank_settings.sql first.', code: 'migration_required' });
+    return dbError(res, error);
+  }
+  res.json({ rank_min_matches: n });
+});
 router.get('/:clubId/race', async (req, res) => {
   try {
     if (!(await race.ready())) return res.status(409).json({ error: `Run migration ${race.MIGRATION} first.`, code: 'migration_required' });
@@ -1517,6 +1530,15 @@ router.patch('/:clubId/members/:memberId/dupr', async (req, res) => {
     if (!(await duprGate(req, res))) return;
     if (!isUuid(req.params.memberId)) return notFound(res, 'Member');
     res.json(await dupr.setMemberId(req.club, req.params.memberId, req.body?.dupr_id));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.patch('/:clubId/members/:memberId/dupr-score', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    if (!isUuid(req.params.memberId)) return notFound(res, 'Member');
+    res.json(await dupr.setMemberScore(req.club, req.params.memberId, req.body || {}));
   } catch (err) {
     duprErr(res, err);
   }

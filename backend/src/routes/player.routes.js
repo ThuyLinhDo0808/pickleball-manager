@@ -780,6 +780,7 @@ player.get('/home', async (req, res) => {
         club_id: m.club_id,
         name: m.clubs.name,
         sport: m.clubs.sport || 'pickleball',
+        kind: m.clubs.kind || 'club',
         member_type: m.member_type,
         account_verified: m.account_verified,
         ...summarize((passes || []).filter((p) => p.club_member_id === m.id), today),

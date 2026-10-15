@@ -72,7 +72,7 @@ function AwardCard({ title, icon, rows, fmt, hint }) {
 // A club's leaderboards (all / fixed members / guest members) for a period: podium,
 // awards, weeks at No. 1 and the full table. `statsUrl`: the managers' or the members'
 // endpoint; `me`: the viewer's club member id (their row is marked).
-export default function ClubLeaderboard({ statsUrl, clubName = '', me = null }) {
+export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, settingsUrl = null }) {
   const { t, lang } = useI18n();
   const [period, setPeriod] = useState('month');
   const [date, setDate] = useState(todayYmd);
@@ -80,7 +80,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null }) 
   // Three leaderboards: everyone in the club, the fixed members only, the guests only.
   const [group, setGroup] = useState('all');
 
-  const { data: stats, loading, error } = useLoad(
+  const { data: stats, loading, error, reload } = useLoad(
     () => (statsUrl ? api.get(`${statsUrl}?period=${period}&date=${date}${group === 'all' ? '' : `&group=${group}`}`) : Promise.resolve(null)),
     [statsUrl, period, date, group]
   );
@@ -94,7 +94,12 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null }) 
   const weeksAtTop = stats?.weeks_at_top || [];
   const weeksOf = new Map(weeksAtTop.map((w) => [w.club_member_id, w.weeks]));
 
-  const top3 = !sort.key ? rows.slice(0, 3) : [];
+  // Podium: only players with a place (enough matches), by win rate.
+  const top3 = !sort.key ? rows.filter((r) => r.eligible !== false).slice(0, 3) : [];
+  const saveMin = async (n) => {
+    await api.put(settingsUrl, { rank_min_matches: n });
+    reload();
+  };
   const groupIcon = { all: '🌐', club: '🏠', guest: '🤝' };
 
   return (
@@ -117,6 +122,20 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null }) 
         </div>
       </div>
 
+      {stats && (
+        <p className="text-gray-400 text-xs -mt-2 mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>📏 {t('rankx.rule', { n: stats.min_matches })}</span>
+          {settingsUrl && (
+            <label className="inline-flex items-center gap-1">
+              <span className="sr-only">{t('rankx.minLabel')}</span>
+              <select className="input !py-0.5 !px-2 !w-auto text-xs" value={stats.min_matches} onChange={(e) => saveMin(Number(e.target.value))} aria-label={t('rankx.minLabel')}>
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{t('rankx.minN', { n })}</option>)}
+              </select>
+            </label>
+          )}
+          {stats.main_only && <span className="text-gray-500">· {t('rankx.mainOnly')}</span>}
+        </p>
+      )}
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {error?.status === 402 && <p className="card text-gray-300 text-sm">💎 {t('plan.rankingsOff')}</p>}
 
@@ -209,8 +228,8 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null }) 
                 </thead>
                 <tbody>
                   {rows.map((r, i) => (
-                    <tr key={r.club_member_id} className={r.club_member_id === meId ? 'bg-lime-400/10' : !sort.key && i < 3 ? 'bg-amber-300/[0.04]' : ''}>
-                      <td className="text-center text-gray-400">{!sort.key && i < 3 ? MEDALS[i] : i + 1}</td>
+                    <tr key={r.club_member_id} className={`${r.club_member_id === meId ? 'bg-lime-400/10' : !sort.key && r.rank && r.rank <= 3 ? 'bg-amber-300/[0.04]' : ''} ${r.eligible === false ? 'opacity-60' : ''}`}>
+                      <td className="text-center text-gray-400" title={r.eligible === false ? t('rankx.notEnough', { n: stats.min_matches }) : undefined}>{sort.key ? i + 1 : r.eligible === false ? '—' : r.rank <= 3 ? MEDALS[r.rank - 1] : r.rank ?? i + 1}</td>
                       <td>
                         <span className="flex items-center gap-2">
                           <Avatar name={r.full_name} size={26} />
