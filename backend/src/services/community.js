@@ -48,11 +48,20 @@ async function moneyOf(clubId, eventIds) {
 }
 
 async function overview(club) {
+  // The Host's own rules from the control panel (defaults: 30 days, regular from 3 sessions).
+  const CS = require('./communitySettings');
+  const csReady = await CS.ready();
+  if ((club.kind || 'club') === 'community') await CS.reclassify(club).catch((err) => console.error('reclassify failed', err));
+  const settings = await CS.forClub(club.id);
+  const activeDays = csReady ? settings.active_days : ACTIVE_DAYS;
+  const regularMin = csReady ? settings.regular.min : REGULAR_MIN;
   const today = todayYmd();
-  const since = addDays(today, -ACTIVE_DAYS);
+  const since = addDays(today, -activeDays);
+  const regularSince = addDays(today, -30);
+  const extra = csReady ? ', level_key, dupr_level, play_duration' : '';
   const [events, members] = await Promise.all([
-    all(() => supabase.from('events').select('id, event_date, series_label, fee_amount, status').eq('club_id', club.id).order('id')),
-    all(() => supabase.from('club_members').select('id, member_type, is_active, join_requested').eq('club_id', club.id).order('id')),
+    all(() => supabase.from('events').select(`id, event_date, series_label, fee_amount, status${csReady ? ', level_keys' : ''}`).eq('club_id', club.id).order('id')),
+    all(() => supabase.from('club_members').select(`id, member_type, is_active, join_requested${extra}`).eq('club_id', club.id).order('id')),
   ]);
   const ids = events.map((e) => e.id);
   let parts = [];
@@ -66,6 +75,7 @@ async function overview(club) {
 
   // Who came when: member id -> sessions in the last 30 days; per series, everyone ever.
   const recent = new Map();
+  const monthly = new Map(); // sessions in the last 30 days (the regular rule)
   const series = new Map();
   // Every series that has a kèo counts, even before anyone has played in it.
   for (const e of events) {
@@ -80,6 +90,7 @@ async function overview(club) {
     if (!mid || !known.has(mid) || !e || !PLAYED.includes(p.status) || e.status === 'cancelled') continue;
     const past = e.event_date <= today;
     if (past && e.event_date >= since) recent.set(mid, (recent.get(mid) || 0) + 1);
+    if (past && e.event_date >= regularSince) monthly.set(mid, (monthly.get(mid) || 0) + 1);
     if (e.series_label) {
       const s = series.get(e.series_label) || { label: e.series_label, members: new Set(), active: new Set(), sessions: new Set() };
       s.members.add(mid);
@@ -89,7 +100,24 @@ async function overview(club) {
     }
   }
   const active = roster.filter((m) => recent.has(m.id)).length;
-  const regular = roster.filter((m) => (recent.get(m.id) || 0) >= REGULAR_MIN).length;
+  const regular = roster.filter((m) => (monthly.get(m.id) || 0) >= regularMin).length;
+  const playedMonth = roster.filter((m) => monthly.has(m.id)).length;
+
+  // Members per level (trình độ) and the kèo marked for each level.
+  const levelItems = settings.levels.mode === 'none' ? [] : settings.levels.items;
+  const byLevel = new Map(levelItems.map((i) => [i.key, { key: i.key, label: i.label, members: 0, active: 0, sessions: 0 }]));
+  let noLevel = 0;
+  for (const m of roster) {
+    const lv = CS.levelOf(m, settings);
+    const row = lv && byLevel.get(lv.key);
+    if (!row) {
+      noLevel += 1;
+      continue;
+    }
+    row.members += 1;
+    if (recent.has(m.id)) row.active += 1;
+  }
+  for (const e of events) if (e.status !== 'cancelled') for (const k of e.level_keys || []) if (byLevel.has(k)) byLevel.get(k).sessions += 1;
 
   const txns = await moneyOf(club.id, ids);
   const income = txns.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
@@ -101,13 +129,15 @@ async function overview(club) {
 
   return {
     club: { id: club.id, name: club.name, kind: club.kind || 'club' },
-    rules: { active_days: ACTIVE_DAYS, regular_min: REGULAR_MIN },
+    rules: { active_days: activeDays, regular_min: regularMin, regular_auto: settings.regular.auto, level_mode: settings.levels.mode },
     members: {
       total: roster.length,
       fixed: roster.filter((m) => m.member_type === 'fixed').length,
       guest: roster.filter((m) => m.member_type === 'guest').length,
       active,
       inactive: roster.length - active,
+      by_level: [...byLevel.values()].map((r) => ({ ...r, inactive: r.members - r.active })),
+      no_level: levelItems.length ? noLevel : null,
       by_series: [...series.values()]
         .map((s) => ({ label: s.label, members: s.members.size, active: s.active.size, inactive: s.members.size - s.active.size, sessions: s.sessions.size }))
         .sort((a, b) => a.label.localeCompare(b.label, 'vi')),
@@ -121,7 +151,7 @@ async function overview(club) {
       unpaid_fee_count: fees.count,
       unpaid_plans: plans,
     },
-    regularity: { regular, irregular: active - regular, inactive: roster.length - active },
+    regularity: { regular, irregular: playedMonth - regular, inactive: roster.length - playedMonth },
   };
 }
 

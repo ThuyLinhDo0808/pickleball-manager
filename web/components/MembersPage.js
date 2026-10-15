@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import LevelInput from '@/components/LevelInput';
 import { levelText } from '@/lib/levels';
 import { useState } from 'react';
@@ -39,6 +40,10 @@ export default function MembersPage({ tab = 'fixed' }) {
   const router = useRouter();
   const { t, sport } = useI18n();
   const { club } = useDefaultClub();
+  // A community's control panel: its levels (trình độ) show as a column here.
+  const isCommunity = club?.kind === 'community';
+  const { data: cs } = useLoad(() => (club && isCommunity ? api.get(`/api/clubs/${club.id}/community-settings`).catch(() => null) : Promise.resolve(null)), [club?.id, isCommunity]);
+  const levelCfg = cs?.ready && cs.settings?.levels?.mode !== 'none' ? cs.settings.levels : null;
   const { data: members, loading, reload } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])),
     [club?.id]
@@ -192,6 +197,7 @@ export default function MembersPage({ tab = 'fixed' }) {
             <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>⬇ {t('common.exportExcel')}</button>
             {canManage && (
               <>
+                {isCommunity && <Link href="/club/community-settings" className="btn-secondary text-sm">🎛 {t('cpanel.short')}</Link>}
                 <button className="btn-secondary text-sm" disabled={!club} onClick={() => setImportOpen(true)}>⬆ {t('imp.button')}</button>
                 <button className="btn-secondary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>
                 <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
@@ -343,7 +349,8 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <th>{t('members.joined')}</th>
                       <th>{t('memberX.district')}</th>
                       <th>{t('memberX.playDuration')}</th>
-                      <th>{t('common.level')}</th>
+                      <th>{t('members.colScore')}</th>
+                      {levelCfg && <th>{t('members.colLevel')}</th>}
                       {isGuestTab ? (
                         <>
                           <th>{t('guests.played')}</th>
@@ -419,6 +426,30 @@ export default function MembersPage({ tab = 'fixed' }) {
                         <td className="text-gray-300 whitespace-nowrap">{m.district || '—'}</td>
                         <td className="text-gray-300 whitespace-nowrap">{playDurationText(m.play_duration, t) || '—'}</td>
                         <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
+                        {levelCfg && (
+                          <td className="text-gray-200 whitespace-nowrap" onClick={(e) => levelCfg.mode === 'manual' && e.stopPropagation()}>
+                            {levelCfg.mode === 'manual' ? (
+                              <select
+                                className="input !w-auto !py-1 text-sm"
+                                aria-label={`${t('members.colLevel')}: ${m.full_name}`}
+                                value={m.level_key || ''}
+                                onChange={async (e) => {
+                                  try {
+                                    await api.patch(`/api/clubs/${club.id}/members/${m.id}`, { level_key: e.target.value || null });
+                                    reload();
+                                  } catch (err) {
+                                    window.alert(err.message);
+                                  }
+                                }}
+                              >
+                                <option value="">—</option>
+                                {levelCfg.items.map((it) => <option key={it.key} value={it.key}>{it.label}</option>)}
+                              </select>
+                            ) : (
+                              m.level?.label || <span className="text-gray-500">—</span>
+                            )}
+                          </td>
+                        )}
                         {isGuestTab ? (
                           <>
                             <td className="text-gray-300 whitespace-nowrap">

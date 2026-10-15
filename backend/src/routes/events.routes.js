@@ -377,6 +377,12 @@ function cleanEventFields(fields) {
     if (v && (v.length > 500 || !/^https:\/\/\S+$/i.test(v))) return 'map_url must be an https link (Google Maps).';
     fields.map_url = v || null;
   }
+  if ('level_keys' in fields) {
+    // Kèo for some levels of the community (keys from its control panel).
+    const keys = Array.isArray(fields.level_keys) ? [...new Set(fields.level_keys.map((k) => String(k)))] : [];
+    if (keys.length > 12 || keys.some((k) => !/^[a-z0-9_-]{1,20}$/i.test(k))) return 'level_keys: up to 12 level keys.';
+    fields.level_keys = keys.length ? keys : null;
+  }
   if ('series_label' in fields) {
     const v = fields.series_label == null ? '' : String(fields.series_label).trim();
     if (v.length > 40) return 'series_label: at most 40 characters.';
@@ -407,7 +413,7 @@ async function kindAllowed(clubId, kind) {
 }
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
-  'auto_approve', 'allow_pay_later', 'series_label', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
+  'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'allow_public_registration', 'cost_items',
 ];
 
@@ -474,11 +480,12 @@ router.post('/', async (req, res) => {
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
+  if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
   const hostId = await hostForClub(req, fields.club_id);
   if (!hostId) return notFound(res, 'Club');
   if (!(await kindAllowed(fields.club_id, fields.kind))) return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
@@ -723,11 +730,12 @@ router.patch('/:eventId', async (req, res) => {
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
-    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label',
+    'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
   const bad = cleanEventFields(fields);
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
+  if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
   if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }

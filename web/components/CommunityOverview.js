@@ -101,18 +101,20 @@ export default function CommunityOverview({ children }) {
               <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.fixedGuest', { f: m.fixed, g: m.guest })} />
               <StatTile icon="🟢" label={t('social.active')} value={m.active} tone="text-lime-300" sub={t('social.activeSub', { d: rules.active_days })} />
               <StatTile icon="💤" label={t('social.inactive')} value={m.inactive} tone="text-gray-300" sub={t('social.inactiveSub', { d: rules.active_days })} />
-              <StatTile icon="🏷" label={t('social.seriesCount')} value={m.by_series.length} tone="text-sky-300" />
+              <StatTile icon="📶" label={t('social.levelCount')} value={(m.by_level || []).length} tone="text-sky-300" sub={rules.level_mode && rules.level_mode !== 'none' ? t(`cpanel.mode_${rules.level_mode}`) : t('social.levelNone')} />
             </div>
             <Split parts={[{ key: 'a', value: m.active, color: 'bg-lime-400' }, { key: 'i', value: m.inactive, color: 'bg-navy-600' }]} />
-            <h3 className="text-gray-300 text-sm font-semibold mt-4 mb-2">{t('social.bySeries')}</h3>
-            {m.by_series.length === 0 ? (
-              <p className="text-gray-500 text-sm">{t('social.noSeries')}</p>
+            <h3 className="text-gray-300 text-sm font-semibold mt-4 mb-2">{t('social.byLevel')}</h3>
+            {!(m.by_level || []).length ? (
+              <p className="text-gray-500 text-sm">
+                {t('social.noLevels')} <Link href="/club/community-settings" className="text-lime-400 hover:underline">{t('cpanel.title')} →</Link>
+              </p>
             ) : (
               <div className="table-wrap">
                 <table className="w-full text-sm grid-table !min-w-[30rem]">
                   <thead>
                     <tr className="text-gray-300 text-left bg-navy-900">
-                      <th>{t('social.series')}</th>
+                      <th>{t('members.colLevel')}</th>
                       <th className="text-right">{t('social.members')}</th>
                       <th className="text-right">{t('social.active')}</th>
                       <th className="text-right">{t('social.inactive')}</th>
@@ -120,8 +122,8 @@ export default function CommunityOverview({ children }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {m.by_series.map((s) => (
-                      <tr key={s.label}>
+                    {m.by_level.map((s) => (
+                      <tr key={s.key}>
                         <td className="text-white font-semibold">{s.label}</td>
                         <td className="text-right tabular-nums text-gray-100">{s.members}</td>
                         <td className="text-right tabular-nums text-lime-300">{s.active}</td>
@@ -129,6 +131,13 @@ export default function CommunityOverview({ children }) {
                         <td className="text-right tabular-nums text-gray-300">{s.sessions}</td>
                       </tr>
                     ))}
+                    {m.no_level > 0 && (
+                      <tr>
+                        <td className="text-gray-400 italic">{t('social.noLevelRow')}</td>
+                        <td className="text-right tabular-nums text-gray-400">{m.no_level}</td>
+                        <td colSpan={3} />
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -144,7 +153,7 @@ export default function CommunityOverview({ children }) {
             </div>
           </Section>
 
-          <Section icon="🔁" title={t('social.secRegular')} hint={t('social.secRegularHint', { n: rules.regular_min, d: rules.active_days })} href="/club/attendance">
+          <Section icon="🔁" title={t('social.secRegular')} hint={t('social.secRegularHint', { n: rules.regular_min, d: 30 })} href="/club/attendance">
             <div className="grid grid-cols-3 gap-3 mb-3">
               <StatTile icon="⭐" label={t('social.regular')} value={r.regular} tone="text-lime-300" sub={t('social.regularSub', { n: rules.regular_min })} />
               <StatTile icon="🙂" label={t('social.irregular')} value={r.irregular} tone="text-sky-300" sub={t('social.irregularSub', { n: rules.regular_min - 1 })} />

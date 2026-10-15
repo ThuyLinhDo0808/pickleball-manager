@@ -88,8 +88,8 @@ function rowToBody(get, t, sport) {
   body.full_name = name.slice(0, 120);
 
   const type = norm(get('member_type'));
-  if (!type || [norm(t('xlsx.place_fixed')), 'co dinh', 'fixed'].includes(type)) body.member_type = 'fixed';
-  else if ([norm(t('xlsx.place_guest')), 'giao luu', 'guest'].includes(type)) body.member_type = 'guest';
+  if (!type || [norm(t('xlsx.place_fixed')), 'co dinh', 'fixed', 'thuong xuyen', 'khach thuong xuyen', 'regular'].includes(type)) body.member_type = 'fixed';
+  else if ([norm(t('xlsx.place_guest')), 'giao luu', 'guest', 'vang lai', 'khach vang lai', 'drop-in'].includes(type)) body.member_type = 'guest';
   else if ([norm(t('xlsx.place_waiting')), 'danh sach cho', 'waiting', '---'].includes(type)) body.member_type = 'waiting';
   else return { error: 'imp.err_type' };
 

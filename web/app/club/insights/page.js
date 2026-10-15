@@ -183,7 +183,7 @@ export default function InsightsPage() {
         }
       />
       <SectionTabs group="stats" />
-      <UnderlineTabs value={tab} onChange={setTab} tabs={TABS.map((k) => ({ key: k, label: t(k === 'activities' && community ? 'insights.tab_series' : `insights.tab_${k}`), icon: { overview: '📊', time: '🕒', people: '👥', activities: '🏓', money: '💰' }[k] }))} />
+      <UnderlineTabs value={tab} onChange={setTab} tabs={TABS.map((k) => ({ key: k, label: t(`insights.tab_${k}`), icon: { overview: '📊', time: '🕒', people: '👥', activities: '🏓', money: '💰' }[k] }))} />
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && (
@@ -339,14 +339,6 @@ export default function InsightsPage() {
 
           {tab === 'activities' && (
             <>
-              {pt && (community || pt.by_series.length > 0) && (
-                <Table
-                  title={`🏷 ${t('insights.bySeries')}`}
-                  head={[t('social.series'), t('insights.col_sessions'), t('insights.col_players'), t('insights.col_avgPlayers'), t('insights.col_avgFill'), t('insights.col_returning'), t('insights.col_income'), t('insights.col_profitPerSession')]}
-                  rows={pt.by_series.map((r) => [{ key: r.label, v: r.label }, { v: r.sessions }, { v: r.players }, { v: r.avg_players }, { v: pctText(r.avg_fill) }, { v: pctText(r.returning) }, { v: formatVnd(r.income), tone: 'text-lime-300' }, money(r.profit_per_session)])}
-                  empty={t('social.noSeries')}
-                />
-              )}
               <section className="card !p-0 overflow-x-auto">
                 <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">🏓 {t('insights.byActivity')}</h2>
                 {d.by_activity.length === 0 ? <p className="text-gray-500 text-sm px-4 pb-4">{t('insights.noData')}</p> : (
