@@ -137,10 +137,21 @@ async function stateOf(userId) {
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.value;
   const [{ data: u, error: uErr }, { data: m, error: mErr }] = await Promise.all([
     supabase.from('users').select('sessions_revoked_at').eq('id', userId).maybeSingle(),
-    supabase.from('user_mfa').select('enabled_at').eq('user_id', userId).maybeSingle(),
+    supabase.from('user_mfa').select('*').eq('user_id', userId).maybeSingle(),
   ]);
   // Database not migrated yet: no extra checks rather than locking everyone out.
-  const value = uErr || mErr ? { ready: false } : { ready: true, revokedAt: u?.sessions_revoked_at || null, mfaOn: !!m?.enabled_at };
+  if (uErr || mErr) {
+    const value = { ready: false };
+    cache.set(userId, { at: Date.now(), value });
+    return value;
+  }
+  // An Owner reset whose waiting time is over: two-step sign-in goes off, every device is
+  // signed out, and the account sets it up again.
+  if (m?.reset_at && new Date(m.reset_at) <= new Date() && (await applyReset(userId))) {
+    cache.delete(userId);
+    return stateOf(userId);
+  }
+  const value = { ready: true, revokedAt: u?.sessions_revoked_at || null, mfaOn: !!m?.enabled_at, resetAt: m?.enabled_at ? m.reset_at || null : null };
   cache.set(userId, { at: Date.now(), value });
   return value;
 }
@@ -171,7 +182,7 @@ async function gate(req) {
   req.mfaVerifiedAt = at;
   const path = (req.originalUrl || '').split('?')[0];
   if (!at && !ALWAYS_OPEN.some((re) => re.test(path))) {
-    return { status: 403, body: { error: 'Enter the code from your authenticator app.', code: 'mfa_required' } };
+    return { status: 403, body: { error: 'Enter the code from your authenticator app.', code: 'mfa_required', reset_at: st.resetAt || null } };
   }
   return null;
 }
@@ -335,6 +346,100 @@ async function signOutEverywhere(userId, token) {
   return now;
 }
 
+// ---- reset by the Owner (lost phone and lost recovery codes) ------------------------------
+// The Owner checks it is really the account holder, then asks for a reset from the owner
+// console. It waits RESET_HOURS so the real holder — emailed right away — can stop it
+// (signed in with the code, or with the link in the email). Then applyReset turns two-step
+// sign-in off and signs every device out; a Host has to set it up again before managing.
+const RESET_HOURS = 24;
+const hashToken = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
+
+async function requestReset(user, { by, reason, webUrl }) {
+  const row = await mfaRow(user.id);
+  if (!row?.enabled_at) throw fail(409, 'Two-step sign-in is not on for this account.', 'mfa_not_on');
+  if (row.reset_at) throw fail(409, 'A reset is already waiting.', 'reset_pending');
+  const token = crypto.randomBytes(24).toString('base64url');
+  const now = new Date();
+  const resetAt = new Date(now.getTime() + RESET_HOURS * 3600_000).toISOString();
+  const patch = { reset_at: resetAt, reset_requested_at: now.toISOString(), reset_by: by, reset_reason: reason, reset_cancel_hash: hashToken(token) };
+  const { error } = await supabase.from('user_mfa').update(patch).eq('user_id', user.id).is('reset_at', null);
+  if (error) throw error;
+  forget(user.id);
+  const email = await emailReset(user.email, { resetAt, cancelUrl: webUrl ? `${webUrl}/mfa-reset/${token}` : null, profileUrl: webUrl ? `${webUrl}/p/profile#security` : null });
+  return { reset_at: resetAt, requested_at: patch.reset_requested_at, email };
+}
+
+// Stop a waiting reset. Returns true when one was stopped.
+async function cancelReset(userId) {
+  const { data, error } = await supabase
+    .from('user_mfa')
+    .update({ reset_at: null, reset_requested_at: null, reset_by: null, reset_reason: null, reset_cancel_hash: null })
+    .eq('user_id', userId)
+    .not('reset_at', 'is', null)
+    .select('user_id');
+  if (error) throw error;
+  forget(userId);
+  return !!data?.length;
+}
+
+// From the link in the email. Returns the user id, or null (unknown / already done).
+async function cancelResetByToken(token) {
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(String(token || ''))) return null;
+  const { data, error } = await supabase
+    .from('user_mfa')
+    .select('user_id, reset_at')
+    .eq('reset_cancel_hash', hashToken(token))
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.reset_at || new Date(data.reset_at) <= new Date()) return null;
+  return (await cancelReset(data.user_id)) ? data.user_id : null;
+}
+
+async function applyReset(userId) {
+  const { data, error } = await supabase.from('user_mfa').delete().eq('user_id', userId).lte('reset_at', new Date().toISOString()).select('reset_by, reset_reason');
+  if (error || !data?.length) return false;
+  await supabase.from('mfa_sessions').delete().eq('user_id', userId);
+  await supabase.from('users').update({ sessions_revoked_at: new Date().toISOString() }).eq('id', userId);
+  try {
+    const { data: u } = await supabase.from('users').select('id, email').eq('id', userId).maybeSingle();
+    await require('./owner').audit({ hostEmail: 'system' }, { action: 'mfa.reset_done', host: u, oldValue: { mfa: 'on' }, newValue: { mfa: 'off' }, note: data[0].reset_reason || null });
+  } catch {
+    /* the reset itself is done */
+  }
+  return true;
+}
+
+async function sendMail(email, subject, text, html) {
+  if (!process.env.RESEND_API_KEY || !email) return 'off';
+  const from = process.env.NOTIFY_FROM_EMAIL || process.env.FEEDBACK_FROM_EMAIL || 'Pickleball Manager <onboarding@resend.dev>';
+  try {
+    const r = await fetch(`${process.env.RESEND_API_URL || 'https://api.resend.com'}/emails`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [email], subject, text, html }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return r.ok ? 'sent' : `failed_${r.status}`;
+  } catch {
+    return 'failed';
+  }
+}
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function emailReset(email, { resetAt, cancelUrl, profileUrl }) {
+  const when = new Date(resetAt).toLocaleString('vi-VN', { timeZone: process.env.APP_TZ || 'Asia/Ho_Chi_Minh' });
+  const text =
+    `Ban quản trị Pickleball Manager vừa nhận yêu cầu đặt lại xác thực 2 lớp cho tài khoản của bạn (mất điện thoại và mã khôi phục).\n\n` +
+    `Việc đặt lại sẽ có hiệu lực lúc ${when}. Khi đó xác thực 2 lớp bị tắt, mọi thiết bị bị đăng xuất và bạn cần bật lại.\n\n` +
+    `Nếu là bạn yêu cầu, không cần làm gì thêm.\n` +
+    `Nếu KHÔNG phải bạn: bấm huỷ ngay${cancelUrl ? ` — ${cancelUrl}` : ''}${profileUrl ? ` (hoặc đăng nhập, mở ${profileUrl} và bấm "Huỷ đặt lại")` : ''}, rồi đổi mật khẩu.`;
+  const html = `<p>Ban quản trị Pickleball Manager vừa nhận yêu cầu <b>đặt lại xác thực 2 lớp</b> cho tài khoản của bạn (mất điện thoại và mã khôi phục).</p>
+<p>Việc đặt lại sẽ có hiệu lực lúc <b>${esc(when)}</b>. Khi đó xác thực 2 lớp bị tắt, mọi thiết bị bị đăng xuất và bạn cần bật lại.</p>
+<p>Nếu là bạn yêu cầu, không cần làm gì thêm.</p>
+<p><b>Nếu không phải bạn:</b> ${cancelUrl ? `<a href="${esc(cancelUrl)}">bấm vào đây để huỷ ngay</a>` : 'đăng nhập và bấm <i>Huỷ đặt lại</i> ở Hồ sơ → Bảo mật'}, rồi đổi mật khẩu.</p>`;
+  return sendMail(email, '⚠️ Yêu cầu đặt lại xác thực 2 lớp', text, html);
+}
+
 // ---- devices ------------------------------------------------------------------------------
 // 113.161.12.34 -> 113.161.12.x ; IPv6 -> first 3 groups. Enough to recognise, not to track.
 function ipHint(ip) {
@@ -382,8 +487,6 @@ async function devices(userId) {
 
 // Email the account owner about a sign-in from a new device (Resend, if configured).
 async function emailNewDevice(email, { userAgent, ip, webUrl }) {
-  if (!process.env.RESEND_API_KEY || !email) return 'off';
-  const from = process.env.NOTIFY_FROM_EMAIL || process.env.FEEDBACK_FROM_EMAIL || 'Pickleball Manager <onboarding@resend.dev>';
   const when = new Date().toLocaleString('vi-VN', { timeZone: process.env.APP_TZ || 'Asia/Ho_Chi_Minh' });
   const device = deviceLabel(userAgent);
   const where = ipHint(ip) || '—';
@@ -392,22 +495,11 @@ async function emailNewDevice(email, { userAgent, ip, webUrl }) {
     `Tài khoản Pickleball Manager của bạn vừa đăng nhập trên một thiết bị mới.\n\n` +
     `Thời gian: ${when}\nThiết bị: ${device}\nĐịa chỉ mạng: ${where}\n\n` +
     `Nếu là bạn, không cần làm gì thêm.\nNếu KHÔNG phải bạn: đổi mật khẩu ngay và bấm "Đăng xuất khỏi mọi thiết bị" ở Hồ sơ → Bảo mật${link ? ` (${link})` : ''}, rồi bật xác thực 2 lớp.`;
-  const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const html = `<p>Tài khoản Pickleball Manager của bạn vừa đăng nhập trên <b>một thiết bị mới</b>.</p>
 <p>Thời gian: <b>${esc(when)}</b><br>Thiết bị: <b>${esc(device)}</b><br>Địa chỉ mạng: <b>${esc(where)}</b></p>
 <p>Nếu là bạn, không cần làm gì thêm.</p>
 <p><b>Nếu không phải bạn:</b> đổi mật khẩu ngay và bấm <i>Đăng xuất khỏi mọi thiết bị</i> ở Hồ sơ → Bảo mật${link ? ` (<a href="${esc(link)}">mở trang</a>)` : ''}, rồi bật xác thực 2 lớp.</p>`;
-  try {
-    const r = await fetch(`${process.env.RESEND_API_URL || 'https://api.resend.com'}/emails`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [email], subject: '🔐 Đăng nhập từ thiết bị mới', text, html }),
-      signal: AbortSignal.timeout(8000),
-    });
-    return r.ok ? 'sent' : `failed_${r.status}`;
-  } catch {
-    return 'failed';
-  }
+  return sendMail(email, '🔐 Đăng nhập từ thiết bị mới', text, html);
 }
 
 module.exports = {
@@ -427,6 +519,11 @@ module.exports = {
   consoleGate,
   consoleNeedsMfa,
   managerGate,
+  isManager,
+  requestReset,
+  cancelReset,
+  cancelResetByToken,
+  RESET_HOURS,
   hostNeedsMfa,
   stateOf,
   forget,

@@ -17,10 +17,36 @@ function errText(err, t) {
   return err?.message || String(err);
 }
 
-// The recovery codes, shown once right after they are made.
+// The recovery codes, shown once right after they are made. To close it the person types
+// one of them back — proof they were written down (a lost phone without them means asking
+// the Ban quản trị for a reset).
 function RecoveryCodes({ codes, onDone }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [check, setCheck] = useState('');
+  const [bad, setBad] = useState(false);
+  const fileText = () => `${t('sec.recoveryFileHead', { date: new Date().toLocaleString('vi-VN') })}\n\n${codes.join('\n')}\n`;
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([fileText()], { type: 'text/plain;charset=utf-8' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'pickleball-manager-ma-khoi-phuc.txt' });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const print = () => {
+    const w = window.open('', '_blank', 'width=480,height=640');
+    if (!w) return;
+    w.document.title = t('sec.recoveryTitle');
+    const pre = w.document.createElement('pre');
+    pre.style.cssText = 'font:16px/1.8 monospace;padding:24px';
+    pre.textContent = fileText();
+    w.document.body.appendChild(pre);
+    w.print();
+  };
+  const norm = (v) => String(v).trim().toLowerCase().replace(/\s+/g, '');
+  const confirm = () => {
+    if (codes.some((c) => norm(c) === norm(check))) onDone();
+    else setBad(true);
+  };
   return (
     <div className="rounded-xl border border-amber-400/50 bg-amber-400/5 p-4">
       <p className="text-amber-200 font-semibold text-sm">🗝 {t('sec.recoveryTitle')}</p>
@@ -38,7 +64,16 @@ function RecoveryCodes({ codes, onDone }) {
         >
           {copied ? `✓ ${t('sec.copied')}` : t('sec.copyAll')}
         </button>
-        <button type="button" className="btn-primary text-sm" onClick={onDone}>{t('sec.savedThem')}</button>
+        <button type="button" className="btn-secondary text-sm" onClick={download}>⬇ {t('sec.downloadCodes')}</button>
+        <button type="button" className="btn-secondary text-sm" onClick={print}>🖨 {t('sec.printCodes')}</button>
+      </div>
+      <div className="mt-4 border-t border-amber-400/20 pt-3">
+        <label htmlFor="recovery-check" className="text-xs text-gray-300">{t('sec.confirmSavedLabel')}</label>
+        <div className="flex flex-wrap gap-2 mt-1">
+          <input id="recovery-check" className="input !w-44 text-center font-mono tracking-wider" autoComplete="off" maxLength={11} placeholder="xxxxx-xxxxx" value={check} onChange={(e) => { setCheck(e.target.value); setBad(false); }} />
+          <button type="button" className="btn-primary text-sm" disabled={check.trim().length < 10} onClick={confirm}>{t('sec.savedThem')}</button>
+        </div>
+        {bad && <p className="text-red-300 text-xs mt-1" role="alert">{t('sec.confirmSavedBad')}</p>}
       </div>
     </div>
   );
@@ -124,6 +159,26 @@ export default function AccountSecurity() {
           </span>
         </div>
         {data.required && !mfa.enabled && <p className="mt-3 text-amber-200 text-sm">⚠️ {t('sec.requiredForRole')}</p>}
+        {mfa.enabled && mfa.reset && !codes && (
+          <div className="mt-3 rounded-lg border border-red-400/50 bg-red-500/10 p-3 text-sm" role="alert">
+            <p className="text-red-200 font-semibold">⚠️ {t('sec.resetPending', { at: fmt(mfa.reset.at) })}</p>
+            <p className="text-gray-300 text-xs mt-1">{t('sec.resetPendingHint')}</p>
+            <button
+              type="button"
+              className="btn-primary text-sm mt-2"
+              onClick={async () => {
+                try {
+                  await api.post('/api/host/security/mfa/reset-cancel', {});
+                  reload();
+                } catch (e) {
+                  setMsg(errText(e, t));
+                }
+              }}
+            >
+              {t('sec.resetCancelBtn')}
+            </button>
+          </div>
+        )}
 
         {codes && <div className="mt-4"><RecoveryCodes codes={codes} onDone={() => { setCodes(null); reload(); }} /></div>}
 
@@ -142,6 +197,7 @@ export default function AccountSecurity() {
                 <li>{t('sec.step2')}</li>
                 <li>{t('sec.step3')}</li>
               </ol>
+              <p className="text-sky-200 text-xs mt-3 rounded-lg border border-sky-400/30 bg-sky-400/5 px-2.5 py-2">💡 {t('sec.backupTip')}</p>
               <p className="text-gray-400 text-xs mt-3">{t('sec.manualKey')}</p>
               <code className="block break-all rounded bg-navy-950/70 border border-navy-700 px-2 py-1 mt-1 text-lime-200 text-xs select-all">{setup.secret}</code>
               <CodeForm

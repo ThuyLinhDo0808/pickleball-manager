@@ -190,5 +190,20 @@ router.post('/resend', tooMany, mails, async (req, res) => {
   res.json({ ok: true });
 });
 
+// The link in the "reset two-step sign-in" email: the account holder stops a reset they
+// did not ask for (no sign-in needed — they may not have their phone or the password).
+router.post('/mfa-reset/cancel', tooMany, async (req, res) => {
+  try {
+    const userId = await security.cancelResetByToken(req.body?.token);
+    if (!userId) return res.status(404).json({ error: 'This link is no longer valid.', code: 'reset_link_invalid' });
+    const { data: u } = await supabase.from('users').select('id, email').eq('id', userId).maybeSingle();
+    await require('../services/owner').audit({ hostEmail: u?.email || null }, { action: 'mfa.reset_cancel', host: u, note: 'Huỷ từ link trong email' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('mfa reset cancel', err.message);
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
+});
+
 module.exports = router;
 module.exports.webOrigin = webOrigin;

@@ -484,6 +484,51 @@ router.post('/hosts/:id/unsuspend', wrap(async (req, res) => {
   res.json({ ...patch, audit_id: entry?.id || null });
 }));
 
+// ---- Two-step sign-in: reset for someone who lost both the phone and the recovery codes.
+// Owner only (support staff get "forbidden": no route permission). Waits
+// security.RESET_HOURS so the real account holder — emailed now — can stop it.
+const MFA_RESET_MIGRATION = '20261124090000_mfa_reset.sql';
+async function mfaResetReady() {
+  const st = await schemaStatus();
+  if (st.missing_migrations.includes(MFA_RESET_MIGRATION)) throw fail(409, `Run migration ${MFA_RESET_MIGRATION} first.`, 'migration_required');
+}
+const mfaView = (row) => ({
+  enabled: !!row?.enabled_at,
+  enabled_at: row?.enabled_at || null,
+  recovery_left: row?.enabled_at ? (row.recovery_hashes || []).length : 0,
+  reset: row?.enabled_at && row.reset_at ? { at: row.reset_at, requested_at: row.reset_requested_at, by: row.reset_by, reason: row.reset_reason } : null,
+});
+
+router.get('/hosts/:id/mfa', wrap(async (req, res) => {
+  const u = await loadHost(req.params.id);
+  await mfaResetReady();
+  res.json({ ...mfaView(await security.mfaRow(u.id)), delay_hours: security.RESET_HOURS });
+}));
+
+router.post('/hosts/:id/mfa-reset', wrap(async (req, res) => {
+  const u = await loadHost(req.params.id);
+  await mfaResetReady();
+  const reason = String(req.body?.reason || '').trim();
+  const how = String(req.body?.verified_how || '').trim();
+  if (!reason) throw fail(400, 'A reason is required.', 'reason_required');
+  if (!how) throw fail(400, 'Say how you checked it is the account holder.', 'verified_how_required');
+  if (u.id === req.userId) throw fail(400, 'You cannot reset your own two-step sign-in here.', 'self_reset');
+  if (owner.isOwner(u.email)) throw fail(400, 'An owner account cannot be reset here.', 'owner_account');
+  const note = `${reason.slice(0, 300)} — xác minh: ${how.slice(0, 300)}`;
+  const r = await security.requestReset(u, { by: req.hostEmail, reason: note, webUrl: require('./auth.routes').webOrigin(req) });
+  const entry = await owner.audit(req, { action: 'mfa.reset_request', host: u, oldValue: { mfa: 'on' }, newValue: { reset_at: r.reset_at }, note });
+  res.json({ ...r, audit_id: entry?.id || null });
+}));
+
+router.delete('/hosts/:id/mfa-reset', wrap(async (req, res) => {
+  const u = await loadHost(req.params.id);
+  await mfaResetReady();
+  const stopped = await security.cancelReset(u.id);
+  if (!stopped) throw fail(409, 'No reset is waiting.', 'no_reset');
+  await owner.audit(req, { action: 'mfa.reset_cancel', host: u, note: String(req.body?.note || '').trim() || 'Huỷ bởi Ban quản trị' });
+  res.json({ ok: true });
+}));
+
 router.post('/hosts/:id/notes', wrap(async (req, res) => {
   const u = await loadHost(req.params.id);
   const body = String(req.body?.body || '').trim();
