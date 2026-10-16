@@ -8,9 +8,10 @@ const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, halfDeadline, cancelParticipant, refundShare, tiersReady } = require('../services/attendance');
 const { emailReady } = require('../services/notify');
+const notify = require('../services/notify');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
-const { linkByPhone } = require('../services/phoneLink');
+const { linkByPhone, phoneLinkReady } = require('../services/phoneLink');
 const { coAdminClubs } = require('../services/clubAccess');
 const { getPlan, hasMemberRoom } = require('../services/plan');
 const { clubStats } = require('../services/clubStats');
@@ -809,6 +810,43 @@ player.get('/home', async (req, res) => {
 
 // One club seen as a member (/c/<clubId>): my membership there, the club's upcoming
 // sessions I can sign up for, my sign-ups and recent history in that club.
+// Leave a club / community (player page → Rời CLB). Not allowed for the owner, while on
+// the club's blacklist (the Host decides first) or with live sign-ups (cancel those first,
+// so the cancel policy applies). A member with history keeps a record for the club (passes,
+// debts, results) but loses the link to the account; one with none is removed.
+player.post('/clubs/:clubId/leave', async (req, res) => {
+  try {
+    const uid = req.hostId;
+    const { clubId } = req.params;
+    if (!isUuid(clubId)) return notFound(res, 'Club');
+    const { data: me, error } = await supabase.from('club_members').select('*, clubs(id, name, host_id, kind)').eq('club_id', clubId).eq('user_id', uid).maybeSingle();
+    if (error) throw error;
+    if (!me || !me.clubs) return notFound(res, 'Club');
+    if (me.clubs.host_id === uid) throw badRequest('You manage this club; hand it over instead of leaving.', 409, 'own_club');
+    if (me.review_started_at) throw badRequest('You are on this club\'s blacklist; the club decides first.', 409, 'in_review');
+    const live = await upcomingFor(uid, [me.id], clubId);
+    if (live.length) return res.status(409).json({ error: 'Cancel your upcoming sign-ups first.', code: 'has_upcoming', events: live.map((x) => ({ event_id: x.event_id, title: x.title, event_date: x.event_date })) });
+    const reason = String(req.body?.reason || '').trim().slice(0, 300) || null;
+    const [{ count: played }, { count: passes }] = await Promise.all([
+      supabase.from('event_participants').select('id', { count: 'exact', head: true }).or(`source_club_member_id.eq.${me.id},guest_member_id.eq.${me.id}`),
+      supabase.from('memberships').select('id', { count: 'exact', head: true }).eq('club_member_id', me.id),
+    ]);
+    if (!played && !passes) {
+      const { error: dErr } = await supabase.from('club_members').delete().eq('id', me.id);
+      if (dErr) throw dErr;
+    } else {
+      const patch = { user_id: null, account_verified: false, is_active: false, join_requested: false };
+      if (await phoneLinkReady()) patch.unlinked_user_id = uid; // not linked back by phone on its own
+      const { error: uErr } = await supabase.from('club_members').update(patch).eq('id', me.id);
+      if (uErr) throw uErr;
+    }
+    await notify.notifyMemberLeft(me.clubs, me, reason);
+    res.json({ left: true, club_id: clubId });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 player.get('/clubs/:clubId', async (req, res) => {
   try {
     const uid = req.hostId;

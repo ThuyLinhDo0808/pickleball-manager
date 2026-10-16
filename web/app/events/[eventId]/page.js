@@ -13,7 +13,8 @@ import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
 import MeetingEvent from '@/components/MeetingEvent';
 import EventShuttles from '@/components/EventShuttles';
-import PlayerChip from '@/components/PlayerChip';
+import { Avatar } from '@/components/PlayerChip';
+import { levelText } from '@/lib/levels';
 import EventFinance from '@/components/EventFinance';
 import { AutoApproveToggle, OrganizersSection, PlaceSheet, RequestsSection } from '@/components/EventPeople';
 import MapLink from '@/components/MapLink';
@@ -327,10 +328,10 @@ export default function EventDetailPage() {
           </div>
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} onCancel={askCancel} />
-          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} onAction={doAction} onFee={toggleFee} onManage={openSheet} onCancel={askCancel} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
+          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
           {cancelled.length > 0 && (
-            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} onAction={doAction} onFee={toggleFee} onRefund={refund} fee={event.fee_amount} />
+            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
           )}
           {event.club_id && <EventSurveys eventId={event.id} />}
           {cancelP && (
@@ -354,6 +355,7 @@ export default function EventDetailPage() {
               isHost={sheet.isHost}
               onClose={() => setSheet(null)}
               onChanged={refresh}
+              actions={{ onAction: doAction, onFee: toggleFee, onRefund: refund, onCancel: askCancel }}
             />
           )}
         </>
@@ -395,119 +397,106 @@ export default function EventDetailPage() {
   );
 }
 
-const STATUS_TONE = { checked_in: 'text-lime-400', registered: 'text-gray-300', no_show: 'text-yellow-400', waitlisted: 'text-sky-300', cancelled: 'text-gray-500' };
+const STATUS_PILL = {
+  checked_in: 'border-lime-400/60 bg-lime-400/15 text-lime-200',
+  registered: 'border-navy-500 text-gray-200',
+  no_show: 'border-yellow-400/60 bg-yellow-400/10 text-yellow-200',
+  waitlisted: 'border-sky-400/60 bg-sky-400/10 text-sky-200',
+  pending: 'border-amber-300/60 bg-amber-300/10 text-amber-100',
+  cancelled: 'border-navy-600 text-gray-500',
+};
+const BADGE = 'text-[10px] leading-4 rounded border px-1 whitespace-nowrap';
 
 // Part of the fee that goes back to a cancelled player (refund tiers; old rows: late = 0%).
 const shareOf = (p) => (p.refund_percent != null ? p.refund_percent : p.late_cancel ? 0 : 100);
 
-function ParticipantTable({ kind, title, rows, t, onAction, onFee, onRefund, fee, onManage, onCancel }) {
+// One list (main / waitlist / cancelled) as rows: photo, name + tags, level / gender / DUPR,
+// where they stand and the money. A tap opens the person's sheet with every action;
+// the main list keeps a one-tap check-in for the court.
+function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction }) {
   return (
-    <div className="card mb-4">
-      <h3 className="text-white font-semibold mb-2">{title}</h3>
-      {kind === 'cancelled' && <p className="text-gray-500 text-xs mb-2">{t('policy.cancelledHint')}</p>}
-      {rows.length === 0 && <p className="text-gray-400 text-sm">—</p>}
-      <div className="table-wrap">
-        <table className="w-full text-sm">
-        <tbody>
-          {rows.map((p) => (
-            <tr key={p.id} className="border-b border-navy-800">
-              <td className="py-2">
-                <PlayerChip
-                  name={p.full_name}
-                  card={p.card}
-                  badges={
-                    <>
-                      {p.card?.member_type === 'fixed' && (
-                        <span className="text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">{t('events.fixedMember')}</span>
-                      )}
-                      {!p.is_organizer && p.card?.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || p.card?.member_type) && (
-                        <span className="text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t('review.kind_guest')}</span>
-                      )}
-                      {p.is_organizer && <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">🛡 {t('people.organizer')}</span>}
-                      {(p.tags || []).map((tag) => <span key={tag} className="text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t(`people.tag_${tag}`)}</span>)}
-                      {p.priority && (
-                        <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1" title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>
-                      )}
-                      {p.late_cancel && (
-                        <span className="text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>
-                      )}
-                      {p.email_unverified && (
-                        <span className="text-[10px] rounded border border-amber-300/60 text-amber-200 px-1" title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>
-                      )}
-                      {kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && (p.refunded_at ? (
-                        <span className="text-[10px] rounded border border-lime-400/60 text-lime-300 px-1" title={p.refunded_by || ''}>
-                          ✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">{t('slot.refundDue')}</span>
-                      ))}
-                    </>
-                  }
-                />
-                {kind !== 'cancelled' && p.cancel_history && <div className="mt-0.5"><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></div>}
-                {p.transferred_from && <div className="text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</div>}
-                {kind === 'cancelled' && (p.cancelled_at || p.cancel_reason) && (
-                  <div className="text-gray-400 text-[11px] mt-0.5">
-                    {p.cancelled_at && `${t('cancelx.cancelledAt', { at: new Date(p.cancelled_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })} · `}
-                    <CancelLine item={{ refund_percent: p.refund_percent, by: p.cancelled_by, reason: p.cancel_reason }} fee={Number(p.fee_amount ?? fee ?? 0)} paid={!!p.fee_paid} />
-                  </div>
-                )}
-              </td>
-              <td className={`text-xs ${STATUS_TONE[p.status]}`}>{t(`player.status_${p.status}`)}</td>
-              <td>
-                {p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0 ? (
-                  <span className="text-xs text-gray-500">{t('people.noFee')}</span>
-                ) : p.paid_by_plan && kind !== 'cancelled' ? (
-                  <span className="text-xs text-lime-400" title={t('events.paidByPlanHint')}>{p.card?.vip ? t(`events.usesPass_${p.card.vip_period || 'any'}`) : t('events.paidByPlan')}</span>
-                ) : kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && onRefund ? (
-                  p.refunded_at ? (
-                    <button className="text-xs mr-2 text-gray-400 underline" onClick={() => onRefund(p, true)}>{t('slot.refundUndo')}</button>
-                  ) : (
-                    <button className="text-xs mr-2 rounded border border-sky-400/60 px-2 py-0.5 text-sky-200 hover:bg-sky-400/10" onClick={() => onRefund(p)}>💸 {t('slot.markRefunded')}</button>
-                  )
-                ) : (kind !== 'cancelled' || p.late_cancel || p.fee_paid) && (
-                  <button className={`text-xs mr-2 ${p.fee_paid ? 'text-lime-400' : 'text-gray-300'}`} onClick={() => onFee(p)}>
-                    {p.fee_paid ? t('common.paid') : t('common.unpaid')}
-                    {kind === 'cancelled' && !p.fee_paid && Number(p.fee_amount ?? fee) > 0 && ` · ${formatVnd(p.fee_amount ?? fee)}`}
-                  </button>
-                )}
-              </td>
-              <td className="text-right">
+    <section className="card mb-4 !px-2 sm:!px-4">
+      <h3 className="text-white font-semibold mb-1 px-2 sm:px-0">{title}</h3>
+      {kind === 'cancelled' && <p className="text-gray-500 text-xs mb-2 px-2 sm:px-0">{t('policy.cancelledHint')}</p>}
+      {rows.length === 0 && <p className="text-gray-400 text-sm px-2 sm:px-0">—</p>}
+      <ul className="divide-y divide-navy-700/70">
+        {rows.map((p) => {
+          const c = p.card || {};
+          const level = levelText(c.level ?? p.dupr_level, sport, t);
+          const money = p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0
+            ? [t('people.noFee'), 'border-navy-600 text-gray-400']
+            : p.paid_by_plan && kind !== 'cancelled'
+              ? [c.vip ? t(`events.usesPass_${c.vip_period || 'any'}`) : t('events.paidByPlan'), 'border-lime-400/40 text-lime-300']
+              : p.fee_paid
+                ? [t('common.paid'), 'border-lime-400/60 text-lime-300']
+                : kind !== 'cancelled' || p.late_cancel
+                  ? [`${t('common.unpaid')}${kind === 'cancelled' && Number(p.fee_amount ?? fee) > 0 ? ` · ${formatVnd(p.fee_amount ?? fee)}` : ''}`, 'border-yellow-400/50 text-yellow-200']
+                  : null;
+          return (
+            <li key={p.id}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onManage(p)}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onManage(p))}
+                className={`flex items-center gap-3 rounded-lg px-2 py-2.5 cursor-pointer hover:bg-navy-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 ${kind === 'cancelled' ? 'opacity-70' : ''}`}
+              >
+                <span className="relative shrink-0">
+                  <Avatar src={c.avatar} name={p.full_name} size={44} />
+                  {p.is_organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden>🛡</span>}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-white font-semibold truncate max-w-full">{p.full_name}</span>
+                    {c.member_type === 'fixed' && <span className={`${BADGE} border-lime-400/50 text-lime-300`}>{t('events.fixedMember')}</span>}
+                    {!p.is_organizer && c.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || c.member_type) && <span className={`${BADGE} border-navy-500 text-gray-300`}>{t('review.kind_guest')}</span>}
+                    {p.is_organizer && <span className={`${BADGE} border-sky-400/60 text-sky-300`}>🛡 {t('people.organizer')}</span>}
+                    {(p.tags || []).map((tag) => <span key={tag} className={`${BADGE} border-navy-500 text-gray-300`}>{t(`people.tag_${tag}`)}</span>)}
+                    {p.priority && <span className={`${BADGE} border-sky-400/60 text-sky-300`} title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>}
+                    {p.late_cancel && <span className={`${BADGE} border-orange-400/60 text-orange-300`}>{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>}
+                    {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>}
+                    {kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && (p.refunded_at
+                      ? <span className={`${BADGE} border-lime-400/60 text-lime-300`} title={p.refunded_by || ''}>✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}</span>
+                      : <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('slot.refundDue')}</span>)}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-2.5 text-xs text-gray-400 mt-0.5">
+                    <span>🎯 {level || '—'}</span>
+                    {c.gender && <span>{c.gender === 'male' ? '♂' : '♀'} {t(`members.${c.gender}`)}</span>}
+                    {sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
+                  </span>
+                  {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
+                  {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}
+                  {kind === 'cancelled' && (p.cancelled_at || p.cancel_reason) && (
+                    <span className="block text-gray-400 text-[11px] mt-0.5">
+                      {p.cancelled_at && `${t('cancelx.cancelledAt', { at: new Date(p.cancelled_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })} · `}
+                      <CancelLine item={{ refund_percent: p.refund_percent, by: p.cancelled_by, reason: p.cancel_reason }} fee={Number(p.fee_amount ?? fee ?? 0)} paid={!!p.fee_paid} />
+                    </span>
+                  )}
+                </span>
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${STATUS_PILL[p.status] || STATUS_PILL.registered}`}>{t(`player.status_${p.status}`)}</span>
+                  {money && <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${money[1]}`}>{money[0]}</span>}
+                </span>
                 {kind === 'main' && (
-                  <>
-                    {p.status !== 'checked_in' && (
-                      <button className="text-lime-400 text-xs mr-2" onClick={() => onAction(p, 'check-in')}>{t('events.checkIn')}</button>
-                    )}
-                    {p.status !== 'no_show' && (
-                      <button className="text-yellow-400 text-xs mr-2" onClick={() => onAction(p, 'no-show')}>{t('events.noShow')}</button>
-                    )}
-                    {p.status !== 'registered' && (
-                      <button className="text-gray-400 text-xs mr-2" onClick={() => onAction(p, 'reset')}>{t('staffView.undo')}</button>
-                    )}
-                  </>
-                )}
-                {kind === 'waitlist' && (
-                  <button className="text-sky-300 text-xs mr-2" onClick={() => onAction(p, 'promote')}>{t('policy.promote')}</button>
-                )}
-                {onManage && ['registered', 'waitlisted', 'pending'].includes(p.status) && (
-                  <button className="text-gray-200 text-xs mr-2 rounded border border-navy-600 px-1.5" title={t('place.manage')} onClick={() => onManage(p)}>⇄ {t('place.manage')}</button>
-                )}
-                {kind === 'cancelled' && p.late_cancel && (
-                  <button className="text-orange-300 text-xs" onClick={() => window.confirm(t('policy.waiveAsk', { name: p.full_name })) && onAction(p, 'waive')}>
-                    {t('policy.waive')}
+                  <button
+                    type="button"
+                    title={p.status === 'checked_in' ? t('staffView.undo') : t('events.checkIn')}
+                    aria-label={`${p.status === 'checked_in' ? t('staffView.undo') : t('events.checkIn')}: ${p.full_name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAction(p, p.status === 'checked_in' ? 'reset' : 'check-in');
+                    }}
+                    className={`h-9 w-9 shrink-0 rounded-full border-2 text-base font-bold ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-400 hover:border-lime-400 hover:text-lime-300'}`}
+                  >
+                    ✓
                   </button>
                 )}
-                {kind !== 'cancelled' && (
-                  <button className="text-red-400 text-xs" onClick={() => onCancel(p)}>
-                    {t('events.cancel')}
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-        </table>
-      </div>
-    </div>
+                <span className="text-gray-500 shrink-0" aria-hidden>›</span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

@@ -258,7 +258,14 @@ async function notifyJoinFromSurvey(event, member) {
   return safe(sendToHostWebhook(event.host_id, payloadFor('join_request', event, member, text, { from_survey: true })));
 }
 
+// A member left the club / community on their own (player page → Rời CLB).
+async function notifyMemberLeft(club, member, reason) {
+  const text = `👋 ${member.full_name} đã rời ${club.name}${reason ? ` — lý do: ${reason}` : ''}.`;
+  return safe(sendToHostWebhook(club.host_id, { type: 'member_left', club: { id: club.id, name: club.name }, player: { full_name: member.full_name }, reason: reason || null, text, content: text, created_at: new Date().toISOString() }));
+}
+
 module.exports = {
+  notifyMemberLeft,
   emailReady,
   emailSender,
   emailPlayer,
