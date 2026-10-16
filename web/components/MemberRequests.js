@@ -5,7 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { PastWarning } from '@/components/MemberModeration';
 
-// DS chờ: guests who asked to join the fixed team in the after-session survey, "I'm a
+// Danh sách chờ: guests who asked to join the fixed team in the after-session survey, "I'm a
 // member" requests from the event page, and accounts that matched a member by phone.
 // For join requests the Host picks the type (fixed by default, with a tier) when approving.
 // Declining a guest's request keeps them as a guest; a new request is removed; a phone
@@ -78,8 +78,8 @@ export default function MemberRequests({ club, requests, members = [], onChanged
     setError('');
     try {
       const pick = choice[m.id] || { member_type: '', tier: '' };
-      // "---": approve them into "Xem xét thêm" and decide the type later.
-      const body = action === 'approve' && m.join_requested ? { member_type: pick.member_type || 'review', tier: pick.tier || null } : {};
+      // A new member needs a type; until the Host picks one they stay in the waiting list.
+      const body = action === 'approve' && m.join_requested ? { member_type: pick.member_type, tier: pick.tier || null } : {};
       await api.post(`/api/clubs/${club.id}/members/${m.id}/${action}`, body);
       window.dispatchEvent(new Event('member-requests-changed'));
       onChanged();
@@ -154,7 +154,7 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                   <label className="text-xs text-gray-400 flex flex-col gap-0.5">
                     {t('members.type')}
                     <select className="input !py-1 text-sm" value={pick.member_type} onChange={(e) => setPick({ member_type: e.target.value, tier: e.target.value === 'fixed' ? pick.tier : '' })}>
-                      <option value="">--- {t('requests.toReview')}</option>
+                      <option value="">--- {t('requests.pickType')}</option>
                       <option value="fixed">{t('members.fixed')}</option>
                       <option value="guest">{t('members.guest')}</option>
                     </select>
@@ -170,7 +170,7 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-                <button className="btn-primary !py-1.5 text-sm" disabled={busy === m.id} onClick={() => act(m, 'approve')}>
+                <button className="btn-primary !py-1.5 text-sm" disabled={busy === m.id || (m.join_requested && !pick.member_type)} title={m.join_requested && !pick.member_type ? t('requests.pickTypeHint') : undefined} onClick={() => act(m, 'approve')}>
                   ✓ {t('requests.approve')}
                 </button>
                 <button

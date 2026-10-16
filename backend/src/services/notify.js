@@ -254,7 +254,7 @@ async function notifySurvey(event, participant, { clubName, url }) {
 
 // Host: a guest asked to join the fixed team from the survey.
 async function notifyJoinFromSurvey(event, member) {
-  const text = `🙋 ${member.full_name} (${member.phone || '—'}) muốn gia nhập team cố định — qua khảo sát buổi "${event.title}". Vào app → Thành viên → DS chờ để duyệt.`;
+  const text = `🙋 ${member.full_name} (${member.phone || '—'}) muốn gia nhập team cố định — qua khảo sát buổi "${event.title}". Vào Thành viên → Danh sách chờ để duyệt.`;
   return safe(sendToHostWebhook(event.host_id, payloadFor('join_request', event, member, text, { from_survey: true })));
 }
 

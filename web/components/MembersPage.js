@@ -69,7 +69,7 @@ export default function MembersPage({ tab = 'fixed' }) {
   );
   const pending = requests || [];
 
-  // New join requests ("I'm a member", no match) only live in DS chờ until approved. Guests who
+  // New join requests ("I'm a member", no match) only live in Danh sách chờ until approved. Guests who
   // asked to join from the survey stay in the guest tab meanwhile (they did play).
   // Members under review ("Xem xét thêm") have their own tab.
   const reviewRows = (members || []).filter((m) => m.review_started_at);
@@ -149,7 +149,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         title={t('nav.members')}
         subtitle={club?.name}
         actions={
-          // Members come in with their own account only (invite link / join request → DS chờ),
+          // Members come in with their own account only (invite link / join request → Danh sách chờ),
           // so there is no manual add or Excel import: one person, one record.
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>⬇ {t('common.exportExcel')}</button>
