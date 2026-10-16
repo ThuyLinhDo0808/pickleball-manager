@@ -4518,13 +4518,9 @@ export const en = {
     short_waitlist: "waitlist",
     short_main: "playing",
     short_not_playing: "not playing",
-    hint_requested: "Not approved yet: no place, nothing to pay.",
     hint_waitlist: "They are on the waitlist, with no place yet. Press \"Confirm to play\" to move them to the main list.",
-    hint_main: "They have a place on the main list. Online payers are sent to the bank-transfer step. To take the place back, press \"Put on the waitlist\" (anything already paid stays paid).",
-    hint_not_playing: "Organizing only. Not sure yet? Put them on the waitlist.",
     full: "The main list is full — add places or move someone out first.",
     hostNoRow: "Not playing yet",
-    locked: "Already checked in / absent / cancelled — cannot be moved.",
   },
   countdown: {
     signup: "Time left to sign up",

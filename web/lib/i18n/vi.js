@@ -4518,13 +4518,9 @@ export const vi = {
     short_waitlist: "chờ",
     short_main: "chơi",
     short_not_playing: "không chơi",
-    hint_requested: "Chưa được duyệt: chưa có chỗ, chưa thanh toán.",
     hint_waitlist: "Người này đang ở danh sách chờ, chưa có chỗ. Bấm \"Xác nhận tham gia\" để đưa vào danh sách chính.",
-    hint_main: "Người này đã có chỗ trong danh sách chính. Ai trả phí online sẽ được chuyển sang bước chuyển khoản. Muốn rút lại chỗ của họ thì bấm \"Đặt vào danh sách chờ\" (tiền đã trả vẫn được giữ).",
-    hint_not_playing: "Chỉ tổ chức, không chơi. Nếu chưa chắc có chơi, hãy đặt vào danh sách chờ.",
     full: "Danh sách chính đã đủ chỗ — tăng số chỗ hoặc chuyển bớt người ra trước.",
     hostNoRow: "Chưa tham gia chơi",
-    locked: "Người này đã check-in / vắng / huỷ — không đổi chỗ được.",
   },
   countdown: {
     signup: "Thời gian đăng ký còn lại",
