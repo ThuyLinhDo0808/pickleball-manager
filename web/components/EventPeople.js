@@ -225,7 +225,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                 </button>
               ))}
             </div>
-            <p className="text-gray-500 text-xs mt-2">{locked ? t('place.locked') : t(`place.hint_${place}`)}</p>
+            {place === 'waitlist' && !locked && <p className="text-gray-500 text-xs mt-2">{t('place.hint_waitlist')}</p>}
           </div>
         )}
 
