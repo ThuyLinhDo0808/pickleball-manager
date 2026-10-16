@@ -61,7 +61,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
         • bảng, view, trigger (lịch sử SCD2, sổ thu chi không sửa được), RLS
 ```
 
-- **Frontend:** Next.js 14, React 18, Tailwind CSS, Recharts (biểu đồ), xlsx-js-style (xuất Excel có định dạng; chỉ dùng để ghi file, không đọc file người dùng), Supabase JS (auth).
+- **Frontend:** Next.js 14, React 18, Tailwind CSS, Recharts (biểu đồ), ExcelJS (xuất Excel có định dạng, danh sách chọn, kiểm tra dữ liệu; chỉ dùng để ghi file — file người dùng tải lên được đọc bằng read-excel-file), Supabase JS (auth).
 - **Backend:** Express 4, `@supabase/supabase-js`, `dotenv`, `cors`. Không cần build.
 - **Database:** PostgreSQL trên Supabase. Toàn bộ schema nằm trong **một file**, chạy lại nhiều lần vẫn an toàn (idempotent).
 - **Múi giờ:** mặc định `Asia/Ho_Chi_Minh` (biến `APP_TZ`). Dùng để tính "hôm nay", kỳ xếp hạng và tháng thống kê.
@@ -131,7 +131,7 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 
 **Thiết kế menu:** mỗi mục lớn (*Tổng quan, Thành viên, Tạo hoạt động, Tài chính, Thống kê, Cài đặt*) có ô biểu tượng và chữ to, đậm; mục con nhỏ hơn, màu nhạt, nằm trên một đường dẫn dọc — trang đang mở có vạch xanh bên trái và nền xanh nhạt, mục lớn chứa nó có ô biểu tượng màu xanh. Trên điện thoại, bảng *Thêm* dùng cùng kiểu (tiêu đề nhóm có biểu tượng, mục con dạng ô).
 
-**File Excel:** mọi file xuất ra (Thành viên, Thống kê thành viên, Bảng xếp hạng, Thu chi từng kèo, Sao lưu CLB, file mẫu nhập thành viên, Thanh toán gói và Phân tích của Owner) có cùng một kiểu: dòng tiêu đề lớn (tên CLB / cộng đồng — nội dung), dòng mô tả (kỳ, số người…, thời điểm xuất), hàng tiêu đề cột nền xanh navy chữ trắng, dòng xen kẽ màu, viền mảnh, số tiền dạng `1.200.000 đ`, tỷ lệ dạng `%`, ngày dạng `dd/mm/yyyy`, cột tự giãn theo nội dung, có **bộ lọc** ở hàng tiêu đề, dòng **Tổng** (khi có) là **công thức sống**. *Thời gian chơi* ghi bằng chữ (vd *12 – 18 tháng*), không còn mã thô. File DUPR vẫn là CSV theo đúng mẫu của DUPR.
+**File Excel:** (làm bằng ExcelJS, chỉ tải khi bấm xuất) mọi file xuất ra (Thành viên, Thống kê thành viên, Bảng xếp hạng, Thu chi từng kèo, Sao lưu CLB, file mẫu nhập thành viên, Thanh toán gói và Phân tích của Owner) có cùng một kiểu: dòng tiêu đề lớn (tên CLB / cộng đồng — nội dung), dòng mô tả (kỳ, số người…, thời điểm xuất), hàng tiêu đề cột nền xanh navy chữ trắng, dòng xen kẽ màu, viền mảnh, số tiền dạng `1.200.000 đ`, tỷ lệ dạng `%`, ngày dạng `dd/mm/yyyy`, cột tự giãn theo nội dung, có **bộ lọc** ở hàng tiêu đề, dòng **Tổng** (khi có) là **công thức sống**. *Thời gian chơi* ghi bằng chữ (vd *12 – 18 tháng*), không còn mã thô. File DUPR vẫn là CSV theo đúng mẫu của DUPR.
 
 **Bộ chuyển ngữ cảnh** mở thành một bảng nổi ngay dưới nút (không bị thanh menu cắt mép, kể cả khi menu thu gọn); menu bên trái chỉ cuộn dọc, không cuộn ngang. **Thanh cuộn:** thanh cuộn của menu và bảng mảnh, màu tối theo nền (không còn thanh trắng có mũi tên); các hàng tab (*Thống kê thành viên · Bảng xếp hạng*, *Số buổi chơi · Buổi còn lại…*, tab Thành viên…) và hàng thẻ số liệu không hiện thanh cuộn — trên điện thoại vẫn vuốt ngang được.
 
@@ -254,27 +254,37 @@ Trên điện thoại các mục nằm trong nhóm *Thành viên* của bảng *
 
 **Hình thức "--- Chưa xác định":** khi thêm thành viên bằng tay, ô *Hình thức* có thêm lựa chọn **--- Chưa xác định**. Người đó vào thẳng tab **⚠️ Xem xét thêm** (lý do *"Chưa xác định hình thức (---)"*, không có hạn, người chơi không nhận cảnh báo), chưa chiếm chỗ của gói; xem xét xong Host bấm **Khôi phục** và chọn cố định hay giao lưu (cộng đồng: thường xuyên / vãng lai).
 
-**⬇ Xuất Excel** (đầu trang, cần gói có tính năng xuất Excel): tải file `.xlsx` gồm toàn bộ thành viên (cố định, giao lưu, đang xem xét, chờ duyệt) với họ tên, nhóm, hạng, giới tính, ngày sinh, SĐT, trình độ, khu vực, thời gian chơi, tháng vào CLB, đang hoạt động, tài khoản liên kết và ghi chú.
+**📗 File Excel thành viên — một form duy nhất cho Xuất và Nhập.** File *⬇ Xuất Excel* và *file mẫu* có **cùng các cột, cùng thứ tự, cùng định dạng**, nên Host có thể tải danh sách về lưu offline, sửa ngay trong file đó rồi **tải lên lại** (không phải chép sang file khác — công thức / bảng tính riêng của Host không bị lệch cột).
 
-**⬆ Nhập Excel** (đầu trang, chủ / đồng quản trị): thêm nhiều thành viên một lúc từ file Excel.
-1. Bấm **⬇ Tải file mẫu (.xlsx)** trong hộp *Nhập thành viên từ Excel*. File có sheet **Thành viên** (dòng tiêu đề + 2 dòng ví dụ *VD: …*, được bỏ qua khi nhập) và sheet **Hướng dẫn** ghi cách điền từng cột. Các cột giống file *Xuất Excel*, nên file xuất ra sửa xong cũng nhập lại được (cột thừa như STT, Tài khoản bị bỏ qua).
-2. Điền mỗi người một dòng, **giữ nguyên dòng tiêu đề**:
+| Cột | Cách điền trong file |
+|---|---|
+| STT | Chỉ để đánh số, khi nhập được bỏ qua |
+| **Họ tên \*** | Bắt buộc |
+| Hình thức | **Danh sách chọn ▾**: *Cố định / Giao lưu / Danh sách chờ* (cộng đồng: *Thường xuyên / Vãng lai / Danh sách chờ*). Để trống khi thêm mới = Cố định |
+| Hội viên | **Danh sách chọn ▾**: *VIP / Thường* (chỉ thành viên cố định) |
+| Giới tính | **Danh sách chọn ▾**: *Nam / Nữ* |
+| Ngày sinh | *15/03/1995* hoặc chỉ năm *1995* (ô dạng chữ, gõ thế nào giữ nguyên thế ấy) |
+| Số điện thoại | Ô đã để sẵn **dạng chữ** nên số 0 đầu được giữ — cứ gõ bình thường (vd 0901234567). Lỡ dán dạng số mất số 0, hoặc ghi +84…, app vẫn tự sửa |
+| Trình độ (DUPR) | **Chỉ nhận số 1.00 – 8.00** (Excel báo lỗi nếu gõ khác). CLB cầu lông: **danh sách chọn ▾** các cấp |
+| Khu vực (quận) | Tuỳ ý |
+| Thời gian chơi | **Danh sách chọn ▾**: *Dưới 6 tháng / 6 – 12 tháng / 12 – 18 tháng / Trên 18 tháng* |
+| Thời gian gia nhập | *09/2026* (tháng/năm) |
+| Đang hoạt động | **Danh sách chọn ▾**: *Có / Không* |
+| Ghi chú | Tuỳ ý |
+| Tài khoản | Tài khoản người chơi đã liên kết — chỉ để xem (chữ xám), không sửa được bằng file |
+| Mã thành viên | Mã của người đó trên web (chữ xám) — **giữ nguyên** để cập nhật đúng người; để trống khi thêm người mới |
 
-   | Cột | Cách điền |
-   |---|---|
-   | **Họ tên \*** | Bắt buộc |
-   | Hình thức | *Cố định* / *Giao lưu* / *Danh sách chờ* — trống = Cố định |
-   | Hội viên | *VIP* / *Thường* (chỉ thành viên cố định) |
-   | Giới tính | *Nam* / *Nữ* |
-   | Ngày sinh | *dd/mm/yyyy* (vd 15/03/1995) hoặc chỉ năm (1995) |
-   | Số điện thoại | vd 0901234567 (nên để ô dạng Text; mất số 0 đầu thì app tự thêm) |
-   | Trình độ (DUPR) | 1.00 – 8.00, làm tròn 2 chữ số thập phân. CLB cầu lông: *Yếu / TB- / TB / TB+ / Khá / Giỏi* |
-   | Khu vực (quận) | tuỳ ý |
-   | Thời gian chơi | *Dưới 6 tháng* / *6 – 12 tháng* / *12 – 18 tháng* / *Trên 18 tháng* |
-   | Thời gian gia nhập | *mm/yyyy* (vd 09/2026) — trống = tháng này |
-   | Ghi chú | tuỳ ý |
-3. Bấm **📄 Chọn file Excel đã điền**: app kiểm tra từng dòng và hiện bảng *Dòng · Họ tên · Kết quả* — *Sẵn sàng*, *Đã có trong CLB — bỏ qua* (trùng SĐT, hoặc trùng tên khi không có SĐT) hoặc lỗi cụ thể (vd *Ngày sinh sai*).
-4. Bấm **Nhập N thành viên**: từng dòng được thêm như khi bấm *+ Thêm thành viên* (giới hạn thành viên của gói vẫn áp dụng; dòng nào không thêm được thì ghi lý do). Tối đa 500 dòng mỗi lần.
+- **Danh sách chọn** là *Data Validation* thật của Excel: bấm vào ô → mũi tên ▾ → chọn; gõ giá trị khác (vd *>24 tháng*) Excel **không cho lưu** và hiện thông báo liệt kê các giá trị hợp lệ. Mỗi ô tiêu đề / ô nhập còn có **gợi ý** cách điền khi chọn vào. Hàng tiêu đề luôn đứng yên khi cuộn, có bộ lọc; dưới dữ liệu có sẵn 300 dòng trống đã có định dạng và danh sách chọn để thêm người mới.
+- File có thêm sheet **Hướng dẫn**: từng cột, **giá trị được chấp nhận** và cách điền. File mẫu có 1 dòng ví dụ *VD: …* (bỏ qua khi nhập).
+- **⬇ Xuất Excel** (cần gói có tính năng xuất Excel): toàn bộ thành viên (cố định, giao lưu, đang xem xét, chờ duyệt) theo form trên.
+
+**⬆ Nhập Excel** (chủ / đồng quản trị): thêm mới **và cập nhật** nhiều thành viên một lúc.
+1. Bấm **⬇ Tải file mẫu (.xlsx)** — hoặc dùng luôn file vừa *Xuất Excel*.
+2. Điền / sửa trong file (các cột có ▾ chỉ cần chọn).
+3. Bấm **📄 Chọn file Excel đã điền**: app kiểm tra từng dòng và cho **xem trước** — *＋ Sẵn sàng* (người mới), *✎ Cập nhật: Khu vực, Thời gian chơi…* (ghi rõ cột nào đổi), *Không có gì thay đổi*, *Trùng với một dòng phía trên*, hoặc **lỗi cụ thể** (vd *Thời gian chơi phải chọn trong danh sách (Dưới 6 tháng / …)*, *Ngày sinh sai*, *Số điện thoại sai*). Dòng lỗi không được nhập, các dòng khác vẫn nhập bình thường; sửa file rồi chọn lại.
+   - Một dòng **cập nhật** người có *Mã thành viên* đó; không có mã thì tìm theo **số điện thoại** (hoặc **họ tên** khi không có SĐT); không thấy ai thì **thêm mới**.
+   - Khi cập nhật, chỉ những cột **có trong file** được đổi; ô **để trống** ở cột có trong file = **xoá** thông tin đó (vd xoá SĐT). Hình thức *Xem xét thêm* / *Danh sách chờ* không đổi được bằng file (làm trên web).
+4. Bấm **Nhập**: từng dòng được thêm / cập nhật như khi làm trên web (giới hạn thành viên của gói vẫn áp dụng; dòng nào không làm được thì ghi lý do). Tối đa 500 dòng mỗi lần.
 
 **🔗 Link mời:** bật link mời rồi gửi vào nhóm Zalo/Facebook. Người nhận mở `/invite/<mã>`, xem hồ sơ CLB, đăng nhập và bấm **Xin gia nhập** — không cần Host nhập tay. Họ vào **Danh sách xin gia nhập CLB** với nguồn *Từ link mời*. *Tạo link mới* làm link cũ ngừng hoạt động; bỏ tick *Bật link mời* để tắt. (Khác với link tham gia `/join/…` dùng để mua gói hội viên.)
 

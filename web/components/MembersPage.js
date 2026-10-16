@@ -97,7 +97,7 @@ export default function MembersPage({ tab = 'fixed' }) {
     const placeOf = (m) => (m.review_started_at ? 'review' : waitingIds.has(m.id) || (m.join_requested && !m.account_verified && m.member_type === 'fixed') ? 'waiting' : m.member_type === 'fixed' ? 'fixed' : 'guest');
     const order = { fixed: 0, guest: 1, review: 2, waiting: 3 };
     const list = (members || []).map((m) => ({ ...m, place: placeOf(m) })).sort((a, b) => order[a.place] - order[b.place] || a.full_name.localeCompare(b.full_name, 'vi'));
-    exportMembers(club, list, t, (v) => levelText(v, sport, t));
+    exportMembers(club, list, t, (v) => levelText(v, sport, t), sport);
   }
   const isGuestTab = tab === 'guest';
   const detailMember = all.find((m) => m.id === detailId) || null;

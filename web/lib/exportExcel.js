@@ -1,5 +1,7 @@
 // Every Excel export of the manager pages, with one professional look (lib/xlsxBook.js).
 import { sheet, book, fileName } from '@/lib/xlsxBook';
+import { memberRow } from '@/lib/memberSheet';
+import { memberSheetSpec, guideSpec } from '@/lib/importMembers';
 
 const dmy = (ymd) => (ymd ? String(ymd).slice(0, 10).split('-').reverse().join('/') : '');
 
@@ -126,43 +128,12 @@ export function exportRankings(clubName, label, stats, t) {
   book(sheets, fileName(clubName, t('xlsx.rankings'), label));
 }
 
-// Every member with their details (Members page → Export Excel).
-export function exportMembers(club, members, t, levelText) {
-  const ws = sheet({
-    title: `${club.name} — ${t('xlsx.sheet')}`,
-    subtitle: t('xlsx.membersCount', { n: members.length }),
-    columns: [
-      { header: '#', type: 'int', width: 5 },
-      { header: t('common.name') },
-      { header: t('xlsx.place') },
-      { header: t('members.tier') },
-      { header: t('members.gender') },
-      { header: t('members.birthDate') },
-      { header: t('common.phone') },
-      { header: t('common.level') },
-      { header: t('memberX.district') },
-      { header: t('memberX.playDuration') },
-      { header: t('members.joined') },
-      { header: t('xlsx.active') },
-      { header: t('xlsx.account') },
-      { header: t('xlsx.notes'), width: 34, wrap: true },
-    ],
-    rows: members.map((m, i) => [
-      i + 1,
-      m.full_name,
-      t(`xlsx.place_${m.place}`),
-      m.member_type === 'fixed' && m.tier ? t(`members.${m.tier}`) : '',
-      m.gender ? t(`members.${m.gender}`) : '',
-      m.birth_date ? dmy(m.birth_date) : m.birth_year ? String(m.birth_year) : '',
-      m.phone || '',
-      levelText(m.dupr_level) ?? '',
-      m.district || '',
-      m.play_duration ? t(`memberX.dur_${m.play_duration}`) : '',
-      m.joined_on ? m.joined_on.slice(0, 7).split('-').reverse().join('/') : '',
-      m.is_active ? t('xlsx.yes') : t('xlsx.no'),
-      m.account_email || '',
-      [m.notes, m.review_reason ? `${t('xlsx.place_review')}: ${m.review_reason}` : null].filter(Boolean).join(' · '),
-    ]),
-  });
-  book([[t('xlsx.sheet'), ws]], fileName(club.name, t('xlsx.sheet')));
+// Every member with their details (Members page → Export Excel): the same form as the
+// import template (lib/memberSheet.js) — edit the file and import it again as it is.
+export function exportMembers(club, members, t, levelText, sport) {
+  const rows = members.map((m, i) => memberRow(m, i, t, levelText));
+  book(
+    [[t('xlsx.sheet'), memberSheetSpec(t, sport, rows, t('xlsx.membersCount', { n: members.length }), `${club.name} — ${t('xlsx.sheet')}`)], [t('imp.guideSheet'), guideSpec(t, sport)]],
+    fileName(club.name, t('xlsx.sheet'))
+  );
 }

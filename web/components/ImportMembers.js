@@ -6,9 +6,36 @@ import { api } from '@/lib/api';
 import { downloadMemberTemplate, readMemberFile, IMPORT_MAX } from '@/lib/importMembers';
 
 const key = (v) => String(v || '').trim().toLowerCase();
+const same = (a, b) => (a == null || a === '' ? null : typeof a === 'number' || typeof b === 'number' ? Number(a) : String(a)) === (b == null || b === '' ? null : typeof a === 'number' || typeof b === 'number' ? Number(b) : String(b));
 
-// "Nhập Excel": download the template, pick the filled file, check the rows, then add them
-// one by one (the same checks and plan limits as "+ Thêm thành viên").
+// What would change on this member (only the fields the file has).
+function changesFor(m, body) {
+  const patch = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (k === 'member_type' && (v === 'review' || v === 'waiting' || v === m.member_type)) continue; // not moved from here
+    if (k === 'joined_on' && String(m.joined_on || '').slice(0, 7) === String(v).slice(0, 7)) continue;
+    if (k === 'birth_year' && body.birth_date === null && m.birth_date == null && same(m.birth_year, v)) continue;
+    if (k === 'is_active' && (m.is_active !== false) === v) continue;
+    if (!same(m[k], v)) patch[k] = v;
+  }
+  const type = patch.member_type || m.member_type;
+  if (type !== 'fixed') delete patch.tier;
+  return patch;
+}
+
+// A new member: no cleared fields, not "under review".
+function forCreate(body) {
+  const out = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== null && v !== undefined));
+  if (out.member_type === 'review') delete out.member_type;
+  if (out.member_type && out.member_type !== 'fixed') delete out.tier;
+  if (out.is_active === true) delete out.is_active;
+  return out;
+}
+
+// "Nhập Excel": the same form as "Xuất Excel" (download, edit, upload again). A row with
+// "Mã thành viên" — or the phone / name of someone already in the club — updates that
+// member (only what changed); the others are added. Same checks and plan limits as the
+// buttons on the page.
 export default function ImportMembers({ open, club, members, sport, onClose, onDone }) {
   const { t } = useI18n();
   const [rows, setRows] = useState(null);
@@ -34,17 +61,22 @@ export default function ImportMembers({ open, club, members, sport, onClose, onD
       if (res.missing) return setFileError(t('imp.noNameCol'));
       if (!res.rows.length) return setFileError(t('imp.noRows'));
       if (res.rows.length > IMPORT_MAX) return setFileError(t('imp.tooMany', { n: IMPORT_MAX }));
-      // Already in the club (same phone, or same name when no phone) -> skipped.
-      const phones = new Set((members || []).map((m) => key(m.phone)).filter(Boolean));
-      const names = new Set((members || []).map((m) => key(m.full_name)));
+      const list = members || [];
+      const byId = new Map(list.map((m) => [m.id, m]));
+      const byPhone = new Map(list.filter((m) => m.phone).map((m) => [key(m.phone), m]));
+      const byName = new Map(list.map((m) => [key(m.full_name), m]));
       const seen = new Set();
       setRows(
         res.rows.map((r) => {
           if (r.error) return r;
-          const id = r.body.phone ? `p:${r.body.phone}` : `n:${key(r.body.full_name)}`;
-          const dup = (r.body.phone ? phones.has(key(r.body.phone)) : names.has(key(r.body.full_name))) || seen.has(id);
-          seen.add(id);
-          return dup ? { ...r, skip: true } : r;
+          const m = (r.id && byId.get(r.id)) || (r.body.phone && byPhone.get(key(r.body.phone))) || (!r.body.phone && byName.get(key(r.body.full_name))) || null;
+          const tag = m ? `m:${m.id}` : r.body.phone ? `p:${r.body.phone}` : `n:${key(r.body.full_name)}`;
+          if (seen.has(tag)) return { ...r, skip: true, why: 'imp.st_twice' };
+          seen.add(tag);
+          if (r.id && !byId.get(r.id) && !m) return { ...r, mode: 'new', create: forCreate(r.body) }; // a row from another club's file: added
+          if (!m) return { ...r, mode: 'new', create: forCreate(r.body) };
+          const patch = changesFor(m, r.body);
+          return Object.keys(patch).length ? { ...r, mode: 'update', member: m, patch } : { ...r, skip: true, why: 'imp.st_same' };
         })
       );
     } catch {
@@ -56,29 +88,40 @@ export default function ImportMembers({ open, club, members, sport, onClose, onD
     setBusy(true);
     const out = rows.map((r) => ({ ...r }));
     let added = 0;
+    let updated = 0;
     for (const r of out) {
       if (r.error || r.skip) continue;
       try {
-        await api.post(`/api/clubs/${club.id}/members`, r.body);
-        r.added = true;
-        added += 1;
+        if (r.mode === 'update') {
+          await api.patch(`/api/clubs/${club.id}/members/${r.member.id}`, r.patch);
+          r.updated = true;
+          updated += 1;
+        } else {
+          await api.post(`/api/clubs/${club.id}/members`, r.create);
+          r.added = true;
+          added += 1;
+        }
       } catch (err) {
         r.failed = err.message;
       }
       setRows([...out]);
     }
     setBusy(false);
-    setDone({ added, failed: out.filter((r) => r.failed).length });
+    setDone({ added, updated, failed: out.filter((r) => r.failed).length });
     onDone();
   }
 
+  const fieldName = (k) => t({ full_name: 'common.name', member_type: 'xlsx.place', tier: 'members.tier', gender: 'members.gender', birth_date: 'members.birthDate', birth_year: 'members.birthDate', phone: 'common.phone', dupr_level: 'common.level', district: 'memberX.district', play_duration: 'memberX.playDuration', joined_on: 'members.joined', is_active: 'xlsx.active', notes: 'xlsx.notes' }[k] || 'common.name');
   const ready = (rows || []).filter((r) => !r.error && !r.skip).length;
+  const count = (mode) => (rows || []).filter((r) => !r.error && !r.skip && r.mode === mode).length;
   const state = (r) =>
     r.added ? ['✓ ' + t('imp.st_added'), 'text-lime-300']
+    : r.updated ? ['✓ ' + t('imp.st_updated'), 'text-lime-300']
     : r.failed ? ['✗ ' + r.failed, 'text-red-300']
     : r.error ? ['✗ ' + t(r.error), 'text-red-300']
-    : r.skip ? ['↷ ' + t('imp.st_skip'), 'text-gray-400']
-    : [t('imp.st_ready'), 'text-gray-200'];
+    : r.skip ? ['↷ ' + t(r.why || 'imp.st_skip'), 'text-gray-400']
+    : r.mode === 'update' ? ['✎ ' + t('imp.st_willUpdate', { fields: [...new Set(Object.keys(r.patch).map(fieldName))].join(', ') }), 'text-sky-200']
+    : ['＋ ' + t('imp.st_ready'), 'text-gray-200'];
 
   return (
     <Modal open={open} title={`⬆ ${t('imp.title')}`} onClose={busy ? () => {} : close}>
@@ -107,7 +150,7 @@ export default function ImportMembers({ open, club, members, sport, onClose, onD
 
         {rows && (
           <>
-            <p className="text-gray-300">{t('imp.summary', { ok: ready, skip: rows.filter((r) => r.skip).length, err: rows.filter((r) => r.error).length })}</p>
+            <p className="text-gray-300">{t('imp.summary2', { add: count('new'), upd: count('update'), skip: rows.filter((r) => r.skip).length, err: rows.filter((r) => r.error).length })}</p>
             <div className="table-wrap max-h-72 overflow-y-auto">
               <table className="w-full text-xs grid-table">
                 <thead>
@@ -132,7 +175,7 @@ export default function ImportMembers({ open, club, members, sport, onClose, onD
               </table>
             </div>
             {done ? (
-              <p className="text-lime-300 font-semibold">{t('imp.done', { n: done.added, f: done.failed })}</p>
+              <p className="text-lime-300 font-semibold">{t('imp.done2', { n: done.added, u: done.updated, f: done.failed })}</p>
             ) : (
               <button type="button" className="btn-primary" disabled={busy || !ready} onClick={run}>
                 {busy ? t('imp.running') : t('imp.run', { n: ready })}
