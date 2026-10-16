@@ -393,7 +393,16 @@ router.get('/:clubId/members', async (req, res) => {
   res.json(rows);
 });
 
-router.post('/:clubId/members', checkCapacity(), async (req, res) => {
+// Members join with their own account only (invite link, join request, event sign-up), so
+// one person is one record: the Host cannot type people in or import them. Seed / test
+// data can still be added with ALLOW_MANUAL_MEMBERS=true.
+const ACCOUNT_ONLY = { error: 'Members join with their own account (invite link or join request); they cannot be added by hand.', code: 'account_only' };
+function accountOnly(req, res, next) {
+  if (process.env.ALLOW_MANUAL_MEMBERS === 'true') return next();
+  return res.status(403).json(ACCOUNT_ONLY);
+}
+
+router.post('/:clubId/members', accountOnly, checkCapacity(), async (req, res) => {
   const { full_name, phone, member_type } = req.body;
   if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
   let dupr_level;
@@ -516,7 +525,7 @@ router.delete('/:clubId/blocks/:blockId', async (req, res) => {
 });
 
 // Bulk import (used by "Import from Club" on the event side, or CSV-style add)
-router.post('/:clubId/members/bulk', async (req, res) => {
+router.post('/:clubId/members/bulk', accountOnly, async (req, res) => {
   const rows = Array.isArray(req.body.members) ? req.body.members : [];
   if (!rows.length) return res.status(400).json({ error: 'members[] is required.' });
 
@@ -643,8 +652,34 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
     .select()
     .single();
   if (error) return dbError(res, error);
+  // The player's own profile follows what the Host corrects here (confirmed accounts only;
+  // an emptied field never wipes the player's own data).
+  if (data.user_id && data.account_verified) {
+    try {
+      await syncProfile(data, fields, req.club.sport);
+    } catch (err) {
+      console.error('[members] profile sync failed:', err.message);
+    }
+  }
   res.json(data);
 });
+
+async function syncProfile(member, fields, sport) {
+  const patch = {};
+  if (fields.full_name && String(fields.full_name).trim()) patch.full_name = String(fields.full_name).trim().slice(0, 120);
+  if (fields.phone && String(fields.phone).replace(/\D/g, '').length >= 9) patch.phone = String(fields.phone).trim();
+  if (fields.gender) patch.gender = fields.gender;
+  if (fields.birth_date) Object.assign(patch, { birth_date: fields.birth_date, birth_year: Number(String(fields.birth_date).slice(0, 4)) });
+  else if (fields.birth_year) patch.birth_year = fields.birth_year;
+  if (fields.dupr_level != null) {
+    if ((sport || 'pickleball') === 'badminton') {
+      if (await sportReady()) patch.badminton_level = fields.dupr_level;
+    } else patch.dupr_level = fields.dupr_level;
+  }
+  if (!Object.keys(patch).length) return;
+  const { error } = await supabase.from('player_profiles').update({ ...patch, updated_at: new Date().toISOString() }).eq('user_id', member.user_id);
+  if (error) throw error;
+}
 
 // Waiting list (DS chờ): accounts linked to a member by phone, join requests from the
 // event page, and guests who asked to join the fixed team in the after-session survey.

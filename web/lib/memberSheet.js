@@ -1,16 +1,10 @@
-// The ONE Excel form for members: "Xuất Excel" writes it, the import template is the same
-// form with an example row, and "Nhập Excel" reads it back — so a downloaded file can be
-// kept offline, edited and uploaded again as it is. Columns with fixed values get a
-// drop-down (Excel refuses anything else), the level a number check, the phone stays text.
-import { BADMINTON_LEVELS } from '@/lib/levels';
-
-export const DURATIONS = ['lt6', '6_12', '12_18', 'gt18'];
-
-// [field, header i18n key, required]; 'stt', 'account' and 'id' are written, not read
-// (except 'id', which tells the import which member a row is).
+// Members in Excel ("Xuất Excel" on the members page): one row per person, phone and dates
+// kept as text. Members join with their own account only (invite link / join request), so
+// the file is a report — there is no import.
+// [field, header i18n key]
 export const MEMBER_FIELDS = [
   ['stt', null],
-  ['full_name', 'common.name', true],
+  ['full_name', 'common.name'],
   ['member_type', 'xlsx.place'],
   ['tier', 'members.tier'],
   ['gender', 'members.gender'],
@@ -25,35 +19,15 @@ export const MEMBER_FIELDS = [
   ['account', 'xlsx.account'],
   ['id', 'xlsx.memberId'],
 ];
-export const headerOf = (t, [f, key, req]) => (f === 'stt' ? 'STT' : `${t(key)}${req ? ' *' : ''}`);
+const headerOf = (t, [f, key]) => (f === 'stt' ? 'STT' : t(key));
 
-export const levelOptions = (t, sport) => (sport === 'badminton' ? BADMINTON_LEVELS.map((n) => t(`level.b${n}`)) : null);
-
-// Column specs for lib/xlsxBook (same for export and template).
-export function memberColumns(t, sport) {
-  const list = {
-    member_type: [t('xlsx.place_fixed'), t('xlsx.place_guest'), t('xlsx.place_waiting')],
-    tier: [t('members.vip'), t('members.standard')],
-    gender: [t('members.male'), t('members.female')],
-    play_duration: DURATIONS.map((d) => t(`memberX.dur_${d}`)),
-    active: [t('xlsx.yes'), t('xlsx.no')],
-  };
-  const lv = levelOptions(t, sport);
+// Column specs for lib/xlsxBook.
+const WIDTH = { full_name: 26, member_type: 15, tier: 12, gender: 10, birth: 13, phone: 15, level: 12, district: 16, play_duration: 16, joined: 13, active: 12, notes: 32, account: 26, id: 38 };
+export function memberColumns(t) {
   return MEMBER_FIELDS.map((fd) => {
     const [f] = fd;
-    const col = { header: headerOf(t, fd), field: f };
-    if (f === 'stt') return { ...col, type: 'int', width: 6 };
-    if (f === 'full_name') return { ...col, width: 26, prompt: t('imp.how_full_name') };
-    if (list[f]) return { ...col, list: list[f], prompt: t(`imp.how_${f}`, { durations: list.play_duration.join(' / ') }), listError: t('imp.pickFromList', { values: list[f].join(' / ') }), width: f === 'play_duration' ? 16 : f === 'member_type' ? 15 : 12 };
-    if (f === 'birth') return { ...col, type: 'text', width: 13, prompt: t('imp.how_birth') };
-    if (f === 'phone') return { ...col, type: 'phone', width: 15, prompt: t('imp.how_phone') };
-    if (f === 'level') return lv ? { ...col, list: lv, width: 14, prompt: t('imp.how_level', { levels: lv.join(' / ') }), listError: t('imp.pickFromList', { values: lv.join(' / ') }) } : { ...col, type: 'decimal', width: 12, decimal: { min: 1, max: 8, error: t('imp.err_level') }, prompt: t('imp.how_level', { levels: '1.00 – 8.00' }) };
-    if (f === 'district') return { ...col, width: 16, prompt: t('imp.how_district') };
-    if (f === 'joined') return { ...col, type: 'text', width: 13, prompt: t('imp.how_joined') };
-    if (f === 'notes') return { ...col, width: 32, wrap: true, prompt: t('imp.how_notes') };
-    if (f === 'account') return { ...col, width: 26, muted: true, prompt: t('imp.how_account') };
-    if (f === 'id') return { ...col, width: 38, muted: true, prompt: t('imp.how_id') };
-    return col;
+    if (f === 'stt') return { header: 'STT', field: f, type: 'int', width: 6 };
+    return { header: headerOf(t, fd), field: f, width: WIDTH[f], ...(['birth', 'joined'].includes(f) ? { type: 'text' } : f === 'phone' ? { type: 'phone' } : {}), ...(f === 'notes' ? { wrap: true } : {}), ...(['account', 'id'].includes(f) ? { muted: true } : {}) };
   });
 }
 

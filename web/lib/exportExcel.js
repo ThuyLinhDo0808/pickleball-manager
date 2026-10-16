@@ -1,7 +1,6 @@
 // Every Excel export of the manager pages, with one professional look (lib/xlsxBook.js).
 import { sheet, book, fileName } from '@/lib/xlsxBook';
-import { memberRow } from '@/lib/memberSheet';
-import { memberSheetSpec, guideSpec } from '@/lib/importMembers';
+import { memberRow, memberColumns } from '@/lib/memberSheet';
 
 const dmy = (ymd) => (ymd ? String(ymd).slice(0, 10).split('-').reverse().join('/') : '');
 
@@ -128,12 +127,8 @@ export function exportRankings(clubName, label, stats, t) {
   book(sheets, fileName(clubName, t('xlsx.rankings'), label));
 }
 
-// Every member with their details (Members page → Export Excel): the same form as the
-// import template (lib/memberSheet.js) — edit the file and import it again as it is.
-export function exportMembers(club, members, t, levelText, sport) {
+// Every member with their details (Members page → Export Excel).
+export function exportMembers(club, members, t, levelText) {
   const rows = members.map((m, i) => memberRow(m, i, t, levelText));
-  book(
-    [[t('xlsx.sheet'), memberSheetSpec(t, sport, rows, t('xlsx.membersCount', { n: members.length }), `${club.name} — ${t('xlsx.sheet')}`)], [t('imp.guideSheet'), guideSpec(t, sport)]],
-    fileName(club.name, t('xlsx.sheet'))
-  );
+  book([[t('xlsx.sheet'), sheet({ title: `${club.name} — ${t('xlsx.sheet')}`, subtitle: t('xlsx.membersCount', { n: members.length }), columns: memberColumns(t), rows })]], fileName(club.name, t('xlsx.sheet')));
 }
