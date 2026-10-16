@@ -21,6 +21,7 @@ function errorText(err, t) {
   const code = err?.payload?.code;
   if (err?.status === 429) return t('auth.rateLimit');
   if (code === 'terms_required') return t('legal.termsRequired');
+  if (code === 'maintenance') return t('auth.err_maintenance', { time: err.payload.maintenance?.ends_at ? new Date(err.payload.maintenance.ends_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—' });
   const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'email_rate_limit', 'auth_unavailable'];
   return known.includes(code) ? t(`auth.err_${code}`) : err?.message || t('common.error');
 }

@@ -36,7 +36,7 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 | Bạn là… | App giúp bạn… |
 |---|---|
 | **Chủ nhiệm CLB** | Quản lý thành viên, bán gói tháng/quý/năm và trừ buổi tự động khi check-in. Xếp lịch chơi định kỳ trên lịch tháng/tuần/ngày, nhập trận đấu, xếp hạng và vinh danh, tổ chức giải nội bộ, quản lý quỹ, kho bóng và thống kê. |
-| **Người mở kèo lẻ (Xé Vé)** | Tạo kèo và gửi link đăng ký vào nhóm Zalo/Telegram. App tự xếp danh sách chính / danh sách chờ, tự đẩy người chờ lên khi có người huỷ và báo họ (email, webhook). Áp dụng hạn chót huỷ kèo, check-in bằng quét QR, đánh dấu vắng, thu phí, xem thu chi từng kèo (còn dư / thiếu) và xuất Excel. |
+| **Người mở kèo lẻ (Xé Vé)** | Tạo kèo và gửi link đăng ký vào nhóm Zalo/Telegram. App tự xếp danh sách chính / danh sách chờ (nhiều người bấm đăng ký cùng lúc cho chỗ cuối cùng thì ai bấm trước được chỗ, người sau vào danh sách chờ — không bao giờ vượt số chỗ), tự đẩy người chờ lên khi có người huỷ và báo họ (email, webhook). Áp dụng hạn chót huỷ kèo, check-in bằng quét QR, đánh dấu vắng, thu phí, xem thu chi từng kèo (còn dư / thiếu) và xuất Excel. |
 | **Trọng tài / điều phối viên** | Đăng nhập bằng tài khoản riêng để check-in người chơi (bấm tay hoặc quét QR) và nhập tỷ số của các kèo được giao. Không thấy tài chính hay số điện thoại. |
 | **Đồng quản trị (người cùng góp vốn)** | Dùng email riêng để quản lý một CLB với **đầy đủ quyền như chủ CLB** (thành viên, lịch, trận đấu, giải, tài chính, cài đặt). Chỉ không xoá được CLB. |
 | **Người chơi** | Đăng nhập rồi đăng ký kèo qua link, chuyển khoản và gửi ảnh xác nhận, nhận vé QR check-in, chuyển nhượng slot cho bạn, tự huỷ kèo, tham gia CLB, nhận email khi được lên danh sách chính. Xem số buổi còn lại, công nợ, lịch sử tham gia, phong độ và biến động DUPR. |
@@ -800,7 +800,7 @@ Ví dụ mặc định: *Hủy trước 12 tiếng: hoàn 100% phí · trước 
 
 ### 5.7. Trận đấu & xếp hạng toàn hệ thống
 - **Trận đấu** (`/xeve/matches`): mọi trận của các kèo Xé Vé, sửa tỷ số, xuất JPG (xem [4.6](#46-trận-đấu-tab-trận-đấu-của-buổi--xevematches)).
-- **Bảng xếp hạng chung** (`/leaderboard`): bảng xếp hạng chung của mọi người chơi trên app theo môn (pickleball / cầu lông) và kỳ (tháng / quý / năm / tất cả).
+- **Bảng xếp hạng chung** (`/leaderboard`): bảng xếp hạng chung của mọi người chơi trên app theo môn (pickleball / cầu lông), kỳ (tháng / quý / năm / tất cả) và phạm vi **Tất cả trận** / **Chỉ xé vé** (không tính buổi chính trong lịch tuần của CLB). Cùng luật với mọi bảng khác: xếp theo **tỷ lệ thắng**, cần ít nhất 3 trận trong kỳ mới có hạng (chưa đủ thì hiện mờ, hạng "—"); dòng của bạn được tô sáng.
 
 ---
 
@@ -1306,7 +1306,8 @@ supabase/migrations/
 ├── 20261123090000_community_settings.sql          # Bảng điều khiển cộng đồng: clubs.community_settings (ngưỡng thường xuyên, tự xếp, ngày không hoạt động, cách chia trình độ), club_members.level_key (trình độ gán tay), events.level_keys (kèo dành cho trình độ)
 ├── 20261124090000_mfa_reset.sql                   # Owner đặt lại xác thực 2 lớp (mất điện thoại + mã khôi phục): user_mfa.reset_at / reset_requested_at / reset_by / reset_reason / reset_cancel_hash (chờ 24 giờ, link huỷ trong email)
 ├── 20261125090000_rank_settings.sql               # Host tự đặt: clubs.rank_min_matches (số trận tối thiểu để có hạng, 1–50) và clubs.race_min_sessions (số kèo tối thiểu Top tháng, 1–31)
-└── 20261126090000_announcements_v2.sql            # Thông báo v2: announcements.kind (notice / maintenance — chặn đăng nhập trong giờ bảo trì), audience (all / hosts / players), club_id, title, send_email, emailed_at / emailed_count
+├── 20261126090000_announcements_v2.sql            # Thông báo v2: announcements.kind (notice / maintenance — chặn đăng nhập trong giờ bảo trì), audience (all / hosts / players), club_id, title, send_email, emailed_at / emailed_count
+└── 20261127090000_merge_member_rows.sql           # Gộp hồ sơ trùng an toàn: hàm merge_club_member() chuyển từng dòng khi có dòng bị trùng (trước đây một dòng trùng làm mất cả bảng: tiền giải, tiền buổi họp, bình chọn)
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):
@@ -1608,6 +1609,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Mất điện thoại, không nhập được mã 2 lớp | Nhập một **mã khôi phục** (dạng `xxxxx-xxxxx`) trong hộp nhập mã. Trước hết thử cài lại ứng dụng xác thực và đăng nhập tài khoản Google / Microsoft (nếu đã bật sao lưu). Mất cả mã khôi phục: liên hệ Ban quản trị — owner xác minh rồi bấm **Đặt lại xác thực 2 lớp…** trong trang Host; có hiệu lực sau 24 giờ (xem [8.5b](#85b-bảo-mật-tài-khoản-xác-thực-2-lớp-thiết-bị-đăng-xuất-mọi-nơi)). Không xoá tay trong database (không có nhật ký, không báo chủ tài khoản). |
 | Nhận email *"Yêu cầu đặt lại xác thực 2 lớp"* mà không phải mình yêu cầu | Bấm link huỷ trong email (hoặc đăng nhập → *Hồ sơ → Bảo mật* → **Huỷ đặt lại**), rồi đổi mật khẩu và *Đăng xuất khỏi mọi thiết bị*. Link báo *không còn dùng được* nghĩa là yêu cầu đã bị huỷ hoặc đã có hiệu lực — liên hệ Ban quản trị. |
 | Owner bấm *Đặt lại xác thực 2 lớp* báo cần migration | Chạy `20261124090000_mfa_reset.sql`. |
+| Sau khi gộp hồ sơ trùng thấy mất tiền giải / tiền buổi họp / bình chọn của một người | Chạy `20261127090000_merge_member_rows.sql` (các lần gộp sau sẽ chuyển đủ). |
 | Tạo thông báo có người nhận / CLB / email hoặc bảo trì báo cần migration | Chạy `20261126090000_announcements_v2.sql`. |
 | Đang bảo trì mà Owner cũng bị chặn | Email đăng nhập phải nằm trong `OWNER_EMAILS` của backend và đã xác nhận. Lối thoát khẩn cấp: trong Supabase chạy `update announcements set active = false where kind = 'maintenance';` — sau ~15 giây mọi người dùng lại được. |
 | Đổi *Từ N trận* ở Bảng xếp hạng báo cần migration / số kèo tối thiểu Top tháng không lưu | Chạy `20261125090000_rank_settings.sql`. |

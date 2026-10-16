@@ -45,7 +45,7 @@ const GROUPS = {
     // DUPR: import the DUPR Club member list, members' DUPR IDs.
     ['GET', '/api/clubs/:id/dupr(/members)?'],
     ['POST', '/api/clubs/:id/dupr/import'],
-    ['PATCH', '/api/clubs/:id/members/:id/dupr'],
+    ['PATCH', '/api/clubs/:id/members/:id/dupr(-score)?'], // DUPR ID, rating typed in by hand
     ['GET', '/api/clubs/:id/members/:id/memberships'],
     ['GET', '/api/clubs/:id/attendance'],
     ['POST', '/api/clubs/:id/attendance/edits'],

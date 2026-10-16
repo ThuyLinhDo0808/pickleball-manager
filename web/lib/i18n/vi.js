@@ -111,6 +111,10 @@ export const vi = {
     open: 'Xem hồ sơ {name}',
   },
   leaderboard: {
+    scope: "Phạm vi",
+    scope_all: "Tất cả trận",
+    scope_xeve: "Chỉ xé vé",
+    rule: "Xếp theo tỉ lệ thắng; cần ít nhất {n} trận trong kỳ để có hạng (chưa đủ thì hiện mờ, hạng \"—\"). \"Chỉ xé vé\" không tính buổi chính trong lịch tuần của CLB.",
     hint: "Người chơi của mọi CLB, khách giao lưu và người chơi kèo Xé Vé. Mỗi tài khoản hiện một dòng, dù chơi ở nhiều nơi.",
     summary: '{players} người chơi · {matches} trận',
     search: 'Tìm tên người chơi…',
@@ -1727,6 +1731,7 @@ export const vi = {
     err_bad_gender: "Hãy chọn giới tính.",
     err_bad_region: "Hãy chọn khu vực sinh sống.",
     err_email_rate_limit: "Hệ thống đã gửi quá nhiều email trong 1 giờ. Vui lòng thử lại sau.",
+    err_maintenance: "Hệ thống đang bảo trì đến {time} — hiện chỉ Ban quản trị đăng nhập được. Hẹn gặp lại bạn sau!",
     err_auth_unavailable: "Hệ thống đăng nhập đang bận, vui lòng thử lại sau ít phút.",
     newPasswordTitle: "Đặt mật khẩu mới",
     newPassword: "Mật khẩu mới",

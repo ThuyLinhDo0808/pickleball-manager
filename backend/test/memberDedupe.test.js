@@ -30,6 +30,7 @@ test('waiting join requests and members under review are left for the Host', () 
   assert.strictEqual(plan([m('a', 'An'), m('bb', 'An', { join_requested: true })]).length, 0);
   assert.strictEqual(plan([m('a', 'An'), m('bb', 'An', { user_id: 'u', account_verified: false })]).length, 0);
   assert.strictEqual(plan([m('a', 'An'), m('bb', 'An', { review_until: '2999-01-01' })]).length, 0);
+  assert.strictEqual(plan([m('a', 'An', { is_active: false }), m('bb', 'An')]).length, 0);
 });
 
 test('three rows: the compatible ones join the kept row, a different person stays', () => {

@@ -111,6 +111,10 @@ export const en = {
     open: "Show {name}'s profile",
   },
   leaderboard: {
+    scope: "Scope",
+    scope_all: "All matches",
+    scope_xeve: "Xé vé only",
+    rule: "Ordered by win rate; at least {n} matches in the period to get a place (fewer = shown faded, place \"—\"). \"Xé vé only\" leaves out clubs’ weekly-schedule sessions.",
     hint: "Players from every club, guests and Xé Vé players. Each account appears once, wherever they play.",
     summary: '{players} players · {matches} matches',
     search: 'Search a player…',
@@ -1727,6 +1731,7 @@ export const en = {
     err_bad_gender: "Pick a gender.",
     err_bad_region: "Pick where you live.",
     err_email_rate_limit: "Too many emails sent in the last hour. Please try again later.",
+    err_maintenance: "Under maintenance until {time} — only the Ban quản trị can sign in right now. See you soon!",
     err_auth_unavailable: "Sign-in is unavailable right now, please try again shortly.",
     newPasswordTitle: "Set a new password",
     newPassword: "New password",
@@ -4919,6 +4924,8 @@ export const en = {
   },
   space: {
     community: {
+      "nav.memFixed": "Regular players",
+      "imp.err_type": "Type must be Regular / Drop-in / Waiting list",
       "hub.tabSchedule": "Community schedule",
       "hub.noClubEvents": "The community has no sessions coming up.",
       "events.tabPlayers": "Player list",

@@ -202,15 +202,40 @@ async function registerOnline(event, userId, profile, opts = {}) {
     const later = opts.payLater ? payLaterUntil(event) : null;
     if (later) Object.assign(row, { hold_expires_at: later, pay_later: true });
   }
-  const { data, error } = await supabase.from('event_participants').insert(row).select().single();
+  let { data, error } = await supabase.from('event_participants').insert(row).select().single();
   if (error) {
     if (claimed) await require('./race').releaseVoucher(claimed.voucher.id);
     throw error;
   }
+  // Many people tapping "Đăng ký" at the same moment can all see the last place free.
+  // Settle it after the insert: in sign-up order, whoever is past the number of places
+  // goes to the waitlist (and pays nothing yet).
+  if (HOLDS_PLACE.includes(data.status)) data = (await settleOverbooking(event, data)) || data;
   if (claimed) await require('./race').attachVoucher(claimed.voucher.id, data.id);
   if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
   if (data.status === 'requested') notifySignupRequest(event, data); // Host webhook, in the background
   return registrationView(event, data);
+}
+
+async function settleOverbooking(event, mine) {
+  const { data: rows, error } = await supabase
+    .from('event_participants')
+    .select('id, joined_at')
+    .eq('event_id', event.id)
+    .in('status', HOLDS_PLACE)
+    .order('joined_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(2000);
+  if (error || !rows || rows.length <= event.slots) return null;
+  const place = rows.findIndex((r) => r.id === mine.id);
+  if (place < event.slots) return null;
+  const { data } = await supabase
+    .from('event_participants')
+    .update({ status: 'waitlisted', payment_status: 'none', payment_ref: null, hold_expires_at: null, pay_later: false })
+    .eq('id', mine.id)
+    .select()
+    .single();
+  return data || null;
 }
 
 // Already holding a place and owing the fee: keep it until the deadline, transfer later.

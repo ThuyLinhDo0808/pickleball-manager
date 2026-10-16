@@ -33,16 +33,25 @@ export default function LeaderboardPage() {
   const [period, setPeriod] = useState('month');
   const [date, setDate] = useState(todayYmd);
   const [q, setQ] = useState('');
-  const { data, loading } = useLoad(() => api.get(`/api/leaderboard?sport=${sport}&period=${period}&date=${date}`), [sport, period, date]);
+  const [scope, setScope] = useState('all');
+  const { data, loading } = useLoad(() => api.get(`/api/leaderboard?sport=${sport}&period=${period}&date=${date}${scope === 'xeve' ? '&scope=xeve' : ''}`), [sport, period, date, scope]);
   const all = data?.rankings || [];
   const rows = q.trim() ? all.filter((r) => r.full_name.toLowerCase().includes(q.trim().toLowerCase())) : all;
 
   return (
     <AppShell>
       <h1 className="text-white text-2xl font-bold">{t('nav.globalRank')}</h1>
-      <p className="text-gray-400 text-sm mb-4">{t('leaderboard.hint')}</p>
+      <p className="text-gray-400 text-sm">{t('leaderboard.hint')}</p>
+      <p className="text-gray-500 text-xs mb-4">📏 {t('leaderboard.rule', { n: data?.min_matches || 3 })}</p>
 
       <div className="flex flex-wrap gap-3 mb-3">
+        <div role="tablist" aria-label={t('leaderboard.scope')} className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1">
+          {['all', 'xeve'].map((s) => (
+            <button key={s} role="tab" aria-selected={scope === s} onClick={() => setScope(s)} className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${scope === s ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}>
+              {t(`leaderboard.scope_${s}`)}
+            </button>
+          ))}
+        </div>
         <div role="tablist" className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1">
           {['pickleball', 'badminton'].map((s) => (
             <button
@@ -99,10 +108,10 @@ export default function LeaderboardPage() {
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const rank = all.indexOf(r);
+                  const rank = r.rank == null ? null : r.rank - 1;
                   return (
-                    <tr key={r.key} className="hover:bg-navy-700/40">
-                      <td className="text-center text-gray-400">{rank < 3 ? MEDALS[rank] : rank + 1}</td>
+                    <tr key={r.key} className={`hover:bg-navy-700/40 ${rank == null ? 'opacity-60' : ''} ${r.me ? 'bg-lime-400/10' : ''}`}>
+                      <td className="text-center text-gray-400">{rank == null ? '—' : rank < 3 ? MEDALS[rank] : rank + 1}</td>
                       <td className="text-white whitespace-nowrap">{r.full_name}</td>
                       <td>
                         <span className="flex flex-wrap gap-1">
