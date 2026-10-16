@@ -10,7 +10,7 @@ import MapLink from '@/components/MapLink';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api, clubImage } from '@/lib/api';
-import { formatDay, hhmm } from '@/lib/dates';
+import { addDays, addMonths, formatDay, hhmm, todayYmd } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 
 // A club found in the search: its profile, its coming sessions (sign up through the
@@ -24,6 +24,9 @@ export default function DiscoverClubPage() {
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+  // Schedule: the next 7 days, or one month at a time (◀ ▶).
+  const [view, setView] = useState('week');
+  const [month, setMonth] = useState(() => todayYmd().slice(0, 7));
 
   async function askToJoin(e) {
     e.preventDefault();
@@ -53,6 +56,8 @@ export default function DiscoverClubPage() {
   }
 
   const c = data.club;
+  const today = todayYmd();
+  const shown = data.events.filter((e) => (view === 'week' ? e.event_date <= addDays(today, 6) : e.event_date.slice(0, 7) === month));
   const cover = clubImage(c.id, 'cover', c.cover_version);
   const state = rel?.state;
   const here = `/discover/${clubId}`;
@@ -107,10 +112,26 @@ export default function DiscoverClubPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="text-white font-semibold mb-2">{t('disc.events')}</h2>
-        {data.events.length === 0 && <p className="card text-gray-400 text-sm">{t('disc.noEvents')}</p>}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h2 className="text-white font-semibold">{t('disc.events')}</h2>
+          <div className="flex rounded-lg border border-navy-600 p-0.5 text-sm" role="tablist">
+            {['week', 'month'].map((v) => (
+              <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`rounded-md px-3 py-1 ${view === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300'}`}>
+                {t(v === 'week' ? 'disc.viewWeek' : 'disc.viewMonth')}
+              </button>
+            ))}
+          </div>
+        </div>
+        {view === 'month' && (
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" className="btn-secondary !py-1 !px-3 text-sm" disabled={month <= todayYmd().slice(0, 7)} onClick={() => setMonth(addMonths(`${month}-01`, -1).slice(0, 7))} aria-label={t('disc.prevMonth')}>◀</button>
+            <span className="text-white font-semibold capitalize">{formatDay(`${month}-01`, lang, { month: 'long', year: 'numeric' })}</span>
+            <button type="button" className="btn-secondary !py-1 !px-3 text-sm" disabled={month >= addMonths(todayYmd(), 2).slice(0, 7)} onClick={() => setMonth(addMonths(`${month}-01`, 1).slice(0, 7))} aria-label={t('disc.nextMonth')}>▶</button>
+          </div>
+        )}
+        {shown.length === 0 && <p className="card text-gray-400 text-sm">{t(view === 'week' ? 'disc.noEventsWeek' : 'disc.noEventsMonth')}</p>}
         <ul className="flex flex-col gap-2">
-          {data.events.map((e) => (
+          {shown.map((e) => (
             <li key={e.id} className="card !p-3 flex flex-wrap items-start gap-x-3 gap-y-2">
               <div className="w-16 shrink-0 text-center">
                 <div className="text-lime-300 text-xs font-semibold capitalize">{formatDay(e.event_date, lang, { weekday: 'short' })}</div>

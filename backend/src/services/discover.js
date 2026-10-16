@@ -89,6 +89,12 @@ async function listedClub(clubId) {
 
 // A club's page in the search: its profile and the sessions coming up. A session with a
 // public link can be signed up for; the others are for members only.
+const addDays = (ymd, n) => {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
 async function profile(clubId) {
   const club = await listedClub(clubId);
   const [counts, { data: events, error }] = await Promise.all([
@@ -98,10 +104,11 @@ async function profile(clubId) {
       .select('id, title, event_date, start_time, end_time, location, map_url, slots, main_count, waitlist_count, fee_amount, status, kind, allow_public_registration, public_token')
       .eq('club_id', club.id)
       .gte('event_date', todayYmd())
+      .lte('event_date', addDays(todayYmd(), 92)) // "7 ngày tới" + "Lịch tháng" (about 3 months)
       .in('status', ['open', 'closed'])
       .order('event_date')
       .order('start_time')
-      .limit(30),
+      .limit(200),
   ]);
   if (error) throw error;
   return {

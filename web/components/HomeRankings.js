@@ -27,7 +27,7 @@ const fmtLevel = (v, sport) => (v == null ? '' : sport === 'badminton' ? String(
 //   weekly schedule), one row per player.
 // - Each club / community I play in: its own monthly ranking (clubs: weekly sessions only).
 // Both: my place first, then everyone; filter by level group; order by win rate or by level.
-export default function HomeRankings({ clubs = [] }) {
+export default function HomeRankings({ clubs = [], showTitle = true }) {
   const { t } = useI18n();
   const [pick, setPick] = useState('xeve');
   const [band, setBand] = useState('all');
@@ -60,7 +60,7 @@ export default function HomeRankings({ clubs = [] }) {
   return (
     <section className="mb-6" aria-labelledby="home-rank-title">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <h2 id="home-rank-title" className="text-white font-semibold">🏆 {t('homeRank.title')}</h2>
+        <h2 id="home-rank-title" className={showTitle ? 'text-white font-semibold' : 'sr-only'}>🏆 {t('homeRank.title')}</h2>
         {club && <Link href={`/c/${club.club_id}`} className="text-lime-400 text-xs hover:underline">{t('homeRank.full')} →</Link>}
       </div>
       <div className="flex flex-wrap gap-1.5 mb-2" role="tablist" aria-label={t('homeRank.title')}>

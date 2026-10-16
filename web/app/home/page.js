@@ -14,7 +14,6 @@ import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
 import PlayerNotices from '@/components/PlayerNotices';
 import LinkRequests from '@/components/LinkRequests';
-import HomeRankings from '@/components/HomeRankings';
 
 // One tile of the "spaces" strip: a club (managed or played in), Xé Vé, staff, or "+".
 function SpaceTile({ onClick, href, avatar, label, badge, badgeTone, lines = 2 }) {
@@ -226,9 +225,6 @@ export default function HomeHub() {
           </div>
         </section>
       )}
-
-      {/* This month's leaderboards of my clubs / communities */}
-      <HomeRankings clubs={member} />
 
       {/* My upcoming sessions, by day */}
       <section>
