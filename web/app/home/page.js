@@ -230,7 +230,7 @@ export default function HomeHub() {
       )}
 
       {/* This month's leaderboards of my clubs / communities */}
-      {member.length > 0 && <HomeRankings clubs={member} />}
+      <HomeRankings clubs={member} />
 
       {/* My upcoming sessions, by day */}
       <section>

@@ -80,7 +80,7 @@ async function clubStats(club, query = {}) {
   // Two leaderboards: the club community (fixed members) and the guests. No group = all.
   const group = ['club', 'guest'].includes(query.group) ? query.group : null;
   const allMembers = await fetchAll(() =>
-    supabase.from('club_members').select('id, full_name, gender, member_type').eq('club_id', club.id).order('id')
+    supabase.from('club_members').select('id, full_name, gender, member_type, dupr_level').eq('club_id', club.id).order('id')
   );
   const members = allMembers.filter((m) => !group || (group === 'club' ? m.member_type === 'fixed' : m.member_type !== 'fixed'));
   const linkGuests = await guestsReady(); // guests in sessions are linked by guest_member_id
@@ -111,7 +111,8 @@ async function clubStats(club, query = {}) {
 
   // Ranked by win rate (wins / matches) among players with enough matches; then more
   // matches, then point difference. The rest are listed after, without a place.
-  const rankings = rankByWinRate(aggregate(matches, members), minMatches);
+  const levelOf = new Map(members.map((m) => [m.id, m.dupr_level == null ? null : Number(m.dupr_level)]));
+  const rankings = rankByWinRate(aggregate(matches, members).map((r) => ({ ...r, level: levelOf.get(r.club_member_id) ?? null })), minMatches);
   const ids = new Set(members.map((m) => m.id));
   return {
     period,
