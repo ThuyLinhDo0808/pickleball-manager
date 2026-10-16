@@ -199,7 +199,8 @@ function ClubHome({ community = false }) {
 
       {community && <h2 className="text-white text-lg font-semibold mt-6 mb-3">🗓 {t('social.thisMonth', { name: club?.name || '' })}</h2>}
 
-      {/* Club at a glance */}
+      {/* Club at a glance (a community has its own members / trend charts above) */}
+      {!community && (<>
       <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowClub')}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <Kpi
@@ -238,6 +239,7 @@ function ClubHome({ community = false }) {
           ]}
         />
       </div>
+      </>)}
 
       {/* Money */}
       <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowMoney')}</h2>

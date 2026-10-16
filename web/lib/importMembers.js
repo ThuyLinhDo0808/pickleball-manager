@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import { sheet, book } from '@/lib/xlsxBook';
 // Reading uploaded files goes through read-excel-file (read-only, maintained): the xlsx
 // package from npm (0.18.x) has open advisories for crafted files. xlsx only writes here.
 import readExcelFile from 'read-excel-file/browser';
@@ -62,22 +62,14 @@ export function downloadMemberTemplate(t, sport) {
     [t('imp.exName1'), t('xlsx.place_fixed'), 'VIP', t('members.male'), '15/03/1995', '0901234567', lv('3.25', 4), t('imp.exDistrict1'), t('memberX.dur_12_18'), '09/2026', ''],
     [t('imp.exName2'), t('xlsx.place_guest'), '', t('members.female'), '1998', '0912345678', lv('2.80', 3), t('imp.exDistrict2'), t('memberX.dur_lt6'), '10/2026', t('imp.exNote')],
   ];
-  const ws = XLSX.utils.aoa_to_sheet([head, ...examples]);
-  ws['!cols'] = [26, 14, 10, 8, 12, 14, 14, 16, 14, 12, 30].map((wch) => ({ wch }));
-  const guide = [
-    [t('imp.guideCol'), t('imp.guideHow')],
-    ...FIELDS.map(([f, key, req]) => [`${t(key)}${req ? ' *' : ''}`, t(`imp.how_${f}`, { durations: DURATIONS.map((d) => t(`memberX.dur_${d}`)).join(' / '), levels: sport === 'badminton' ? BADMINTON_LEVELS.map((n) => t(`level.b${n}`)).join(' / ') : '1.00 – 8.00' })]),
-    [],
-    [t('imp.guideNote1')],
-    [t('imp.guideNote2', { n: IMPORT_MAX })],
-    [t('imp.guideNote3')],
-  ];
-  const wsGuide = XLSX.utils.aoa_to_sheet(guide);
-  wsGuide['!cols'] = [{ wch: 22 }, { wch: 90 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, t('xlsx.sheet'));
-  XLSX.utils.book_append_sheet(wb, wsGuide, t('imp.guideSheet'));
-  XLSX.writeFile(wb, 'mau-nhap-thanh-vien.xlsx');
+  const ws = sheet({ title: t('imp.templateTitle'), subtitle: t('imp.templateSub'), columns: head.map((h) => ({ header: h })), rows: examples });
+  const wsGuide = sheet({
+    title: t('imp.guideSheet'),
+    columns: [{ header: t('imp.guideCol'), width: 24 }, { header: t('imp.guideHow'), width: 90, wrap: true }],
+    rows: FIELDS.map(([f, key, req]) => [`${t(key)}${req ? ' *' : ''}`, t(`imp.how_${f}`, { durations: DURATIONS.map((d) => t(`memberX.dur_${d}`)).join(' / '), levels: sport === 'badminton' ? BADMINTON_LEVELS.map((n) => t(`level.b${n}`)).join(' / ') : '1.00 – 8.00' })]),
+    notes: [t('imp.guideNote1'), t('imp.guideNote2', { n: IMPORT_MAX }), t('imp.guideNote3')],
+  });
+  book([[t('xlsx.sheet'), ws], [t('imp.guideSheet'), wsGuide]], 'mau-nhap-thanh-vien.xlsx');
 }
 
 // One row of cells -> the body for POST /api/clubs/:id/members, or an error (i18n key).

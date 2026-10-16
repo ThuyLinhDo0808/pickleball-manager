@@ -1,4 +1,5 @@
 'use client';
+import { sheet, book, fileName } from '@/lib/xlsxBook';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
@@ -118,16 +119,6 @@ function SessionBar({ attended = 0, late = 0, total }) {
   );
 }
 
-// Excel-friendly CSV (UTF-8 with BOM so Vietnamese names open correctly).
-function downloadCsv(name, rows) {
-  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const blob = new Blob(['﻿' + rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
 
 // Men / women: active members (by type) and the people who came in the period.
 function GenderCard({ g }) {
@@ -336,7 +327,14 @@ export default function AttendancePage() {
             ...view.members.map((m, i) => [i + 1, m.full_name, ...view.months.map((k) => view.perMonth[`${m.id}|${k}`] || 0), view.attended[m.id] || 0]),
             ...view.guests.map((g) => ['', `${g.full_name} (${t('members.guest')})`, ...view.months.map((k) => view.guestMonth(g, k)), g.sessions]),
           ];
-    downloadCsv(`diem-danh_${from}_${to}.csv`, rows);
+    const [head, ...body] = rows;
+    const ws = sheet({
+      title: `${club?.name || ''} — ${t('xlsx.attendance')}`,
+      subtitle: `${dm(from)} → ${dm(to)}${by === 'session' ? ` · ${t('stats.legendX')}` : ''}`,
+      columns: head.map((h, c) => ({ header: String(h), type: c === 0 || c === head.length - 1 || (by !== 'session' && c > 1) ? 'int' : 'text', width: c === 1 ? 28 : c === 0 ? 5 : undefined })),
+      rows: body,
+    });
+    book([[t('xlsx.attendance'), ws]], fileName(t('xlsx.attendance'), from, to));
   }
 
   return (

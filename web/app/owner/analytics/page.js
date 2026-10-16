@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
+import { sheet, book, fileName } from '@/lib/xlsxBook';
 import OwnerShell, { OwnerSection } from '@/components/OwnerShell';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -356,8 +356,11 @@ function Cohorts({ d }) {
 
 // All the numbers in one workbook (one sheet per part).
 function exportXlsx(d, t) {
-  const wb = XLSX.utils.book_new();
-  const add = (name, head, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([head, ...rows]), name);
+  const sheets = [];
+  const period = `${d.months[0]} → ${d.months[d.months.length - 1]}`;
+  // money-ish columns by header word; % columns when the header is '%' or a rate
+  const typeOf = (h, v) => (typeof v === 'number' ? (/%|rate|tỷ lệ|tỉ lệ/i.test(String(h)) ? 'decimal' : Number.isInteger(v) && Math.abs(v) >= 1000 ? 'money' : Number.isInteger(v) ? 'int' : 'decimal') : 'text');
+  const add = (name, head, rows) => sheets.push([name, sheet({ title: name, subtitle: period, columns: head.map((h, c) => ({ header: h, type: typeOf(h, rows.find((r) => r[c] != null)?.[c]) })), rows })]);
   add(t('ana.x_revenue'), [t('ana.col_month'), t('ana.col_cash'), t('ana.s_plans'), 'Social Manager', t('ana.s_new'), t('ana.s_renewal'), t('ana.s_upgrade'), t('ana.col_orders'), t('ana.col_discounts'), 'MRR', t('ana.col_paying')],
     d.revenue.by_month.map((m) => [m.month, m.cash, m.plans, m.social_manager, m.new, m.renewal, m.upgrade, m.orders, m.discounts, m.mrr, m.paying_hosts]));
   add(t('ana.x_byTier'), [t('ana.x_product'), t('ana.x_group'), t('ana.col_cash'), t('ana.col_orders')], [
@@ -370,7 +373,7 @@ function exportXlsx(d, t) {
   add(t('ana.x_segments'), [t('ana.x_dimension'), t('ana.x_group'), 'Host', t('ana.col_paying'), '%', t('ana.col_cash'), t('ana.membersWord')], seg);
   add(t('ana.x_funnel'), [t('ana.x_step'), t('ana.x_value'), '%'], d.funnel.map((f) => [t(`ana.f_${f.key}`), f.count, f.of_first]));
   add(t('ana.x_cohorts'), [t('ana.col_cohort'), t('ana.col_accounts'), t('ana.col_hosts'), t('ana.col_hostRate'), t('ana.col_everPaid'), t('ana.col_payingNow'), t('ana.col_activeNow')], d.cohorts.map((c) => [c.month, c.accounts, c.hosts, c.host_rate, c.ever_paid, c.paying_now, c.active_now]));
-  XLSX.writeFile(wb, `phan-tich-${d.months[d.months.length - 1]}.xlsx`);
+  book(sheets, fileName('phan-tich', d.months[d.months.length - 1]));
 }
 
 const TABS = ['revenue', 'finance', 'segments', 'cohorts'];

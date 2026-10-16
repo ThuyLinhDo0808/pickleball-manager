@@ -2,7 +2,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import * as XLSX from 'xlsx';
+import { sheet, book, fileName } from '@/lib/xlsxBook';
 import OwnerShell, { fmtDate, fmtTime } from '@/components/OwnerShell';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -41,23 +41,25 @@ function Payments() {
   }
 
   function exportExcel() {
-    const rows = data.orders.map((o) => ({
-      [t('owner.xRef')]: o.ref,
-      [t('owner.xCreated')]: fmtTime(o.created_at),
-      [t('owner.xConfirmed')]: o.confirmed_at ? fmtTime(o.confirmed_at) : '',
-      [t('owner.xHost')]: o.host?.email || '',
-      [t('owner.xName')]: o.host?.full_name || '',
-      [t('owner.xItem')]: o.kind === 'tier' ? `${t('admin.tier')} ${String(o.tier).toUpperCase()}` : 'Social Manager',
-      [t('owner.xMonths')]: o.months,
-      [t('owner.xAmount')]: o.amount,
-      [t('owner.xStatus')]: t(`admin.st_${o.status}`),
-      [t('owner.xBy')]: o.confirmed_by || '',
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [12, 16, 16, 28, 20, 18, 8, 12, 14, 26].map((wch) => ({ wch }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Thanh toan goi');
-    XLSX.writeFile(wb, `thanh-toan-goi_${status}${from ? `_${from}` : ''}${to ? `_${to}` : ''}.xlsx`);
+    const ws = sheet({
+      title: t('owner.tabPayments'),
+      subtitle: [t(`admin.st_${status}`, {}) !== `admin.st_${status}` ? t(`admin.st_${status}`) : status, from && `${t('owner.xFrom')} ${from}`, to && `${t('owner.xTo')} ${to}`].filter(Boolean).join(' · '),
+      columns: [
+        { header: t('owner.xRef') },
+        { header: t('owner.xCreated') },
+        { header: t('owner.xConfirmed') },
+        { header: t('owner.xHost') },
+        { header: t('owner.xName') },
+        { header: t('owner.xItem') },
+        { header: t('owner.xMonths'), type: 'int' },
+        { header: t('owner.xAmount'), type: 'money' },
+        { header: t('owner.xStatus') },
+        { header: t('owner.xBy') },
+      ],
+      rows: data.orders.map((o) => [o.ref, fmtTime(o.created_at), o.confirmed_at ? fmtTime(o.confirmed_at) : '', o.host?.email || '', o.host?.full_name || '', o.kind === 'tier' ? `${t('admin.tier')} ${String(o.tier).toUpperCase()}` : 'Social Manager', o.months, o.amount, t(`admin.st_${o.status}`), o.confirmed_by || '']),
+      totals: { label: t('xlsx.total'), cols: { 7: 'sum' } },
+    });
+    book([[t('owner.tabPayments'), ws]], fileName('thanh-toan-goi', status, from, to));
   }
 
   return (

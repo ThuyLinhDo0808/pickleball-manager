@@ -178,7 +178,7 @@ export default function EventDetailPage() {
   function onExport() {
     if (!event || !participants || !finance) return;
     if (event.club_id && !hasFeature(planFor(club, plan), 'excel_export')) return lockedNotice('excel_export');
-    exportEventFinance(event, participants, finance.transactions || []);
+    exportEventFinance(event, participants, finance.transactions || [], t);
   }
 
   if (!event) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
