@@ -21,6 +21,7 @@ const {
   isScored,
 } = require('../services/stats');
 
+const { dedupe } = require('../services/memberDedupe');
 const router = express.Router();
 const moderation = require('../services/moderation');
 const TIERS = ['vip', 'standard'];
@@ -352,6 +353,8 @@ router.get('/:clubId/members', async (req, res) => {
   // 10 minutes); its level (trình độ) is worked out from the Host's settings.
   const CS = require('../services/communitySettings');
   const community = (req.club.kind || 'club') === 'community';
+  // One person, one row: same-name duplicates are merged first (at most once a minute).
+  await dedupe(req.club);
   if (community) await CS.reclassify(req.club).catch((err) => console.error('reclassify failed', err));
   const settings = community ? await CS.forClub(req.club.id).catch(() => null) : null;
   const { data, error } = await supabase
@@ -755,6 +758,13 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
     .select()
     .single();
   if (error) return dbError(res, error);
+  // Accepted: if this is someone the club already has (same name, nothing telling them
+  // apart), the two rows become one.
+  const merged = (await dedupe(req.club, { force: true })).find((d) => d.merged === data.id);
+  if (merged) {
+    const { data: kept } = await supabase.from('club_members').select('*').eq('id', merged.into).maybeSingle();
+    return res.json({ ...(kept || data), merged_from: data.id });
+  }
   res.json(data);
 });
 
@@ -1511,6 +1521,7 @@ router.patch('/:clubId/dupr', async (req, res) => {
 router.get('/:clubId/dupr/members', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
+    await dedupe(req.club);
     res.json(await dupr.memberBoard(req.club));
   } catch (err) {
     duprErr(res, err);

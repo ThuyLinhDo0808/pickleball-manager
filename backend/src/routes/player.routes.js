@@ -696,7 +696,7 @@ player.get('/me', async (req, res) => {
 const LIVE_STATUSES = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
 
 async function myMemberRows(uid) {
-  const { data, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, host_id, description)').eq('user_id', uid);
+  const { data, error } = await supabase.from('club_members').select('*, clubs(id, name, sport, kind, host_id, description)').eq('user_id', uid);
   if (error) throw error;
   return data || [];
 }

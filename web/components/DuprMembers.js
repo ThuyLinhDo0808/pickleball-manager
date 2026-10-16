@@ -14,7 +14,6 @@ const STATUS_TONE = {
   manual: 'border-sky-400/60 text-sky-300',
 };
 const FILTERS = ['all', 'linked', 'manual', 'not_in_club', 'none', 'conflict'];
-const nameKey = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/\s+/g, ' ').trim();
 
 export function Change({ v, className = '' }) {
   if (v == null || v === 0) return null;
@@ -48,7 +47,6 @@ export default function DuprMembers({ club }) {
 
   const members = data.members;
   // Same name twice: probably one person with two records (e.g. added by hand + signed up).
-  const nameCount = members.reduce((m, x) => m.set(nameKey(x.full_name), (m.get(nameKey(x.full_name)) || 0) + 1), new Map());
   const counts = members.reduce((c, m) => ({ ...c, [m.status]: (c[m.status] || 0) + 1 }), {});
   const q = query.trim().toLowerCase();
   const list = members
@@ -152,7 +150,6 @@ export default function DuprMembers({ club }) {
                 <tr key={m.id} className={`border-b border-navy-800 last:border-0 ${m.is_active ? '' : 'opacity-50'}`}>
                   <td className="py-2 px-3 text-white">
                     {m.full_name}
-                    {nameCount.get(nameKey(m.full_name)) > 1 && <span className="block text-[11px] text-amber-200" title={t('duprm.dupHint')}>⚠ {t('duprm.dupName')}</span>}
                   </td>
                   <td className="py-2 pr-3">
                     {edit?.id === m.id ? (
