@@ -2,8 +2,11 @@
 import { CancelHistoryBadge } from '@/components/CancelHistory';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
+import { Avatar } from '@/components/PlayerChip';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import { levelText } from '@/lib/levels';
+import { formatVnd } from '@/lib/format';
 
 // Where someone stands on the list, as the sheet's buttons name it.
 export const PLACE_OF = { requested: 'requested', waitlisted: 'waitlist', not_playing: 'not_playing', registered: 'main', pending: 'main', checked_in: 'main', no_show: 'main' };
@@ -111,15 +114,18 @@ export function RequestsSection({ rows, onPlace, onOpen }) {
   );
 }
 
-// The sheet on a name (like the photo): role chips, then where they go —
-// Tạm hoãn duyệt / Đặt vào danh sách chờ / Xác nhận tham gia (+ Không chơi for organizers).
-export function PlaceSheet({ event, person, isHost, onClose, onChanged }) {
-  const { t } = useI18n();
+// The sheet on a name (like the photo): who they are (photo, level, gender, DUPR), role
+// chips, where they go — Tạm hoãn duyệt / Đặt vào danh sách chờ / Xác nhận tham gia
+// (+ Không chơi for organizers) — then everything else the Host can do for this person:
+// check-in / absent, payment, refund, cancel. Same sheet for clubs and communities.
+export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions }) {
+  const { t, sport } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const row = person;
   const place = row ? PLACE_OF[row.status] : 'not_playing';
   const organizer = isHost || !!row?.is_organizer;
+  const cancelled = row?.status === 'cancelled';
   const locked = row && ['checked_in', 'no_show', 'cancelled'].includes(row.status);
   const options = isHost ? ['not_playing', 'waitlist', 'main'] : organizer ? ['not_playing', 'requested', 'waitlist', 'main'] : ['requested', 'waitlist', 'main'];
 
@@ -143,61 +149,121 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged }) {
       onClose();
     });
   const setRoles = (patch) => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/roles`, patch));
+  // Actions handled by the page (they also refresh money, show messages, open dialogs).
+  const act = async (fn) => {
+    setBusy(true);
+    try {
+      await fn();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const name = row?.full_name || event.host_name || 'Host';
+  const c = row?.card || {};
+  const level = levelText(c.level ?? row?.dupr_level, sport, t);
+  const fee = Number(row?.fee_amount ?? event.fee_amount ?? 0);
+  const share = row ? (row.refund_percent != null ? row.refund_percent : row.late_cancel ? 0 : 100) : 0;
+  const chip = 'rounded-full border px-3 py-1.5 text-sm disabled:opacity-40';
   return (
     <Modal open title={name} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <Initial name={name} organizer={organizer} />
-          <div className="min-w-0 text-sm text-gray-300">
-            {row?.dupr_level != null && <span className="mr-2">{t('common.level')} {Number(row.dupr_level).toFixed(2)}</span>}
-            {row?.phone && <span className="mr-2">📞 {row.phone}</span>}
-            {row && <span className="text-gray-400">{t(`player.status_${row.status}`)}</span>}
-            {!row && <span className="text-gray-400">{t('place.hostNoRow')}</span>}
+          <span className="relative shrink-0">
+            <Avatar src={c.avatar} name={name} size={64} />
+            {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[11px] leading-5" aria-hidden>🛡</span>}
+          </span>
+          <div className="min-w-0">
+            <p className="text-white text-lg font-bold truncate">{name}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-300">
+              {level ? <span>🎯 {level}</span> : <span className="text-gray-500">{t('people.noLevel')}</span>}
+              {c.gender && <span>{c.gender === 'male' ? '♂' : '♀'} {t(`members.${c.gender}`)}</span>}
+              {sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600 px-1.5 text-xs font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {row ? t(`player.status_${row.status}`) : t('place.hostNoRow')}
+              {(c.phone || row?.phone) && <span className="ml-2">📞 {c.phone || row.phone}</span>}
+            </p>
           </div>
         </div>
 
-        <div>
-          <p className="text-gray-400 text-xs mb-1.5">{t('people.roles')}</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy || isHost || !row}
-              aria-pressed={organizer}
-              onClick={() => setRoles({ is_organizer: !organizer })}
-              className={`rounded-full border px-3 py-1 text-sm ${organizer ? 'border-sky-400 bg-sky-400/20 text-sky-100' : 'border-navy-600 text-gray-300'} ${isHost ? 'opacity-80' : ''}`}
-            >
-              🛡 {t('people.organizer')}
-            </button>
-            {row && TAGS.map((tag) => {
-              const on = (row.tags || []).includes(tag);
-              return (
-                <button key={tag} type="button" disabled={busy} aria-pressed={on} onClick={() => setRoles({ tags: on ? row.tags.filter((x) => x !== tag) : [...(row.tags || []), tag] })} className={`rounded-full border px-3 py-1 text-sm ${on ? 'border-lime-400 bg-lime-400/15 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
-                  {t(`people.tag_${tag}`)}
+        <div className="flex flex-wrap items-center gap-2 border-y border-navy-700 py-3">
+          <span className="text-gray-400 text-xs mr-1">{t('people.roles')}</span>
+          <button
+            type="button"
+            disabled={busy || isHost || !row || cancelled}
+            aria-pressed={organizer}
+            onClick={() => setRoles({ is_organizer: !organizer })}
+            className={`${chip} ${organizer ? 'border-sky-400 bg-sky-500 text-white' : 'border-navy-600 text-gray-300'} ${isHost ? '!opacity-90' : ''}`}
+          >
+            🛡 {t('people.organizer')}
+          </button>
+          {row && !cancelled && TAGS.map((tag) => {
+            const on = (row.tags || []).includes(tag);
+            return (
+              <button key={tag} type="button" disabled={busy} aria-pressed={on} onClick={() => setRoles({ tags: on ? row.tags.filter((x) => x !== tag) : [...(row.tags || []), tag] })} className={`${chip} ${on ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
+                {t(`people.tag_${tag}`)}
+              </button>
+            );
+          })}
+        </div>
+
+        {!cancelled && (
+          <div>
+            <div className={`grid gap-2 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
+              {options.map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  disabled={busy || locked}
+                  aria-pressed={place === o}
+                  onClick={() => go(o)}
+                  className={`rounded-xl border-2 px-2 py-3 text-sm font-semibold ${place === o ? PLACE_TONE[o] : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+                >
+                  <span className="block text-xl mb-0.5">{{ requested: '⏸', waitlist: '⏳', main: '✓', not_playing: '🧑‍💼' }[o]}</span>
+                  {t(`place.${o}`)}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+            <p className="text-gray-500 text-xs mt-2">{locked ? t('place.locked') : t(`place.hint_${place}`)}</p>
           </div>
-          {isHost && <p className="text-gray-500 text-xs mt-1">{t('people.hostAlways')}</p>}
-        </div>
+        )}
 
-        <div className={`grid gap-2 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
-          {options.map((o) => (
-            <button
-              key={o}
-              type="button"
-              disabled={busy || locked}
-              aria-pressed={place === o}
-              onClick={() => go(o)}
-              className={`rounded-xl border-2 px-2 py-3 text-sm font-semibold ${place === o ? PLACE_TONE[o] : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
-            >
-              <span className="block text-xl mb-0.5">{{ requested: '⏸', waitlist: '⏳', main: '✓', not_playing: '🧑‍💼' }[o]}</span>
-              {t(`place.${o}`)}
-            </button>
-          ))}
-        </div>
-        <p className="text-gray-500 text-xs">{locked ? t('place.locked') : t(`place.hint_${place}`)}</p>
+        {row && actions && (
+          <div className="flex flex-wrap justify-center gap-2">
+            {['registered', 'checked_in', 'no_show'].includes(row.status) && (
+              <>
+                {row.status !== 'checked_in' && <button type="button" disabled={busy} className={`${chip} border-lime-400/60 text-lime-200 hover:bg-lime-400/10`} onClick={() => act(() => actions.onAction(row, 'check-in'))}>✓ {t('events.checkIn')}</button>}
+                {row.status !== 'no_show' && <button type="button" disabled={busy} className={`${chip} border-yellow-400/60 text-yellow-200 hover:bg-yellow-400/10`} onClick={() => act(() => actions.onAction(row, 'no-show'))}>🚫 {t('events.noShow')}</button>}
+                {row.status !== 'registered' && <button type="button" disabled={busy} className={`${chip} border-navy-500 text-gray-300`} onClick={() => act(() => actions.onAction(row, 'reset'))}>↺ {t('staffView.undo')}</button>}
+              </>
+            )}
+            {row.status === 'waitlisted' && <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onAction(row, 'promote'))}>⬆ {t('policy.promote')}</button>}
+            {/* Money: organisers who play free, a pass, a refund to give back, or paid / not paid. */}
+            {row.is_organizer && row.fee_amount != null && Number(row.fee_amount) === 0 ? (
+              <span className={`${chip} border-navy-600 text-gray-400`}>{t('people.noFee')}</span>
+            ) : row.paid_by_plan && !cancelled ? (
+              <span className={`${chip} border-lime-400/40 text-lime-300`}>{c.vip ? t(`events.usesPass_${c.vip_period || 'any'}`) : t('events.paidByPlan')}</span>
+            ) : cancelled && row.fee_paid && share > 0 ? (
+              row.refunded_at ? (
+                <button type="button" disabled={busy} className={`${chip} border-navy-500 text-gray-300`} onClick={() => act(() => actions.onRefund(row, true))}>↺ {t('slot.refundUndo')}</button>
+              ) : (
+                <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onRefund(row))}>💸 {t('slot.markRefunded')}</button>
+              )
+            ) : (!cancelled || row.late_cancel || row.fee_paid) && (
+              <button type="button" disabled={busy} aria-pressed={!!row.fee_paid} className={`${chip} ${row.fee_paid ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-500 text-gray-200'}`} onClick={() => act(() => actions.onFee(row))}>
+                {row.fee_paid ? `✓ ${t('common.paid')}` : t('common.unpaid')}
+                {!row.fee_paid && fee > 0 && ` · ${formatVnd(fee)}`}
+              </button>
+            )}
+            {cancelled && row.late_cancel && (
+              <button type="button" disabled={busy} className={`${chip} border-orange-400/60 text-orange-200`} onClick={() => window.confirm(t('policy.waiveAsk', { name })) && act(() => actions.onAction(row, 'waive'))}>{t('policy.waive')}</button>
+            )}
+            {!cancelled && (
+              <button type="button" disabled={busy} className={`${chip} border-red-500/60 text-red-300 hover:bg-red-500/10`} onClick={() => { onClose(); actions.onCancel(row); }}>✕ {t('events.cancel')}</button>
+            )}
+          </div>
+        )}
         {error && <p className="text-red-400 text-sm">{error}</p>}
       </div>
     </Modal>

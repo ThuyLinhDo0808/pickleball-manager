@@ -118,6 +118,7 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 - **Lịch sử**: các buổi đã qua (đã chơi / vắng / huỷ muộn) kèm tổng.
 - **🏆 Top tháng** (chỉ ở **cộng đồng**): bảng *Cuộc đua Top tháng* của tháng đang chạy (xem [5.0b](#50b-cuộc-đua-top-tháng--voucher-tự-động)) — luật tính điểm, quà, điểm của từng người (dòng của bạn có nhãn *bạn*) và voucher bạn đang có. Cộng đồng chưa bật thì báo *chưa bật Cuộc đua Top tháng*.
 - **Bảng xếp hạng**: giống trang Bảng xếp hạng của quản lý (chỉ xem) — 3 bảng *Tất cả / Thành viên cố định / Thành viên giao lưu*, kỳ *Ngày / Tháng / Quý / Năm / Tất cả*, bục top 3, các giải (tỷ lệ thắng, hiệu số, chăm chỉ, mâm xôi), **Số tuần giữ Top 1** và bảng đầy đủ; dòng của bạn có nhãn *Bạn*.
+- **🚪 Rời CLB / Rời cộng đồng** (nút đỏ cuối trang): hỏi lại một lần, có ô *Lý do* (không bắt buộc), nhắc nếu bạn còn nợ. Không rời được khi: bạn là người quản lý nơi đó (chuyển giao trước), đang ở **Danh sách đen** (chờ Ban quản trị xử lý), hoặc còn **đăng ký buổi sắp tới** (danh sách các buổi hiện ra — huỷ trước để áp dụng đúng chính sách huỷ). Rời xong: không còn thấy trang này / lịch thành viên, gói còn lại không dùng được. Nếu bạn từng chơi hoặc có gói, CLB vẫn giữ một dòng (đã ngừng hoạt động, bỏ liên kết tài khoản và không tự nối lại theo SĐT) để giữ lịch sử và công nợ; chưa từng chơi thì dòng bị xoá hẳn. Host nhận thông báo webhook `member_left`. Muốn quay lại thì *Xin gia nhập* như người mới.
 
 ### 3.3. Không gian quản lý
 | Không gian | Dành cho | Menu |
@@ -729,17 +730,17 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
   - Công tắc **Duyệt tự động**: tắt (mặc định với kèo mới) = mọi người đăng ký qua link phải được Host duyệt; bật = vào thẳng như trước. Kèo tạo trước bản cập nhật này được bật sẵn để không đổi cách chạy.
   - **Người tổ chức**: Host **luôn** có mặt, cùng những người được gắn vai trò *Người tổ chức* (co-host). Nhãn dưới tên: *chơi* / *chờ* / *không chơi*. Người tổ chức tham gia chơi thì có tên ở **cả** phần Người tổ chức **và** danh sách chính; Host chơi không mất phí.
   - **🙋 Chờ xác nhận tham gia**: người đã xin qua link, kèm trình độ; nút nhanh **✓ Xác nhận tham gia** / **⏳ Đặt vào danh sách chờ**.
-  - **Bảng chọn chỗ** (bấm vào người tổ chức, người chờ duyệt, hoặc nút **⇄ Xếp chỗ** trong danh sách chính / chờ): *Vai trò* — **🛡 Người tổ chức**, **HLV**, **Trọng tài** (bấm để bật/tắt; HLV và Trọng tài là nhãn, quyền trọng tài vẫn cấp ở *Phân quyền*) — và các nút **Tạm hoãn duyệt** · **Đặt vào danh sách chờ** · **Xác nhận tham gia** (+ **Không chơi** cho người tổ chức). *Xác nhận tham gia* đưa vào danh sách chính (khách trả phí online chuyển sang bước thanh toán; hết chỗ thì báo *danh sách chính đã đủ*); *Đặt vào danh sách chờ* bỏ xác nhận (chỗ giữ chưa trả tiền được nhả, tiền đã trả vẫn giữ). Người tổ chức chưa chắc chơi thì để ở danh sách chờ.
+  - **Bảng của từng người** (bấm vào người tổ chức, người chờ duyệt, hoặc **bất kỳ dòng nào** trong danh sách chính / chờ / đã huỷ): đầu bảng là ảnh, tên, trình độ, giới tính, điểm DUPR, trạng thái và SĐT; tiếp theo: *Vai trò* — **🛡 Người tổ chức**, **HLV**, **Trọng tài** (bấm để bật/tắt; HLV và Trọng tài là nhãn, quyền trọng tài vẫn cấp ở *Phân quyền*) — và các nút **Tạm hoãn duyệt** · **Đặt vào danh sách chờ** · **Xác nhận tham gia** (+ **Không chơi** cho người tổ chức). *Xác nhận tham gia* đưa vào danh sách chính (khách trả phí online chuyển sang bước thanh toán; hết chỗ thì báo *danh sách chính đã đủ*); *Đặt vào danh sách chờ* bỏ xác nhận (chỗ giữ chưa trả tiền được nhả, tiền đã trả vẫn giữ). Người tổ chức chưa chắc chơi thì để ở danh sách chờ.
 - **Bảng đếm trên sân**: *Đã đến sân* (x/y) · *Giữ chỗ / tổng* · *Chờ xác nhận thanh toán* · *Chờ chuyển khoản* · *Danh sách chờ*.
 - **💸 Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ.
   - Người đã gửi ảnh: bấm **Xem ảnh** để mở ảnh chụp chuyển khoản (kèm số tiền và nội dung cần khớp), rồi **Xác nhận** hoặc **Từ chối** (ghi lý do).
   - Người chưa gửi ảnh: hiện giờ hết hạn giữ chỗ. Khách trả tiền mặt tại sân thì bấm **Đã thu tiền mặt**.
   - Xác nhận xong, người chơi nhận vé QR và khoản **Phí kèo** tự ghi vào thu của kèo.
   - Mọi ảnh chờ xác nhận của mọi kèo cũng hiện ở **Tài chính → Tổng quan**.
-- **Danh sách chính** (x/số chỗ), **danh sách chờ** và **đã huỷ**. Thêm tay (người không dùng smartphone), hoặc nhập từ CLB (workspace Club). Nhãn *Hội viên* / *Khách* cho từng người.
-- Thao tác từng người:
+- **Danh sách chính** (x/số chỗ), **danh sách chờ** và **đã huỷ** — giống nhau cho CLB và cộng đồng xé vé. Mỗi người là một dòng gọn: **ảnh**, **tên** + nhãn (*Cố định* / *Khách*, *Người tổ chức*, HLV, Trọng tài, ⚡ Ưu tiên, huỷ muộn…), dòng nhỏ **🎯 trình độ · ♂/♀ giới tính · DUPR**, bên phải là **trạng thái** (*Đã đăng ký / Đã chơi / Vắng…*) và **tiền** (*Đã thu / Chưa thu / Đã thu (gói)*). Danh sách chính có thêm nút tròn **✓** để check-in một chạm (bấm lại để hoàn tác). **Bấm vào dòng** để mở bảng của người đó với mọi thao tác bên dưới. Thêm tay (người không dùng smartphone), hoặc nhập từ CLB (workspace Club).
+- Thao tác từng người (nằm trong bảng của người đó, dạng nút tròn):
   - **Check-in** / **Vắng mặt** / **Hoàn tác** (thành viên CLB: check-in và vắng không báo đều trừ 1 buổi của gói; hoàn tác về *đã đăng ký* thì trả lại buổi)
-  - **Đưa lên DS chính** (người trong danh sách chờ; người đó nhận thông báo)
+  - **Đưa lên danh sách chính** (người trong danh sách chờ; người đó nhận thông báo)
   - **Huỷ đăng ký** (hộp thoại báo mức hoàn và hỏi lý do, áp dụng [chính sách huỷ](#55-chính-sách-huỷ--hoàn-buổi))
   - **Miễn phạt** (người huỷ muộn)
   - **Chuyển slot**: đổi sang tên + SĐT người khác, cấp vé mới
@@ -1050,6 +1051,7 @@ Cùng các kênh đó, app còn gửi các tin sau (email: các tin gửi cho ng
 | *(email)* | Host từ chối ảnh chuyển khoản (kèm lý do) | Người chơi |
 | `event_cancelled` | Host huỷ kèo (`players` = số người được báo) | Người chơi + Host |
 | `member_request` | Có người xin xác nhận là thành viên CLB (`new_member: true` nếu là yêu cầu vào CLB mới, `false` nếu khớp SĐT thành viên có sẵn) | Host (chỉ webhook) |
+| `member_left` | Người chơi tự rời CLB / cộng đồng (kèm lý do nếu có) | Host (chỉ webhook) |
 
 Trong Make/Zapier, thêm **Filter** theo `type` để mỗi loại tin đi một đường riêng.
 
@@ -1511,6 +1513,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Gói Pro của CLB | `GET /api/clubs/:id/activity-log?page=&actor=&action=&from=&to=` (nhật ký thao tác; chủ CLB / đồng quản trị) · `GET /api/clubs/:id/roster?from=&to=` (lịch trực, tối đa ~4 tháng; mọi người được phân quyền ở CLB đọc được; trả `staff`, `me`, `can_manage`) · `POST /api/clubs/:id/roster` `{title, shift_date, start_time, end_time, notes, people: [email], repeat_weeks}` (`400 not_staff` nếu email không thuộc CLB) · `PATCH/DELETE /api/clubs/:id/roster/:shiftId` (chủ CLB / đồng quản trị) · `GET /api/clubs/:id/insights?months=3\|6\|12` (phân tích nâng cao; kèm `patterns`: `heatmap` thứ × giờ, `best_slots` / `worst_slots`, `by_weekday`, `by_start_hour`, `fill`, `people`, `reliability`, `by_series`). Tất cả cần gói Pro của chủ CLB: `402 feature_locked` |
 | Nhân sự | `GET /api/staff/me` (kèm `role` mạnh nhất) · `GET /api/staff/events` (kèm `kind`, `arrived`) · `GET /api/staff/events/:id` · `POST …/participants` (điều phối viên thêm khách vãng lai + check-in; hết chỗ thì vào danh sách chờ) · `POST …/participants/:pid/:action` (`checkin` / `no_show` / `undo` / `promote`) · `POST …/checkin-code` · `POST/PATCH …/matches` |
 | Người chơi | `GET /api/player/home` (trang chủ: CLB quản lý / thành viên, lịch sắp tới; kèm `username`, `onboarded`, `sports`, `account_role`, `club_request` = yêu cầu tạo CLB gần nhất) · `POST /api/player/onboarding` `{sports: [pickleball|badminton], role: player|manager, full_name, phone, birth_date, gender, dupr_level, badminton_level}` (`400 sports_required` / `birth_date_required`) · `GET /api/player/discover/:clubId` → `{state: owner|member|requested|guest|none}` · `POST /api/player/discover/:clubId/join` `{note}` (xin gia nhập từ tìm kiếm; `400 profile_required`, `409 already_member / already_requested / own_club`, `403 member_limit`) · `GET /api/player/clubs/:clubId` (trang CLB cho thành viên) · `GET /api/player/clubs/:clubId/rankings?period=&date=&group=` (bảng xếp hạng CLB cho thành viên; người ngoài CLB nhận 404) · `GET /api/player/me` (kèm `username`) · `PUT /api/player/profile` · `POST /api/player/join/:token` · `GET/DELETE /api/player/payments/:ref` · `POST /api/player/participations/:id/cancel` · `POST /api/player/participations/:id/transfer` · `POST /api/player/checkin-code/rotate` · `PUT /api/player/email-notices` `{enabled}` (`/me` trả `email_notices: {available, enabled}`) |
+| Rời CLB / cộng đồng | `POST /api/player/clubs/:id/leave` `{reason?}` → `{left: true}`; `409 own_club` (người quản lý), `409 in_review` (đang ở Danh sách đen), `409 has_upcoming` `{events: [...]}` (còn đăng ký buổi sắp tới); webhook cho Host `member_left` |
 
 ---
 

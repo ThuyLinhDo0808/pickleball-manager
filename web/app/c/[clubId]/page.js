@@ -9,6 +9,7 @@ import KpiRow from '@/components/ui/KpiRow';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import ClubLeaderboard from '@/components/ClubLeaderboard';
 import RaceBoard from '@/components/RaceBoard';
+import LeaveClub from '@/components/LeaveClub';
 import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { translate } from '@/lib/i18n/core';
@@ -266,6 +267,7 @@ export default function MemberClubPage() {
       <p className="text-center mt-6">
         <Link href="/p" className="text-gray-400 text-xs underline">{t('hub.myQrHint')} →</Link>
       </p>
+      <LeaveClub club={club} debt={data.debt || 0} t={t} lang={lang} />
     </PlayerShell>
   );
 }
