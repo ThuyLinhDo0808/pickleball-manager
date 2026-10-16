@@ -3,7 +3,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { limitBody } = require('../middleware/checkCapacity');
-const { todayYmd, periodRange, summarize, normalizePhone } = require('../services/memberships');
+const { todayYmd, rangeFor, summarize, normalizePhone } = require('../services/memberships');
 const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { newPaymentRef, paymentInfo } = require('../services/payment');
 const { cancelDeadline, halfDeadline, cancelParticipant, refundShare, tiersReady } = require('../services/attendance');
@@ -25,7 +25,6 @@ function fail(res, err) {
   return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
 }
 
-const PLAN_FIELDS = 'id, name, period, price, sessions_included';
 
 async function clubByToken(token) {
   if (!isUuid(token)) return null;
@@ -43,13 +42,14 @@ publicRoutes.get('/clubs/:token', async (req, res) => {
   try {
     const club = await clubByToken(req.params.token);
     if (!club) return notFound(res, 'Club');
-    const { data: plans, error } = await supabase
+    let { data: plans, error } = await supabase
       .from('membership_plans')
-      .select(PLAN_FIELDS)
+      .select('*') // validity_months only once migration 20261128090000 is in
       .eq('club_id', club.id)
       .eq('is_active', true)
       .order('price');
     if (error) throw error;
+    plans = (plans || []).map((p) => ({ id: p.id, name: p.name, period: p.period, price: p.price, sessions_included: p.sessions_included, validity_months: p.validity_months ?? null }));
     // Bank details are only shown after the player has signed in and joined.
     res.json({ name: club.name, description: club.description, join_note: club.join_note, plans });
   } catch (err) {
@@ -384,9 +384,7 @@ player.post('/join/:token', async (req, res) => {
     await require('../services/emailVerify').assertVerified(req.userId);
 
     const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
-    if (!isUuid(req.body.plan_id) || !/^\d{4}-\d{2}$/.test(req.body.start_month || '')) {
-      throw badRequest('plan_id and start_month (YYYY-MM) are required.');
-    }
+    if (!isUuid(req.body.plan_id)) throw badRequest('plan_id is required.');
     const { data: plan } = await supabase
       .from('membership_plans')
       .select('*')
@@ -395,7 +393,17 @@ player.post('/join/:token', async (req, res) => {
       .eq('is_active', true)
       .maybeSingle();
     if (!plan) throw badRequest('Plan not found.', 404);
-    if (req.body.start_month < todayYmd().slice(0, 7)) throw badRequest('The starting month is in the past.');
+    // A session pack starts on a day (today unless a later day / month is picked);
+    // a period plan starts on a month.
+    const today = todayYmd();
+    if (plan.validity_months) {
+      const pick = /^\d{4}-\d{2}-\d{2}$/.test(req.body.start_date || '') ? req.body.start_date : /^\d{4}-\d{2}$/.test(req.body.start_month || '') && req.body.start_month > today.slice(0, 7) ? `${req.body.start_month}-01` : today;
+      if (pick < today) throw badRequest('The start date is in the past.');
+      req.body.start_date = pick;
+    } else {
+      if (!/^\d{4}-\d{2}$/.test(req.body.start_month || '')) throw badRequest('start_month (YYYY-MM) is required.');
+      if (req.body.start_month < today.slice(0, 7)) throw badRequest('The starting month is in the past.');
+    }
 
     // Find this player's record in the club: already linked, else same phone (unlinked), else new.
     let { data: member } = await supabase.from('club_members').select('*').eq('club_id', club.id).eq('user_id', req.hostId).maybeSingle();
@@ -439,7 +447,7 @@ player.post('/join/:token', async (req, res) => {
       member = created;
     }
 
-    const periods = Array.from({ length: count }, (_, i) => periodRange(plan.period, req.body.start_month, i));
+    const periods = plan.validity_months ? [rangeFor(plan, req.body)] : Array.from({ length: count }, (_, i) => rangeFor(plan, req.body, i));
     const { data: existing } = await supabase.from('memberships').select('period_label, plan_id').eq('club_member_id', member.id);
     const clash = periods.find((p) => (existing || []).some((e) => e.plan_id === plan.id && e.period_label === p.period_label));
     if (clash) throw badRequest(`You already have ${plan.name} for ${clash.period_label}.`, 409);

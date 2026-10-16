@@ -72,12 +72,12 @@ async function overview(club) {
   const evById = new Map(events.map((e) => [e.id, e]));
   const roster = members.filter((m) => !m.join_requested);
   const known = new Set(roster.map((m) => m.id));
-  // "Khách VIP": a paid pass (month / quarter / year) covering today.
+  // "Khách VIP": a paid pass covering today with sessions left (session packs, or old month / quarter / year plans).
   const vipIds = new Set();
   for (let i = 0; i < roster.length; i += 300) {
-    const { data: passes, error } = await supabase.from('memberships').select('club_member_id').in('club_member_id', roster.slice(i, i + 300).map((m) => m.id)).eq('status', 'paid').lte('starts_on', today).gte('ends_on', today);
+    const { data: passes, error } = await supabase.from('v_membership_status').select('club_member_id, sessions_included, sessions_remaining').in('club_member_id', roster.slice(i, i + 300).map((m) => m.id)).eq('status', 'paid').lte('starts_on', today).gte('ends_on', today);
     if (error) throw error;
-    for (const x of passes || []) vipIds.add(x.club_member_id);
+    for (const x of passes || []) if (x.sessions_included === 0 || x.sessions_remaining > 0) vipIds.add(x.club_member_id); // a used-up pack is no longer VIP
   }
 
   // Who came when: member id -> sessions in the last 30 days; per series, everyone ever.

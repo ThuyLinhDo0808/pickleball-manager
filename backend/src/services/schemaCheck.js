@@ -60,6 +60,7 @@ const PROBES = [
   { table: 'clubs', column: 'extra_fixed_members', migration: '20261028090000_club_member_addon_transfer.sql' },
   { table: 'announcements', column: 'show_public', migration: '20261030090000_owner_console_2.sql' },
   { table: 'announcements', column: 'kind', migration: '20261126090000_announcements_v2.sql' },
+  { table: 'membership_plans', column: 'validity_months', migration: '20261128090000_plan_session_packs.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },
