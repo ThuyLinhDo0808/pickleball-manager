@@ -681,7 +681,7 @@ async function syncProfile(member, fields, sport) {
   if (error) throw error;
 }
 
-// Waiting list (DS chờ): accounts linked to a member by phone, join requests from the
+// Waiting list (Danh sách chờ): accounts linked to a member by phone, join requests from the
 // event page, and guests who asked to join the fixed team in the after-session survey.
 // Players who paid, cancelled with a refund due (100% or 50% under the cancel policy) and still
 // wait for their money back (all sessions of the club / community): the overview's "to do" list links to each session.
@@ -756,20 +756,9 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
   if (!m.user_id && !m.join_requested) return res.status(400).json({ error: 'No player account is linked to this member.' });
   const patch = { join_requested: false };
   if (m.user_id) patch.account_verified = true;
-  // "---": accepted into the club / community but into "Xem xét thêm" until the Host decides.
-  if (m.join_requested && req.body?.member_type === 'review' && (await moderation.ready())) {
-    const { data, error } = await supabase
-      .from('club_members')
-      .update({ join_requested: false, member_type: 'guest', tier: null, ...(m.user_id ? { account_verified: true } : {}) })
-      .eq('id', m.id)
-      .select()
-      .single();
-    if (error) return dbError(res, error);
-    try {
-      return res.json(await moderation.hold(req.club, data, req.hostEmail));
-    } catch (err) {
-      return dbError(res, err);
-    }
+  // Not decided yet ("---"): the person stays in the waiting list until the Host picks a type.
+  if (m.join_requested && !['fixed', 'guest'].includes(req.body?.member_type)) {
+    return res.status(400).json({ error: 'Pick a type (fixed or guest) to approve; until then they stay in the waiting list.', code: 'type_required' });
   }
   if (m.join_requested) {
     const type = req.body?.member_type === 'guest' ? 'guest' : 'fixed';

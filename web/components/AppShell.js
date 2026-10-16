@@ -44,7 +44,7 @@ const ICONS = {
 
 // Each workspace has its own menu, grouped by segment. A group ({ key, icon, children })
 // is a collapsible sub-folder in the sidebar and a titled block in the phone's "More" sheet.
-// Thành viên ▸ one page per tab (cố định, giao lưu, DS chờ, DS đen, DUPR).
+// Thành viên ▸ one page per tab (cố định, giao lưu, Danh sách chờ, Danh sách đen, DUPR).
 const membersGroup = (key) => ({
   key,
   icon: 'members',

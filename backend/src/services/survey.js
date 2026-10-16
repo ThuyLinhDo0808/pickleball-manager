@@ -4,7 +4,7 @@
 // organisation, whether the level suited them, "would you come back to a session like
 // this?", a private note only the Host reads, and — guests only — "Do you want to join
 // our fixed team?": yes opens a short member form whose answers land in the club's
-// waiting list (DS chờ) for the Host to approve.
+// waiting list (Danh sách chờ) for the Host to approve.
 const { supabase } = require('../supabase');
 const { normalizePhone } = require('./memberships');
 
@@ -154,7 +154,7 @@ async function answerSurvey(token, body) {
 }
 
 // "Yes, I want to join the fixed team": the member form. The person's guest record (or a
-// new one) is marked as a join request; the Host approves it in DS chờ.
+// new one) is marked as a join request; the Host approves it in Danh sách chờ.
 async function joinFromSurvey(token, body) {
   const { p, event } = await participantByToken(token);
   const full_name = String(body.full_name || '').trim().slice(0, 120);
