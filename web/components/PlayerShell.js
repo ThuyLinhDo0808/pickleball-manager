@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -70,6 +71,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
       </header>
       <main className="max-w-4xl mx-auto p-4 pb-tabbar sm:pb-safe-4">
         {back !== false && !NAV.some((n) => n.href === pathname) && <BackButton fallback={typeof back === 'string' ? back : '/home'} />}
+        <AnnouncementBanner className="mb-4" />
         {children}
       </main>
 

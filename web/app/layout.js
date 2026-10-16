@@ -9,6 +9,7 @@ import MfaGate from '@/components/MfaGate';
 import ConsentGate from '@/components/ConsentGate';
 import EmailVerifyBanner from '@/components/EmailVerifyBanner';
 import NavTracker from '@/components/NavTracker';
+import MaintenanceGate from '@/components/MaintenanceGate';
 
 export const metadata = {
   title: 'Pickleball Manager',
@@ -32,6 +33,7 @@ export default function RootLayout({ children }) {
             <WorkspaceProvider>
               <ClubProvider>
                 <NavTracker />
+                <MaintenanceGate />
                 <ViewAsBanner />
                 <EmailVerifyBanner />
                 <OnboardingGate />

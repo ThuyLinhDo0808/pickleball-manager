@@ -79,6 +79,10 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
   if (res.status === 403 && ['mfa_required', 'mfa_enroll_required'].includes(data.code) && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pb:mfa', { detail: { code: data.code, scope: data.scope || null, reset_at: data.reset_at || null } }));
   }
+  // Maintenance (Owner Console → Thông báo → Bảo trì): components/MaintenanceGate covers the app.
+  if (res.status === 503 && data.code === 'maintenance' && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pb:maintenance', { detail: data.maintenance || null }));
+  }
   // The app owner suspended this account: the shell shows a notice instead of the app.
   if (res.status === 423 && data.code === 'account_suspended' && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pb:suspended', { detail: { reason: data.reason, since: data.since } }));

@@ -55,6 +55,10 @@ body {
   @apply bg-navy-700 text-white rounded-lg px-4 py-2 hover:bg-navy-600 transition disabled:opacity-50;
 }
 
+.btn-danger {
+  @apply bg-red-500 text-white font-semibold rounded-lg px-4 py-2 hover:bg-red-600 transition disabled:opacity-50;
+}
+
 .input {
   @apply bg-navy-900 border border-navy-700 rounded-lg px-3 py-2 text-white w-full outline-none focus:border-lime-400;
 }

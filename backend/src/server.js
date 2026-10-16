@@ -81,6 +81,8 @@ app.get('/health/schema', async (req, res) => {
   }
 });
 
+// Maintenance (Owner Console → Thông báo → Bảo trì): only the Owner gets through.
+app.use(require('./routes/announcements.routes').gate);
 app.use(require('./services/activityLog').recorder); // club activity log (Pro)
 
 // /api/events contains its own public (unauthenticated) routes for shareable
@@ -105,6 +107,8 @@ app.use('/api/owner', requireAuth, ownerRoutes);
 app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
 app.use('/api/public/auth', require('./routes/auth.routes')); // no login: sign in / sign up / forgot password
 app.get('/api/public/announcements', require('./routes/announcements.routes').current); // no login: owner's banner
+app.get('/api/public/maintenance', require('./routes/announcements.routes').maintenance); // no login: is the app under maintenance?
+app.get('/api/announcements/mine', requireAuth, require('./routes/announcements.routes').mine); // owner's notices for my audience / clubs
 app.use('/api/public', publicRoutes); // no login: club join pages
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));

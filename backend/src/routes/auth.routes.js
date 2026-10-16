@@ -9,6 +9,8 @@ const security = require('../services/accountSecurity');
 const { LEGAL_VERSION } = require('../services/privacy');
 const emailVerify = require('../services/emailVerify');
 
+const announcements = require('./announcements.routes');
+const { isOwner } = require('../services/owner');
 const router = express.Router();
 
 const USERNAME = /^[a-z][a-z0-9._]{2,29}$/;
@@ -68,6 +70,9 @@ router.post('/login', tooMany, perLogin, async (req, res) => {
   if (!login || !password) return bad();
   try {
     const email = await emailFor(login);
+    // Under maintenance only the Owner signs in (the others see the maintenance page).
+    const down = await announcements.maintenanceNow();
+    if (down && !isOwner(email)) return res.status(503).json(announcements.maintenanceBody(down));
     if (!email) return bad();
     const { data, error } = await authClient().auth.signInWithPassword({ email, password });
     if (error) {
