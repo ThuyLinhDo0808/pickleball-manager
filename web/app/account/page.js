@@ -63,7 +63,7 @@ export default function AccountPage() {
         api.get(`/api/clubs/${club.id}/events`),
         api.get(`/api/clubs/${club.id}/rankings`),
       ]);
-      exportClubBackup(club, members, events, rankings);
+      exportClubBackup(club, members, events, rankings, t);
     } finally {
       setBackupBusy(false);
     }

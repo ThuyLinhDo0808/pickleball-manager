@@ -61,13 +61,13 @@ async function overview(club) {
   const extra = csReady ? ', level_key, dupr_level, play_duration' : '';
   const [events, members] = await Promise.all([
     all(() => supabase.from('events').select(`id, event_date, series_label, fee_amount, status${csReady ? ', level_keys' : ''}`).eq('club_id', club.id).order('id')),
-    all(() => supabase.from('club_members').select(`id, member_type, is_active, join_requested, guest_perk${extra}`).eq('club_id', club.id).order('id')),
+    all(() => supabase.from('club_members').select(`id, member_type, is_active, join_requested, guest_perk, created_at${extra}`).eq('club_id', club.id).order('id')),
   ]);
   const ids = events.map((e) => e.id);
   let parts = [];
   for (let i = 0; i < ids.length; i += 150) {
     const chunk = ids.slice(i, i + 150);
-    parts.push(...(await all(() => supabase.from('event_participants').select('event_id, status, kind, fee_paid, fee_amount, is_organizer, source_club_member_id, guest_member_id').in('event_id', chunk).order('id'))));
+    parts.push(...(await all(() => supabase.from('event_participants').select('id, user_id, event_id, status, kind, fee_paid, fee_amount, is_organizer, source_club_member_id, guest_member_id').in('event_id', chunk).order('id'))));
   }
   const evById = new Map(events.map((e) => [e.id, e]));
   const roster = members.filter((m) => !m.join_requested);
@@ -134,11 +134,38 @@ async function overview(club) {
   if (error) throw error;
   const plans = (ms || []).reduce((s, m) => s + Number(m.amount || 0), 0);
 
+  // The last 6 months: kèo opened, player turns, different players, money in / out, profit.
+  // A kèo's money counts in the kèo's month (like the day-by-day view).
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() - i);
+    months.push(d.toISOString().slice(0, 7));
+  }
+  const byMonth = new Map(months.map((k) => [k, { month: k, sessions: 0, turns: 0, players: new Set(), income: 0, expense: 0 }]));
+  for (const e of events) if (e.status !== 'cancelled') byMonth.get(String(e.event_date).slice(0, 7)) && (byMonth.get(String(e.event_date).slice(0, 7)).sessions += 1);
+  for (const p of parts) {
+    const e = evById.get(p.event_id);
+    const row = e && e.status !== 'cancelled' && byMonth.get(String(e.event_date).slice(0, 7));
+    if (!row || !PLAYED.includes(p.status) || p.is_organizer) continue;
+    row.turns += 1;
+    row.players.add(p.user_id || p.source_club_member_id || p.guest_member_id || p.id);
+  }
+  for (const x of txns) {
+    const when = x.event_id && evById.get(x.event_id) ? evById.get(x.event_id).event_date : x.occurred_on;
+    const row = byMonth.get(String(when || '').slice(0, 7));
+    if (row) row[x.type === 'income' ? 'income' : 'expense'] += Number(x.amount);
+  }
+  const monthTrend = [...byMonth.values()].map((r) => ({ month: r.month, sessions: r.sessions, turns: r.turns, players: r.players.size, income: r.income, expense: r.expense, profit: r.income - r.expense }));
+  const newSince = addDays(today, -30);
+
   return {
     club: { id: club.id, name: club.name, kind: club.kind || 'club' },
     rules: { active_days: activeDays, regular_min: regularMin, regular_auto: settings.regular.auto, level_mode: settings.levels.mode },
     members: {
       total: roster.length,
+      // joined the community in the last 30 days
+      new_30d: roster.filter((m) => m.created_at && String(m.created_at).slice(0, 10) >= newSince).length,
       fixed: roster.filter((m) => m.member_type === 'fixed').length,
       guest: roster.filter((m) => m.member_type === 'guest').length,
       vip: roster.filter((m) => vipIds.has(m.id)).length,
@@ -160,7 +187,15 @@ async function overview(club) {
       unpaid_fee_count: fees.count,
       unpaid_plans: plans,
     },
-    regularity: { regular, irregular: playedMonth - regular, inactive: roster.length - playedMonth },
+    regularity: {
+      regular,
+      irregular: playedMonth - regular,
+      inactive: roster.length - playedMonth,
+      // "% tích cực": regulars out of every member — how well the community keeps people coming
+      not_regular: roster.length - regular,
+      active_rate: roster.length ? Math.round((1000 * regular) / roster.length) / 10 : 0,
+    },
+    monthly: monthTrend,
   };
 }
 

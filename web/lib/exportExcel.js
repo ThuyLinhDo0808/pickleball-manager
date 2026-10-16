@@ -1,132 +1,134 @@
-import * as XLSX from 'xlsx';
+// Every Excel export of the manager pages, with one professional look (lib/xlsxBook.js).
+import { sheet, book, fileName } from '@/lib/xlsxBook';
+import { memberRow, memberColumns } from '@/lib/memberSheet';
 
-// Builds a workbook with LIVE FORMULAS (not static computed numbers) so the
-// Host can tweak a row and see totals recalc when opened in Excel/Sheets.
-export function exportEventFinance(event, participants, transactions) {
-  const wb = XLSX.utils.book_new();
+const dmy = (ymd) => (ymd ? String(ymd).slice(0, 10).split('-').reverse().join('/') : '');
 
-  // Sheet 1: participants + fee status
-  const pRows = [['Full name', 'Phone', 'Status', 'Fee', 'Paid']];
-  participants.forEach((p) => {
-    pRows.push([p.full_name, p.phone || '', p.status, p.fee_amount ?? event.fee_amount ?? 0, p.paid_by_plan ? 'Plan' : p.fee_paid ? 'Yes' : 'No']);
+// One event: summary, participants (fee / paid), money in and out with LIVE totals.
+export function exportEventFinance(event, participants, transactions, t) {
+  const fee = (p) => Number(p.fee_amount ?? event.fee_amount ?? 0);
+  const paidText = (p) => (p.paid_by_plan ? t('xlsx.paidPlan') : p.fee_paid ? t('xlsx.yes') : t('xlsx.no'));
+  const people = sheet({
+    title: `${event.title} — ${t('xlsx.participants')}`,
+    subtitle: [dmy(event.event_date), event.start_time?.slice(0, 5), event.location].filter(Boolean).join(' · '),
+    columns: [
+      { header: '#', type: 'int', width: 5 },
+      { header: t('common.name') },
+      { header: t('common.phone') },
+      { header: t('xlsx.status') },
+      { header: t('xlsx.fee'), type: 'money' },
+      { header: t('xlsx.paid') },
+    ],
+    rows: participants.map((p, i) => [i + 1, p.full_name, p.phone || '', t(`xlsx.st_${p.status}`), fee(p), paidText(p)]),
+    totals: { label: t('xlsx.total'), cols: { 4: 'sum' } },
   });
-  const wsParticipants = XLSX.utils.aoa_to_sheet(pRows);
-  XLSX.utils.book_append_sheet(wb, wsParticipants, 'Participants');
-
-  // Sheet 2: transactions with a live SUM formula per type + net formula
-  const tRows = [['Date', 'Type', 'Category', 'Amount', 'Note']];
-  transactions
-    .filter((t) => !t.is_voided)
-    .forEach((t) => tRows.push([t.occurred_on, t.type, t.category || '', Number(t.amount), t.note || '']));
-  const firstDataRow = 2;
-  const lastDataRow = tRows.length; // 1-indexed including header
-  const incomeCell = `SUMIF(B${firstDataRow}:B${lastDataRow},"income",D${firstDataRow}:D${lastDataRow})`;
-  const expenseCell = `SUMIF(B${firstDataRow}:B${lastDataRow},"expense",D${firstDataRow}:D${lastDataRow})`;
-  tRows.push([]);
-  tRows.push(['', '', 'Total income', { f: incomeCell }]);
-  tRows.push(['', '', 'Total expense', { f: expenseCell }]);
-  tRows.push(['', '', 'Net', { f: `${incomeCell}-${expenseCell}` }]);
-
-  const wsTxns = XLSX.utils.aoa_to_sheet(tRows.map((r) => (Array.isArray(r) ? r : [])));
-  // Re-write formula cells properly (aoa_to_sheet doesn't parse {f:...} objects in arrays reliably)
-  const totalIncomeRow = lastDataRow + 2; // 1-indexed
-  const totalExpenseRow = lastDataRow + 3;
-  const netRow = lastDataRow + 4;
-  XLSX.utils.sheet_add_aoa(wsTxns, [['', '', 'Total income', null]], { origin: `A${totalIncomeRow}` });
-  wsTxns[`D${totalIncomeRow}`] = { t: 'n', f: incomeCell };
-  XLSX.utils.sheet_add_aoa(wsTxns, [['', '', 'Total expense', null]], { origin: `A${totalExpenseRow}` });
-  wsTxns[`D${totalExpenseRow}`] = { t: 'n', f: expenseCell };
-  XLSX.utils.sheet_add_aoa(wsTxns, [['', '', 'Net', null]], { origin: `A${netRow}` });
-  wsTxns[`D${netRow}`] = { t: 'n', f: `${incomeCell}-${expenseCell}` };
-  XLSX.utils.book_append_sheet(wb, wsTxns, 'Finance');
-
-  // Sheet 3: event summary
-  const wsSummary = XLSX.utils.aoa_to_sheet([
-    ['Event', event.title],
-    ['Date', event.event_date],
-    ['Location', event.location || ''],
-    ['Slots', event.slots],
-    ['Fee (default)', event.fee_amount],
-  ]);
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
-
-  XLSX.writeFile(wb, `event-${event.title.replace(/\s+/g, '-').toLowerCase()}-finance.xlsx`);
+  const live = transactions.filter((x) => !x.is_voided);
+  const tx = live.map((x) => [x.occurred_on, x.type === 'income' ? t('xlsx.income') : t('xlsx.expense'), x.category || '', Number(x.amount), x.note || '']);
+  const money = sheet({
+    title: `${event.title} — ${t('xlsx.finance')}`,
+    subtitle: dmy(event.event_date),
+    columns: [
+      { header: t('xlsx.date'), type: 'date' },
+      { header: t('xlsx.kind') },
+      { header: t('xlsx.category') },
+      { header: t('xlsx.amount'), type: 'money' },
+      { header: t('xlsx.notes'), width: 36, wrap: true },
+    ],
+    rows: tx,
+    totals: tx.length ? { label: t('xlsx.net'), cols: { 3: { f: `SUMIF(B5:B${4 + tx.length},"${t('xlsx.income')}",D5:D${4 + tx.length})-SUMIF(B5:B${4 + tx.length},"${t('xlsx.expense')}",D5:D${4 + tx.length})` } } } : null,
+    notes: [t('xlsx.liveNote')],
+  });
+  const inc = live.filter((x) => x.type === 'income').reduce((s, x) => s + Number(x.amount), 0);
+  const exp = live.filter((x) => x.type === 'expense').reduce((s, x) => s + Number(x.amount), 0);
+  const summary = sheet({
+    title: event.title,
+    subtitle: t('xlsx.summary'),
+    columns: [{ header: t('xlsx.item'), width: 26 }, { header: t('xlsx.value'), width: 30 }],
+    rows: [
+      [t('xlsx.date'), dmy(event.event_date)],
+      [t('xlsx.time'), [event.start_time?.slice(0, 5), event.end_time?.slice(0, 5)].filter(Boolean).join(' – ')],
+      [t('xlsx.location'), event.location || ''],
+      [t('xlsx.slots'), String(event.slots ?? '')],
+      [t('xlsx.people'), String(participants.length)],
+      [t('xlsx.feeDefault'), `${Number(event.fee_amount || 0).toLocaleString('vi-VN')} đ`],
+      [t('xlsx.income'), `${inc.toLocaleString('vi-VN')} đ`],
+      [t('xlsx.expense'), `${exp.toLocaleString('vi-VN')} đ`],
+      [t('xlsx.net'), `${(inc - exp).toLocaleString('vi-VN')} đ`],
+    ],
+  });
+  book([[t('xlsx.summary'), summary], [t('xlsx.participants'), people], [t('xlsx.finance'), money]], fileName(event.title, dmy(event.event_date), t('xlsx.finance')));
 }
 
-// Club-wide backup export: Members, Schedule, Rankings — for Host backup.
-export function exportClubBackup(club, members, events, rankings) {
-  const wb = XLSX.utils.book_new();
-
-  const mRows = [['#', 'Full name', 'Gender', 'Birth year', 'Level', 'Type', 'Tier', 'Phone', 'Active']];
-  members.forEach((m, i) =>
-    mRows.push([i + 1, m.full_name, m.gender || '', m.birth_year ?? '', m.dupr_level ?? '', m.member_type, m.tier || '', m.phone || '', m.is_active ? 'Yes' : 'No'])
-  );
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mRows), 'Members');
-
-  const eRows = [['Date', 'Title', 'Location', 'Status', 'Main list', 'Waitlist']];
-  events.forEach((e) => eRows.push([e.event_date, e.title, e.location || '', e.status, e.main_count, e.waitlist_count]));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(eRows), 'Schedule');
-
-  const rRows = [['Full name', 'Wins', 'Matches', 'Points scored', 'Points lost']];
-  rankings.forEach((r) => rRows.push([r.full_name, r.wins, r.matches_played, r.points_scored, r.points_lost]));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rRows), 'Rankings');
-
-  XLSX.writeFile(wb, `${(club.name || 'club').replace(/\s+/g, '-').toLowerCase()}-backup.xlsx`);
+// Whole club backup: members, schedule, rankings.
+export function exportClubBackup(club, members, events, rankings, t) {
+  const m = sheet({
+    title: `${club.name} — ${t('xlsx.sheet')}`,
+    subtitle: t('xlsx.backup'),
+    columns: [
+      { header: '#', type: 'int', width: 5 },
+      { header: t('common.name') },
+      { header: t('members.gender') },
+      { header: t('xlsx.birthYear'), type: 'int' },
+      { header: t('common.level'), type: 'decimal' },
+      { header: t('xlsx.place') },
+      { header: t('members.tier') },
+      { header: t('common.phone') },
+      { header: t('xlsx.active') },
+    ],
+    rows: members.map((x, i) => [i + 1, x.full_name, x.gender ? t(`members.${x.gender}`) : '', x.birth_year ?? '', x.dupr_level ?? '', x.member_type === 'guest' ? t('xlsx.place_guest') : t('xlsx.place_fixed'), x.tier ? t(`members.${x.tier}`) : '', x.phone || '', x.is_active ? t('xlsx.yes') : t('xlsx.no')]),
+  });
+  const e = sheet({
+    title: `${club.name} — ${t('xlsx.schedule')}`,
+    subtitle: t('xlsx.backup'),
+    columns: [{ header: t('xlsx.date'), type: 'date' }, { header: t('xlsx.title') }, { header: t('xlsx.location') }, { header: t('xlsx.status') }, { header: t('xlsx.mainList'), type: 'int' }, { header: t('xlsx.waitlist'), type: 'int' }],
+    rows: events.map((x) => [x.event_date, x.title, x.location || '', t(`xlsx.ev_${x.status}`), x.main_count ?? 0, x.waitlist_count ?? 0]),
+    totals: { label: t('xlsx.total'), cols: { 4: 'sum', 5: 'sum' } },
+  });
+  const r = sheet({
+    title: `${club.name} — ${t('xlsx.rankings')}`,
+    subtitle: t('xlsx.backup'),
+    columns: [{ header: '#', type: 'int', width: 5 }, { header: t('common.name') }, { header: t('rankings.played'), type: 'int' }, { header: t('rankings.wins'), type: 'int' }, { header: t('rankings.winRate'), type: 'percent' }, { header: t('rankings.pointsFor'), type: 'int' }, { header: t('rankings.pointsAgainst'), type: 'int' }],
+    rows: rankings.map((x, i) => [x.rank ?? i + 1, x.full_name, x.matches_played, x.wins, x.matches_played ? x.wins / x.matches_played : 0, x.points_scored, x.points_lost]),
+  });
+  book([[t('xlsx.sheet'), m], [t('xlsx.schedule'), e], [t('xlsx.rankings'), r]], fileName(club.name, t('xlsx.backup')));
 }
 
-// Rankings for one period (day / month / quarter / year / all) + awards sheet.
+// Rankings for one period + awards + weeks at No. 1.
 export function exportRankings(clubName, label, stats, t) {
-  const wb = XLSX.utils.book_new();
-  const head = ['#', t('common.name'), t('rankings.played'), t('rankings.wins'), t('rankings.losses'), t('rankings.winRate'), t('rankings.pointsFor'), t('rankings.pointsAgainst'), t('rankings.diff')];
-  const rows = stats.rankings.map((r, i) => [i + 1, r.full_name, r.matches_played, r.wins, r.losses, r.win_rate / 100, r.points_scored, r.points_lost, r.point_diff]);
-  const ws = XLSX.utils.aoa_to_sheet([[`${clubName} — ${label}`], [], head, ...rows]);
-  rows.forEach((_, i) => {
-    const cell = ws[XLSX.utils.encode_cell({ r: i + 3, c: 5 })];
-    if (cell) cell.z = '0.0%';
+  const ranking = sheet({
+    title: `${clubName} — ${t('xlsx.rankings')}`,
+    subtitle: `${label}${stats.min_matches ? ` · ${t('xlsx.minRule', { n: stats.min_matches })}` : ''}`,
+    columns: [
+      { header: '#', width: 5 },
+      { header: t('common.name') },
+      { header: t('rankings.played'), type: 'int' },
+      { header: t('rankings.wins'), type: 'int' },
+      { header: t('rankings.losses'), type: 'int' },
+      { header: t('rankings.winRate'), type: 'percent' },
+      { header: t('rankings.pointsFor'), type: 'int' },
+      { header: t('rankings.pointsAgainst'), type: 'int' },
+      { header: t('rankings.diff'), type: 'int' },
+    ],
+    rows: stats.rankings.map((r, i) => [r.eligible === false ? '—' : String(r.rank ?? i + 1), r.full_name, r.matches_played, r.wins, r.losses, r.win_rate / 100, r.points_scored, r.points_lost, r.point_diff]),
+    notes: stats.min_matches ? [t('xlsx.notRanked', { n: stats.min_matches })] : [],
   });
-  XLSX.utils.book_append_sheet(wb, ws, 'Rankings');
-
-  const a = stats.awards;
-  const awardRows = [[t('rankings.awards'), '#', t('common.name'), '']];
-  a.top_win_rate.forEach((r, i) => awardRows.push([t('rankings.topWinRate'), i + 1, r.full_name, `${r.value}%`]));
-  a.top_point_diff.forEach((r, i) => awardRows.push([t('rankings.topDiff'), i + 1, r.full_name, r.value]));
-  a.top_attendance.forEach((r, i) => awardRows.push([t('rankings.topAttendance'), i + 1, r.full_name, r.value]));
-  if (a.lowest_win_rate) awardRows.push([t('rankings.lowest'), 1, a.lowest_win_rate.full_name, `${a.lowest_win_rate.value}%`]);
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(awardRows), 'Awards');
-
+  const a = stats.awards || {};
+  const awardRows = [
+    ...(a.top_win_rate || []).map((r, i) => [t('rankings.topWinRate'), i + 1, r.full_name, `${r.value}%`]),
+    ...(a.top_point_diff || []).map((r, i) => [t('rankings.topDiff'), i + 1, r.full_name, String(r.value)]),
+    ...(a.top_attendance || []).map((r, i) => [t('rankings.topAttendance'), i + 1, r.full_name, String(r.value)]),
+    ...(a.lowest_win_rate ? [[t('rankings.lowest'), 1, a.lowest_win_rate.full_name, `${a.lowest_win_rate.value}%`]] : []),
+  ];
+  const awards = sheet({ title: `${clubName} — ${t('rankings.awards')}`, subtitle: label, columns: [{ header: t('rankings.awards') }, { header: '#', type: 'int', width: 5 }, { header: t('common.name') }, { header: t('xlsx.value') }], rows: awardRows });
+  const sheets = [[t('xlsx.rankings'), ranking], [t('rankings.awards'), awards]];
   if (stats.weeks_at_top?.length) {
-    const weekRows = [['#', t('common.name'), t('rankings.weeksCol'), t('rankings.weeksStreak', { n: '' }).trim()]];
-    stats.weeks_at_top.forEach((w, i) => weekRows.push([i + 1, w.full_name, w.weeks, w.streak]));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(weekRows), 'Weeks at No. 1');
+    sheets.push([t('rankings.weeksCol'), sheet({ title: `${clubName} — ${t('rankings.weeksCol')}`, subtitle: label, columns: [{ header: '#', type: 'int', width: 5 }, { header: t('common.name') }, { header: t('rankings.weeksCol'), type: 'int' }, { header: t('rankings.weeksStreak', { n: '' }).trim(), type: 'int' }], rows: stats.weeks_at_top.map((w, i) => [i + 1, w.full_name, w.weeks, w.streak]) })]);
   }
-
-  const safe = `${clubName}-${label}`.replace(/[^\p{L}\p{N}-]+/gu, '_');
-  XLSX.writeFile(wb, `rankings-${safe}.xlsx`);
+  book(sheets, fileName(clubName, t('xlsx.rankings'), label));
 }
 
-// Every member of the club with their details (Members page → Export Excel).
-// `place` says where each one sits: official, guest, to review, waiting list.
+// Every member with their details (Members page → Export Excel).
 export function exportMembers(club, members, t, levelText) {
-  const head = ['#', t('common.name'), t('xlsx.place'), t('members.tier'), t('members.gender'), t('members.birthDate'), t('common.phone'), t('common.level'), t('memberX.district'), t('memberX.playDuration'), t('members.joined'), t('xlsx.active'), t('xlsx.account'), t('xlsx.notes')];
-  const rows = members.map((m, i) => [
-    i + 1,
-    m.full_name,
-    t(`xlsx.place_${m.place}`),
-    m.member_type === 'fixed' && m.tier ? t(`members.${m.tier}`) : '',
-    m.gender ? t(`members.${m.gender}`) : '',
-    m.birth_date ? m.birth_date.split('-').reverse().join('/') : m.birth_year ?? '',
-    m.phone || '',
-    levelText(m.dupr_level) ?? '',
-    m.district || '',
-    m.play_duration || '',
-    m.joined_on ? m.joined_on.slice(0, 7).split('-').reverse().join('/') : '',
-    m.is_active ? t('xlsx.yes') : t('xlsx.no'),
-    m.account_email || '',
-    [m.notes, m.review_reason ? `${t('xlsx.place_review')}: ${m.review_reason}` : null].filter(Boolean).join(' · '),
-  ]);
-  const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-  ws['!cols'] = [4, 26, 14, 10, 8, 12, 14, 8, 16, 12, 10, 8, 26, 30].map((wch) => ({ wch }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, t('xlsx.sheet'));
-  XLSX.writeFile(wb, `${(club.name || 'club').replace(/\s+/g, '-').toLowerCase()}-thanh-vien.xlsx`);
+  const rows = members.map((m, i) => memberRow(m, i, t, levelText));
+  book([[t('xlsx.sheet'), sheet({ title: `${club.name} — ${t('xlsx.sheet')}`, subtitle: t('xlsx.membersCount', { n: members.length }), columns: memberColumns(t), rows })]], fileName(club.name, t('xlsx.sheet')));
 }

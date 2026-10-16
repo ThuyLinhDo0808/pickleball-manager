@@ -118,7 +118,7 @@ router.get('/', async (req, res) => {
         if (p.dupr_level != null) r.level = p.dupr_level; // the player's own level counts everywhere
       }
     }
-    let out = [...rows.values()]
+    const out0 = [...rows.values()]
       .map(({ clubs, user_id, member_id, ...r }) => ({
         ...r,
         level: r.level == null ? null : Number(r.level),
@@ -127,15 +127,10 @@ router.get('/', async (req, res) => {
         clubs: [...clubs].sort(),
         point_diff: r.points_scored - r.points_lost,
         win_rate: r.matches_played ? Math.round((1000 * r.wins) / r.matches_played) / 10 : 0,
-      }))
-      .sort((a, b) => b.wins - a.wins || b.win_rate - a.win_rate || b.point_diff - a.point_diff || a.full_name.localeCompare(b.full_name, 'vi'))
-      .slice(0, xeve ? Infinity : 300);
-    if (xeve) {
-      // Ranked like a community: win rate, at least `min_matches` to get a place. Keep my row.
-      out = rankByWinRate(out, minMatches);
-      out = out.filter((r, i) => i < 300 || r.me);
-    }
-    res.json({ period, date, range: bounds, sport, scope: xeve ? 'xeve' : 'all', min_matches: xeve ? minMatches : undefined, match_count: count, rankings: out });
+      }));
+    // Like every other ranking: win rate, at least `min_matches` to get a place. Keep my row.
+    const out = rankByWinRate(out0, minMatches).filter((r, i) => i < 300 || r.me);
+    res.json({ period, date, range: bounds, sport, scope: xeve ? 'xeve' : 'all', min_matches: minMatches, match_count: count, rankings: out });
   } catch (err) {
     dbError(res, err);
   }

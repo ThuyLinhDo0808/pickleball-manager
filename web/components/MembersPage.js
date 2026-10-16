@@ -1,16 +1,14 @@
 'use client';
 import Link from 'next/link';
-import LevelInput from '@/components/LevelInput';
 import { levelText } from '@/lib/levels';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import Modal from '@/components/Modal';
 import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
 import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
 import VipBadge from '@/components/VipBadge';
-import { MemberExtraFields, playDurationText } from '@/components/MemberExtras';
+import { playDurationText } from '@/components/MemberExtras';
 import { Avatar } from '@/components/PlayerChip';
 import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
@@ -21,18 +19,14 @@ import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import { todayYmd } from '@/lib/dates';
 import { dmy, isBirthdayMonth, missingInfo, my, tenureLabel } from '@/lib/memberDates';
-import BirthInput, { birthPayload } from '@/components/BirthInput';
 import { ReviewModal, ReviewTab, InviteModal } from '@/components/MemberModeration';
 import { exportMembers } from '@/lib/exportExcel';
-import ImportMembers from '@/components/ImportMembers';
 import DuprMembers from '@/components/DuprMembers';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import CommunitySuggestions from '@/components/CommunitySuggestions';
 
-const emptyForm = () => ({ full_name: '', gender: '', birth: { year: '', month: '', day: '' }, joined_month: todayYmd().slice(0, 7), dupr_level: '', member_type: 'fixed', tier: '', phone: '', district: '', play_duration: '' });
 
 // Each tab of the members section has its own address (menu Thành viên ▸ …).
 export const MEMBER_ROUTES = { fixed: '/club/members', guest: '/club/members/guests', review: '/club/members/review', waiting: '/club/members/requests', dupr: '/club/members/dupr' };
@@ -57,11 +51,7 @@ export default function MembersPage({ tab = 'fixed' }) {
     const x = room?.kind === 'community' ? room.total : r;
     return x && x.limit != null ? t(room?.kind === 'community' ? 'plan.placesTotal' : 'plan.places', { used: x.used, limit: x.limit }) : null;
   };
-  const [showAdd, setShowAdd] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm());
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [selected, setSelected] = useState([]);
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -102,41 +92,6 @@ export default function MembersPage({ tab = 'fixed' }) {
   const isGuestTab = tab === 'guest';
   const detailMember = all.find((m) => m.id === detailId) || null;
 
-  function closeAdd() {
-    setShowAdd(false);
-    setForm(emptyForm());
-    setError('');
-  }
-
-  async function addMember(e) {
-    e.preventDefault();
-    if (!club) return;
-    // Without a phone their account can't link up by itself later: ask once, still allow it.
-    if (!String(form.phone || '').trim() && !window.confirm(t('members.noPhoneAsk'))) return;
-    setBusy(true);
-    setError('');
-    try {
-      await api.post(`/api/clubs/${club.id}/members`, {
-        ...form,
-        dupr_level: form.dupr_level ? Number(form.dupr_level) : null,
-        birth: undefined,
-        ...birthPayload(form.birth),
-        joined_on: form.joined_month ? `${form.joined_month}-01` : null,
-        joined_month: undefined,
-        gender: form.gender || null,
-        tier: form.tier || null,
-      });
-      const toReview = form.member_type === 'review';
-      closeAdd();
-      reload();
-      if (toReview) pickTab('review');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function toggle(id) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
@@ -170,6 +125,10 @@ export default function MembersPage({ tab = 'fixed' }) {
   // Official members still missing a birthday / phone / gender (added quickly, to fill in later).
   const incomplete = fixedRows.filter((m) => missingInfo(m).length > 0);
   const missText = (m) => missingInfo(m).map((k) => t(`members.miss_${k}`)).join(', ');
+  // A missing detail is flagged in its own column (not next to the name).
+  const miss = (m, k) => (missingInfo(m).includes(k) ? <span className="text-[11px] rounded border border-amber-400/50 bg-amber-400/5 text-amber-300 px-1.5 py-0.5 whitespace-nowrap">⚠ {t('members.missCell')}</span> : '—');
+  // Operations staff don't get phone numbers (GET members leaves them out).
+  const showPhone = rows.some((m) => 'phone' in m);
   const bdays = all.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
   const activeFixed = fixedRows.filter((m) => m.is_active);
   const vipCount = activeFixed.filter((m) => m.vip_stars > 0).length;
@@ -190,17 +149,14 @@ export default function MembersPage({ tab = 'fixed' }) {
         title={t('nav.members')}
         subtitle={club?.name}
         actions={
-          // Operations staff see the list; only the owner / co-admins add members.
+          // Members come in with their own account only (invite link / join request → DS chờ),
+          // so there is no manual add or Excel import: one person, one record.
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>⬇ {t('common.exportExcel')}</button>
             {canManage && (
               <>
                 {isCommunity && <Link href="/club/community-settings" className="btn-secondary text-sm">🎛 {t('cpanel.short')}</Link>}
-                <button className="btn-secondary text-sm" disabled={!club} onClick={() => setImportOpen(true)}>⬆ {t('imp.button')}</button>
-                <button className="btn-secondary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>
-                <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>
-                  ＋ {t('members.addMember')}
-                </button>
+                <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>
               </>
             )}
           </div>
@@ -222,8 +178,8 @@ export default function MembersPage({ tab = 'fixed' }) {
         tabs={[
           { key: 'fixed', label: t('requests.tabFixed'), icon: '🏠', count: fixedRows.length },
           { key: 'guest', label: t('requests.tabGuest'), icon: '🤝', count: guestRows.length },
-          { key: 'review', label: t('mod.tab'), icon: '⚠️', count: reviewRows.length },
           { key: 'waiting', label: t('nav.memRequests'), icon: '📝', alert: pending.length },
+          { key: 'review', label: t('mod.tab'), icon: '⛔', count: reviewRows.length },
           // DUPR (pickleball): members' DUPR IDs and ratings, import of the DUPR Club list.
           ...((club?.sport || 'pickleball') === 'pickleball' ? [{ key: 'dupr', label: t('nav.memDupr'), icon: '📈' }] : []),
         ]}
@@ -290,7 +246,7 @@ export default function MembersPage({ tab = 'fixed' }) {
             <div className="p-8 text-center">
               <div className="text-4xl mb-2" aria-hidden="true">{isGuestTab ? '🤝' : '👥'}</div>
               <p className="text-gray-400 text-sm mb-3">{t(isGuestTab ? 'guests.empty' : 'members.empty')}</p>
-              {!isGuestTab && <button className="btn-primary text-sm" disabled={!club} onClick={() => setShowAdd(true)}>＋ {t('members.addMember')}</button>}
+              {!isGuestTab && canManage && <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>}
             </div>
           )}
           {!loading && rows.length > 0 && shownRows.length === 0 && <p className="text-gray-400 text-sm p-4">{t('memx.noMatch')}</p>}
@@ -309,11 +265,11 @@ export default function MembersPage({ tab = 'fixed' }) {
                           <span className="text-white font-semibold truncate">{m.full_name}</span>
                           {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
-                          {missingInfo(m).length > 0 && <span className="text-[10px] leading-4 rounded border border-amber-400/50 text-amber-300 px-1" title={missText(m)}>{t('members.incompleteShort')}</span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
                           {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), levelText(m.dupr_level, sport, t)].filter(Boolean).join(' · ') || '—'}
                         </span>
+                        {missingInfo(m).length > 0 && <span className="block text-amber-300 text-xs mt-0.5">⚠ {t('members.missingList', { list: missText(m) })}</span>}
                         <span className="block text-gray-500 text-xs mt-0.5">
                           {isGuestTab
                             ? `${t('guests.played')}: ${m.guest_stats?.played ?? 0}`
@@ -345,6 +301,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <th>{t('members.type')}</th>
                       <th>{t('members.gender')}</th>
                       <th>{t('members.birthDate')}</th>
+                      {showPhone && <th>{t('common.phone')}</th>}
                       <th>{t('members.joined')}</th>
                       <th>{t('memberX.district')}</th>
                       <th>{t('memberX.playDuration')}</th>
@@ -372,10 +329,10 @@ export default function MembersPage({ tab = 'fixed' }) {
                         <td>
                           <div className="flex items-center gap-2.5">
                             <Avatar name={m.full_name} size={30} />
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-1">
                               <button
                                 type="button"
-                                className="text-white font-medium hover:text-lime-400 text-left"
+                                className="text-white font-medium hover:text-lime-400 text-left whitespace-nowrap"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openMember(m, false);
@@ -383,14 +340,13 @@ export default function MembersPage({ tab = 'fixed' }) {
                               >
                                 {m.full_name}
                               </button>
-                              {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} className="ml-1.5" />}
+                              {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
                               {isCommunity && !isGuestTab && m.guest_perk && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
-                              {missingInfo(m).length > 0 && <span className="ml-1.5 text-[10px] leading-4 rounded border border-amber-400/50 text-amber-300 px-1" title={missText(m)}>{t('members.incompleteShort')}</span>}
                               {m.account_email && !m.account_verified && (
-                                <span className="ml-1.5 text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 align-middle">{t('verify.pending')}</span>
+                                <span className="text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 whitespace-nowrap">{t('verify.pending')}</span>
                               )}
                               {m.flags?.length > 0 && (
-                                <span className="flex flex-wrap gap-1 mt-0.5">
+                                <span className="basis-full flex flex-wrap gap-1">
                                   {m.flags.map((f) => (
                                     <span key={f} title={t(`flags.${f}`)} className={`text-[10px] leading-4 rounded border px-1 ${FLAG_STYLE[f]}`}>
                                       {t(`flags.${f}`)}
@@ -406,15 +362,16 @@ export default function MembersPage({ tab = 'fixed' }) {
                             {t(m.member_type === 'fixed' ? 'xlsx.place_fixed' : 'xlsx.place_guest')}
                           </span>
                         </td>
-                        <td className="text-gray-300">{m.gender ? t(`members.${m.gender}`) : '—'}</td>
+                        <td className="text-gray-300 whitespace-nowrap">{m.gender ? t(`members.${m.gender}`) : miss(m, 'gender')}</td>
                         <td className="text-gray-300 whitespace-nowrap">
                           {m.birth_date ? dmy(m.birth_date) : m.birth_year ? (
                             <>
                               {m.birth_year} <span className="text-yellow-300/80 text-xs" title={t('members.noDayMonth')}>· {t('members.noDayMonthShort')}</span>
                             </>
-                          ) : '—'}
+                          ) : miss(m, 'birthday')}
                           {isBirthdayMonth(m.birth_date) && <span className="ml-1" title={t('members.birthdayMonth')}>🎂</span>}
                         </td>
+                        {showPhone && <td className="text-gray-300 whitespace-nowrap tabular-nums">{m.phone || miss(m, 'phone')}</td>}
                         <td className="text-gray-300 whitespace-nowrap">
                           {m.joined_on ? (
                             <>
@@ -497,65 +454,6 @@ export default function MembersPage({ tab = 'fixed' }) {
       />
       <ReviewModal club={club} member={reviewing} open={!!reviewing} onClose={() => setReviewing(null)} onDone={() => { setReviewing(null); reload(); pickTab('review'); }} />
       <InviteModal club={club} open={inviteOpen} onClose={() => setInviteOpen(false)} />
-      {club && <ImportMembers open={importOpen} club={club} members={members} sport={sport} onClose={() => setImportOpen(false)} onDone={() => { reload(); reloadRequests(); }} />}
-
-      <Modal open={showAdd} title={t('members.newMember')} onClose={closeAdd}>
-        <form onSubmit={addMember} className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <label className="text-xs text-gray-400">{t('common.name')}</label>
-            <input className="input" required autoFocus value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400">{t('members.gender')}</label>
-            <select className="input" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-              <option value="">—</option>
-              <option value="male">{t('members.male')}</option>
-              <option value="female">{t('members.female')}</option>
-            </select>
-          </div>
-          <BirthInput id="add-birth-year" value={form.birth} onChange={(birth) => setForm({ ...form, birth })} />
-          <div>
-            <label className="text-xs text-gray-400">{t('members.joinedMonth')}</label>
-            <input className="input" type="month" value={form.joined_month} onChange={(e) => setForm({ ...form, joined_month: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400">{t('common.level')}</label>
-            <LevelInput value={form.dupr_level} onChange={(v) => setForm({ ...form, dupr_level: v })} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400">{t('common.phone')}</label>
-            <input className="input" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <p className="mt-1 text-[11px] text-gray-500">{t('members.phoneLinkHint')}</p>
-          </div>
-          <div>
-            <label className="text-xs text-gray-400">{t('members.type')}</label>
-            <select
-              className="input"
-              value={form.member_type}
-              onChange={(e) => setForm({ ...form, member_type: e.target.value, tier: e.target.value === 'fixed' ? form.tier : '' })}
-            >
-              <option value="fixed">{t('members.fixed')}</option>
-              <option value="guest">{t('members.guest')}</option>
-              <option value="review">--- {t('members.undecided')}</option>
-            </select>
-            {form.member_type === 'review' && <p className="text-yellow-300 text-[11px] mt-1">{t('members.undecidedHint')}</p>}
-          </div>
-          <div>
-            <label className="text-xs text-gray-400">{t('members.tier')}</label>
-            <select className="input" disabled={form.member_type !== 'fixed'} value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })}>
-              <option value="">—</option>
-              <option value="vip">{t('members.vip')}</option>
-              <option value="standard">{t('members.standard')}</option>
-            </select>
-          </div>
-          <MemberExtraFields idPrefix="add" value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
-          {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
-          <div className="col-span-2 flex gap-2 pt-2">
-            <button type="button" className="btn-secondary flex-1" onClick={closeAdd}>{t('common.cancel')}</button>
-            <button className="btn-primary flex-1" disabled={busy}>{t('members.addMember')}</button>
-          </div>
-        </form>
-      </Modal>
     </AppShell>
   );
 }

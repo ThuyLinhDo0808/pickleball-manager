@@ -44,7 +44,7 @@ const ICONS = {
 
 // Each workspace has its own menu, grouped by segment. A group ({ key, icon, children })
 // is a collapsible sub-folder in the sidebar and a titled block in the phone's "More" sheet.
-// Thành viên ▸ one page per tab (cố định, giao lưu, xem xét thêm, xin gia nhập, DUPR).
+// Thành viên ▸ one page per tab (cố định, giao lưu, DS chờ, DS đen, DUPR).
 const membersGroup = (key) => ({
   key,
   icon: 'members',
@@ -52,8 +52,8 @@ const membersGroup = (key) => ({
   children: [
     { href: '/club/members', key: 'nav.memFixed', icon: 'members', exact: true },
     { href: '/club/members/guests', key: 'nav.memGuests', icon: 'members' },
-    { href: '/club/members/review', key: 'nav.memReview', icon: 'members' },
     { href: '/club/members/requests', key: 'nav.memRequests', icon: 'members', badge: 'memberRequests' },
+    { href: '/club/members/review', key: 'nav.memReview', icon: 'members' },
     { href: '/club/members/dupr', key: 'nav.memDupr', icon: 'rankings', sport: 'pickleball' },
   ],
 });
@@ -75,6 +75,16 @@ const NAV_BY_WORKSPACE = {
       ],
     },
     {
+      key: 'nav.groupFinance',
+      icon: 'fund',
+      children: [
+        { href: '/finance', key: 'nav.finOverview', icon: 'fund', exact: true },
+        { href: '/finance/ledger', key: 'nav.ledger', icon: 'plans' },
+        { href: '/finance/plans', key: 'nav.plans', icon: 'plans' },
+        { href: '/finance/inventory', key: 'nav.inventory', icon: 'box' },
+      ],
+    },
+    {
       key: 'nav.groupStats',
       icon: 'chart',
       children: [
@@ -83,16 +93,6 @@ const NAV_BY_WORKSPACE = {
         { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
         { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
         { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
-      ],
-    },
-    {
-      key: 'nav.groupFinance',
-      icon: 'fund',
-      children: [
-        { href: '/finance', key: 'nav.finOverview', icon: 'fund', exact: true },
-        { href: '/finance/ledger', key: 'nav.ledger', icon: 'plans' },
-        { href: '/finance/plans', key: 'nav.plans', icon: 'plans' },
-        { href: '/finance/inventory', key: 'nav.inventory', icon: 'box' },
       ],
     },
     {
@@ -148,6 +148,7 @@ NAV_BY_WORKSPACE.community = [
       { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
     ],
   },
+  NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance'),
   {
     key: 'nav.groupStats',
     icon: 'chart',
@@ -161,7 +162,6 @@ NAV_BY_WORKSPACE.community = [
       { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
     ],
   },
-  NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance'),
   {
     key: 'nav.groupSettings',
     icon: 'clubs',
@@ -481,6 +481,11 @@ export default function AppShell({ children, back }) {
 
   const linkClass = (active, extra = '') =>
     `flex items-center gap-3 rounded-lg text-sm ${extra} ${active ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:bg-navy-800'}`;
+  // Sidebar: a section (or a single page) is a big row with an icon tile; its pages are
+  // smaller, quieter rows on a guide line, the current one marked by a lime bar.
+  const tileClass = (active) => `shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${active ? 'bg-lime-400 text-navy-950' : 'bg-navy-800 text-gray-300 group-hover:text-white'}`;
+  const headClass = (active) => `group w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-[15px] font-semibold tracking-tight transition-colors ${active ? 'text-white bg-navy-800/80' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
+  const subClass = (active) => `relative flex items-center gap-2 rounded-md pl-3 pr-2 py-1.5 text-[13px] transition-colors ${active ? 'text-lime-300 bg-lime-400/10 font-medium before:absolute before:-left-[13px] before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-lime-400' : 'text-gray-400 hover:text-gray-100 hover:bg-navy-800/60'}`;
 
   return (
     <div className="min-h-screen md:flex">
@@ -531,9 +536,9 @@ export default function AppShell({ children, back }) {
           }
           if (!item.children) {
             return (
-              <Link key={item.key} href={item.href} className={linkClass(itemActive(item), 'px-3 py-2')}>
-                <Icon name={item.icon} className="w-4 h-4" />
-                <span className="flex-1">{t(item.key)}</span>
+              <Link key={item.key} href={item.href} className={headClass(itemActive(item))} aria-current={itemActive(item) ? 'page' : undefined}>
+                <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
+                <span className="flex-1 truncate">{t(item.key)}</span>
                 <Badge n={badges[item.badge]} />
               </Link>
             );
@@ -545,19 +550,19 @@ export default function AppShell({ children, back }) {
                 type="button"
                 aria-expanded={open}
                 onClick={() => toggleGroup(item.key, open)}
-                className={`w-full flex items-center gap-3 rounded-lg text-sm px-3 py-2 hover:bg-navy-800 ${itemActive(item) ? 'text-lime-400' : 'text-gray-300'}`}
+                className={headClass(itemActive(item))}
               >
-                <Icon name={item.icon} className="w-4 h-4" />
-                <span className="flex-1 text-left">{t(item.key)}</span>
+                <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
+                <span className="flex-1 text-left truncate">{t(item.key)}</span>
                 {!open && <Badge n={badges[item.badge]} />}
-                <svg viewBox="0 0 24 24" className={`w-4 h-4 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <svg viewBox="0 0 24 24" className={`w-4 h-4 text-gray-500 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M9 6l6 6-6 6" />
                 </svg>
               </button>
               {open && (
-                <div className="ml-5 pl-3 border-l border-navy-700 flex flex-col gap-0.5 my-0.5">
+                <div className="ml-[22px] pl-3 border-l border-navy-700 flex flex-col gap-0.5 mt-1 mb-2">
                   {item.children.map((c) => (
-                    <Link key={c.href} href={c.href} className={linkClass(navActive(c), 'px-3 py-1.5')}>
+                    <Link key={c.href} href={c.href} className={subClass(navActive(c))} aria-current={navActive(c) ? 'page' : undefined}>
                       <span className="flex-1">{t(c.key)}</span>
                       <Badge n={badges[c.badge]} />
                       <Gem href={c.href} />
@@ -672,14 +677,17 @@ export default function AppShell({ children, back }) {
             <div className="max-h-[60vh] overflow-y-auto flex flex-col gap-1">
               {NAV.map((item) =>
                 item.children ? (
-                  <div key={item.key} className="mt-2">
-                    <div className="text-gray-500 text-xs font-semibold uppercase tracking-wide px-3 mb-1">{t(item.key)}</div>
+                  <div key={item.key} className="mt-3">
+                    <div className="flex items-center gap-2 px-1 mb-1.5">
+                      <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
+                      <span className="text-white text-[15px] font-semibold">{t(item.key)}</span>
+                    </div>
                     <div className="grid grid-cols-2 gap-1">
                       {item.children.map((c) => (
                         <Link
                           key={c.href}
                           href={c.href}
-                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${navActive(c) ? 'bg-navy-700 text-lime-400' : 'text-gray-200 bg-navy-800/60'}`}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-[13px] ${navActive(c) ? 'bg-lime-400/15 text-lime-300 ring-1 ring-lime-400/40' : 'text-gray-300 bg-navy-800/60'}`}
                         >
                           <Icon name={c.icon} className="w-4 h-4 shrink-0" />
                           <span className="leading-tight flex-1">{t(c.key)}</span>

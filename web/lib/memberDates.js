@@ -42,8 +42,8 @@ export const isBirthdayMonth = (d, today = todayYmd()) => !!d && d.slice(5, 7) =
 export function missingInfo(m) {
   if (!m || m.member_type !== 'fixed' || m.is_active === false) return [];
   return [
-    !m.birth_date && 'birthday',
-    !m.phone && 'phone',
+    'birth_date' in m && !m.birth_date && 'birthday', // operations staff don't get these fields
+    'phone' in m && !m.phone && 'phone',
     !m.gender && 'gender',
   ].filter(Boolean);
 }

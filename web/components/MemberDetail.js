@@ -173,6 +173,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false, community = false 
 
   return (
     <form onSubmit={save} className="grid grid-cols-2 gap-3 rounded-lg border border-navy-600 p-3">
+      {member.user_id && member.account_verified && <p className="col-span-2 text-[11px] text-sky-200">ℹ️ {t('members.syncsProfile')}</p>}
       <div className="col-span-2">
         <label className="text-xs text-gray-400">{t('common.name')}</label>
         <input className="input" required value={f.full_name} onChange={(e) => set({ full_name: e.target.value })} />

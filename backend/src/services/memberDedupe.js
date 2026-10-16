@@ -11,7 +11,9 @@ const memberLink = require('./memberLink');
 
 const digits = (p) => String(p || '').replace(/\D/g, '').slice(-9) || null;
 const yearOf = (m) => (m.birth_date ? Number(String(m.birth_date).slice(0, 4)) : m.birth_year || null);
-const pending = (m) => !!m.join_requested || (!!m.user_id && !m.account_verified) || (m.review_until && new Date(m.review_until) > new Date());
+// Left alone: waiting requests, members under review, and members the Host marked inactive
+// (merging a new row into an inactive one would hide the person from the list).
+const pending = (m) => m.is_active === false || !!m.join_requested || (!!m.user_id && !m.account_verified) || (m.review_until && new Date(m.review_until) > new Date());
 
 // Anything that tells the two rows apart?
 function differ(a, b) {

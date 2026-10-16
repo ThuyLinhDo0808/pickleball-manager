@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell';
 import ClubAvatar from '@/components/ClubAvatar';
 import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
+import TrendBars from '@/components/TrendBars';
 import AdoptStandalone from '@/components/AdoptStandalone';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
@@ -99,9 +100,9 @@ export default function CommunityOverview({ children }) {
           <Section icon="👥" title={t('social.secMembers')} hint={t('social.secMembersHint', { d: rules.active_days })} href="/club/members">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.typeSplit', { v: m.vip ?? 0, p: m.priority ?? 0, f: m.fixed, g: m.guest })} />
+              <StatTile icon="🆕" label={t('social.newMembers')} value={m.new_30d ?? 0} tone="text-sky-300" sub={t('social.newMembersSub')} />
               <StatTile icon="🟢" label={t('social.active')} value={m.active} tone="text-lime-300" sub={t('social.activeSub', { d: rules.active_days })} />
               <StatTile icon="💤" label={t('social.inactive')} value={m.inactive} tone="text-gray-300" sub={t('social.inactiveSub', { d: rules.active_days })} />
-              <StatTile icon="📶" label={t('social.levelCount')} value={(m.by_level || []).length} tone="text-sky-300" sub={rules.level_mode && rules.level_mode !== 'none' ? t(`cpanel.mode_${rules.level_mode}`) : t('social.levelNone')} />
             </div>
             <Split parts={[{ key: 'a', value: m.active, color: 'bg-lime-400' }, { key: 'i', value: m.inactive, color: 'bg-navy-600' }]} />
             <h3 className="text-gray-300 text-sm font-semibold mt-4 mb-2">{t('social.byLevel')}</h3>
@@ -156,11 +157,22 @@ export default function CommunityOverview({ children }) {
           <Section icon="🔁" title={t('social.secRegular')} hint={t('social.secRegularHint', { n: rules.regular_min, d: 30 })} href="/club/attendance">
             <div className="grid grid-cols-3 gap-3 mb-3">
               <StatTile icon="⭐" label={t('social.regular')} value={r.regular} tone="text-lime-300" sub={t('social.regularSub', { n: rules.regular_min })} />
-              <StatTile icon="🙂" label={t('social.irregular')} value={r.irregular} tone="text-sky-300" sub={t('social.irregularSub', { n: rules.regular_min })} />
-              <StatTile icon="💤" label={t('social.inactive')} value={r.inactive} tone="text-gray-300" />
+              <StatTile icon="🙂" label={t('social.notRegular')} value={r.not_regular ?? m.total - r.regular} tone="text-sky-300" sub={t('social.notRegularSub', { n: rules.regular_min })} />
+              <StatTile icon="📈" label={t('social.activeRate')} value={`${r.active_rate ?? (m.total ? Math.round((1000 * r.regular) / m.total) / 10 : 0)}%`} tone={(r.active_rate ?? 0) >= 50 ? 'text-lime-300' : (r.active_rate ?? 0) >= 25 ? 'text-amber-200' : 'text-pink-300'} sub={t('social.activeRateSub')} />
             </div>
-            <Split parts={[{ key: 'r', value: r.regular, color: 'bg-lime-400' }, { key: 'i', value: r.irregular, color: 'bg-sky-400' }, { key: 'n', value: r.inactive, color: 'bg-navy-600' }]} />
+            <Split parts={[{ key: 'r', value: r.regular, color: 'bg-lime-400' }, { key: 'n', value: r.not_regular ?? m.total - r.regular, color: 'bg-navy-600' }]} />
           </Section>
+
+          {data.monthly?.length > 0 && (
+            <Section icon="📊" title={t('social.secTrend')} hint={t('social.secTrendHint')} href="/finance">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <TrendBars title={t('social.trSessions')} series={data.monthly.map((x) => ({ month: x.month, value: x.sessions }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
+                <TrendBars title={t('social.trPlayers')} series={data.monthly.map((x) => ({ month: x.month, value: x.turns, extra: t('social.trDistinct', { n: x.players }) }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
+                <TrendBars title={t('social.trProfit')} signed format={(v) => formatVnd(v)} series={data.monthly.map((x) => ({ month: x.month, value: x.profit, extra: `${t('analytics.income')} ${formatVnd(x.income)} · ${t('analytics.expense')} ${formatVnd(x.expense)}` }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
+              </div>
+              <p className="text-gray-500 text-xs mt-2">{t('social.trNote', { n: data.monthly[data.monthly.length - 1].players })}</p>
+            </Section>
+          )}
         </>
       )}
 
