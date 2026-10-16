@@ -896,22 +896,74 @@ const cleanAnnouncement = (b, partial = false) => {
   }
   if ('show_public' in b) out.show_public = b.show_public === true;
   if ('active' in b) out.active = b.active !== false;
+  if ('kind' in b) {
+    if (!['notice', 'maintenance'].includes(b.kind)) throw fail(400, 'kind must be notice or maintenance.');
+    out.kind = b.kind;
+  }
+  if ('audience' in b) {
+    if (!['all', 'hosts', 'players'].includes(b.audience)) throw fail(400, 'audience must be all, hosts or players.');
+    out.audience = b.audience;
+  }
+  if ('club_id' in b) {
+    if (b.club_id && !isUuid(b.club_id)) throw fail(400, 'club_id is not valid.');
+    out.club_id = b.club_id || null;
+  }
+  if ('title' in b) {
+    const t = String(b.title || '').trim();
+    if (t.length > 120) throw fail(400, 'Title is at most 120 characters.');
+    out.title = t || null;
+  }
+  if ('send_email' in b) out.send_email = b.send_email === true;
   if (out.ends_at && out.starts_at && out.ends_at <= out.starts_at) throw fail(400, 'The end must be after the start.');
   return out;
 };
+// Maintenance concerns everyone and needs the time the app comes back.
+function checkAnnouncement(row) {
+  if (row.kind === 'maintenance') {
+    if (!row.ends_at) throw fail(400, 'Maintenance needs an end time (when the app is back).', 'maintenance_end_required');
+    if (Date.parse(row.ends_at) <= Date.parse(row.starts_at || new Date().toISOString())) throw fail(400, 'The end must be after the start.');
+    row.audience = 'all';
+    row.club_id = null;
+    row.level = 'warning';
+    row.show_public = true;
+  }
+  return row;
+}
+const announceMail = require('../services/announceMail');
+// Maintenance locks everyone out: the Owner's call only, never support staff.
+const ownerOnlyMaintenance = (req, ...kinds) => {
+  if (req.console?.support && kinds.includes('maintenance')) throw fail(403, 'Only the Owner can schedule maintenance.', 'owner_only');
+};
+// Email it in the background; the list shows the count when done.
+const mailLater = (row) => {
+  if (!row.send_email || row.emailed_at || !row.active) return;
+  announceMail.send(row).catch((err) => console.error('announcement email failed', err.message));
+};
 
 router.get('/announcements', wrap(async (req, res) => {
-  const { data, error } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(100);
+  let { data, error } = await supabase.from('announcements').select('*, clubs(name)').order('created_at', { ascending: false }).limit(100);
+  if (error) ({ data, error } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(100)); // before v2
   if (error) throw error;
-  res.json(data);
+  res.json(data.map(({ clubs, ...a }) => ({ kind: 'notice', audience: 'all', ...a, club_name: clubs?.name || null })));
 }));
 
 router.post('/announcements', wrap(async (req, res) => {
-  const row = cleanAnnouncement(req.body || {});
+  const row = checkAnnouncement(cleanAnnouncement(req.body || {}));
+  ownerOnlyMaintenance(req, row.kind);
+  if (row.club_id) {
+    const { data: club } = await supabase.from('clubs').select('id').eq('id', row.club_id).maybeSingle();
+    if (!club) throw fail(400, 'Club not found.');
+  }
   const { data, error } = await supabase.from('announcements').insert({ ...row, created_by: req.hostEmail }).select().single();
-  if (error) throw error;
+  if (error) {
+    if (/kind|audience|club_id|title|send_email|schema cache/i.test(error.message || '') && ['kind', 'audience', 'club_id', 'title', 'send_email'].some((k) => k in row)) {
+      throw fail(409, 'Run migration 20261126090000_announcements_v2.sql first.', 'migration_required');
+    }
+    throw error;
+  }
   announcements.forget();
-  await owner.audit(req, { action: 'announcement.create', newValue: { message: data.message, level: data.level, starts_at: data.starts_at, ends_at: data.ends_at, show_public: data.show_public } });
+  await owner.audit(req, { action: 'announcement.create', newValue: { kind: data.kind, title: data.title, message: data.message, level: data.level, audience: data.audience, club_id: data.club_id, starts_at: data.starts_at, ends_at: data.ends_at, show_public: data.show_public, send_email: data.send_email } });
+  mailLater(data);
   res.status(201).json(data);
 }));
 
@@ -920,12 +972,34 @@ router.patch('/announcements/:id', wrap(async (req, res) => {
   const { data: before } = await supabase.from('announcements').select('*').eq('id', req.params.id).maybeSingle();
   if (!before) throw fail(404, 'Announcement not found.');
   const patch = cleanAnnouncement(req.body || {}, true);
+  const merged = checkAnnouncement({ ...before, ...patch });
+  ownerOnlyMaintenance(req, before.kind, merged.kind);
+  if (merged.kind === 'maintenance') Object.assign(patch, { audience: 'all', club_id: null, level: 'warning', show_public: true });
   const { data, error } = await supabase.from('announcements').update(patch).eq('id', before.id).select().single();
   if (error) throw error;
+  mailLater(data);
   const keys = Object.keys(patch);
   announcements.forget();
   await owner.audit(req, { action: 'announcement.update', oldValue: Object.fromEntries(keys.map((k) => [k, before[k]])), newValue: Object.fromEntries(keys.map((k) => [k, data[k]])), note: data.message.slice(0, 120) });
   res.json(data);
+}));
+
+router.delete('/announcements/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Announcement not found.');
+  const { data: before } = await supabase.from('announcements').select('*').eq('id', req.params.id).maybeSingle();
+  if (!before) throw fail(404, 'Announcement not found.');
+  ownerOnlyMaintenance(req, before.kind);
+  const { error } = await supabase.from('announcements').delete().eq('id', before.id);
+  if (error) throw error;
+  announcements.forget();
+  await owner.audit(req, { action: 'announcement.delete', oldValue: { kind: before.kind, title: before.title, message: before.message, starts_at: before.starts_at, ends_at: before.ends_at }, note: before.message.slice(0, 120) });
+  res.status(204).end();
+}));
+
+// How many people an announcement would reach by email (shown before sending).
+router.post('/announcements/recipients', wrap(async (req, res) => {
+  const row = checkAnnouncement(cleanAnnouncement({ message: 'x', ...(req.body || {}) }));
+  res.json({ count: (await announceMail.recipients(row)).length, email_ready: require('../services/notify').emailReady() });
 }));
 
 // ---- System health & settings -------------------------------------------------------

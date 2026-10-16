@@ -12,7 +12,6 @@ import { useLoad } from '@/lib/useLoad';
 import { useEnter } from '@/lib/useEnter';
 import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
-import AnnouncementBanner from '@/components/AnnouncementBanner';
 import PlayerNotices from '@/components/PlayerNotices';
 import LinkRequests from '@/components/LinkRequests';
 import HomeRankings from '@/components/HomeRankings';
@@ -94,7 +93,6 @@ export default function HomeHub() {
 
   return (
     <PlayerShell>
-      <AnnouncementBanner className="mb-4" />
       <PlayerNotices notices={data.notices || []} />
       <LinkRequests onChanged={reload} />
       {/* Greeting */}
