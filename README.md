@@ -101,7 +101,7 @@ Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **tra
 - **Không gian nhân viên** (chỉ hiện khi bạn là trọng tài / điều phối viên): thẻ mở *Sự kiện của tôi*.
   - Một CLB vừa quản lý vừa là thành viên chỉ hiện ở vai trò quản lý.
 - **Gói hội viên của tôi**: số buổi còn lại ở từng CLB bạn là thành viên.
-- **🏆 Bảng xếp hạng** (luôn hiện): hàng chip đầu thẻ có **🌐 Xé vé · toàn web** và từng CLB / cộng đồng bạn là thành viên (🏠 CLB, 🎟 cộng đồng).
+- **🏆 Bảng xếp hạng** — **không còn nằm ở Trang chủ**: là mục riêng **Xếp hạng** (`/rankings`) trên thanh điều hướng người chơi. Hàng chip đầu trang có **🌐 Xé vé · toàn web** và từng CLB / cộng đồng bạn là thành viên (🏠 CLB, 🎟 cộng đồng).
   - **Xé vé · toàn web**: mọi trận ở kèo xé vé trên toàn web — kèo Xé Vé, mọi kèo của các cộng đồng, và kèo CLB mở ngoài lịch chơi hàng tuần (buổi chính của CLB **không** tính). Mỗi người một dòng dù chơi ở nhiều nơi (dòng ghi các CLB / cộng đồng đã chơi); cần ít nhất 3 trận trong tháng để có hạng.
   - **Từng CLB / cộng đồng**: bảng riêng của nơi đó (CLB: chỉ buổi chính; cộng đồng: mọi kèo; số trận tối thiểu do Host đặt) — CLB nhỏ không bị CLB lớn che. Nút *Xem đầy đủ →* mở tab Bảng xếp hạng ở trang CLB (`/c/<id>`).
   - **Lọc theo trình độ**: *Tất cả / Dưới 3.0 / 3.0–3.5 / Trên 3.5* (cầu lông: *Cấp 1–2 / 3–4 / 5–6*); hạng được đánh lại trong nhóm. **Xếp theo**: *Tỉ lệ thắng* (mặc định) hoặc *Trình độ* (DUPR / trình Host chấm, cao xuống thấp; ai chưa có trình độ ở cuối). Trình độ lấy từ hồ sơ người chơi, chưa có thì lấy trình độ trong CLB.
@@ -109,7 +109,7 @@ Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **tra
 - **Lịch sắp tới của tôi**: mọi buổi bạn đã đăng ký (mọi CLB + Xé Vé), **nhóm theo ngày**: giờ, tên buổi, CLB, trạng thái (đã đăng ký / danh sách chờ / chờ thanh toán), số chỗ `x/y`, vé QR. Lọc theo từng CLB hoặc Xé Vé.
 - Nhắc hoàn thiện hồ sơ (*"Bạn chưa cập nhật thông tin cá nhân. Vui lòng bấm vào đây để cập nhật."* — bấm vào là mở Hồ sơ), khảo sát sau buổi.
 
-Thanh điều hướng cá nhân: **Trang chủ · Tìm CLB** (`/discover`) **· Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, thông báo qua email) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới.
+Thanh điều hướng cá nhân: **Trang chủ · Tìm CLB** (`/discover`) **· Xếp hạng** (`/rankings`) **· Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, thông báo qua email) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới.
 
 ### 3.2. Trang CLB cho thành viên (`/c/<clubId>`)
 Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được. Gồm: ảnh/tên CLB, nhãn *Thành viên* (+ *chờ xác thực* nếu CLB chưa duyệt), liên hệ; 4 ô số liệu (buổi còn lại, buổi đã đăng ký, buổi đã chơi, công nợ) và 4 tab:
@@ -156,7 +156,7 @@ Club và Xé Vé tách dữ liệu rõ ràng:
 Mở từ ô tìm kiếm ở Trang chủ hoặc mục **Tìm CLB** trên thanh điều hướng. Ai cũng xem được (không cần đăng nhập).
 - **Tìm theo:** tên CLB / sân / khu vực (ô chữ), **tỉnh / thành phố** (34 tỉnh thành mới; hiện chỉ có **Việt Nam**, không còn chọn *Mọi quốc gia*), **quận / huyện**, **môn** (Pickleball / Cầu lông). Kết quả 24 CLB mỗi lần, nút *Xem thêm*.
 - **Mỗi CLB** hiện ảnh nền, ảnh đại diện, khu vực, lịch sinh hoạt, mô tả ngắn, số thành viên và số buổi sắp tới (kèm ngày gần nhất).
-- **Trang CLB** (`/discover/<clubId>`): hồ sơ CLB (địa điểm, khu vực, lịch định kỳ, mô tả) và **Lịch sắp tới**: buổi CLB mở đăng ký qua link có nút **Đăng ký tham gia** (mở trang đăng ký kèo `/e/…` như thường lệ); buổi khác ghi *Chỉ thành viên* hoặc *Đã đóng đăng ký*.
+- **Trang CLB** (`/discover/<clubId>`): hồ sơ CLB (địa điểm, khu vực, lịch định kỳ, mô tả) và **Lịch sắp tới**, chia 2 chế độ: **7 ngày tới** (mặc định) và **Lịch tháng** (chọn tháng bằng ◀ ▶, xem trước tối đa khoảng 3 tháng): buổi CLB mở đăng ký qua link có nút **Đăng ký tham gia** (mở trang đăng ký kèo `/e/…` như thường lệ); buổi khác ghi *Chỉ thành viên* hoặc *Đã đóng đăng ký*.
 - **🙋 Xin gia nhập CLB**: cần đăng nhập, **email đã xác nhận** và hồ sơ có họ tên, SĐT, ngày sinh. Bấm gửi (không cần viết lời nhắn) → yêu cầu vào **Thành viên ▸ Danh sách chờ** của CLB với nguồn *Từ tìm kiếm CLB* (chưa chiếm chỗ của gói cho tới khi được duyệt). Người đang ở *Danh sách đen* hoặc bị CLB chặn không gửi được yêu cầu. Chủ CLB **Duyệt** (thành chính thức hoặc giao lưu) hoặc **Từ chối** (người chưa từng chơi ở CLB thì bản ghi tạo cho yêu cầu bị xoá). Trạng thái hiện ngay trên trang: *Đã gửi yêu cầu* / *Bạn là thành viên* / *CLB của bạn*.
 - Chỉ CLB **bật "Hiện trong tìm kiếm"** (mặc định bật) và chủ không bị đình chỉ mới hiện. Chủ CLB sửa hồ sơ hiển thị ở **CLB của tôi → 🪪 Hồ sơ CLB** (xem [4.1](#41-clb-của-tôi-clubs)).
 
