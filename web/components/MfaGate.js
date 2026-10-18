@@ -20,7 +20,7 @@ export default function MfaGate() {
   const pathname = usePathname() || '';
   // Player pages (home, profile where it is turned on, kèo / club pages) stay usable; the
   // manager prompt shows on the manager pages only.
-  const playerPage = ['/home', '/p', '/c/', '/e/', '/t/', '/s/', '/v/', '/l/', '/discover', '/claim', '/invite', '/join', '/verify-email', '/onboarding', '/privacy', '/terms', '/club-request', '/leaderboard', '/mfa-reset'].some((x) => pathname === x || pathname.startsWith(x.endsWith('/') ? x : `${x}/`));
+  const playerPage = ['/home', '/p', '/c/', '/e/', '/g/', '/t/', '/s/', '/v/', '/l/', '/discover', '/claim', '/invite', '/join', '/verify-email', '/onboarding', '/privacy', '/terms', '/club-request', '/leaderboard', '/mfa-reset'].some((x) => pathname === x || pathname.startsWith(x.endsWith('/') ? x : `${x}/`));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

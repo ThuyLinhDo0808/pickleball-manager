@@ -64,6 +64,9 @@ app.post(
     '/api/player/invite/:token/join',
     '/api/public/surveys/:token',
     '/api/public/surveys/:token/join',
+    '/api/public/quick/:eventId/open',
+    '/api/public/quick/:eventId/book',
+    '/api/public/quick/booking/:token/proof',
   ],
   limits.sensitive
 );
@@ -109,6 +112,7 @@ app.use('/api/public/auth', require('./routes/auth.routes')); // no login: sign 
 app.get('/api/public/announcements', require('./routes/announcements.routes').current); // no login: owner's banner
 app.get('/api/public/maintenance', require('./routes/announcements.routes').maintenance); // no login: is the app under maintenance?
 app.get('/api/announcements/mine', requireAuth, require('./routes/announcements.routes').mine); // owner's notices for my audience / clubs
+app.use('/api/public/quick', require('./routes/quick.routes')); // no login: quick booking by the Host's 30-second invite link
 app.use('/api/public', publicRoutes); // no login: club join pages
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));
@@ -117,7 +121,7 @@ app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request is too large.' });
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON.' });
   // Answers thrown on purpose (plan limits, plan ended…) keep their status and code.
-  if (err?.code && [400, 402, 403, 404, 409, 423].includes(err.status)) {
+  if (err?.code && [400, 402, 403, 404, 409, 410, 423].includes(err.status)) {
     return res.status(err.status).json({ error: err.message, code: err.code, ...(err.kind ? { kind: err.kind } : {}) });
   }
   console.error(`[${req.id}]`, err);

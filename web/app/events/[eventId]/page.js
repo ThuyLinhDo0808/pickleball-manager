@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import EventShareCard from '@/components/EventShareCard';
+import QuickInviteCard from '@/components/QuickInviteCard';
 import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
@@ -263,6 +264,7 @@ export default function EventDetailPage() {
         <>
           <EventControls event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
           {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={(e) => setEvent({ ...event, ...e })} />}
+          {event.kind !== 'meeting' && <QuickInviteCard event={event} />}
         </>
       )}
 
@@ -464,13 +466,15 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     {p.priority && <span className={`${BADGE} border-sky-400/60 text-sky-300`} title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>}
                     {p.late_cancel && <span className={`${BADGE} border-orange-400/60 text-orange-300`}>{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>}
                     {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>}
+                    {p.booking && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('quick.badgeHint', { name: p.booking.contact_name, phone: p.booking.contact_phone })}>⚡ {t('quick.badge')}</span>}
                     {kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && (p.refunded_at
                       ? <span className={`${BADGE} border-lime-400/60 text-lime-300`} title={p.refunded_by || ''}>✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}</span>
                       : <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('slot.refundDue')}</span>)}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2.5 text-xs text-gray-400 mt-0.5">
                     <span>🎯 {level || '—'}</span>
-                    {c.gender && <span>{c.gender === 'male' ? '♂' : '♀'} {t(`members.${c.gender}`)}</span>}
+                    {(c.gender || p.gender) && <span>{(c.gender || p.gender) === 'male' ? '♂' : '♀'} {t(`members.${c.gender || p.gender}`)}</span>}
+                    {p.booking && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
                     {sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
                   </span>
                   {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
