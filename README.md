@@ -123,9 +123,9 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 ### 3.3. Không gian quản lý
 | Không gian | Dành cho | Menu |
 |---|---|---|
-| **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · **Thành viên ▸** (Thành viên cố định, Thành viên giao lưu, Danh sách chờ, Danh sách đen, **Update điểm DUPR** (CLB pickleball)) · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch chơi hàng tuần, Tạo giải đấu, Tạo kèo, **Lịch trực** 💎Pro) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, **DUPR** (thống kê, CLB pickleball), **Đánh giá buổi chơi**, **Phân tích nâng cao** 💎Pro) · **Cài đặt ▸** (CLB của tôi, Phân quyền, **Nhật ký thao tác**, Tài khoản) |
+| **Quản lý CLB** | Chủ CLB / đồng quản trị | Tổng quan · **Thành viên ▸** (Thành viên cố định, Thành viên giao lưu, Danh sách chờ, Danh sách đen, **Update điểm DUPR** (CLB pickleball)) · **Tạo hoạt động ▸** (Lịch sự kiện, Tạo lịch cố định, Tạo giải đấu, Tạo kèo, **Lịch trực** 💎Pro) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, **DUPR** (thống kê, CLB pickleball), **Đánh giá buổi chơi**, **Phân tích nâng cao** 💎Pro) · **Cài đặt ▸** (CLB của tôi, Phân quyền, **Nhật ký thao tác**, Tài khoản) |
 | **Kèo Xé Vé** | Kèo lẻ, giải phong trào | Kèo Xé Vé · Tạo kèo · **Trận đấu** (`/xeve/matches`) · **Bảng xếp hạng chung** (`/leaderboard`) · **Tài chính ▸** (Tổng quan, Sổ thu chi, **Kho bóng** riêng của kèo Xé Vé) · **Cài đặt ▸** (Phân quyền, Tài khoản) |
-| **Social Manager — cộng đồng xé vé** (chọn một cộng đồng trong bộ chuyển ngữ cảnh) | Chủ / người quản lý cụm sân xé vé | Tổng quan (mỗi cụm sân một tab, xem [5.0](#50-social-manager-cộng-đồng-xé-vé)) · **Thành viên ▸** (như CLB) · **Tạo hoạt động ▸** (Kèo Xé Vé, Tạo kèo, Tạo lịch chơi hàng tuần, Tạo giải đấu, Lịch trực) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, Bảng xếp hạng chung, **Top tháng**, **DUPR** (thống kê, pickleball), Đánh giá buổi chơi, Phân tích) · **Cài đặt ▸** (Cộng đồng của tôi, Phân quyền, Nhật ký thao tác, Tài khoản) |
+| **Social Manager — cộng đồng xé vé** (chọn một cộng đồng trong bộ chuyển ngữ cảnh) | Chủ / người quản lý cụm sân xé vé | Tổng quan (mỗi cụm sân một tab, xem [5.0](#50-social-manager-cộng-đồng-xé-vé)) · **Thành viên ▸** (như CLB) · **Tạo hoạt động ▸** (Kèo Xé Vé, Tạo kèo, Tạo lịch cố định, Tạo giải đấu, Lịch trực) · **Tài chính ▸** (Tổng quan, Sổ thu chi, Gói hội viên, Kho bóng) · **Thống kê ▸** (Thống kê thành viên, Bảng xếp hạng, Bảng xếp hạng chung, **Top tháng**, **DUPR** (thống kê, pickleball), Đánh giá buổi chơi, Phân tích) · **Cài đặt ▸** (Cộng đồng của tôi, Phân quyền, Nhật ký thao tác, Tài khoản) |
 | **Sự kiện của tôi** | Điều phối viên / Trọng tài | Sự kiện được giao (+ giải được giao bấm điểm) |
 
 **Bộ chuyển ngữ cảnh** ở đầu menu (thay cho các nút *Quản lý / Người chơi* và *Club / Xé Vé* trước đây): hiện CLB (hoặc không gian) đang làm việc + vai trò (*Quản lý* / *Đồng quản trị* / *Tổ chức* / *Điều phối viên* / *Trọng tài* — đúng vai trò mạnh nhất bạn đang được cấp). Bấm vào để đổi sang CLB khác bạn quản lý, sang **Social Manager (Xé vé)** (chưa có gói thì mở phần đăng ký) / Sự kiện của tôi, **về Trang chủ** (nơi có cả CLB bạn là thành viên) hoặc **tạo CLB mới** (đủ giới hạn gói thì hiện bảng nâng cấp). Mở trang Xé Vé khi chưa có Social Manager sẽ thấy phần giới thiệu + nút đăng ký thay cho nội dung. Trên điện thoại, bộ chuyển nằm ở thanh trên cùng, cạnh nút 🏠 về trang chủ.
@@ -185,7 +185,7 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 - Các thẻ số liệu (hàng **Câu lạc bộ** và **Tài chính tháng này**) **không bấm được cả thẻ** nữa; mỗi thẻ có link **Chi tiết →** ở góc dưới để mở trang tương ứng. Thẻ tài chính chỉ còn tiêu đề + số tiền (bỏ dòng chú thích nhỏ).
 - **Chỉ số chính**: thành viên đang hoạt động, số **VIP** (⭐) và **khách ưu tiên**, yêu cầu vào CLB đang chờ.
 - **Hàng tiền**: thu · chi · số dư quỹ · **còn phải thu** (gói chưa đóng, phí kèo chưa thu). Gói chưa có biểu đồ tài chính (Basic) vẫn thấy đúng thu / chi tháng này — lấy thẳng từ **Sổ thu chi** — và link *Chi tiết* mở Sổ thu chi.
-- **Nút đầu trang** chỉ hiện việc gói làm được: gói Basic có *＋ Tạo kèo* và *Thành viên* (không hiện *Tạo lịch chơi hàng tuần* — tính năng từ Standard); khi chưa có buổi nào, nút gợi ý là *Tạo kèo* thay vì lịch hàng tuần.
+- **Nút đầu trang** chỉ hiện việc gói làm được: gói Basic có *＋ Tạo kèo* và *Thành viên* (không hiện *Tạo lịch cố định* — tính năng từ Standard); khi chưa có buổi nào, nút gợi ý là *Tạo kèo* thay vì lịch hàng tuần.
 - **Báo gói sắp hết / đã hết** trên mọi trang quản lý (chỉ chủ CLB thấy): còn ≤ 7 ngày → dải vàng *"Gói … còn N ngày là hết hạn"*; đã hết → dải đỏ *"Gói của bạn đã hết hạn…"*; cả hai có nút **Gia hạn** (mở Tài khoản → Gói sử dụng). Thêm thành viên vượt giới hạn gói → hộp *Cần nâng cấp gói* (form chỉ ghi *💎 Cần nâng cấp gói*, không còn câu tiếng Anh của máy chủ).
 - **Lịch năm nay**: số buổi chơi hàng tuần đã chơi / dự kiến, số giải đấu, số kèo.
 - **Trình độ**: số người đã có trình độ, DUPR (hoặc cấp) trung bình của nam, nữ và số người **chưa có trình**.
@@ -200,6 +200,7 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 
 | Mục | Đường dẫn |
 |---|---|
+| **Tổng quan** — tất cả thành viên trong một bảng (cố định / thường xuyên, giao lưu / vãng lai, Danh sách chờ, Danh sách đen), cột *Hình thức* ghi người đó đang ở danh sách nào | `/club/members/all` |
 | Thành viên cố định | `/club/members` |
 | Thành viên giao lưu | `/club/members/guests` |
 | **Danh sách chờ** — người xin gia nhập chờ duyệt (số đỏ = yêu cầu chờ duyệt, hiện cả trên tiêu đề nhóm khi đang thu gọn) | `/club/members/requests` |
@@ -208,7 +209,7 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 
 Trên điện thoại các mục nằm trong nhóm *Thành viên* của bảng **Thêm**. Link cũ dạng `/club/members?tab=…` tự chuyển sang trang tương ứng.
 
-**Thanh công cụ** của danh sách: ô **tìm kiếm** (tên, SĐT, khu vực), lọc **giới tính**, **sắp xếp** (mặc định / tên A→Z / trình độ cao→thấp / vào CLB lâu nhất) và nút hiện/ẩn người ngừng hoạt động. Khi tick chọn người, một **thanh xoá** màu đỏ hiện lên (đếm số người đã chọn, nút *Bỏ chọn*, nút *Xoá*). Trên **điện thoại** danh sách hiện dạng thẻ (ảnh/chữ cái đầu, khu vực, thời gian chơi, trình độ, thâm niên, cờ nội bộ); trên máy tính là bảng đầy đủ.
+**Thanh công cụ** của danh sách (mọi tab có bảng: Tổng quan, cố định / thường xuyên, giao lưu / vãng lai, Danh sách đen): ô **tìm kiếm** (tên, SĐT, khu vực), lọc **giới tính**, lọc **hạng khách** — Social Manager: *Tất cả / VIP* (đang có gói còn buổi) */ Ưu tiên*; CLB: *Tất cả / VIP / Thường*, **sắp xếp** (mặc định / tên A→Z / trình độ cao→thấp / vào CLB lâu nhất) và nút hiện/ẩn người ngừng hoạt động. Khi tick chọn người, một **thanh xoá** màu đỏ hiện lên (đếm số người đã chọn, nút *Bỏ chọn*, nút *Xoá*). Trên **điện thoại** danh sách hiện dạng thẻ (ảnh/chữ cái đầu, khu vực, thời gian chơi, trình độ, thâm niên, cờ nội bộ); trên máy tính là bảng đầy đủ.
 
 **Bảng thành viên:**
 - Có kẻ ô ngang/dọc.
@@ -257,7 +258,7 @@ Trên điện thoại các mục nằm trong nhóm *Thành viên* của bảng *
 
 **🔗 Link mời:** bật link mời rồi gửi vào nhóm Zalo/Facebook. Người nhận mở `/invite/<mã>`, xem hồ sơ CLB, đăng nhập và bấm **Xin gia nhập** — không cần Host nhập tay. Họ vào **Danh sách chờ** với nguồn *Từ link mời*. *Tạo link mới* làm link cũ ngừng hoạt động; bỏ tick *Bật link mời* để tắt. (Khác với link tham gia `/join/…` dùng để mua gói hội viên.)
 
-**Tab ⛔ Danh sách đen** — xử lý thành viên có hành vi tiêu cực:
+**Tab ⛔ Danh sách đen** — xử lý thành viên có hành vi tiêu cực. Đầu tab là **bảng thông tin giống các danh sách khác** (giới tính, ngày sinh, SĐT, ngày gia nhập, khu vực, thời gian chơi, trình độ…, bấm tên để mở chi tiết), bên dưới là khung xử lý từng người:
 - Trong chi tiết thành viên bấm **⚠️ Chuyển vào Danh sách đen**: nhập **lý do** (bắt buộc) và thời gian tạm ngưng **N ngày** (1–366) hoặc **N tháng** (1–12). Người đó rời danh sách cố định/giao lưu, **không đăng ký được sự kiện của CLB** tới hết hạn, và thấy thông báo *"Bạn bị cảnh báo bởi CLB … Lý do … đến hết dd/mm/yyyy"*.
 - Hết hạn hay chưa, Host đều có thể:
   - **↩ Cho quay lại** là *Thành viên cố định*, *Thành viên giao lưu* hoặc *Danh sách chờ* (kiểm tra chỗ của gói). Người chơi thấy *"Chào mừng bạn trở lại! Hãy cố gắng để không vi phạm tiêu chuẩn cộng đồng nhé."*
@@ -294,18 +295,18 @@ Ví dụ *VIP 1*: **10 buổi trong 6 tháng, giá 300.000đ** — dưới form 
 - Xoá gói cũng huỷ khoản thu đi kèm.
 
 ### 4.5. Tạo hoạt động: lịch sự kiện, lịch hàng tuần, giải đấu, kèo
-Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh tab ở đầu trang** (*Lịch sự kiện · Tạo lịch chơi hàng tuần · Giải đấu · Tạo kèo*) để chuyển qua lại một chạm.
+Menu **Tạo hoạt động** gồm 4 mục. Mỗi trang trong nhóm có **thanh tab ở đầu trang** (*Lịch sự kiện · Tạo lịch cố định · Giải đấu · Tạo kèo lẻ*; ở Social Manager tab đầu là *Lịch xé vé*, trùng tên với menu) để chuyển qua lại một chạm.
 
-- **Lịch sự kiện** có 3 ô số liệu: *buổi tháng này* (bao nhiêu buổi đã diễn ra), *7 ngày tới* (kèm buổi gần nhất) và *giải sắp tới*. (Ô *tỷ lệ lấp đầy* chỗ chỉ còn ở không gian Xé Vé, thay cho ô giải đấu — quy mô CLB không cần.) Thanh công cụ (Danh sách / Tháng / Tuần / Ngày, ‹ Hôm nay ›, lịch nhỏ) nằm trong một khung riêng; nút *Tạo lịch chơi hàng tuần* và *＋ Tạo kèo* ở góc phải. Ở chế độ **Danh sách**, mỗi buổi là thẻ có ô ngày bên trái, giờ, địa điểm, CLB và **thanh lấp đầy** số chỗ.
+- **Lịch sự kiện** có 3 ô số liệu: *buổi tháng này* (bao nhiêu buổi đã diễn ra), *7 ngày tới* (kèm buổi gần nhất) và *giải sắp tới*. (Ô *tỷ lệ lấp đầy* chỗ chỉ còn ở không gian Xé Vé, thay cho ô giải đấu — quy mô CLB không cần.) Thanh công cụ (Danh sách / Tháng / Tuần / Ngày, ‹ Hôm nay ›, lịch nhỏ) nằm trong một khung riêng; nút *Tạo lịch cố định* và *＋ Tạo kèo* ở góc phải. Ở chế độ **Danh sách**, mỗi buổi là thẻ có ô ngày bên trái, giờ, địa điểm, CLB và **thanh lấp đầy** số chỗ.
 - **Trên điện thoại**, chế độ **Tháng** không còn là lưới 7 cột: chỉ liệt kê **những ngày có lịch** — ô ngày bên trái (thứ, ngày; *Hôm nay* tô xanh, ngày đã qua mờ đi), bên phải từng buổi (giờ, địa điểm, số chỗ x/y), bấm vào để mở buổi; bấm ô ngày để xem dòng thời gian của ngày đó. Ẩn chế độ *Tuần* và phần chú thích màu trên điện thoại. Máy tính giữ nguyên lưới tháng.
 - **Tạo kèo / Tạo lịch hàng tuần / Sửa buổi**: trên máy tính, bên phải form có khung **Xem trước** luôn hiện khi cuộn: tên, ngày (hoặc *số buổi* sẽ tạo của lịch hàng tuần), giờ, địa điểm + số sân, số chỗ, phí, hạn huỷ, có mở link đăng ký không, và **thu tối đa nếu kín chỗ**. Nút *Tạo* / *Huỷ* nằm trong khung này.
 
 | Mục | Đường dẫn | Dùng để |
 |---|---|---|
 | **Lịch sự kiện** | `/events` | **Chỉ xem** toàn bộ hoạt động của CLB: lịch chơi hàng tuần 🗓, kèo 🏓, buổi tập 🎯, họp 👥, round robin 🔄 và **giải đấu 🏆**. Dạng **Danh sách / Tháng / Tuần / Ngày** (xem [5.1](#51-lịch-kèo-dạng-calendar-events)). Bấm vào giải thì mở trang giải. |
-| **Tạo lịch chơi hàng tuần** | `/events/create/weekly` | Buổi chơi cố định của CLB. Tick **các thứ trong tuần** (VD T3, T5, T7) và chọn **từ ngày – đến ngày**; lịch bên dưới tô sẵn mọi buổi, bấm vào một ngày để thêm/bỏ riêng buổi đó (nghỉ lễ, buổi bù). App tạo tất cả trong một lần (tối đa 200 buổi); các buổi này thuộc **cùng một lịch** để sau sửa một lần cho tất cả (xem *Form tạo / sửa buổi* bên dưới). |
+| **Tạo lịch cố định** | `/events/create/weekly` | Buổi chơi cố định của CLB. Tick **các thứ trong tuần** (VD T3, T5, T7) và chọn **từ ngày – đến ngày**; lịch bên dưới tô sẵn mọi buổi, bấm vào một ngày để thêm/bỏ riêng buổi đó (nghỉ lễ, buổi bù). App tạo tất cả trong một lần (tối đa 200 buổi); các buổi này thuộc **cùng một lịch** để sau sửa một lần cho tất cả (xem *Form tạo / sửa buổi* bên dưới). |
 | **Tạo giải đấu** | `/club/tournaments/new` | Xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments). |
-| **Tạo kèo** | `/events/create` | Một buổi lẻ. Chọn **loại hoạt động**: *Kèo giao lưu*, *Buổi tập*, *Họp / gặp mặt*, hoặc *Round robin* (thi đấu theo thể thức vòng tròn: mỗi đôi lần lượt đánh với những đôi khác). Các ô còn lại giống [5.2](#52-tạo-kèo-eventscreate), trừ *Họp / gặp mặt* (xem dưới). |
+| **Tạo kèo lẻ** | `/events/create` | Một buổi lẻ. Chọn **loại hoạt động**: *Kèo giao lưu*, *Buổi tập*, *Họp / gặp mặt*, hoặc *Round robin* (thi đấu theo thể thức vòng tròn: mỗi đôi lần lượt đánh với những đôi khác). Các ô còn lại giống [5.2](#52-tạo-kèo-eventscreate), trừ *Họp / gặp mặt* (xem dưới). |
 
 Loại hoạt động sửa được ở trang *Sửa* của buổi.
 
@@ -352,7 +353,7 @@ Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trậ
 ### 4.7. Bảng xếp hạng & vinh danh (`/club/rankings`)
 - **3 tab**: **Tất cả** (mọi người), **Thành viên cố định** và **Thành viên giao lưu** (khách).
 - **Cách xếp hạng:** theo **tỷ lệ thắng** (số trận thắng / tổng số trận); bằng nhau thì ai đánh **nhiều trận hơn** xếp trên, rồi tới **hiệu số**. Phải có **ít nhất N trận trong kỳ** mới có hạng — N do **Host đặt** ngay trên trang (ô *Từ N trận*, 1–50, mặc định 3; chủ CLB / đồng quản trị). Người chưa đủ vẫn hiện cuối bảng nhưng **mờ, cột hạng ghi "—"**, không lên bục và không nhận giải.
-- **CLB chỉ tính buổi chơi chính:** bảng xếp hạng nội bộ của **CLB** chỉ lấy trận trong **lịch chơi hàng tuần** (buổi tạo bằng *Tạo lịch chơi hàng tuần*). Kèo CLB mở thêm vào ngày khác được coi là **xé vé** — không tính vào hạng CLB. Vd anh A mua vé tháng ca 17h–20h thứ 7 của CLB B: chỉ trận ca thứ 7 tính hạng CLB B; anh A chơi buổi khác là xé vé. **Cộng đồng xé vé** thì mọi kèo đều tính (đã là DUPR, mọi trận đều có tỷ số).
+- **CLB chỉ tính buổi chơi chính:** bảng xếp hạng nội bộ của **CLB** chỉ lấy trận trong **lịch chơi hàng tuần** (buổi tạo bằng *Tạo lịch cố định*). Kèo CLB mở thêm vào ngày khác được coi là **xé vé** — không tính vào hạng CLB. Vd anh A mua vé tháng ca 17h–20h thứ 7 của CLB B: chỉ trận ca thứ 7 tính hạng CLB B; anh A chơi buổi khác là xé vé. **Cộng đồng xé vé** thì mọi kèo đều tính (đã là DUPR, mọi trận đều có tỷ số).
 - **👑 Số tuần giữ Top 1** (theo tab đang xem): mỗi tuần (thứ 2 – chủ nhật) có trận được tính một bảng xếp hạng riêng của tuần đó; ai đứng đầu tuần được tính **1 tuần Top 1** (bằng nhau hoàn toàn về số trận thắng, tỷ lệ thắng và hiệu số thì cùng được tính). Tính từ trận đầu tiên của CLB, không phụ thuộc kỳ đang chọn; tuần không có trận không tính. Hiện 6 người nhiều tuần nhất, **chuỗi dài nhất** (số tuần liên tiếp) và nhãn *Đang giữ* cho người đứng đầu tuần gần nhất; bảng xếp hạng có thêm cột *Tuần Top 1*, file Excel có thêm sheet *Weeks at No. 1*.
 - **Bục vinh quang** cho giải đấu: Vô địch, Á quân và **đồng hạng Ba** (2 đội thua bán kết).
 - Xếp hạng theo kỳ **Ngày / Tháng / Quý / Năm / Tất cả**, có nút chuyển kỳ trước/kỳ sau.
@@ -608,9 +609,9 @@ Một Host có thể điều hành **nhiều cụm sân xé vé**; mỗi cụm s
   - **👥 Thành viên**: 4 ô — **Tổng thành viên** (kèm VIP / ưu tiên / thường xuyên / vãng lai), **Thành viên mới** (vào cộng đồng trong 30 ngày qua), **Đang hoạt động** (có tham gia trong N ngày qua — N do Host đặt ở Bảng điều khiển, mặc định 30), **Không hoạt động**; thanh tỉ lệ và bảng theo trình độ bên dưới.
   - **💰 Tài chính** (từ trước tới nay): *Thu*, *Chi*, *Số dư quỹ* (= thu − chi, gồm quỹ cộng đồng và tiền mọi kèo), *Khoản chưa thu* (phí kèo của khách đã đăng ký mà chưa trả + gói hội viên chưa thanh toán).
   - **🔁 Thành viên cộng đồng**: **Thường xuyên** (nhiều hơn ngưỡng Host đặt, mặc định 3 kèo trong 30 ngày qua), **Không thường xuyên** (còn lại, kể cả người không chơi) và **% tích cực** = thường xuyên ÷ tổng thành viên × 100% — dùng để ước lượng cộng đồng giữ chân người chơi tốt tới đâu (≥ 50% xanh, 25–50% vàng, < 25% hồng).
-  - **📊 Hoạt động 6 tháng gần nhất**: 3 biểu đồ cột (mỗi cột một tháng, rê chuột / chạm để xem số) — **Ca xé vé đã mở**, **Lượt chơi** (kèm số người chơi khác nhau) và **Lợi nhuận** (thu − chi của cộng đồng và mọi kèo; tháng lỗ hiện cột màu hồng dưới vạch 0). Mỗi biểu đồ ghi số tháng này và **tăng / giảm so với tháng trước** (▲/▼, số và %).
+  - **📊 Hoạt động 6 tháng gần nhất**: 3 biểu đồ cột (mỗi cột một tháng, rê chuột / chạm để xem số) — **Ca xé vé đã mở**, **Người chơi** (số người khác nhau đã chơi trong tháng; rê chuột xem kèm số lượt chơi) và **Lợi nhuận** (thu − chi của cộng đồng và mọi kèo; tháng lỗ hiện cột màu hồng dưới vạch 0). Mỗi biểu đồ ghi số tháng này và **tăng / giảm so với tháng trước** (▲/▼, số và %).
   - Bên dưới là phần *<tên cụm sân> tháng này*: **tài chính tháng này** (thu, chi, số dư quỹ, khoản chưa thu), chuyển khoản chờ duyệt, sự kiện sắp tới, nổi bật tháng này, cần xử lý, sinh nhật, gói sử dụng. (Ở cộng đồng không còn khối *Cộng đồng* lặp lại số khách thường xuyên / buổi chơi / trình độ — các số này đã có ở phía trên và trong biểu đồ.)
-- **Thanh tab nhanh** giống Club Manager ở đầu các trang hoạt động (*Lịch sự kiện · Tạo lịch chơi hàng tuần · Giải đấu · Tạo kèo*) và thống kê (*Thống kê thành viên · Bảng xếp hạng · Top tháng · Đánh giá buổi chơi · Phân tích nâng cao*).
+- **Thanh tab nhanh** giống Club Manager ở đầu các trang hoạt động (*Lịch xé vé · Tạo lịch cố định · Giải đấu · Tạo kèo lẻ* — menu *Tạo hoạt động* gọi đúng các tên này) và thống kê (*Thống kê thành viên · Bảng xếp hạng · Top tháng · Đánh giá buổi chơi · Phân tích nâng cao*).
 - **Chữ trên giao diện theo cộng đồng**: khi đang quản lý một cộng đồng, các trang dùng chung với CLB ghi **"cộng đồng"** thay cho "CLB" (vd *Cộng đồng của tôi*, *+ Tạo cộng đồng*, *quỹ cộng đồng*, *chủ cộng đồng*, *Hồ sơ cộng đồng*, *Link mời vào cộng đồng*). Nút *Tạo cộng đồng* trên trang *Cộng đồng của tôi* mở đúng biểu mẫu yêu cầu **cộng đồng** (`/club-request?kind=community`). Các phần nói về cả CLB lẫn cộng đồng (gói sử dụng, tài khoản, trang chủ, Owner) giữ nguyên chữ.
 - **Khách thường xuyên / Khách vãng lai** thay cho *cố định / giao lưu*: ở cộng đồng mọi chữ về loại thành viên đổi theo (menu *Thành viên → Khách thường xuyên · Khách vãng lai*, ô số liệu, tab, cột *Hình thức* = *Thường xuyên / Vãng lai*, form **Thành viên mới** = *Thường xuyên · Vãng lai · --- Chưa xác định*, nhập Excel nhận cả chữ *Thường xuyên / Vãng lai*, thống kê, giải đấu…). Chữ *kèo giao lưu* (loại kèo) giữ nguyên.
 - **4 loại khách của cộng đồng**:
@@ -627,7 +628,7 @@ Một Host có thể điều hành **nhiều cụm sân xé vé**; mỗi cụm s
   - **Cách chia trình độ** (chọn một): **Không chia** · **Tự đặt tên** (vd *Series A, B, C, D* — Host gán cho từng người ở cột *Trình độ* trên trang Thành viên; mỗi trình độ có thể ghi **khoảng DUPR** *từ … đến …*, vd Series A: 3.0 – 3.5, để trống = không giới hạn) · **Theo điểm DUPR** (cộng đồng cầu lông: *Theo cấp độ*) — mỗi trình độ có mức *từ điểm*, dòng thấp nhất có thể để trống (= mọi điểm thấp hơn), người chưa có điểm thì *chưa xếp* · **Theo thời gian đã chơi** — mỗi trình độ gồm một hay nhiều mốc *Dưới 6 tháng / 6–12 / 12–18 / Trên 18 tháng* (lấy từ ô *Thời gian chơi* của thành viên). Tối đa 12 trình độ, tên không trùng; có nút **Dùng mẫu gợi ý** cho từng cách. Xoá một trình độ gán tay thì người thuộc trình độ đó về *chưa xếp*.
 - **Trang Thành viên của cộng đồng**: cột *Trình độ (DUPR)* đổi tên thành **Điểm DUPR** (cầu lông: *Cấp độ*), thêm cột **Trình độ** theo Bảng điều khiển (cách *Tự đặt tên*: chọn trình độ ngay trong ô của bảng).
 - **Tạo / sửa kèo của cộng đồng**: ô *Series* được thay bằng **Dành cho trình độ** — bấm chọn một hay nhiều trình độ của Bảng điều khiển (không chọn = mọi trình độ); ô **DUPR từ / đến** tự điền theo khoảng của các trình độ đã chọn (vd chọn Series B + C → 3.5 – 4.5; cách *Theo điểm DUPR* thì mỗi mức đi từ điểm của nó tới điểm của mức kế tiếp) và vẫn sửa tay được; số kèo theo trình độ hiện ở Tổng quan. Danh sách kèo không còn bộ lọc / nhãn Series, Phân tích nâng cao bỏ bảng *Theo series*. Series cũ đã nhập vẫn được giữ trong dữ liệu.
-- **Tạo kèo**: chỉ có *Kèo giao lưu* và *Buổi tập* (không có *Họp / gặp mặt* và *Round robin* — server cũng từ chối, `400 kind_not_for_community`). Lịch chơi hàng tuần và giải đấu vẫn có.
+- **Tạo kèo lẻ**: chỉ có *Kèo giao lưu* và *Buổi tập* (không có *Họp / gặp mặt* và *Round robin* — server cũng từ chối, `400 kind_not_for_community`). Lịch chơi hàng tuần và giải đấu vẫn có.
 - **Tab Tài chính của kèo**: ô *Còn lại* đổi thành **Lợi nhuận** (cả kèo lẻ).
 - **Trang kèo (Host)**: tab *Thành viên* đổi tên thành **Danh sách người chơi**. **Nhập từ cộng đồng** không còn hiện người đã có trong kèo; chọn trùng (kể cả người đã đăng ký qua link, cùng SĐT / tài khoản) thì server bỏ qua, chọn toàn người đã có thì báo *"Những người đã chọn đều đã có trong kèo này"* (`409 already_on_event`).
 - **Link đăng ký kèo xé vé** (kèo của cộng đồng hoặc kèo lẻ): trên nút đăng ký có khung **📋 Quy định khi tham gia xé vé** — *Có mặt đúng giờ · Nghe theo điều phối của Host (xếp sân, xếp cặp, thay người) · Không đến được thì huỷ trên web trước hạn*; ô đồng ý đổi thành *"Tôi đã đọc thông tin kèo, chính sách huỷ và đồng ý với quy định trên"* (bắt buộc tick).
@@ -670,7 +671,7 @@ Chỉ có ở **cộng đồng** (Social Manager). Menu **Thống kê → Top th
 **Mời gia nhập sau buổi**: ở trang đánh giá sau kèo của cộng đồng, câu cuối hỏi *"Bạn có muốn trở thành thành viên của <cộng đồng> không?"*, kèm link **💡 Vì sao nên gia nhập?** mở popup liệt kê lợi ích thật: đua Top tháng (khi Host bật) và quà của Top 1–3, trang cộng đồng riêng (lịch kèo, lịch sử, bảng xếp hạng), gói thành viên thay vì trả lẻ từng kèo, ưu đãi Host dành cho thành viên cố định. Nút **Bấm vào đây để đăng ký thành viên** mở form gia nhập như trước.
 
 ### 5.1. Lịch kèo dạng calendar (`/events`)
-Trang Lịch/Kèo có 4 chế độ xem. App nhớ chế độ bạn chọn lần trước.
+Trang Lịch/Kèo có 4 chế độ xem; **mở ra luôn là *Danh sách*** (cả CLB lẫn Social Manager), bấm *Tháng / Tuần / Ngày* để đổi.
 
 | Chế độ | Hiển thị |
 |---|---|
@@ -1123,7 +1124,7 @@ Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với
 5. Người chơi đăng ký và chuyển khoản bằng QR. Host vào **Tài chính → Tổng quan → Chờ xác nhận** và bấm *Đã nhận tiền*.
 
 ### Chơi định kỳ hằng tuần
-1. **Tạo hoạt động → Tạo lịch chơi hàng tuần**, tick T3, T5, T7, chọn từ 01/10 đến 31/12, bỏ tick các ngày nghỉ lễ trên lịch.
+1. **Tạo hoạt động → Tạo lịch cố định**, tick T3, T5, T7, chọn từ 01/10 đến 31/12, bỏ tick các ngày nghỉ lễ trên lịch.
 2. Mỗi buổi: **Nhập từ CLB** (hoặc mở link đăng ký), đến giờ thì **Check-in**. App tự trừ buổi trong gói.
 3. Nhập trận ở **Thống kê → Trận đấu**. Cuối tháng xem **Thống kê → Bảng xếp hạng → Tháng → Vinh danh**.
 
@@ -1640,7 +1641,7 @@ Mọi route (trừ các route ghi *công khai*) cần header `Authorization: Bea
 | Người chơi báo không đăng ký được kèo của CLB | Có thể họ đang ở **Danh sách đen** hoặc bị chặn: xem tab ⛔ *Danh sách đen* (cho quay lại / bỏ chặn). Thông báo lỗi trên trang đăng ký có lý do và ngày hết hạn. |
 | Link mời báo *"Không tìm thấy"* | Link đã tắt hoặc đã tạo link mới. Mở **Thành viên → 🔗 Link mời**, bật lại và gửi link mới. |
 | Tab Danh sách đen / Link mời lỗi `relation … does not exist` | Chạy migration `20261105090000_member_moderation_invites.sql`. |
-| Sửa buổi không thấy lựa chọn *Áp dụng cho tất cả các buổi* | Chỉ buổi tạo từ **Tạo lịch chơi hàng tuần** (nhiều buổi một lần) và còn buổi khác chưa diễn ra / chưa huỷ mới có. Kiểm tra đã chạy migration `20261106090000_weekly_series_costs.sql`. |
+| Sửa buổi không thấy lựa chọn *Áp dụng cho tất cả các buổi* | Chỉ buổi tạo từ **Tạo lịch cố định** (nhiều buổi một lần) và còn buổi khác chưa diễn ra / chưa huỷ mới có. Kiểm tra đã chạy migration `20261106090000_weekly_series_costs.sql`. |
 | Sổ thu chi có khoản *Thuê sân* cho buổi đã huỷ | Chi phí buổi được ghi khi tạo lịch. Nếu không phải trả, bấm ✕ ở khoản đó trong Sổ thu chi hoặc tab Tài chính của buổi. |
 | Bản đồ trong form tạo buổi trống | Bản đồ xem trước cần mạng tới Google Maps; người chơi vẫn bấm được vào địa chỉ để mở Google Maps. |
 | Người chơi bấm *Xác nhận tham gia* nhưng không thấy bước thanh toán | Đúng thiết kế: kèo đang **tắt Duyệt tự động**, người chơi chờ Host bấm *Xác nhận tham gia* trong tab Thành viên. Muốn cho vào thẳng thì bật **Duyệt tự động**. |

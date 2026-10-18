@@ -128,8 +128,9 @@ export default function EventsPage() {
   }, [workspace, clubKey, club?.id]);
   const [clubFilter, setClubFilter] = useState('all');
 
-  // Always opens on the month: the clearest overview. Clicking a day opens its timeline.
-  const [view, setView] = useState('month');
+  // Opens on the list (search, filters, Sắp diễn ra / Đang mở / Đã xong) in clubs and
+  // communities alike; Tháng / Tuần / Ngày are one tap away.
+  const [view, setView] = useState('list');
   const [date, setDate] = useState(todayYmd());
   // List: search + filters, then three groups (Sắp diễn ra / Đang mở / Đã xong).
   const [q, setQ] = useState('');

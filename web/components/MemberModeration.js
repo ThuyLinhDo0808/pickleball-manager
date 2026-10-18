@@ -180,7 +180,6 @@ export function ReviewTab({ club, members, onChanged }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-gray-500 text-xs">{t('mod.tabHint')}</p>
-      {members.length === 0 && <p className="card text-gray-400 text-sm">{t('mod.empty')}</p>}
       {members.map((m) => {
         const left = m.review_until ? daysLeft(m.review_until) : 0;
         return (
