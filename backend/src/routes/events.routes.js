@@ -490,16 +490,17 @@ router.get('/pending-payments', async (req, res) => {
   if (!events.length) return res.json([]);
   const { data: rows, error: pErr } = await supabase
     .from('event_participants')
-    .select('id, event_id, full_name, phone, kind, fee_amount, payment_ref, payment_submitted_at')
+    .select('id, event_id, full_name, phone, kind, fee_amount, payment_ref, payment_submitted_at, guest_booking_id')
     .in('event_id', events.map((e) => e.id))
     .eq('status', 'pending')
     .eq('payment_status', 'proof_submitted')
     .order('payment_submitted_at', { ascending: true });
   if (pErr) return dbError(res, pErr);
   const byId = new Map(events.map((e) => [e.id, e]));
+  const bookings = await require('../services/quickBooking').bookingsFor(rows).catch(() => new Map());
   res.json(rows.map((r) => {
     const e = byId.get(r.event_id);
-    return { ...r, event: { id: e.id, title: e.title, event_date: e.event_date, start_time: e.start_time }, amount: Number(r.fee_amount ?? e.fee_amount ?? 0) };
+    return { ...r, booking: bookings.get(r.guest_booking_id) || null, event: { id: e.id, title: e.title, event_date: e.event_date, start_time: e.start_time }, amount: Number(r.fee_amount ?? e.fee_amount ?? 0) };
   }));
 });
 
@@ -931,13 +932,15 @@ router.get('/:eventId/participants', async (req, res) => {
       vip = new Map((passes || []).map((x) => [x.club_member_id, periodOf.get(x.plan_id) || null]));
     }
   }
+  // Quick bookings (invite link, no account): who booked the group, to call them.
+  const bookings = await require('../services/quickBooking').bookingsFor(data).catch(() => new Map());
   // screenshots are fetched one at a time (they are large)
   res.json(
     data.map(({ payment_proof, ...p }) => {
       const c = cards.get(p.id) || null;
       const card = c && community ? { ...c, vip: vip.has(c.member_id), vip_period: vip.get(c.member_id) || null } : c;
       const paidByPlan = community ? !!card?.vip : card?.member_type === 'fixed';
-      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: paidByPlan, email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null };
+      return { ...p, has_proof: !!payment_proof, card, paid_by_plan: paidByPlan, email_unverified: unverified.has(p.user_id), cancel_history: history.get(p.id) || null, booking: bookings.get(p.guest_booking_id) || null };
     })
   );
 });
@@ -1220,6 +1223,13 @@ async function undoRefund(req, p) {
 }
 
 // Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles
+async function withGroup(prior, act) {
+  const others = prior.status === 'pending' ? await require('../services/quickBooking').pendingSiblings(prior) : [];
+  const out = await act(prior);
+  for (const p of others) await act(p);
+  return others.length ? { ...out, group_count: others.length + 1 } : out;
+}
+
 router.post('/:eventId/participants/:participantId/:action', async (req, res) => {
   const { action } = req.params;
   const prior = req.participant;
@@ -1233,14 +1243,16 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     if (action === 'place') return res.json(await setPlace(req.event, prior, req.body.to));
     // …and their role: organizer (Host / co-host), coach, referee.
     if (action === 'roles') return res.json(await setRoles(req.event, prior, req.body || {}));
-    if (action === 'confirm-payment') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
-    if (action === 'reject-payment') return res.json(await signup.rejectPayment(req.event, prior, req.body.note));
+    // A quick booking (invite link) is paid in one transfer: confirming / rejecting one slot
+    // does the same to the group's other slots still waiting.
+    if (action === 'confirm-payment') return res.json(await withGroup(prior, (p) => signup.confirmPayment(req.event, p, req.hostId)));
+    if (action === 'reject-payment') return res.json(await withGroup(prior, (p) => signup.rejectPayment(req.event, p, req.body.note)));
     // A player who paid and cancelled in time got their money back: mark it (and write the
     // refund to the ledger as an expense), or take the mark back.
     if (action === 'refund') return res.json(await markRefund(req, prior));
     if (action === 'refund-undo') return res.json(await undoRefund(req, prior));
     // "Paid" on someone still waiting for confirmation = confirm their payment.
-    if (action === 'fee' && req.body.fee_paid && prior.status === 'pending') return res.json(await signup.confirmPayment(req.event, prior, req.hostId));
+    if (action === 'fee' && req.body.fee_paid && prior.status === 'pending') return res.json(await withGroup(prior, (p) => signup.confirmPayment(req.event, p, req.hostId)));
   } catch (err) {
     return err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
   }
@@ -1291,6 +1303,24 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
   }
 
   res.json(updated);
+});
+
+// Quick invite link (no account, straight to the transfer): the link changes every 30 s.
+// GET -> the link to show now; POST {enabled} -> on (a new secret: old links stop) / off.
+router.get('/:eventId/quick-invite', async (req, res) => {
+  try {
+    res.json(await require('../services/quickBooking').currentInvite(req.event));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+router.post('/:eventId/quick-invite', async (req, res) => {
+  if (req.event.kind === 'meeting') return res.status(400).json({ error: 'Meetings use the vote link.', code: 'meeting' });
+  try {
+    res.json(await require('../services/quickBooking').setInvite(req.event, !!req.body?.enabled));
+  } catch (err) {
+    fail(res, err);
+  }
 });
 
 // Scan a player's personal QR (from the player portal) -> check them in.
