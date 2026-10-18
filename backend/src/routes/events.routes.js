@@ -304,7 +304,7 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
         is_club_event: !!event.club_id,
         has_pass: !!standing.pass,
         // the Host checks this player before they get a place (and pay)
-        needs_approval: signup.needsApproval(event, standing),
+        needs_approval: await signup.needsApproval(event, standing, req.userId),
         // "register now, transfer later" is possible until then (null = not offered)
         pay_later_until: signup.payLaterUntil(event),
         sessions_remaining: standing.pass ? (standing.pass.sessions_included === 0 ? null : standing.pass.sessions_remaining) : null,

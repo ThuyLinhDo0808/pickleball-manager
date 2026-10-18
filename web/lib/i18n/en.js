@@ -1957,6 +1957,11 @@ export const en = {
     signUp: "Create an account",
   },
   cpanel: {
+    signupTitle: "Checking players who sign up for kèo",
+    signupHint: "Every player (regular, drop-in or new) signs in and waits for the organisers to check their details before transferring; they are on the list once the organisers confirm the money.",
+    autoDupr: "Confirm details automatically by DUPR",
+    autoDuprOn: "On: players with a verified DUPR rating (from the club’s DUPR list, or entered by the organisers from DUPR — not self-reported) inside the kèo’s level range are confirmed at once and go straight to payment. Everyone else still waits.",
+    autoDuprOff: "Off: every player waits for the organisers to check their details before the payment step.",
     title: "Community control panel",
     short: "Control panel",
     intro: "Your own rules for this community: when someone is a regular, when they count as inactive, and how players are split into levels (used in Members, new sessions and the Overview).",
@@ -4505,6 +4510,8 @@ export const en = {
     requests: "{n} to approve",
   },
   people: {
+    commCheckTitle: "Every sign-up waits for you to check their details",
+    commCheckHint: "Confirm them under \"Waiting to be confirmed\" → they transfer → you confirm the money and they are on the main list. Turn on \"Confirm by DUPR\" in the control panel to let verified DUPR players in the kèo’s range skip this step.",
     noFee: "No fee",
     autoApprove: "Auto approve",
     autoOff: "Off: people who sign up wait for you to check them before they are confirmed and pay.",
