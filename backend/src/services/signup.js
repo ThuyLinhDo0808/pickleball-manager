@@ -20,9 +20,42 @@ const MIN_PAY_LATER_MS = 30 * 60 * 1000; // "pay later" only when it gives more 
 const REJECTED_HOLD_MS = 2 * 3600 * 1000; // time to send a better screenshot
 const ACTIVE = [...HOLDS_PLACE, 'waitlisted', 'requested', 'not_playing'];
 
-// Does this sign-up wait for the Host to check the player first? Yes unless the event
-// approves automatically, or the player is a verified member of the event's club.
-const needsApproval = (event, standing) => !event.auto_approve && standing?.state !== 'verified';
+// Does this sign-up wait for the Host to check the player first?
+//  * Clubs: yes unless the event approves automatically, or the player is a verified member.
+//  * Communities (Social Manager): always — regulars, drop-ins and newcomers alike wait for
+//    the Host to check their details, then transfer, then the Host confirms the money.
+//    Only with "Tự xác nhận theo DUPR" on (community settings) is a player whose DUPR is
+//    verified (from the club's DUPR list or entered by the Host from DUPR — not a score the
+//    player typed) and inside the kèo's level range let through to the payment step.
+async function needsApproval(event, standing, userId) {
+  if (!event.club_id) return !event.auto_approve;
+  const { data: club } = await supabase.from('clubs').select('kind, sport').eq('id', event.club_id).maybeSingle();
+  if ((club?.kind || 'club') !== 'community') return !event.auto_approve && standing?.state !== 'verified';
+  if ((club.sport || 'pickleball') !== 'pickleball') return true;
+  const settings = await require('./communitySettings').forClub(event.club_id).catch(() => null);
+  if (!settings?.signup?.auto_dupr) return true;
+  const rating = await verifiedDupr(event.club_id, standing?.member, userId);
+  return !(rating != null && duprFits(rating, event));
+}
+
+// The player's DUPR doubles rating as DUPR has it (not self-entered), or null.
+async function verifiedDupr(clubId, member, userId) {
+  if (member?.dupr_doubles != null) return Number(member.dupr_doubles);
+  if (!userId) return null;
+  const { data: prof } = await supabase.from('player_profiles').select('dupr_id').eq('user_id', userId).maybeSingle();
+  const id = prof?.dupr_id || member?.dupr_id;
+  if (!id) return null;
+  const { data: row, error } = await supabase.from('club_dupr_roster').select('doubles').eq('club_id', clubId).eq('dupr_id', id).maybeSingle();
+  if (error || row?.doubles == null) return null;
+  return Number(row.doubles);
+}
+
+// Inside the kèo's level range (no range = any level).
+function duprFits(rating, event) {
+  if (event.level_min != null && rating < Number(event.level_min)) return false;
+  if (event.level_max != null && rating > Number(event.level_max)) return false;
+  return true;
+}
 const MAX_PROOF = 400000;
 
 function httpError(message, status, code) {
@@ -176,7 +209,7 @@ async function registerOnline(event, userId, profile, opts = {}) {
     status: hasPlace ? 'registered' : 'waitlisted',
   };
   // The Host checks new players first (level, who they are): no place or payment yet.
-  const approval = needsApproval(event, standing);
+  const approval = await needsApproval(event, standing, userId);
   if (approval) row.status = 'requested';
   // Guest perks: priority goes first off the waitlist (+ the % off). Communities: regulars
   // can be priority too.
@@ -324,6 +357,8 @@ module.exports = {
   rejectPayment,
   MAX_PROOF,
   needsApproval,
+  verifiedDupr,
+  duprFits,
   payLaterUntil,
   payLater,
 };

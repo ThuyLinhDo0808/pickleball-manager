@@ -116,6 +116,21 @@ export default function CommunitySettingsPage() {
           <button type="button" className="btn-secondary text-sm mt-3" onClick={runNow}>↻ {t('cpanel.runNow')}</button>
         </Card>
 
+        {/* Kèo sign-ups: everyone waits for the Host's info check, unless this is on. */}
+        <Card icon="✅" title={t('cpanel.signupTitle')} hint={t('cpanel.signupHint')}>
+          {(club?.sport || 'pickleball') === 'pickleball' ? (
+            <label className="flex items-start gap-3 text-sm text-gray-200 cursor-pointer">
+              <input type="checkbox" className="mt-1" checked={!!s.signup?.auto_dupr} onChange={(e) => set({ signup: { ...(s.signup || {}), auto_dupr: e.target.checked } })} />
+              <span>
+                {t('cpanel.autoDupr')}
+                <span className="block text-xs text-gray-500">{t(s.signup?.auto_dupr ? 'cpanel.autoDuprOn' : 'cpanel.autoDuprOff')}</span>
+              </span>
+            </label>
+          ) : (
+            <p className="text-sm text-gray-400">{t('cpanel.autoDuprOff')}</p>
+          )}
+        </Card>
+
         <Card icon="💤" title={t('cpanel.activeTitle')} hint={t('cpanel.activeHint')}>
           <label className="flex flex-wrap items-center gap-2 text-sm text-gray-200">
             {t('cpanel.inactiveAfter')}

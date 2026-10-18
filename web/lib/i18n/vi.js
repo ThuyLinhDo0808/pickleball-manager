@@ -1957,6 +1957,11 @@ export const vi = {
     signUp: "Tạo tài khoản",
   },
   cpanel: {
+    signupTitle: "Xác nhận người chơi đăng ký kèo",
+    signupHint: "Mọi người chơi (thường xuyên, vãng lai, mới vào) đăng ký kèo đều phải đăng nhập và chờ Ban quản trị xác nhận thông tin, sau đó mới chuyển khoản; Ban quản trị xác nhận đã nhận tiền thì mới vào danh sách tham gia.",
+    autoDupr: "Tự xác nhận thông tin theo điểm DUPR",
+    autoDuprOn: "Đang bật: người chơi có điểm DUPR đã xác thực (từ danh sách club DUPR, hoặc Ban quản trị nhập từ DUPR — không phải điểm tự khai) và nằm trong khoảng trình độ của kèo được xác nhận ngay, chuyển thẳng sang bước chuyển khoản. Những người khác vẫn chờ xác nhận.",
+    autoDuprOff: "Đang tắt: mọi người chơi đều chờ Ban quản trị xác nhận thông tin rồi mới đến bước chuyển khoản.",
     title: "Bảng điều khiển cộng đồng",
     short: "Bảng điều khiển",
     intro: "Đặt quy tắc riêng cho cộng đồng: khi nào là khách thường xuyên, khi nào là không hoạt động, và cách chia trình độ người chơi (dùng ở Thành viên, tạo kèo và Tổng quan).",
@@ -4505,6 +4510,8 @@ export const vi = {
     requests: "{n} chờ duyệt",
   },
   people: {
+    commCheckTitle: "Mọi người đăng ký đều chờ bạn xác nhận thông tin",
+    commCheckHint: "Xác nhận ở mục \"Chờ xác nhận tham gia\" → người chơi chuyển khoản → bạn xác nhận tiền thì họ vào danh sách chính. Bật \"Tự xác nhận theo DUPR\" trong Bảng điều khiển để người có DUPR đã xác thực, đúng trình độ kèo được qua bước này.",
     noFee: "Không thu phí",
     autoApprove: "Duyệt tự động",
     autoOff: "Đang tắt: người đăng ký qua link chờ bạn kiểm tra thông tin rồi mới được xác nhận và thanh toán.",

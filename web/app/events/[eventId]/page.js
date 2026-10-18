@@ -53,6 +53,7 @@ export default function EventDetailPage() {
     if (workspace !== 'staff' && workspace !== ws) setWorkspace(ws);
     if (club?.id !== owner.id) selectClub(owner.id);
   }, [event?.club_id, club?.id, allClubs, selectClub, workspace, setWorkspace]);
+  const ownerKind = event?.club_id ? allClubs.find((c) => c.id === event.club_id)?.kind || 'club' : null;
   const { data: participants, reload: reloadParticipants } = useLoad(
     () => api.get(`/api/events/${eventId}/participants`),
     [eventId]
@@ -303,7 +304,15 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          <AutoApproveToggle event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
+          {/* Communities: every sign-up is checked by the Host (setting: auto-confirm by DUPR). */}
+          {ownerKind === 'community' ? (
+            <div className="card !py-3 mb-4 text-sm">
+              <p className="text-white font-semibold">✅ {t('people.commCheckTitle')}</p>
+              <p className="text-gray-400 text-xs">{t('people.commCheckHint')} <a href="/club/community-settings" className="text-lime-400 underline">{t('cpanel.short')} →</a></p>
+            </div>
+          ) : (
+            <AutoApproveToggle event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
+          )}
           <OrganizersSection event={event} people={participants || []} onOpen={openSheet} />
           <RequestsSection rows={requested} onPlace={placeTo} onOpen={(p) => openSheet(p)} />
           {flash && (

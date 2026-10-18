@@ -25,7 +25,9 @@ const REGULAR_DAYS = 30; // "a month"
 const NEW_GRACE_DAYS = 30; // someone just added is not moved down before they had a month
 const MAX_LEVELS = 12;
 
-const DEFAULTS = { regular: { auto: false, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] } };
+// signup.auto_dupr: kèo sign-ups with a verified DUPR inside the kèo's range skip the
+// Host's info check and go straight to payment (off = the Host checks everyone).
+const DEFAULTS = { regular: { auto: false, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] }, signup: { auto_dupr: false } };
 
 const fail = (message, code) => Object.assign(new Error(message), { status: 400, code });
 
@@ -45,7 +47,7 @@ function resolve(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const regular = { ...DEFAULTS.regular, ...(s.regular || {}) };
   const levels = { mode: MODES.includes(s.levels?.mode) ? s.levels.mode : 'none', items: Array.isArray(s.levels?.items) ? s.levels.items : [] };
-  return { regular, active_days: Number(s.active_days) || DEFAULTS.active_days, levels };
+  return { regular, active_days: Number(s.active_days) || DEFAULTS.active_days, levels, signup: { auto_dupr: s.signup?.auto_dupr === true } };
 }
 
 const intIn = (v, lo, hi, code) => {
@@ -113,7 +115,7 @@ function clean(body, sport) {
     for (let i = 1; i < items.length; i += 1) if (items[i].min === items[i - 1].min) throw fail('Two levels start at the same score.', 'bad_level_min');
   }
   if (mode === 'none') items = [];
-  return { regular, active_days, levels: { mode, items } };
+  return { regular, active_days, levels: { mode, items }, signup: { auto_dupr: body?.signup?.auto_dupr === true } };
 }
 
 // The level a member is in under these settings (null = none).
