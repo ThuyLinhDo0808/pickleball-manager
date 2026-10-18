@@ -923,10 +923,11 @@ router.get('/:eventId/participants', async (req, res) => {
   if (community) {
     const ids = [...new Set([...cards.values()].map((c) => c?.member_id).filter(Boolean))];
     if (ids.length) {
-      const { data: passes } = await supabase.from('v_membership_status').select('club_member_id, plan_id').in('club_member_id', ids).eq('status', 'paid').lte('starts_on', req.event.event_date).gte('ends_on', req.event.event_date);
-      const planIds = [...new Set((passes || []).map((x) => x.plan_id))];
-      const { data: plans } = planIds.length ? await supabase.from('membership_plans').select('id, period').in('id', planIds) : { data: [] };
-      const periodOf = new Map((plans || []).map((x) => [x.id, x.period]));
+      const { data: all } = await supabase.from('v_membership_status').select('club_member_id, plan_id, sessions_included, sessions_remaining').in('club_member_id', ids).eq('status', 'paid').lte('starts_on', req.event.event_date).gte('ends_on', req.event.event_date);
+      const passes = (all || []).filter((x) => x.sessions_included === 0 || x.sessions_remaining > 0); // a used-up pack is no pass
+      const planIds = [...new Set(passes.map((x) => x.plan_id))];
+      const { data: plans } = planIds.length ? await supabase.from('membership_plans').select('*').in('id', planIds) : { data: [] };
+      const periodOf = new Map((plans || []).map((x) => [x.id, x.validity_months ? 'sessions' : x.period]));
       vip = new Map((passes || []).map((x) => [x.club_member_id, periodOf.get(x.plan_id) || null]));
     }
   }

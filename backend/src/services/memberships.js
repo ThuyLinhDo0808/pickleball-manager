@@ -40,6 +40,30 @@ function periodRange(period, startMonth, index = 0) {
   };
 }
 
+// A session pack (plan.validity_months set): valid from `startYmd` for N months
+// (e.g. 16/10/2026 + 6 months -> 15/04/2027). Labelled by its dates.
+function packRange(startYmd, months) {
+  const [y, m, d] = startYmd.split('-').map(Number);
+  const end = new Date(Date.UTC(y, m - 1 + months, d));
+  // 31/01 + 1 month: stop at the end of February, not 3 March.
+  if (end.getUTCDate() !== d) end.setUTCDate(0);
+  end.setUTCDate(end.getUTCDate() - 1);
+  const ends = end.toISOString().slice(0, 10);
+  const dmy = (v) => v.split('-').reverse().join('/');
+  return { period_label: `${dmy(startYmd)}–${dmy(ends)}`, starts_on: startYmd, ends_on: ends };
+}
+
+// Where a registration starts and ends: a pack from a day, a period plan from a month.
+function rangeFor(plan, { start_date, start_month }, index = 0) {
+  if (plan.validity_months) {
+    const start = /^\d{4}-\d{2}-\d{2}$/.test(start_date || '') ? start_date : /^\d{4}-\d{2}$/.test(start_month || '') ? `${start_month}-01` : null;
+    if (!start || Number.isNaN(Date.parse(start))) throw Object.assign(new Error('start_date (YYYY-MM-DD) is required.'), { status: 400 });
+    return packRange(start, plan.validity_months);
+  }
+  if (!/^\d{4}-\d{2}$/.test(start_month || '')) throw Object.assign(new Error('start_month (YYYY-MM) is required.'), { status: 400 });
+  return periodRange(plan.period, start_month, index);
+}
+
 function normalizePhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
@@ -152,6 +176,8 @@ async function syncMembershipTxn({ membership, hostId, clubId, memberName }) {
 module.exports = {
   todayYmd,
   periodRange,
+  packRange,
+  rangeFor,
   normalizePhone,
   findClubMemberByPhone,
   summarize,

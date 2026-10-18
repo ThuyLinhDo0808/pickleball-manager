@@ -1013,7 +1013,7 @@ router.get('/system', wrap(async (req, res) => {
     // Configured or not — key values are never sent.
     integrations: [
       { key: 'resend', ok: has('RESEND_API_KEY') },
-      { key: 'feedback_email', ok: has('RESEND_API_KEY') && has('FEEDBACK_TO_EMAIL') },
+      { key: 'feedback_email', ok: has('RESEND_API_KEY') }, // FEEDBACK_TO_EMAIL defaults to the developer's inbox
       { key: 'player_email', ok: emailReady() },
       { key: 'feedback_webhook', ok: has('FEEDBACK_WEBHOOK_URL') },
       { key: 'plan_bank', ok: !!(bank.bank_code && bank.bank_account) },

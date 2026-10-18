@@ -29,7 +29,14 @@ import CommunitySuggestions from '@/components/CommunitySuggestions';
 
 
 // Each tab of the members section has its own address (menu Thành viên ▸ …).
-export const MEMBER_ROUTES = { fixed: '/club/members', guest: '/club/members/guests', review: '/club/members/review', waiting: '/club/members/requests', dupr: '/club/members/dupr' };
+const PLACE_PILL = {
+  fixed: 'border-lime-400/50 text-lime-200',
+  guest: 'border-sky-400/50 text-sky-200',
+  waiting: 'border-yellow-400/50 text-yellow-200',
+  review: 'border-red-400/60 text-red-200',
+};
+
+export const MEMBER_ROUTES = { all: '/club/members/all', fixed: '/club/members', guest: '/club/members/guests', review: '/club/members/review', waiting: '/club/members/requests', dupr: '/club/members/dupr' };
 
 export default function MembersPage({ tab = 'fixed' }) {
   const router = useRouter();
@@ -60,6 +67,8 @@ export default function MembersPage({ tab = 'fixed' }) {
   const [sortBy, setSortBy] = useState('default');
   const [showInactive, setShowInactive] = useState(true);
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  // Communities: VIP (a pack with sessions left) / ưu tiên; clubs: VIP / thường.
+  const [vipF, setVipF] = useState('all');
   const [reviewing, setReviewing] = useState(null); // member being moved to review
   const [inviteOpen, setInviteOpen] = useState(false);
   const { plan } = useWorkspace();
@@ -77,20 +86,26 @@ export default function MembersPage({ tab = 'fixed' }) {
   const fixedRows = all.filter((m) => m.member_type === 'fixed');
   const guestRows = all.filter((m) => m.member_type !== 'fixed');
   // Tabs: fixed members, guests, to review, waiting list. Editing a member's type moves them across.
-  const rows = tab === 'fixed' ? fixedRows : tab === 'guest' ? guestRows : [];
+  // Where each person is: fixed / guest / Danh sách chờ / Danh sách đen.
+  const waitingIds = new Set(pending.map((r) => r.id));
+  const placeOf = (m) => (m.review_started_at ? 'review' : waitingIds.has(m.id) || (m.join_requested && !m.account_verified && m.member_type === 'fixed') ? 'waiting' : m.member_type === 'fixed' ? 'fixed' : 'guest');
+  // "Tổng quan": everyone in one table, wherever they are.
+  const everyone = (members || []).slice().sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
+  const rows = tab === 'fixed' ? fixedRows : tab === 'guest' ? guestRows : tab === 'review' ? reviewRows : tab === 'all' ? everyone : [];
+  const isVip = (m) => (isCommunity ? m.membership_state === 'active' : m.vip_stars > 0 || m.tier === 'vip');
+  const vipFilters = isCommunity ? ['all', 'vip', 'priority'] : ['all', 'vip', 'standard'];
+  const vipOk = (m) => vipF === 'all' || (vipF === 'vip' ? isVip(m) : vipF === 'priority' ? !!m.guest_perk : !isVip(m));
   const canManage = !club?.role || ['owner', 'co_admin'].includes(club.role);
 
   // Everyone in the club with their details, in one Excel sheet.
   function exportAll() {
     if (!hasFeature(planFor(club, plan), 'excel_export')) return lockedNotice('excel_export');
-    const waitingIds = new Set(pending.map((r) => r.id));
-    const placeOf = (m) => (m.review_started_at ? 'review' : waitingIds.has(m.id) || (m.join_requested && !m.account_verified && m.member_type === 'fixed') ? 'waiting' : m.member_type === 'fixed' ? 'fixed' : 'guest');
     const order = { fixed: 0, guest: 1, review: 2, waiting: 3 };
     const list = (members || []).map((m) => ({ ...m, place: placeOf(m) })).sort((a, b) => order[a.place] - order[b.place] || a.full_name.localeCompare(b.full_name, 'vi'));
     exportMembers(club, list, t, (v) => levelText(v, sport, t));
   }
   const isGuestTab = tab === 'guest';
-  const detailMember = all.find((m) => m.id === detailId) || null;
+  const detailMember = (members || []).find((m) => m.id === detailId) || null;
 
   function toggle(id) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -117,6 +132,7 @@ export default function MembersPage({ tab = 'fixed' }) {
     .filter((m) => (gender === 'all' ? true : m.gender === gender))
     .filter((m) => showInactive || m.is_active)
     .filter((m) => !onlyIncomplete || missingInfo(m).length > 0)
+    .filter(vipOk)
     .filter((m) => !q || [m.full_name, m.phone, m.district].some((v) => String(v || '').toLowerCase().includes(q)));
   if (sortBy === 'name') shownRows.sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
   if (sortBy === 'level') shownRows.sort((a, b) => (Number(b.dupr_level) || 0) - (Number(a.dupr_level) || 0));
@@ -176,6 +192,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         value={tab}
         onChange={pickTab}
         tabs={[
+          { key: 'all', label: t('nav.memAll'), icon: '📋', count: everyone.length },
           { key: 'fixed', label: t('requests.tabFixed'), icon: '🏠', count: fixedRows.length },
           { key: 'guest', label: t('requests.tabGuest'), icon: '🤝', count: guestRows.length },
           { key: 'waiting', label: t('nav.memRequests'), icon: '📝', alert: pending.length },
@@ -187,9 +204,8 @@ export default function MembersPage({ tab = 'fixed' }) {
 
       {tab === 'waiting' && <MemberRequests club={club} requests={pending} members={members || []} onChanged={() => { reloadRequests(); reload(); }} />}
       {tab === 'dupr' && club && <DuprMembers club={club} />}
-      {tab === 'review' && club && <ReviewTab club={club} members={reviewRows} onChanged={() => { reloadRequests(); reload(); }} />}
 
-      {!['waiting', 'review', 'dupr'].includes(tab) && pending.length > 0 && (
+      {!['waiting', 'review', 'dupr', 'all'].includes(tab) && pending.length > 0 && (
         <button className="w-full text-left rounded-xl border border-yellow-400/40 bg-yellow-400/5 px-4 py-2.5 mb-3 text-sm" onClick={() => pickTab('waiting')}>
           <span className="text-yellow-300 font-semibold">📝 {t('requests.banner', { n: pending.length })}</span>{' '}
           <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
@@ -212,14 +228,15 @@ export default function MembersPage({ tab = 'fixed' }) {
 
       {isGuestTab && club && <GuestPerkSettings />}
 
-      {!['waiting', 'review', 'dupr'].includes(tab) && (
-        <section className="card !p-0 overflow-hidden">
+      {!['waiting', 'dupr'].includes(tab) && (
+        <section className={`card !p-0 overflow-hidden ${tab === 'review' ? 'mb-4 border-amber-300/30' : ''}`}>
           <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
             <div className="relative flex-1 min-w-[12rem]">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" aria-hidden="true">🔍</span>
               <input className="input !pl-9" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
             </div>
             <Segmented items={['all', 'male', 'female']} value={gender} onChange={setGender} label={(k) => (k === 'all' ? t('memx.allGenders') : t(`members.${k}`))} />
+            <Segmented items={vipFilters} value={vipF} onChange={setVipF} label={(k) => t(`memx.vipF_${k}`)} />
             <select className="input !w-auto text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t('memx.sort')}>
               {['default', 'name', 'level', 'joined'].map((k) => <option key={k} value={k}>{t(`memx.sort_${k}`)}</option>)}
             </select>
@@ -245,8 +262,8 @@ export default function MembersPage({ tab = 'fixed' }) {
           {!loading && rows.length === 0 && (
             <div className="p-8 text-center">
               <div className="text-4xl mb-2" aria-hidden="true">{isGuestTab ? '🤝' : '👥'}</div>
-              <p className="text-gray-400 text-sm mb-3">{t(isGuestTab ? 'guests.empty' : 'members.empty')}</p>
-              {!isGuestTab && canManage && <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>}
+              <p className="text-gray-400 text-sm mb-3">{t(tab === 'review' ? 'mod.empty' : isGuestTab ? 'guests.empty' : 'members.empty')}</p>
+              {!isGuestTab && tab !== 'review' && canManage && <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>}
             </div>
           )}
           {!loading && rows.length > 0 && shownRows.length === 0 && <p className="text-gray-400 text-sm p-4">{t('memx.noMatch')}</p>}
@@ -264,6 +281,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-white font-semibold truncate">{m.full_name}</span>
                           {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
+                          {tab === 'all' && <span className={`text-[10px] leading-4 rounded-full border px-1.5 ${PLACE_PILL[placeOf(m)]}`}>{t(`xlsx.place_${placeOf(m)}`)}</span>}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
@@ -358,8 +376,8 @@ export default function MembersPage({ tab = 'fixed' }) {
                           </div>
                         </td>
                         <td className="whitespace-nowrap">
-                          <span className={`text-xs rounded-full border px-2 py-0.5 ${m.member_type === 'fixed' ? 'border-lime-400/50 text-lime-200' : 'border-sky-400/50 text-sky-200'}`}>
-                            {t(m.member_type === 'fixed' ? 'xlsx.place_fixed' : 'xlsx.place_guest')}
+                          <span className={`text-xs rounded-full border px-2 py-0.5 ${PLACE_PILL[placeOf(m)]}`}>
+                            {t(`xlsx.place_${placeOf(m)}`)}
                           </span>
                         </td>
                         <td className="text-gray-300 whitespace-nowrap">{m.gender ? t(`members.${m.gender}`) : miss(m, 'gender')}</td>
@@ -443,6 +461,9 @@ export default function MembersPage({ tab = 'fixed' }) {
           )}
         </section>
       )}
+
+      {/* Danh sách đen: the table above shows who they are; here, why and what to do. */}
+      {tab === 'review' && club && <ReviewTab club={club} members={reviewRows} onChanged={() => { reloadRequests(); reload(); }} />}
 
       <MemberDetail
         club={club}

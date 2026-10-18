@@ -14,6 +14,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd, thisMonth } from '@/lib/format';
+import { todayYmd } from '@/lib/dates';
 import MemberLink from '@/components/MemberLink';
 
 export const FLAGS = ['unpaid', 'late', 'attitude'];
@@ -31,7 +32,10 @@ const PAY_STYLE = {
 function RegisterForm({ club, member, plans, onDone }) {
   const { t, sport } = useI18n();
   const active = plans.filter((p) => p.is_active);
-  const [form, setForm] = useState({ plan_id: active[0]?.id || '', start_month: thisMonth(), count: 1, amount: active[0]?.price ?? '', paid: true });
+  const [form, setForm] = useState({ plan_id: active[0]?.id || '', start_month: thisMonth(), start_date: todayYmd(), count: 1, amount: active[0]?.price ?? '', paid: true });
+  // A session pack (community) starts on a day and runs N months; a period plan starts on a month.
+  const plan = plans.find((p) => p.id === form.plan_id);
+  const pack = !!plan?.validity_months;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,8 +51,7 @@ function RegisterForm({ club, member, plans, onDone }) {
     try {
       await api.post(`/api/clubs/${club.id}/members/${member.id}/memberships`, {
         plan_id: form.plan_id,
-        start_month: form.start_month,
-        count: Number(form.count),
+        ...(pack ? { start_date: form.start_date } : { start_month: form.start_month, count: Number(form.count) }),
         amount: form.amount === '' ? null : Number(form.amount),
         status: form.paid ? 'paid' : 'pending',
       });
@@ -76,20 +79,32 @@ function RegisterForm({ club, member, plans, onDone }) {
         <select className="input" value={form.plan_id} onChange={(e) => pickPlan(e.target.value)}>
           {active.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} · {t(`plans.${p.period}`)} · {formatVnd(p.price)}
+              {p.name} · {p.validity_months ? t('plans.packShort', { n: p.sessions_included, m: p.validity_months }) : t(`plans.${p.period}`)} · {formatVnd(p.price)}
             </option>
           ))}
         </select>
       </div>
-      <div>
-        <label className="text-xs text-gray-400">{t('membership.startMonth')}</label>
-        <input className="input" type="month" required value={form.start_month} onChange={(e) => setForm({ ...form, start_month: e.target.value })} />
-      </div>
-      <div>
-        <label className="text-xs text-gray-400">{t('membership.count')}</label>
-        <input className="input" type="number" inputMode="numeric" min="1" max="12" value={form.count} onChange={(e) => setForm({ ...form, count: e.target.value })} />
-      </div>
-      <p className="col-span-2 text-gray-500 text-xs -mt-2">{t('membership.countHint')}</p>
+      {pack ? (
+        <>
+          <div className="col-span-2">
+            <label className="text-xs text-gray-400">{t('membership.startDate')}</label>
+            <input className="input" type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+          </div>
+          <p className="col-span-2 text-gray-500 text-xs -mt-2">{t('membership.packHint', { n: plan.sessions_included, m: plan.validity_months })}</p>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="text-xs text-gray-400">{t('membership.startMonth')}</label>
+            <input className="input" type="month" required value={form.start_month} onChange={(e) => setForm({ ...form, start_month: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">{t('membership.count')}</label>
+            <input className="input" type="number" inputMode="numeric" min="1" max="12" value={form.count} onChange={(e) => setForm({ ...form, count: e.target.value })} />
+          </div>
+          <p className="col-span-2 text-gray-500 text-xs -mt-2">{t('membership.countHint')}</p>
+        </>
+      )}
       <div className="col-span-2">
         <label className="text-xs text-gray-400">{t('membership.amount')}</label>
         <input className="input" type="number" inputMode="numeric" min="0" step="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />

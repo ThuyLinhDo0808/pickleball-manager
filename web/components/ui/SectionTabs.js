@@ -33,6 +33,8 @@ export default function SectionTabs({ group }) {
       <div className="flex gap-1 min-w-max">
         {GROUPS[group].filter((tab) => (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport)).map((tab) => {
           const active = tab.match(pathname);
+          // Social Manager: the schedule tab reads like its menu entry ("Lịch xé vé").
+          const key = community && tab.key === 'nav.schedule' ? 'nav.kevents' : tab.key;
           return (
             <Link
               key={tab.href}
@@ -41,7 +43,7 @@ export default function SectionTabs({ group }) {
               className={`-mb-px border-b-2 px-4 py-2.5 text-sm whitespace-nowrap transition ${active ? 'border-lime-400 text-lime-300 font-semibold' : 'border-transparent text-gray-400 hover:text-white hover:border-navy-500'}`}
             >
               <span aria-hidden="true" className="mr-1.5">{tab.icon}</span>
-              {t(tab.key)}
+              {t(key)}
             </Link>
           );
         })}

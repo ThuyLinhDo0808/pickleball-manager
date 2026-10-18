@@ -4,7 +4,7 @@ const { assertCanCreateClub, requireFeature, assertMemberRoom, forgetPlan, getPl
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { checkCapacity, limitBody } = require('../middleware/checkCapacity');
-const { todayYmd, periodRange, summarize, syncMembershipTxn } = require('../services/memberships');
+const { todayYmd, rangeFor, summarize, syncMembershipTxn } = require('../services/memberships');
 const inventoryStore = require('../services/inventoryStore');
 const { clubStats } = require('../services/clubStats');
 const birthdays = require('../services/birthdays');
@@ -901,8 +901,24 @@ router.get('/:clubId/plans', async (req, res) => {
   res.json(data);
 });
 
+// A session pack: N sessions valid for M months from the day it starts (validity_months);
+// otherwise a month / quarter / year period plan.
+function cleanValidity(v) {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  if (!(Number.isInteger(n) && n >= 1 && n <= 36)) throw Object.assign(new Error('validity_months must be a whole number of months from 1 to 36.'), { status: 400, code: 'bad_validity' });
+  return n;
+}
+
 router.post('/:clubId/plans', requireFeature('membership_plans'), async (req, res) => {
-  const { name, period, price, sessions_included } = req.body;
+  const { name, price, sessions_included } = req.body;
+  let validity;
+  try {
+    validity = cleanValidity(req.body.validity_months);
+  } catch (err) {
+    return res.status(400).json({ error: err.message, code: err.code });
+  }
+  const period = validity ? req.body.period || 'month' : req.body.period; // a pack has no period; the column needs a value
   if (!name || !period || price == null) {
     return res.status(400).json({ error: 'name, period, and price are required.' });
   }
@@ -912,9 +928,12 @@ router.post('/:clubId/plans', requireFeature('membership_plans'), async (req, re
   if (!(Number(price) >= 0) || !(Number(sessions_included || 0) >= 0)) {
     return res.status(400).json({ error: 'price and sessions_included must be >= 0.' });
   }
+  if (validity && !(Math.floor(Number(sessions_included)) >= 1)) {
+    return res.status(400).json({ error: 'A session pack needs at least 1 session.', code: 'sessions_required' });
+  }
   const { data, error } = await supabase
     .from('membership_plans')
-    .insert({ club_id: req.club.id, name, period, price: Number(price), sessions_included: Number(sessions_included || 0) })
+    .insert({ club_id: req.club.id, name, period, price: Number(price), sessions_included: Math.floor(Number(sessions_included || 0)), ...(validity ? { validity_months: validity } : {}) })
     .select()
     .single();
   if (error) return dbError(res, error);
@@ -924,7 +943,14 @@ router.post('/:clubId/plans', requireFeature('membership_plans'), async (req, re
 // Edit a plan. Periods already registered keep their dates and amounts; the new
 // period / price apply to the next registrations.
 router.patch('/:clubId/plans/:planId', requireFeature('membership_plans'), async (req, res) => {
-  const fields = pick(req.body, ['name', 'period', 'price', 'sessions_included', 'is_active']);
+  const fields = pick(req.body, ['name', 'period', 'price', 'sessions_included', 'is_active', 'validity_months']);
+  if ('validity_months' in fields) {
+    try {
+      fields.validity_months = cleanValidity(fields.validity_months);
+    } catch (err) {
+      return res.status(400).json({ error: err.message, code: err.code });
+    }
+  }
   if ('name' in fields) {
     fields.name = String(fields.name || '').trim().slice(0, 120);
     if (!fields.name) return res.status(400).json({ error: 'name is required.' });
@@ -940,6 +966,10 @@ router.patch('/:clubId/plans/:planId', requireFeature('membership_plans'), async
     }
   }
   if ('is_active' in fields) fields.is_active = !!fields.is_active;
+  const pack = 'validity_months' in fields ? fields.validity_months : req.plan.validity_months;
+  if (pack && !((('sessions_included' in fields) ? fields.sessions_included : req.plan.sessions_included) >= 1)) {
+    return res.status(400).json({ error: 'A session pack needs at least 1 session.', code: 'sessions_required' });
+  }
   const { data, error } = await supabase.from('membership_plans').update(fields).eq('id', req.plan.id).select().single();
   if (error) return dbError(res, error);
   res.json(data);
@@ -948,11 +978,9 @@ router.patch('/:clubId/plans/:planId', requireFeature('membership_plans'), async
 // Register a member for `count` consecutive periods of a plan, starting at `start_month` (YYYY-MM).
 // e.g. monthly plan, start 2026-08, count 3 -> Aug, Sep, Oct.
 router.post('/:clubId/members/:memberId/memberships', requireFeature('membership_plans'), async (req, res) => {
-  const { plan_id, start_month, status } = req.body;
-  const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
-  if (!isUuid(plan_id) || !/^\d{4}-\d{2}$/.test(start_month || '')) {
-    return res.status(400).json({ error: 'plan_id and start_month (YYYY-MM) are required.' });
-  }
+  const { plan_id, status } = req.body;
+  let count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 12);
+  if (!isUuid(plan_id)) return res.status(400).json({ error: 'plan_id is required.' });
   const { data: plan, error: planErr } = await supabase
     .from('membership_plans')
     .select('*')
@@ -961,16 +989,24 @@ router.post('/:clubId/members/:memberId/memberships', requireFeature('membership
     .maybeSingle();
   if (planErr) return dbError(res, planErr);
   if (!plan) return notFound(res, 'Plan');
-  // Guests buy single tickets; plans are for the fixed team.
-  if (req.member.member_type !== 'fixed') {
+  // Clubs: guests buy single tickets; plans are for the fixed team. Communities: anyone can
+  // hold a pack ("khách VIP").
+  if (req.member.member_type !== 'fixed' && (req.club.kind || 'club') !== 'community') {
     return res.status(400).json({ error: 'Membership plans are for fixed members only.', code: 'fixed_only' });
   }
 
   const amount = req.body.amount != null && req.body.amount !== '' ? Number(req.body.amount) : Number(plan.price);
-  const rows = Array.from({ length: count }, (_, i) => ({
+  if (plan.validity_months) count = 1; // a pack is bought once (from a day, for N months)
+  let ranges;
+  try {
+    ranges = Array.from({ length: count }, (_, i) => rangeFor(plan, req.body, i));
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+  const rows = ranges.map((range) => ({
     club_member_id: req.member.id,
     plan_id: plan.id,
-    ...periodRange(plan.period, start_month, i),
+    ...range,
     amount,
     status: PAY_STATUSES.includes(status) ? status : 'pending',
   }));

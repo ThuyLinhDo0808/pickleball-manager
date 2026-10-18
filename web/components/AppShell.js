@@ -44,12 +44,13 @@ const ICONS = {
 
 // Each workspace has its own menu, grouped by segment. A group ({ key, icon, children })
 // is a collapsible sub-folder in the sidebar and a titled block in the phone's "More" sheet.
-// Thành viên ▸ one page per tab (cố định, giao lưu, Danh sách chờ, Danh sách đen, DUPR).
+// Thành viên ▸ one page per tab (tổng quan, cố định, giao lưu, Danh sách chờ, Danh sách đen, DUPR).
 const membersGroup = (key) => ({
   key,
   icon: 'members',
   badge: 'memberRequests',
   children: [
+    { href: '/club/members/all', key: 'nav.memAll', icon: 'members' },
     { href: '/club/members', key: 'nav.memFixed', icon: 'members', exact: true },
     { href: '/club/members/guests', key: 'nav.memGuests', icon: 'members' },
     { href: '/club/members/requests', key: 'nav.memRequests', icon: 'members', badge: 'memberRequests' },

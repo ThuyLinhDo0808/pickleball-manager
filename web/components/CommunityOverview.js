@@ -167,7 +167,7 @@ export default function CommunityOverview({ children }) {
             <Section icon="📊" title={t('social.secTrend')} hint={t('social.secTrendHint')} href="/finance">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <TrendBars title={t('social.trSessions')} series={data.monthly.map((x) => ({ month: x.month, value: x.sessions }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
-                <TrendBars title={t('social.trPlayers')} series={data.monthly.map((x) => ({ month: x.month, value: x.turns, extra: t('social.trDistinct', { n: x.players }) }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
+                <TrendBars title={t('social.trPlayers')} series={data.monthly.map((x) => ({ month: x.month, value: x.players, extra: t('social.trTurns', { n: x.turns }) }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
                 <TrendBars title={t('social.trProfit')} signed format={(v) => formatVnd(v)} series={data.monthly.map((x) => ({ month: x.month, value: x.profit, extra: `${t('analytics.income')} ${formatVnd(x.income)} · ${t('analytics.expense')} ${formatVnd(x.expense)}` }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
               </div>
               <p className="text-gray-500 text-xs mt-2">{t('social.trNote', { n: data.monthly[data.monthly.length - 1].players })}</p>

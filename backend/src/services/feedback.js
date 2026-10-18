@@ -1,6 +1,6 @@
 // Deliver new feedback to the developer. Both channels are optional and independent:
 //
-//   Resend email:  RESEND_API_KEY + FEEDBACK_TO_EMAIL  (+ FEEDBACK_FROM_EMAIL)
+//   Resend email:  RESEND_API_KEY (+ FEEDBACK_TO_EMAIL, default the developer's inbox DEV_FEEDBACK_EMAIL; FEEDBACK_FROM_EMAIL)
 //     Without your own verified domain, keep the default sender onboarding@resend.dev —
 //     Resend then only delivers to the email address of your Resend account.
 //
@@ -18,10 +18,13 @@ function summary(fb) {
   return `📝 Báo lỗi / Liên hệ [${kindOf(fb)}] — Pickleball Manager\n\n${message}\n\nTừ: ${userEmail || '—'}\nLiên hệ: ${contact || '—'}\nTrang: ${page || '—'}\nThiết bị: ${device || '—'}`;
 }
 
+// Every report goes to the developer unless FEEDBACK_TO_EMAIL says otherwise.
+const DEV_FEEDBACK_EMAIL = 'pickleball.web.ltsocial@gmail.com';
+
 async function sendEmail(fb) {
   const key = process.env.RESEND_API_KEY;
-  const to = process.env.FEEDBACK_TO_EMAIL;
-  if (!key || !to) return 'not_configured';
+  const to = process.env.FEEDBACK_TO_EMAIL || DEV_FEEDBACK_EMAIL;
+  if (!key) return 'not_configured';
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },

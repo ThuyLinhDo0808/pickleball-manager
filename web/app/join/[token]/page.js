@@ -1,4 +1,5 @@
 'use client';
+import { todayYmd } from '@/lib/dates';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -19,6 +20,7 @@ export default function JoinClubPage() {
   const [planId, setPlanId] = useState(null);
   const [startMonth, setStartMonth] = useState(thisMonth);
   const [count, setCount] = useState(1);
+  const [startDate, setStartDate] = useState(todayYmd);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [needProfile, setNeedProfile] = useState(false);
@@ -31,7 +33,7 @@ export default function JoinClubPage() {
     setBusy(true);
     setError('');
     try {
-      setResult(await api.post(`/api/player/join/${token}`, { plan_id: plan.id, start_month: startMonth, count: Number(count) }));
+      setResult(await api.post(`/api/player/join/${token}`, plan.validity_months ? { plan_id: plan.id, start_date: startDate } : { plan_id: plan.id, start_month: startMonth, count: Number(count) }));
     } catch (err) {
       if (err.payload?.code === 'profile_required') setNeedProfile(true);
       else if (err.payload?.code === 'email_verify_required') setError(t('everify.needed'));
@@ -82,25 +84,39 @@ export default function JoinClubPage() {
               >
                 <div className={`font-semibold ${plan?.id === p.id ? 'text-lime-400' : 'text-white'}`}>{p.name}</div>
                 <div className="text-gray-300 text-sm">
-                  {formatVnd(p.price)} / {t(`plans.${p.period}`).toLowerCase()} ·{' '}
-                  {p.sessions_included ? t('plans.sessionsN', { n: p.sessions_included }) : t('plans.unlimited')}
+                  {p.validity_months ? (
+                    `${formatVnd(p.price)} · ${t('plans.packShort', { n: p.sessions_included, m: p.validity_months })}`
+                  ) : (
+                    <>
+                      {formatVnd(p.price)} / {t(`plans.${p.period}`).toLowerCase()} ·{' '}
+                      {p.sessions_included ? t('plans.sessionsN', { n: p.sessions_included }) : t('plans.unlimited')}
+                    </>
+                  )}
                 </div>
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          {plan?.validity_months ? (
             <div>
-              <label className="text-xs text-gray-400">{t('join.startMonth')}</label>
-              <input className="input" type="month" min={thisMonth()} value={startMonth} onChange={(e) => setStartMonth(e.target.value)} />
+              <label className="text-xs text-gray-400">{t('membership.startDate')}</label>
+              <input className="input" type="date" min={todayYmd()} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <p className="text-gray-500 text-xs mt-1">{t('membership.packHint', { n: plan.sessions_included, m: plan.validity_months })}</p>
             </div>
-            <div>
-              <label className="text-xs text-gray-400">{t('join.count')}</label>
-              <input className="input" type="number" inputMode="numeric" min="1" max="12" value={count} onChange={(e) => setCount(e.target.value)} />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-400">{t('join.startMonth')}</label>
+                <input className="input" type="month" min={thisMonth()} value={startMonth} onChange={(e) => setStartMonth(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">{t('join.count')}</label>
+                <input className="input" type="number" inputMode="numeric" min="1" max="12" value={count} onChange={(e) => setCount(e.target.value)} />
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex items-baseline justify-between border-t border-navy-700 pt-3">
             <span className="text-gray-400 text-sm">{t('join.total')}</span>
-            <span className="text-lime-400 text-2xl font-bold">{formatVnd((plan?.price || 0) * (Number(count) || 1))}</span>
+            <span className="text-lime-400 text-2xl font-bold">{formatVnd((plan?.price || 0) * (plan?.validity_months ? 1 : Number(count) || 1))}</span>
           </div>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
