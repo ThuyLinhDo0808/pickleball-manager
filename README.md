@@ -1352,7 +1352,7 @@ supabase db push                   # chạy các migration còn thiếu, theo th
 | `PLAN_PRICE_SM_BASIC` / `_SM_STANDARD` / `_SM_ADVANCED` / `_SM_PRO` | | Tuỳ chọn: giá gói Social Manager mỗi tháng (VND), mặc định 99000 / 199000 / 349000 / 599000 |
 | `PLAN_CACHE_MS` | | Tuỳ chọn: thời gian nhớ gói của mỗi Host (mặc định 15000 ms). Đặt `0` khi chạy test có sửa trực tiếp database. |
 | `RESEND_API_KEY` | | Gửi góp ý qua email (Resend) |
-| `FEEDBACK_TO_EMAIL` | | Email nhận góp ý (nhiều email cách nhau bằng dấu phẩy) |
+| `FEEDBACK_TO_EMAIL` | | Email nhận góp ý (nhiều email cách nhau bằng dấu phẩy). **Bỏ trống = gửi về nhà phát triển `pickleball.web.ltsocial@gmail.com`** |
 | `FEEDBACK_FROM_EMAIL` | | Người gửi, chỉ dùng khi đã xác minh domain riêng trên Resend |
 | `FEEDBACK_WEBHOOK_URL` | | Gửi góp ý dạng JSON tới webhook |
 | `FEEDBACK_WEBHOOK_SECRET` | | Gửi kèm header `X-Feedback-Secret` |
@@ -1387,10 +1387,10 @@ Nút **Báo lỗi / Liên hệ** (trước gọi là *Góp ý*) luôn lưu vào 
 | Biến | Giá trị |
 |---|---|
 | `RESEND_API_KEY` | API key Resend (`re_…`) |
-| `FEEDBACK_TO_EMAIL` | email nhận góp ý |
+| `FEEDBACK_TO_EMAIL` | email nhận góp ý (bỏ trống = `pickleball.web.ltsocial@gmail.com`) |
 | `FEEDBACK_FROM_EMAIL` | tuỳ chọn, chỉ khi có domain đã xác minh |
 
-Với người gửi mặc định `onboarding@resend.dev`, Resend **chỉ gửi tới email của tài khoản Resend**. Vì vậy hãy đặt `FEEDBACK_TO_EMAIL` đúng bằng email đó. Nếu người dùng để lại email liên hệ, bấm *Reply* là trả lời thẳng cho họ.
+Với người gửi mặc định `onboarding@resend.dev`, Resend **chỉ gửi tới email của tài khoản Resend**. Mọi góp ý mặc định gửi về nhà phát triển **`pickleball.web.ltsocial@gmail.com`** (trang Tài khoản → *Góp ý* ghi rõ *"Góp ý sẽ được gửi tới: pickleball.web.ltsocial@gmail.com"*), nên hãy tạo tài khoản Resend bằng chính email này, hoặc dùng domain đã xác minh làm `FEEDBACK_FROM_EMAIL`. Nếu người dùng để lại email liên hệ, bấm *Reply* là trả lời thẳng cho họ.
 
 **Cách B — Webhook** (không cần nhà cung cấp email)
 

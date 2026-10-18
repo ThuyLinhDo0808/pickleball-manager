@@ -214,7 +214,7 @@ export const vi = {
     backupWhat: 'Thành viên · Lịch chơi · Bảng xếp hạng',
     feedbackHint: "Gặp lỗi hoặc muốn có thêm tính năng? Gửi góp ý cho Ban quản trị.",
     feedbackPh: 'Mô tả lỗi bạn gặp hoặc tính năng bạn muốn…',
-    feedbackFrom: 'Phản hồi sẽ gửi tới: {email}',
+    feedbackFrom: 'Góp ý sẽ được gửi tới: {email}',
     feedbackSent: 'Đã gửi góp ý. Cảm ơn bạn!',
     feedbackMore: 'Gửi thêm',
     send: 'Gửi góp ý',

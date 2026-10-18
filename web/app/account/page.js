@@ -1,4 +1,6 @@
 'use client';
+// Every report (Góp ý, Báo lỗi / Liên hệ) goes to the developer's inbox.
+const DEV_FEEDBACK_EMAIL = 'pickleball.web.ltsocial@gmail.com';
 import { useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
@@ -229,7 +231,7 @@ export default function AccountPage() {
             <form onSubmit={sendFeedback} className="flex flex-col gap-3">
               <textarea className="input min-h-[7rem]" required maxLength={4000} placeholder={t('acct.feedbackPh')} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
               <div className="flex items-center justify-between gap-3">
-                <span className="text-gray-500 text-xs">{t('acct.feedbackFrom', { email })}</span>
+                <span className="text-gray-500 text-xs">{t('acct.feedbackFrom', { email: DEV_FEEDBACK_EMAIL })}</span>
                 <button className="btn-primary" disabled={busy || !feedback.trim()}>{t('acct.send')}</button>
               </div>
             </form>

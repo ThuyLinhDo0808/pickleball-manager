@@ -214,7 +214,7 @@ export const en = {
     backupWhat: 'Members · Schedule · Rankings',
     feedbackHint: 'Found a bug or want a feature? Send it straight to the team.',
     feedbackPh: 'Describe the problem or the feature you want…',
-    feedbackFrom: 'Replies go to: {email}',
+    feedbackFrom: 'Feedback is sent to: {email}',
     feedbackSent: 'Feedback sent. Thank you!',
     feedbackMore: 'Send more',
     send: 'Send feedback',
