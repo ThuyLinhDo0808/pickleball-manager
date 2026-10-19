@@ -3131,6 +3131,10 @@ export const vi = {
     eventPage: 'Xem trang kèo',
   },
   quick: {
+    duprId: "DUPR ID (không bắt buộc)",
+    duprIdNote: "Chỉ nhập nếu muốn tính điểm DUPR: Host sẽ gửi trận đấu của bạn lên DUPR. Không muốn thì để trống. Lấy ID trong app DUPR → nút chia sẻ → Copy DUPR ID.",
+    duprIdPh: "Ví dụ: YN9N0G",
+    duprIdSlot: "DUPR ID (không bắt buộc)",
     title: 'Link mời đặt nhanh',
     on: 'Đang bật',
     off: 'Đang tắt',
@@ -3251,6 +3255,8 @@ export const vi = {
     perkHowTo: "Khách giao lưu chỉ mua vé lẻ (không có gói hay VIP). Bấm ✏️ ở cột Sửa → tick Ưu tiên → nhập % giảm (ví dụ 10%, 20%, 50%).",
   },
   dupr: {
+    updatedOn: "Cập nhật DUPR ngày {date}",
+    idOptional: "Không bắt buộc: chỉ nhập nếu bạn muốn trận đấu được gửi lên DUPR để tính điểm DUPR. Không muốn thì để trống.",
     title: "DUPR",
     onlyPickleball: "DUPR chỉ dành cho CLB pickleball.",
     needMigration: "Cần chạy migration 20261119090000_dupr_link.sql và 20261120090000_dupr_auto.sql để dùng tính năng DUPR.",
@@ -3387,11 +3393,10 @@ export const vi = {
     uploadHow: "Trên DUPR: club → Matches → Add Matches → Import Matches via CSV → chọn file → Upload. Tải lên xong, bấm Đánh dấu đã tải lên.",
   },
   duprp: {
-    waiting: "DUPR ID {id} đã lưu. Điểm hiển thị sau khi CLB của bạn cập nhật danh sách từ DUPR.",
+    waiting: "DUPR ID {id} đã lưu. Điểm hiển thị sau khi một CLB / cộng đồng bạn chơi cập nhật danh sách từ DUPR.",
     noId: "Chưa có DUPR ID.",
     addId: "Thêm DUPR ID",
-    updated: "cập nhật {date} từ {club}",
-    how: "Điểm được cập nhật mỗi khi CLB nhập danh sách thành viên mới từ DUPR.",
+    how: "Điểm lấy từ DUPR, cập nhật mỗi khi một CLB / cộng đồng nhập danh sách mới từ DUPR.",
   },
 
   race: {

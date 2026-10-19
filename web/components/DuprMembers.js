@@ -185,6 +185,7 @@ export default function DuprMembers({ club }) {
                           <Change v={m.change} />
                           {m.doubles_rel != null && <span className="text-[11px] text-gray-500 ml-1">{t('dupr.rel', { n: m.doubles_rel })}</span>}
                         </span>
+                        {m.synced_at && <span className="block text-[10px] text-gray-500 whitespace-nowrap">{t('dupr.updatedOn', { date: fmtDate(m.synced_at) })}</span>}
                       </>
                     ) : (
                       <button type="button" className="text-right hover:underline" title={t('duprm.typeScoreHint')} onClick={() => setScore({ id: m.id, doubles: m.doubles ?? '', rel: m.doubles_rel ?? '', singles: m.singles ?? '' })}>

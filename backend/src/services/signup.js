@@ -38,16 +38,20 @@ async function needsApproval(event, standing, userId) {
   return !(rating != null && duprFits(rating, event));
 }
 
-// The player's DUPR doubles rating as DUPR has it (not self-entered), or null.
+// The player's DUPR doubles rating as DUPR has it (not self-entered), or null. The newest one
+// any club / community imported for their DUPR ID counts (a DUPR rating is the same everywhere).
 async function verifiedDupr(clubId, member, userId) {
-  if (member?.dupr_doubles != null) return Number(member.dupr_doubles);
-  if (!userId) return null;
-  const { data: prof } = await supabase.from('player_profiles').select('dupr_id').eq('user_id', userId).maybeSingle();
-  const id = prof?.dupr_id || member?.dupr_id;
-  if (!id) return null;
-  const { data: row, error } = await supabase.from('club_dupr_roster').select('doubles').eq('club_id', clubId).eq('dupr_id', id).maybeSingle();
-  if (error || row?.doubles == null) return null;
-  return Number(row.doubles);
+  if (member?.dupr_synced_at && member.dupr_doubles != null) return Number(member.dupr_doubles);
+  let id = member?.dupr_id || null;
+  if (!id && userId) {
+    const { data: prof } = await supabase.from('player_profiles').select('dupr_id').eq('user_id', userId).maybeSingle();
+    id = prof?.dupr_id || null;
+  }
+  if (id) {
+    const best = (await require('./dupr').latestRatings([id]).catch(() => new Map())).get(id);
+    if (best?.doubles != null) return best.doubles;
+  }
+  return member?.dupr_doubles != null ? Number(member.dupr_doubles) : null; // typed by the Host from the DUPR app
 }
 
 // Inside the kèo's level range (no range = any level).

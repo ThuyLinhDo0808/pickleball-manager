@@ -44,7 +44,7 @@ export default function DuprCard({ dupr, showLink = true }) {
       </div>
       <p className="text-gray-500 text-xs mt-2">
         DUPR ID <span className="font-mono text-gray-300">{dupr.dupr_id}</span>
-        {dupr.dupr_name ? ` (${dupr.dupr_name})` : ''} · {t('duprp.updated', { date: new Date(dupr.synced_at).toLocaleDateString('vi-VN'), club: dupr.club_name || '—' })}
+        {dupr.dupr_name ? ` (${dupr.dupr_name})` : ''} · {t('dupr.updatedOn', { date: new Date(dupr.synced_at).toLocaleDateString('vi-VN') })}
       </p>
       <p className="text-gray-500 text-xs mt-0.5">{t('duprp.how')}</p>
     </div>

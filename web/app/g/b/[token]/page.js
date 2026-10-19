@@ -175,6 +175,7 @@ export default function QuickBookingPage() {
                 {s.full_name}
                 {s.gender && <span className={`ml-2 text-[11px] ${s.gender === 'male' ? 'text-sky-300' : 'text-pink-300'}`}>{t(`members.${s.gender}`)}</span>}
                 {s.dupr_level != null && <span className="ml-2 text-[11px] text-gray-400">{Number(s.dupr_level).toFixed(2)}</span>}
+                {s.dupr_id && <span className="ml-2 text-[11px] text-sky-300 font-mono">DUPR {s.dupr_id}</span>}
               </span>
               <span className={`text-[11px] shrink-0 ${s.status === 'cancelled' ? 'text-gray-500' : s.status === 'pending' ? 'text-sky-300' : 'text-lime-300'}`}>{t(`quick.st_${s.status}`)}</span>
             </li>
