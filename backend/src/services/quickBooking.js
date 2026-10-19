@@ -142,6 +142,19 @@ const cleanLevel = (v) => {
   if (!(n >= 1 && n <= 8)) throw fail('Level must be from 1.00 to 8.00.', 400, 'bad_level');
   return Math.round(n * 100) / 100;
 };
+// Optional DUPR ID (only for players who want their matches sent to DUPR). Before migration
+// 20261130090000_dupr_shared.sql it is ignored.
+async function duprIdReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes('20261130090000_dupr_shared.sql');
+}
+const cleanDupr = (v) => {
+  try {
+    return require('./dupr').cleanId(v);
+  } catch {
+    throw fail('A DUPR ID is 4-10 letters or digits (DUPR app → share → Copy DUPR ID). Leave it empty if you do not want DUPR.', 400, 'bad_dupr_id');
+  }
+};
 const cleanName = (v, code) => {
   const s = String(v || '').trim().replace(/\s+/g, ' ').slice(0, 120);
   if (!s) throw fail('Every player needs a name.', 400, code);
@@ -159,6 +172,8 @@ async function book(eventId, body) {
   const phone = String(contact.phone || '').trim();
   if (normalizePhone(phone).length < 9 || phone.length > 20) throw fail('A valid phone number is required.', 400, 'phone_required');
   const contactLevel = cleanLevel(contact.dupr_level);
+  const withDupr = await duprIdReady();
+  const contactDupr = withDupr ? cleanDupr(contact.dupr_id) : null;
   const raw = Array.isArray(body?.slots) ? body.slots : [];
   if (!raw.length) throw fail('Add at least one player.', 400, 'no_slots');
   if (raw.length > MAX_SLOTS) throw fail(`At most ${MAX_SLOTS} players at once.`, 400, 'too_many_slots');
@@ -166,6 +181,7 @@ async function book(eventId, body) {
     full_name: cleanName(s?.full_name, 'slot_name_required'),
     gender: ['male', 'female'].includes(s?.gender) ? s.gender : null,
     dupr_level: cleanLevel(s?.dupr_level),
+    dupr_id: withDupr ? cleanDupr(s?.dupr_id) : null,
   }));
   await require('./moderation').assertCanJoin(event, { phone }); // blocked by this Host / club
   await require('./signup').expireHolds(event);
@@ -176,7 +192,7 @@ async function book(eventId, body) {
   const token = crypto.randomBytes(24).toString('base64url');
   const { data: booking, error } = await supabase
     .from('event_guest_bookings')
-    .insert({ event_id: event.id, token_hash: hashToken(token), contact_name: name, contact_phone: phone, contact_level: contactLevel, slots: slots.length, amount: fee * slots.length })
+    .insert({ event_id: event.id, token_hash: hashToken(token), contact_name: name, contact_phone: phone, contact_level: contactLevel, ...(withDupr ? { contact_dupr_id: contactDupr } : {}), slots: slots.length, amount: fee * slots.length })
     .select()
     .single();
   if (error) throw error;
@@ -190,6 +206,7 @@ async function book(eventId, body) {
     full_name: s.full_name,
     gender: s.gender,
     dupr_level: s.dupr_level,
+    ...(withDupr ? { dupr_id: s.dupr_id } : {}),
     phone: i === 0 ? phone : null, // the contact's number, on the first slot
     kind: 'guest',
     guest_booking_id: booking.id,
@@ -239,8 +256,8 @@ async function view(event, booking) {
   const out = {
     state,
     event: { ...(await clubBits(event)), id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, location: event.location, map_url: event.map_url },
-    contact: { full_name: booking.contact_name, phone: booking.contact_phone, dupr_level: booking.contact_level },
-    slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, status: r.status, ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
+    contact: { full_name: booking.contact_name, phone: booking.contact_phone, dupr_level: booking.contact_level, dupr_id: booking.contact_dupr_id || null },
+    slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
     amount,
     hold_expires_at: pending[0]?.hold_expires_at || null,
     payment_note: pending.find((r) => r.payment_status === 'rejected')?.payment_note || null,

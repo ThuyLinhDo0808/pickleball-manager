@@ -80,13 +80,11 @@ router.get('/public/:publicToken', async (req, res) => {
     console.error('expireHolds failed on public page', err);
   }
 
-  const { data: people, error: pErr } = await supabase
-    .from('event_participants')
-    .select('id, full_name, dupr_level, status, joined_at, is_organizer, user_id, source_club_member_id, guest_member_id')
-    .eq('event_id', event.id)
-    // Players with a place or on the waitlist (not requests waiting for the Host, nor organizers who don't play).
-    .not('status', 'in', '(cancelled,no_show,requested,not_playing)')
-    .order('joined_at', { ascending: true });
+  const cols = 'id, full_name, dupr_level, status, joined_at, is_organizer, user_id, source_club_member_id, guest_member_id';
+  // Players with a place or on the waitlist (not requests waiting for the Host, nor organizers who don't play).
+  const listOf = (c) => supabase.from('event_participants').select(c).eq('event_id', event.id).not('status', 'in', '(cancelled,no_show,requested,not_playing)').order('joined_at', { ascending: true });
+  let { data: people, error: pErr } = await listOf(`${cols}, dupr_id`);
+  if (pErr) ({ data: people, error: pErr } = await listOf(cols)); // before 20261130090000_dupr_shared.sql
   if (pErr) return dbError(res, pErr);
 
   let closedCode = null;
@@ -147,17 +145,19 @@ async function publicPlayerInfo(event, people) {
     }
     for (const [k, v] of seen) duprCount.set(k, v.size);
   }
+  const shared = await require('../services/dupr').latestRatings(people.filter((p) => !memberOf(p)?.dupr_synced_at).map((p) => memberOf(p)?.dupr_id || p.dupr_id)).catch(() => new Map());
   return people.map((p) => {
     const m = memberOf(p);
     const g = m?.gender || genderOf.get(p.user_id) || null;
+    const sh = m?.dupr_synced_at ? null : shared.get(m?.dupr_id || p.dupr_id);
     return {
       full_name: p.full_name,
       dupr_level: p.dupr_level,
       status: p.status,
       is_organizer: p.is_organizer,
       gender: g === 'male' || g === 'female' ? g : null,
-      dupr: m?.dupr_doubles != null ? Number(m.dupr_doubles) : null,
-      dupr_rel: m?.dupr_doubles_rel ?? null,
+      dupr: sh?.doubles ?? (m?.dupr_doubles != null ? Number(m.dupr_doubles) : null),
+      dupr_rel: sh ? sh.doubles_rel ?? null : m?.dupr_doubles_rel ?? null,
       dupr_matches: m ? duprCount.get(m.id) || 0 : null,
     };
   });
@@ -960,10 +960,21 @@ async function playerCards(event, rows) {
     : { data: [] };
   if (pErr) throw pErr;
   const byUser = new Map((profiles || []).map((x) => [x.user_id, x]));
+  // DUPR rating as DUPR gave it (newest from any club / community's file, source not shown):
+  // the member's linked rating, else by the DUPR ID of the profile / the quick booking.
+  const idOf = (p, m, prof) => (m?.dupr_synced_at ? null : m?.dupr_id || prof?.dupr_id || p.dupr_id || null);
+  const shared = await require('../services/dupr')
+    .latestRatings(rows.map((p) => {
+      const m = byMember.get(p.source_club_member_id || p.guest_member_id);
+      return idOf(p, m, byUser.get(p.user_id || m?.user_id));
+    }))
+    .catch(() => new Map());
   const cards = new Map();
   for (const p of rows) {
     const m = byMember.get(p.source_club_member_id || p.guest_member_id) || null;
     const prof = byUser.get(p.user_id || m?.user_id) || null;
+    const sh = shared.get(idOf(p, m, prof));
+    const verified = m?.dupr_synced_at && m.dupr_doubles != null ? { doubles: Number(m.dupr_doubles), at: m.dupr_synced_at } : sh?.doubles != null ? { doubles: sh.doubles, at: sh.at } : null;
     cards.set(p.id, {
       member_id: m?.id || null,
       member_type: m?.member_type || null,
@@ -971,6 +982,9 @@ async function playerCards(event, rows) {
       avatar: prof?.avatar || null,
       level: m?.dupr_level ?? p.dupr_level ?? null,
       dupr: prof?.dupr_level ?? null,
+      dupr_verified: verified?.doubles ?? null,
+      dupr_updated_at: verified?.at ?? null,
+      dupr_id: m?.dupr_id || prof?.dupr_id || p.dupr_id || null,
       district: m?.district || null,
       play_duration: m?.play_duration || null,
       gender: m?.gender || prof?.gender || null,

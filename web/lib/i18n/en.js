@@ -3131,6 +3131,10 @@ export const en = {
     eventPage: 'Event page',
   },
   quick: {
+    duprId: "DUPR ID (optional)",
+    duprIdNote: "Only if you want a DUPR rating: the Host will send your matches to DUPR. Otherwise leave it empty. Find it in the DUPR app → share button → Copy DUPR ID.",
+    duprIdPh: "e.g. YN9N0G",
+    duprIdSlot: "DUPR ID (optional)",
     title: 'Quick invite link',
     on: 'On',
     off: 'Off',
@@ -3251,6 +3255,8 @@ export const en = {
     perkHowTo: 'Guests buy single tickets only (no plans, no VIP). Press ✏️ in the Edit column → tick Priority → enter the % off (e.g. 10%, 20%, 50%).',
   },
   dupr: {
+    updatedOn: "DUPR updated {date}",
+    idOptional: "Optional: only enter it if you want your matches sent to DUPR to count for your DUPR rating. Otherwise leave it empty.",
     title: "DUPR",
     onlyPickleball: "DUPR is for pickleball clubs only.",
     needMigration: "Run migrations 20261119090000_dupr_link.sql and 20261120090000_dupr_auto.sql to use DUPR.",
@@ -3387,11 +3393,10 @@ export const en = {
     uploadHow: "On DUPR: club → Matches → Add Matches → Import Matches via CSV → choose the file → Upload. Then tap Mark as uploaded.",
   },
   duprp: {
-    waiting: "DUPR ID {id} saved. Ratings show once your club updates its list from DUPR.",
+    waiting: "DUPR ID {id} saved. Ratings show once a club / community you play in updates its list from DUPR.",
     noId: "No DUPR ID yet.",
     addId: "Add DUPR ID",
-    updated: "updated {date} by {club}",
-    how: "Ratings update each time a club imports a new member list from DUPR.",
+    how: "Ratings come from DUPR and update whenever a club / community imports a new list from DUPR.",
   },
 
   race: {

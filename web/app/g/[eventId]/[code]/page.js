@@ -11,7 +11,8 @@ import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 import { levelRange } from '@/lib/levels';
 
-const blankSlot = () => ({ full_name: '', gender: '', dupr_level: '' });
+const blankSlot = () => ({ full_name: '', gender: '', dupr_level: '', dupr_id: '' });
+const idChars = (v) => v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
 
 // Quick booking from the Host's invite link (it changes every 30 s): no account. Contact
 // details, then how many players and who they are; the total is transferred on the next page.
@@ -21,7 +22,7 @@ export default function QuickBookPage() {
   const { t, lang, setLang } = useI18n();
   const [opened, setOpened] = useState(null); // { pass, pass_expires_at, event }
   const [openErr, setOpenErr] = useState(null);
-  const [contact, setContact] = useState({ full_name: '', phone: '', dupr_level: '' });
+  const [contact, setContact] = useState({ full_name: '', phone: '', dupr_level: '', dupr_id: '' });
   const [slots, setSlots] = useState([blankSlot()]);
   const [meFirst, setMeFirst] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -69,7 +70,7 @@ export default function QuickBookPage() {
   const time = [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join(' – ');
   const level = levelRange(ev.level_min, ev.level_max, ev.sport, t) || t('public.anyLevel');
   // Slot 1 = the person booking (same name / level), unless they book for others only.
-  const rows = slots.map((s, i) => (i === 0 && meFirst ? { ...s, full_name: contact.full_name, dupr_level: contact.dupr_level } : s));
+  const rows = slots.map((s, i) => (i === 0 && meFirst ? { ...s, full_name: contact.full_name, dupr_level: contact.dupr_level, dupr_id: contact.dupr_id } : s));
   const total = ev.fee * rows.length;
   const setSlot = (i, patch) => setSlots(slots.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const setCount = (n) => setSlots(Array.from({ length: n }, (_, i) => slots[i] || blankSlot()));
@@ -88,7 +89,7 @@ export default function QuickBookPage() {
       router.replace(`/g/b/${r.token}`);
     } catch (err) {
       const p = err.payload || {};
-      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : err.message);
+      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : p.code === 'bad_dupr_id' ? t('dupr.idOptional') : err.message);
     } finally {
       setBusy(false);
     }
@@ -131,6 +132,13 @@ export default function QuickBookPage() {
                 <label className="text-xs text-gray-400" htmlFor="q-level">{t(ev.sport === 'badminton' ? 'quick.levelBadminton' : 'quick.duprSelf')}</label>
                 <LevelInput id="q-level" sport={ev.sport} value={contact.dupr_level} onChange={(v) => setContact({ ...contact, dupr_level: v })} placeholder="3.25" />
               </div>
+              {ev.sport !== 'badminton' && (
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-gray-400" htmlFor="q-dupr">{t('quick.duprId')}</label>
+                  <input id="q-dupr" className="input uppercase tracking-wider font-mono placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdPh')} value={contact.dupr_id} onChange={(e) => setContact({ ...contact, dupr_id: idChars(e.target.value) })} />
+                  <p className="text-gray-400 text-xs mt-1">ℹ️ {t('quick.duprIdNote')}</p>
+                </div>
+              )}
             </div>
           </section>
 
@@ -166,6 +174,9 @@ export default function QuickBookPage() {
                         <LevelInput sport={ev.sport} value={s.dupr_level} onChange={(v) => setSlot(i, { dupr_level: v })} placeholder={t('quick.level')} />
                       )}
                     </div>
+                    {ev.sport !== 'badminton' && !mine && (
+                      <input className="input mt-2 uppercase tracking-wider font-mono text-sm placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdSlot')} aria-label={t('quick.duprIdSlot')} value={s.dupr_id} onChange={(e) => setSlot(i, { dupr_id: idChars(e.target.value) })} />
+                    )}
                   </li>
                 );
               })}
