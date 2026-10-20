@@ -540,7 +540,16 @@ router.get('/recent-signups', async (req, res) => {
     .limit(40);
   if (pErr) return dbError(res, pErr);
   const byId = new Map(events.map((e) => [e.id, e]));
-  res.json(rows.map((r) => ({ ...r, event: byId.get(r.event_id) })));
+  // Ticket passes waiting for the Host (find a taker / check the money).
+  let passes = [];
+  if (await require('../services/ticketPass').ready()) {
+    const { data: ps } = await supabase.from('event_ticket_passes').select('id, event_id, from_participant_id, status, created_at, submitted_at').in('event_id', events.map((e) => e.id)).in('status', ['open', 'proof_submitted']).gte('created_at', since).limit(20);
+    const fromIds = (ps || []).map((x) => x.from_participant_id);
+    const { data: who } = fromIds.length ? await supabase.from('event_participants').select('id, full_name').in('id', fromIds) : { data: [] };
+    const nameOf = new Map((who || []).map((x) => [x.id, x.full_name]));
+    passes = (ps || []).map((x) => ({ id: `pass-${x.id}`, event_id: x.event_id, full_name: nameOf.get(x.from_participant_id) || '—', status: x.status === 'open' ? 'pass_open' : 'pass_proof', joined_at: x.submitted_at || x.created_at, event: byId.get(x.event_id) }));
+  }
+  res.json([...rows.map((r) => ({ ...r, event: byId.get(r.event_id) })), ...passes].sort((a, b) => String(b.joined_at).localeCompare(String(a.joined_at))).slice(0, 40));
 });
 
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
@@ -1358,6 +1367,38 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
   }
 
   res.json(updated);
+});
+
+// Pass vé (services/ticketPass.js): the Host finds who on the waitlist takes a ticket,
+// checks the holder got the money, and moves the place.
+router.get('/:eventId/passes', async (req, res) => {
+  try {
+    res.json(await require('../services/ticketPass').listForHost(req.event));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+router.get('/:eventId/passes/:passId/proof', async (req, res) => {
+  if (!isUuid(req.params.passId)) return notFound(res, 'Pass');
+  try {
+    res.json(await require('../services/ticketPass').proof(req.event, req.params.passId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+router.post('/:eventId/passes/:passId/:action', async (req, res) => {
+  if (!isUuid(req.params.passId)) return notFound(res, 'Pass');
+  const tp = require('../services/ticketPass');
+  const { passId, action } = req.params;
+  try {
+    if (action === 'match') return res.json(await tp.match(req.event, passId, req.body?.to_participant_id));
+    if (action === 'confirm') return res.json(await tp.confirm(req.event, passId));
+    if (action === 'reject') return res.json(await tp.reject(req.event, passId, req.body?.note));
+    if (action === 'cancel') return res.json(await tp.cancelByHost(req.event, passId));
+    res.status(400).json({ error: `Unknown action: ${action}` });
+  } catch (err) {
+    fail(res, err);
+  }
 });
 
 // Quick invite link (no account, straight to the transfer): the link changes every 30 s.

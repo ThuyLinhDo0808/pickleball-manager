@@ -64,6 +64,7 @@ const PROBES = [
   { table: 'event_guest_bookings', column: 'token_hash', migration: '20261129090000_quick_guest_booking.sql' },
   { table: 'event_participants', column: 'dupr_id', migration: '20261130090000_dupr_shared.sql' },
   { table: 'events', column: 'level_min_f', migration: '20261201090000_gender_levels.sql' },
+  { table: 'event_ticket_passes', column: 'status', migration: '20261202090000_ticket_pass.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },

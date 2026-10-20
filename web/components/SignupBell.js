@@ -50,7 +50,7 @@ export default function SignupBell({ className = '' }) {
       setTimeout(() => setSeen(rows[0].joined_at), 4000); // keep the "new" dots while the list is read
     }
   }
-  const state = (r) => (r.status === 'requested' ? 'requested' : r.status === 'pending' ? (r.payment_status === 'proof_submitted' ? 'proof' : 'pay') : r.status === 'waitlisted' ? 'waitlisted' : 'registered');
+  const state = (r) => (String(r.status).startsWith('pass_') ? r.status : r.status === 'requested' ? 'requested' : r.status === 'pending' ? (r.payment_status === 'proof_submitted' ? 'proof' : 'pay') : r.status === 'waitlisted' ? 'waitlisted' : 'registered');
 
   return (
     <div ref={box} className={`relative ${className}`}>

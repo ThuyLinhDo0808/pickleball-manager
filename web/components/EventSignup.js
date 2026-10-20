@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import PaymentCard from '@/components/PaymentCard';
 import TicketCard from '@/components/TicketCard';
+import { PassMyTicket } from '@/components/TicketPass';
 import Countdown from '@/components/Countdown';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
@@ -321,7 +322,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <TicketCard ticketCode={reg.ticket_code} name={reg.full_name} checkedIn={reg.status === 'checked_in'} />
         {reg.status === 'registered' && (
           <div className="flex flex-col items-center gap-2 mt-4">
-            <p className="text-gray-400 text-xs max-w-xs">{t('signup.noTransfer')}</p>
+            <PassMyTicket reg={reg} waitlistCount={Number(ev.waitlist_count ?? (ev.participants || []).filter((p) => p.status === 'waitlisted').length)} onChanged={onChanged} />
             <button type="button" className="text-red-400 text-sm" onClick={cancel}>{t('events.cancel')}</button>
             {cancelUi}
           </div>

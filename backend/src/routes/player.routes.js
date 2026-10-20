@@ -995,6 +995,50 @@ player.post('/participations/:participantId/cancel', async (req, res) => {
   }
 });
 
+// Pass vé (services/ticketPass.js): my ticket to someone on the waitlist, through the Host.
+async function myParticipant(req) {
+  if (!isUuid(req.params.participantId)) throw badRequest('Registration not found.', 404);
+  const { data: p } = await supabase.from('event_participants').select('*').eq('id', req.params.participantId).maybeSingle();
+  let mine = p?.user_id === req.hostId;
+  if (p && !mine && p.source_club_member_id) {
+    const { data: m } = await supabase.from('club_members').select('user_id').eq('id', p.source_club_member_id).maybeSingle();
+    mine = m?.user_id === req.hostId;
+  }
+  if (!mine) throw badRequest('Registration not found.', 404);
+  return p;
+}
+player.get('/participations/:participantId/pass', async (req, res) => {
+  try {
+    res.json({ pass: await require('../services/ticketPass').viewForPlayer(await myParticipant(req)) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+player.post('/participations/:participantId/pass', async (req, res) => {
+  try {
+    await require('../services/ticketPass').request(await myParticipant(req));
+    res.status(201).json({ pass: await require('../services/ticketPass').viewForPlayer(await myParticipant(req)) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+player.post('/participations/:participantId/pass/proof', async (req, res) => {
+  try {
+    const p = await myParticipant(req);
+    await require('../services/ticketPass').submitProof(p, req.body || {});
+    res.json({ pass: await require('../services/ticketPass').viewForPlayer(p) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+player.post('/participations/:participantId/pass/cancel', async (req, res) => {
+  try {
+    res.json(await require('../services/ticketPass').cancelByPlayer(await myParticipant(req)));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // My personal check-in QR: make a new one if the old one was shared by mistake.
 player.post('/checkin-code/rotate', async (req, res) => {
   try {

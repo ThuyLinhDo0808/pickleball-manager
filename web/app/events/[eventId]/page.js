@@ -10,6 +10,7 @@ import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
+import { HostTicketPasses } from '@/components/TicketPass';
 import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
 import MeetingEvent from '@/components/MeetingEvent';
@@ -361,6 +362,7 @@ export default function EventDetailPage() {
             ))}
           </div>
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
+          <HostTicketPasses event={event} onChanged={refresh} />
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
           <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
