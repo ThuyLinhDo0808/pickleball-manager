@@ -1,5 +1,4 @@
 'use client';
-import { TextSizeButton } from '@/components/TextSizeSwitch';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -266,9 +265,9 @@ export default function SignInPage() {
           <Link href="/" className="hidden items-center gap-1.5 rounded-full px-3 h-9 text-sm text-gray-300 hover:text-white sm:inline-flex">
             <span aria-hidden="true">←</span> {t('auth.toLanding')}
           </Link>
-          <span className="inline-flex items-center gap-2"><TextSizeButton /><button type="button" onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="h-9 rounded-full border border-white/15 px-3 text-xs font-semibold text-gray-300 hover:text-white" aria-label={t('landing.switchLang')}>
+          <button type="button" onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="h-9 rounded-full border border-white/15 px-3 text-xs font-semibold text-gray-300 hover:text-white" aria-label={t('landing.switchLang')}>
             {lang === 'vi' ? 'EN' : 'VI'}
-          </button></span>
+          </button>
         </div>
       </header>
       <main data-state={state} className="lp-snap relative z-10 mx-auto grid w-full max-w-[1440px] flex-1 content-center items-center gap-8 px-5 pb-10 sm:px-10 lg:grid-cols-[1fr_minmax(0,32rem)] lg:gap-16 lg:px-16">

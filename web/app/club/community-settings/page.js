@@ -1,4 +1,5 @@
 'use client';
+import Hint from '@/components/ui/Hint';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
@@ -26,9 +27,8 @@ function preset(mode, sport, t) {
 function Card({ icon, title, hint, children }) {
   return (
     <section className="card mb-4">
-      <h2 className="text-white font-semibold">{icon} {title}</h2>
-      {hint && <p className="text-gray-400 text-xs mt-0.5">{hint}</p>}
-      <div className="mt-4">{children}</div>
+      <h2 className="text-white font-semibold flex items-center gap-2">{icon} {title} {hint && <Hint inline text={hint} />}</h2>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
@@ -129,6 +129,39 @@ export default function CommunitySettingsPage() {
           ) : (
             <p className="text-sm text-gray-400">{t('cpanel.autoDuprOff')}</p>
           )}
+        </Card>
+
+        {/* Refund rule new kèo start with (players see it before signing up; each kèo can change it). */}
+        <Card icon="💸" title={t('cpanel.refundTitle')} hint={t('cpanel.refundHint')}>
+          {(() => {
+            const r = s.refund || { mode: 'tiers', full: 12, half: 6 };
+            const setR = (patch) => set({ refund: { ...r, ...patch } });
+            return (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="radiogroup" aria-label={t('cpanel.refundTitle')}>
+                  {['tiers', 'free', 'none'].map((m) => (
+                    <button key={m} type="button" role="radio" aria-checked={r.mode === m} onClick={() => setR({ mode: m })} className={`rounded-lg border px-3 py-2 text-sm text-left ${r.mode === m ? 'border-lime-400 bg-lime-400/10 text-white font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                      {t(`cpanel.refund_${m}`)}
+                    </button>
+                  ))}
+                </div>
+                {r.mode === 'tiers' && (
+                  <div className="mt-3 flex flex-col gap-2 text-sm text-gray-200">
+                    <label className="flex flex-wrap items-center gap-2">
+                      {t('cpanel.refundFull')}
+                      <input type="number" min={0} max={168} className="input !w-20 !py-1.5 text-center" value={r.full ?? ''} onChange={(e) => setR({ full: e.target.value })} />
+                      {t('cpanel.hours')}
+                    </label>
+                    <label className="flex flex-wrap items-center gap-2">
+                      {t('cpanel.refundHalf')}
+                      <input type="number" min={0} max={167} className="input !w-20 !py-1.5 text-center" value={r.half ?? ''} placeholder="—" onChange={(e) => setR({ half: e.target.value })} />
+                      {t('cpanel.hours')}
+                    </label>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </Card>
 
         <Card icon="💤" title={t('cpanel.activeTitle')} hint={t('cpanel.activeHint')}>

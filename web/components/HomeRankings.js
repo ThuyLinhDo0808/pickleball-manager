@@ -1,4 +1,5 @@
 'use client';
+import Hint from '@/components/ui/Hint';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
@@ -110,11 +111,11 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
             {rows.length === 0 ? (
               <p className="p-4 text-gray-400 text-sm">{t('rankings.noData')}</p>
             ) : (
-              <ol className="max-h-80 overflow-y-auto divide-y divide-navy-700">
+              <ol className="divide-y divide-navy-700">
                 {rows.map((r) => (
                   <li key={keyOf(r)} className={`flex items-center gap-3 px-4 py-2 text-sm ${isMe(r) ? 'bg-lime-400/10' : ''} ${r.place == null ? 'opacity-60' : ''}`}>
                     <span className="w-7 text-center text-gray-400 tabular-nums">{r.place == null ? '—' : r.place <= 3 ? MEDALS[r.place - 1] : r.place}</span>
-                    <span className="min-w-0 flex-1 truncate text-gray-100">
+                    <span className="min-w-0 flex-1 break-words text-gray-100">
                       {r.full_name}
                       {isMe(r) && <span className="ml-1.5 text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
                       {!club && r.clubs?.length > 0 && <span className="block text-[10px] text-gray-500 truncate">{r.clubs.join(' · ')}</span>}
@@ -126,9 +127,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                 ))}
               </ol>
             )}
-            <p className="px-4 py-2 text-[11px] text-gray-500 border-t border-navy-700">
-              {order === 'level' ? t('homeRank.ruleLevel') : club ? t('homeRank.rule', { n: data.min_matches }) : t('homeRank.ruleXeve', { n: data.min_matches })}
-            </p>
+            <div className="px-4 py-2 border-t border-navy-700">
+              <Hint text={order === 'level' ? t('homeRank.ruleLevel') : club ? t('homeRank.rule', { n: data.min_matches }) : t('homeRank.ruleXeve', { n: data.min_matches })} />
+            </div>
           </>
         )}
       </div>

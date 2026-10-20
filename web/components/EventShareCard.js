@@ -16,15 +16,16 @@ function toLocalInput(iso) {
 
 function formFrom(event) {
   return {
-    allow_public_registration: !!event.allow_public_registration,
     registration_deadline: toLocalInput(event.registration_deadline),
     notice: event.notice || '',
     cancel_deadline_hours: event.cancel_deadline_hours == null ? '' : String(event.cancel_deadline_hours),
     cancel_half_hours: event.cancel_half_hours == null ? '' : String(event.cancel_half_hours),
+    no_refund: !!event.no_refund,
   };
 }
 
-// Host controls for the player-facing sign-up link: on/off, deadline, notice, share.
+// Host controls for the player-facing sign-up link: share it, auto-close time, refund rules,
+// notice. Taking sign-ups / closed is one button in EventControls (not repeated here).
 export default function EventShareCard({ event, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState(() => formFrom(event));
@@ -56,8 +57,9 @@ export default function EventShareCard({ event, onSaved }) {
         ...patch,
         registration_deadline: patch.registration_deadline ? new Date(patch.registration_deadline).toISOString() : null,
         notice: patch.notice?.trim() || null,
-        cancel_deadline_hours: patch.cancel_deadline_hours === '' ? null : Number(patch.cancel_deadline_hours),
-        cancel_half_hours: halfHours(patch.cancel_deadline_hours, patch.cancel_half_hours),
+        cancel_deadline_hours: patch.no_refund || patch.cancel_deadline_hours === '' ? null : Number(patch.cancel_deadline_hours),
+        cancel_half_hours: patch.no_refund ? null : halfHours(patch.cancel_deadline_hours, patch.cancel_half_hours),
+        no_refund: !!patch.no_refund,
       });
       onSaved?.(updated);
       setSavedMsg(true);
@@ -92,25 +94,12 @@ export default function EventShareCard({ event, onSaved }) {
       <div className="flex items-center justify-between gap-3 mb-1">
         <h2 className="text-white font-semibold">{t('events.shareTitle')} <Hint inline text={t('events.shareHint')} /></h2>
         <span className={`text-xs rounded-full px-2 py-0.5 ${isOpen ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-700 text-gray-300'}`}>
-          {isOpen ? t('events.registrationOpen') : t('events.registrationClosed')}
+          {isOpen ? t('reg.open') : t('reg.closed')}
         </span>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-gray-200 mb-3">
-        <input
-          type="checkbox"
-          checked={form.allow_public_registration}
-          onChange={(e) => {
-            const next = { ...form, allow_public_registration: e.target.checked };
-            setForm(next);
-            save(next);
-          }}
-          disabled={busy}
-        />
-        {t('events.allowPublic')}
-      </label>
-
-      {event.allow_public_registration ? (
+      {!isOpen && <p className="text-gray-400 text-sm mb-2">🔒 {t('reg.linkClosedNote')}</p>}
+      {(
         <div className="flex flex-col sm:flex-row gap-2 mb-4">
           <input readOnly value={shown} onFocus={(e) => e.target.select()} className="input text-sm flex-1 min-w-0 font-mono" aria-label={t('events.copyLink')} />
           <div className="flex gap-2">
@@ -127,8 +116,6 @@ export default function EventShareCard({ event, onSaved }) {
             </a>
           </div>
         </div>
-      ) : (
-        <p className="text-gray-500 text-sm mb-4">{t('events.linkOff')}</p>
       )}
 
       {/* Deadline, refund rules and the note: tucked away — open / close is one button above. */}
@@ -142,19 +129,26 @@ export default function EventShareCard({ event, onSaved }) {
         className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3"
       >
         <div>
-          <label className="text-xs text-gray-400">{t('events.deadline')}</label>
-          <input
-            className="input"
-            type="datetime-local"
-            value={form.registration_deadline}
-            onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })}
-          />
+          <label className="text-sm text-gray-300">{t('reg.autoClose')}</label>
+          <div className="flex gap-2">
+            <input
+              className="input flex-1 min-w-0"
+              type="datetime-local"
+              value={form.registration_deadline}
+              onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })}
+            />
+            {form.registration_deadline && (
+              <button type="button" className="btn-secondary !px-3 text-sm" onClick={() => setForm({ ...form, registration_deadline: '' })}>✕ {t('reg.mode_none')}</button>
+            )}
+          </div>
+          {!form.registration_deadline && <p className="text-gray-400 text-xs mt-1">{t('reg.noAutoClose')}</p>}
         </div>
         <div>
-          <label className="text-xs text-gray-400">{t('policy.label')}</label>
-          <select className="input" value={form.cancel_deadline_hours} onChange={(e) => setForm({ ...form, cancel_deadline_hours: e.target.value })}>
+          <label className="text-sm text-gray-300">{t('policy.refundLabel')}</label>
+          <select className="input" value={form.no_refund ? 'no' : form.cancel_deadline_hours} onChange={(e) => setForm(e.target.value === 'no' ? { ...form, no_refund: true, cancel_deadline_hours: '' } : { ...form, no_refund: false, cancel_deadline_hours: e.target.value })}>
+            <option value="no">{t('policy.noRefund')}</option>
             {['', '2', '6', '12', '24', '48', ...(['', '2', '6', '12', '24', '48'].includes(form.cancel_deadline_hours) ? [] : [form.cancel_deadline_hours])].map((h) => (
-              <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hoursShort', { h })}</option>
+              <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.fullBefore', { h })}</option>
             ))}
           </select>
         </div>

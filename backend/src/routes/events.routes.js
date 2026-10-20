@@ -1,5 +1,5 @@
 const express = require('express');
-const { assertSocialManager, assertFeature } = require('../services/plan');
+const { assertFeature } = require('../services/plan');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid, pick } = require('../utils/respond');
 const { actingHost, eventAccess, coAdminClubIds, ROLE_FORBIDDEN } = require('../services/clubAccess');
@@ -20,7 +20,7 @@ const signup = require('../services/signup');
 const { notifyEventCancelled } = require('../services/notify');
 const { suspensionOf } = require('../services/owner');
 const { HOLDS_PLACE } = require('../services/fees');
-const { perksFor, ensureGuestMember, memberForUser, findClubPerson } = require('../services/guests');
+const { perksFor, ensureGuestMember, memberForUser, findClubPerson, guestsReady } = require('../services/guests');
 const survey = require('../services/survey');
 const votes = require('../services/votes');
 const meeting = require('../services/meetingMoney');
@@ -45,7 +45,7 @@ const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
   'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
-  'cancel_deadline_hours', 'cancel_half_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
+  'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
 ];
 
 // The club's Google Maps link: used for an event that has no link of its own.
@@ -403,6 +403,11 @@ async function genderLevelsReady() {
   return !st.missing_migrations.includes('20261201090000_gender_levels.sql');
 }
 
+async function noRefundReady() {
+  const st = await require('../services/schemaCheck').schemaStatus();
+  return !st.missing_migrations.includes('20261205090000_no_refund.sql');
+}
+
 function cleanEventFields(fields) {
   // Host picks open / completed / cancelled only (no drafts, no "closed": a session that
   // won't happen is cancelled, or deleted while nobody has signed up).
@@ -484,7 +489,7 @@ async function kindAllowed(clubId, kind) {
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
   'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f',
-  'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'allow_public_registration', 'cost_items',
+  'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'allow_public_registration', 'cost_items',
 ];
 
 function addDays(ymd, days) {
@@ -527,12 +532,13 @@ router.get('/recent-signups', async (req, res) => {
     .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10))
     .neq('status', 'cancelled');
   if (error) return dbError(res, error);
-  if (!events.length) return res.json([]);
   const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  // No upcoming kèo: nothing to look up by event (join requests can still come in).
+  const NONE = '00000000-0000-0000-0000-000000000000';
   const { data: rows, error: pErr } = await supabase
     .from('event_participants')
     .select('id, event_id, full_name, status, payment_status, joined_at, is_organizer, guest_booking_id')
-    .in('event_id', events.map((e) => e.id))
+    .in('event_id', events.length ? events.map((e) => e.id) : [NONE])
     .gte('joined_at', since)
     .neq('status', 'cancelled')
     .eq('is_organizer', false)
@@ -543,13 +549,37 @@ router.get('/recent-signups', async (req, res) => {
   // Ticket passes waiting for the Host (find a taker / check the money).
   let passes = [];
   if (await require('../services/ticketPass').ready()) {
-    const { data: ps } = await supabase.from('event_ticket_passes').select('id, event_id, from_participant_id, status, created_at, submitted_at').in('event_id', events.map((e) => e.id)).in('status', ['open', 'proof_submitted']).gte('created_at', since).limit(20);
+    const { data: ps } = await supabase.from('event_ticket_passes').select('id, event_id, from_participant_id, status, created_at, submitted_at').in('event_id', events.length ? events.map((e) => e.id) : [NONE]).in('status', ['open', 'proof_submitted']).gte('created_at', since).limit(20);
     const fromIds = (ps || []).map((x) => x.from_participant_id);
     const { data: who } = fromIds.length ? await supabase.from('event_participants').select('id, full_name').in('id', fromIds) : { data: [] };
     const nameOf = new Map((who || []).map((x) => [x.id, x.full_name]));
     passes = (ps || []).map((x) => ({ id: `pass-${x.id}`, event_id: x.event_id, full_name: nameOf.get(x.from_participant_id) || '—', status: x.status === 'open' ? 'pass_open' : 'pass_proof', joined_at: x.submitted_at || x.created_at, event: byId.get(x.event_id) }));
   }
-  res.json([...rows.map((r) => ({ ...r, event: byId.get(r.event_id) })), ...passes].sort((a, b) => String(b.joined_at).localeCompare(String(a.joined_at))).slice(0, 40));
+  const evIds = events.length ? events.map((e) => e.id) : [NONE];
+  // Transfer screenshots sent, and players who cancelled their place.
+  const [{ data: proofs }, { data: cancels }] = await Promise.all([
+    supabase.from('event_participants').select('id, event_id, full_name, payment_submitted_at').in('event_id', evIds).eq('payment_status', 'proof_submitted').gte('payment_submitted_at', since).limit(30),
+    supabase.from('event_participants').select('id, event_id, full_name, cancelled_at, cancelled_by').in('event_id', evIds).eq('status', 'cancelled').gte('cancelled_at', since).limit(30),
+  ]);
+  const proofItems = (proofs || []).map((x) => ({ id: `proof-${x.id}`, event_id: x.event_id, full_name: x.full_name, status: 'proof_sent', joined_at: x.payment_submitted_at, event: byId.get(x.event_id) }));
+  const cancelItems = (cancels || []).filter((x) => x.cancelled_by !== 'host').map((x) => ({ id: `cancel-${x.id}`, event_id: x.event_id, full_name: x.full_name, status: 'cancelled', joined_at: x.cancelled_at, event: byId.get(x.event_id) }));
+  // People asking to join a club / community the Host runs.
+  let joins = [];
+  try {
+    const clubIds = [...new Set([...(await supabase.from('clubs').select('id').eq('host_id', req.hostId)).data?.map((c) => c.id) || [], ...shared])];
+    if (clubIds.length && (await guestsReady())) {
+      const { data: js } = await supabase.from('club_members').select('id, club_id, full_name, join_requested_at, clubs(name)').in('club_id', clubIds).eq('join_requested', true).gte('join_requested_at', since).limit(20);
+      joins = (js || []).map((x) => ({ id: `join-${x.id}`, href: '/club/members/requests', club_id: x.club_id, full_name: x.full_name, status: 'join', joined_at: x.join_requested_at, event: { title: x.clubs?.name || '' } }));
+    }
+  } catch (err) {
+    console.error('bell: join requests', err);
+  }
+  // Everything that needs the Host or tells them what changed, newest first.
+  res.json(
+    [...rows.map((r) => ({ ...r, event: byId.get(r.event_id) })), ...passes, ...proofItems, ...cancelItems, ...joins]
+      .sort((a, b) => String(b.joined_at).localeCompare(String(a.joined_at)))
+      .slice(0, 60)
+  );
 });
 
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
@@ -584,7 +614,7 @@ router.post('/', async (req, res) => {
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
     'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
   const bad = cleanEventFields(fields);
@@ -592,17 +622,15 @@ router.post('/', async (req, res) => {
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
   if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
+  if ('no_refund' in fields) {
+    if (!(await noRefundReady())) delete fields.no_refund;
+    else fields.no_refund = fields.no_refund === true;
+  }
   const hostId = await hostForClub(req, fields.club_id);
   if (!hostId) return notFound(res, 'Club');
   if (!(await kindAllowed(fields.club_id, fields.kind))) return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
-  // Xé Vé games (no club) need the Social Manager add-on.
-  if (!fields.club_id) {
-    try {
-      await assertSocialManager(hostId);
-    } catch (err) {
-      return res.status(err.status).json({ error: err.message, code: err.code });
-    }
-  }
+  // Every kèo belongs to a club or a community: the old one-off space (no club) is gone.
+  if (!fields.club_id) return res.status(400).json({ error: 'Pick the club or community this event belongs to.', code: 'club_required' });
 
   const weeks = Math.min(Math.max(parseInt(req.body.repeat_weeks, 10) || 1, 1), 26);
   // Many club sessions at once (weekly schedule) is a Standard feature.
@@ -835,7 +863,7 @@ router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
     'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
-    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
+    'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
   const bad = cleanEventFields(fields);
@@ -843,9 +871,14 @@ router.patch('/:eventId', async (req, res) => {
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
   if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
+  if ('no_refund' in fields) {
+    if (!(await noRefundReady())) delete fields.no_refund;
+    else fields.no_refund = fields.no_refund === true;
+  }
   if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }
+  if ('club_id' in fields && !fields.club_id) return res.status(400).json({ error: 'An event cannot leave its club or community.', code: 'club_required' });
   if ('club_id' in fields && (await hostForClub(req, fields.club_id)) !== req.event.host_id) return notFound(res, 'Club');
   if ('kind' in fields && fields.kind !== req.event.kind && !(await kindAllowed(fields.club_id ?? req.event.club_id, fields.kind))) {
     return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
@@ -1019,6 +1052,9 @@ async function playerCards(event, rows) {
       return idOf(p, m, byUser.get(p.user_id || m?.user_id));
     }))
     .catch(() => new Map());
+  // Community levels (control panel) from the Host's Điểm trình / hand-picked level.
+  const CS = require('../services/communitySettings');
+  const levelSettings = event.club_id ? await CS.forClub(event.club_id).catch(() => null) : null;
   const cards = new Map();
   for (const p of rows) {
     const m = byMember.get(p.source_club_member_id || p.guest_member_id) || null;
@@ -1031,6 +1067,8 @@ async function playerCards(event, rows) {
       tier: m?.tier || null,
       avatar: prof?.avatar || null,
       level: m?.dupr_level ?? p.dupr_level ?? null,
+      skill_score: m?.skill_score == null ? null : Number(m.skill_score),
+      level_label: m && levelSettings && levelSettings.levels.mode !== 'none' ? CS.levelOf(m, levelSettings)?.label || null : null,
       dupr: prof?.dupr_level ?? null,
       dupr_verified: verified?.doubles ?? null,
       dupr_updated_at: verified?.at ?? null,

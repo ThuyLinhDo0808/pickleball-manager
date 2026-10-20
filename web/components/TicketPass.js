@@ -8,13 +8,17 @@ import { resizeImage } from '@/lib/image';
 import Hint from '@/components/ui/Hint';
 
 // Player: pass my ticket to someone on the waitlist — through the Host (services/ticketPass.js).
-export function PassMyTicket({ reg, waitlistCount, onChanged }) {
+// Also the one "Tôi không đi được" button: with people waiting it offers passing the ticket
+// first (someone takes the place and pays you back), otherwise — or if they prefer — it
+// goes to cancelling under the kèo's refund rule (`onCancel`).
+export function PassMyTicket({ reg, waitlistCount, onChanged, onCancel }) {
   const { t } = useI18n();
   const [pass, setPass] = useState(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState('');
   const [agree, setAgree] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const file = useRef(null);
   const load = useCallback(() => api.get(`/api/player/participations/${reg.id}/pass`).then((r) => setPass(r.pass)).catch(() => setPass(null)), [reg.id]);
   useEffect(() => {
@@ -37,15 +41,31 @@ export function PassMyTicket({ reg, waitlistCount, onChanged }) {
   if (pass === undefined || reg.status !== 'registered') return null;
 
   if (!pass) {
-    if (!waitlistCount) return null;
+    const cantGo = () => (waitlistCount ? setChoosing(true) : onCancel?.());
     return (
-      <div className="w-full rounded-xl border border-navy-600 px-3 py-3 text-left">
-        <p className="text-white text-sm font-semibold">🎟 {t('pass.cantGo')} <Hint inline text={t('pass.howTo')} /></p>
-        <button type="button" className="btn-secondary w-full" disabled={busy} onClick={() => window.confirm(t('pass.askConfirm')) && run(() => api.post(`/api/player/participations/${reg.id}/pass`, {}))}>
-          {t('pass.ask')}
-        </button>
-        {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-      </div>
+      <>
+        <button type="button" className="btn-secondary" onClick={cantGo}>🙋 {t('pass.cantGoBtn')}</button>
+        <Modal open={choosing} title={t('pass.cantGoBtn')} onClose={() => setChoosing(false)}>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              className="rounded-xl border border-lime-400/60 bg-lime-400/10 px-3 py-3 text-left hover:bg-lime-400/15"
+              disabled={busy}
+              onClick={() => window.confirm(t('pass.askConfirm')) && run(() => api.post(`/api/player/participations/${reg.id}/pass`, {})).then(() => setChoosing(false))}
+            >
+              <span className="block text-white font-semibold">🎟 {t('pass.optPass')}</span>
+              <span className="block text-gray-300 text-sm mt-0.5">{t('pass.optPassHint', { n: waitlistCount })}</span>
+            </button>
+            {onCancel && (
+              <button type="button" className="rounded-xl border border-navy-600 px-3 py-3 text-left hover:border-red-400/60" onClick={() => { setChoosing(false); onCancel(); }}>
+                <span className="block text-white font-semibold">✖️ {t('pass.optCancel')}</span>
+                <span className="block text-gray-300 text-sm mt-0.5">{t('pass.optCancelHint')}</span>
+              </button>
+            )}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+          </div>
+        </Modal>
+      </>
     );
   }
 

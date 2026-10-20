@@ -189,16 +189,15 @@ function ClubHome({ community = false }) {
               )}
             </div>
           </div>
-          {/* The three things a Host opens every day, as big tiles. */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4">
+          {/* The three things a Host opens every day. */}
+          <div className="flex flex-wrap gap-2 mt-4">
             {[
               ['/events/create', '➕', t('nav.createGame'), true],
               ['/events', '📅', t('nav.schedule')],
               ['/club/members', '👥', t('nav.members')],
             ].map(([href, icon, label, main]) => (
-              <Link key={href} href={href} className={`rounded-xl flex flex-col items-center justify-center gap-1 py-3 text-center text-sm font-semibold ${main ? 'bg-lime-400 text-navy-950 hover:bg-lime-300' : 'bg-navy-800 border border-navy-600 text-white hover:border-lime-400'}`}>
-                <span className="text-2xl leading-none" aria-hidden>{icon}</span>
-                {label}
+              <Link key={href} href={href} className={main ? 'btn-primary' : 'btn-secondary'}>
+                <span aria-hidden>{icon}</span> {label}
               </Link>
             ))}
           </div>

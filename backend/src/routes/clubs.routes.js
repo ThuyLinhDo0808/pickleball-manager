@@ -396,7 +396,7 @@ router.get('/:clubId/members', async (req, res) => {
   }));
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
   if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
-    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key'];
+    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
   res.json(rows);
@@ -613,6 +613,18 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
         return res.status(400).json({ error: 'Unknown level.', code: 'bad_level' });
       }
       fields.level_key = key;
+    }
+  }
+  // Điểm trình: the Host's own score for the player (not DUPR). Empty clears it.
+  if ('skill_score' in req.body) {
+    const { schemaStatus } = require('../services/schemaCheck');
+    if ((await schemaStatus()).missing_migrations.includes('20261204090000_skill_score.sql')) {
+      delete fields.skill_score;
+    } else {
+      const raw = req.body.skill_score;
+      const n = raw === '' || raw == null ? null : Number(raw);
+      if (n != null && !(Number.isFinite(n) && n >= 1 && n <= 8)) return res.status(400).json({ error: 'Điểm trình must be 1.00–8.00.', code: 'bad_skill_score' });
+      fields.skill_score = n == null ? null : Math.round(n * 100) / 100;
     }
   }
   // Reactivating a member, or moving one to the other type, takes a place on the plan.

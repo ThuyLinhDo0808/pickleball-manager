@@ -14,8 +14,10 @@ const readSeen = () => {
   }
 };
 
-// 🔔 for the Host: who just signed up (or sent a transfer) on their kèo. The red number is
-// what came in since the bell was last opened; checked every minute.
+// 🔔 for the Host: everything that changed in the last 7 days — new sign-ups (and who waits
+// for the info check), transfer screenshots sent, ticket passes, cancellations, people
+// asking to join a club / community. The red number is what came in since the bell was
+// last opened; checked every minute.
 export default function SignupBell({ className = '' }) {
   const { t, lang } = useI18n();
   const [rows, setRows] = useState([]);
@@ -50,7 +52,9 @@ export default function SignupBell({ className = '' }) {
       setTimeout(() => setSeen(rows[0].joined_at), 4000); // keep the "new" dots while the list is read
     }
   }
-  const state = (r) => (String(r.status).startsWith('pass_') ? r.status : r.status === 'requested' ? 'requested' : r.status === 'pending' ? (r.payment_status === 'proof_submitted' ? 'proof' : 'pay') : r.status === 'waitlisted' ? 'waitlisted' : 'registered');
+  const KINDS = ['pass_open', 'pass_proof', 'proof_sent', 'cancelled', 'join'];
+  const state = (r) => (KINDS.includes(r.status) ? r.status : r.status === 'requested' ? 'requested' : r.status === 'pending' ? (r.payment_status === 'proof_submitted' ? 'proof' : 'pay') : r.status === 'waitlisted' ? 'waitlisted' : 'registered');
+  const ICON = { requested: '🙋', pay: '💳', proof: '🧾', proof_sent: '🧾', waitlisted: '⏳', registered: '✅', pass_open: '🎟', pass_proof: '🎟', cancelled: '✖️', join: '👋' };
 
   return (
     <div ref={box} className={`relative ${className}`}>
@@ -65,14 +69,15 @@ export default function SignupBell({ className = '' }) {
           <ul className="divide-y divide-navy-700">
             {rows.map((r) => (
               <li key={r.id}>
-                <Link href={`/events/${r.event_id}`} onClick={() => setOpen(false)} className="flex gap-3 px-4 py-3 hover:bg-navy-800">
+                <Link href={r.href || `/events/${r.event_id}`} onClick={() => setOpen(false)} className="flex gap-2.5 px-4 py-3 hover:bg-navy-800">
                   <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${!seen || r.joined_at > seen ? 'bg-red-500' : 'bg-transparent'}`} aria-hidden />
+                  <span className="shrink-0 text-base leading-5" aria-hidden>{ICON[state(r)]}</span>
                   <span className="min-w-0">
                     <span className="block text-white text-sm">
                       <b>{r.full_name}</b> · {t(`bell.st_${state(r)}`)}
                       {r.guest_booking_id ? ' ⚡' : ''}
                     </span>
-                    <span className="block text-gray-400 text-xs truncate">{r.event?.title} · {localDate(`${r.event?.event_date}T00:00:00`, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit' })}</span>
+                    <span className="block text-gray-400 text-xs break-words">{r.event?.title}{r.event?.event_date ? ` · ${localDate(`${r.event.event_date}T00:00:00`, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit' })}` : ''}</span>
                     <span className="block text-gray-500 text-[11px]">{localDate(r.joined_at, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   </span>
                 </Link>

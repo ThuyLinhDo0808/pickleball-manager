@@ -10,7 +10,6 @@ import ConsentGate from '@/components/ConsentGate';
 import EmailVerifyBanner from '@/components/EmailVerifyBanner';
 import NavTracker from '@/components/NavTracker';
 import MaintenanceGate from '@/components/MaintenanceGate';
-import { TEXT_SIZE_BOOT } from '@/lib/textSize';
 
 export const metadata = {
   title: 'Pickleball Manager',
@@ -27,11 +26,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="vi" suppressHydrationWarning>
-      <head>
-        {/* The viewer's text size (A / A+ / A++), before the first paint. */}
-        <script dangerouslySetInnerHTML={{ __html: TEXT_SIZE_BOOT }} />
-      </head>
+    <html lang="vi">
       <body>
         <AuthProvider>
           <I18nProvider>

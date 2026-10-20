@@ -1,7 +1,7 @@
 'use client';
 // Every report (Góp ý, Báo lỗi / Liên hệ) goes to the developer's inbox.
 const DEV_FEEDBACK_EMAIL = 'pickleball.web.ltsocial@gmail.com';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import SettingsSection from '@/components/SettingsSection';
@@ -23,6 +23,7 @@ import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import { localDate } from '@/lib/dates';
 
 const SECTIONS = [
+  ['login', '🔑'],
   ['security', '🔐'],
   ['manage', '🏟'],
   ['plan', '💎'],
@@ -49,6 +50,17 @@ export default function AccountPage() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
+  // One section at a time (tabs), opened from the link's #hash (e.g. /account#payout).
+  const [tab, setTab] = useState('login');
+  useEffect(() => {
+    const pick = () => {
+      const h = window.location.hash.slice(1);
+      if (SECTIONS.some(([id]) => id === h)) setTab(h);
+    };
+    pick();
+    window.addEventListener('hashchange', pick);
+    return () => window.removeEventListener('hashchange', pick);
+  }, []);
 
   const usage = sub?.usage;
   const pct = usage?.capacity_limit ? Math.min(100, Math.round((100 * usage.used) / usage.capacity_limit)) : 0;
@@ -87,17 +99,17 @@ export default function AccountPage() {
   return (
     <AppShell>
       {/* Profile header */}
-      <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-7 mb-4">
+      <div className="relative overflow-hidden rounded-xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-4 mb-3">
         <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
-        <div className="relative flex flex-wrap items-center gap-5">
-          <span className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-2xl bg-lime-400 text-navy-950 text-3xl font-bold flex items-center justify-center shadow-lg shadow-lime-400/20">
+        <div className="relative flex flex-wrap items-center gap-3">
+          <span className="h-12 w-12 shrink-0 rounded-xl bg-lime-400 text-navy-950 text-2xl font-bold flex items-center justify-center">
             {(name || '?').slice(0, 1).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-gray-400 text-xs">{t('acct.kicker')}</p>
-            <h1 className="text-white text-2xl sm:text-3xl font-bold truncate">{name}</h1>
+            <h1 className="text-white text-xl sm:text-2xl font-bold break-words">{name}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
-              <span className="text-gray-300 truncate">{email}</span>
+              <span className="text-gray-300 break-all">{email}</span>
               {user?.email_confirmed_at && (
                 <span className="text-[11px] rounded-full border border-lime-400/50 text-lime-300 px-2 py-0.5">✓ {t('acct.verified')}</span>
               )}
@@ -110,7 +122,7 @@ export default function AccountPage() {
               [usage ? `${usage.used}` : '—', t('acct.statUsed')],
               [since || '—', t('acct.statSince')],
             ].map(([v, k]) => (
-              <div key={k} className="rounded-xl bg-navy-950/60 border border-navy-700 px-3 py-2 text-center min-w-[6rem]">
+              <div key={k} className="rounded-lg bg-navy-950/60 border border-navy-700 px-2.5 py-1.5 text-center">
                 <div className="text-white font-bold tabular-nums truncate capitalize">{v}</div>
                 <div className="text-gray-400 text-[11px]">{k}</div>
               </div>
@@ -120,30 +132,33 @@ export default function AccountPage() {
       </div>
 
       {/* Section links */}
-      <nav aria-label={t('acct.jump')} className="sticky top-0 z-10 -mx-1 px-1 py-2 mb-2 bg-navy-950/90 backdrop-blur flex gap-2 overflow-x-auto overflow-y-hidden no-scrollbar">
+      <nav aria-label={t('acct.jump')} role="tablist" className="flex flex-wrap gap-2 mb-1">
         {SECTIONS.map(([id, icon]) => (
           <a
             key={id}
             href={`#${id}`}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${id === 'danger' ? 'border-red-500/40 text-red-300 hover:bg-red-500/10' : 'border-navy-600 text-gray-300 hover:border-lime-400 hover:text-lime-300'}`}
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${tab === id ? (id === 'danger' ? 'border-red-400 bg-red-500/15 text-red-200 font-semibold' : 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold') : id === 'danger' ? 'border-red-500/40 text-red-300 hover:bg-red-500/10' : 'border-navy-600 text-gray-300 hover:border-lime-400 hover:text-lime-300'}`}
           >
-            <span aria-hidden="true">{icon}</span> {t(`acct.s_${id}`)}
+            <span aria-hidden="true">{icon}</span> {id === 'login' ? t('auth.detailsTitle') : t(`acct.s_${id}`)}
           </a>
         ))}
       </nav>
 
       <div className="flex flex-col">
-        <SettingsSection id="login" icon="🔑" tone="lime" title={t('auth.detailsTitle')} description={t('auth.detailsHint')}>
+        <SettingsSection id="login" hidden={tab !== 'login'} icon="🔑" tone="lime" title={t('auth.detailsTitle')} description={t('auth.detailsHint')}>
           <AccountDetails />
         </SettingsSection>
 
         {/* Two-step sign-in, devices, sign out everywhere. */}
-        <SettingsSection id="security" icon="🔐" tone="lime" title={t('acct.s_security')} description={t('sec.sectionHint')}>
+        <SettingsSection id="security" hidden={tab !== 'security'} icon="🔐" tone="lime" title={t('acct.s_security')} description={t('sec.sectionHint')}>
           <AccountSecurity />
         </SettingsSection>
 
         {/* Players become club managers here: a club request the app owner approves. */}
-        <SettingsSection id="manage" icon="🏟" tone="lime" title={t('acct.s_manage')} description={t('acct.manageHint')}>
+        <SettingsSection id="manage" hidden={tab !== 'manage'} icon="🏟" tone="lime" title={t('acct.s_manage')} description={t('acct.manageHint')}>
           {lastRequest && (
             <p className="mb-3 text-sm text-gray-200">
               {t('acct.lastRequest', { name: lastRequest.name })}: <b>{t(`creq.status_${lastRequest.status}`)}</b>
@@ -156,7 +171,7 @@ export default function AccountPage() {
           </div>
         </SettingsSection>
 
-        <SettingsSection id="plan" icon="💎" tone="amber" title={t('acct.s_plan')} description={t('acct.planHint')}>
+        <SettingsSection id="plan" hidden={tab !== 'plan'} icon="💎" tone="amber" title={t('acct.s_plan')} description={t('acct.planHint')}>
           {plan ? (
             <>
               <div className="flex flex-wrap items-end justify-between gap-2">
@@ -204,15 +219,15 @@ export default function AccountPage() {
           <UpgradeModal open={upgrading} onClose={() => setUpgrading(false)} />
         </SettingsSection>
 
-        <SettingsSection id="payout" icon="🏦" tone="lime" title={t('paySet.title')} description={t('paySet.hint')}>
+        <SettingsSection id="payout" hidden={tab !== 'payout'} icon="🏦" tone="lime" title={t('paySet.title')} description={t('paySet.hint')}>
           <HostPaymentSettings bare />
         </SettingsSection>
 
-        <SettingsSection id="notify" icon="🔔" tone="sky" title={t('notify.title')} description={t('notify.hint')}>
+        <SettingsSection id="notify" hidden={tab !== 'notify'} icon="🔔" tone="sky" title={t('notify.title')} description={t('notify.hint')}>
           <NotifySettings bare />
         </SettingsSection>
 
-        <SettingsSection id="backup" icon="🗂️" tone="violet" title={t('acct.s_backup')} description={t('acct.backupHint')}>
+        <SettingsSection id="backup" hidden={tab !== 'backup'} icon="🗂️" tone="violet" title={t('acct.s_backup')} description={t('acct.backupHint')}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-white font-semibold truncate">{club?.name || '—'}</div>
@@ -222,7 +237,7 @@ export default function AccountPage() {
           </div>
         </SettingsSection>
 
-        <SettingsSection id="feedback" icon="💬" tone="sky" title={t('acct.s_feedback')} description={t('acct.feedbackHint')}>
+        <SettingsSection id="feedback" hidden={tab !== 'feedback'} icon="💬" tone="sky" title={t('acct.s_feedback')} description={t('acct.feedbackHint')}>
           {sent ? (
             <div className="flex items-center justify-between gap-3">
               <p className="text-lime-300 text-sm">✓ {t('acct.feedbackSent')}</p>
@@ -239,7 +254,7 @@ export default function AccountPage() {
           )}
         </SettingsSection>
 
-        <SettingsSection id="danger" icon="⚠️" danger title={t('acct.s_danger')} description={t('deleteAccount.intro')}>
+        <SettingsSection id="danger" hidden={tab !== 'danger'} icon="⚠️" danger title={t('acct.s_danger')} description={t('deleteAccount.intro')}>
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-navy-700">
               <div>

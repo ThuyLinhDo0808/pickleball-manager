@@ -16,16 +16,20 @@ import PlayerNotices from '@/components/PlayerNotices';
 import LinkRequests from '@/components/LinkRequests';
 import Hint from '@/components/ui/Hint';
 
-// One tile of the "spaces" strip: a club (managed or played in), Xé Vé, staff, or "+".
-function SpaceTile({ onClick, href, avatar, label, badge, badgeTone, lines = 2 }) {
+// One space (a club you run or play in, a community, or "+"): a compact row with the
+// avatar, the name and the role under it. Rows sit in a grid that adds columns as the
+// screen gets wider, so nothing overlaps on any screen.
+function SpaceTile({ onClick, href, avatar, label, badge, badgeTone, dashed = false }) {
   const body = (
     <>
-      {avatar}
-      <span className={`mt-1.5 w-full text-center text-white text-xs font-semibold leading-tight break-words ${lines === 3 ? 'line-clamp-3' : 'line-clamp-2'}`}>{label}</span>
-      {badge && <span className={`mt-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${badgeTone}`}>{badge}</span>}
+      <span className="shrink-0">{avatar}</span>
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block text-white text-sm font-semibold leading-snug break-words">{label}</span>
+        {badge && <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none ${badgeTone}`}>{badge}</span>}
+      </span>
     </>
   );
-  const cls = 'flex w-24 shrink-0 snap-start flex-col items-center rounded-2xl p-2 hover:bg-navy-800 transition';
+  const cls = `flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition hover:border-lime-400/70 ${dashed ? 'border-dashed border-navy-600' : 'border-navy-700 bg-navy-800/60'}`;
   return href ? (
     <Link href={href} className={cls}>{body}</Link>
   ) : (
@@ -156,12 +160,12 @@ export default function HomeHub() {
           <h2 className="text-white font-semibold">{t('hub.spaces')}</h2>
           <span className="text-gray-500 text-xs hidden sm:block">{t('hub.spacesHint')}</span>
         </div>
-        <div className="-mx-4 px-2 sm:mx-0 sm:px-0 flex gap-1 overflow-x-auto overflow-y-hidden no-scrollbar snap-x pb-1">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
           {managed.map((c) => (
             <SpaceTile
               key={`m${c.club_id}`}
               onClick={() => manageClub(c.club_id)}
-              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} ring={`ring-2 ${c.kind === 'community' ? 'ring-amber-300/80' : 'ring-lime-400/70'} ring-offset-2 ring-offset-navy-950`} />}
+              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} size={36} />}
               label={c.name}
               badge={`${c.kind === 'community' ? '🎟 ' : ''}${t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}`}
               badgeTone={ROLE_TONE[c.role]}
@@ -171,7 +175,7 @@ export default function HomeHub() {
             <SpaceTile
               key={`p${c.club_id}`}
               onClick={() => memberClub(c.club_id)}
-              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} />}
+              avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} size={36} />}
               label={c.name}
               badge={t('hub.roleMember')}
               badgeTone={ROLE_TONE.member}
@@ -180,9 +184,9 @@ export default function HomeHub() {
           {/* Club or play community (Social Manager): the request form asks which one first. */}
           <SpaceTile
             href="/club-request"
-            avatar={<ClubAvatar icon="＋" />}
+            avatar={<ClubAvatar icon="＋" size={36} />}
             label={t('hub.createClub')}
-            lines={3}
+            dashed
           />
         </div>
         {!hasAnything && (

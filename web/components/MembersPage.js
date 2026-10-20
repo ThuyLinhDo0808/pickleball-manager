@@ -2,7 +2,7 @@
 import Hint from '@/components/ui/Hint';
 import Link from 'next/link';
 import { levelText } from '@/lib/levels';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
@@ -288,7 +288,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
-                          {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), ...(pickleball ? [m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null, m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null] : [levelText(m.dupr_level, sport, t)])].filter(Boolean).join(' · ') || '—'}
+                          {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), ...(pickleball ? [m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null, m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null] : [levelText(m.dupr_level, sport, t)]), isCommunity && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null, m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null].filter(Boolean).join(' · ') || '—'}
                         </span>
                         {missingInfo(m).length > 0 && <span className="block text-amber-300 text-xs mt-0.5">⚠ {t('members.missingList', { list: missText(m) })}</span>}
                         <span className="block text-gray-500 text-xs mt-0.5">
@@ -334,6 +334,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       ) : (
                         <th>{t('members.colScore')}</th>
                       )}
+                      {isCommunity && <th>{t('members.colSkill')} <Hint inline text={t('members.colSkillHint')} /></th>}
                       {levelCfg && <th>{t('members.colLevel')}</th>}
                       {isGuestTab ? (
                         <>
@@ -429,6 +430,11 @@ export default function MembersPage({ tab = 'fixed' }) {
                         ) : (
                           <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
                         )}
+                        {isCommunity && (
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <SkillScoreCell club={club} member={m} onSaved={reload} />
+                          </td>
+                        )}
                         {levelCfg && (
                           <td className="text-gray-200 whitespace-nowrap" onClick={(e) => levelCfg.mode === 'manual' && e.stopPropagation()}>
                             {levelCfg.mode === 'manual' ? (
@@ -504,5 +510,45 @@ export default function MembersPage({ tab = 'fixed' }) {
       <ReviewModal club={club} member={reviewing} open={!!reviewing} onClose={() => setReviewing(null)} onDone={() => { setReviewing(null); reload(); pickTab('review'); }} />
       <InviteModal club={club} open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </AppShell>
+  );
+}
+
+// Điểm trình: the Host's own score for the player (1.00–8.00), typed in the table and saved
+// when the field loses focus. Empty = not scored yet.
+function SkillScoreCell({ club, member, onSaved }) {
+  const { t } = useI18n();
+  const start = member.skill_score == null ? '' : Number(member.skill_score).toFixed(2);
+  const [v, setV] = useState(start);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setV(start), [start]);
+  async function save() {
+    if (v === start) return;
+    setBusy(true);
+    try {
+      await api.patch(`/api/clubs/${club.id}/members/${member.id}`, { skill_score: v === '' ? null : v });
+      onSaved?.();
+    } catch (err) {
+      window.alert(err.message);
+      setV(start);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <input
+      className="input !w-24 !py-1 text-sm tabular-nums"
+      type="number"
+      inputMode="decimal"
+      min="1"
+      max="8"
+      step="0.05"
+      placeholder="—"
+      value={v}
+      disabled={busy}
+      aria-label={`${t('members.colSkill')}: ${member.full_name}`}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+    />
   );
 }

@@ -83,7 +83,9 @@ function eventEndMs(event) {
 }
 
 // Last moment a main-list player can cancel for free, or null when the event has no policy.
+// "Không hoàn tiền" (no_refund): that moment is long gone, so every cancel gets 0% back.
 function cancelDeadline(event) {
+  if (event.no_refund) return new Date(0);
   if (event.cancel_deadline_hours == null) return null;
   return new Date(eventStartMs(event) - Number(event.cancel_deadline_hours) * 3600000);
 }
@@ -98,7 +100,7 @@ function isLateCancel(event, prior, now = new Date()) {
 //   later                                    → nothing back (a late cancel)
 // No policy on the event, or not on the main list (waitlist, waiting to pay) → 100%.
 function halfDeadline(event) {
-  if (event.cancel_deadline_hours == null || event.cancel_half_hours == null) return null;
+  if (event.no_refund || event.cancel_deadline_hours == null || event.cancel_half_hours == null) return null;
   const h = Number(event.cancel_half_hours);
   if (!(h < Number(event.cancel_deadline_hours))) return null;
   return new Date(eventStartMs(event) - h * 3600000);

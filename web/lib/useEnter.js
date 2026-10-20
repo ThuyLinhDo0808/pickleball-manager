@@ -26,15 +26,6 @@ export function useEnter() {
     },
     [router, allClubs, selectClub, reload, setWorkspace]
   );
-  // Social Manager's one-off kèo (no community).
-  const standalone = useCallback(
-    (path = '/events') => {
-      setWorkspace('xeve');
-      selectClub(null);
-      router.push(path);
-    },
-    [router, setWorkspace, selectClub]
-  );
   const space = useCallback(
     (ws, path) => {
       setWorkspace(ws);
@@ -43,5 +34,5 @@ export function useEnter() {
     [router, setWorkspace]
   );
   const memberClub = useCallback((clubId) => router.push(`/c/${clubId}`), [router]);
-  return { manageClub, space, standalone, memberClub, reloadClubs: reload };
+  return { manageClub, space, memberClub, reloadClubs: reload };
 }

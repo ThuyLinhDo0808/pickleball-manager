@@ -1,5 +1,4 @@
 'use client';
-import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -114,9 +113,9 @@ export default function VerifyEmailPage() {
       <div className="card w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <span className="text-lime-400 font-bold">{t('appName')}</span>
-          <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+          <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
             {lang === 'vi' ? 'EN' : 'VI'}
-          </button></span>
+          </button>
         </div>
         {!st && <p className="text-gray-400 py-10 text-center">{t('common.loading')}</p>}
 

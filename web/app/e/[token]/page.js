@@ -1,5 +1,4 @@
 'use client';
-import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { policyText } from '@/lib/cancelPolicy';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
@@ -93,9 +92,9 @@ export default function PublicEventPage() {
   };
 
   const langToggle = (
-    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button></span>
+    </button>
   );
 
   if (loading && !ev) {
@@ -148,9 +147,9 @@ export default function PublicEventPage() {
         {ev.services && <p className="text-gray-300 text-sm mt-2">🎁 {t('svc.included')}: <span className="text-white">{ev.services}</span></p>}
       </section>
 
-      {ev.cancel_deadline_hours != null && (
+      {(ev.cancel_deadline_hours != null || ev.no_refund) && (
         <p className="card mb-4 !py-3 text-sm text-gray-300">
-          ⏰ {policyText(t, ev.cancel_deadline_hours, ev.cancel_half_hours)}.
+          ⏰ {policyText(t, ev.cancel_deadline_hours, ev.cancel_half_hours, ev.no_refund)}.
           <span className="block text-xs text-gray-500 mt-1">{t('policy.publicNote')}</span>
         </p>
       )}

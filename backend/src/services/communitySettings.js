@@ -29,7 +29,21 @@ const MAX_LEVELS = 12;
 
 // signup.auto_dupr: kèo sign-ups with a verified DUPR inside the kèo's range skip the
 // Host's info check and go straight to payment (off = the Host checks everyone).
-const DEFAULTS = { regular: { auto: false, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] }, signup: { auto_dupr: false } };
+// refund: the refund rule new kèo start with (each kèo can still change it):
+//   tiers — 100% back if cancelled `full` hours before, 50% if `half` hours before, else 0%
+//   free  — cancel any time, everything back · none — "Không hoàn tiền", nothing back.
+const REFUND_MODES = ['tiers', 'free', 'none'];
+const DEFAULTS = { regular: { auto: false, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] }, signup: { auto_dupr: false }, refund: { mode: 'tiers', full: 12, half: 6 } };
+
+function cleanRefund(r) {
+  const mode = REFUND_MODES.includes(r?.mode) ? r.mode : DEFAULTS.refund.mode;
+  const num = (v, d) => (v === '' || v == null ? d : Number(v));
+  const full = num(r?.full, DEFAULTS.refund.full);
+  const half = num(r?.half, null);
+  if (!(Number.isInteger(full) && full >= 0 && full <= 168)) throw fail('Hours must be a whole number from 0 to 168.', 'bad_refund_hours');
+  if (half != null && !(Number.isInteger(half) && half >= 0 && half < full)) throw fail('The 50% hours must be fewer than the 100% hours.', 'bad_refund_hours');
+  return { mode, full, half };
+}
 
 const fail = (message, code) => Object.assign(new Error(message), { status: 400, code });
 
@@ -50,7 +64,13 @@ function resolve(raw) {
   const regular = { ...DEFAULTS.regular, ...(s.regular || {}) };
   const mode = MODES.includes(s.levels?.mode) ? s.levels.mode : 'none';
   const levels = { mode, items: Array.isArray(s.levels?.items) ? s.levels.items : [], by_gender: ['manual', 'score'].includes(mode) && s.levels?.by_gender === true };
-  return { regular, active_days: Number(s.active_days) || DEFAULTS.active_days, levels, signup: { auto_dupr: s.signup?.auto_dupr === true } };
+  let refund = DEFAULTS.refund;
+  try {
+    if (s.refund) refund = cleanRefund(s.refund);
+  } catch {
+    /* a broken stored rule falls back to the default */
+  }
+  return { regular, active_days: Number(s.active_days) || DEFAULTS.active_days, levels, signup: { auto_dupr: s.signup?.auto_dupr === true }, refund };
 }
 
 const intIn = (v, lo, hi, code) => {
@@ -132,7 +152,7 @@ function clean(body, sport) {
     for (let i = 1; i < items.length; i += 1) if (items[i].min === items[i - 1].min) throw fail('Two levels start at the same score.', 'bad_level_min');
   }
   if (mode === 'none') items = [];
-  return { regular, active_days, levels: { mode, items, by_gender: byGender }, signup: { auto_dupr: body?.signup?.auto_dupr === true } };
+  return { regular, active_days, levels: { mode, items, by_gender: byGender }, signup: { auto_dupr: body?.signup?.auto_dupr === true }, refund: cleanRefund(body?.refund) };
 }
 
 // The level a member is in under these settings (null = none).
@@ -142,7 +162,8 @@ function levelOf(member, settings) {
   let hit = null;
   if (mode === 'manual') hit = items.find((i) => i.key === member.level_key);
   else if (mode === 'score') {
-    const v = member.dupr_level == null ? null : Number(member.dupr_level);
+    // "Theo điểm": the Host's own Điểm trình (skill_score), not the DUPR a player typed.
+    const v = member.skill_score == null ? null : Number(member.skill_score);
     // Women's own lower bounds when levels are split by gender (lowest level: none).
     const women = settings.levels.by_gender && member.gender === 'female';
     if (v != null) items.forEach((i, n) => {
