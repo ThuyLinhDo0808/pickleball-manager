@@ -1120,6 +1120,8 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
       status,
       source_club_member_id: memberId,
       kind: memberId ? 'member' : 'guest',
+      // Added by the Host with "Thêm người" and not one of the club's members: "Khách của Host".
+      ...(!memberId && (await extrasReady()) ? { tags: ['host_guest'] } : {}),
     })
     .select()
     .single();
@@ -1263,6 +1265,13 @@ router.post('/:eventId/host-play', async (req, res) => {
 });
 
 const TAGS = ['coach', 'referee'];
+// Notes the Host toggles on a person (migration 20261208090000): Khách mời, Miễn phí.
+const NOTE_TAGS = ['invited', 'free'];
+const EXTRAS_MIGRATION = '20261208090000_event_extras.sql';
+async function extrasReady() {
+  const { schemaStatus } = require('../services/schemaCheck');
+  return !(await schemaStatus()).missing_migrations.includes(EXTRAS_MIGRATION);
+}
 async function setRoles(event, prior, body) {
   const patch = {};
   if ('is_organizer' in body) {
@@ -1272,8 +1281,17 @@ async function setRoles(event, prior, body) {
     if (!patch.is_organizer && prior.status === 'not_playing') patch.status = 'waitlisted';
   }
   if ('tags' in body) {
-    if (!Array.isArray(body.tags) || body.tags.some((x) => !TAGS.includes(x))) throw Object.assign(new Error(`tags: ${TAGS.join(', ')}.`), { status: 400 });
-    patch.tags = [...new Set(body.tags)];
+    const allowed = (await extrasReady()) ? [...TAGS, ...NOTE_TAGS] : TAGS;
+    // 'host_guest' is set by the app, never by hand: keep it as it was.
+    const asked = Array.isArray(body.tags) ? body.tags.filter((x) => x !== 'host_guest') : null;
+    if (!asked || asked.some((x) => !allowed.includes(x))) throw Object.assign(new Error(`tags: ${allowed.join(', ')}.`), { status: 400 });
+    const keep = (prior.tags || []).filter((x) => x === 'host_guest');
+    patch.tags = [...new Set([...asked, ...keep])];
+    // Miễn phí: nothing to pay for this place (and nothing owed). Off again: the kèo's fee.
+    const wasFree = (prior.tags || []).includes('free');
+    const isFree = patch.tags.includes('free');
+    if (isFree && !wasFree) patch.fee_amount = 0;
+    if (!isFree && wasFree) patch.fee_amount = null;
   }
   const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
   if (error) throw error;

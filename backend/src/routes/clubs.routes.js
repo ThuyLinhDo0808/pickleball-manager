@@ -1281,6 +1281,50 @@ router.post('/:clubId/community-settings/reclassify', async (req, res) => {
   }
 });
 
+// Thách thức: who wins the challenge matches the Host started from a kèo's rankings —
+// matches (scored, not a draw), won, lost, win rate per player across the club's kèo.
+router.get('/:clubId/challenge-rankings', async (req, res) => {
+  try {
+    const { schemaStatus } = require('../services/schemaCheck');
+    if ((await schemaStatus()).missing_migrations.includes('20261208090000_event_extras.sql')) return res.json({ ready: false, rows: [] });
+    const { data: evs, error: eErr } = await supabase.from('events').select('id').eq('club_id', req.club.id).limit(5000);
+    if (eErr) throw eErr;
+    const ids = (evs || []).map((e) => e.id);
+    const matches = [];
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data, error } = await supabase
+        .from('matches')
+        .select('id, event_id, team1_score, team2_score, challenge_reward, match_players(team, event_participant_id, event_participants(full_name, source_club_member_id, guest_member_id, user_id))')
+        .eq('is_challenge', true)
+        .in('event_id', ids.slice(i, i + 150));
+      if (error) throw error;
+      matches.push(...(data || []));
+    }
+    const rows = new Map();
+    for (const m of matches) {
+      if (m.team1_score == null || m.team2_score == null || m.team1_score === m.team2_score) continue;
+      const win = m.team1_score > m.team2_score ? 1 : 2;
+      for (const mp of m.match_players || []) {
+        const ep = mp.event_participants || {};
+        const key = ep.source_club_member_id || ep.guest_member_id || (ep.user_id && `u:${ep.user_id}`) || `n:${String(ep.full_name || '').trim().toLowerCase()}`;
+        const r = rows.get(key) || { key, name: ep.full_name || '?', played: 0, won: 0, lost: 0, kevs: new Set() };
+        r.played += 1;
+        if (mp.team === win) r.won += 1;
+        else r.lost += 1;
+        r.kevs.add(m.event_id);
+        rows.set(key, r);
+      }
+    }
+    const out = [...rows.values()]
+      .map(({ kevs, ...r }) => ({ ...r, sessions: kevs.size, win_rate: r.played ? Math.round((1000 * r.won) / r.played) / 10 : 0 }))
+      .sort((a, b) => b.win_rate - a.win_rate || b.won - a.won || b.played - a.played || a.name.localeCompare(b.name, 'vi'))
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+    res.json({ ready: true, matches: matches.length, rows: out });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
 // Social Manager → Thống kê: business numbers of the community (players + money).
 router.get('/:clubId/business', async (req, res) => {
   if ((req.club.kind || 'club') !== 'community') return res.status(400).json({ error: 'Communities only.', code: 'not_community' });

@@ -4,6 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import GamesInput, { blankGames, defaultFormat, gamesPayload } from '@/components/GamesInput';
 import Hint from '@/components/ui/Hint';
+import { timesTogether } from '@/lib/eventStandings';
 
 function nowLocalInput() {
   const d = new Date();
@@ -13,12 +14,15 @@ function nowLocalInput() {
 
 // players: [{ id, name, gender }]; idField: 'club_member_id' | 'event_participant_id';
 // parent: { club_id } or { event_id }. `endpoint` lets staff post to their own API.
-export default function MatchForm({ players, idField, parent, onSaved, onCancel, endpoint = '/api/matches', sport: sportProp }) {
+// `pastMatches`: this kèo's matches so far — two players already paired get a warning.
+// `initialSlots` / `extra`: a match set up for the Host (e.g. a challenge) and fields sent with it.
+export default function MatchForm({ players, idField, parent, onSaved, onCancel, endpoint = '/api/matches', sport: sportProp, pastMatches = [], initialSlots = null, extra = {} }) {
   const { t, sport: clubSport } = useI18n();
   const badminton = (sportProp || clubSport) === 'badminton'; // badminton: games to 21, best of 3
   const [games, setGames] = useState(blankGames);
   const [format, setFormat] = useState(() => defaultFormat('badminton'));
-  const [slots, setSlots] = useState({ 1: ['', ''], 2: ['', ''] });
+  const [slots, setSlots] = useState(() => initialSlots || { 1: ['', ''], 2: ['', ''] });
+  const [kept, setKept] = useState({}); // pairs the Host chose to keep together anyway
   const [score, setScore] = useState({ 1: '', 2: '' });
   const [playedAt, setPlayedAt] = useState(nowLocalInput);
   const [busy, setBusy] = useState(false);
@@ -30,6 +34,13 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
   const size = picked[1].length === picked[2].length && picked[1].length > 0 ? picked[1].length : 0;
   const kind = size === 1 ? 'singles' : size === 2 ? 'doubles' : null;
 
+  // Partners who already played together in this kèo, and the Host has not said "keep".
+  const pairKey = (team) => [...slots[team]].sort().join('|');
+  const repeats = [1, 2]
+    .map((team) => ({ team, n: slots[team][0] && slots[team][1] ? timesTogether(pastMatches, slots[team][0], slots[team][1]) : 0 }))
+    .filter((x) => x.n > 0 && !kept[pairKey(x.team)]);
+  const nameOf = (id) => players.find((p) => p.id === id)?.name || '?';
+
   function setSlot(team, i, id) {
     setSlots((s) => ({ ...s, [team]: s[team].map((v, j) => (j === i ? id : v)) }));
   }
@@ -37,6 +48,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
   async function submit(e) {
     e.preventDefault();
     if (!kind) return setError(t('matches.needPlayers'));
+    if (repeats.length) return setError(t('matches.pairDecide'));
     // The score can wait: leave it empty to set the match up now and score it later.
     const filled = badminton ? gamesPayload(games) : null;
     const hasScore = badminton ? filled.length > 0 : score[1] !== '' || score[2] !== '';
@@ -45,6 +57,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
     try {
       const saved = await api.post(endpoint, {
         ...parent,
+        ...extra,
         ...(hasScore ? (badminton ? { games: filled, format } : { team1_score: Number(score[1] || 0), team2_score: Number(score[2] || 0) }) : {}),
         played_at: new Date(playedAt).toISOString(),
         players: [1, 2].flatMap((team) => picked[team].map((id) => ({ team, [idField]: id }))),
@@ -98,6 +111,16 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
                 ))}
               </select>
             ))}
+          </div>
+        </div>
+      ))}
+
+      {repeats.map((x) => (
+        <div key={x.team} className="rounded-xl border-2 border-amber-400 bg-amber-400/10 p-3 text-sm" role="alert">
+          <p className="text-amber-100 font-semibold">⚠️ {t('matches.pairAgain', { a: nameOf(slots[x.team][0]), b: nameOf(slots[x.team][1]), n: x.n })}</p>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button type="button" className="btn-secondary text-sm justify-center" onClick={() => setSlot(x.team, 1, '')}>🔄 {t('matches.pairRepick')}</button>
+            <button type="button" className="btn-primary text-sm justify-center" onClick={() => setKept({ ...kept, [pairKey(x.team)]: true })}>✓ {t('matches.pairKeep')}</button>
           </div>
         </div>
       ))}

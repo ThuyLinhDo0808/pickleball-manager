@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import MyBookings from '@/components/MyBookings';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
@@ -230,6 +231,9 @@ export default function HomeHub() {
           </div>
         </section>
       )}
+
+      {/* Quick bookings (link đặt nhanh): tickets / QR to open again. */}
+      <MyBookings signedIn />
 
       {/* My upcoming sessions, by day */}
       <section>

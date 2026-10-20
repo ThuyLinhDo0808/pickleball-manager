@@ -75,7 +75,7 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
 }
 
 // basePath: where edits go ('/api/matches' for hosts, the staff API for referees).
-export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true, sport: sportProp }) {
+export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true, sport: sportProp, emptyText = '' }) {
   const { t, lang, sport: clubSport } = useI18n();
   const badminton = (sportProp || clubSport) === 'badminton';
   const [editing, setEditing] = useState(null);
@@ -90,7 +90,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
     }
   }
 
-  if (!matches.length) return <p className="text-gray-400 text-sm">{t('matches.none')}</p>;
+  if (!matches.length) return <p className="text-gray-400 text-sm">{emptyText || t('matches.none')}</p>;
 
   return (
     <>
@@ -108,6 +108,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
                   {t(`matches.${m.match_type}`)}
                 </span>
                 {winner === 0 && <span className="text-yellow-400">{t('matches.draw')}</span>}
+                {m.is_challenge && <span className="rounded border border-violet-400/60 text-violet-200 px-1.5">⚔️ {t('matches.challenge')}{m.challenge_reward ? ` · 🎁 ${m.challenge_reward}` : ''}</span>}
                 {!scored && <span className="rounded border border-amber-400/60 text-amber-300 px-1.5">{t('matches.notScored')}</span>}
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 items-center">

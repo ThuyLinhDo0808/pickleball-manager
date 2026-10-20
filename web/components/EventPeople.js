@@ -18,6 +18,7 @@ const PLACE_TONE = {
   not_playing: 'border-gray-400 bg-gray-400/10 text-gray-100',
 };
 const TAGS = ['coach', 'referee'];
+const NOTE_TAGS = ['invited', 'free']; // Khách mời, Miễn phí
 
 function Initial({ name, organizer }) {
   return (
@@ -238,6 +239,21 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
           </div>
         )}
 
+        {/* Notes on this place: Khách mời (invited by the Host), Miễn phí (nothing to pay). */}
+        {row && !cancelled && (
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <span className="text-gray-400 text-xs mr-1">{t('people.notes')}</span>
+            {NOTE_TAGS.map((tag) => {
+              const on = (row.tags || []).includes(tag);
+              return (
+                <button key={tag} type="button" disabled={busy} aria-pressed={on} onClick={() => setRoles({ tags: on ? row.tags.filter((x) => x !== tag) : [...(row.tags || []), tag] })} className={`${chip} ${on ? 'border-violet-400 bg-violet-400/20 text-violet-100' : 'border-navy-600 text-gray-300'}`}>
+                  {on ? '✓ ' : ''}{t(`people.tag_${tag}`)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {row && actions && (
           <div className="flex flex-wrap justify-center gap-2">
             {['registered', 'checked_in', 'no_show'].includes(row.status) && (
@@ -249,7 +265,9 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             )}
             {row.status === 'waitlisted' && <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onAction(row, 'promote'))}>⬆ {t('policy.promote')}</button>}
             {/* Money: organisers who play free, a pass, a refund to give back, or paid / not paid. */}
-            {row.is_organizer && row.fee_amount != null && Number(row.fee_amount) === 0 ? (
+            {(row.tags || []).includes('free') && !cancelled ? (
+              <span className={`${chip} border-violet-400/60 text-violet-200`}>🎁 {t('people.tag_free')}</span>
+            ) : row.is_organizer && row.fee_amount != null && Number(row.fee_amount) === 0 ? (
               <span className={`${chip} border-navy-600 text-gray-400`}>{t('people.noFee')}</span>
             ) : row.paid_by_plan && !cancelled ? (
               <span className={`${chip} border-lime-400/40 text-lime-300`}>{c.vip ? t(`events.usesPass_${c.vip_period || 'any'}`) : t('events.paidByPlan')}</span>

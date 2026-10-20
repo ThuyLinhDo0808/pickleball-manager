@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 import { eventLevelText } from '@/lib/levels';
+import { rememberBooking } from '@/components/MyBookings';
 
 const blankSlot = () => ({ full_name: '', gender: '', dupr_level: '', dupr_id: '' });
 const idChars = (v) => v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
@@ -22,7 +23,7 @@ export default function QuickBookPage() {
   const { t, lang, setLang } = useI18n();
   const [opened, setOpened] = useState(null); // { pass, pass_expires_at, event }
   const [openErr, setOpenErr] = useState(null);
-  const [contact, setContact] = useState({ full_name: '', phone: '', dupr_level: '', dupr_id: '' });
+  const [contact, setContact] = useState({ full_name: '', gender: '', dupr_level: '', dupr_id: '' });
   const [slots, setSlots] = useState([blankSlot()]);
   const [meFirst, setMeFirst] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -70,7 +71,7 @@ export default function QuickBookPage() {
   const time = [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join(' – ');
   const level = eventLevelText(ev, ev.sport, t) || t('public.anyLevel');
   // Slot 1 = the person booking (same name / level), unless they book for others only.
-  const rows = slots.map((s, i) => (i === 0 && meFirst ? { ...s, full_name: contact.full_name, dupr_level: contact.dupr_level, dupr_id: contact.dupr_id } : s));
+  const rows = slots.map((s, i) => (i === 0 && meFirst ? { ...s, full_name: contact.full_name, gender: contact.gender, dupr_level: contact.dupr_level, dupr_id: contact.dupr_id } : s));
   const total = ev.fee * rows.length;
   const setSlot = (i, patch) => setSlots(slots.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const setCount = (n) => setSlots(Array.from({ length: n }, (_, i) => slots[i] || blankSlot()));
@@ -80,9 +81,10 @@ export default function QuickBookPage() {
     setBusy(true);
     setError('');
     try {
-      const r = await api.publicPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact, slots: rows });
+      const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact, slots: rows, me_first: meFirst });
       try {
         window.localStorage.setItem(`pb_quick_${eventId}`, r.token);
+        rememberBooking({ token: r.token, title: ev.title, event_date: ev.event_date });
       } catch {
         /* private mode: the booking page link still works */
       }
@@ -118,15 +120,19 @@ export default function QuickBookPage() {
           <Countdown until={opened.pass_expires_at} labelKey="quick.formLeft" tone="sky" />
           <section className="card">
             <h2 className="text-white font-semibold mb-1">1. {t('quick.contactTitle')}</h2>
-            <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-xs text-sky-200 mb-3">📞 {t('quick.contactNote')}</p>
+            <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-xs text-sky-200 mb-3">ℹ️ {t('quick.contactNote')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <label className="text-xs text-gray-400" htmlFor="q-name">{t('quick.fullName')} *</label>
                 <input id="q-name" className="input" required maxLength={120} autoComplete="name" value={contact.full_name} onChange={(e) => setContact({ ...contact, full_name: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-gray-400" htmlFor="q-phone">{t('quick.phone')} *</label>
-                <input id="q-phone" className="input" required type="tel" inputMode="tel" maxLength={20} autoComplete="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
+                <label className="text-xs text-gray-400" htmlFor="q-gender">{t('quick.gender')} *</label>
+                <select id="q-gender" className="input" required value={contact.gender} onChange={(e) => setContact({ ...contact, gender: e.target.value })}>
+                  <option value="">—</option>
+                  <option value="male">{t('members.male')}</option>
+                  <option value="female">{t('members.female')}</option>
+                </select>
               </div>
               <div>
                 <label className="text-xs text-gray-400" htmlFor="q-level">{t(ev.sport === 'badminton' ? 'quick.levelBadminton' : 'quick.duprSelf')}</label>
@@ -163,7 +169,7 @@ export default function QuickBookPage() {
                     <p className="text-xs text-gray-400 mb-2">{t('quick.slotN', { n: i + 1 })}{mine ? ` · ${t('quick.you')}` : ''}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-[1fr_7rem_6rem] gap-2">
                       <input className="input" required maxLength={120} placeholder={t('quick.fullName')} aria-label={t('quick.fullName')} value={s.full_name} disabled={mine} onChange={(e) => setSlot(i, { full_name: e.target.value })} />
-                      <select className="input" value={s.gender} aria-label={t('quick.gender')} onChange={(e) => setSlot(i, { gender: e.target.value })}>
+                      <select className="input" value={s.gender} disabled={mine} aria-label={t('quick.gender')} onChange={(e) => setSlot(i, { gender: e.target.value })}>
                         <option value="">{t('quick.gender')}</option>
                         <option value="male">{t('members.male')}</option>
                         <option value="female">{t('members.female')}</option>

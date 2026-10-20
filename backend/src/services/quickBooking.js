@@ -163,29 +163,48 @@ const cleanName = (v, code) => {
   return s;
 };
 
+// Migration 20261208090000: the contact's gender, no phone needed, the booking kept on a
+// signed-in player's account.
+async function extrasReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes('20261208090000_event_extras.sql');
+}
+
 // Contact + slots -> N held places, one payment. Returns the booking's secret access token.
-async function book(eventId, body) {
+// `userId`: the signed-in player booking (optional) — slot 1 (themselves) goes on their
+// account, so their ticket / QR is on their player page whenever they come back.
+async function book(eventId, body, userId = null) {
   await assertReady();
   const event = await eventById(eventId);
   await checkPass(event, body?.pass);
   assertTaking(event);
   const contact = body?.contact || {};
   const name = cleanName(contact.full_name, 'name_required');
+  const extras = await extrasReady();
   const phone = String(contact.phone || '').trim();
-  if (normalizePhone(phone).length < 9 || phone.length > 20) throw fail('A valid phone number is required.', 400, 'phone_required');
+  // The phone is no longer asked (gender is); one given by an older page is still checked.
+  if (phone && (normalizePhone(phone).length < 9 || phone.length > 20)) throw fail('A valid phone number is required.', 400, 'phone_required');
+  if (!phone && !extras) throw fail('A valid phone number is required.', 400, 'phone_required');
+  const contactGender = ['male', 'female'].includes(contact.gender) ? contact.gender : null;
+  const meFirst = body?.me_first !== false;
   const contactLevel = cleanLevel(contact.dupr_level);
   const withDupr = await duprIdReady();
   const contactDupr = withDupr ? cleanDupr(contact.dupr_id) : null;
   const raw = Array.isArray(body?.slots) ? body.slots : [];
   if (!raw.length) throw fail('Add at least one player.', 400, 'no_slots');
   if (raw.length > MAX_SLOTS) throw fail(`At most ${MAX_SLOTS} players at once.`, 400, 'too_many_slots');
-  const slots = raw.map((s) => ({
+  const slots = raw.map((s, i) => ({
     full_name: cleanName(s?.full_name, 'slot_name_required'),
-    gender: ['male', 'female'].includes(s?.gender) ? s.gender : null,
+    gender: ['male', 'female'].includes(s?.gender) ? s.gender : i === 0 && meFirst ? contactGender : null,
     dupr_level: cleanLevel(s?.dupr_level),
     dupr_id: withDupr ? cleanDupr(s?.dupr_id) : null,
   }));
-  await require('./moderation').assertCanJoin(event, { phone }); // blocked by this Host / club
+  await require('./moderation').assertCanJoin(event, { phone: phone || null, userId }); // blocked by this Host / club
+  const mine = userId && meFirst && extras ? userId : null;
+  if (mine) {
+    const { data: already } = await supabase.from('event_participants').select('id').eq('event_id', event.id).eq('user_id', mine).neq('status', 'cancelled').limit(1);
+    if (already?.length) throw fail('You are already on this kèo.', 409, 'already_registered');
+  }
   await require('./signup').expireHolds(event);
   const free = await freePlaces(event);
   if (slots.length > free) throw fail(`Only ${free} place(s) left.`, 409, 'not_enough_places', { free });
@@ -194,7 +213,7 @@ async function book(eventId, body) {
   const token = crypto.randomBytes(24).toString('base64url');
   const { data: booking, error } = await supabase
     .from('event_guest_bookings')
-    .insert({ event_id: event.id, token_hash: hashToken(token), contact_name: name, contact_phone: phone, contact_level: contactLevel, ...(withDupr ? { contact_dupr_id: contactDupr } : {}), slots: slots.length, amount: fee * slots.length })
+    .insert({ event_id: event.id, token_hash: hashToken(token), contact_name: name, contact_phone: phone || null, contact_level: contactLevel, ...(withDupr ? { contact_dupr_id: contactDupr } : {}), ...(extras ? { contact_gender: contactGender, user_id: userId || null } : {}), slots: slots.length, amount: fee * slots.length })
     .select()
     .single();
   if (error) throw error;
@@ -209,7 +228,8 @@ async function book(eventId, body) {
     gender: s.gender,
     dupr_level: s.dupr_level,
     ...(withDupr ? { dupr_id: s.dupr_id } : {}),
-    phone: i === 0 ? phone : null, // the contact's number, on the first slot
+    phone: i === 0 ? phone || null : null, // the contact's number, on the first slot
+    ...(i === 0 && mine ? { user_id: mine } : {}),
     kind: 'guest',
     guest_booking_id: booking.id,
     fee_amount: fee,
@@ -258,7 +278,7 @@ async function view(event, booking) {
   const out = {
     state,
     event: { ...(await clubBits(event)), id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, location: event.location, map_url: event.map_url },
-    contact: { full_name: booking.contact_name, phone: booking.contact_phone, dupr_level: booking.contact_level, dupr_id: booking.contact_dupr_id || null },
+    contact: { full_name: booking.contact_name, phone: booking.contact_phone, gender: booking.contact_gender || null, dupr_level: booking.contact_level, dupr_id: booking.contact_dupr_id || null },
     slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
     amount,
     hold_expires_at: pending[0]?.hold_expires_at || null,
@@ -307,4 +327,18 @@ async function bookingsFor(rows) {
   return new Map((data || []).map((b) => [b.id, b]));
 }
 
-module.exports = { MIGRATION, WINDOW_MS, MAX_SLOTS, ready, currentInvite, setInvite, open, book, bookingByToken, view, submitProof, pendingSiblings, bookingsFor, codeFor, windowAt };
+// A signed-in player's quick bookings (last 60 days + coming): each with its slots and tickets.
+async function bookingsOfUser(userId) {
+  if (!(await extrasReady())) return [];
+  const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+  const { data, error } = await supabase.from('event_guest_bookings').select('*, events!inner(id, title, event_date, start_time, end_time, location, map_url, club_id)').eq('user_id', userId).gte('events.event_date', since).order('created_at', { ascending: false }).limit(50);
+  if (error) throw error;
+  const out = [];
+  for (const b of data || []) {
+    const { events: ev, ...booking } = b;
+    out.push({ id: booking.id, created_at: booking.created_at, ...(await view(ev, booking)) });
+  }
+  return out;
+}
+
+module.exports = { bookingsOfUser, MIGRATION, WINDOW_MS, MAX_SLOTS, ready, currentInvite, setInvite, open, book, bookingByToken, view, submitProof, pendingSiblings, bookingsFor, codeFor, windowAt };
