@@ -24,16 +24,33 @@ const GROUPS = {
   ],
 };
 
+// Social Manager: Thống kê is business numbers; Bảng xếp hạng stands on its own.
+const COMMUNITY_GROUPS = {
+  stats: [
+    { href: '/club/business', key: 'nav.bizPlayers', icon: '📈', match: (p) => p === '/club/business' },
+    { href: '/club/business/finance', key: 'nav.bizMoney', icon: '💰', match: (p) => p.startsWith('/club/business/finance') },
+    { href: '/club/race', key: 'nav.race', icon: '🏆', match: (p) => p.startsWith('/club/race') },
+    { href: '/club/dupr', key: 'nav.dupr', icon: '📈', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
+    { href: '/club/reviews', key: 'nav.reviews', icon: '⭐', match: (p) => p.startsWith('/club/reviews') },
+  ],
+  rankings: [
+    { href: '/club/rankings', key: 'nav.rankings', icon: '🏅', match: (p) => p.startsWith('/club/rankings') },
+    { href: '/leaderboard', key: 'nav.globalRank', icon: '🌏', match: (p) => p.startsWith('/leaderboard') },
+  ],
+};
+
 export default function SectionTabs({ group }) {
   const { t } = useI18n();
   const { scoped, community, club } = useScope();
   const pathname = usePathname() || '';
   if (!scoped) return null;
+  const rankingsPage = pathname.startsWith('/club/rankings') || pathname.startsWith('/leaderboard');
+  const tabsOf = community ? COMMUNITY_GROUPS[rankingsPage ? 'rankings' : group] || GROUPS[group] : GROUPS[group];
   return (
     // Wraps onto two lines on a phone rather than hiding tabs off the edge of the screen.
     <nav className="mb-5">
       <div className="flex flex-wrap gap-2">
-        {GROUPS[group].filter((tab) => !tab.hidden && (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport)).map((tab) => {
+        {tabsOf.filter((tab) => !tab.hidden && (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport)).map((tab) => {
           const active = tab.match(pathname);
           // Social Manager: the schedule tab reads like its menu entry ("Lịch xé vé").
           const key = community && tab.key === 'nav.schedule' ? 'nav.kevents' : tab.key;

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import AppShell from '@/components/AppShell';
+import SectionTabs from '@/components/ui/SectionTabs';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -40,6 +41,7 @@ export default function LeaderboardPage() {
 
   return (
     <AppShell>
+      <SectionTabs group="rankings" />
       <h1 className="text-white text-2xl font-bold">{t('nav.globalRank')}</h1>
       <p className="text-gray-400 text-sm">{t('leaderboard.hint')}</p>
       <p className="text-gray-500 text-xs mb-4">📏 {t('leaderboard.rule', { n: data?.min_matches || 3 })}</p>

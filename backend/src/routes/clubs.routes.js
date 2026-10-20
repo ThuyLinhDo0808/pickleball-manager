@@ -1281,6 +1281,17 @@ router.post('/:clubId/community-settings/reclassify', async (req, res) => {
   }
 });
 
+// Social Manager → Thống kê: business numbers of the community (players + money).
+router.get('/:clubId/business', async (req, res) => {
+  if ((req.club.kind || 'club') !== 'community') return res.status(400).json({ error: 'Communities only.', code: 'not_community' });
+  if (!['owner', 'co_admin'].includes(req.clubRole)) return res.status(403).json(ROLE_FORBIDDEN);
+  try {
+    res.json(await require('../services/communityBusiness').business(req.club, req.query.period));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+
 // Suggestions for the Host: who played more than the rule (→ thường xuyên) or not enough
 // (→ vãng lai) in the last 30 days. Nothing moves until the Host says so.
 router.get('/:clubId/community-settings/suggestions', async (req, res) => {

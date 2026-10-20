@@ -129,19 +129,20 @@ NAV_BY_WORKSPACE.community = [
     ],
   },
   NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance'),
+  // Thống kê of a community = business numbers (players, money); no attendance grid.
   {
     key: 'nav.groupStats',
     icon: 'chart',
     children: [
-      { href: '/club/attendance', key: 'nav.memberStats', icon: 'members' },
-      { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
-      { href: '/leaderboard', key: 'nav.globalRank', icon: 'rankings' },
+      { href: '/club/business', key: 'nav.bizPlayers', icon: 'members', exact: true },
+      { href: '/club/business/finance', key: 'nav.bizMoney', icon: 'fund' },
       { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
-      { href: '/club/insights', key: 'nav.insights', icon: 'chart' },
     ],
   },
+  // Bảng xếp hạng: its own menu item (community + whole web as tabs on the page).
+  { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings', also: ['/leaderboard'] },
   {
     key: 'nav.groupSettings',
     icon: 'clubs',

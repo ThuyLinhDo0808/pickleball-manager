@@ -43,15 +43,6 @@ export default function PlayerHome() {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelErr, setCancelErr] = useState('');
 
-  async function setEmailNotices(enabled) {
-    try {
-      await api.put('/api/player/email-notices', { enabled });
-      reload();
-    } catch (err) {
-      window.alert(err.message);
-    }
-  }
-
   function cancelEvent(h) {
     setCancelErr('');
     setCancelling(h);
@@ -195,18 +186,7 @@ export default function PlayerHome() {
         </section>
       )}
 
-      {me.email_notices?.available && p && (
-        <section className="card mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-white font-semibold">✉️ {t('pp.emailTitle')}</h2>
-            <p className="text-gray-400 text-xs">{me.email_notices.enabled ? t('pp.emailOn', { email: me.email || '' }) : t('pp.emailOff')}</p>
-          </div>
-          <button className={me.email_notices.enabled ? 'text-gray-400 text-sm' : 'btn-primary text-sm'} onClick={() => setEmailNotices(!me.email_notices.enabled)}>
-            {me.email_notices.enabled ? t('pp.emailTurnOff') : t('pp.emailTurnOn')}
-          </button>
-        </section>
-      )}
-
+      {/* Updates reach players on the 🔔 bell (no e-mail setting any more). */}
       <section className="mb-4">
         <h2 className="text-white font-semibold mb-2">{t('player.myClubs')}</h2>
         {me.clubs.length === 0 && <p className="card text-gray-400 text-sm">{t('player.noClubs')}</p>}

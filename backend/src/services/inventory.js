@@ -67,43 +67,45 @@ function stockEffect(m) {
   return 0;
 }
 
-// The ball table, one column per session (a date with balls taken out or broken):
-//   new    — new balls taken out of the box for this session
-//   old    — balls from earlier sessions still played with
-//   broken — balls broken so far (all sessions up to this one)
-//   used   — balls taken out of the box so far
-//   bought — balls bought so far
-//   left   — balls still in the box
-// so new + old + broken + left = bought (± stock fixes).
-// `sessions`: dates of the club's / organiser's sessions — from the first ball taken out
-// on, a session with nothing logged still gets a column (it played with the old balls).
+// The ball table, one row per session (a date with balls taken out, broken or played):
+//   new      — new balls taken out of the box for this session
+//   old      — old balls (from earlier sessions) played with; what the Host entered, or
+//              (older entries) every ball still playable
+//   broken_now — balls that broke this session
+//   played   — balls on court this session (old + new)
+//   playable — balls out of the box still playable after the session
+//   broken / used / bought — so far; left — balls still in the box
+// `sessions`: dates of the club's / organiser's sessions — from the first ball logged on, a
+// session with nothing logged still gets a row (it played with the old balls).
 function ballLog(moves, sessions = []) {
   const sorted = [...moves].sort((a, b) => a.occurred_on.localeCompare(b.occurred_on) || String(a.created_at || '').localeCompare(String(b.created_at || '')));
-  const logged = sorted.filter((m) => m.kind === 'use' || m.kind === 'broken').map((m) => m.occurred_on);
+  const logged = sorted.filter((m) => m.kind === 'use' || m.kind === 'broken' || m.kind === 'play').map((m) => m.occurred_on);
   const first = logged.length ? logged.reduce((a, d) => (d < a ? d : a)) : null;
   const days = [...new Set([...logged, ...(first ? sessions.filter((d) => d >= first) : [])])].sort();
   const rows = [];
-  let inPlay = 0;
+  let pool = 0;
   let brokenSoFar = 0;
   let usedSoFar = 0;
   for (const day of days) {
     const today = sorted.filter((m) => m.occurred_on === day);
     const n = today.filter((m) => m.kind === 'use').reduce((t, m) => t + Number(m.quantity), 0);
     const b = today.filter((m) => m.kind === 'broken').reduce((t, m) => t + Number(m.quantity), 0);
+    const play = today.find((m) => m.kind === 'play');
     const upTo = sorted.filter((m) => m.occurred_on <= day);
-    // Breaks hit the old balls first; the rest are new balls taken out (and broken) today.
-    const old = Math.max(0, inPlay - b);
-    const fresh = Math.max(0, n - Math.max(0, b - inPlay));
+    const old = play ? Number(play.quantity) : pool;
     brokenSoFar += b;
     usedSoFar += n;
-    inPlay = old + fresh;
+    pool = Math.max(0, pool + n - b);
     rows.push({
       date: day,
       event_id: today.find((m) => m.event_id)?.event_id || null,
-      new: fresh,
+      new: n,
       new_out: n,
       old,
+      old_entered: !!play,
       broken_now: b,
+      played: old + n,
+      playable: pool,
       broken: brokenSoFar,
       used: usedSoFar,
       bought: upTo.filter((m) => m.kind === 'purchase').reduce((t, m) => t + Number(m.quantity), 0),
@@ -113,4 +115,20 @@ function ballLog(moves, sessions = []) {
   return rows;
 }
 
-module.exports = { itemMetrics, ballLog };
+// Độ bền bóng from the ball table: every ball on court in a session is one "ball-session";
+// ball-sessions / balls broken = how many sessions a ball lasts on average. With the average
+// price: what the balls broken cost per session.
+function playStats(log, avgCost) {
+  const sessions = log.length;
+  const ballSessions = log.reduce((t, r) => t + r.played, 0);
+  const broken = log.reduce((t, r) => t + r.broken_now, 0);
+  return {
+    sessions_logged: sessions,
+    ball_sessions: ballSessions,
+    avg_played: sessions ? round(ballSessions / sessions, 1) : null,
+    play_durability: broken ? round(ballSessions / broken, 1) : null,
+    ball_cost_per_session: avgCost != null && sessions && broken ? round((avgCost * broken) / sessions) : null,
+  };
+}
+
+module.exports = { itemMetrics, ballLog, playStats };
