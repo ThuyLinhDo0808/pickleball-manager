@@ -33,6 +33,7 @@ import { exportEventFinance } from '@/lib/exportExcel';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { CancelDialog, CancelHistoryBadge, CancelLine } from '@/components/CancelHistory';
 import { deadlinesOf, eventStartMs, policyText, refundIfCancelNow } from '@/lib/cancelPolicy';
+import Hint from '@/components/ui/Hint';
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
@@ -453,7 +454,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
   return (
     <section className="card mb-4 !px-2 sm:!px-4">
       <h3 className="text-white font-semibold mb-1 px-2 sm:px-0">{title}</h3>
-      {kind === 'cancelled' && <p className="text-gray-500 text-xs mb-2 px-2 sm:px-0">{t('policy.cancelledHint')}</p>}
+      {kind === 'cancelled' && <Hint text={t('policy.cancelledHint')} className="mb-2" />}
       {rows.length === 0 && <p className="text-gray-400 text-sm px-2 sm:px-0">—</p>}
       <ul className="divide-y divide-navy-700/70">
         {rows.map((p, idx) => {

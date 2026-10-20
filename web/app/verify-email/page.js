@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { emailVerified } from '@/components/EmailVerifyBanner';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const COOLDOWN = 60; // seconds between two "send a new code"
 
@@ -131,7 +132,7 @@ export default function VerifyEmailPage() {
             <div className="text-4xl" aria-hidden="true">📬</div>
             <h1 className="text-white text-xl font-bold mt-2">{t('everify.title')}</h1>
             <p className="text-gray-300 text-sm mt-1">{t('everify.body', { email: st.email })}</p>
-            <p className="text-gray-500 text-xs mt-1">{t('everify.spamHint')}</p>
+            <Hint text={t('everify.spamHint')} className="mt-1" />
             <form onSubmit={submit} className="mt-4">
               <label htmlFor="verify-code" className="text-xs text-gray-400">{t('everify.codeLabel')}</label>
               <input

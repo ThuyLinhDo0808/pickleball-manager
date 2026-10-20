@@ -8,6 +8,7 @@ import { useScope } from '@/lib/useScope';
 import { UpgradeModal } from '@/components/PlanModals';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 // New clubs are asked for and approved by the app owner (/club-request). Only when the
 // owner switched approval off can a club be created here straight away.
@@ -79,7 +80,7 @@ function DirectCreateForm({ onCreated, autoFocus = false }) {
             </button>
           ))}
         </div>
-        <p className="text-gray-500 text-xs mt-1">{t('clubs.sportHint')}</p>
+        <Hint text={t('clubs.sportHint')} className="mt-1" />
       </div>
       <div>
         <label className="text-xs text-gray-400">{t('clubs.name')}</label>

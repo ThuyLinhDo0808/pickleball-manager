@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { PastWarning } from '@/components/MemberModeration';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 // Danh sách chờ: guests who asked to join the fixed team in the after-session survey, "I'm a
 // member" requests from the event page, and accounts that matched a member by phone.
@@ -109,14 +110,14 @@ export default function MemberRequests({ club, requests, members = [], onChanged
     return (
       <div className="card text-sm text-gray-400">
         {t('requests.empty')}
-        <p className="text-gray-500 text-xs mt-1">{t('requests.hint')}</p>
+        <Hint text={t('requests.hint')} className="mt-1" />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-gray-500 text-xs">{t('requests.hint')}</p>
+      <Hint text={t('requests.hint')} />
       {error && <p className="text-red-400 text-sm">{error}</p>}
       {requests.map((m) => {
         const facts = [

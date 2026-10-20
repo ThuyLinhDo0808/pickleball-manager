@@ -13,6 +13,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
 const fmtMonth = (m) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
@@ -74,7 +75,7 @@ export default function DuprStatsPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
               <div>
                 <h2 className="text-white font-semibold">{t('dupr.ratingsTitle')}</h2>
-                <p className="text-gray-400 text-xs mt-0.5">{t('dupr.ratingsHint')}</p>
+                <Hint text={t('dupr.ratingsHint')} className="mt-0.5" />
               </div>
               <Segmented items={['change', 'rating']} value={sort} onChange={setSort} label={(k) => t(`dupr.sort_${k}`)} />
             </div>
@@ -119,7 +120,7 @@ export default function DuprStatsPage() {
           {/* Matches and DUPR */}
           <section className="card">
             <h2 className="text-white font-semibold">{t('dupr.matchesTitle')}</h2>
-            <p className="text-gray-400 text-xs mt-0.5">{t('dupr.matchesHint')}</p>
+            <Hint text={t('dupr.matchesHint')} className="mt-0.5" />
             <Legend />
             {m.total === 0 ? (
               <p className="text-gray-500 text-sm mt-3">{t('dupr.noMatches')}</p>
@@ -155,7 +156,7 @@ export default function DuprStatsPage() {
             {m.blockers.length > 0 && (
               <div className="mt-4 rounded-xl border border-amber-300/40 bg-amber-300/5 p-3">
                 <p className="text-amber-200 text-sm font-semibold">⚠ {t('dupr.blockersTitle')}</p>
-                <p className="text-gray-400 text-xs mt-0.5">{t('dupr.blockersHint')}</p>
+                <Hint text={t('dupr.blockersHint')} className="mt-0.5" />
                 <ul className="mt-2 flex flex-wrap gap-2 text-sm">
                   {m.blockers.map((b) => (
                     <li key={b.name} className="rounded-full border border-navy-600 px-2.5 py-0.5 text-gray-200">

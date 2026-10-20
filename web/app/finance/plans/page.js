@@ -6,6 +6,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import Modal from '@/components/Modal';
+import Hint from '@/components/ui/Hint';
 
 const emptyForm = { name: '', period: 'month', price: '', sessions_included: '8', validity_months: '' };
 // Social Manager (communities): a plan is a session pack — name, sessions, price, validity
@@ -122,7 +123,7 @@ export default function PlansPage() {
         <form onSubmit={create} className="card !p-5 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
           <div className="col-span-2 md:col-span-4 -mb-1">
             <h2 className="text-white font-semibold">✨ {t('finX.newPlan')}</h2>
-            <p className="text-gray-400 text-xs">{t('plans.packLead')}</p>
+            <Hint text={t('plans.packLead')} />
           </div>
           <div className="col-span-2 md:col-span-4">
             <label htmlFor="pk-name" className="text-xs text-gray-400">1. {t('plans.name')}</label>
@@ -153,7 +154,7 @@ export default function PlansPage() {
         <form onSubmit={create} className="card !p-5 mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
           <div className="col-span-2 md:col-span-5 -mb-1">
             <h2 className="text-white font-semibold">✨ {t('finX.newPlan')}</h2>
-            <p className="text-gray-400 text-xs">{t('finX.newPlanHint')}</p>
+            <Hint text={t('finX.newPlanHint')} />
           </div>
           <div className="col-span-2">
             <label className="text-xs text-gray-400">{t('plans.name')}</label>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import GamesInput, { blankGames, defaultFormat, gamesPayload } from '@/components/GamesInput';
+import Hint from '@/components/ui/Hint';
 
 function nowLocalInput() {
   const d = new Date();
@@ -106,7 +107,7 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
           <GamesInput value={games} onChange={setGames} format={format} onFormatChange={setFormat} />
         </div>
       )}
-      <p className="text-gray-500 text-xs -mt-2">{t('matches.scoreLaterHint')}</p>
+      <Hint text={t('matches.scoreLaterHint')} className="-mt-2" />
 
       <div>
         <label className="text-xs text-gray-400">{t('matches.playedAt')}</label>

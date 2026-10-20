@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const HIDE_KEY = 'pickleball_bday_hidden';
 
@@ -75,7 +76,7 @@ export default function BirthdayBanner({ clubId }) {
             ))}
           </p>
         )}
-        <p className="text-gray-400 text-xs mt-1">{t('bday.hint')}</p>
+        <Hint text={t('bday.hint')} className="mt-1" />
       </div>
       <button type="button" onClick={hide} aria-label={t('bday.hide')} title={t('bday.hide')} className="text-gray-400 hover:text-white px-1 text-lg leading-none">
         ×

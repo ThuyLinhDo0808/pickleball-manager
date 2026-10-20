@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import Hint from '@/components/ui/Hint';
 
 const ROUND_STEPS = [1000, 5000, 10000, 50000, 100000];
 const EMPTY = { rate_per_hour: '', hours_per_session: '', sessions_per_month: '', discount_pct: '', water: '', members: '', round_to: 10000, carry_sessions: '', balls_per_session: '', ball_price: '', guest_slots: [] };
@@ -189,7 +190,7 @@ export default function FundCalculator({ club, onUse }) {
         </table>
       </div>
 
-      <p className="text-gray-500 text-xs mt-2">{t('calc.hint')}</p>
+      <Hint text={t('calc.hint')} className="mt-2" />
       <div className="flex flex-wrap items-center gap-2 mt-3">
         <button type="button" className="btn-secondary text-sm" disabled={saving} onClick={save}>💾 {t('calc.save')}</button>
         <Link href="/finance/plans" className="text-lime-400 text-sm ml-auto">{t('calc.toPlans')} →</Link>

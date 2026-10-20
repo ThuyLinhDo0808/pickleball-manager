@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 const SIZE = { mens: 2, womens: 2, mixed: 2, doubles: 2, singles: 1 };
 const GENDER = { mens: 'male', womens: 'female' };
@@ -76,7 +77,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
       <div className="rounded-lg bg-navy-900 p-3">
         <ScoreEntry sport={sport} labels={[team(fixture.team1_id)?.name, team(fixture.team2_id)?.name]} initial={sub} onChange={setScore} />
       </div>
-      <p className="text-gray-500 text-xs">{t('league.lineupHint')}</p>
+      <Hint text={t('league.lineupHint')} />
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex gap-2">
         {sub.team1_score != null && (
@@ -143,7 +144,7 @@ export default function TeamLeagueView({ tour, onChange }) {
             </tbody>
           </table>
         </div>
-        <p className="text-gray-500 text-xs mt-2">{t('league.tableHint')}</p>
+        <Hint text={t('league.tableHint')} className="mt-2" />
       </div>
 
       <h2 className="text-white font-semibold mb-2">{t('league.fixtures')}</h2>

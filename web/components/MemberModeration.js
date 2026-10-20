@@ -7,6 +7,7 @@ import { useClubs } from '@/context/ClubContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const fmtDate = (v) => (v ? localDate(new Date(v), 'vi-VN') : '');
 const daysLeft = (until) => Math.ceil((new Date(until) - Date.now()) / 86400000);
@@ -118,7 +119,7 @@ function RemoveModal({ club, member, open, onClose, onDone }) {
             <label className="flex items-center gap-2"><input type="radio" checked={scope === 'all'} onChange={() => setScope('all')} />{t('mod.scope_all')}</label>
           </div>
         )}
-        <p className="text-gray-500 text-xs">{t('mod.removeNote')}</p>
+        <Hint text={t('mod.removeNote')} />
         {error && <p className="text-red-300 text-sm">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
@@ -180,7 +181,7 @@ export function ReviewTab({ club, members, onChanged }) {
   }
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-gray-500 text-xs">{t('mod.tabHint')}</p>
+      <Hint text={t('mod.tabHint')} />
       {members.map((m) => {
         const left = m.review_until ? daysLeft(m.review_until) : 0;
         return (
@@ -232,7 +233,7 @@ export function ReviewTab({ club, members, onChanged }) {
 
       <section className="card">
         <h3 className="text-white font-semibold">📜 {t('mod.historyTitle')}</h3>
-        <p className="text-gray-500 text-xs mb-1">{t('mod.historyHint')}</p>
+        <Hint text={t('mod.historyHint')} className="mb-1" />
         {!mod?.rows?.length && <p className="text-gray-500 text-sm">{t('mod.historyEmpty')}</p>}
         <ul className="divide-y divide-navy-700">{(mod?.rows || []).map((r) => <HistoryLine key={r.id} r={r} />)}</ul>
         {mod?.pages > 1 && (
@@ -320,7 +321,7 @@ export function InviteModal({ club, open, onClose }) {
             <button type="button" className="self-start text-gray-400 text-xs underline" onClick={rotate}>{t('invite.rotate')}</button>
           </>
         )}
-        <p className="text-gray-500 text-xs">{t('invite.note')}</p>
+        <Hint text={t('invite.note')} />
         <button type="button" className="btn-secondary" onClick={onClose}>{t('plan.close')}</button>
       </div>
     </Modal>

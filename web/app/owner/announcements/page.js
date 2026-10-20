@@ -4,6 +4,7 @@ import OwnerShell, { fmtTime, useOwnerMe } from '@/components/OwnerShell';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 // <input type="datetime-local"> works in local time; the API stores ISO (UTC).
 const toLocal = (iso) => {
@@ -192,7 +193,7 @@ function Form({ initial, onDone, onCancel }) {
               <input type="datetime-local" className="input mt-1" value={f.ends_at} onChange={set('ends_at')} />
             </label>
           </div>
-          <p className="text-gray-500 text-xs -mt-2">{t('owner.annTimeHint')}</p>
+          <Hint text={t('owner.annTimeHint')} className="-mt-2" />
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="text-sm text-gray-300">
               {t('ann2.audience')}

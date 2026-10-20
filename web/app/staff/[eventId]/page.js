@@ -17,6 +17,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatDay, hhmm } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const STATUS_ORDER = { registered: 0, pending: 1, checked_in: 2, no_show: 3, waitlisted: 4 };
 const FILTERS = ['todo', 'here', 'absent', 'all'];
@@ -207,7 +208,7 @@ export default function StaffEventPage() {
               <div className="flex-1">
                 <label className="text-xs text-gray-400">➕ {t('staffX.walkIn')}</label>
                 <input className="input" required maxLength={120} placeholder={t('staffX.walkInPh')} value={walkIn} onChange={(e) => setWalkIn(e.target.value)} />
-                <p className="text-gray-500 text-xs mt-1">{t('staffX.walkInHint')}</p>
+                <Hint text={t('staffX.walkInHint')} className="mt-1" />
               </div>
               <button className="btn-primary shrink-0">{t('staffX.walkInBtn')}</button>
             </form>

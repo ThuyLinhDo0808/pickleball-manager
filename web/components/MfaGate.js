@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 // Two-step sign-in prompt. The API answers 403 mfa_required when this sign-in session
 // still needs the code from the authenticator app (lib/api.js fires `pb:mfa`); 403
@@ -61,7 +62,7 @@ export default function MfaGate() {
     return (
       <Modal open title={`🔐 ${t('sec.enrollTitle')}`} onClose={() => {}}>
         <p className="text-gray-300 text-sm mb-2">{t('sec.enrollManagerBody')}</p>
-        <p className="text-gray-500 text-xs mb-4">{t('sec.enrollManagerHint')}</p>
+        <Hint text={t('sec.enrollManagerHint')} className="mb-4" />
         <div className="flex flex-wrap gap-2 justify-end">
           <a href="/home" className="btn-secondary text-sm">{t('sec.backHome')}</a>
           <Link href="/p/profile#security" className="btn-primary text-sm" onClick={() => setNeed(null)}>{t('sec.goEnable')}</Link>

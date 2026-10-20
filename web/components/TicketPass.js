@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { resizeImage } from '@/lib/image';
+import Hint from '@/components/ui/Hint';
 
 // Player: pass my ticket to someone on the waitlist — through the Host (services/ticketPass.js).
 export function PassMyTicket({ reg, waitlistCount, onChanged }) {
@@ -40,7 +41,7 @@ export function PassMyTicket({ reg, waitlistCount, onChanged }) {
     return (
       <div className="w-full rounded-xl border border-navy-600 px-3 py-3 text-left">
         <p className="text-white text-sm font-semibold">🎟 {t('pass.cantGo')}</p>
-        <p className="text-gray-400 text-xs mt-0.5 mb-2">{t('pass.howTo')}</p>
+        <Hint text={t('pass.howTo')} className="mt-0.5 mb-2" />
         <button type="button" className="btn-secondary w-full" disabled={busy} onClick={() => window.confirm(t('pass.askConfirm')) && run(() => api.post(`/api/player/participations/${reg.id}/pass`, {}))}>
           {t('pass.ask')}
         </button>
@@ -128,7 +129,7 @@ export function HostTicketPasses({ event, onChanged }) {
   return (
     <div className="card mb-4 border-sky-400/40">
       <h3 className="text-sky-200 font-semibold mb-1">🎟 {t('pass.hostTitle')} ({live.length})</h3>
-      <p className="text-gray-500 text-xs mb-2">{t('pass.hostHint')}</p>
+      <Hint text={t('pass.hostHint')} className="mb-2" />
       <ul className="divide-y divide-navy-700">
         {live.map((x) => (
           <li key={x.id} className="py-3 flex flex-col gap-2 text-sm">

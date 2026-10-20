@@ -3,6 +3,7 @@ import { halfHours, policyText } from '@/lib/cancelPolicy';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 
 // ISO timestamp -> value for <input type="datetime-local"> in the viewer's timezone.
@@ -94,7 +95,7 @@ export default function EventShareCard({ event, onSaved }) {
           {isOpen ? t('events.registrationOpen') : t('events.registrationClosed')}
         </span>
       </div>
-      <p className="text-gray-400 text-xs mb-3">{t('events.shareHint')}</p>
+      <Hint text={t('events.shareHint')} className="mb-3" />
 
       <label className="flex items-center gap-2 text-sm text-gray-200 mb-3">
         <input

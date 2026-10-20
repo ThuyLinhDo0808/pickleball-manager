@@ -11,6 +11,7 @@ import { mapsEmbed, mapsHref } from '@/lib/maps';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { halfHours, policyText } from '@/lib/cancelPolicy';
+import Hint from '@/components/ui/Hint';
 
 export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 // open = upcoming; completed is also set automatically once the slot is over.
@@ -236,7 +237,7 @@ function CostItems({ items, onChange, sessions }) {
   return (
     <div className="col-span-2 md:col-span-4 rounded-xl border border-orange-400/30 bg-orange-400/5 p-3">
       <p className="text-orange-100 text-sm font-semibold">💸 {t('cost.title')}</p>
-      <p className="text-gray-400 text-xs mt-0.5">{t('cost.hint')}</p>
+      <Hint text={t('cost.hint')} className="mt-0.5" />
       {items.length > 0 && (
         <div className="hidden sm:flex gap-2 mt-2 text-[11px] text-gray-400">
           <span className="w-36 shrink-0">{t('cost.colWhat')}</span>
@@ -580,7 +581,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         {seriesCount > 0 && (
           <section className="card mb-4 border-sky-400/40">
             <h2 className="text-white font-semibold">🔁 {t('series.title')}</h2>
-            <p className="text-gray-400 text-xs mt-0.5">{t('series.hint')}</p>
+            <Hint text={t('series.hint')} className="mt-0.5" />
             <div className="mt-2 flex flex-col gap-2">
               {[['series', t('series.all', { n: seriesCount + 1 })], ['one', t('series.one')]].map(([v, label]) => (
                 <label key={v} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${f.apply_to === v ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300'}`}>

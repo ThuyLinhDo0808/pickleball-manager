@@ -1153,6 +1153,7 @@ Khu quản trị toàn hệ thống dành cho **chủ dự án** (người vận
 ---
 
 ### 8.8. Cách viết chữ trên giao diện
+- **Ít chữ, dễ bấm** (cho cả người lớn tuổi, ít dùng công nghệ): các đoạn giải thích dài được gập lại sau nút nhỏ **ⓘ Xem giải thích** (bấm mới hiện); chữ nhỏ nhất ~12px, chữ phụ 13px; nút và ô nhập cao tối thiểu 42px (nút gọn 34px). Câu mô tả ngắn, nói thẳng việc cần làm (VD *Tắt: bạn duyệt từng người.*).
 - **Ngày luôn ghi dd/mm hoặc dd/mm/yyyy** (giờ ghi sau ngày dạng HH:mm, VD *05/10/2026 15:30*), cả tiếng Việt lẫn tiếng Anh, cả trong email / tin nhắn; tháng ghi mm/yyyy (VD *10/2026*). Không dùng dd-mm hay mm-dd.
 Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với người dùng (*bạn*), không xưng *app*, *hệ thống* hay *chúng tôi*; việc tự động được viết ở thể bị động (VD: *Các khoản chi cho mỗi buổi được ghi vào Sổ thu chi đúng ngày của từng buổi*). Người duyệt yêu cầu / chuyển giao được gọi là **Ban quản trị**. Bước thanh toán khi đăng ký CLB ghi: *Vui lòng thanh toán gói đã chọn để hoàn tất đăng ký… CLB được duyệt và gói được kích hoạt ngay khi thanh toán được xác nhận*.
 

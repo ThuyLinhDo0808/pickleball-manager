@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import Hint from '@/components/ui/Hint';
 
 // Categorical slots validated for the dark surface (CVD-safe): blue, orange, aqua.
 const C1 = '#3987e5';
@@ -241,7 +242,7 @@ function Finance({ d }) {
           />
         </div>
       </OwnerSection>
-      <p className="text-gray-500 text-xs">{t('ana.financeNote')}</p>
+      <Hint text={t('ana.financeNote')} />
     </div>
   );
 }

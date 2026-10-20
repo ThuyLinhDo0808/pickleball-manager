@@ -6,6 +6,7 @@ import LevelInput from '@/components/LevelInput';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 const STEPS = ['sports', 'role', 'info'];
 const SPORTS = [
@@ -120,7 +121,7 @@ export default function OnboardingPage() {
               <Choice key={r} role="radio" on={role === r} onClick={() => setRole(r)} icon={icon} title={t(`onb.role_${r}`)} body={t(`onb.roleHint_${r}`)} />
             ))}
             {role === 'manager' && <p className="rounded-xl border border-amber-300/40 bg-amber-300/5 px-3 py-2 text-amber-100 text-sm">ℹ️ {t('onb.managerNote')}</p>}
-            {role === 'player' && <p className="text-gray-500 text-xs">{t('onb.playerNote')}</p>}
+            {role === 'player' && <Hint text={t('onb.playerNote')} />}
           </div>
         )}
 
@@ -151,7 +152,7 @@ export default function OnboardingPage() {
             </div>
             <div className="border-t border-navy-700 pt-3">
               <p className="text-white font-semibold text-sm">{t('onb.levels')}</p>
-              <p className="text-gray-500 text-xs mb-2">{t('onb.levelsHint')}</p>
+              <Hint text={t('onb.levelsHint')} className="mb-2" />
               <div className="grid gap-3 sm:grid-cols-2">
                 {sports.includes('pickleball') && (
                   <label className="block">

@@ -18,6 +18,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
+import Hint from '@/components/ui/Hint';
 
 const PAY_STYLE = { paid: 'text-lime-400', pending: 'text-yellow-300', overdue: 'text-red-300' };
 const MY_TONE = {
@@ -232,7 +233,7 @@ export default function MemberClubPage() {
               ))}
             </ul>
           )}
-          <p className="text-gray-500 text-xs mt-3">{t('hub.passHint')}</p>
+          <Hint text={t('hub.passHint')} className="mt-3" />
         </section>
       )}
 

@@ -15,6 +15,7 @@ import { VIETNAM } from '@/lib/regions';
 import { PlanPaymentBox, productView } from '@/components/PlanModals';
 import { useEnter } from '@/lib/useEnter';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const PAID = ['basic', 'standard', 'advanced', 'pro'];
 const FALLBACK_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
@@ -352,7 +353,7 @@ export default function ClubRequestPage() {
                 </div>
                 )}
                 <p className="rounded-xl border px-3 py-2 text-sm border-amber-300/50 bg-amber-300/10 text-amber-100">💳 {t('creq.payNote')}</p>
-                <p className="text-gray-500 text-xs">{t('creq.approvalNote')}</p>
+                <Hint text={t('creq.approvalNote')} />
                 <div className="flex justify-between">
                   <button type="button" className="btn-secondary" onClick={() => setStep(0)}>← {t('onb.back')}</button>
                   <button className="btn-primary">{t('onb.next')} →</button>
@@ -384,7 +385,7 @@ export default function ClubRequestPage() {
                     ))}
                   </dl>
                 </div>
-                <p className="text-gray-400 text-xs">{t('creq.reviewNote')}</p>
+                <Hint text={t('creq.reviewNote')} />
                 {err && <p className="text-red-300 text-sm">{err}</p>}
                 <div className="flex justify-between">
                   <button type="button" className="btn-secondary" onClick={() => setStep(1)} disabled={busy}>← {t('onb.back')}</button>

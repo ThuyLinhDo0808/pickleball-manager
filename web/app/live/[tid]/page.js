@@ -15,6 +15,7 @@ import { clock, elapsed, matchLabel, minutesText, sportIcon } from '@/lib/live';
 import { useNow } from '@/lib/useNow';
 import ScoreEntry from '@/components/ScoreEntry';
 import LiveGuide from '@/components/LiveGuide';
+import Hint from '@/components/ui/Hint';
 
 // Live scoring hub of one tournament: matches being played (tap to keep scoring), the
 // ones still to play (start one), and — for the club managers — the public board link.
@@ -78,7 +79,7 @@ export default function LiveHubPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-white font-semibold">📺 {t('live.publicTitle')}</h2>
-              <p className="text-gray-400 text-xs mt-0.5">{t('live.publicHint')}</p>
+              <Hint text={t('live.publicHint')} className="mt-0.5" />
             </div>
             {publicUrl ? (
               <button type="button" className="text-red-300 text-sm" disabled={busy} onClick={() => togglePublic(false)}>{t('live.publicOff')}</button>
@@ -310,7 +311,7 @@ function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, ti
         {pickLineup && rosters && (
           <div>
             <label className="text-xs text-gray-400">{t('live.lineup')}</label>
-            <p className="text-gray-500 text-xs mb-1">{t('live.lineupHint')}</p>
+            <Hint text={t('live.lineupHint')} className="mb-1" />
             {[1, 2].map((side) => (
               <div key={side} className="grid grid-cols-[5rem_1fr_1fr] gap-2 items-center mb-1.5">
                 <span className="text-gray-300 truncate">{teamName(side)}</span>
@@ -332,7 +333,7 @@ function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, ti
             ))}
           </div>
         )}
-        {!pickLineup && size === 2 && <p className="text-gray-500 text-xs">{t('live.positionsHint')}</p>}
+        {!pickLineup && size === 2 && <Hint text={t('live.positionsHint')} />}
         {error && <p className="text-red-400">{error}</p>}
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className="btn-secondary" disabled={busy} onClick={onClose}>{t('common.cancel')}</button>

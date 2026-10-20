@@ -4,6 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 // "Gửi trận lên DUPR" inside one event (kèo / session), one tournament, or the club's own
 // matches: what can be sent, what is missing, the CSV in DUPR's "Import Matches via CSV"
@@ -74,7 +75,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 id="dupr-export-title" className="text-white font-semibold">📈 {t('duprx.title')}</h3>
-          <p className="text-gray-400 text-xs mt-0.5">{t('duprx.hint')}</p>
+          <Hint text={t('duprx.hint')} className="mt-0.5" />
         </div>
         <button type="button" className="text-xs text-gray-300 underline underline-offset-2" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           {open ? t('duprx.hideList') : t('duprx.showList', { n: list.length })}
@@ -104,7 +105,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
           <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => mark(lastExport.items, true)}>✓ {t('dupr.markN', { n: lastExport.count })}</button>
         )}
       </div>
-      {lastExport?.count > 0 && <p className="text-gray-400 text-xs mt-2">{t('duprx.uploadHow')}</p>}
+      {lastExport?.count > 0 && <Hint text={t('duprx.uploadHow')} className="mt-2" />}
       {err && <p className="text-red-400 text-sm mt-2">{err}</p>}
 
       {open && (

@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { levelTag } from '@/lib/levels';
 import { dmy, my } from '@/lib/memberDates';
 import { playDurationText } from '@/components/MemberExtras';
+import Hint from '@/components/ui/Hint';
 
 function initials(name) {
   const parts = String(name || '?').trim().split(/\s+/);
@@ -56,7 +57,7 @@ function ProfileCard({ name, card, sport, t }) {
           ))}
         </dl>
       ) : (
-        <p className="text-gray-500 text-xs mt-3">{t('playerCard.noInfo')}</p>
+        <Hint text={t('playerCard.noInfo')} className="mt-3" />
       )}
     </div>
   );

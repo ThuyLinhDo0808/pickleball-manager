@@ -3,6 +3,7 @@ import { useState } from 'react';
 import QrScanner from '@/components/QrScanner';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 const TONE = { ok: 'border-lime-400/60 text-lime-300', again: 'border-sky-400/60 text-sky-300', bad: 'border-red-400/60 text-red-300' };
 
@@ -39,7 +40,7 @@ export default function QrCheckinPanel({ endpoint, onCheckedIn }) {
   return (
     <div>
       <QrScanner onScan={handle} paused={busy} />
-      <p className="text-gray-500 text-xs mt-2">{t('qr.scanHint')}</p>
+      <Hint text={t('qr.scanHint')} className="mt-2" />
       <ul className="mt-3 space-y-1.5">
         {log.map((l) => (
           <li key={l.id} className={`rounded-lg border px-3 py-2 text-sm ${TONE[l.tone]}`}>

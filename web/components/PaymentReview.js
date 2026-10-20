@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 // Host: guests holding a place while their payment is checked.
 //   proof_submitted       -> view the transfer screenshot, then Confirm / Reject
@@ -66,7 +67,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
   return (
     <div className="card mb-4 border-sky-400/40">
       <h3 className="text-sky-200 font-semibold mb-1">💸 {t('review.title')} ({groups.length})</h3>
-      <p className="text-gray-500 text-xs mb-2">{t('review.hint')}</p>
+      <Hint text={t('review.hint')} className="mb-2" />
       <div className="flex flex-col divide-y divide-navy-700">
         {sorted.map((g) => {
           const p = g.p;

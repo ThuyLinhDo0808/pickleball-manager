@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { resizeImage } from '@/lib/image';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const ACTIVE = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
 
@@ -89,7 +90,7 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
       <div>
         <label className="text-xs text-gray-400">{t('public.yourPhone')}</label>
         <input className="input" required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
-        <p className="text-gray-500 text-xs mt-1">{t('public.phoneHint')}</p>
+        <Hint text={t('public.phoneHint')} className="mt-1" />
       </div>
       <fieldset>
         <legend className="text-xs text-gray-400 mb-1">{t('members.gender')} *</legend>
@@ -105,7 +106,7 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
       <div>
         <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
         <LevelInput sport={sport} value={f[levelKey]} onChange={(v) => setF({ ...f, [levelKey]: v })} />
-        <p className="text-gray-500 text-xs mt-1">{t('signup.levelHint')}</p>
+        <Hint text={t('signup.levelHint')} className="mt-1" />
       </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <button className="btn-primary w-full py-3" disabled={busy}>{t('common.save')}</button>
@@ -494,8 +495,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       <button type="button" className="btn-primary w-full py-3 text-base" disabled={!agree || busy} onClick={register}>
         {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : paysNow ? (payLater ? t('signup.confirmPayLater') : t('signup.confirmAndPay')) : t('signup.confirm')}
       </button>
-      {approval && <p className="text-gray-400 text-xs mt-2 text-center">{t('signup.approvalNote')}</p>}
-      {!approval && paysNow && !full && !payLater && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
+      {approval && <Hint text={t('signup.approvalNote')} className="mt-2" />}
+      {!approval && paysNow && !full && !payLater && <Hint text={t('signup.holdNote')} className="mt-2" />}
     </div>
   );
 }

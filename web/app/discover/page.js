@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api, clubImage } from '@/lib/api';
 import { formatDay } from '@/lib/dates';
 import { COUNTRIES, PROVINCES, VIETNAM } from '@/lib/regions';
+import Hint from '@/components/ui/Hint';
 
 const EMPTY = { q: '', country: VIETNAM, province: '', district: '', sport: '' };
 
@@ -132,7 +133,7 @@ export default function DiscoverPage() {
         <div className="card text-center py-8">
           <div className="text-4xl mb-2" aria-hidden="true">🔎</div>
           <p className="text-gray-300 text-sm">{t('disc.none')}</p>
-          <p className="text-gray-500 text-xs mt-1">{t('disc.noneHint')}</p>
+          <Hint text={t('disc.noneHint')} className="mt-1" />
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

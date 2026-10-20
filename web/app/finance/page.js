@@ -15,6 +15,7 @@ import { todayYmd, localDate } from '@/lib/dates';
 
 import { categoryLabel, EXPENSE_COLOR, INCOME_COLOR } from '@/lib/finance';
 import LockedFeature from '@/components/LockedFeature';
+import Hint from '@/components/ui/Hint';
 
 function Tile({ icon, label, value, tone = 'text-white', sub }) {
   return (
@@ -67,7 +68,7 @@ function DailyOverview({ daily, isYear, label }) {
   return (
     <section className="card !p-5 mb-4">
       <h2 className="text-white font-semibold mb-1">📅 {t('social.daily')} · {label}</h2>
-      {isYear && <p className="text-gray-500 text-xs mb-2">{t('social.dailyYearHint')}</p>}
+      {isYear && <Hint text={t('social.dailyYearHint')} className="mb-2" />}
       {!daily && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {daily && daily.days.length === 0 && <p className="text-gray-400 text-sm">{t('social.dailyNone')}</p>}
       {daily && daily.days.length > 0 && (

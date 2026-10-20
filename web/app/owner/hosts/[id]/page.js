@@ -10,6 +10,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api, startViewAs } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import Hint from '@/components/ui/Hint';
 
 const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
 
@@ -206,7 +207,7 @@ function PlanEditor({ host, onSaved }) {
     <form onSubmit={save} className="card !p-4 flex flex-col gap-4">
       <div>
         <h2 className="text-white font-semibold">💎 {t('owner.planTitle')}</h2>
-        <p className="text-gray-400 text-xs mt-0.5">{t('owner.planHint')}</p>
+        <Hint text={t('owner.planHint')} className="mt-0.5" />
       </div>
 
       <ProductBlock

@@ -20,6 +20,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { VoucherChip } from '@/components/RaceBoard';
 import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const PAY_STYLE = { paid: 'text-lime-400', pending: 'text-yellow-300', overdue: 'text-red-300' };
 
@@ -190,7 +191,7 @@ export default function PlayerHome() {
               <span className="text-yellow-300 tabular-nums shrink-0">{formatVnd(d.amount)}</span>
             </div>
           ))}
-          <p className="text-gray-500 text-xs mt-2">{t('pp.eventDebtsHint')}</p>
+          <Hint text={t('pp.eventDebtsHint')} className="mt-2" />
         </section>
       )}
 
