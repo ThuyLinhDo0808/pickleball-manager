@@ -791,6 +791,32 @@ router.post('/featured/:id/:action(paid|approve|reject|remove)', wrap(async (req
   res.json(after);
 }));
 
+// Tính năng theo Host: requests from Liên hệ nhà phát triển, and switching a feature on / off
+// for one Host (owner only — not in any support permission).
+router.get('/addons', wrap(async (req, res) => {
+  res.json(await require('../services/devRequests').listForOwner());
+}));
+router.post('/addons/requests/:id/:action(approve|reject)', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Not found.', 'not_found');
+  const { before, after } = await require('../services/devRequests').decide(req.params.id, req.params.action, req.body || {}, req.hostEmail);
+  const { data: u } = await supabase.from('users').select('id, email').eq('id', after.host_id).maybeSingle();
+  await owner.audit(req, { action: `addon.request_${req.params.action}`, host: u, oldValue: { kind: before.kind, status: before.status }, newValue: { kind: after.kind, status: after.status }, note: after.owner_note });
+  res.json(after);
+}));
+router.get('/hosts/:id/addons', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Not found.', 'not_found');
+  res.json(await require('../services/devRequests').addonsOfHost(req.params.id));
+}));
+router.put('/hosts/:id/addons/:addon', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Not found.', 'not_found');
+  const { data: u } = await supabase.from('users').select('id, email').eq('id', req.params.id).maybeSingle();
+  if (!u) throw fail(404, 'Not found.', 'not_found');
+  const dev = require('../services/devRequests');
+  const { before, after } = await dev.setAddon(u.id, req.params.addon, req.body?.enabled === true, req.hostEmail, req.body?.note);
+  await owner.audit(req, { action: 'addon.set', host: u, oldValue: { [req.params.addon]: before }, newValue: { [req.params.addon]: after }, note: String(req.body?.note || '').trim() || null });
+  res.json(await dev.addonsOfHost(u.id));
+}));
+
 router.get('/club-requests', wrap(async (req, res) => {
   await requestsGuard();
   const status = REQUEST_STATUSES.includes(req.query.status) ? req.query.status : 'pending';

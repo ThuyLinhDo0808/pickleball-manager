@@ -56,6 +56,12 @@ export default function OwnerFeatured() {
                 <p className="text-gray-300 text-xs mt-1">{t('plan.nMonths', { n: r.months })} · {formatVnd(r.amount)} · <span className="font-mono">{r.ref}</span> · {fmtTime(r.created_at)}</p>
                 {r.status === 'active' && <p className="text-lime-300 text-xs mt-1">#{r.position} · ⭐ {r.trust_score} · {day(r.starts_on)} – {day(r.ends_on)}</p>}
                 {r.owner_note && <p className="text-gray-400 text-xs mt-1">📝 {r.owner_note}</p>}
+                {r.host_note && <p className="text-gray-200 text-sm mt-1 whitespace-pre-line">💬 {r.host_note}</p>}
+                {r.host_info && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    {t('featured.hostInfo', { members: r.host_info.members, sessions: r.host_info.sessions_held, active: r.host_info.active_pct, newAvg: r.host_info.new_month_avg })}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {r.status === 'awaiting_payment' && <button type="button" className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => window.confirm(t('featured.paidAsk', { amount: formatVnd(r.amount), ref: r.ref })) && act(r, 'paid')}>💰 {t('featured.markPaid')}</button>}

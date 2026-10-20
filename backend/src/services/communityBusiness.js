@@ -160,4 +160,78 @@ async function business(club, rawPeriod) {
   };
 }
 
-module.exports = { business };
+// ---- Top 10 cộng đồng uy tín: the numbers that show a community is trustworthy, each with
+// the bar it must reach. All of them reached -> it may register (services/featured.js).
+const TOP10 = { members: 200, regular_pct: 30, new_pct: 20, sessions_month: 12, tier: 'pro' };
+const pct = (a, b) => (b ? Math.round((1000 * a) / b) / 10 : 0);
+
+async function reputation(club) {
+  const today = todayYmd();
+  const months = [];
+  {
+    const d = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
+    for (let k = 5; k >= 0; k--) months.push(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - k, 1)).toISOString().slice(0, 7));
+  }
+  // Months the community has existed in (of the last 6), at least the current one.
+  const born = String(club.created_at || '').slice(0, 7);
+  const live = months.filter((m) => !born || m >= born);
+  const span = live.length ? live : [today.slice(0, 7)];
+  const [members, events] = await Promise.all([
+    all(() => supabase.from('club_members').select('id, member_type, is_active, join_requested, review_started_at, created_at').eq('club_id', club.id).order('id')),
+    all(() => supabase.from('events').select('id, event_date, status, kind').eq('club_id', club.id).neq('kind', 'meeting').gte('event_date', `${span[0]}-01`).lte('event_date', today).order('id')),
+  ]);
+  const roster = members.filter((m) => m.is_active && !m.join_requested && !m.review_started_at);
+  const total = roster.length;
+  const regular = roster.filter((m) => m.member_type === 'fixed').length;
+  const newIn = (m) => members.filter((x) => String(x.created_at).slice(0, 7) === m && !x.join_requested).length;
+  const newThisMonth = newIn(today.slice(0, 7));
+  const newAvg = span.reduce((a, m) => a + newIn(m), 0) / span.length;
+  const held = events.filter((e) => e.status !== 'cancelled');
+  const sessionsAvg = Math.round((10 * held.length) / span.length) / 10;
+  // Active = played at least one kèo in the last 30 days.
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const recent = held.filter((e) => e.event_date >= since).map((e) => e.id);
+  const rosterIds = new Set(roster.map((m) => m.id));
+  const active = new Set();
+  for (let i = 0; i < recent.length; i += 150) {
+    const rows = await all(() => supabase.from('event_participants').select('id, source_club_member_id, guest_member_id, status').in('event_id', recent.slice(i, i + 150)).order('id'));
+    for (const r of rows) {
+      const mid = r.source_club_member_id || r.guest_member_id;
+      if (PLAYED.includes(r.status) && mid && rosterIds.has(mid)) active.add(mid);
+    }
+  }
+  let tier = 'free';
+  try {
+    tier = (await require('./plan').clubPlan(club)).tier;
+  } catch {}
+  const { TIERS } = require('./planFeatures');
+  const regularPct = pct(regular, total);
+  const newPct = pct(newAvg, total);
+  const checks = [
+    { key: 'members', value: total, target: TOP10.members, ok: total >= TOP10.members, progress: Math.min(100, pct(total, TOP10.members)) },
+    { key: 'regular', value: regularPct, count: regular, target: TOP10.regular_pct, ok: total > 0 && regularPct >= TOP10.regular_pct, progress: Math.min(100, pct(regularPct, TOP10.regular_pct)) },
+    { key: 'plan', value: tier, target: TOP10.tier, ok: TIERS.indexOf(tier) >= TIERS.indexOf(TOP10.tier), progress: Math.min(100, pct(Math.max(TIERS.indexOf(tier), 0), TIERS.indexOf(TOP10.tier))) },
+    { key: 'newcomers', value: newPct, count: Math.round(newAvg * 10) / 10, target: TOP10.new_pct, ok: total > 0 && newPct >= TOP10.new_pct, progress: Math.min(100, pct(newPct, TOP10.new_pct)) },
+    { key: 'sessions', value: sessionsAvg, target: TOP10.sessions_month, ok: sessionsAvg >= TOP10.sessions_month, progress: Math.min(100, pct(sessionsAvg, TOP10.sessions_month)) },
+  ];
+  return {
+    thresholds: TOP10,
+    months: span.length,
+    // What the registration form fills in by itself.
+    info: {
+      name: club.name,
+      members: total,
+      sessions_held: held.length,
+      sessions_month: sessionsAvg,
+      active_pct: pct(active.size, total),
+      new_month: newThisMonth,
+      new_month_avg: Math.round(newAvg * 10) / 10,
+      regular,
+    },
+    checks,
+    failing: checks.filter((c) => !c.ok).map((c) => c.key),
+    eligible: checks.every((c) => c.ok),
+  };
+}
+
+module.exports = { business, reputation, TOP10 };

@@ -148,7 +148,7 @@ router.get('/', async (req, res) => {
     // A community carries its owner's Social Manager plan, a club the Club plan.
     const plans = {};
     for (const h of [...new Set(all.map((c) => c.host_id))]) plans[h] = await getPlan(h);
-    const pick = (v) => ({ kind: v.kind, tier: v.tier, no_plan: v.no_plan, paid_until: v.paid_until, features: v.features, limits: v.limits, features_enforced: v.features_enforced });
+    const pick = (v) => ({ kind: v.kind, tier: v.tier, no_plan: v.no_plan, paid_until: v.paid_until, features: v.features, limits: v.limits, features_enforced: v.features_enforced, addons: v.addons });
     res.json(all.map((c) => ({ ...c, plan: pick(planView(plans[c.host_id], kindOf(c))) })));
   } catch (err) {
     dbError(res, err);
@@ -191,7 +191,7 @@ router.get('/:clubId', async (req, res) => {
       ...req.club,
       role: req.clubRole || 'owner',
       groups: req.clubGroups ?? null,
-      plan: { kind: plan.kind, tier: plan.tier, no_plan: plan.no_plan, paid_until: plan.paid_until, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced },
+      plan: { kind: plan.kind, tier: plan.tier, no_plan: plan.no_plan, paid_until: plan.paid_until, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced, addons: plan.addons },
       member_room: await memberRoom(req.club),
     });
   } catch (err) {
@@ -1238,10 +1238,10 @@ router.get('/:clubId/featured', async (req, res) => {
 });
 router.post('/:clubId/featured', ownerOnly, async (req, res) => {
   try {
-    await require('../services/featured').request(req.club, req.hostId, req.body?.months);
+    await require('../services/featured').request(req.club, req.hostId, req.body?.months, { note: req.body?.note, info: req.body?.info });
     res.status(201).json(await require('../services/featured').forClub(req.club));
   } catch (err) {
-    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code, failing: err.failing, reputation: err.reputation }) : dbError(res, err);
   }
 });
 router.delete('/:clubId/featured', ownerOnly, async (req, res) => {
@@ -1330,7 +1330,9 @@ router.get('/:clubId/business', async (req, res) => {
   if ((req.club.kind || 'club') !== 'community') return res.status(400).json({ error: 'Communities only.', code: 'not_community' });
   if (!['owner', 'co_admin'].includes(req.clubRole)) return res.status(403).json(ROLE_FORBIDDEN);
   try {
-    res.json(await require('../services/communityBusiness').business(req.club, req.query.period));
+    const biz = require('../services/communityBusiness');
+    const [b, reputation] = await Promise.all([biz.business(req.club, req.query.period), biz.reputation(req.club)]);
+    res.json({ ...b, reputation });
   } catch (err) {
     dbError(res, err);
   }

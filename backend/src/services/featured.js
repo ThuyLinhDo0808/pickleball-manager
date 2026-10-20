@@ -21,6 +21,10 @@ async function ready() {
   const s = await schemaStatus();
   return !s.missing_migrations.includes(MIGRATION);
 }
+async function extraReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes('20261209090000_dev_requests.sql');
+}
 async function assertReady() {
   if (!(await ready())) throw fail(`Run migration ${MIGRATION} first.`, 409, 'migration_required');
 }
@@ -56,6 +60,10 @@ async function forClub(club) {
   const { data, error } = await supabase.from('featured_communities').select('id, status, months, amount, ref, paid_at, position, trust_score, owner_note, starts_on, ends_on, created_at').eq('club_id', club.id).order('created_at', { ascending: false }).limit(5);
   if (error) throw error;
   const current = (data || []).find((r) => OPEN.includes(r.status)) || null;
+  let reputation = null;
+  try {
+    reputation = await require('./communityBusiness').reputation(club);
+  } catch {}
   const last = !current ? (data || [])[0] || null : null;
   const { count } = await supabase.from('featured_communities').select('id', { count: 'exact', head: true }).eq('status', 'active');
   return {
@@ -63,19 +71,32 @@ async function forClub(club) {
     price_month: pricePerMonth(),
     months: MONTHS,
     slots_left: Math.max(SLOTS - (count || 0), 0),
+    reputation,
     current: current ? { ...current, amount: Number(current.amount), payment: payment(current) } : null,
     // A rejected request shows its reason once (the Host can ask again).
     last: last && ['rejected'].includes(last.status) ? { status: last.status, owner_note: last.owner_note } : null,
   };
 }
 
-async function request(club, hostId, months) {
+// Only a community that reaches every bar (communityBusiness.reputation) may register:
+// 409 not_eligible with the bars it misses. The Host's note and the numbers at the time go
+// with the request, for the Owner's review.
+async function request(club, hostId, months, { note, info } = {}) {
   await assertReady();
   if ((club.kind || 'club') !== 'community') throw fail('Only communities can join the Top 10.', 400, 'not_community');
   const m = Number(months);
   if (!MONTHS.includes(m)) throw fail(`months must be one of ${MONTHS.join(', ')}.`, 400, 'bad_months');
+  const rep = await require('./communityBusiness').reputation(club);
+  if (!rep.eligible) throw Object.assign(fail('This community does not meet the Top 10 conditions yet.', 409, 'not_eligible'), { failing: rep.failing, reputation: rep });
+  const text = typeof note === 'string' ? note.trim().slice(0, 1000) : '';
+  // The Host may correct the name / say more; the numbers are always the computed ones.
+  // What the Host typed (kept apart, for the Owner to compare).
+  const num = (v) => (v === '' || v == null || !Number.isFinite(Number(v)) ? null : Math.max(0, Math.min(1e6, Number(v))));
+  const claimed = info && typeof info === 'object' ? Object.fromEntries(['members', 'sessions_held', 'active_pct', 'new_month_avg'].map((k) => [k, num(info[k])])) : null;
+  const hostInfo = { ...rep.info, name: typeof info?.name === 'string' && info.name.trim() ? info.name.trim().slice(0, 120) : rep.info.name, claimed };
+  const extra = (await extraReady()) ? { host_note: text || null, host_info: hostInfo } : {};
   const ref = `TOP${[...crypto.randomBytes(6)].map((b) => ALPHABET[b % ALPHABET.length]).join('')}`;
-  const { data, error } = await supabase.from('featured_communities').insert({ club_id: club.id, host_id: hostId, months: m, amount: pricePerMonth() * m, ref }).select().single();
+  const { data, error } = await supabase.from('featured_communities').insert({ club_id: club.id, host_id: hostId, months: m, amount: pricePerMonth() * m, ref, ...extra }).select().single();
   if (error?.code === '23505') throw fail('This community already has a request or a place in the Top 10.', 409, 'already_open');
   if (error) throw error;
   require('./feedback').notifyFeedback({ message: `[Top 10] ${club.name} đăng ký ${m} tháng · ${(pricePerMonth() * m).toLocaleString('vi-VN')}đ · nội dung CK ${ref}. Khi nhận tiền, vào Trang quản trị → Top 10 uy tín.`, page: '/owner/featured' }).catch(() => {});

@@ -45,6 +45,7 @@ const GROUPS = [
     ['/owner/clubs', 'owner.tabClubs', 'clubs', 'hosts'],
     ['/owner/club-requests', 'owner.tabClubRequests', 'requests', 'hosts', 'club_requests'],
     ['/owner/featured', 'owner.tabFeatured', 'clubs', null],
+    ['/owner/addons', 'owner.tabAddons', 'requests', null],
     ['/owner/handovers', 'owner.tabHandovers', 'handovers', null, 'handovers'],
   ]],
   ['owner.grp_revenue', [

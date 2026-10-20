@@ -11,6 +11,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api, startViewAs } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
+import AddonSwitches from '@/components/owner/AddonSwitches';
 
 const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
 
@@ -487,6 +488,19 @@ function ViewAsButton({ host }) {
   );
 }
 
+// Tính năng theo Host: paid features switched on for this Host only.
+function HostAddons({ hostId }) {
+  const { t } = useI18n();
+  const { data, error, reload } = useLoad(() => api.get(`/api/owner/hosts/${hostId}/addons`), [hostId]);
+  return (
+    <div className="card !p-4">
+      <h2 className="text-white font-semibold mb-1">🧩 {t('addons.hostTitle')}</h2>
+      <p className="text-gray-400 text-xs mb-2">{t('addons.hostHint')}</p>
+      {error ? <p className="text-amber-200 text-xs">{error.message}</p> : data ? <AddonSwitches hostId={hostId} value={data} onChanged={reload} /> : <p className="text-gray-500 text-sm">{t('common.loading')}</p>}
+    </div>
+  );
+}
+
 function Gate({ perm, owner = false, children }) {
   const me = useOwnerMe();
   return (owner ? me?.owner : consoleCan(me, perm)) ? children : null;
@@ -531,6 +545,7 @@ export default function OwnerHostPage() {
             <Gate perm="plans"><PlanEditor host={h} onSaved={reload} /></Gate>
             <div className="flex flex-col gap-4">
               <Gate owner><SuspendBox host={h} onChanged={reload} /></Gate>
+              <Gate owner><HostAddons hostId={h.id} /></Gate>
               <Gate owner><OwnerMfaReset host={h} onChanged={reload} /></Gate>
             </div>
           </div>

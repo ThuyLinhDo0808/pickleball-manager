@@ -110,7 +110,9 @@ function AddEntry({ club, events = [], onDone, community = false }) {
           <input className="input h-[42px]" required={f.category === 'other'} placeholder={f.category === 'other' ? t('fin.otherNotePh') : t('fin.notePh')} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         </div>
       </div>
-      <div className="px-5 pb-4 -mt-1">
+      {/* A club / community entry goes into its own book (no session to pick); session money
+          is entered on the kèo page. Only the old space without a club picks one. */}
+      {!club && <div className="px-5 pb-4 -mt-1">
         <label className={LABEL}>{t('ledger.session')}</label>
         <select className="input h-[42px]" value={f.event_id} required={!club} onChange={(e) => {
           const ev = events.find((x) => x.id === e.target.value);
@@ -119,7 +121,7 @@ function AddEntry({ club, events = [], onDone, community = false }) {
           <option value="">{club ? t('ledger.noSession') : t('ledger.pickSession')}</option>
           {events.map((ev) => <option key={ev.id} value={ev.id}>{sessionLabel(ev, t)}</option>)}
         </select>
-      </div>
+      </div>}
       {buyingBalls && (
         <div className="mx-5 mb-4 rounded-xl border border-orange-400/40 bg-orange-400/10 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="text-sm text-orange-100 flex-1">
