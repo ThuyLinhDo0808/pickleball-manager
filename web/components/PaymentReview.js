@@ -4,6 +4,7 @@ import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import { localDate } from '@/lib/dates';
 
 // Host: guests holding a place while their payment is checked.
 //   proof_submitted       -> view the transfer screenshot, then Confirm / Reject
@@ -15,7 +16,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
   if (!rows.length) return null;
 
   const fee = (p) => Number(p.fee_amount ?? event.fee_amount ?? 0);
-  const time = (iso) => (iso ? new Date(iso).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
+  const time = (iso) => (iso ? localDate(new Date(iso), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '');
   // A quick booking (invite link) is one transfer for several slots: one line, one action.
   const groups = [];
   const byBooking = new Map();
@@ -38,7 +39,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
       setViewing({ g, image: r.image });
     } catch (err) {
       // Deleted by the retention rule (PROOF_RETENTION_DAYS after the session).
-      if (err.payload?.code === 'proof_purged') return window.alert(t('legal.proofPurged', { date: new Date(err.payload.purged_at).toLocaleDateString('vi-VN') }));
+      if (err.payload?.code === 'proof_purged') return window.alert(t('legal.proofPurged', { date: localDate(new Date(err.payload.purged_at), 'vi-VN') }));
       window.alert(err.message);
     }
   }

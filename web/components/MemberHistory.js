@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import { localDate } from '@/lib/dates';
 
 function fmtDate(ts, lang) {
-  return new Date(ts).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return localDate(new Date(ts), lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 // SCD Type 2 timeline for one member: each value with its from → to range.

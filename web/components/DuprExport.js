@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 // "Gửi trận lên DUPR" inside one event (kèo / session), one tournament, or the club's own
 // matches: what can be sent, what is missing, the CSV in DUPR's "Import Matches via CSV"
@@ -120,7 +121,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
               <span className="text-xs shrink-0">
                 {m.exported_at ? (
                   <span className="text-gray-300">
-                    ✓ {t('dupr.exportedOn', { date: new Date(m.exported_at).toLocaleDateString('vi-VN') })}{' '}
+                    ✓ {t('dupr.exportedOn', { date: localDate(new Date(m.exported_at), 'vi-VN') })}{' '}
                     <button type="button" className="underline text-gray-400" disabled={busy} onClick={() => mark([{ kind: m.kind, id: m.id }], false)}>{t('dupr.unmark')}</button>
                   </span>
                 ) : m.ready ? (

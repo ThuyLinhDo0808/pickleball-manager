@@ -143,8 +143,8 @@ NAV_BY_WORKSPACE.community = [
     icon: 'schedule',
     children: [
       { href: '/events', key: 'nav.kevents', icon: 'schedule', exclude: ['/events/create'] },
-      { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
       { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
+      { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
       { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
       { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
     ],

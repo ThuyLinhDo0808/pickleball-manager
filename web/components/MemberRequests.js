@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { PastWarning } from '@/components/MemberModeration';
+import { localDate } from '@/lib/dates';
 
 // Danh sách chờ: guests who asked to join the fixed team in the after-session survey, "I'm a
 // member" requests from the event page, and accounts that matched a member by phone.
@@ -147,7 +148,7 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                 {/* Removed / reviewed here before (kept when the club changes manager). */}
                 <PastWarning past={m.past} />
                 <MergeBox club={club} m={m} members={members} busy={busy === m.id} onMerge={merge} />
-                <p className="text-gray-600 text-xs mt-0.5">{t('requests.since', { date: new Date(m.join_requested_at || m.created_at).toLocaleDateString('vi-VN') })}</p>
+                <p className="text-gray-600 text-xs mt-0.5">{t('requests.since', { date: localDate(new Date(m.join_requested_at || m.created_at), 'vi-VN') })}</p>
               </div>
               {m.join_requested && (
                 <div className="flex flex-wrap items-end gap-2 w-full sm:w-auto">

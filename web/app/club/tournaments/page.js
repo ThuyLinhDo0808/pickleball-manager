@@ -11,7 +11,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import { formatDay, todayYmd } from '@/lib/dates';
+import { formatDay, todayYmd, localDate } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import Podium from '@/components/Podium';
 
@@ -91,7 +91,7 @@ export default function TournamentsPage() {
                 📅{' '}
                 {x.event_date
                   ? formatDay(x.event_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
-                  : new Date(x.created_at).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')}
+                  : localDate(new Date(x.created_at), lang === 'vi' ? 'vi-VN' : 'en-GB')}
                 {x.location ? ` · 📍 ${x.location}` : ''}
               </div>
               <div className="mt-auto pt-2">

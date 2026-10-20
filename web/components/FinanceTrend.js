@@ -6,7 +6,7 @@ import { categoryLabel, EXPENSE_COLOR, INCOME_COLOR } from '@/lib/finance';
 
 const GRID = '#1e2f4d';
 const INK_MUTED = '#9ca3af';
-const monthLabel = (ym) => `${Number(ym.slice(5))}/${ym.slice(2, 4)}`;
+const monthLabel = (ym) => `${ym.slice(5, 7)}/${ym.slice(0, 4)}`;
 const kVnd = (v) => (Math.abs(v) >= 1e6 ? `${Math.round(v / 1e5) / 10}tr` : `${Math.round(v / 1000)}k`);
 
 // Income vs expenses per month + breakdown by category (from /api/analytics/finance).

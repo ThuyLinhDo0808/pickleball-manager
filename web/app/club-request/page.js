@@ -14,13 +14,14 @@ import { HIGHLIGHTS } from '@/lib/planFeatures';
 import { VIETNAM } from '@/lib/regions';
 import { PlanPaymentBox, productView } from '@/components/PlanModals';
 import { useEnter } from '@/lib/useEnter';
+import { localDate } from '@/lib/dates';
 
 const PAID = ['basic', 'standard', 'advanced', 'pro'];
 const FALLBACK_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
 const FALLBACK_PRICES = { basic: 99000, standard: 199000, advanced: 349000, pro: 599000 };
 const FALLBACK_SM_LIMITS = { basic: { communities: 1, members: 50 }, standard: { communities: 3, members: 200 }, advanced: { communities: 5, members: 500 }, pro: { communities: 10, members: null } };
 const STEPS = ['club', 'plan', 'review'];
-const fmtDate = (v) => (v ? new Date(v).toLocaleDateString('vi-VN') : '');
+const fmtDate = (v) => (v ? localDate(new Date(v), 'vi-VN') : '');
 const STATUS_TONE = {
   pending: 'border-amber-300/50 bg-amber-300/5 text-amber-100',
   approved: 'border-lime-400/50 bg-lime-400/5 text-lime-200',

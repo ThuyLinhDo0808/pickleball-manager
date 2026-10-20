@@ -6,6 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 const ymd = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const addDays = (s, n) => {
@@ -132,7 +133,7 @@ export default function RosterPage() {
   const days = Array.from({ length: 28 }, (_, i) => addDays(start, i));
   const shifts = (data?.shifts || []).filter((s) => !mine || s.people.some((p) => p.email === data.me));
   const today = ymd(new Date());
-  const dayName = (d) => new Date(`${d}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  const dayName = (d) => localDate(new Date(`${d}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' });
   const myCount = (data?.shifts || []).filter((s) => s.people.some((p) => p.email === data?.me)).length;
 
   return (

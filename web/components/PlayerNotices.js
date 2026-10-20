@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 const TONE = {
   warning: 'border-amber-300/60 bg-amber-300/10 text-amber-100',
@@ -9,7 +10,7 @@ const TONE = {
   removed: 'border-red-500/60 bg-red-500/10 text-red-100',
 };
 const ICON = { warning: '⚠️', restored: '✅', removed: '⛔' };
-const fmtDate = (v) => (v ? new Date(v).toLocaleDateString('vi-VN') : '');
+const fmtDate = (v) => (v ? localDate(new Date(v), 'vi-VN') : '');
 
 // Messages from clubs, shown on screen until the player taps "Đã hiểu": warned (and kept
 // out of the club's events until a date), back in the club, or removed from it.

@@ -5,8 +5,9 @@ import { api } from '@/lib/api';
 import { useLoad } from '@/lib/useLoad';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
+import { localDate } from '@/lib/dates';
 
-const fmt = (d) => (d ? new Date(d).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+const fmt = (d) => (d ? localDate(new Date(d), 'vi-VN', { dateStyle: 'short', timeStyle: 'short' }, true) : '—');
 
 function errText(err, t) {
   const c = err?.payload?.code;

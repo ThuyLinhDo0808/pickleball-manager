@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { deviceId } from '@/lib/device';
 import { api } from '@/lib/api';
 import { Logo, Stage, Words, F, useCurtain, curtainClick } from '@/components/Landing';
+import { localDate } from '@/lib/dates';
 
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
@@ -21,7 +22,7 @@ function errorText(err, t) {
   const code = err?.payload?.code;
   if (err?.status === 429) return t('auth.rateLimit');
   if (code === 'terms_required') return t('legal.termsRequired');
-  if (code === 'maintenance') return t('auth.err_maintenance', { time: err.payload.maintenance?.ends_at ? new Date(err.payload.maintenance.ends_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—' });
+  if (code === 'maintenance') return t('auth.err_maintenance', { time: err.payload.maintenance?.ends_at ? localDate(new Date(err.payload.maintenance.ends_at), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—' });
   const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'email_rate_limit', 'auth_unavailable'];
   return known.includes(code) ? t(`auth.err_${code}`) : err?.message || t('common.error');
 }

@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
-const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('vi-VN') : '—');
+const fmtDate = (iso) => (iso ? localDate(new Date(iso), 'vi-VN') : '—');
 const STATUS_TONE = {
   linked: 'border-lime-400/60 text-lime-300',
   not_in_club: 'border-amber-300/60 text-amber-200',

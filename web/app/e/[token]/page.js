@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
+import { localDate } from '@/lib/dates';
 
 function locale(lang) {
   return lang === 'vi' ? 'vi-VN' : 'en-GB';
@@ -19,7 +20,7 @@ function locale(lang) {
 function formatDate(ymd, lang) {
   if (!ymd) return '';
   const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(locale(lang), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  return localDate(new Date(y, m - 1, d), locale(lang), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function formatTime(t) {

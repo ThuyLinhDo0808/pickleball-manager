@@ -26,6 +26,7 @@ import DuprMembers from '@/components/DuprMembers';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import CommunitySuggestions from '@/components/CommunitySuggestions';
+import { localDate } from '@/lib/dates';
 
 
 // Each tab of the members section has its own address (menu Thành viên ▸ …).
@@ -414,7 +415,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                               {m.dupr_linked != null ? (
                                 <>
                                   <span className="text-white font-semibold tabular-nums">{m.dupr_linked.toFixed(2)}</span>
-                                  <span className="block text-[10px] text-gray-500">{t('dupr.updatedOn', { date: new Date(m.dupr_linked_at).toLocaleDateString('vi-VN') })}</span>
+                                  <span className="block text-[10px] text-gray-500">{t('dupr.updatedOn', { date: localDate(new Date(m.dupr_linked_at), 'vi-VN') })}</span>
                                 </>
                               ) : m.dupr_manual != null ? (
                                 <span className="text-gray-300 tabular-nums" title={t('members.duprManualHint')}>{m.dupr_manual.toFixed(2)} <span className="text-[10px] text-gray-500">{t('members.duprManual')}</span></span>

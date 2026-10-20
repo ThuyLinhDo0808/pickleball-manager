@@ -20,7 +20,7 @@ import EventFinance from '@/components/EventFinance';
 import { AutoApproveToggle, OrganizersSection, PlaceSheet, RequestsSection } from '@/components/EventPeople';
 import MapLink from '@/components/MapLink';
 import { exportMatchesJpg } from '@/lib/matchImage';
-import { formatDay, hhmm } from '@/lib/dates';
+import { formatDay, hhmm, localDate } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -40,6 +40,15 @@ export default function EventDetailPage() {
   // Four tabs: details (status, sign-up link, deadlines), players, matches, money.
   const [tab, setTab] = useState('details');
   const [showQr, setShowQr] = useState(false);
+  // Back from "Sửa thông tin" (?saved=1): say the changes were saved.
+  const [justSaved, setJustSaved] = useState(false);
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).get('saved')) return undefined;
+    setJustSaved(true);
+    window.history.replaceState(null, '', window.location.pathname);
+    const id = setTimeout(() => setJustSaved(false), 5000);
+    return () => clearTimeout(id);
+  }, []);
 
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   // Opened from the all-clubs calendar: switch to the event's club so the page speaks its
@@ -219,6 +228,7 @@ export default function EventDetailPage() {
 
   return (
     <AppShell>
+      {justSaved && <p className="card !py-3 mb-4 border-lime-400/60 bg-lime-400/10 text-lime-200 font-semibold" role="status">✓ {t('common.savedLong')}</p>}
       <div className="flex justify-between items-start gap-3 mb-4">
         <div className="min-w-0">
           <h1 className="text-white text-2xl font-bold">{event.title}</h1>
@@ -468,7 +478,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>}
                     {p.booking && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('quick.badgeHint', { name: p.booking.contact_name, phone: p.booking.contact_phone })}>⚡ {t('quick.badge')}</span>}
                     {kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && (p.refunded_at
-                      ? <span className={`${BADGE} border-lime-400/60 text-lime-300`} title={p.refunded_by || ''}>✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}</span>
+                      ? <span className={`${BADGE} border-lime-400/60 text-lime-300`} title={p.refunded_by || ''}>✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: localDate(new Date(p.refunded_at), 'vi-VN') })}</span>
                       : <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('slot.refundDue')}</span>)}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2.5 text-xs text-gray-400 mt-0.5">
@@ -476,8 +486,8 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     {(c.gender || p.gender) && <span>{(c.gender || p.gender) === 'male' ? '♂' : '♀'} {t(`members.${c.gender || p.gender}`)}</span>}
                     {p.booking && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
                     {sport === 'pickleball' && c.dupr_verified != null ? (
-                      <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white" title={t('dupr.updatedOn', { date: new Date(c.dupr_updated_at).toLocaleDateString('vi-VN') })}>
-                        DUPR ✓ {Number(c.dupr_verified).toFixed(2)} <span className="font-normal opacity-80">· {t('dupr.updatedOn', { date: new Date(c.dupr_updated_at).toLocaleDateString('vi-VN') })}</span>
+                      <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white" title={t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}>
+                        DUPR ✓ {Number(c.dupr_verified).toFixed(2)} <span className="font-normal opacity-80">· {t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}</span>
                       </span>
                     ) : sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}
@@ -486,7 +496,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                   {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}
                   {kind === 'cancelled' && (p.cancelled_at || p.cancel_reason) && (
                     <span className="block text-gray-400 text-[11px] mt-0.5">
-                      {p.cancelled_at && `${t('cancelx.cancelledAt', { at: new Date(p.cancelled_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })} · `}
+                      {p.cancelled_at && `${t('cancelx.cancelledAt', { at: localDate(new Date(p.cancelled_at), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) })} · `}
                       <CancelLine item={{ refund_percent: p.refund_percent, by: p.cancelled_by, reason: p.cancel_reason }} fee={Number(p.fee_amount ?? fee ?? 0)} paid={!!p.fee_paid} />
                     </span>
                   )}

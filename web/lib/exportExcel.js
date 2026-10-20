@@ -129,6 +129,7 @@ export function exportRankings(clubName, label, stats, t) {
 
 // Every member with their details (Members page → Export Excel).
 export function exportMembers(club, members, t, levelText) {
-  const rows = members.map((m, i) => memberRow(m, i, t, levelText));
-  book([[t('xlsx.sheet'), sheet({ title: `${club.name} — ${t('xlsx.sheet')}`, subtitle: t('xlsx.membersCount', { n: members.length }), columns: memberColumns(t), rows })]], fileName(club.name, t('xlsx.sheet')));
+  const pickleball = (club.sport || 'pickleball') === 'pickleball';
+  const rows = members.map((m, i) => memberRow(m, i, t, levelText, pickleball));
+  book([[t('xlsx.sheet'), sheet({ title: `${club.name} — ${t('xlsx.sheet')}`, subtitle: t('xlsx.membersCount', { n: members.length }), columns: memberColumns(t, pickleball), rows })]], fileName(club.name, t('xlsx.sheet')));
 }

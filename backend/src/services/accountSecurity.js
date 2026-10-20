@@ -427,7 +427,7 @@ async function sendMail(email, subject, text, html) {
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 function emailReset(email, { resetAt, cancelUrl, profileUrl }) {
-  const when = new Date(resetAt).toLocaleString('vi-VN', { timeZone: process.env.APP_TZ || 'Asia/Ho_Chi_Minh' });
+  const when = require('./dates').vnDateTime(resetAt);
   const text =
     `Ban quản trị Pickleball Manager vừa nhận yêu cầu đặt lại xác thực 2 lớp cho tài khoản của bạn (mất điện thoại và mã khôi phục).\n\n` +
     `Việc đặt lại sẽ có hiệu lực lúc ${when}. Khi đó xác thực 2 lớp bị tắt, mọi thiết bị bị đăng xuất và bạn cần bật lại.\n\n` +
@@ -487,7 +487,7 @@ async function devices(userId) {
 
 // Email the account owner about a sign-in from a new device (Resend, if configured).
 async function emailNewDevice(email, { userAgent, ip, webUrl }) {
-  const when = new Date().toLocaleString('vi-VN', { timeZone: process.env.APP_TZ || 'Asia/Ho_Chi_Minh' });
+  const when = require('./dates').vnDateTime(new Date());
   const device = deviceLabel(userAgent);
   const where = ipHint(ip) || '—';
   const link = webUrl ? `${webUrl}/p/profile#security` : null;

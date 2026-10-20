@@ -11,6 +11,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { resizeImage } from '@/lib/image';
+import { localDate } from '@/lib/dates';
 
 const ACTIVE = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
 
@@ -253,7 +254,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!me) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
 
   const reg = me.registration && ACTIVE.includes(me.registration.status) ? me.registration : null;
-  const fmtWhen = (iso) => new Date(iso).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  const fmtWhen = (iso) => localDate(new Date(iso), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
   const memberFree = me.member.state === 'verified' && me.member.has_pass;
   const myFee = me.member.my_fee ?? fee; // priority guests pay the price after their discount
   const guestPays = myFee > 0 && !memberFree;
@@ -417,7 +418,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     } catch (err) {
       // Kept out by the club: suspended ("to review") until a date, or blocked.
       const p = err.payload || {};
-      if (p.code === 'club_suspended') setError(t('notice.signupSuspended', { reason: p.reason || '—', date: p.until ? new Date(p.until).toLocaleDateString('vi-VN') : '' }));
+      if (p.code === 'club_suspended') setError(t('notice.signupSuspended', { reason: p.reason || '—', date: p.until ? localDate(new Date(p.until), 'vi-VN') : '' }));
       else if (p.code === 'club_blocked') setError(t('notice.signupBlocked', { reason: p.reason || '—' }));
       // Email not confirmed yet: one place only / the 48 hours are over.
       else if (p.code === 'email_unverified_limit' || p.code === 'email_verify_required') setError(<VerifyFirst code={p.code} />);

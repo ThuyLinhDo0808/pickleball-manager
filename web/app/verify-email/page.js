@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { emailVerified } from '@/components/EmailVerifyBanner';
+import { localDate } from '@/lib/dates';
 
 const COOLDOWN = 60; // seconds between two "send a new code"
 
@@ -16,7 +17,7 @@ function nextPath() {
   return next.startsWith('/') && !next.startsWith('//') ? next : '/home';
 }
 
-const fmt = (d) => (d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
+const fmt = (d) => (d ? localDate(new Date(d), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '');
 
 // Right after sign-up (and from the reminder bar): type the 6-digit code emailed to the
 // account. The link in the same email lands here too and confirms on its own. "Later"

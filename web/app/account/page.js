@@ -20,6 +20,7 @@ import { exportClubBackup } from '@/lib/exportExcel';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
+import { localDate } from '@/lib/dates';
 
 const SECTIONS = [
   ['security', '🔐'],
@@ -53,7 +54,7 @@ export default function AccountPage() {
   const pct = usage?.capacity_limit ? Math.min(100, Math.round((100 * usage.used) / usage.capacity_limit)) : 0;
   const email = user?.email || '';
   const name = me?.username || me?.full_name || email.split('@')[0];
-  const since = me?.created_at ? new Date(me.created_at).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { month: '2-digit', year: 'numeric' }) : null;
+  const since = me?.created_at ? localDate(new Date(me.created_at), lang === 'vi' ? 'vi-VN' : 'en-GB', { month: '2-digit', year: 'numeric' }) : null;
 
   async function onBackup() {
     if (!club) return;

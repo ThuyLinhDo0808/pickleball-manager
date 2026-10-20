@@ -21,7 +21,8 @@ export default function EditEventPage() {
   async function save(f) {
     const series = f.apply_to === 'series' && event.series_upcoming > 0;
     await api.patch(`/api/events/${eventId}`, { ...eventPayload(f), ...(series ? { apply_to: 'series' } : {}) });
-    router.push(`/events/${eventId}`);
+    // The form shows "✓ Đã lưu" for a moment, then the event page says so again.
+    setTimeout(() => router.push(`/events/${eventId}?saved=1`), 1200);
   }
 
   const active = (people || []).filter((p) => ['registered', 'checked_in', 'pending', 'waitlisted'].includes(p.status)).length;

@@ -8,7 +8,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { todayYmd } from '@/lib/dates';
+import { todayYmd, localDate } from '@/lib/dates';
 
 // At or below this many left in the box, an item shows as running low.
 const LOW = 6;
@@ -286,7 +286,7 @@ export default function InventoryPage() {
                 {i.moves.map((m) => (
                   <div key={m.id} className="flex items-center justify-between gap-2 py-1.5">
                     <span className="text-gray-300">
-                      {new Date(`${m.occurred_on}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')} · {t(`inventory.kind_${m.kind}`)}{' '}
+                      {localDate(new Date(`${m.occurred_on}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')} · {t(`inventory.kind_${m.kind}`)}{' '}
                       <span className={m.kind === 'purchase' ? 'text-lime-400' : m.quantity < 0 || ['retire', 'use', 'broken'].includes(m.kind) ? 'text-orange-300' : 'text-gray-200'}>
                         {['retire', 'use', 'broken'].includes(m.kind) ? '−' : m.quantity > 0 ? '+' : ''}{m.quantity}
                       </span>

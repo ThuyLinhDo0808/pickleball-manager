@@ -167,7 +167,7 @@ export default function MemberClubPage() {
                 <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 bg-navy-900 py-3">
                   <span className="text-[11px] uppercase text-gray-400">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
                   <span className="text-white text-2xl font-bold leading-none">{Number(e.event_date.slice(8, 10))}</span>
-                  <span className="text-[11px] text-gray-500">{e.event_date === today ? t('hub.today') : `${Number(e.event_date.slice(5, 7))}/${e.event_date.slice(2, 4)}`}</span>
+                  <span className="text-[11px] text-gray-500">{e.event_date === today ? t('hub.today') : `${e.event_date.slice(5, 7)}/${e.event_date.slice(0, 4)}`}</span>
                 </div>
                 <div className="min-w-0 flex-1 p-3">
                   <div className="text-white font-semibold truncate">

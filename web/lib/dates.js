@@ -99,7 +99,7 @@ export function layoutLanes(items) {
 }
 
 export function formatDay(ymd, lang, opts = { weekday: 'short', day: 'numeric', month: 'numeric' }) {
-  return toUtc(ymd).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { ...opts, timeZone: 'UTC' });
+  return localDate(toUtc(ymd), lang === 'vi' ? 'vi-VN' : 'en-GB', { ...opts, timeZone: 'UTC' });
 }
 
 export function monthTitle(ymd, lang) {
@@ -108,4 +108,31 @@ export function monthTitle(ymd, lang) {
 
 export function weekdayLabels(lang) {
   return lang === 'vi' ? ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+}
+
+// Dates on screen are always dd/mm or dd/mm/yyyy (time as HH:mm after the date), in both
+// languages — the browser's own formats give "05-10" or "5/10/26" in Vietnamese. Takes the
+// same options as toLocaleDateString / toLocaleString. `withTime`: toLocaleString's default.
+export function localDate(value, locale = 'vi-VN', opts = {}, withTime = false) {
+  if (value == null || value === '') return '';
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  let o = { ...opts };
+  if (o.dateStyle || o.timeStyle) {
+    const { dateStyle, timeStyle, ...rest } = o;
+    o = { ...rest, ...(dateStyle ? { day: '2-digit', month: '2-digit', year: 'numeric' } : {}), ...(timeStyle ? { hour: '2-digit', minute: '2-digit' } : {}) };
+  }
+  if (!o.day && !o.month && !o.year && !o.weekday && !o.hour && !o.minute) {
+    o = { ...o, day: '2-digit', month: '2-digit', year: 'numeric', ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}) };
+  }
+  // Month names, or a weekday alone: the browser's wording is fine.
+  if (!o.day && !(o.month === '2-digit' || o.month === 'numeric')) return d.toLocaleDateString(locale, opts);
+  const f = { ...o };
+  if (f.day) f.day = '2-digit';
+  if (f.month) f.month = '2-digit';
+  if (f.hour) f.hourCycle = 'h23';
+  const part = Object.fromEntries(new Intl.DateTimeFormat(locale, f).formatToParts(d).filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]));
+  const date = [part.day, part.month, part.year].filter(Boolean).join('/');
+  const time = part.hour ? `${part.hour}:${part.minute || '00'}` : '';
+  return [part.weekday ? `${part.weekday}, ${date}` : date, time].filter(Boolean).join(' ');
 }

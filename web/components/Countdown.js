@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
+import { localDate } from '@/lib/dates';
 
 // Time left until `until`, ticking every second: "2 ngày 03:12:45" / "03:12:45".
 export function useCountdown(until) {
@@ -26,7 +27,7 @@ export default function Countdown({ until, labelKey = 'countdown.signup', tone =
   const { t, lang } = useI18n();
   const left = useCountdown(until);
   if (left == null) return null;
-  const when = new Date(until).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  const when = localDate(new Date(until), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
   const urgent = left < 3600 * 1000;
   const colors = urgent ? 'border-red-400/60 bg-red-500/10 text-red-100' : tone === 'sky' ? 'border-sky-400/50 bg-sky-400/10 text-sky-100' : 'border-amber-300/50 bg-amber-300/10 text-amber-100';
   return (

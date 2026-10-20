@@ -6,8 +6,9 @@ import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
-const fmtDate = (v) => (v ? new Date(v).toLocaleDateString('vi-VN') : '');
+const fmtDate = (v) => (v ? localDate(new Date(v), 'vi-VN') : '');
 const daysLeft = (until) => Math.ceil((new Date(until) - Date.now()) / 86400000);
 
 // "Move to review": why, and for how long the member may not join the club's events.

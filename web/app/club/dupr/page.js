@@ -12,9 +12,10 @@ import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
-const fmtMonth = (m) => `${Number(m.slice(5))}/${m.slice(2, 4)}`;
+const fmtMonth = (m) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 // Match states, in the order they are stacked; each has its own colour and a label in the legend.
 const STATES = [
   { key: 'exported', color: '#a3e635' },
@@ -63,7 +64,7 @@ export default function DuprStatsPage() {
 
           <KpiRow cols={4}>
             <StatTile icon="🔗" label={t('dupr.statLinked')} value={`${d.members.linked}/${d.members.total}`} sub={t('dupr.withId', { n: d.members.with_id })} />
-            <StatTile icon="🎯" label={t('dupr.avgDoubles')} value={d.ratings.avg_doubles != null ? d.ratings.avg_doubles.toFixed(3) : '—'} tone="text-lime-300" sub={d.imports[0] ? t('dupr.updatedOn', { date: new Date(d.imports[0].created_at).toLocaleDateString('vi-VN') }) : t('dupr.neverImported')} />
+            <StatTile icon="🎯" label={t('dupr.avgDoubles')} value={d.ratings.avg_doubles != null ? d.ratings.avg_doubles.toFixed(3) : '—'} tone="text-lime-300" sub={d.imports[0] ? t('dupr.updatedOn', { date: localDate(new Date(d.imports[0].created_at), 'vi-VN') }) : t('dupr.neverImported')} />
             <StatTile icon="📊" label={t('dupr.upDown')} value={<><span className="text-lime-300">▲{d.ratings.up}</span> <span className="text-red-300">▼{d.ratings.down}</span></>} sub={t('dupr.sameN', { n: d.ratings.same })} />
             <StatTile icon="📤" label={t('dupr.sentLabel')} value={`${m.exported}/${scored}`} tone="text-sky-300" sub={m.blocked ? t('dupr.blockedN', { n: m.blocked }) : t('dupr.readyN', { n: m.ready })} />
           </KpiRow>
@@ -186,7 +187,7 @@ export default function DuprStatsPage() {
                   <tbody>
                     {d.imports.map((x) => (
                       <tr key={x.created_at} className="border-b border-navy-800 last:border-0">
-                        <td className="py-2 pr-3 text-gray-200">{new Date(x.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                        <td className="py-2 pr-3 text-gray-200">{localDate(new Date(x.created_at), 'vi-VN', { dateStyle: 'short', timeStyle: 'short' }, true)}</td>
                         <td className="py-2 pr-3 text-right text-gray-200">{x.rows_total}{x.duplicates > 0 && <span className="text-gray-500 text-xs"> (−{x.duplicates})</span>}</td>
                         <td className="py-2 pr-3 text-right text-gray-200">{x.new_ids}</td>
                         <td className="py-2 pr-3 text-right text-lime-300">{x.linked_new}</td>
