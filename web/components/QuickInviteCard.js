@@ -81,14 +81,13 @@ export default function QuickInviteCard({ event }) {
   return (
     <div className="card mb-4">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="text-white font-semibold">⚡ {t('quick.title')}</h2>
+        <h2 className="text-white font-semibold">⚡ {t('quick.title')} <Hint inline text={t('quick.hint')} /></h2>
         {inv && (
           <span className={`text-xs rounded-full px-2 py-0.5 ${inv.enabled ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-700 text-gray-300'}`}>
             {inv.enabled ? t('quick.on') : t('quick.off')}
           </span>
         )}
       </div>
-      <Hint text={t('quick.hint')} className="mb-3" />
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       {inv && !inv.enabled && (
         <button type="button" className="btn-primary w-full sm:w-auto" disabled={busy} onClick={() => setOn(true)}>

@@ -74,8 +74,7 @@ export default function DuprStatsPage() {
           <section className="card !p-0 overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
               <div>
-                <h2 className="text-white font-semibold">{t('dupr.ratingsTitle')}</h2>
-                <Hint text={t('dupr.ratingsHint')} className="mt-0.5" />
+                <h2 className="text-white font-semibold">{t('dupr.ratingsTitle')} <Hint inline text={t('dupr.ratingsHint')} /></h2>
               </div>
               <Segmented items={['change', 'rating']} value={sort} onChange={setSort} label={(k) => t(`dupr.sort_${k}`)} />
             </div>
@@ -119,8 +118,7 @@ export default function DuprStatsPage() {
 
           {/* Matches and DUPR */}
           <section className="card">
-            <h2 className="text-white font-semibold">{t('dupr.matchesTitle')}</h2>
-            <Hint text={t('dupr.matchesHint')} className="mt-0.5" />
+            <h2 className="text-white font-semibold">{t('dupr.matchesTitle')} <Hint inline text={t('dupr.matchesHint')} /></h2>
             <Legend />
             {m.total === 0 ? (
               <p className="text-gray-500 text-sm mt-3">{t('dupr.noMatches')}</p>
@@ -155,8 +153,7 @@ export default function DuprStatsPage() {
             )}
             {m.blockers.length > 0 && (
               <div className="mt-4 rounded-xl border border-amber-300/40 bg-amber-300/5 p-3">
-                <p className="text-amber-200 text-sm font-semibold">⚠ {t('dupr.blockersTitle')}</p>
-                <Hint text={t('dupr.blockersHint')} className="mt-0.5" />
+                <p className="text-amber-200 text-sm font-semibold">⚠ {t('dupr.blockersTitle')} <Hint inline text={t('dupr.blockersHint')} /></p>
                 <ul className="mt-2 flex flex-wrap gap-2 text-sm">
                   {m.blockers.map((b) => (
                     <li key={b.name} className="rounded-full border border-navy-600 px-2.5 py-0.5 text-gray-200">

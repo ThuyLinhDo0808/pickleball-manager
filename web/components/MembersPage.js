@@ -1,4 +1,5 @@
 'use client';
+import Hint from '@/components/ui/Hint';
 import Link from 'next/link';
 import { levelText } from '@/lib/levels';
 import { useState } from 'react';
@@ -483,7 +484,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                   </tbody>
                 </table>
               </div>
-              <p className="text-gray-500 text-xs px-3 py-2 border-t border-navy-700">{t('memx.footer', { n: shownRows.length, total: rows.length })} · {t('members.openHint')}</p>
+              <p className="text-gray-400 text-sm px-3 py-2 border-t border-navy-700 flex items-center gap-2">{t('memx.footer', { n: shownRows.length, total: rows.length })} <Hint inline text={t('members.openHint')} /></p>
             </>
           )}
         </section>

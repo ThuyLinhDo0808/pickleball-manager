@@ -151,8 +151,7 @@ export default function OnboardingPage() {
               </label>
             </div>
             <div className="border-t border-navy-700 pt-3">
-              <p className="text-white font-semibold text-sm">{t('onb.levels')}</p>
-              <Hint text={t('onb.levelsHint')} className="mb-2" />
+              <p className="text-white font-semibold text-sm">{t('onb.levels')} <Hint inline text={t('onb.levelsHint')} /></p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {sports.includes('pickleball') && (
                   <label className="block">

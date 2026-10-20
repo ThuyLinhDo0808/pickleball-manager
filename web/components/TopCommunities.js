@@ -13,8 +13,7 @@ export default function TopCommunities({ className = '' }) {
   if (!data?.length) return null;
   return (
     <section className={`card border-amber-300/40 ${className}`}>
-      <h2 className="text-amber-200 font-bold text-lg">🏆 {t('featured.publicTitle')}</h2>
-      <Hint text={t('featured.publicHint')} className="mb-3" />
+      <h2 className="text-amber-200 font-bold text-lg">🏆 {t('featured.publicTitle')} <Hint inline text={t('featured.publicHint')} /></h2>
       <ol className="flex flex-col divide-y divide-navy-700">
         {data.map((c) => (
           <li key={c.id}>

@@ -43,8 +43,7 @@ export default function PlayerQrCard({ code, onRotated }) {
         {small ? <img src={small} alt={t('qr.myCode')} width={120} height={120} /> : <div className="h-[120px] w-[120px]" />}
       </button>
       <div className="min-w-0">
-        <h2 className="text-white font-semibold">{t('qr.myCode')}</h2>
-        <Hint text={t('qr.myCodeHint')} className="mt-1" />
+        <h2 className="text-white font-semibold">{t('qr.myCode')} <Hint inline text={t('qr.myCodeHint')} /></h2>
         <div className="flex gap-3 mt-2 text-sm">
           <button type="button" className="text-lime-400" onClick={() => setOpen(true)}>{t('qr.enlarge')}</button>
           <button type="button" className="text-gray-400" onClick={rotate}>{t('qr.rotate')}</button>

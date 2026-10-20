@@ -188,73 +188,48 @@ function ClubHome({ community = false }) {
                 </p>
               )}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/events/create" className="btn-primary text-sm">+ {t('nav.createGame')}</Link>
-              {canWeekly && <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>}
-              <Link href="/club/members" className="btn-secondary text-sm">{t('nav.members')}</Link>
-            </div>
+          </div>
+          {/* The three things a Host opens every day, as big tiles. */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4">
+            {[
+              ['/events/create', '➕', t('nav.createGame'), true],
+              ['/events', '📅', t('nav.schedule')],
+              ['/club/members', '👥', t('nav.members')],
+            ].map(([href, icon, label, main]) => (
+              <Link key={href} href={href} className={`rounded-xl flex flex-col items-center justify-center gap-1 py-3 text-center text-sm font-semibold ${main ? 'bg-lime-400 text-navy-950 hover:bg-lime-300' : 'bg-navy-800 border border-navy-600 text-white hover:border-lime-400'}`}>
+                <span className="text-2xl leading-none" aria-hidden>{icon}</span>
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       )}
 
-      {community && <h2 className="text-white text-lg font-semibold mt-6 mb-3">🗓 {t('social.thisMonth', { name: club?.name || '' })}</h2>}
+      {/* Today first: what needs the Host, then the next sessions, then money. */}
+      <div className="flex flex-col gap-4 mb-5">
+        <Section title={t('home.todo')}>
+            {todos.length === 0 ? (
+              <p className="text-gray-400 text-sm">✅ {t('home.allClear')}</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {todos.map((x) => (
+                  <li key={x.text}>
+                    <Link href={x.href} className="flex items-center gap-3 rounded-lg bg-navy-900 px-3 py-2 text-sm text-gray-100 hover:text-lime-300">
+                      <span aria-hidden="true">{x.icon}</span>
+                      <span className="flex-1">{x.text}</span>
+                      <span className="text-gray-500">›</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
 
-      {/* Club at a glance (a community has its own members / trend charts above) */}
-      {!community && (<>
-      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowClub')}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-        <Kpi
-          icon="👥"
-          label={t('home.kpiMembers')}
-          value={fixed.length}
-          sub={t('home.kpiMembersSub', { guests: guests.length, n: newThisMonth })}
-          href="/club/members"
-          lines={[
-            [`⭐ ${t('home.vip')}`, vip, 'text-amber-300'],
-            [`⚡ ${t('home.priorityGuests')}`, priority, 'text-sky-300'],
-          ]}
-        />
-        <Kpi
-          icon="📅"
-          label={t('home.kpiSessions')}
-          value={monthEvents.length}
-          sub={t('home.kpiSessionsSub', { done: doneThisMonth, left: monthEvents.length - doneThisMonth })}
-          href="/events"
-          lines={[
-            [t('home.weeklyYear', { y: year }), `${weeklyDone}/${weeklyYear.length}`],
-            [t('home.toursYear'), toursYear, toursYear ? 'text-gray-100' : 'text-amber-300'],
-            [t('home.gamesYear'), gamesYear],
-          ]}
-        />
-        <Kpi
-          icon="🎚️"
-          label={t('home.kpiLevels')}
-          value={t('home.ratedN', { n: rated })}
-          sub={t('home.rankedSub', { n: all.length })}
-          href="/club/members"
-          lines={[
-            [t(sport === 'badminton' ? 'home.avgMaleB' : 'home.avgMale'), avgM ? t('home.avgOf', { v: levelText(avgM.v, sport, t) ?? avgM.v, n: avgM.n }) : '—'],
-            [t(sport === 'badminton' ? 'home.avgFemaleB' : 'home.avgFemale'), avgF ? t('home.avgOf', { v: levelText(avgF.v, sport, t) ?? avgF.v, n: avgF.n }) : '—'],
-            [t('home.unratedN'), all.length - rated, all.length - rated ? 'text-amber-300' : 'text-gray-100'],
-          ]}
-        />
-      </div>
-      </>)}
-
-      {/* Money */}
-      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowMoney')}</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(thisMonth.income)} tone="text-lime-400" href={canStats ? '/finance' : '/finance/ledger'} />
-        <Kpi icon="🧾" label={t('home.kpiExpense')} value={formatVnd(thisMonth.expense)} tone="text-red-300" href="/finance/ledger" />
-        <Kpi icon="🏦" label={t('home.kpiFund')} value={formatVnd(fund?.balance || 0)} tone={Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white'} href="/finance/ledger" />
-        <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
       </div>
 
       <PendingPayments club={club} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Upcoming sessions */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+      <div className="flex flex-col gap-4 mb-5">
           <Section title={t('home.upcomingEvents')} action={<Link href="/events" className="text-lime-400 text-sm">{t('nav.schedule')} →</Link>}>
             {upcoming.length === 0 ? (
               <div className="text-center py-6">
@@ -311,6 +286,76 @@ function ClubHome({ community = false }) {
             )}
           </Section>
 
+      </div>
+
+      {/* Money this month, in three numbers */}
+      <h2 className="text-gray-300 text-sm font-semibold mb-2">💰 {t('home.rowMoney')}</h2>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+        {[
+          [t('home.kpiIncome'), thisMonth.income, 'text-lime-400', canStats ? '/finance' : '/finance/ledger'],
+          [t('home.kpiExpense'), thisMonth.expense, 'text-red-300', '/finance/ledger'],
+          [t('home.kpiFund'), fund?.balance || 0, Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white', '/finance/ledger'],
+        ].map(([label, v, tone, href]) => (
+          <Link key={label} href={href} className="card !p-3 hover:border-lime-400/60">
+            <div className="text-gray-400 text-sm">{label}</div>
+            <div className={`text-sm sm:text-xl font-bold tabular-nums whitespace-nowrap ${tone}`}>{formatVnd(v)}</div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Everything else stays one tap away, folded. */}
+      <details className="group mb-5">
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden card !py-3 flex items-center justify-between text-white font-semibold">
+          <span>📊 {t('ux.moreStats')}</span>
+          <span className="text-gray-400 group-open:rotate-180 transition-transform" aria-hidden>▾</span>
+        </summary>
+        <div className="mt-4">
+      {!community && (<>
+      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowClub')}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <Kpi
+          icon="👥"
+          label={t('home.kpiMembers')}
+          value={fixed.length}
+          sub={t('home.kpiMembersSub', { guests: guests.length, n: newThisMonth })}
+          href="/club/members"
+          lines={[
+            [`⭐ ${t('home.vip')}`, vip, 'text-amber-300'],
+            [`⚡ ${t('home.priorityGuests')}`, priority, 'text-sky-300'],
+          ]}
+        />
+        <Kpi
+          icon="📅"
+          label={t('home.kpiSessions')}
+          value={monthEvents.length}
+          sub={t('home.kpiSessionsSub', { done: doneThisMonth, left: monthEvents.length - doneThisMonth })}
+          href="/events"
+          lines={[
+            [t('home.weeklyYear', { y: year }), `${weeklyDone}/${weeklyYear.length}`],
+            [t('home.toursYear'), toursYear, toursYear ? 'text-gray-100' : 'text-amber-300'],
+            [t('home.gamesYear'), gamesYear],
+          ]}
+        />
+        <Kpi
+          icon="🎚️"
+          label={t('home.kpiLevels')}
+          value={t('home.ratedN', { n: rated })}
+          sub={t('home.rankedSub', { n: all.length })}
+          href="/club/members"
+          lines={[
+            [t(sport === 'badminton' ? 'home.avgMaleB' : 'home.avgMale'), avgM ? t('home.avgOf', { v: levelText(avgM.v, sport, t) ?? avgM.v, n: avgM.n }) : '—'],
+            [t(sport === 'badminton' ? 'home.avgFemaleB' : 'home.avgFemale'), avgF ? t('home.avgOf', { v: levelText(avgF.v, sport, t) ?? avgF.v, n: avgF.n }) : '—'],
+            [t('home.unratedN'), all.length - rated, all.length - rated ? 'text-amber-300' : 'text-gray-100'],
+          ]}
+        />
+      </div>
+      </>)}
+
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 flex flex-col gap-4">
           <Section title={t('home.topMonth')} action={<Link href="/club/rankings" className="text-lime-400 text-sm">{t('nav.rankings')} →</Link>}>
             {!top || (!top.top_attendance.length && !top.top_win_rate.length && !top.top_point_diff.length) ? (
               <p className="text-gray-400 text-sm">{t('home.noTop')}</p>
@@ -338,28 +383,8 @@ function ClubHome({ community = false }) {
               </div>
             )}
           </Section>
-        </div>
-
-        {/* Side column */}
-        <div className="flex flex-col gap-4">
-          <Section title={t('home.todo')}>
-            {todos.length === 0 ? (
-              <p className="text-gray-400 text-sm">✅ {t('home.allClear')}</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {todos.map((x) => (
-                  <li key={x.text}>
-                    <Link href={x.href} className="flex items-center gap-3 rounded-lg bg-navy-900 px-3 py-2 text-sm text-gray-100 hover:text-lime-300">
-                      <span aria-hidden="true">{x.icon}</span>
-                      <span className="flex-1">{x.text}</span>
-                      <span className="text-gray-500">›</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
+            </div>
+            <div className="flex flex-col gap-4">
           <Section title={`🎂 ${t('home.birthdays')}`}>
             {birthdays.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('home.noBirthdays')}</p>
@@ -389,8 +414,10 @@ function ClubHome({ community = false }) {
               <p className="text-gray-400 text-xs mt-2">{t('home.planLeft', { n: usage.remaining })}</p>
             </Section>
           )}
+            </div>
+          </div>
         </div>
-      </div>
+      </details>
     </>
   );
 }

@@ -66,8 +66,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
 
   return (
     <div className="card mb-4 border-sky-400/40">
-      <h3 className="text-sky-200 font-semibold mb-1">💸 {t('review.title')} ({groups.length})</h3>
-      <Hint text={t('review.hint')} className="mb-2" />
+      <h3 className="text-sky-200 font-semibold mb-1">💸 {t('review.title')} ({groups.length}) <Hint inline text={t('review.hint')} /></h3>
       <div className="flex flex-col divide-y divide-navy-700">
         {sorted.map((g) => {
           const p = g.p;

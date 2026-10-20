@@ -90,12 +90,11 @@ export default function EventShareCard({ event, onSaved }) {
   return (
     <div className="card mb-4">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="text-white font-semibold">{t('events.shareTitle')}</h2>
+        <h2 className="text-white font-semibold">{t('events.shareTitle')} <Hint inline text={t('events.shareHint')} /></h2>
         <span className={`text-xs rounded-full px-2 py-0.5 ${isOpen ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-700 text-gray-300'}`}>
           {isOpen ? t('events.registrationOpen') : t('events.registrationClosed')}
         </span>
       </div>
-      <Hint text={t('events.shareHint')} className="mb-3" />
 
       <label className="flex items-center gap-2 text-sm text-gray-200 mb-3">
         <input

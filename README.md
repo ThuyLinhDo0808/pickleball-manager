@@ -186,6 +186,8 @@ Sau khi gửi: trang hiện trạng thái (*Chờ duyệt / Đã duyệt / Bị 
 - **🪪 Hồ sơ CLB** (hiện trong tìm kiếm): đổi ảnh đại diện / ảnh nền (chỉ chủ CLB), quốc gia, tỉnh thành, quận huyện, địa điểm, lịch sinh hoạt định kỳ, số thành viên, email liên hệ, mô tả, và công tắc **Hiện CLB trong mục Tìm câu lạc bộ** (tắt để ẩn CLB).
 
 ### 4.2. Tổng quan (`/dashboard`)
+- **Bố cục "Hôm nay"** (dễ dùng trên điện thoại): đầu trang là 3 ô lớn **➕ Tạo kèo · 📅 Lịch · 👥 Thành viên**; ngay dưới là **Cần xử lý** (việc cần làm, bấm để mở), chuyển khoản chờ duyệt, **Sự kiện sắp tới**, rồi **Tài chính tháng này** chỉ 3 số (Thu · Chi · Số dư quỹ — bấm để mở Sổ thu chi). Các thẻ số liệu chi tiết (thành viên, buổi trong năm, trình độ, còn phải thu, top tháng, sinh nhật, gói) gập trong **📊 Xem số liệu chi tiết**.
+- **Cộng đồng (Social Manager)**: cũng có 3 ô lớn (**Tạo kèo lẻ · Tạo lịch cố định** — hoặc *Lịch* nếu gói chưa có — **· Thành viên**); nút *＋ Tạo cộng đồng mới* nằm cuối dải tab cộng đồng. Phần việc hôm nay hiện trước; số liệu cộng đồng (thành viên, tài chính từ trước tới nay, thường xuyên, biểu đồ 6 tháng) gập trong **👥 Số liệu cộng đồng**.
 - Các thẻ số liệu (hàng **Câu lạc bộ** và **Tài chính tháng này**) **không bấm được cả thẻ** nữa; mỗi thẻ có link **Chi tiết →** ở góc dưới để mở trang tương ứng. Thẻ tài chính chỉ còn tiêu đề + số tiền (bỏ dòng chú thích nhỏ).
 - **Chỉ số chính**: thành viên đang hoạt động, số **VIP** (⭐) và **khách ưu tiên**, yêu cầu vào CLB đang chờ.
 - **Hàng tiền**: thu · chi · số dư quỹ · **còn phải thu** (gói chưa đóng, phí kèo chưa thu). Gói chưa có biểu đồ tài chính (Basic) vẫn thấy đúng thu / chi tháng này — lấy thẳng từ **Sổ thu chi** — và link *Chi tiết* mở Sổ thu chi.
@@ -1153,9 +1155,14 @@ Khu quản trị toàn hệ thống dành cho **chủ dự án** (người vận
 ---
 
 ### 8.8. Cách viết chữ trên giao diện
-- **Ít chữ, dễ bấm** (cho cả người lớn tuổi, ít dùng công nghệ): các đoạn giải thích dài được gập lại sau nút nhỏ **ⓘ Xem giải thích** (bấm mới hiện); chữ nhỏ nhất ~12px, chữ phụ 13px; nút và ô nhập cao tối thiểu 42px (nút gọn 34px). Câu mô tả ngắn, nói thẳng việc cần làm (VD *Tắt: bạn duyệt từng người.*).
+- **Ít chữ, dễ bấm** (cho cả người lớn tuổi, ít dùng công nghệ): chú thích **không hiện thành chữ dưới ô nữa** — cạnh tiêu đề / ô nhập có nút tròn nhỏ **i**, bấm vào mở **pop-up Giải thích** (nút *Đã hiểu* để đóng; trên điện thoại là khung trượt từ dưới lên); chữ nhỏ nhất ~12px, chữ phụ 13px; nút và ô nhập cao tối thiểu 42px (nút gọn 34px). Câu mô tả ngắn, nói thẳng việc cần làm (VD *Tắt: bạn duyệt từng người.*).
 - **Ngày luôn ghi dd/mm hoặc dd/mm/yyyy** (giờ ghi sau ngày dạng HH:mm, VD *05/10/2026 15:30*), cả tiếng Việt lẫn tiếng Anh, cả trong email / tin nhắn; tháng ghi mm/yyyy (VD *10/2026*). Không dùng dd-mm hay mm-dd.
 Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với người dùng (*bạn*), không xưng *app*, *hệ thống* hay *chúng tôi*; việc tự động được viết ở thể bị động (VD: *Các khoản chi cho mỗi buổi được ghi vào Sổ thu chi đúng ngày của từng buổi*). Người duyệt yêu cầu / chuyển giao được gọi là **Ban quản trị**. Bước thanh toán khi đăng ký CLB ghi: *Vui lòng thanh toán gói đã chọn để hoàn tất đăng ký… CLB được duyệt và gói được kích hoạt ngay khi thanh toán được xác nhận*.
+
+### 8.9. Trang quản lý thiết kế lại cho dễ dùng
+- **Trang kèo (`/events/<id>`)**: mở thẳng tab **👥 Người chơi**. Đầu trang có 3 nút lớn: **📤 Gửi link** (chép link đăng ký để dán vào Zalo / Messenger; mờ khi kèo đang tắt đăng ký qua link), **📷 Điểm danh** (quét QR), **➕ Thêm người** (pop-up: nhập tên + SĐT, hoặc tick chọn thành viên CLB / cộng đồng, có *Chọn tất cả*). Thứ tự tab: **👥 (số người) · 💰 Tiền · 🏓 (số trận) · ⚙️ Cài đặt**. Tab ⚙️ Cài đặt gom: mở / đóng đăng ký, link chia sẻ, link mời nhanh 30 giây, luật huỷ và **Xuất Excel**. Trong tab Người chơi: yêu cầu chờ duyệt, ô số liệu, pass vé, chuyển khoản → danh sách chính → danh sách chờ → người tổ chức → đã huỷ.
+- **Tạo / sửa kèo**: phần **1 · Thông tin cơ bản** có đủ những gì một kèo cần (loại, tên, ngày, giờ, địa điểm, trình độ, **số chỗ, phí tham gia**, số sân). **2 · Luật & tài chính** (thể thức, dịch vụ, DUPR, luật huỷ, hạn đăng ký, chi phí) và **3 · Lưu ý** (lời nhắn, link công khai, cho trả sau) **gập lại**, bấm tiêu đề để mở. Trên điện thoại nút **Tạo / Lưu** luôn nằm sát đáy màn hình (trên thanh menu). Lời giới thiệu đầu trang nằm sau nút **i** *Cách dùng trang này*.
+- **Lịch (`/events`)**: trên điện thoại ẩn hàng thẻ số liệu để danh sách hiện ngay; dòng giải thích mỗi nhóm (*Sắp diễn ra*, *Đang mở*…) chuyển vào nút **i**.
 
 ## 9. Hướng dẫn nhanh theo tình huống
 

@@ -388,8 +388,7 @@ function OpenPlaces({ tour, onChange }) {
 
   return (
     <section className="card mb-4 border-amber-300/50">
-      <h2 className="text-amber-200 font-semibold">⬚ {t('pairing.openTitle', { n: open.length })}</h2>
-      <Hint text={t('pairing.openHint')} className="mb-3" />
+      <h2 className="text-amber-200 font-semibold">⬚ {t('pairing.openTitle', { n: open.length })} <Hint inline text={t('pairing.openHint')} /></h2>
       <div className="flex flex-col gap-2">
         {open.map((tm) => {
           const mate = byId.get(tm.player1_id);

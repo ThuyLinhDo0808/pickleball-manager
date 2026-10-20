@@ -78,8 +78,7 @@ export default function LiveHubPage() {
         <section className="card mb-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="text-white font-semibold">📺 {t('live.publicTitle')}</h2>
-              <Hint text={t('live.publicHint')} className="mt-0.5" />
+              <h2 className="text-white font-semibold">📺 {t('live.publicTitle')} <Hint inline text={t('live.publicHint')} /></h2>
             </div>
             {publicUrl ? (
               <button type="button" className="text-red-300 text-sm" disabled={busy} onClick={() => togglePublic(false)}>{t('live.publicOff')}</button>

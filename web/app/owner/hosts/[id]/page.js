@@ -206,8 +206,7 @@ function PlanEditor({ host, onSaved }) {
   return (
     <form onSubmit={save} className="card !p-4 flex flex-col gap-4">
       <div>
-        <h2 className="text-white font-semibold">💎 {t('owner.planTitle')}</h2>
-        <Hint text={t('owner.planHint')} className="mt-0.5" />
+        <h2 className="text-white font-semibold">💎 {t('owner.planTitle')} <Hint inline text={t('owner.planHint')} /></h2>
       </div>
 
       <ProductBlock

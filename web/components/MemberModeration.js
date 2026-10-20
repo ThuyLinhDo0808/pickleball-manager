@@ -232,8 +232,7 @@ export function ReviewTab({ club, members, onChanged }) {
       )}
 
       <section className="card">
-        <h3 className="text-white font-semibold">📜 {t('mod.historyTitle')}</h3>
-        <Hint text={t('mod.historyHint')} className="mb-1" />
+        <h3 className="text-white font-semibold">📜 {t('mod.historyTitle')} <Hint inline text={t('mod.historyHint')} /></h3>
         {!mod?.rows?.length && <p className="text-gray-500 text-sm">{t('mod.historyEmpty')}</p>}
         <ul className="divide-y divide-navy-700">{(mod?.rows || []).map((r) => <HistoryLine key={r.id} r={r} />)}</ul>
         {mod?.pages > 1 && (
