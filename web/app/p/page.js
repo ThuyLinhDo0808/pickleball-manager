@@ -19,6 +19,8 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { VoucherChip } from '@/components/RaceBoard';
+import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const PAY_STYLE = { paid: 'text-lime-400', pending: 'text-yellow-300', overdue: 'text-red-300' };
 
@@ -183,13 +185,13 @@ export default function PlayerHome() {
           {me.event_debts.map((d) => (
             <div key={d.event_id} className="flex items-center justify-between gap-2 py-1.5 text-sm border-b border-navy-700 last:border-0">
               <span className="text-gray-200 min-w-0 truncate">
-                {d.title} · {new Date(`${d.event_date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')}
+                {d.title} · {localDate(new Date(`${d.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}
                 {d.late_cancel && <span className="ml-2 text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>}
               </span>
               <span className="text-yellow-300 tabular-nums shrink-0">{formatVnd(d.amount)}</span>
             </div>
           ))}
-          <p className="text-gray-500 text-xs mt-2">{t('pp.eventDebtsHint')}</p>
+          <Hint text={t('pp.eventDebtsHint')} className="mt-2" />
         </section>
       )}
 
@@ -281,12 +283,12 @@ export default function PlayerHome() {
         <div className="flex flex-col divide-y divide-navy-700">
           {me.history.map((h) => {
             const deadline = h.cancel_deadline && new Date(h.cancel_deadline);
-            const fmtAt = (d) => d.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+            const fmtAt = (d) => localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
             const info = (
               <div className="min-w-0">
                 <div className="text-white text-sm truncate">{h.title}</div>
                 <div className="text-gray-400 text-xs">
-                  {new Date(`${h.event_date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')}
+                  {localDate(new Date(`${h.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}
                   {h.start_time ? ` · ${h.start_time.slice(0, 5)}` : ''}
                   {h.club_name ? ` · ${h.club_name}` : ''}
                 </div>

@@ -61,7 +61,7 @@ function EventCard({ e }) {
       <div className={`w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 py-3 ${e.tone ? e.tone.chip : 'bg-navy-900'}`}>
         <span className="text-[11px] uppercase text-gray-300">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
         <span className="text-white text-2xl font-bold leading-none tabular-nums">{Number(e.event_date.slice(8, 10))}</span>
-        <span className="text-[11px] text-gray-400">{Number(e.event_date.slice(5, 7))}/{e.event_date.slice(2, 4)}</span>
+        <span className="text-[11px] text-gray-400">{e.event_date.slice(5, 7)}/{e.event_date.slice(0, 4)}</span>
       </div>
       <div className="min-w-0 flex-1 p-3">
         <div className="flex justify-between gap-2">

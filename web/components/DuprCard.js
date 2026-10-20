@@ -2,6 +2,8 @@
 import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
 import { Change } from '@/components/DuprMembers';
+import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
 
@@ -44,9 +46,9 @@ export default function DuprCard({ dupr, showLink = true }) {
       </div>
       <p className="text-gray-500 text-xs mt-2">
         DUPR ID <span className="font-mono text-gray-300">{dupr.dupr_id}</span>
-        {dupr.dupr_name ? ` (${dupr.dupr_name})` : ''} · {t('dupr.updatedOn', { date: new Date(dupr.synced_at).toLocaleDateString('vi-VN') })}
+        {dupr.dupr_name ? ` (${dupr.dupr_name})` : ''} · {t('dupr.updatedOn', { date: localDate(new Date(dupr.synced_at), 'vi-VN') })}
       </p>
-      <p className="text-gray-500 text-xs mt-0.5">{t('duprp.how')}</p>
+      <Hint text={t('duprp.how')} className="mt-0.5" />
     </div>
   );
 }

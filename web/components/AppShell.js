@@ -11,6 +11,7 @@ import CreateClubForm from '@/components/CreateClubForm';
 import ContextSwitcher from '@/components/ContextSwitcher';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import FeedbackButton from '@/components/FeedbackButton';
+import SignupBell from '@/components/SignupBell';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
 import { api } from '@/lib/api';
@@ -143,8 +144,8 @@ NAV_BY_WORKSPACE.community = [
     icon: 'schedule',
     children: [
       { href: '/events', key: 'nav.kevents', icon: 'schedule', exclude: ['/events/create'] },
-      { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
       { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
+      { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
       { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
       { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
     ],
@@ -168,6 +169,7 @@ NAV_BY_WORKSPACE.community = [
     icon: 'clubs',
     children: [
       { href: '/club/community-settings', key: 'nav.commPanel', icon: 'chart' },
+      { href: '/club/featured', key: 'nav.featured', icon: 'trophy' },
       { href: '/clubs', key: 'nav.communities', icon: 'clubs' },
       { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
       { href: '/club/activity-log', key: 'nav.activityLog', icon: 'plans' },
@@ -606,10 +608,16 @@ export default function AppShell({ children, back }) {
             <Icon name="dashboard" className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">{workspace && <ContextSwitcher compact />}</div>
+          {['club', 'xeve'].includes(workspace) && <SignupBell className="shrink-0" />}
         </div>
       </header>
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
+        {['club', 'xeve'].includes(workspace) && (
+          <div className="hidden md:flex justify-end -mt-2 mb-2">
+            <SignupBell />
+          </div>
+        )}
         <AnnouncementBanner className="mb-4" />
         {workspace && workspace !== 'staff' && <SchemaBanner />}
         {suspended ? (

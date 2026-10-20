@@ -16,6 +16,7 @@ import { api } from '@/lib/api';
 import { formatVnd, thisMonth } from '@/lib/format';
 import { todayYmd } from '@/lib/dates';
 import MemberLink from '@/components/MemberLink';
+import Hint from '@/components/ui/Hint';
 
 export const FLAGS = ['unpaid', 'late', 'attitude'];
 export const FLAG_STYLE = {
@@ -271,7 +272,7 @@ function MemberEdit({ member, busy, onSave, autoEdit = false, community = false 
               </button>
             ))}
           </div>
-          <p className="text-gray-500 text-xs mt-1">{t('guests.discountHint')}</p>
+          <Hint text={t('guests.discountHint')} className="mt-1" />
         </div>
       )}
       <MemberExtraFields idPrefix="md" value={f} onChange={set} />
@@ -441,7 +442,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             )}
           </div>
           {!canPass && <p className="text-gray-400 text-xs mb-2">{t('membership.guestNoPlans')}</p>}
-          {community && <p className="text-gray-400 text-xs mb-2">{t('social.vipHint')}</p>}
+          {community && <Hint text={t('social.vipHint')} className="mb-2" />}
 
           {showRegister && plans && canPass && (
             <div className="mb-3">

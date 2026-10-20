@@ -26,6 +26,7 @@ import DuprMembers from '@/components/DuprMembers';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import CommunitySuggestions from '@/components/CommunitySuggestions';
+import { localDate } from '@/lib/dates';
 
 
 // Each tab of the members section has its own address (menu Thành viên ▸ …).
@@ -42,6 +43,7 @@ export default function MembersPage({ tab = 'fixed' }) {
   const router = useRouter();
   const { t, sport } = useI18n();
   const { club } = useDefaultClub();
+  const pickleball = (club?.sport || sport || 'pickleball') === 'pickleball'; // two DUPR columns: linked + self-entered
   // A community's control panel: its levels (trình độ) show as a column here.
   const isCommunity = club?.kind === 'community';
   const { data: cs } = useLoad(() => (club && isCommunity ? api.get(`/api/clubs/${club.id}/community-settings`).catch(() => null) : Promise.resolve(null)), [club?.id, isCommunity]);
@@ -135,7 +137,7 @@ export default function MembersPage({ tab = 'fixed' }) {
     .filter(vipOk)
     .filter((m) => !q || [m.full_name, m.phone, m.district].some((v) => String(v || '').toLowerCase().includes(q)));
   if (sortBy === 'name') shownRows.sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
-  if (sortBy === 'level') shownRows.sort((a, b) => (Number(b.dupr_level) || 0) - (Number(a.dupr_level) || 0));
+  if (sortBy === 'level') shownRows.sort((a, b) => (Number(b.dupr_linked ?? b.dupr_level) || 0) - (Number(a.dupr_linked ?? a.dupr_level) || 0));
   if (sortBy === 'joined') shownRows.sort((a, b) => (a.joined_on || '9999').localeCompare(b.joined_on || '9999'));
   const inactiveCount = rows.filter((m) => !m.is_active).length;
   // Official members still missing a birthday / phone / gender (added quickly, to fill in later).
@@ -285,7 +287,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
-                          {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), levelText(m.dupr_level, sport, t)].filter(Boolean).join(' · ') || '—'}
+                          {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), ...(pickleball ? [m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null, m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null] : [levelText(m.dupr_level, sport, t)])].filter(Boolean).join(' · ') || '—'}
                         </span>
                         {missingInfo(m).length > 0 && <span className="block text-amber-300 text-xs mt-0.5">⚠ {t('members.missingList', { list: missText(m) })}</span>}
                         <span className="block text-gray-500 text-xs mt-0.5">
@@ -323,7 +325,14 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <th>{t('members.joined')}</th>
                       <th>{t('memberX.district')}</th>
                       <th>{t('memberX.playDuration')}</th>
-                      <th>{t('members.colScore')}</th>
+                      {pickleball ? (
+                        <>
+                          <th>{t('members.colDuprLinked')}</th>
+                          <th>{t('members.colDuprSelf')}</th>
+                        </>
+                      ) : (
+                        <th>{t('members.colScore')}</th>
+                      )}
                       {levelCfg && <th>{t('members.colLevel')}</th>}
                       {isGuestTab ? (
                         <>
@@ -400,7 +409,25 @@ export default function MembersPage({ tab = 'fixed' }) {
                         </td>
                         <td className="text-gray-300 whitespace-nowrap">{m.district || '—'}</td>
                         <td className="text-gray-300 whitespace-nowrap">{playDurationText(m.play_duration, t) || '—'}</td>
-                        <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
+                        {pickleball ? (
+                          <>
+                            <td className="whitespace-nowrap">
+                              {m.dupr_linked != null ? (
+                                <>
+                                  <span className="text-white font-semibold tabular-nums">{m.dupr_linked.toFixed(2)}</span>
+                                  <span className="block text-[10px] text-gray-500">{t('dupr.updatedOn', { date: localDate(new Date(m.dupr_linked_at), 'vi-VN') })}</span>
+                                </>
+                              ) : m.dupr_manual != null ? (
+                                <span className="text-gray-300 tabular-nums" title={t('members.duprManualHint')}>{m.dupr_manual.toFixed(2)} <span className="text-[10px] text-gray-500">{t('members.duprManual')}</span></span>
+                              ) : (
+                                <span className="text-gray-500">—</span>
+                              )}
+                            </td>
+                            <td className="text-gray-300 tabular-nums">{m.dupr_self != null ? m.dupr_self.toFixed(2) : '—'}</td>
+                          </>
+                        ) : (
+                          <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
+                        )}
                         {levelCfg && (
                           <td className="text-gray-200 whitespace-nowrap" onClick={(e) => levelCfg.mode === 'manual' && e.stopPropagation()}>
                             {levelCfg.mode === 'manual' ? (

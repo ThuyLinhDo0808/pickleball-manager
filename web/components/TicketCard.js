@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
+import Hint from '@/components/ui/Hint';
 
 // The check-in ticket of one registration: a big QR ("PBT:<ticket_code>") plus a loud
 // reminder to screenshot it, and a link to the ticket page as a backup.
@@ -48,7 +49,7 @@ export default function TicketCard({ ticketCode, name, subtitle, checkedIn = fal
         <a href={link} className="btn-secondary !py-1.5">{t('ticket.open')}</a>
         <button type="button" className="btn-secondary !py-1.5" onClick={copy}>{copied ? t('events.copied') : t('ticket.copyLink')}</button>
       </div>
-      <p className="text-gray-500 text-xs text-center">{t('ticket.backupHint')}</p>
+      <Hint text={t('ticket.backupHint')} />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import { addDays, formatDay, hhmm, todayYmd } from '@/lib/dates';
+import { addDays, formatDay, hhmm, todayYmd, localDate } from '@/lib/dates';
 
 const ROLE_TONE = {
   coordinator: 'bg-lime-400/15 text-lime-300 border-lime-400/40',
@@ -50,7 +50,7 @@ function EventRow({ e, today }) {
       <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 bg-navy-900 py-3">
         <span className="text-[11px] uppercase text-gray-400">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
         <span className="text-white text-2xl font-bold leading-none">{Number(e.event_date.slice(8, 10))}</span>
-        <span className="text-[11px] text-gray-500">{`${Number(e.event_date.slice(5, 7))}/${e.event_date.slice(2, 4)}`}</span>
+        <span className="text-[11px] text-gray-500">{`${e.event_date.slice(5, 7)}/${e.event_date.slice(0, 4)}`}</span>
       </div>
       <div className="min-w-0 flex-1 p-3">
         <div className="flex items-start justify-between gap-2">
@@ -163,7 +163,7 @@ export default function StaffEventsPage() {
             Object.entries(groups).map(([k, rows]) => (
               <div key={k} className="mb-4">
                 <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2 capitalize">
-                  {new Date(`${k}-01T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { month: 'long', year: 'numeric' })}
+                  {localDate(new Date(`${k}-01T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { month: 'long', year: 'numeric' })}
                 </h3>
                 <div className="grid gap-2 md:grid-cols-2">
                   {rows.map((e) => <EventRow key={e.id} e={e} today={today} />)}

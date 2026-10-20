@@ -43,7 +43,7 @@ function nowIso() {
 // Only what a player needs to see — no host id, fees config internals, or phones.
 const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
-  'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
+  'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
   'cancel_deadline_hours', 'cancel_half_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
 ];
@@ -398,6 +398,11 @@ async function hostForClub(req, clubId) {
 const EVENT_KINDS = ['weekly', 'game', 'training', 'meeting', 'challenge'];
 
 // Normalises optional fields in place; returns an error message or null.
+async function genderLevelsReady() {
+  const st = await require('../services/schemaCheck').schemaStatus();
+  return !st.missing_migrations.includes('20261201090000_gender_levels.sql');
+}
+
 function cleanEventFields(fields) {
   // Host picks open / completed / cancelled only (no drafts, no "closed": a session that
   // won't happen is cancelled, or deleted while nobody has signed up).
@@ -433,6 +438,15 @@ function cleanEventFields(fields) {
     if (v && (v.length > 500 || !/^https:\/\/\S+$/i.test(v))) return 'map_url must be an https link (Google Maps).';
     fields.map_url = v || null;
   }
+  // Women's DUPR range (levels split by gender); empty = the same range as everyone.
+  for (const k of ['level_min_f', 'level_max_f']) {
+    if (!(k in fields)) continue;
+    const v = fields[k];
+    if (v === '' || v == null) fields[k] = null;
+    else if (!(Number(v) >= 0 && Number(v) <= 8)) return `${k} must be 0-8.`;
+    else fields[k] = Math.round(Number(v) * 100) / 100;
+  }
+  if (fields.level_min_f != null && fields.level_max_f != null && fields.level_max_f < fields.level_min_f) return "The women's upper level is below the lower one.";
   if ('level_keys' in fields) {
     // Kèo for some levels of the community (keys from its control panel).
     const keys = Array.isArray(fields.level_keys) ? [...new Set(fields.level_keys.map((k) => String(k)))] : [];
@@ -469,7 +483,7 @@ async function kindAllowed(clubId, kind) {
 }
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
-  'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
+  'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'allow_public_registration', 'cost_items',
 ];
 
@@ -504,6 +518,40 @@ router.get('/pending-payments', async (req, res) => {
   }));
 });
 
+// The Host's 🔔: who signed up lately (last 7 days) on their upcoming events — the owner's,
+// co-admins' and Operations' clubs — newest first. The page keeps "seen up to" itself.
+router.get('/recent-signups', async (req, res) => {
+  const shared = await coAdminClubIds(req, ['co_admin', 'operator']).catch(() => []);
+  const base = supabase.from('events').select('id, title, event_date, start_time, club_id');
+  const { data: events, error } = await (shared.length ? base.or(`host_id.eq.${req.hostId},club_id.in.(${shared.join(',')})`) : base.eq('host_id', req.hostId))
+    .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10))
+    .neq('status', 'cancelled');
+  if (error) return dbError(res, error);
+  if (!events.length) return res.json([]);
+  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { data: rows, error: pErr } = await supabase
+    .from('event_participants')
+    .select('id, event_id, full_name, status, payment_status, joined_at, is_organizer, guest_booking_id')
+    .in('event_id', events.map((e) => e.id))
+    .gte('joined_at', since)
+    .neq('status', 'cancelled')
+    .eq('is_organizer', false)
+    .order('joined_at', { ascending: false })
+    .limit(40);
+  if (pErr) return dbError(res, pErr);
+  const byId = new Map(events.map((e) => [e.id, e]));
+  // Ticket passes waiting for the Host (find a taker / check the money).
+  let passes = [];
+  if (await require('../services/ticketPass').ready()) {
+    const { data: ps } = await supabase.from('event_ticket_passes').select('id, event_id, from_participant_id, status, created_at, submitted_at').in('event_id', events.map((e) => e.id)).in('status', ['open', 'proof_submitted']).gte('created_at', since).limit(20);
+    const fromIds = (ps || []).map((x) => x.from_participant_id);
+    const { data: who } = fromIds.length ? await supabase.from('event_participants').select('id, full_name').in('id', fromIds) : { data: [] };
+    const nameOf = new Map((who || []).map((x) => [x.id, x.full_name]));
+    passes = (ps || []).map((x) => ({ id: `pass-${x.id}`, event_id: x.event_id, full_name: nameOf.get(x.from_participant_id) || '—', status: x.status === 'open' ? 'pass_open' : 'pass_proof', joined_at: x.submitted_at || x.created_at, event: byId.get(x.event_id) }));
+  }
+  res.json([...rows.map((r) => ({ ...r, event: byId.get(r.event_id) })), ...passes].sort((a, b) => String(b.joined_at).localeCompare(String(a.joined_at))).slice(0, 40));
+});
+
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
 router.get('/', async (req, res) => {
   await completeFinished({ hostId: req.hostId });
@@ -535,7 +583,7 @@ router.post('/', async (req, res) => {
 
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
-    'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
+    'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
@@ -543,6 +591,7 @@ router.post('/', async (req, res) => {
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
+  if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
   const hostId = await hostForClub(req, fields.club_id);
   if (!hostId) return notFound(res, 'Club');
   if (!(await kindAllowed(fields.club_id, fields.kind))) return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
@@ -785,7 +834,7 @@ router.put('/:eventId/votes/:clubMemberId', async (req, res) => {
 router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
-    'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
+    'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
@@ -793,6 +842,7 @@ router.patch('/:eventId', async (req, res) => {
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
+  if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
   if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }
@@ -1317,6 +1367,38 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
   }
 
   res.json(updated);
+});
+
+// Pass vé (services/ticketPass.js): the Host finds who on the waitlist takes a ticket,
+// checks the holder got the money, and moves the place.
+router.get('/:eventId/passes', async (req, res) => {
+  try {
+    res.json(await require('../services/ticketPass').listForHost(req.event));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+router.get('/:eventId/passes/:passId/proof', async (req, res) => {
+  if (!isUuid(req.params.passId)) return notFound(res, 'Pass');
+  try {
+    res.json(await require('../services/ticketPass').proof(req.event, req.params.passId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+router.post('/:eventId/passes/:passId/:action', async (req, res) => {
+  if (!isUuid(req.params.passId)) return notFound(res, 'Pass');
+  const tp = require('../services/ticketPass');
+  const { passId, action } = req.params;
+  try {
+    if (action === 'match') return res.json(await tp.match(req.event, passId, req.body?.to_participant_id));
+    if (action === 'confirm') return res.json(await tp.confirm(req.event, passId));
+    if (action === 'reject') return res.json(await tp.reject(req.event, passId, req.body?.note));
+    if (action === 'cancel') return res.json(await tp.cancelByHost(req.event, passId));
+    res.status(400).json({ error: `Unknown action: ${action}` });
+  } catch (err) {
+    fail(res, err);
+  }
 });
 
 // Quick invite link (no account, straight to the transfer): the link changes every 30 s.

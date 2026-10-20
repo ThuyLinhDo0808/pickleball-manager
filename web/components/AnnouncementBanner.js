@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
+import { localDate } from '@/lib/dates';
 
 const KEY = 'pb_dismissed_announcements';
 const readDismissed = () => {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
 };
-const fmt = (iso, lang) => (iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-GB' : 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
+const fmt = (iso, lang) => (iso ? localDate(new Date(iso), lang === 'en' ? 'en-GB' : 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '');
 
 // The owner's notices (set in /owner/announcements): shown at the top until they end or the
 // viewer closes them. Signed in: also the ones for my audience (Host / players) or my clubs.

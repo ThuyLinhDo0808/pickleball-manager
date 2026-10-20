@@ -11,7 +11,7 @@ import { useClubs } from '@/context/ClubContext';
 import { api } from '@/lib/api';
 import { useLoad } from '@/lib/useLoad';
 import { clubTones } from '@/lib/clubColors';
-import { todayYmd } from '@/lib/dates';
+import { todayYmd, localDate } from '@/lib/dates';
 
 export default function ClubsPage() {
   const { t } = useI18n();
@@ -163,11 +163,11 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
           <span>
             📅 {t('clubsX.next')}:{' '}
             <span className="text-gray-200">
-              {next ? `${new Date(`${next.event_date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })} · ${next.title}` : t('clubsX.noNext')}
+              {next ? `${localDate(new Date(`${next.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })} · ${next.title}` : t('clubsX.noNext')}
             </span>
           </span>
           <span>
-            {owner ? `🗓 ${t('clubs.created', { date: new Date(c.created_at).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB') })}` : `🤝 ${t('coadmin.sharedBy', { owner: c.owner_email || '—' })}`}
+            {owner ? `🗓 ${t('clubs.created', { date: localDate(new Date(c.created_at), lang === 'vi' ? 'vi-VN' : 'en-GB') })}` : `🤝 ${t('coadmin.sharedBy', { owner: c.owner_email || '—' })}`}
           </span>
         </div>
 

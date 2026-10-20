@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { clock, elapsed, sportIcon } from '@/lib/live';
 import { useNow } from '@/lib/useNow';
 import LiveGuide from '@/components/LiveGuide';
+import Hint from '@/components/ui/Hint';
 
 // The scorer's pad: tap the side that won the rally. The server keeps the rules (who
 // serves, from which side, game / match end); this page shows them and the call to read
@@ -192,7 +193,7 @@ export default function ScorerPage() {
                 </span>
               )}
             </div>
-            {!s.timing?.started_at && !s.finished && <p className="text-gray-500 text-xs -mt-2 mb-3">{t('timer.startsHint')}</p>}
+            {!s.timing?.started_at && !s.finished && <Hint text={t('timer.startsHint')} className="-mt-2 mb-3" />}
 
             {s.games.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3 text-xs">
@@ -228,7 +229,7 @@ export default function ScorerPage() {
 
             {s.at_start && !saved && (
               <div className="mt-3 card !p-3 text-sm">
-                <p className="text-gray-400 text-xs mb-2">{t('live.atStartHint')}</p>
+                <Hint text={t('live.atStartHint')} className="mb-2" />
                 <div className="flex flex-wrap gap-2">
                   {[1, 2].map((side) => (
                     <button key={`s${side}`} type="button" disabled={busy || s.serving === side} className="btn-secondary !py-1.5 text-sm disabled:opacity-40" onClick={() => send('event', { ev: `s${side}` })}>

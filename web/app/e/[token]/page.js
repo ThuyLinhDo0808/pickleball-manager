@@ -3,7 +3,7 @@ import { policyText } from '@/lib/cancelPolicy';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
 import { useEffect } from 'react';
-import { levelRange, levelText } from '@/lib/levels';
+import { eventLevelText, levelText } from '@/lib/levels';
 import { useParams } from 'next/navigation';
 import EventSignup from '@/components/EventSignup';
 import { useI18n } from '@/context/I18nContext';
@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
+import { localDate } from '@/lib/dates';
 
 function locale(lang) {
   return lang === 'vi' ? 'vi-VN' : 'en-GB';
@@ -19,7 +20,7 @@ function locale(lang) {
 function formatDate(ymd, lang) {
   if (!ymd) return '';
   const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(locale(lang), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  return localDate(new Date(y, m - 1, d), locale(lang), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function formatTime(t) {
@@ -114,7 +115,7 @@ export default function PublicEventPage() {
 
   const main = ev.participants.filter((p) => p.status !== 'waitlisted');
   const waitlist = ev.participants.filter((p) => p.status === 'waitlisted');
-  const level = levelRange(ev.level_min, ev.level_max, ev.sport, t) || t('public.anyLevel');
+  const level = eventLevelText(ev, ev.sport, t) || t('public.anyLevel');
   const time = [formatTime(ev.start_time), formatTime(ev.end_time)].filter(Boolean).join(' – ');
 
   return (

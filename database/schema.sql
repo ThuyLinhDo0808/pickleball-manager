@@ -2978,3 +2978,121 @@ create index if not exists club_dupr_roster_dupr_id_idx on public.club_dupr_rost
 create index if not exists player_profiles_dupr_id_idx on public.player_profiles (dupr_id) where dupr_id is not null;
 
 notify pgrst, 'reload schema';
+
+-- ===== 20261201090000_gender_levels.sql =====
+-- Trình độ chia riêng Nam / Nữ (Bảng điều khiển cộng đồng): mỗi kèo có thể có khoảng DUPR
+-- riêng cho nữ (level_min_f / level_max_f); để trống = dùng chung khoảng level_min / level_max.
+-- VD Series A: Nam 3.0 – 3.5, Nữ 2.8 – 3.0. Cách chia (by_gender, f_min / f_max) lưu trong
+-- clubs.community_settings (jsonb), không cần cột mới.
+alter table public.events add column if not exists level_min_f numeric(3,2)
+  check (level_min_f is null or (level_min_f >= 0 and level_min_f <= 8));
+alter table public.events add column if not exists level_max_f numeric(3,2)
+  check (level_max_f is null or (level_max_f >= 0 and level_max_f <= 8));
+
+-- v_event_summary lists e.*: rebuild it so the new columns show up.
+drop view if exists public.v_event_summary;
+create view public.v_event_summary with (security_invoker = true) as
+select
+  e.*,
+  c.name as club_name,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text in ('registered','checked_in','pending')) as main_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'pending') as pending_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'requested') as requested_count
+from public.events e
+left join public.clubs c on c.id = e.club_id;
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke all on public.v_event_summary from %I', r);
+    end if;
+  end loop;
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- ===== 20261202090000_ticket_pass.sql =====
+-- Pass vé: người đã có chỗ nhường vé cho một người trong danh sách chờ, qua Host.
+--   open            — người pass bấm "Liên hệ pass vé"; Host liên hệ người trong danh sách chờ
+--   matched         — Host chọn người nhận; người nhận chuyển khoản cho người pass
+--   proof_submitted — người pass gửi ảnh đã nhận tiền + đồng ý điều khoản
+--   done            — Host xác nhận: vé người pass huỷ (không hoàn tiền), người nhận vào danh sách chính
+--   cancelled       — người pass / Host huỷ yêu cầu
+create table if not exists public.event_ticket_passes (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  from_participant_id uuid not null references public.event_participants(id) on delete cascade,
+  to_participant_id uuid references public.event_participants(id) on delete set null,
+  status text not null default 'open' check (status in ('open', 'matched', 'proof_submitted', 'done', 'cancelled')),
+  amount numeric(12,0) not null default 0,
+  proof text check (proof is null or char_length(proof) <= 400000),
+  terms_accepted_at timestamptz,
+  host_note text check (host_note is null or char_length(host_note) <= 300),
+  created_at timestamptz not null default now(),
+  matched_at timestamptz,
+  submitted_at timestamptz,
+  decided_at timestamptz
+);
+create index if not exists event_ticket_passes_event_idx on public.event_ticket_passes (event_id, created_at desc);
+-- One live pass per ticket.
+create unique index if not exists event_ticket_passes_live_idx on public.event_ticket_passes (from_participant_id) where status in ('open', 'matched', 'proof_submitted');
+
+alter table public.event_ticket_passes enable row level security;
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke all on public.event_ticket_passes from %I', r);
+    end if;
+  end loop;
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- ===== 20261203090000_featured_communities.sql =====
+-- Top 10 cộng đồng uy tín (quảng bá trả phí, Owner kiểm duyệt):
+--   awaiting_payment — Host đăng ký, chờ chuyển khoản (nội dung CK = ref)
+--   in_review        — Owner đã nhận tiền, đang xem mức độ uy tín
+--   active           — được duyệt: hiện trong Top 10 từ starts_on đến ends_on, theo position
+--   rejected / cancelled / ended
+create table if not exists public.featured_communities (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  host_id uuid references public.users(id) on delete set null,
+  status text not null default 'awaiting_payment' check (status in ('awaiting_payment', 'in_review', 'active', 'rejected', 'cancelled', 'ended')),
+  months int not null check (months between 1 and 12),
+  amount numeric(12,0) not null check (amount >= 0),
+  ref text not null unique,
+  paid_at timestamptz,
+  trust_score smallint check (trust_score is null or trust_score between 0 and 100),
+  position smallint check (position is null or position between 1 and 10),
+  owner_note text check (owner_note is null or char_length(owner_note) <= 500),
+  starts_on date,
+  ends_on date,
+  decided_by text,
+  created_at timestamptz not null default now()
+);
+create index if not exists featured_communities_club_idx on public.featured_communities (club_id, created_at desc);
+create index if not exists featured_communities_active_idx on public.featured_communities (status, ends_on);
+-- One open request / placement per community at a time.
+create unique index if not exists featured_communities_open_idx on public.featured_communities (club_id) where status in ('awaiting_payment', 'in_review', 'active');
+
+alter table public.featured_communities enable row level security;
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke all on public.featured_communities from %I', r);
+    end if;
+  end loop;
+end $$;
+
+notify pgrst, 'reload schema';

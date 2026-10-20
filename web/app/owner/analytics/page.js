@@ -7,13 +7,14 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import Hint from '@/components/ui/Hint';
 
 // Categorical slots validated for the dark surface (CVD-safe): blue, orange, aqua.
 const C1 = '#3987e5';
 const C2 = '#d95926';
 const C3 = '#199e70';
 const card = 'rounded-xl border border-navy-700 bg-navy-900/60 p-4';
-const mShort = (m) => `${m.slice(5)}/${m.slice(2, 4)}`;
+const mShort = (m) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 // 1.250.000 -> "1,3tr"; 450.000 -> "450k"
 const compact = (v) => {
   const n = Number(v) || 0;
@@ -241,7 +242,7 @@ function Finance({ d }) {
           />
         </div>
       </OwnerSection>
-      <p className="text-gray-500 text-xs">{t('ana.financeNote')}</p>
+      <Hint text={t('ana.financeNote')} />
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { hasFeature, planFor } from '@/lib/planFeatures';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { todayYmd, hhmm } from '@/lib/dates';
+import { todayYmd, hhmm, localDate } from '@/lib/dates';
 import { isBirthdayMonth } from '@/lib/memberDates';
 import { levelText } from '@/lib/levels';
 
@@ -177,7 +177,7 @@ function ClubHome({ community = false }) {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-gray-400 text-sm capitalize">
-                {new Date().toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                {localDate(new Date(), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
               <h1 className="text-white text-2xl sm:text-3xl font-bold mt-1 truncate">
                 {greeting(t)}{name ? `, ${name}` : ''} 👋
@@ -279,7 +279,7 @@ function ClubHome({ community = false }) {
                     <li key={e.id}>
                       <Link href={`/events/${e.id}`} className="flex items-center gap-4 py-3 group">
                         <div className={`w-14 shrink-0 rounded-xl text-center py-1.5 ${e.event_date === today ? 'bg-lime-400 text-navy-950' : 'bg-navy-900 text-white'}`}>
-                          <div className="text-[10px] uppercase font-semibold opacity-80">{d.toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short' })}</div>
+                          <div className="text-[10px] uppercase font-semibold opacity-80">{localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short' })}</div>
                           <div className="text-xl font-bold leading-6">{d.getDate()}</div>
                           <div className="text-[10px] opacity-80">{t('home.monthShort', { m: d.getMonth() + 1 })}</div>
                         </div>

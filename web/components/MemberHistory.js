@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 function fmtDate(ts, lang) {
-  return new Date(ts).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return localDate(new Date(ts), lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 // SCD Type 2 timeline for one member: each value with its from → to range.
@@ -44,7 +46,7 @@ export default function MemberHistory({ club, member }) {
       </button>
       {open && (
         <div className="mt-2">
-          <p className="text-gray-500 text-xs mb-2">{t('history.note')}</p>
+          <Hint text={t('history.note')} className="mb-2" />
           {rows === null && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
           {rows?.length === 0 && <p className="text-gray-400 text-sm">{t('history.empty')}</p>}
           <ol className="flex flex-col gap-1">

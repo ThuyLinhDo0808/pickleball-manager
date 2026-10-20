@@ -14,6 +14,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 
 export default function NewTournamentPage() {
@@ -147,7 +148,7 @@ export default function NewTournamentPage() {
               <label className="text-xs text-lime-300 font-semibold">💰 {t('tournaments.entryFee')}</label>
               <input className="input" type="number" inputMode="numeric" min="0" step="1" placeholder="0" value={info.entry_fee} onChange={(e) => setI({ entry_fee: e.target.value })} />
             </div>
-            <p className="text-gray-400 text-xs">{t('tournaments.entryFeeHint')}</p>
+            <Hint text={t('tournaments.entryFeeHint')} />
           </div>
         </div>
         {timeError && <p className="text-red-400 text-xs mt-2">{timeError}</p>}
@@ -426,7 +427,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
 
       {pickedPlayers.length > 0 && (
         <Section n={n++} title={t('tourRank.title')}>
-          <p className="text-gray-400 text-xs mb-2">{t('tourRank.hint')}</p>
+          <Hint text={t('tourRank.hint')} className="mb-2" />
           <div className="flex flex-wrap items-center gap-3 mb-3 text-sm">
             <button type="button" className="btn-secondary !py-1 text-sm" onClick={suggestRanks}>✨ {t('tourRank.suggest')}</button>
             {Object.keys(pickedRanks).length > 0 && (
@@ -473,7 +474,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
           <div className="mb-3 rounded-lg border border-red-500/50 bg-red-500/5 px-3 py-2 text-sm">
             <p className="text-red-300 font-semibold">⚠️ {t('pairing.unrated', { n: unrated.length })}</p>
             <p className="text-gray-300 text-xs mt-0.5">{unrated.map((m) => m.full_name).join(', ')}</p>
-            <p className="text-gray-400 text-xs mt-1">{t('pairing.unratedHint')}</p>
+            <Hint text={t('pairing.unratedHint')} className="mt-1" />
           </div>
         )}
         <p className="text-gray-500 text-xs mb-3">{custom ? t('pairing.customHint') : t('pairing.balancedHint')}</p>
@@ -503,7 +504,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
       {roundRobin ? (
         <Section n={n++} title={t('tournaments.structure')}>
           <p className="text-gray-300 text-sm">{t('tournaments.summaryRr', { teams: complete.length, matches: (complete.length * (complete.length - 1)) / 2 })}</p>
-          <p className="text-gray-500 text-xs mt-1">{t('tournaments.rrHint')}</p>
+          <Hint text={t('tournaments.rrHint')} className="mt-1" />
         </Section>
       ) : (
       <Section n={n++} title={t('tournaments.structure')}>

@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 
 import { HIGHLIGHTS } from '@/lib/planFeatures';
+import Hint from '@/components/ui/Hint';
 
 // Fallback before the plan has loaded; the real catalog comes from GET /api/host/plan.
 // Every plan is paid ('free' only means the account has no plan).
@@ -479,7 +480,7 @@ export function SocialManagerPanel({ compact = false }) {
               <Link href="/club-request?kind=community" className="btn-primary">🎟 {t('plan.smStart')}</Link>
             )}
           </div>
-          {v.owned === 0 && <p className="text-gray-500 text-xs mt-2">{t('plan.smStartHint')}</p>}
+          {v.owned === 0 && <Hint text={t('plan.smStartHint')} className="mt-2" />}
         </>
       )}
       <UpgradeModal open={open} onClose={() => setOpen(false)} product="social_manager" />

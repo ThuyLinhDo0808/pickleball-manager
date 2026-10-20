@@ -6,11 +6,14 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import PaymentCard from '@/components/PaymentCard';
 import TicketCard from '@/components/TicketCard';
+import { PassMyTicket } from '@/components/TicketPass';
 import Countdown from '@/components/Countdown';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { resizeImage } from '@/lib/image';
+import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const ACTIVE = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
 
@@ -87,7 +90,7 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
       <div>
         <label className="text-xs text-gray-400">{t('public.yourPhone')}</label>
         <input className="input" required type="tel" inputMode="tel" autoComplete="tel" minLength={9} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
-        <p className="text-gray-500 text-xs mt-1">{t('public.phoneHint')}</p>
+        <Hint text={t('public.phoneHint')} className="mt-1" />
       </div>
       <fieldset>
         <legend className="text-xs text-gray-400 mb-1">{t('members.gender')} *</legend>
@@ -103,7 +106,7 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
       <div>
         <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
         <LevelInput sport={sport} value={f[levelKey]} onChange={(v) => setF({ ...f, [levelKey]: v })} />
-        <p className="text-gray-500 text-xs mt-1">{t('signup.levelHint')}</p>
+        <Hint text={t('signup.levelHint')} className="mt-1" />
       </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <button className="btn-primary w-full py-3" disabled={busy}>{t('common.save')}</button>
@@ -253,7 +256,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!me) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
 
   const reg = me.registration && ACTIVE.includes(me.registration.status) ? me.registration : null;
-  const fmtWhen = (iso) => new Date(iso).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  const fmtWhen = (iso) => localDate(new Date(iso), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
   const memberFree = me.member.state === 'verified' && me.member.has_pass;
   const myFee = me.member.my_fee ?? fee; // priority guests pay the price after their discount
   const guestPays = myFee > 0 && !memberFree;
@@ -320,7 +323,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <TicketCard ticketCode={reg.ticket_code} name={reg.full_name} checkedIn={reg.status === 'checked_in'} />
         {reg.status === 'registered' && (
           <div className="flex flex-col items-center gap-2 mt-4">
-            <p className="text-gray-400 text-xs max-w-xs">{t('signup.noTransfer')}</p>
+            <PassMyTicket reg={reg} waitlistCount={Number(ev.waitlist_count ?? (ev.participants || []).filter((p) => p.status === 'waitlisted').length)} onChanged={onChanged} />
             <button type="button" className="text-red-400 text-sm" onClick={cancel}>{t('events.cancel')}</button>
             {cancelUi}
           </div>
@@ -417,7 +420,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     } catch (err) {
       // Kept out by the club: suspended ("to review") until a date, or blocked.
       const p = err.payload || {};
-      if (p.code === 'club_suspended') setError(t('notice.signupSuspended', { reason: p.reason || '—', date: p.until ? new Date(p.until).toLocaleDateString('vi-VN') : '' }));
+      if (p.code === 'club_suspended') setError(t('notice.signupSuspended', { reason: p.reason || '—', date: p.until ? localDate(new Date(p.until), 'vi-VN') : '' }));
       else if (p.code === 'club_blocked') setError(t('notice.signupBlocked', { reason: p.reason || '—' }));
       // Email not confirmed yet: one place only / the 48 hours are over.
       else if (p.code === 'email_unverified_limit' || p.code === 'email_verify_required') setError(<VerifyFirst code={p.code} />);
@@ -492,8 +495,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       <button type="button" className="btn-primary w-full py-3 text-base" disabled={!agree || busy} onClick={register}>
         {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : paysNow ? (payLater ? t('signup.confirmPayLater') : t('signup.confirmAndPay')) : t('signup.confirm')}
       </button>
-      {approval && <p className="text-gray-400 text-xs mt-2 text-center">{t('signup.approvalNote')}</p>}
-      {!approval && paysNow && !full && !payLater && <p className="text-gray-500 text-xs mt-2 text-center">{t('signup.holdNote')}</p>}
+      {approval && <Hint text={t('signup.approvalNote')} className="mt-2" />}
+      {!approval && paysNow && !full && !payLater && <Hint text={t('signup.holdNote')} className="mt-2" />}
     </div>
   );
 }

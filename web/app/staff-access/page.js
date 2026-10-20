@@ -10,6 +10,7 @@ import { todayYmd } from '@/lib/dates';
 import { dmy } from '@/lib/memberDates';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
+import Hint from '@/components/ui/Hint';
 
 const ROLES = ['coordinator', 'referee', 'co_admin', 'finance', 'operator'];
 // Roles that are always for one club; Finance / Operations need the Advanced plan.
@@ -249,7 +250,7 @@ export default function StaffAccessPage() {
                 <input id="sg-until" className="input" type="date" min={form.valid_from || undefined} value={form.valid_until} onChange={(e) => set({ valid_until: e.target.value })} />
               </div>
             </div>
-            <p className="text-gray-500 text-xs mt-1">{t('staffX.windowHint')}</p>
+            <Hint text={t('staffX.windowHint')} className="mt-1" />
           </fieldset>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1 border-t border-navy-700">
@@ -282,7 +283,7 @@ export default function StaffAccessPage() {
               ))}
             </tbody>
           </table>
-          <p className="text-gray-500 text-xs mt-3">{t('staffX.matrixNote')}</p>
+          <Hint text={t('staffX.matrixNote')} className="mt-3" />
         </aside>
       </div>
 
@@ -355,7 +356,7 @@ export default function StaffAccessPage() {
         {perms && (
           <div className="flex flex-col gap-3">
             <p className="text-gray-300 text-sm">{perms.email} · {t(`staff.${perms.role}`)}</p>
-            <p className="text-gray-500 text-xs">{t('perms.hint')}</p>
+            <Hint text={t('perms.hint')} />
             <ul className="flex flex-col gap-1.5">
               {PERM_GROUPS.map((gname) => (
                 <li key={gname}>
@@ -400,7 +401,7 @@ export default function StaffAccessPage() {
                 <input id="ed-until" className="input" type="date" value={editing.valid_until} onChange={(e) => setEditing({ ...editing, valid_until: e.target.value })} />
               </div>
             </div>
-            <p className="text-gray-500 text-xs">{t('staffX.windowHint')}</p>
+            <Hint text={t('staffX.windowHint')} />
             <div className="grid grid-cols-2 gap-2">
               <button type="button" className="btn-secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</button>
               <button className="btn-primary">{t('common.save')}</button>

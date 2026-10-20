@@ -4,6 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import Hint from '@/components/ui/Hint';
 
 // Entry fees: who has paid, collected vs expected. Each tick books a club-fund income.
 export default function TournamentFees({ tour }) {
@@ -44,7 +45,7 @@ export default function TournamentFees({ tour }) {
       </button>
       {open && (
         <div className="mt-3">
-          <p className="text-gray-500 text-xs mb-2">{t('tfee.hint')}</p>
+          <Hint text={t('tfee.hint')} className="mb-2" />
           {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {data.players.map((p) => (

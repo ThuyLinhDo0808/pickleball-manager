@@ -11,6 +11,8 @@
 //                   carry a DUPR range (dupr_min – dupr_max) that fills a kèo's DUPR limits,
 //      score      — from the member's DUPR (badminton: level 1-6), by lower bounds,
 //      experience — from how long they have played (< 6 months, 6-12, 12-18, > 18).
+//    `levels.by_gender` (manual / score): men and women have their own DUPR ranges — f_min /
+//    f_max (manual) or f_min (score) for women; e.g. Series A: men 3.0-3.5, women 2.8-3.0.
 //    Kèo can be marked for some levels; the overview counts members per level.
 const crypto = require('crypto');
 const { supabase } = require('../supabase');
@@ -46,7 +48,8 @@ function addDays(ymd, n) {
 function resolve(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const regular = { ...DEFAULTS.regular, ...(s.regular || {}) };
-  const levels = { mode: MODES.includes(s.levels?.mode) ? s.levels.mode : 'none', items: Array.isArray(s.levels?.items) ? s.levels.items : [] };
+  const mode = MODES.includes(s.levels?.mode) ? s.levels.mode : 'none';
+  const levels = { mode, items: Array.isArray(s.levels?.items) ? s.levels.items : [], by_gender: ['manual', 'score'].includes(mode) && s.levels?.by_gender === true };
   return { regular, active_days: Number(s.active_days) || DEFAULTS.active_days, levels, signup: { auto_dupr: s.signup?.auto_dupr === true } };
 }
 
@@ -73,6 +76,7 @@ function clean(body, sport) {
   const seenKey = new Set();
   const usedBuckets = new Set();
   const top = sport === 'badminton' ? 6 : 8;
+  const byGender = ['manual', 'score'].includes(mode) && body?.levels?.by_gender === true;
   let items = raw.map((it) => {
     const label = String(it?.label || '').trim().slice(0, 30);
     if (!label) throw fail('Every level needs a name.', 'level_label_required');
@@ -92,11 +96,24 @@ function clean(body, sport) {
       if (lo != null && hi != null && hi < lo) throw fail('The upper score is below the lower one.', 'bad_level_range');
       out.dupr_min = lo == null ? null : Math.round(lo * 100) / 100;
       out.dupr_max = hi == null ? null : Math.round(hi * 100) / 100;
+      if (byGender) {
+        const flo = num(it?.f_min);
+        const fhi = num(it?.f_max);
+        for (const v of [flo, fhi]) if (v != null && !(Number.isFinite(v) && v >= 0 && v <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_level_range');
+        if (flo != null && fhi != null && fhi < flo) throw fail("The women's upper score is below the lower one.", 'bad_level_range');
+        out.f_min = flo == null ? null : Math.round(flo * 100) / 100;
+        out.f_max = fhi == null ? null : Math.round(fhi * 100) / 100;
+      }
     }
     if (mode === 'score') {
       const v = it?.min === '' || it?.min == null ? null : Number(it.min);
       if (v != null && !(Number.isFinite(v) && v >= 0 && v <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_level_min');
       out.min = v == null ? null : Math.round(v * 100) / 100;
+      if (byGender) {
+        const f = it?.f_min === '' || it?.f_min == null ? null : Number(it.f_min);
+        if (f != null && !(Number.isFinite(f) && f >= 0 && f <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_level_min');
+        out.f_min = f == null ? null : Math.round(f * 100) / 100;
+      }
     }
     if (mode === 'experience') {
       const buckets = (Array.isArray(it?.buckets) ? it.buckets : []).filter((b) => DURATIONS.includes(b));
@@ -115,7 +132,7 @@ function clean(body, sport) {
     for (let i = 1; i < items.length; i += 1) if (items[i].min === items[i - 1].min) throw fail('Two levels start at the same score.', 'bad_level_min');
   }
   if (mode === 'none') items = [];
-  return { regular, active_days, levels: { mode, items }, signup: { auto_dupr: body?.signup?.auto_dupr === true } };
+  return { regular, active_days, levels: { mode, items, by_gender: byGender }, signup: { auto_dupr: body?.signup?.auto_dupr === true } };
 }
 
 // The level a member is in under these settings (null = none).
@@ -126,7 +143,12 @@ function levelOf(member, settings) {
   if (mode === 'manual') hit = items.find((i) => i.key === member.level_key);
   else if (mode === 'score') {
     const v = member.dupr_level == null ? null : Number(member.dupr_level);
-    if (v != null) for (const i of items) if (i.min == null || i.min <= v) hit = i;
+    // Women's own lower bounds when levels are split by gender (lowest level: none).
+    const women = settings.levels.by_gender && member.gender === 'female';
+    if (v != null) items.forEach((i, n) => {
+      const lo = women ? (n === 0 ? null : i.f_min ?? i.min) : i.min;
+      if (lo == null || lo <= v) hit = i;
+    });
   } else if (mode === 'experience') hit = items.find((i) => (i.buckets || []).includes(member.play_duration));
   return hit ? { key: hit.key, label: hit.label } : null;
 }

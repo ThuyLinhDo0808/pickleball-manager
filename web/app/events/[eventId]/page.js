@@ -10,6 +10,7 @@ import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
+import { HostTicketPasses } from '@/components/TicketPass';
 import EventControls from '@/components/EventControls';
 import EventSurveys from '@/components/EventSurveys';
 import MeetingEvent from '@/components/MeetingEvent';
@@ -20,7 +21,7 @@ import EventFinance from '@/components/EventFinance';
 import { AutoApproveToggle, OrganizersSection, PlaceSheet, RequestsSection } from '@/components/EventPeople';
 import MapLink from '@/components/MapLink';
 import { exportMatchesJpg } from '@/lib/matchImage';
-import { formatDay, hhmm } from '@/lib/dates';
+import { formatDay, hhmm, localDate } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -32,6 +33,7 @@ import { exportEventFinance } from '@/lib/exportExcel';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { CancelDialog, CancelHistoryBadge, CancelLine } from '@/components/CancelHistory';
 import { deadlinesOf, eventStartMs, policyText, refundIfCancelNow } from '@/lib/cancelPolicy';
+import Hint from '@/components/ui/Hint';
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
@@ -40,6 +42,15 @@ export default function EventDetailPage() {
   // Four tabs: details (status, sign-up link, deadlines), players, matches, money.
   const [tab, setTab] = useState('details');
   const [showQr, setShowQr] = useState(false);
+  // Back from "Sửa thông tin" (?saved=1): say the changes were saved.
+  const [justSaved, setJustSaved] = useState(false);
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).get('saved')) return undefined;
+    setJustSaved(true);
+    window.history.replaceState(null, '', window.location.pathname);
+    const id = setTimeout(() => setJustSaved(false), 5000);
+    return () => clearTimeout(id);
+  }, []);
 
   const { data: event, reload: reloadEvent, setData: setEvent } = useLoad(() => api.get(`/api/events/${eventId}`), [eventId]);
   // Opened from the all-clubs calendar: switch to the event's club so the page speaks its
@@ -191,7 +202,7 @@ export default function EventDetailPage() {
   const onEvent = new Set((participants || []).filter((p) => p.status !== 'cancelled').flatMap((p) => [p.source_club_member_id, p.guest_member_id, p.card?.member_id]).filter(Boolean));
   const pending = (participants || []).filter((p) => p.status === 'pending');
   // Guests with a perk go first off the waitlist, so show them first.
-  const waitlist = (participants || []).filter((p) => p.status === 'waitlisted').sort((a, b) => Number(!!b.priority) - Number(!!a.priority));
+  const waitlist = (participants || []).filter((p) => p.status === 'waitlisted').sort((a, b) => Number(!!b.priority) - Number(!!a.priority) || String(a.joined_at).localeCompare(String(b.joined_at)));
   const cancelled = (participants || []).filter((p) => p.status === 'cancelled');
   const requested = (participants || []).filter((p) => p.status === 'requested');
   const counts = {
@@ -219,6 +230,7 @@ export default function EventDetailPage() {
 
   return (
     <AppShell>
+      {justSaved && <p className="card !py-3 mb-4 border-lime-400/60 bg-lime-400/10 text-lime-200 font-semibold" role="status">✓ {t('common.savedLong')}</p>}
       <div className="flex justify-between items-start gap-3 mb-4">
         <div className="min-w-0">
           <h1 className="text-white text-2xl font-bold">{event.title}</h1>
@@ -287,8 +299,21 @@ export default function EventDetailPage() {
 
           {showImport && (
             <div className="card mb-4">
-              <p className="text-gray-400 text-sm mb-2">{t('events.importFromClub')}</p>
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-1">
+              {(() => {
+                const pickable = (clubMembers || []).filter((m) => m.is_active && !onEvent.has(m.id));
+                const all = pickable.length > 0 && pickable.every((m) => selectedIds.includes(m.id));
+                return (
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-gray-400 text-sm">{t('events.importFromClub')}</p>
+                    {pickable.length > 0 && (
+                      <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setSelectedIds(all ? [] : pickable.map((m) => m.id))}>
+                        {all ? `☐ ${t('events.selectNone')}` : `☑ ${t('events.selectAll', { n: pickable.length })}`}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+              <div className="max-h-64 overflow-y-auto flex flex-col gap-1">
                 {(clubMembers || []).filter((m) => m.is_active && !onEvent.has(m.id)).map((m) => (
                   <label key={m.id} className="flex items-center gap-2 text-sm text-gray-200">
                     <input
@@ -338,6 +363,7 @@ export default function EventDetailPage() {
             ))}
           </div>
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
+          <HostTicketPasses event={event} onChanged={refresh} />
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
           <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
@@ -428,10 +454,10 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
   return (
     <section className="card mb-4 !px-2 sm:!px-4">
       <h3 className="text-white font-semibold mb-1 px-2 sm:px-0">{title}</h3>
-      {kind === 'cancelled' && <p className="text-gray-500 text-xs mb-2 px-2 sm:px-0">{t('policy.cancelledHint')}</p>}
+      {kind === 'cancelled' && <Hint text={t('policy.cancelledHint')} className="mb-2" />}
       {rows.length === 0 && <p className="text-gray-400 text-sm px-2 sm:px-0">—</p>}
       <ul className="divide-y divide-navy-700/70">
-        {rows.map((p) => {
+        {rows.map((p, idx) => {
           const c = p.card || {};
           const level = levelText(c.level ?? p.dupr_level, sport, t);
           const money = p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0
@@ -468,7 +494,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>}
                     {p.booking && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('quick.badgeHint', { name: p.booking.contact_name, phone: p.booking.contact_phone })}>⚡ {t('quick.badge')}</span>}
                     {kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && (p.refunded_at
-                      ? <span className={`${BADGE} border-lime-400/60 text-lime-300`} title={p.refunded_by || ''}>✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: new Date(p.refunded_at).toLocaleDateString('vi-VN') })}</span>
+                      ? <span className={`${BADGE} border-lime-400/60 text-lime-300`} title={p.refunded_by || ''}>✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: localDate(new Date(p.refunded_at), 'vi-VN') })}</span>
                       : <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('slot.refundDue')}</span>)}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2.5 text-xs text-gray-400 mt-0.5">
@@ -476,17 +502,18 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     {(c.gender || p.gender) && <span>{(c.gender || p.gender) === 'male' ? '♂' : '♀'} {t(`members.${c.gender || p.gender}`)}</span>}
                     {p.booking && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
                     {sport === 'pickleball' && c.dupr_verified != null ? (
-                      <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white" title={t('dupr.updatedOn', { date: new Date(c.dupr_updated_at).toLocaleDateString('vi-VN') })}>
-                        DUPR ✓ {Number(c.dupr_verified).toFixed(2)} <span className="font-normal opacity-80">· {t('dupr.updatedOn', { date: new Date(c.dupr_updated_at).toLocaleDateString('vi-VN') })}</span>
+                      <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white" title={t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}>
+                        DUPR ✓ {Number(c.dupr_verified).toFixed(2)} <span className="font-normal opacity-80">· {t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}</span>
                       </span>
                     ) : sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}
                   </span>
+                  {kind === 'waitlist' && <span className="block text-sky-300 text-[11px] mt-0.5">{t('events.waitOrder', { n: idx + 1, at: localDate(p.joined_at, 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })}</span>}
                   {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
                   {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}
                   {kind === 'cancelled' && (p.cancelled_at || p.cancel_reason) && (
                     <span className="block text-gray-400 text-[11px] mt-0.5">
-                      {p.cancelled_at && `${t('cancelx.cancelledAt', { at: new Date(p.cancelled_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })} · `}
+                      {p.cancelled_at && `${t('cancelx.cancelledAt', { at: localDate(new Date(p.cancelled_at), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) })} · `}
                       <CancelLine item={{ refund_percent: p.refund_percent, by: p.cancelled_by, reason: p.cancel_reason }} fee={Number(p.fee_amount ?? fee ?? 0)} paid={!!p.fee_paid} />
                     </span>
                   )}

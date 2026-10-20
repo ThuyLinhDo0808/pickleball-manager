@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
 import PlayerNotices from '@/components/PlayerNotices';
 import LinkRequests from '@/components/LinkRequests';
+import Hint from '@/components/ui/Hint';
 
 // One tile of the "spaces" strip: a club (managed or played in), Xé Vé, staff, or "+".
 function SpaceTile({ onClick, href, avatar, label, badge, badgeTone, lines = 2 }) {
@@ -243,7 +244,7 @@ export default function HomeHub() {
           <div className="card text-center py-8">
             <div className="text-4xl mb-2" aria-hidden="true">📅</div>
             <p className="text-gray-300 text-sm">{t('hub.noUpcoming')}</p>
-            {member.length > 0 && <p className="text-gray-500 text-xs mt-1">{t('hub.noUpcomingHint')}</p>}
+            {member.length > 0 && <Hint text={t('hub.noUpcomingHint')} className="mt-1" />}
           </div>
         )}
         <div className="flex flex-col gap-4">

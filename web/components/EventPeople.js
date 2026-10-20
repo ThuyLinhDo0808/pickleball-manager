@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { levelText } from '@/lib/levels';
 import { formatVnd } from '@/lib/format';
+import Hint from '@/components/ui/Hint';
 
 // Where someone stands on the list, as the sheet's buttons name it.
 export const PLACE_OF = { requested: 'requested', waitlisted: 'waitlist', not_playing: 'not_playing', registered: 'main', pending: 'main', checked_in: 'main', no_show: 'main' };
@@ -69,7 +70,7 @@ export function OrganizersSection({ event, people, onOpen }) {
   return (
     <section className="card mb-4">
       <h3 className="text-gray-300 text-xs font-semibold uppercase tracking-wide mb-1">{t('people.organizers')} · {list.length}</h3>
-      <p className="text-gray-500 text-xs mb-3">{t('people.organizersHint')}</p>
+      <Hint text={t('people.organizersHint')} className="mb-3" />
       <div className="flex flex-wrap gap-4">
         {list.map((o) => {
           const place = o.row ? PLACE_OF[o.row.status] : 'not_playing';
@@ -93,7 +94,7 @@ export function RequestsSection({ rows, onPlace, onOpen }) {
   return (
     <section className="card mb-4 border-amber-300/40">
       <h3 className="text-amber-200 font-semibold">🙋 {t('people.requests')} ({rows.length})</h3>
-      <p className="text-gray-400 text-xs mb-2">{t('people.requestsHint')}</p>
+      <Hint text={t('people.requestsHint')} className="mb-2" />
       <ul className="divide-y divide-navy-700">
         {rows.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center gap-2 py-2">
@@ -225,7 +226,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                 </button>
               ))}
             </div>
-            {place === 'waitlist' && !locked && <p className="text-gray-500 text-xs mt-2">{t('place.hint_waitlist')}</p>}
+            {place === 'waitlist' && !locked && <Hint text={t('place.hint_waitlist')} className="mt-2" />}
           </div>
         )}
 

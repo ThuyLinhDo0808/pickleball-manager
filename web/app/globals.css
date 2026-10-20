@@ -300,3 +300,14 @@ html { scroll-behavior: smooth; }
   .lp-sweep, .lp-cursor { display: none !important; }
   .lp-curtain { transition: none !important; }
 }
+
+/* ---- Easy to read and tap (older / low-tech users) --------------------------------------
+   No text smaller than ~12px, small print at 13px, and buttons / fields at least 42px tall
+   (compact buttons marked !py-1 / !py-1.5 stay compact but keep 34px). */
+.text-\[10px\] { font-size: 12px !important; line-height: 1.3; }
+.text-\[11px\] { font-size: 12.5px !important; line-height: 1.35; }
+.text-xs { font-size: 13px; line-height: 1.4; }
+.btn-primary, .btn-secondary, .btn-danger { min-height: 42px; }
+.btn-primary[class*='!py-1'], .btn-secondary[class*='!py-1'], .btn-danger[class*='!py-1'] { min-height: 34px; }
+.input { min-height: 42px; }
+.input[class*='!py-1'] { min-height: 34px; }

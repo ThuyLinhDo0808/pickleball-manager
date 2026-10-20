@@ -6,11 +6,12 @@ import Link from 'next/link';
 import DatePopover from '@/components/DatePopover';
 import { KIND_ICON, STATUS_STYLE } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
-import { todayYmd } from '@/lib/dates';
+import { todayYmd, localDate } from '@/lib/dates';
 import { mapsEmbed, mapsHref } from '@/lib/maps';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { halfHours, policyText } from '@/lib/cancelPolicy';
+import Hint from '@/components/ui/Hint';
 
 export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 // open = upcoming; completed is also set automatically once the slot is over.
@@ -23,19 +24,28 @@ const playFormatOf = (v) => (v === 'men' || v === 'women' ? v : 'mixed');
 // What the fee includes: quick picks that fill the "Dịch vụ" line.
 const SERVICE_PICKS = ['balls', 'water', 'fruit', 'towel', 'parking'];
 // What a session costs the Host (balls are bought in the ball store instead).
-export const COST_CATEGORIES = ['court', 'water', 'coach', 'other'];
+export const COST_CATEGORIES = ['court', 'water', 'other'];
+// A category is picked once ("Khác" as often as needed); "HLV" is no longer offered but an
+// old session that has it keeps showing it.
+const freeCategories = (items, i) => {
+  const used = new Set(items.filter((_, j) => j !== i).map((c) => c.category));
+  const cur = items[i]?.category;
+  return [...COST_CATEGORIES.filter((k) => k === 'other' || !used.has(k)), ...(cur && !COST_CATEGORIES.includes(cur) ? [cur] : [])];
+};
 
 export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   kind,
   title: '',
   event_date: date,
-  start_time: '19:00',
-  end_time: '21:00',
+  start_time: '00:00',
+  end_time: '',
   location: '',
   courts: 2,
   slots: 16,
   level_min: '',
   level_max: '',
+  level_min_f: '',
+  level_max_f: '',
   fee_amount: 0,
   registration_deadline: '',
   cancel_deadline_hours: '12',
@@ -107,6 +117,8 @@ export function formFromEvent(ev) {
     slots: ev.slots ?? 16,
     level_min: ev.level_min ?? '',
     level_max: ev.level_max ?? '',
+    level_min_f: ev.level_min_f ?? '',
+    level_max_f: ev.level_max_f ?? '',
     fee_amount: ev.fee_amount ?? 0,
     registration_deadline: toLocalInput(ev.registration_deadline),
     cancel_deadline_hours: ev.cancel_deadline_hours == null ? '' : String(ev.cancel_deadline_hours),
@@ -165,6 +177,8 @@ export function eventPayload(f) {
     slots: Number(f.slots),
     level_min: f.level_min === '' ? null : Number(f.level_min),
     level_max: f.level_max === '' ? null : Number(f.level_max),
+    level_min_f: f.level_min_f === '' || f.level_min_f == null ? null : Number(f.level_min_f),
+    level_max_f: f.level_max_f === '' || f.level_max_f == null ? null : Number(f.level_max_f),
     fee_amount: Number(f.fee_amount || 0),
     registration_deadline: deadline ? new Date(deadline).toISOString() : null,
     cancel_deadline_hours: f.cancel_deadline_hours === '' ? null : Number(f.cancel_deadline_hours),
@@ -223,21 +237,31 @@ function CostItems({ items, onChange, sessions }) {
   return (
     <div className="col-span-2 md:col-span-4 rounded-xl border border-orange-400/30 bg-orange-400/5 p-3">
       <p className="text-orange-100 text-sm font-semibold">💸 {t('cost.title')}</p>
-      <p className="text-gray-400 text-xs mt-0.5">{t('cost.hint')}</p>
-      <div className="flex flex-col gap-2 mt-2">
+      <Hint text={t('cost.hint')} className="mt-0.5" />
+      {items.length > 0 && (
+        <div className="hidden sm:flex gap-2 mt-2 text-[11px] text-gray-400">
+          <span className="w-36 shrink-0">{t('cost.colWhat')}</span>
+          <span className="w-36 shrink-0 text-right">{t('cost.colAmount')}</span>
+          <span>{t('cost.colNote')}</span>
+        </div>
+      )}
+      <div className="flex flex-col gap-2 mt-1">
         {items.map((c, i) => (
           <div key={i} className="flex flex-wrap items-center gap-2">
             <select className="input !w-36 shrink-0" value={c.category} onChange={(e) => setAt(i, { category: e.target.value })} aria-label={t('fin.category')}>
-              {COST_CATEGORIES.map((k) => <option key={k} value={k}>{t(`cost.cat_${k}`)}</option>)}
+              {freeCategories(items, i).map((k) => <option key={k} value={k}>{t(`cost.cat_${k}`)}</option>)}
             </select>
-            <input className="input no-spin !w-32 shrink-0 text-right tabular-nums" type="number" inputMode="numeric" min="0" step="1000" placeholder="0" value={c.amount} onChange={(e) => setAt(i, { amount: e.target.value })} aria-label={t('fin.amount')} />
+            <label className="relative shrink-0">
+              <input className="input no-spin !w-36 text-right tabular-nums !pr-7" type="number" inputMode="numeric" min="0" step="1000" placeholder={t('cost.amountPh', { what: t(`cost.cat_${c.category}`).toLowerCase() })} value={c.amount} onChange={(e) => setAt(i, { amount: e.target.value })} aria-label={`${t('cost.colAmount')} — ${t(`cost.cat_${c.category}`)}`} />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">đ</span>
+            </label>
             <input className="input !w-auto flex-1 min-w-[10rem]" placeholder={c.category === 'other' ? t('cost.otherPh') : t('cost.notePh')} required={c.category === 'other' && Number(c.amount) > 0} value={c.note} onChange={(e) => setAt(i, { note: e.target.value })} aria-label={t('fin.note')} />
             <button type="button" className="text-red-400 px-2 text-lg leading-none" aria-label={t('common.delete')} onClick={() => onChange(items.filter((_, j) => j !== i))}>×</button>
           </div>
         ))}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
-        <button type="button" className="btn-secondary !py-1 text-xs" disabled={items.length >= 10} onClick={() => onChange([...items, { category: items.length ? 'water' : 'court', amount: '', note: '' }])}>＋ {t('cost.add')}</button>
+        <button type="button" className="btn-secondary !py-1 text-xs" disabled={items.length >= 10} onClick={() => onChange([...items, { category: freeCategories([...items, { category: null }], items.length)[0] || 'other', amount: '', note: '' }])}>＋ {t('cost.add')}</button>
         {total > 0 && (
           <span className="text-orange-200 text-sm tabular-nums">
             {t('cost.perSession', { v: total.toLocaleString('vi-VN') })}
@@ -261,7 +285,12 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const [f, setF] = useState(() => ({ apply_to: seriesCount > 0 ? 'series' : 'one', ...initial }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const set = (patch) => setF((prev) => ({ ...prev, ...patch }));
+  const [saved, setSaved] = useState(false); // "✓ Đã lưu" after a successful save
+  const [showWomen, setShowWomen] = useState(false);
+  const set = (patch) => {
+    setSaved(false);
+    setF((prev) => ({ ...prev, ...patch }));
+  };
 
   async function submit(e) {
     e.preventDefault();
@@ -269,13 +298,17 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     if (!f.event_date) return setError(t('create.needDate'));
     if (f.start_time && f.end_time && f.end_time <= f.start_time) return setError(t('create.endAfterStart'));
     if (f.level_min !== '' && f.level_max !== '' && Number(f.level_max) < Number(f.level_min)) return setError(t('create.duprRange'));
+    if (f.level_min_f !== '' && f.level_max_f !== '' && f.level_min_f != null && f.level_max_f != null && Number(f.level_max_f) < Number(f.level_min_f)) return setError(t('create.duprRange'));
     if (f.map_url.trim() && !/^https:\/\/\S+$/i.test(f.map_url.trim())) return setError(t('map.badLink'));
     if (f.cost_items.some((c) => c.category === 'other' && Number(c.amount) > 0 && !c.note.trim())) return setError(t('cost.otherNeedNote'));
     setBusy(true);
+    setSaved(false);
     try {
       await onSubmit(f);
+      setSaved(true);
     } catch (err) {
       setError(err.message);
+    } finally {
       setBusy(false);
     }
   }
@@ -291,11 +324,20 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     const patch = { level_keys: keys };
     if (r) Object.assign(patch, { level_min: r.min ?? '', level_max: r.max ?? '' });
     else if (!keys.length && wasAuto) Object.assign(patch, { level_min: '', level_max: '' });
+    // Levels split by gender: the women's range too.
+    if (cs.settings.levels.by_gender) {
+      const rf = keys.length ? rangeOfKeys(cs.settings.levels, keys, true) : null;
+      if (rf) Object.assign(patch, { level_min_f: rf.min ?? '', level_max_f: rf.max ?? '' });
+      else if (!keys.length && wasAuto) Object.assign(patch, { level_min_f: '', level_max_f: '' });
+    }
     set(patch);
   };
+  // Women's own DUPR range: on when the community splits levels by gender, when the kèo
+  // already has one, or when the Host asks for it.
+  const genderSplit = showWomen || !!cs?.settings?.levels?.by_gender || (f.level_min_f !== '' && f.level_min_f != null) || (f.level_max_f !== '' && f.level_max_f != null);
   const levelRangeAuto = !!(f.level_keys || []).length && !!levelItems.length && !!rangeOfKeys(cs.settings.levels, f.level_keys);
   const autoAt = autoDeadline(deadlineDate || f.event_date, f.start_time, f.cancel_deadline_hours);
-  const fmtLocal = (v) => (v ? new Date(v).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—');
+  const fmtLocal = (v) => (v ? localDate(new Date(v), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—');
   const perSessionCost = costTotal(f.cost_items);
   const maxIncome = Number(f.fee_amount) * Number(f.slots || 0);
   // Where players pay: the club's account, else the host's. Neither set -> players
@@ -352,7 +394,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               required
               maxLength={120}
               readOnly={lockTitle}
-              placeholder={meeting ? t('meeting.contentPh') : t('create.titlePh')}
+              placeholder={meeting ? t('meeting.contentPh') : undefined}
               value={f.title}
               onChange={(e) => !lockTitle && set({ title: e.target.value })}
             />
@@ -448,12 +490,28 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               })}
             </div>
           </Field>
-          <Field label={t('events.levelMin')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null}>
+          <Field label={genderSplit ? t('events.levelMinMen') : t('events.levelMin')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null}>
             <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
           </Field>
-          <Field label={t('events.levelMax')}>
+          <Field label={genderSplit ? t('events.levelMaxMen') : t('events.levelMax')}>
             <LevelInput value={f.level_max} onChange={(v) => set({ level_max: v })} placeholder="—" />
           </Field>
+          {genderSplit ? (
+            <>
+              <Field label={t('events.levelMinWomen')}>
+                <LevelInput value={f.level_min_f} onChange={(v) => set({ level_min_f: v })} placeholder="—" />
+              </Field>
+              <Field label={t('events.levelMaxWomen')}>
+                <LevelInput value={f.level_max_f} onChange={(v) => set({ level_max_f: v })} placeholder="—" />
+              </Field>
+            </>
+          ) : (
+            !meeting && (
+              <div className="col-span-2 md:col-span-4 -mt-1">
+                <button type="button" className="text-xs text-lime-400 underline" onClick={() => setShowWomen(true)}>＋ {t('events.addWomenRange')}</button>
+              </div>
+            )
+          )}
           <Field label={t('policy.label')} hint={f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
             <select className="input" value={f.cancel_deadline_hours} onChange={(e) => set({ cancel_deadline_hours: e.target.value })}>
               {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hoursShort', { h })}</option>)}
@@ -523,7 +581,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         {seriesCount > 0 && (
           <section className="card mb-4 border-sky-400/40">
             <h2 className="text-white font-semibold">🔁 {t('series.title')}</h2>
-            <p className="text-gray-400 text-xs mt-0.5">{t('series.hint')}</p>
+            <Hint text={t('series.hint')} className="mt-0.5" />
             <div className="mt-2 flex flex-col gap-2">
               {[['series', t('series.all', { n: seriesCount + 1 })], ['one', t('series.one')]].map(([v, label]) => (
                 <label key={v} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${f.apply_to === v ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300'}`}>
@@ -536,8 +594,9 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         )}
         {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">⚠️ {warning}</p>}
         {error && <p className="text-red-400 text-sm mb-3 lg:hidden">{error}</p>}
+        {saved && <p className="text-lime-300 text-sm mb-3 lg:hidden" role="status">✓ {t('common.savedLong')}</p>}
         <div className="flex gap-3 lg:hidden">
-          <button className="btn-primary" disabled={busy || disabled}>{busy ? '…' : submitLabel}</button>
+          <button className="btn-primary" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
           <Link href={cancelHref} className="btn-secondary">{t('common.cancel')}</Link>
         </div>
         </div>
@@ -557,7 +616,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                 {sessions != null
                   ? t('createx.sessionsN', { n: sessions })
                   : f.event_date
-                    ? new Date(`${f.event_date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })
+                    ? localDate(new Date(`${f.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })
                     : '—'}
               </dd>
               <dt className="text-gray-400">🕒</dt>
@@ -603,7 +662,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             )}
             <div className="p-4 border-t border-navy-700 flex flex-col gap-2">
               {error && <p className="text-red-400 text-sm">{error}</p>}
-              <button className="btn-primary w-full" disabled={busy || disabled}>{busy ? '…' : submitLabel}</button>
+              <button className="btn-primary w-full" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
+              {saved && <p className="text-lime-300 text-sm text-center" role="status">✓ {t('common.savedLong')}</p>}
               <Link href={cancelHref} className="btn-secondary w-full text-center">{t('common.cancel')}</Link>
             </div>
           </div>

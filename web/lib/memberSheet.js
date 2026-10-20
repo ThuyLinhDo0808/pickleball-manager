@@ -10,7 +10,9 @@ export const MEMBER_FIELDS = [
   ['gender', 'members.gender'],
   ['birth', 'members.birthDate'],
   ['phone', 'common.phone'],
-  ['level', 'common.level'],
+  ['level', 'common.level'], // badminton: the level step
+  ['dupr', 'members.colDuprLinked'], // pickleball: DUPR (linked) and DUPR the player typed
+  ['dupr_self', 'members.colDuprSelf'],
   ['district', 'memberX.district'],
   ['play_duration', 'memberX.playDuration'],
   ['joined', 'members.joined'],
@@ -22,20 +24,23 @@ export const MEMBER_FIELDS = [
 const headerOf = (t, [f, key]) => (f === 'stt' ? 'STT' : t(key));
 
 // Column specs for lib/xlsxBook.
-const WIDTH = { full_name: 26, member_type: 15, tier: 12, gender: 10, birth: 13, phone: 15, level: 12, district: 16, play_duration: 16, joined: 13, active: 12, notes: 32, account: 26, id: 38 };
-export function memberColumns(t) {
-  return MEMBER_FIELDS.map((fd) => {
+// Pickleball shows the two DUPR columns, badminton its level.
+const fieldsFor = (pickleball) => MEMBER_FIELDS.filter(([f]) => (pickleball ? f !== 'level' : !['dupr', 'dupr_self'].includes(f)));
+
+const WIDTH = { dupr: 10, dupr_self: 14, full_name: 26, member_type: 15, tier: 12, gender: 10, birth: 13, phone: 15, level: 12, district: 16, play_duration: 16, joined: 13, active: 12, notes: 32, account: 26, id: 38 };
+export function memberColumns(t, pickleball = true) {
+  return fieldsFor(pickleball).map((fd) => {
     const [f] = fd;
     if (f === 'stt') return { header: 'STT', field: f, type: 'int', width: 6 };
-    return { header: headerOf(t, fd), field: f, width: WIDTH[f], ...(['birth', 'joined'].includes(f) ? { type: 'text' } : f === 'phone' ? { type: 'phone' } : {}), ...(f === 'notes' ? { wrap: true } : {}), ...(['account', 'id'].includes(f) ? { muted: true } : {}) };
+    return { header: headerOf(t, fd), field: f, width: WIDTH[f], ...(['dupr', 'dupr_self'].includes(f) ? { type: 'decimal' } : {}), ...(['birth', 'joined'].includes(f) ? { type: 'text' } : f === 'phone' ? { type: 'phone' } : {}), ...(f === 'notes' ? { wrap: true } : {}), ...(['account', 'id'].includes(f) ? { muted: true } : {}) };
   });
 }
 
 const dmy = (v) => (v ? String(v).slice(0, 10).split('-').reverse().join('/') : '');
 
 // One member -> one row, in the column order above.
-export function memberRow(m, i, t, levelText) {
-  return MEMBER_FIELDS.map(([f]) => {
+export function memberRow(m, i, t, levelText, pickleball = true) {
+  return fieldsFor(pickleball).map(([f]) => {
     switch (f) {
       case 'stt': return i + 1;
       case 'full_name': return m.full_name;
@@ -45,6 +50,8 @@ export function memberRow(m, i, t, levelText) {
       case 'birth': return m.birth_date ? dmy(m.birth_date) : m.birth_year ? String(m.birth_year) : '';
       case 'phone': return m.phone || '';
       case 'level': return m.dupr_level == null ? '' : levelText ? levelText(m.dupr_level) ?? '' : m.dupr_level;
+      case 'dupr': return m.dupr_linked ?? m.dupr_manual ?? '';
+      case 'dupr_self': return m.dupr_self ?? '';
       case 'district': return m.district || '';
       case 'play_duration': return m.play_duration ? t(`memberX.dur_${m.play_duration}`) : '';
       case 'joined': return m.joined_on ? m.joined_on.slice(0, 7).split('-').reverse().join('/') : '';

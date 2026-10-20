@@ -4,6 +4,8 @@ import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 // Host: guests holding a place while their payment is checked.
 //   proof_submitted       -> view the transfer screenshot, then Confirm / Reject
@@ -15,7 +17,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
   if (!rows.length) return null;
 
   const fee = (p) => Number(p.fee_amount ?? event.fee_amount ?? 0);
-  const time = (iso) => (iso ? new Date(iso).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
+  const time = (iso) => (iso ? localDate(new Date(iso), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '');
   // A quick booking (invite link) is one transfer for several slots: one line, one action.
   const groups = [];
   const byBooking = new Map();
@@ -38,7 +40,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
       setViewing({ g, image: r.image });
     } catch (err) {
       // Deleted by the retention rule (PROOF_RETENTION_DAYS after the session).
-      if (err.payload?.code === 'proof_purged') return window.alert(t('legal.proofPurged', { date: new Date(err.payload.purged_at).toLocaleDateString('vi-VN') }));
+      if (err.payload?.code === 'proof_purged') return window.alert(t('legal.proofPurged', { date: localDate(new Date(err.payload.purged_at), 'vi-VN') }));
       window.alert(err.message);
     }
   }
@@ -47,7 +49,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
   async function act(g, action, body = {}) {
     setBusy(true);
     try {
-      for (const p of action === 'cancel' ? g.rows : [g.p]) await api.post(`/api/events/${event.id}/participants/${p.id}/${action}`, body);
+      for (const p of ['cancel', 'place'].includes(action) ? g.rows : [g.p]) await api.post(`/api/events/${event.id}/participants/${p.id}/${action}`, body);
       setViewing(null);
       onChanged();
     } catch (err) {
@@ -65,7 +67,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
   return (
     <div className="card mb-4 border-sky-400/40">
       <h3 className="text-sky-200 font-semibold mb-1">💸 {t('review.title')} ({groups.length})</h3>
-      <p className="text-gray-500 text-xs mb-2">{t('review.hint')}</p>
+      <Hint text={t('review.hint')} className="mb-2" />
       <div className="flex flex-col divide-y divide-navy-700">
         {sorted.map((g) => {
           const p = g.p;
@@ -101,6 +103,9 @@ export default function PaymentReview({ event, rows, onChanged }) {
               {p.has_proof && <button className="text-sky-300 text-xs font-semibold" onClick={() => open(g)}>{t('review.view')}</button>}
               <button className="text-lime-400 text-xs" disabled={busy} onClick={() => window.confirm(t('review.confirmAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'confirm-payment')}>
                 {p.has_proof ? t('review.confirm') : t('review.cash')}
+              </button>
+              <button className="text-sky-300 text-xs" disabled={busy} title={t('review.toWaitlistHint')} onClick={() => window.confirm(t('review.toWaitlistAsk', { name: nameOf(g) })) && act(g, 'place', { to: 'waitlist' })}>
+                ⏳ {t('review.toWaitlist')}
               </button>
               <button className="text-red-400 text-xs" disabled={busy} onClick={() => window.confirm(t('policy.cancelAsk', { name: nameOf(g) })) && act(g, 'cancel')}>
                 {t('events.cancel')}

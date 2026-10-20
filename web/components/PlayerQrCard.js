@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 async function toDataUrl(text, width) {
   const QRCode = (await import('qrcode')).default;
@@ -43,7 +44,7 @@ export default function PlayerQrCard({ code, onRotated }) {
       </button>
       <div className="min-w-0">
         <h2 className="text-white font-semibold">{t('qr.myCode')}</h2>
-        <p className="text-gray-400 text-xs mt-1">{t('qr.myCodeHint')}</p>
+        <Hint text={t('qr.myCodeHint')} className="mt-1" />
         <div className="flex gap-3 mt-2 text-sm">
           <button type="button" className="text-lime-400" onClick={() => setOpen(true)}>{t('qr.enlarge')}</button>
           <button type="button" className="text-gray-400" onClick={rotate}>{t('qr.rotate')}</button>
@@ -54,7 +55,7 @@ export default function PlayerQrCard({ code, onRotated }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {big && <img src={big} alt={t('qr.myCode')} className="w-full h-auto" />}
         </div>
-        <p className="text-gray-400 text-xs mt-3 text-center">{t('qr.myCodeHint')}</p>
+        <Hint text={t('qr.myCodeHint')} className="mt-3" />
       </Modal>
     </section>
   );

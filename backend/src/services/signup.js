@@ -35,7 +35,10 @@ async function needsApproval(event, standing, userId) {
   const settings = await require('./communitySettings').forClub(event.club_id).catch(() => null);
   if (!settings?.signup?.auto_dupr) return true;
   const rating = await verifiedDupr(event.club_id, standing?.member, userId);
-  return !(rating != null && duprFits(rating, event));
+  if (rating == null) return true;
+  let gender = standing?.member?.gender || null;
+  if (!gender && userId) gender = (await supabase.from('player_profiles').select('gender').eq('user_id', userId).maybeSingle()).data?.gender || null;
+  return !duprFits(rating, event, gender);
 }
 
 // The player's DUPR doubles rating as DUPR has it (not self-entered), or null. The newest one
@@ -55,11 +58,16 @@ async function verifiedDupr(clubId, member, userId) {
 }
 
 // Inside the kèo's level range (no range = any level).
-function duprFits(rating, event) {
-  if (event.level_min != null && rating < Number(event.level_min)) return false;
-  if (event.level_max != null && rating > Number(event.level_max)) return false;
+function duprFits(rating, event, gender = null) {
+  // Levels split by gender: women use the kèo's women's range when it has one.
+  const women = gender === 'female' && (event.level_min_f != null || event.level_max_f != null);
+  const lo = women ? event.level_min_f : event.level_min;
+  const hi = women ? event.level_max_f : event.level_max;
+  if (lo != null && rating < Number(lo)) return false;
+  if (hi != null && rating > Number(hi)) return false;
   return true;
 }
+
 const MAX_PROOF = 400000;
 
 function httpError(message, status, code) {

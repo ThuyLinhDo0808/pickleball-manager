@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
-const day = (iso) => new Date(iso).toLocaleDateString('vi-VN');
+const day = (iso) => localDate(new Date(iso), 'vi-VN');
 
 // In a member's details, when no account is linked yet (the phone did not match):
 // a personal link to send them, or the account they already have (they confirm it).

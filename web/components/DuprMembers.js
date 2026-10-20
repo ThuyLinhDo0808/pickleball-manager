@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
-const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('vi-VN') : '—');
+const fmtDate = (iso) => (iso ? localDate(new Date(iso), 'vi-VN') : '—');
 const STATUS_TONE = {
   linked: 'border-lime-400/60 text-lime-300',
   not_in_club: 'border-amber-300/60 text-amber-200',
@@ -213,7 +215,7 @@ export default function DuprMembers({ club }) {
           </table>
         </div>
         {!list.length && <p className="text-gray-500 text-sm p-4">{t('memx.noMatch')}</p>}
-        <p className="text-gray-500 text-xs px-3 py-2 border-t border-navy-700">{t('duprm.statusHint')}</p>
+        <Hint text={t('duprm.statusHint')} />
       </section>
 
       {/* On DUPR, nobody in the club yet */}

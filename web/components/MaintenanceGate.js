@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
-const fmt = (iso, lang) => (iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-GB' : 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '');
+const fmt = (iso, lang) => (iso ? localDate(new Date(iso), lang === 'en' ? 'en-GB' : 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }, true) : '');
 function left(iso, now) {
   const ms = Math.max(0, Date.parse(iso) - now);
   const h = Math.floor(ms / 3600e3);

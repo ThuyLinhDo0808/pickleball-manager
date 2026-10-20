@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { dmy } from '@/lib/memberDates';
+import Hint from '@/components/ui/Hint';
 
 // ⚡ Ưu tiên chip for a guest, with their ticket discount (— when none). Guests have
 // no VIP: that comes with a membership plan, for fixed members.
@@ -91,7 +92,7 @@ export function GuestPerkSettings() {
       <p className="text-gray-300">
         <GuestPerkBadge perk="priority" /> <span className="ml-1">{t('guests.priorityMeans')}</span>
       </p>
-      <p className="text-gray-500 text-xs">{t('guests.perkHowTo')}</p>
+      <Hint text={t('guests.perkHowTo')} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 // A member's personal link from the club: "This is me" joins the account to that member
 // (the Host typed them in by hand, so the phone may not match).
@@ -60,7 +61,7 @@ export default function ClaimPage() {
           ) : (
             <>
               <p className="mt-4 text-gray-200">{t('mlink.claimAsk', { name: c.member_name })}</p>
-              <p className="mt-1 text-xs text-gray-400">{t('mlink.claimHint', { date: new Date(c.expires_at).toLocaleDateString('vi-VN') })}</p>
+              <p className="mt-1 text-xs text-gray-400">{t('mlink.claimHint', { date: localDate(new Date(c.expires_at), 'vi-VN') })}</p>
               {!user ? (
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link href={`/sign-in?next=${encodeURIComponent(here)}`} className="btn-primary">{t('mlink.signIn')}</Link>

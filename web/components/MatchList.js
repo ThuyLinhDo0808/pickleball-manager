@@ -4,6 +4,7 @@ import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import GamesInput, { gamesPayload, gamesText, inferFormat } from '@/components/GamesInput';
+import { localDate } from '@/lib/dates';
 
 function playerName(mp) {
   return mp.club_members?.full_name || mp.event_participants?.full_name || '?';
@@ -102,7 +103,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
             <div key={m.id} className="card">
               <div className="flex items-center justify-between gap-2 text-xs text-gray-400 mb-2">
                 <span>
-                  {new Date(m.played_at).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })}
+                  {localDate(new Date(m.played_at), lang === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }, true)}
                   {' · '}
                   {t(`matches.${m.match_type}`)}
                 </span>

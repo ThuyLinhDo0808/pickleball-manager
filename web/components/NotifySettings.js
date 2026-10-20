@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 // Host: where "moved up from the waitlist" notices go. Players get an email when the
 // Host turns it on; this webhook is for everything else (Make / Zapier / n8n -> Zalo
@@ -103,7 +104,7 @@ export default function NotifySettings({ bare = false } = {}) {
         </div>
       </form>
       {msg && <p className="text-sm text-gray-300 mt-2">{msg}</p>}
-      <p className="text-gray-500 text-xs mt-2">{t('notify.webhookHelp')}</p>
+      <Hint text={t('notify.webhookHelp')} className="mt-2" />
     </div>
   );
 }

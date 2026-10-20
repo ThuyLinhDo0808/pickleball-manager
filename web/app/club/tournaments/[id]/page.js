@@ -16,6 +16,7 @@ import { formatVnd } from '@/lib/format';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 // Badminton events by format/division (Đơn nam, Đôi nữ, Đôi nam nữ...).
 const BADMINTON_CAT = { 'singles/men': 'ms', 'singles/women': 'ws', 'doubles/men': 'md', 'doubles/women': 'wd', 'mixed/open': 'xd' };
@@ -388,7 +389,7 @@ function OpenPlaces({ tour, onChange }) {
   return (
     <section className="card mb-4 border-amber-300/50">
       <h2 className="text-amber-200 font-semibold">⬚ {t('pairing.openTitle', { n: open.length })}</h2>
-      <p className="text-gray-400 text-xs mb-3">{t('pairing.openHint')}</p>
+      <Hint text={t('pairing.openHint')} className="mb-3" />
       <div className="flex flex-col gap-2">
         {open.map((tm) => {
           const mate = byId.get(tm.player1_id);

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 // Asked once per account per page load; the code page clears it when confirmed.
 const known = new Map(); // user id -> status
@@ -14,7 +15,7 @@ export function emailVerified() {
 }
 
 const HIDE = ['/verify-email', '/sign-in', '/welcome', '/reset-password', '/onboarding', '/privacy', '/terms'];
-const fmt = (d) => (d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
+const fmt = (d) => (d ? localDate(new Date(d), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '');
 
 // Accounts made with the quick sign-up and not confirmed yet: a bar on every page with
 // the deadline and a link to type the code.

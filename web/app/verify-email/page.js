@@ -7,6 +7,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { emailVerified } from '@/components/EmailVerifyBanner';
+import { localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 const COOLDOWN = 60; // seconds between two "send a new code"
 
@@ -16,7 +18,7 @@ function nextPath() {
   return next.startsWith('/') && !next.startsWith('//') ? next : '/home';
 }
 
-const fmt = (d) => (d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
+const fmt = (d) => (d ? localDate(new Date(d), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '');
 
 // Right after sign-up (and from the reminder bar): type the 6-digit code emailed to the
 // account. The link in the same email lands here too and confirms on its own. "Later"
@@ -130,7 +132,7 @@ export default function VerifyEmailPage() {
             <div className="text-4xl" aria-hidden="true">📬</div>
             <h1 className="text-white text-xl font-bold mt-2">{t('everify.title')}</h1>
             <p className="text-gray-300 text-sm mt-1">{t('everify.body', { email: st.email })}</p>
-            <p className="text-gray-500 text-xs mt-1">{t('everify.spamHint')}</p>
+            <Hint text={t('everify.spamHint')} className="mt-1" />
             <form onSubmit={submit} className="mt-4">
               <label htmlFor="verify-code" className="text-xs text-gray-400">{t('everify.codeLabel')}</label>
               <input

@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useLoad } from '@/lib/useLoad';
 import { useI18n } from '@/context/I18nContext';
 import { PROOF_RETENTION_DAYS } from '@/lib/legal';
+import { localDate } from '@/lib/dates';
 
 // "My data": download everything the app keeps about this account (JSON), and which
 // version of the Terms / Privacy Policy was accepted.
@@ -44,7 +45,7 @@ export default function MyData() {
       </div>
       {consent?.accepted_at && (
         <p className="text-gray-500 text-xs mt-3">
-          {t('legal.acceptedOn', { version: consent.accepted_version, date: new Date(consent.accepted_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) })}
+          {t('legal.acceptedOn', { version: consent.accepted_version, date: localDate(new Date(consent.accepted_at), 'vi-VN', { dateStyle: 'short', timeStyle: 'short' }, true) })}
         </p>
       )}
       {error && <p className="text-red-300 text-sm mt-2" role="alert">{error}</p>}

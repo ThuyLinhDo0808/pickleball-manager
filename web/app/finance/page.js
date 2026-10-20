@@ -11,10 +11,11 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { todayYmd } from '@/lib/dates';
+import { todayYmd, localDate } from '@/lib/dates';
 
 import { categoryLabel, EXPENSE_COLOR, INCOME_COLOR } from '@/lib/finance';
 import LockedFeature from '@/components/LockedFeature';
+import Hint from '@/components/ui/Hint';
 
 function Tile({ icon, label, value, tone = 'text-white', sub }) {
   return (
@@ -67,7 +68,7 @@ function DailyOverview({ daily, isYear, label }) {
   return (
     <section className="card !p-5 mb-4">
       <h2 className="text-white font-semibold mb-1">📅 {t('social.daily')} · {label}</h2>
-      {isYear && <p className="text-gray-500 text-xs mb-2">{t('social.dailyYearHint')}</p>}
+      {isYear && <Hint text={t('social.dailyYearHint')} className="mb-2" />}
       {!daily && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {daily && daily.days.length === 0 && <p className="text-gray-400 text-sm">{t('social.dailyNone')}</p>}
       {daily && daily.days.length > 0 && (
@@ -87,7 +88,7 @@ function DailyOverview({ daily, isYear, label }) {
             <tbody>
               {daily.days.map((d) => (
                 <tr key={d.date}>
-                  <td className="text-gray-200 whitespace-nowrap capitalize">{new Date(`${d.date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td>
+                  <td className="text-gray-200 whitespace-nowrap capitalize">{localDate(new Date(`${d.date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td>
                   <td className="text-right tabular-nums text-gray-300">{d.sessions || '—'}</td>
                   <td className="text-right tabular-nums text-gray-300">{d.players || '—'}</td>
                   <td className="text-right tabular-nums text-lime-400">{formatVnd(d.income)}</td>
@@ -259,7 +260,7 @@ export default function FinanceOverview() {
                     <td>
                       <Link href={`/events/${e.event_id}`} className="text-white hover:text-lime-400">{e.title}</Link>
                     </td>
-                    <td className="text-gray-300">{new Date(`${e.event_date}T00:00:00`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB')}</td>
+                    <td className="text-gray-300">{localDate(new Date(`${e.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}</td>
                     <td className="text-right tabular-nums text-gray-300">{e.players}</td>
                     <td className="text-right tabular-nums text-gray-300">{formatVnd(e.income)}</td>
                     <td className="text-right tabular-nums text-gray-300">{formatVnd(e.expense)}</td>

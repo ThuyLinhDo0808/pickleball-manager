@@ -6,7 +6,7 @@ const { emailReady } = require('./notify');
 
 const BATCH = 50;
 const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const fmt = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : null);
+const fmt = (iso) => (iso ? require('./dates').vnDateTime(iso) : null);
 
 async function pageAll(build) {
   const out = [];

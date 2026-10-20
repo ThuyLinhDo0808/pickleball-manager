@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { exportRankings } from '@/lib/exportExcel';
+import { localDate } from '@/lib/dates';
 
 const PERIODS = ['day', 'month', 'quarter', 'year', 'all'];
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -31,7 +32,7 @@ function shift(period, ymd, dir) {
 function periodLabel(period, ymd, t, lang) {
   const [y, m, d] = ymd.split('-').map(Number);
   if (period === 'all') return t('rankings.all');
-  if (period === 'day') return new Date(y, m - 1, d).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (period === 'day') return localDate(new Date(y, m - 1, d), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
   if (period === 'month') return `${t('rankings.month')} ${m}/${y}`;
   if (period === 'quarter') return `${t('rankings.quarter')} ${Math.ceil(m / 3)}/${y}`;
   return `${t('rankings.year')} ${y}`;

@@ -110,6 +110,8 @@ const summary = async (event) => ({
   fee: Number(event.fee_amount || 0),
   level_min: event.level_min,
   level_max: event.level_max,
+  level_min_f: event.level_min_f ?? null,
+  level_max_f: event.level_max_f ?? null,
   free_places: await freePlaces(event),
   max_slots: MAX_SLOTS,
 });

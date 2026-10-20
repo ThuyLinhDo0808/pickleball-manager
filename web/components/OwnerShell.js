@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 // Line icons (24×24, stroke) for the console menu.
 const ICON = {
@@ -43,6 +44,7 @@ const GROUPS = [
     ['/owner/hosts', 'owner.tabHosts', 'hosts', 'hosts'],
     ['/owner/clubs', 'owner.tabClubs', 'clubs', 'hosts'],
     ['/owner/club-requests', 'owner.tabClubRequests', 'requests', 'hosts', 'club_requests'],
+    ['/owner/featured', 'owner.tabFeatured', 'clubs', null],
     ['/owner/handovers', 'owner.tabHandovers', 'handovers', null, 'handovers'],
   ]],
   ['owner.grp_revenue', [
@@ -275,7 +277,7 @@ export function OwnerSection({ title, hint, action, children, className = '' }) 
 
 // Shared bits for the owner pages.
 export const fmtDate = (ymd) => (ymd ? String(ymd).slice(0, 10).split('-').reverse().join('/') : '—');
-export const fmtTime = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+export const fmtTime = (iso) => (iso ? localDate(new Date(iso), 'vi-VN', { dateStyle: 'short', timeStyle: 'short' }, true) : '—');
 export const TIER_BADGE = {
   free: 'bg-navy-700 text-gray-300',
   basic: 'bg-sky-400/20 text-sky-200',

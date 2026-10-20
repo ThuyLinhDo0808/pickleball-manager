@@ -11,6 +11,7 @@ import PlayerShell from '@/components/PlayerShell';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import Hint from '@/components/ui/Hint';
 
 const empty = { full_name: '', phone: '', dupr_level: '', dupr_id: '', badminton_level: '', gender: '', birth_date: '', avatar: null };
 
@@ -137,7 +138,7 @@ export default function PlayerProfile() {
             onChange={(e) => setForm({ ...form, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })}
           />
           <p className="text-sky-200 text-xs mt-1">ℹ️ {t('dupr.idOptional')}</p>
-          <p className="text-gray-500 text-xs mt-1">{t('dupr.idHow')}</p>
+          <Hint text={t('dupr.idHow')} className="mt-1" />
           {dupr && (dupr.linked || dupr.dupr_id) && (
             <div className="mt-2">
               <DuprCard dupr={dupr} showLink={false} />
