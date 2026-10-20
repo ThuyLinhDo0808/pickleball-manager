@@ -206,8 +206,7 @@ function PlanEditor({ host, onSaved }) {
   return (
     <form onSubmit={save} className="card !p-4 flex flex-col gap-4">
       <div>
-        <h2 className="text-white font-semibold">💎 {t('owner.planTitle')}</h2>
-        <Hint text={t('owner.planHint')} className="mt-0.5" />
+        <h2 className="text-white font-semibold">💎 {t('owner.planTitle')} <Hint inline text={t('owner.planHint')} /></h2>
       </div>
 
       <ProductBlock
@@ -513,7 +512,7 @@ export default function OwnerHostPage() {
               <p className="text-gray-500 text-xs mt-1">{t('owner.joined', { at: fmtDate(h.created_at) })} · {t('owner.lastSeen', { at: fmtTime(h.last_sign_in_at) })}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier !== 'free' && h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier !== 'free' && h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
               {h.billing === 'paying' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-lime-400/15 text-lime-200" title={t('owner.billPayingHint')}>💵 {t('owner.billPaying')}</span>}
               {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>🎁 {t('owner.billGifted')}</span>}
               {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM {String(h.sm_tier || 'basic').toUpperCase()}{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}

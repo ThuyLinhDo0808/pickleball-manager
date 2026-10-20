@@ -129,7 +129,7 @@ export default function PlayerProfile() {
           <label className="text-xs text-gray-400" htmlFor="dupr-id">{t('dupr.idLabel')}</label>
           <input
             id="dupr-id"
-            className="input uppercase tracking-wider"
+            className="input"
             maxLength={10}
             autoCapitalize="characters"
             autoComplete="off"

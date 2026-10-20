@@ -482,7 +482,7 @@ export default function AttendancePage() {
                   {view.guests.length > 0 && (
                     <tr className="bg-navy-900/70">
                       <td className="sticky left-0 bg-navy-900" />
-                      <td className="sticky left-10 bg-navy-900 text-sky-300 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">{t('stats.guestSection', { n: view.guests.length })}</td>
+                      <td className="sticky left-10 bg-navy-900 text-sky-300 text-xs font-semibold whitespace-nowrap">{t('stats.guestSection', { n: view.guests.length })}</td>
                       <td colSpan={(by === 'session' ? data.events.length : view.months.length) + 1} />
                     </tr>
                   )}

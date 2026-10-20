@@ -110,7 +110,7 @@ export default function StaffEventPage() {
       <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-4 sm:p-5 mt-2 mb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-white text-2xl font-bold truncate">{ev.title}</h1>
+            <h1 className="text-white text-2xl font-bold break-words">{ev.title}</h1>
             <p className="text-lime-300 text-sm capitalize">
               {formatDay(ev.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
               {time && ` · ${time}`}
@@ -178,7 +178,7 @@ export default function StaffEventPage() {
             {people.map((p) => (
               <div key={p.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <div className={`truncate ${p.status === 'waitlisted' ? 'text-gray-400' : 'text-white'}`}>{p.full_name}</div>
+                  <div className={`break-words ${p.status === 'waitlisted' ? 'text-gray-400' : 'text-white'}`}>{p.full_name}</div>
                   <div className="text-gray-500 text-xs">
                     {p.status === 'waitlisted' ? `⏳ ${t('events.waitlist')}` : p.status === 'pending' ? t('signup.pendingShort') : p.dupr_level != null ? levelTag(p.dupr_level, ev?.sport || sport, t) : ''}
                   </div>

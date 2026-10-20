@@ -64,7 +64,7 @@ export default function AdoptStandalone({ club, onMoved }) {
                 <label className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-navy-800">
                   <input type="checkbox" checked={sel.has(e.id)} onChange={() => toggle(e.id)} />
                   <span className="text-gray-400 tabular-nums w-20 shrink-0">{dmy(e.event_date)}</span>
-                  <span className="text-white truncate">{e.title}</span>
+                  <span className="text-white break-words">{e.title}</span>
                 </label>
               </li>
             ))}

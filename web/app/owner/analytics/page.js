@@ -28,7 +28,7 @@ const pctText = (v) => (v == null ? '—' : `${String(v).replace('.', ',')}%`);
 function Kpi({ label, value, sub, tone = 'text-white' }) {
   return (
     <div className={card}>
-      <div className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider">{label}</div>
+      <div className="text-gray-400 text-[11px] font-semibold">{label}</div>
       <div className={`text-[26px] leading-9 font-bold tabular-nums mt-1 ${tone}`}>{value}</div>
       {sub && <div className="text-gray-500 text-xs mt-1">{sub}</div>}
     </div>

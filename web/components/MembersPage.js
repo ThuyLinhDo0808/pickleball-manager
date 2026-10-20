@@ -1,4 +1,5 @@
 'use client';
+import Hint from '@/components/ui/Hint';
 import Link from 'next/link';
 import { levelText } from '@/lib/levels';
 import { useState } from 'react';
@@ -281,7 +282,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <Avatar name={m.full_name} size={40} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-white font-semibold truncate">{m.full_name}</span>
+                          <span className="text-white font-semibold break-words">{m.full_name}</span>
                           {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
                           {tab === 'all' && <span className={`text-[10px] leading-4 rounded-full border px-1.5 ${PLACE_PILL[placeOf(m)]}`}>{t(`xlsx.place_${placeOf(m)}`)}</span>}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
@@ -483,7 +484,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                   </tbody>
                 </table>
               </div>
-              <p className="text-gray-500 text-xs px-3 py-2 border-t border-navy-700">{t('memx.footer', { n: shownRows.length, total: rows.length })} · {t('members.openHint')}</p>
+              <p className="text-gray-400 text-sm px-3 py-2 border-t border-navy-700 flex items-center gap-2">{t('memx.footer', { n: shownRows.length, total: rows.length })} <Hint inline text={t('members.openHint')} /></p>
             </>
           )}
         </section>

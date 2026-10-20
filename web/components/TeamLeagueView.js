@@ -217,7 +217,7 @@ export default function TeamLeagueView({ tour, onChange }) {
         {tour.teams.map((tm) => (
           <div key={tm.id} className="card !p-3">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-white font-semibold truncate">{tm.name}</span>
+              <span className="text-white font-semibold break-words">{tm.name}</span>
               <span className="text-lime-400 text-xs shrink-0">Σ {t('level.sumLabel')} {Math.round(tm.players.reduce((s, p) => s + Number(p.dupr_level ?? 3), 0) * 100) / 100}</span>
             </div>
             <ul className="text-sm text-gray-300">

@@ -69,8 +69,7 @@ export function OrganizersSection({ event, people, onOpen }) {
   const list = [{ key: 'host', name: hostRow?.full_name || event.host_name || 'Host', row: hostRow || null, host: true }, ...others.map((p) => ({ key: p.id, name: p.full_name, row: p, host: false }))];
   return (
     <section className="card mb-4">
-      <h3 className="text-gray-300 text-xs font-semibold uppercase tracking-wide mb-1">{t('people.organizers')} · {list.length}</h3>
-      <Hint text={t('people.organizersHint')} className="mb-3" />
+      <h3 className="text-gray-300 text-xs font-semibold mb-1">{t('people.organizers')} · {list.length} <Hint inline text={t('people.organizersHint')} /></h3>
       <div className="flex flex-wrap gap-4">
         {list.map((o) => {
           const place = o.row ? PLACE_OF[o.row.status] : 'not_playing';
@@ -93,13 +92,12 @@ export function RequestsSection({ rows, onPlace, onOpen }) {
   if (!rows.length) return null;
   return (
     <section className="card mb-4 border-amber-300/40">
-      <h3 className="text-amber-200 font-semibold">🙋 {t('people.requests')} ({rows.length})</h3>
-      <Hint text={t('people.requestsHint')} className="mb-2" />
+      <h3 className="text-amber-200 font-semibold">🙋 {t('people.requests')} ({rows.length}) <Hint inline text={t('people.requestsHint')} /></h3>
       <ul className="divide-y divide-navy-700">
         {rows.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center gap-2 py-2">
             <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(p)}>
-              <span className="block text-white font-semibold truncate">{p.full_name}</span>
+              <span className="block text-white font-semibold break-words">{p.full_name}</span>
               <span className="block text-gray-400 text-xs">
                 {p.dupr_level != null ? `${t('common.level')} ${Number(p.dupr_level).toFixed(2)}` : t('people.noLevel')}
                 {p.card?.member_type ? ` · ${t(p.card.member_type === 'fixed' ? 'events.fixedMember' : 'review.kind_guest')}` : ''}

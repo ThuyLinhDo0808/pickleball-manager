@@ -92,7 +92,7 @@ function MonthAgenda({ month, map, onPickDay }) {
               className={`w-14 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 py-2 ${isToday ? 'bg-lime-400 text-navy-950' : 'bg-navy-900 text-white'}`}
               aria-label={formatDay(d, lang, { weekday: 'long', day: '2-digit', month: '2-digit' })}
             >
-              <span className={`text-[10px] uppercase ${isToday ? 'text-navy-900' : 'text-gray-400'}`}>{formatDay(d, lang, { weekday: 'short' })}</span>
+              <span className={`text-[10px] ${isToday ? 'text-navy-900' : 'text-gray-400'}`}>{formatDay(d, lang, { weekday: 'short' })}</span>
               <span className="text-xl font-bold leading-none tabular-nums">{Number(d.slice(8))}</span>
               {isToday && <span className="text-[9px] font-semibold mt-0.5">{t('cal.today')}</span>}
             </button>
@@ -102,7 +102,7 @@ function MonthAgenda({ month, map, onPickDay }) {
                   <Link href={hrefOf(e)} className="flex items-center gap-2 px-3 py-2.5 active:bg-navy-700/60">
                     <span className={`h-2 w-2 rounded-full shrink-0 ${dotOf(e)}`} aria-hidden="true" />
                     <span className="min-w-0 flex-1">
-                      <span className={`block text-sm font-semibold truncate ${e.status === 'cancelled' ? 'line-through text-gray-400' : 'text-white'}`}>
+                      <span className={`block text-sm font-semibold break-words ${e.status === 'cancelled' ? 'line-through text-gray-400' : 'text-white'}`}>
                         <Kind e={e} />
                         {e.title}
                       </span>

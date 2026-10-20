@@ -73,16 +73,24 @@ export function autoDeadline(date, start, hours) {
   return toLocalInput(d.toISOString());
 }
 
-function Section({ n, title, hint, children }) {
+// `more`: an optional part, folded away until the Host opens it — the form shows only what
+// every kèo needs. Explanations sit behind a small "i" (pop-up), not as text under the fields.
+function Section({ n, title, hint, more = false, children }) {
+  const head = (
+    <h2 className="text-white font-semibold flex items-center gap-2">
+      <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${more ? 'bg-navy-700 text-gray-200' : 'bg-lime-400 text-navy-950'}`}>{n}</span>
+      <span className="flex-1">{title}</span>
+      {hint && <Hint inline text={hint} />}
+      {more && <span className="text-gray-400 text-sm group-open:rotate-180 transition-transform" aria-hidden>▾</span>}
+    </h2>
+  );
+  const body = <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">{children}</div>;
+  if (!more) return <section className="card mb-4">{head}{body}</section>;
   return (
-    <section className="card mb-4">
-      <h2 className="text-white font-semibold flex items-center gap-2">
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-lime-400 text-navy-950 text-xs font-bold">{n}</span>
-        {title}
-      </h2>
-      {hint && <p className="text-gray-500 text-xs mt-1">{hint}</p>}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">{children}</div>
-    </section>
+    <details className="card mb-4 group">
+      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">{head}</summary>
+      {body}
+    </details>
   );
 }
 
@@ -90,9 +98,11 @@ function Field({ label, hint, span = 1, children }) {
   const cls = `min-w-0 ${{ 1: 'col-span-1', 2: 'col-span-2', 4: 'col-span-2 md:col-span-4' }[span]}`;
   return (
     <div className={cls}>
-      <label className="text-xs text-gray-400">{label}</label>
+      <div className="flex items-center gap-1.5">
+        <label className="text-sm text-gray-300">{label}</label>
+        {hint && <Hint inline text={hint} />}
+      </div>
       {children}
-      {hint && <p className="text-gray-500 text-xs mt-1">{hint}</p>}
     </div>
   );
 }
@@ -236,8 +246,7 @@ function CostItems({ items, onChange, sessions }) {
   const total = costTotal(items);
   return (
     <div className="col-span-2 md:col-span-4 rounded-xl border border-orange-400/30 bg-orange-400/5 p-3">
-      <p className="text-orange-100 text-sm font-semibold">💸 {t('cost.title')}</p>
-      <Hint text={t('cost.hint')} className="mt-0.5" />
+      <p className="text-orange-100 text-sm font-semibold">💸 {t('cost.title')} <Hint inline text={t('cost.hint')} /></p>
       {items.length > 0 && (
         <div className="hidden sm:flex gap-2 mt-2 text-[11px] text-gray-400">
           <span className="w-36 shrink-0">{t('cost.colWhat')}</span>
@@ -443,20 +452,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </>
           )}
           {!meeting && (
-          <Field label={t('events.courts')}>
-            <input className="input" type="number" inputMode="numeric" min="1" max="50" value={f.courts} onChange={(e) => set({ courts: e.target.value })} />
-          </Field>
-          )}
-          {showRepeat && (
-            <Field label={t('events.repeatWeeks')} hint={t('events.repeatHint')}>
-              <input className="input" type="number" inputMode="numeric" min="1" max="26" value={f.repeat_weeks} onChange={(e) => set({ repeat_weeks: e.target.value })} />
-            </Field>
-          )}
-        </Section>
-
-        {!meeting && (
-        <>
-        <Section n={2} title={t('create.rules')}>
+          <>
           <Field label={t('events.slots')}>
             <input className="input" type="number" inputMode="numeric" min="1" max="500" value={f.slots} onChange={(e) => set({ slots: e.target.value })} />
           </Field>
@@ -468,6 +464,21 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               </p>
             )}
           </Field>
+          <Field label={t('events.courts')}>
+            <input className="input" type="number" inputMode="numeric" min="1" max="50" value={f.courts} onChange={(e) => set({ courts: e.target.value })} />
+          </Field>
+          </>
+          )}
+          {showRepeat && (
+            <Field label={t('events.repeatWeeks')} hint={t('events.repeatHint')}>
+              <input className="input" type="number" inputMode="numeric" min="1" max="26" value={f.repeat_weeks} onChange={(e) => set({ repeat_weeks: e.target.value })} />
+            </Field>
+          )}
+        </Section>
+
+        {!meeting && (
+        <>
+        <Section n={2} title={t('create.rules')} more>
           <Field label={t('fmt.label')} span={2} hint={t('fmt.hint')}>
             <div className="grid grid-cols-3 gap-1.5 mt-1">
               {PLAY_FORMATS.map((k) => (
@@ -525,7 +536,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </Field>
           )}
           {f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">📋 {policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
-          <Field label={t('events.deadline')} span={2}>
+          <Field label={t('events.deadline')} span={2} hint={t('dl.reopenHint')}>
             <label className="flex items-center gap-2 text-sm text-gray-200 mt-1">
               <input type="checkbox" checked={f.deadline_auto} onChange={(e) => set({ deadline_auto: e.target.checked, registration_deadline: e.target.checked ? f.registration_deadline : f.registration_deadline || autoAt })} />
               {t('dl.auto')}
@@ -537,12 +548,11 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             ) : (
               <input className="input mt-1" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} />
             )}
-            <p className="text-gray-500 text-xs mt-1">🔓 {t('dl.reopenHint')}</p>
           </Field>
           <CostItems items={f.cost_items} onChange={(cost_items) => set({ cost_items })} sessions={sessions || 1} />
         </Section>
 
-        <Section n={3} title={t('create.notes')}>
+        <Section n={3} title={t('create.notes')} more>
           <Field label={t('events.notice')} span={4}>
             <textarea className="input" rows={3} placeholder={t('events.noticeHint')} value={f.notice} onChange={(e) => set({ notice: e.target.value })} />
           </Field>
@@ -553,7 +563,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           {Number(f.fee_amount) > 0 && (
             <label className="col-span-2 md:col-span-4 flex items-start gap-2 text-sm text-gray-200">
               <input type="checkbox" className="mt-1" checked={f.allow_pay_later} onChange={(e) => set({ allow_pay_later: e.target.checked })} />
-              <span>{t('payLater.allow')}<span className="block text-gray-500 text-xs">{t('payLater.allowHint')}</span></span>
+              <span>{t('payLater.allow')} <Hint inline text={t('payLater.allowHint')} /></span>
             </label>
           )}
         </Section>
@@ -580,8 +590,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
 
         {seriesCount > 0 && (
           <section className="card mb-4 border-sky-400/40">
-            <h2 className="text-white font-semibold">🔁 {t('series.title')}</h2>
-            <Hint text={t('series.hint')} className="mt-0.5" />
+            <h2 className="text-white font-semibold">🔁 {t('series.title')} <Hint inline text={t('series.hint')} /></h2>
             <div className="mt-2 flex flex-col gap-2">
               {[['series', t('series.all', { n: seriesCount + 1 })], ['one', t('series.one')]].map(([v, label]) => (
                 <label key={v} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${f.apply_to === v ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300'}`}>
@@ -595,8 +604,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">⚠️ {warning}</p>}
         {error && <p className="text-red-400 text-sm mb-3 lg:hidden">{error}</p>}
         {saved && <p className="text-lime-300 text-sm mb-3 lg:hidden" role="status">✓ {t('common.savedLong')}</p>}
-        <div className="flex gap-3 lg:hidden">
-          <button className="btn-primary" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
+        <div className="flex gap-3 lg:hidden sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 z-20 -mx-4 px-4 py-3 bg-navy-950/95 border-t border-navy-700 backdrop-blur">
+          <button className="btn-primary flex-1" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
           <Link href={cancelHref} className="btn-secondary">{t('common.cancel')}</Link>
         </div>
         </div>
@@ -604,7 +613,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         <aside className="hidden lg:block sticky top-4">
           <div className="card !p-0 overflow-hidden">
             <div className="px-4 py-3 border-b border-navy-700 bg-navy-900/50">
-              <p className="text-gray-400 text-[11px] uppercase tracking-wide font-semibold">{t('createx.preview')}</p>
+              <p className="text-gray-400 text-[11px] font-semibold">{t('createx.preview')}</p>
               <p className="text-white font-semibold truncate mt-0.5">
                 {KIND_ICON[f.kind] && <span className="mr-1">{KIND_ICON[f.kind]}</span>}
                 {f.title || <span className="text-gray-500">{t('createx.untitled')}</span>}

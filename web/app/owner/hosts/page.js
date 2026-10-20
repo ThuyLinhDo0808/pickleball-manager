@@ -63,7 +63,7 @@ function HostList() {
           <Link key={r.id} href={`/owner/hosts/${r.id}`} className="card !p-3 block">
             <div className="flex items-center justify-between gap-2">
               <span className="text-white font-semibold truncate">{r.full_name || r.email}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${TIER_BADGE[r.tier]}`}>{r.tier}{r.on_trial ? ` · ${t('owner.trialShort')}` : ''}{r.billing === 'gifted' ? ` · ${t('owner.billGiftedShort')}` : ''}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TIER_BADGE[r.tier]}`}>{r.tier}{r.on_trial ? ` · ${t('owner.trialShort')}` : ''}{r.billing === 'gifted' ? ` · ${t('owner.billGiftedShort')}` : ''}</span>
             </div>
             <div className="text-gray-400 text-xs truncate">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div>
             <div className="flex flex-wrap gap-x-3 text-xs text-gray-400 mt-1">
@@ -95,7 +95,7 @@ function HostList() {
                   <div className="text-gray-400 text-xs truncate">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div>
                 </td>
                 <td className="px-3 py-2">
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${TIER_BADGE[r.tier]}`}>{r.tier}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TIER_BADGE[r.tier]}`}>{r.tier}</span>
                   {r.on_trial && <span className="ml-1 rounded-full px-2 py-0.5 text-[11px] font-bold bg-sky-400/20 text-sky-200">{t('owner.trialShort')}</span>}
                   {r.social_manager && <span className="ml-1 rounded-full px-2 py-0.5 text-[11px] font-bold bg-amber-300/20 text-amber-200">SM</span>}
                   {r.billing === 'gifted' && <span className="ml-1 rounded-full px-2 py-0.5 text-[11px] font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>🎁 {t('owner.billGiftedShort')}</span>}

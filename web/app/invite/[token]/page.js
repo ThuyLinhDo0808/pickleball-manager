@@ -50,7 +50,7 @@ export default function InvitePage() {
             </span>
           </div>
           <div className="p-4 pt-10">
-            <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{t('invite.kicker')}</p>
+            <p className="text-lime-400 text-xs font-bold">{t('invite.kicker')}</p>
             <h1 className="text-white text-2xl font-bold">{c.name}</h1>
             <p className="text-gray-400 text-sm">
               {c.sport === 'badminton' ? '🏸' : '🏓'} {t(`onb.sport_${c.sport}`)} · 👥 {t('disc.members', { n: c.member_count ?? 0 })}

@@ -6,6 +6,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
 import TrendBars from '@/components/TrendBars';
 import AdoptStandalone from '@/components/AdoptStandalone';
+import Hint from '@/components/ui/Hint';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -19,10 +20,7 @@ function Section({ icon, title, hint, href, children }) {
   return (
     <section className="card !p-0 overflow-hidden mb-4">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-navy-700">
-        <div className="min-w-0">
-          <h2 className="text-white font-semibold">{icon} {title}</h2>
-          {hint && <p className="text-gray-500 text-xs">{hint}</p>}
-        </div>
+        <h2 className="text-white font-semibold min-w-0 flex items-center gap-2">{icon} {title} {hint && <Hint inline text={hint} />}</h2>
         {href && <Link href={href} className="text-lime-400 text-xs hover:underline">{t('home.details')} →</Link>}
       </div>
       <div className="p-4">{children}</div>
@@ -62,14 +60,20 @@ export default function CommunityOverview({ children }) {
         icon="🎟"
         title={t('social.overviewTitle')}
         subtitle={t('social.overviewSub', { n: clubs.length })}
-        actions={
-          <>
-            <Link href="/events/create" className="btn-primary text-sm">＋ {t('nav.createGame')}</Link>
-            {canWeekly && <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>}
-            <Link href="/club-request?kind=community" className="btn-secondary text-sm">＋ {t('social.newCommunity')}</Link>
-          </>
-        }
       />
+      {/* The things a Host opens every day, as big tiles. */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+        {[
+          ['/events/create', '➕', t('nav.createGame'), true],
+          [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? '🔁' : '📅', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
+          ['/club/members', '👥', t('nav.members')],
+        ].map(([href, icon, label, main]) => (
+          <Link key={href} href={href} className={`rounded-xl flex flex-col items-center justify-center gap-1 py-3 px-1 text-center text-sm font-semibold ${main ? 'bg-lime-400 text-navy-950 hover:bg-lime-300' : 'bg-navy-800 border border-navy-600 text-white hover:border-lime-400'}`}>
+            <span className="text-2xl leading-none" aria-hidden>{icon}</span>
+            {label}
+          </Link>
+        ))}
+      </div>
 
       {/* One tab per court cluster (community). */}
       <div className="-mx-4 px-4 md:mx-0 md:px-0 mb-4 overflow-x-auto" role="tablist" aria-label={t('hub.communities')}>
@@ -87,6 +91,7 @@ export default function CommunityOverview({ children }) {
               {c.name}
             </button>
           ))}
+          <Link href="/club-request?kind=community" className="flex items-center rounded-xl border border-dashed border-navy-600 px-3 py-2 text-sm text-gray-300 hover:border-lime-400">＋ {t('social.newCommunity')}</Link>
         </div>
       </div>
 
@@ -95,8 +100,16 @@ export default function CommunityOverview({ children }) {
       {error && <p className="card text-red-300 text-sm mb-4">{error.message}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
 
+      {/* Today first (club home: to-dos, next sessions, money), the community's numbers folded below. */}
+      {club && children}
+
       {data && (
-        <>
+        <details className="group mb-5">
+          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden card !py-3 flex items-center justify-between text-white font-semibold">
+            <span>👥 {t('ux.communityStats')}</span>
+            <span className="text-gray-400 group-open:rotate-180 transition-transform" aria-hidden>▾</span>
+          </summary>
+          <div className="mt-4">
           <Section icon="👥" title={t('social.secMembers')} hint={t('social.secMembersHint', { d: rules.active_days })} href="/club/members">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.typeSplit', { v: m.vip ?? 0, p: m.priority ?? 0, f: m.fixed, g: m.guest })} />
@@ -170,13 +183,12 @@ export default function CommunityOverview({ children }) {
                 <TrendBars title={t('social.trPlayers')} series={data.monthly.map((x) => ({ month: x.month, value: x.players, extra: t('social.trTurns', { n: x.turns }) }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
                 <TrendBars title={t('social.trProfit')} signed format={(v) => formatVnd(v)} series={data.monthly.map((x) => ({ month: x.month, value: x.profit, extra: `${t('analytics.income')} ${formatVnd(x.income)} · ${t('analytics.expense')} ${formatVnd(x.expense)}` }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
               </div>
-              <p className="text-gray-500 text-xs mt-2">{t('social.trNote', { n: data.monthly[data.monthly.length - 1].players })}</p>
+              <div className="mt-2"><Hint inline text={t('social.trNote', { n: data.monthly[data.monthly.length - 1].players })} /></div>
             </Section>
           )}
-        </>
+          </div>
+        </details>
       )}
-
-      {club && children}
     </AppShell>
   );
 }

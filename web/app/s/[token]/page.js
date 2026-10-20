@@ -1,4 +1,5 @@
 'use client';
+import { TextSizeButton } from '@/components/TextSizeSwitch';
 import HomeLink from '@/components/HomeLink';
 import Modal from '@/components/Modal';
 import LevelInput from '@/components/LevelInput';
@@ -22,9 +23,9 @@ export default function SurveyPage() {
   const joinQ = (d) => t(d.community ? 'survey.joinCommunity' : 'survey.joinQuestion', { club: d.club_name || 'CLB' });
 
   const langToggle = (
-    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button>
+    </button></span>
   );
 
   if (loading && !data) return <div className="min-h-screen flex items-center justify-center text-gray-400">{t('common.loading')}</div>;
@@ -51,7 +52,7 @@ export default function SurveyPage() {
         </div>
       </header>
       <section className="card mb-4">
-        <p className="text-gray-400 text-xs uppercase tracking-wide">{t('survey.kicker')}</p>
+        <p className="text-gray-400 text-xs">{t('survey.kicker')}</p>
         <h1 className="text-white text-xl font-bold">{t('survey.thanks', { name: data.player_name })}</h1>
         <p className="text-gray-300 text-sm mt-1">
           {e.title} ·{' '}

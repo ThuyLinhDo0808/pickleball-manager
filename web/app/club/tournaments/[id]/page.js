@@ -171,7 +171,7 @@ export default function TournamentPage() {
         ) : (
           <div className="card mb-4 border-lime-400 text-center py-5">
             <div className="text-4xl mb-1">🏆</div>
-            <div className="text-gray-400 text-xs uppercase tracking-wide">{t('tournaments.champion')}</div>
+            <div className="text-gray-400 text-xs">{t('tournaments.champion')}</div>
             <div className="text-lime-400 text-2xl font-bold">{teamName(tour.champion_id)}</div>
           </div>
         ))}
@@ -317,7 +317,7 @@ export default function TournamentPage() {
               <div className="flex gap-4 min-w-max">
                 {rounds.map((rd) => (
                   <div key={rd} className="w-[78vw] max-w-[15rem] sm:w-60 flex flex-col snap-start">
-                    <div className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-2">{roundLabel(rd, tour.rounds, t)}</div>
+                    <div className="text-gray-400 text-xs font-semibold mb-2">{roundLabel(rd, tour.rounds, t)}</div>
                     <div className="flex flex-col justify-around flex-1 gap-3">
                       {ko.filter((m) => m.round === rd).map((m) => (
                         <MatchRow key={m.id} m={m} teamName={teamName} onOpen={setScoring} />
@@ -388,8 +388,7 @@ function OpenPlaces({ tour, onChange }) {
 
   return (
     <section className="card mb-4 border-amber-300/50">
-      <h2 className="text-amber-200 font-semibold">⬚ {t('pairing.openTitle', { n: open.length })}</h2>
-      <Hint text={t('pairing.openHint')} className="mb-3" />
+      <h2 className="text-amber-200 font-semibold">⬚ {t('pairing.openTitle', { n: open.length })} <Hint inline text={t('pairing.openHint')} /></h2>
       <div className="flex flex-col gap-2">
         {open.map((tm) => {
           const mate = byId.get(tm.player1_id);

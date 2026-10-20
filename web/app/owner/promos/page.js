@@ -40,7 +40,7 @@ function NewCode({ onDone, onCancel }) {
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="text-sm text-gray-300">
           {t('owner.promoCode')}
-          <input className="input mt-1 uppercase font-mono" required maxLength={32} pattern="[A-Za-z0-9_\-]{3,32}" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} placeholder="SALE20" />
+          <input className="input mt-1 font-mono" required maxLength={32} pattern="[A-Za-z0-9_\-]{3,32}" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} placeholder="SALE20" />
         </label>
         <div className="text-sm text-gray-300">
           {t('owner.promoKind')}

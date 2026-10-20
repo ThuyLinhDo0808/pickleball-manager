@@ -74,8 +74,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
     <section className="card mt-4" aria-labelledby="dupr-export-title">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 id="dupr-export-title" className="text-white font-semibold">📈 {t('duprx.title')}</h3>
-          <Hint text={t('duprx.hint')} className="mt-0.5" />
+          <h3 id="dupr-export-title" className="text-white font-semibold">📈 {t('duprx.title')} <Hint inline text={t('duprx.hint')} /></h3>
         </div>
         <button type="button" className="text-xs text-gray-300 underline underline-offset-2" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           {open ? t('duprx.hideList') : t('duprx.showList', { n: list.length })}

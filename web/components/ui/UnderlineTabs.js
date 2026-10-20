@@ -1,8 +1,9 @@
-// In-page tabs drawn like the section tabs (underline), with an optional count badge.
+// In-page tabs drawn like the section tabs (round chips that wrap onto a second line on a
+// phone, so no tab hides off the edge of the screen), with an optional count badge.
 export default function UnderlineTabs({ tabs, value, onChange }) {
   return (
-    <div role="tablist" className="-mx-4 px-4 md:mx-0 md:px-0 mb-4 overflow-x-auto overflow-y-hidden no-scrollbar border-b border-navy-700">
-      <div className="flex gap-1 min-w-max">
+    <div role="tablist" className="mb-4">
+      <div className="flex flex-wrap gap-2">
         {tabs.map(({ key, label, count, alert, icon }) => {
           const active = value === key;
           return (
@@ -12,7 +13,7 @@ export default function UnderlineTabs({ tabs, value, onChange }) {
               role="tab"
               aria-selected={active}
               onClick={() => onChange(key)}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-sm whitespace-nowrap flex items-center gap-1.5 transition ${active ? 'border-lime-400 text-lime-300 font-semibold' : 'border-transparent text-gray-400 hover:text-white hover:border-navy-500'}`}
+              className={`rounded-full border px-3.5 py-2 text-sm whitespace-nowrap flex items-center gap-1.5 transition ${active ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400 hover:text-white'}`}
             >
               {icon && <span aria-hidden="true">{icon}</span>}
               {label}

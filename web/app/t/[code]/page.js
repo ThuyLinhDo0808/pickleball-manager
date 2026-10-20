@@ -1,4 +1,5 @@
 'use client';
+import { TextSizeButton } from '@/components/TextSizeSwitch';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
 import { useParams } from 'next/navigation';
@@ -16,9 +17,9 @@ export default function TicketPage() {
   const { data: tk, error, loading } = useLoad(() => api.publicGet(`/api/public/tickets/${code}`), [code]);
 
   const langToggle = (
-    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button>
+    </button></span>
   );
 
   if (loading && !tk) return <div className="min-h-screen flex items-center justify-center text-gray-400">{t('common.loading')}</div>;
@@ -44,7 +45,7 @@ export default function TicketPage() {
         </div>
       </header>
       <section className="card mb-4">
-        <p className="text-gray-400 text-xs uppercase tracking-wide">{t('ticket.title')}</p>
+        <p className="text-gray-400 text-xs">{t('ticket.title')}</p>
         <h1 className="text-white text-xl font-bold">{e.title}</h1>
         <p className="text-lime-400 text-sm capitalize">
           {formatDay(e.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}

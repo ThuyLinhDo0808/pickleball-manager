@@ -79,7 +79,7 @@ function Nav({ me, active, onPick }) {
         if (!shown.length) return null;
         return (
           <div key={group || 'top'}>
-            {group && <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{t(group)}</p>}
+            {group && <p className="px-3 mb-1.5 text-[11px] font-semibold text-gray-500">{t(group)}</p>}
             <ul className="flex flex-col gap-0.5">
               {shown.map(([href, key, icon, , badge]) => {
                 const on = active(href);
@@ -114,7 +114,7 @@ function Brand({ me }) {
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-300 text-navy-950 font-black text-sm">PM</span>
       <span className="min-w-0">
         <span className="block text-white font-bold leading-tight truncate">Pickleball Manager</span>
-        <span className="block text-[11px] uppercase tracking-widest text-amber-300/90 font-semibold">
+        <span className="block text-[11px] text-amber-300/90 font-semibold">
           {me.support ? t('owner.supportBadge') : 'Owner Console'}
         </span>
       </span>

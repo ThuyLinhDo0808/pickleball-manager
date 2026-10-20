@@ -40,7 +40,9 @@ export default function EventDetailPage() {
   const { t, lang, sport } = useI18n();
   const { club } = useDefaultClub();
   // Four tabs: details (status, sign-up link, deadlines), players, matches, money.
-  const [tab, setTab] = useState('details');
+  // Opens on the players: what the Host checks most. Settings (link, open / close) last.
+  const [tab, setTab] = useState('participants');
+  const [linkCopied, setLinkCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   // Back from "Sửa thông tin" (?saved=1): say the changes were saved.
   const [justSaved, setJustSaved] = useState(false);
@@ -91,8 +93,21 @@ export default function EventDetailPage() {
     e.preventDefault();
     await api.post(`/api/events/${eventId}/participants`, form);
     setForm({ full_name: '', phone: '' });
+    setShowImport(false);
     reloadParticipants();
     reloadEvent();
+  }
+
+  // "📤 Gửi link": copy the sign-up link in one tap (to paste into Zalo / Messenger).
+  async function copyLink() {
+    const link = `${window.location.origin}/e/${event.short_code || event.public_token}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      window.prompt(t('events.copyLink'), link);
+    }
   }
 
   async function doAction(p, action, body = {}) {
@@ -231,43 +246,51 @@ export default function EventDetailPage() {
   return (
     <AppShell>
       {justSaved && <p className="card !py-3 mb-4 border-lime-400/60 bg-lime-400/10 text-lime-200 font-semibold" role="status">✓ {t('common.savedLong')}</p>}
-      <div className="flex justify-between items-start gap-3 mb-4">
-        <div className="min-w-0">
-          <h1 className="text-white text-2xl font-bold">{event.title}</h1>
-          <p className="text-gray-400 text-sm">
-            {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
-            {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`}
+      <div className="mb-4">
+        <h1 className="text-white text-2xl font-bold leading-tight">{event.title}</h1>
+        <p className="text-gray-300 text-base mt-1">
+          📅 {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
+          {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`}
+        </p>
+        {(event.location || event.map_url || event.club_map_url) && <div className="mt-0.5"><MapLink location={event.location} mapUrl={event.map_url || event.club_map_url} /></div>}
+        {(event.play_format || event.services || event.series_id) && (
+          <p className="text-gray-400 text-sm mt-0.5">
+            {[event.series_id && `🔁 ${t('series.badge')}`, event.play_format && `🏓 ${t(`fmt.${event.play_format}`)}`, event.services && `🎁 ${event.services}`].filter(Boolean).join(' · ')}
           </p>
-          {(event.location || event.map_url || event.club_map_url) && <MapLink location={event.location} mapUrl={event.map_url || event.club_map_url} />}
-          {(event.play_format || event.services || event.series_id) && (
-            <p className="text-gray-400 text-xs mt-0.5">
-              {[event.series_id && `🔁 ${t('series.badge')}`, event.play_format && `🏓 ${t(`fmt.${event.play_format}`)}`, event.services && `🎁 ${event.services}`].filter(Boolean).join(' · ')}
-            </p>
-          )}
-          {event.notice && event.kind === 'meeting' && <p className="text-gray-300 text-sm mt-1 whitespace-pre-line">{event.notice}</p>}
-          <p className={`text-gray-500 text-xs mt-0.5 ${event.kind === 'meeting' ? 'hidden' : ''}`}>
-            {policyText(t, event.cancel_deadline_hours, event.cancel_half_hours)}
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-          <button className="btn-primary text-sm" onClick={() => setShowQr(true)}>📷 {t('qr.scan')}</button>
-          <button className="btn-secondary text-sm" onClick={onExport}>{t('common.exportExcel')}</button>
-        </div>
+        )}
+        {/* The three things a Host does all the time, as big buttons. */}
+        {event.kind !== 'meeting' && (
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <button type="button" className="btn-primary flex flex-col items-center justify-center !py-2.5 text-sm" onClick={copyLink} disabled={!event.allow_public_registration}>
+              <span className="text-xl leading-none mb-1" aria-hidden>📤</span>
+              {linkCopied ? t('events.copied') : t('ux.sendLink')}
+            </button>
+            <button type="button" className="btn-secondary flex flex-col items-center justify-center !py-2.5 text-sm" onClick={() => setShowQr(true)}>
+              <span className="text-xl leading-none mb-1" aria-hidden>📷</span>
+              {t('ux.checkin')}
+            </button>
+            <button type="button" className="btn-secondary flex flex-col items-center justify-center !py-2.5 text-sm" onClick={() => { setTab('participants'); setShowImport(true); }}>
+              <span className="text-xl leading-none mb-1" aria-hidden>➕</span>
+              {t('ux.addPlayer')}
+            </button>
+          </div>
+        )}
       </div>
       <Modal open={showQr} title={t('qr.scanTitle')} onClose={() => setShowQr(false)}>
         {showQr && <QrCheckinPanel endpoint={`/api/events/${eventId}/checkin-code`} onCheckedIn={refresh} />}
       </Modal>
 
       <div role="tablist" className="grid grid-cols-4 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4">
-        {['details', 'participants', 'matches', 'finance'].map((tb) => (
+        {['participants', 'finance', 'matches', 'details'].map((tb) => (
           <button
             key={tb}
             role="tab"
             aria-selected={tab === tb}
+            aria-label={tb === 'details' ? t('ux.tabSettings') : undefined}
             onClick={() => setTab(tb)}
             className={`px-2 py-2 rounded-lg text-sm truncate ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
           >
-            {tb === 'details' ? t('events.tabDetails') : tb === 'participants' ? `${t('events.tabPlayers')} (${main.length})` : tb === 'matches' ? `${t('matches.title')} (${(matches || []).length})` : t('nav.finance')}
+            {tb === 'details' ? <>⚙️<span className="hidden sm:inline"> {t('ux.tabSettings')}</span></> : tb === 'participants' ? `👥 ${main.length}` : tb === 'matches' ? `🏓 ${(matches || []).length}` : `💰 ${t('ux.tabMoney')}`}
           </button>
         ))}
       </div>
@@ -277,13 +300,18 @@ export default function EventDetailPage() {
           <EventControls event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
           {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={(e) => setEvent({ ...event, ...e })} />}
           {event.kind !== 'meeting' && <QuickInviteCard event={event} />}
+          <div className="card !py-3 mb-4 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-gray-300 text-sm">{event.kind !== 'meeting' ? `⏰ ${policyText(t, event.cancel_deadline_hours, event.cancel_half_hours)}` : ''}</span>
+            <button className="btn-secondary text-sm" onClick={onExport}>⬇ {t('common.exportExcel')}</button>
+          </div>
         </>
       )}
 
       {tab === 'participants' && (
         <>
-          <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <form onSubmit={addParticipant} className="card flex-1 flex flex-col sm:flex-row gap-2 sm:items-end">
+          <Modal open={showImport} title={t('ux.addPlayer')} onClose={() => setShowImport(false)}>
+            <p className="text-white font-semibold mb-2">✍️ {t('ux.addByHand')}</p>
+            <form onSubmit={addParticipant} className="flex flex-col gap-2">
               <div className="flex-1">
                 <label className="text-xs text-gray-400">{t('common.name')}</label>
                 <input className="input" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
@@ -294,11 +322,9 @@ export default function EventDetailPage() {
               </div>
               <button className="btn-primary">{t('common.add')}</button>
             </form>
-            <button className="btn-secondary" onClick={() => setShowImport(!showImport)}>{t('events.importFromClub')}</button>
-          </div>
-
-          {showImport && (
-            <div className="card mb-4">
+            {(clubMembers || []).length > 0 && (
+              <div className="mt-5 pt-4 border-t border-navy-700">
+            <div>
               {(() => {
                 const pickable = (clubMembers || []).filter((m) => m.is_active && !onEvent.has(m.id));
                 const all = pickable.length > 0 && pickable.every((m) => selectedIds.includes(m.id));
@@ -329,18 +355,19 @@ export default function EventDetailPage() {
               </div>
               <button className="btn-primary mt-3" onClick={importFromClub}>{t('common.add')} ({selectedIds.length})</button>
             </div>
-          )}
-
+              </div>
+            )}
+          </Modal>
           {/* Communities: every sign-up is checked by the Host (setting: auto-confirm by DUPR). */}
           {ownerKind === 'community' ? (
-            <div className="card !py-3 mb-4 text-sm">
-              <p className="text-white font-semibold">✅ {t('people.commCheckTitle')}</p>
-              <p className="text-gray-400 text-xs">{t('people.commCheckHint')} <a href="/club/community-settings" className="text-lime-400 underline">{t('cpanel.short')} →</a></p>
+            <div className="card !py-3 mb-4 text-sm flex items-center gap-2">
+              <p className="text-gray-200 flex-1">✅ {t('people.commCheckTitle')}</p>
+              <Hint inline text={t('people.commCheckHint')} />
+              <a href="/club/community-settings" className="text-lime-400 text-sm underline shrink-0">⚙️</a>
             </div>
           ) : (
             <AutoApproveToggle event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
           )}
-          <OrganizersSection event={event} people={participants || []} onOpen={openSheet} />
           <RequestsSection rows={requested} onPlace={placeTo} onOpen={(p) => openSheet(p)} />
           {flash && (
             <div className="card mb-4 border-lime-400/50 text-lime-300 text-sm flex items-center justify-between gap-3">
@@ -367,6 +394,7 @@ export default function EventDetailPage() {
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
           <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
+          <OrganizersSection event={event} people={participants || []} onOpen={openSheet} />
           {cancelled.length > 0 && (
             <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
           )}
@@ -484,7 +512,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-white font-semibold truncate max-w-full">{p.full_name}</span>
+                    <span className="text-white font-semibold break-words min-w-0">{p.full_name}</span>
                     {c.member_type === 'fixed' && <span className={`${BADGE} border-lime-400/50 text-lime-300`}>{t('events.fixedMember')}</span>}
                     {!p.is_organizer && c.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || c.member_type) && <span className={`${BADGE} border-navy-500 text-gray-300`}>{t('review.kind_guest')}</span>}
                     {p.is_organizer && <span className={`${BADGE} border-sky-400/60 text-sky-300`}>🛡 {t('people.organizer')}</span>}
@@ -508,6 +536,29 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     ) : sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}
                   </span>
+                  <span className="flex sm:hidden flex-wrap items-center gap-1 mt-1">
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${STATUS_PILL[p.status] || STATUS_PILL.registered}`}>{t(`player.status_${p.status}`)}</span>
+                  {money && <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${money[1]}`}>{money[0]}</span>}
+                  </span>
+                  {/* Phones: the check-in button under the name, so the name keeps the full width. */}
+                  {kind === 'main' && (
+                  <span className="flex sm:hidden mt-2">
+                    {(
+                      <button
+                        type="button"
+                        title={p.status === 'checked_in' ? t('staffView.undo') : t('events.checkIn')}
+                        aria-label={`${p.status === 'checked_in' ? t('staffView.undo') : t('events.checkIn')}: ${p.full_name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAction(p, p.status === 'checked_in' ? 'reset' : 'check-in');
+                        }}
+                        className={`inline-flex items-center h-10 shrink-0 rounded-full border-2 px-2.5 text-sm font-semibold whitespace-nowrap ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-200 hover:border-lime-400 hover:text-lime-300'}`}
+                      >
+                        {p.status === 'checked_in' ? `✓ ${t('ux.arrived')}` : t('ux.markArrived')}
+                      </button>
+                    )}
+                  </span>
+                  )}
                   {kind === 'waitlist' && <span className="block text-sky-300 text-[11px] mt-0.5">{t('events.waitOrder', { n: idx + 1, at: localDate(p.joined_at, 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })}</span>}
                   {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
                   {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}
@@ -518,7 +569,8 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     </span>
                   )}
                 </span>
-                <span className="flex shrink-0 flex-col items-end gap-1">
+                {/* Bigger screens: status on the right. Phones: under the name (the name is never cut). */}
+                <span className="hidden sm:flex shrink-0 flex-col items-end gap-1">
                   <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${STATUS_PILL[p.status] || STATUS_PILL.registered}`}>{t(`player.status_${p.status}`)}</span>
                   {money && <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${money[1]}`}>{money[0]}</span>}
                 </span>
@@ -531,9 +583,9 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                       e.stopPropagation();
                       onAction(p, p.status === 'checked_in' ? 'reset' : 'check-in');
                     }}
-                    className={`h-9 w-9 shrink-0 rounded-full border-2 text-base font-bold ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-400 hover:border-lime-400 hover:text-lime-300'}`}
+                    className={`hidden sm:inline-flex items-center h-10 shrink-0 rounded-full border-2 px-2.5 text-sm font-semibold whitespace-nowrap ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-200 hover:border-lime-400 hover:text-lime-300'}`}
                   >
-                    ✓
+                    {p.status === 'checked_in' ? `✓ ${t('ux.arrived')}` : t('ux.markArrived')}
                   </button>
                 )}
                 <span className="text-gray-500 shrink-0" aria-hidden>›</span>

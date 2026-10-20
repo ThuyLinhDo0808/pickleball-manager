@@ -93,7 +93,7 @@ export default function OnboardingPage() {
   return (
     <PlayerShell back={false}>
       <div className="mx-auto max-w-xl">
-        <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{t('onb.kicker')}</p>
+        <p className="text-lime-400 text-xs font-bold">{t('onb.kicker')}</p>
         <h1 className="text-white text-2xl font-bold mt-1">{t(`onb.title_${STEPS[step]}`)}</h1>
         <p className="text-gray-400 text-sm mt-1 mb-4">{t(`onb.sub_${STEPS[step]}`)}</p>
 
@@ -151,8 +151,7 @@ export default function OnboardingPage() {
               </label>
             </div>
             <div className="border-t border-navy-700 pt-3">
-              <p className="text-white font-semibold text-sm">{t('onb.levels')}</p>
-              <Hint text={t('onb.levelsHint')} className="mb-2" />
+              <p className="text-white font-semibold text-sm">{t('onb.levels')} <Hint inline text={t('onb.levelsHint')} /></p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {sports.includes('pickleball') && (
                   <label className="block">

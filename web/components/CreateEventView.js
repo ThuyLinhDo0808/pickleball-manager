@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
 import SectionTabs from '@/components/ui/SectionTabs';
+import Hint from '@/components/ui/Hint';
 import EventForm, { GAME_KINDS, blankEvent, eventPayload } from '@/components/EventForm';
 import WeeklyDates, { MAX_SESSIONS, blankWeekly, weeklyDates } from '@/components/WeeklyDates';
 import { useI18n } from '@/context/I18nContext';
@@ -71,7 +72,7 @@ export default function CreateEventView({ weekly = false }) {
         actions={<Link href="/events" className="btn-secondary text-sm">🗓 {isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
       />
       <SectionTabs group="activities" />
-      <p className="text-gray-400 text-sm mb-4 rounded-xl border border-navy-700 bg-navy-900/40 px-4 py-2.5">💡 {weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')}</p>
+      <p className="text-gray-300 text-sm mb-4 flex items-center gap-2">💡 {t('ux.howItWorks')} <Hint inline text={weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')} /></p>
       {initial && (
         <EventForm
           initial={initial}

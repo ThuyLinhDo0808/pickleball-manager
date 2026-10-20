@@ -40,8 +40,7 @@ export function PassMyTicket({ reg, waitlistCount, onChanged }) {
     if (!waitlistCount) return null;
     return (
       <div className="w-full rounded-xl border border-navy-600 px-3 py-3 text-left">
-        <p className="text-white text-sm font-semibold">🎟 {t('pass.cantGo')}</p>
-        <Hint text={t('pass.howTo')} className="mt-0.5 mb-2" />
+        <p className="text-white text-sm font-semibold">🎟 {t('pass.cantGo')} <Hint inline text={t('pass.howTo')} /></p>
         <button type="button" className="btn-secondary w-full" disabled={busy} onClick={() => window.confirm(t('pass.askConfirm')) && run(() => api.post(`/api/player/participations/${reg.id}/pass`, {}))}>
           {t('pass.ask')}
         </button>
@@ -128,8 +127,7 @@ export function HostTicketPasses({ event, onChanged }) {
 
   return (
     <div className="card mb-4 border-sky-400/40">
-      <h3 className="text-sky-200 font-semibold mb-1">🎟 {t('pass.hostTitle')} ({live.length})</h3>
-      <Hint text={t('pass.hostHint')} className="mb-2" />
+      <h3 className="text-sky-200 font-semibold mb-1">🎟 {t('pass.hostTitle')} ({live.length}) <Hint inline text={t('pass.hostHint')} /></h3>
       <ul className="divide-y divide-navy-700">
         {live.map((x) => (
           <li key={x.id} className="py-3 flex flex-col gap-2 text-sm">

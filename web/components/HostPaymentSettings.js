@@ -63,7 +63,7 @@ export default function HostPaymentSettings({ bare = false } = {}) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="text-xs text-gray-400">{t('payments.bankCode')}</label>
-          <input className="input uppercase" value={f.bank_code} onChange={(e) => setF({ ...f, bank_code: e.target.value })} />
+          <input className="input" value={f.bank_code} onChange={(e) => setF({ ...f, bank_code: e.target.value })} />
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('payments.bankAccount')}</label>
@@ -71,7 +71,7 @@ export default function HostPaymentSettings({ bare = false } = {}) {
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('payments.bankHolder')}</label>
-          <input className="input uppercase" value={f.bank_holder} onChange={(e) => setF({ ...f, bank_holder: e.target.value })} />
+          <input className="input" value={f.bank_holder} onChange={(e) => setF({ ...f, bank_holder: e.target.value })} />
         </div>
       </div>
       <div className="flex items-center gap-3">

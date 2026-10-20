@@ -179,7 +179,7 @@ function Checkout({ kind, tier, req, onBack, scroll = false }) {
       </div>
       <div className="flex gap-2 mb-1">
         <input
-          className="input !py-1.5 text-sm uppercase font-mono flex-1 min-w-0"
+          className="input !py-1.5 text-sm font-mono flex-1 min-w-0"
           placeholder={t('plan.promoPlaceholder')}
           aria-label={t('plan.promoPlaceholder')}
           value={code}
@@ -318,7 +318,7 @@ export function UpgradeModal({ open, onClose, product = 'tier' }) {
             <div key={tier} className={`relative rounded-xl border p-3 flex flex-col ${picking === tier ? 'border-lime-400 ring-1 ring-lime-400' : isCurrent ? 'border-lime-400 bg-lime-400/5' : tier === 'standard' ? 'border-amber-300/60' : 'border-navy-600'}`}>
               {tier === 'standard' && !isCurrent && <span className="absolute -top-2 right-2 rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-bold text-navy-950">{t('plan.popular')}</span>}
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-white font-bold uppercase">{tier}</span>
+                <span className="text-white font-bold">{tier}</span>
                 <span className="text-amber-200 text-xs font-semibold">{price != null ? t('plan.perMonth', { price: formatVnd(price) }) : ''}</span>
               </div>
               <div className="text-gray-400 text-xs mt-0.5">{t(v.sm ? `plan.smFor_${tier}` : `plan.for_${tier}`)}</div>
@@ -413,7 +413,7 @@ function TrialCode() {
   return (
     <form onSubmit={redeem} className="mb-3">
       <div className="flex gap-2">
-        <input className="input !py-1.5 text-sm uppercase font-mono flex-1 min-w-0" placeholder={t('plan.trialCodePlaceholder')} aria-label={t('plan.trialCodePlaceholder')} value={code} maxLength={32} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+        <input className="input !py-1.5 text-sm font-mono flex-1 min-w-0" placeholder={t('plan.trialCodePlaceholder')} aria-label={t('plan.trialCodePlaceholder')} value={code} maxLength={32} onChange={(e) => setCode(e.target.value.toUpperCase())} />
         <button type="submit" className="btn-primary !py-1.5 text-sm" disabled={busy || !code.trim()}>{t('plan.trialCodeActivate')}</button>
       </div>
       {msg && <p className={`text-xs mt-1 ${msg.ok ? 'text-lime-300' : 'text-red-300'}`}>{msg.text}</p>}
@@ -440,7 +440,7 @@ export function SocialManagerPanel({ compact = false }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-white font-bold">Social Manager</h3>
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${active ? 'bg-lime-400 text-navy-950' : 'bg-navy-700 text-gray-300'}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? 'bg-lime-400 text-navy-950' : 'bg-navy-700 text-gray-300'}`}>
               {active ? v.current : t('plan.smNone')}
             </span>
           </div>

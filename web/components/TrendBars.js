@@ -29,7 +29,7 @@ export default function TrendBars({ title, series, format = (v) => String(v), de
 
   return (
     <div className="rounded-xl border border-navy-700 bg-[#131c31] p-4 flex flex-col">
-      <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide">{title}</p>
+      <p className="text-gray-400 text-xs font-semibold">{title}</p>
       <p className={`text-2xl font-bold tabular-nums mt-1 ${signed && cur.value < 0 ? 'text-pink-300' : 'text-white'}`}>{format(cur.value)}</p>
       <p className="text-xs mt-0.5 text-gray-400">
         {prev == null || diff === 0 && prev.value === 0

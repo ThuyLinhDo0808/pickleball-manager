@@ -63,7 +63,7 @@ export default function MeetingEvent({ event, onChanged }) {
   return (
     <>
       <div className="mb-4">
-        <p className="text-gray-400 text-xs uppercase tracking-wide">👥 {t('vote.kicker')}</p>
+        <p className="text-gray-400 text-xs">👥 {t('vote.kicker')}</p>
         <h1 className="text-white text-2xl font-bold">{event.title}</h1>
       </div>
 

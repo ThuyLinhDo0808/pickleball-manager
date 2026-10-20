@@ -29,8 +29,9 @@ export default function SectionTabs({ group }) {
   const pathname = usePathname() || '';
   if (!scoped) return null;
   return (
-    <nav className="-mx-4 px-4 md:mx-0 md:px-0 mb-5 overflow-x-auto overflow-y-hidden no-scrollbar border-b border-navy-700">
-      <div className="flex gap-1 min-w-max">
+    // Wraps onto two lines on a phone rather than hiding tabs off the edge of the screen.
+    <nav className="mb-5">
+      <div className="flex flex-wrap gap-2">
         {GROUPS[group].filter((tab) => (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport)).map((tab) => {
           const active = tab.match(pathname);
           // Social Manager: the schedule tab reads like its menu entry ("Lịch xé vé").
@@ -40,7 +41,7 @@ export default function SectionTabs({ group }) {
               key={tab.href}
               href={tab.href}
               aria-current={active ? 'page' : undefined}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-sm whitespace-nowrap transition ${active ? 'border-lime-400 text-lime-300 font-semibold' : 'border-transparent text-gray-400 hover:text-white hover:border-navy-500'}`}
+              className={`rounded-full border px-3.5 py-2 text-sm whitespace-nowrap transition ${active ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400 hover:text-white'}`}
             >
               <span aria-hidden="true" className="mr-1.5">{tab.icon}</span>
               {t(key)}

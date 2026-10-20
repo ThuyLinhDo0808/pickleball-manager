@@ -20,7 +20,7 @@ import Hint from '@/components/ui/Hint';
 function Tile({ icon, label, value, tone = 'text-white', sub }) {
   return (
     <div className="card !p-4">
-      <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
+      <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
         <span>{label}</span>
         <span aria-hidden="true">{icon}</span>
       </div>
@@ -194,7 +194,7 @@ export default function FinanceOverview() {
         {social && (
           <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 flex flex-col justify-center">
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t('social.expectedProfit')} · {periodLabel}</p>
+            <p className="text-gray-400 text-xs font-semibold">{t('social.expectedProfit')} · {periodLabel}</p>
             {(() => {
               const owed = !isYear && daily ? daily.totals.unpaid : 0;
               const v = picked ? Number(picked.income) - Number(picked.expense) + owed : null;
@@ -207,7 +207,7 @@ export default function FinanceOverview() {
         {isClub && !social && (
           <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 flex flex-col justify-center">
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t('fin.balance')}</p>
+            <p className="text-gray-400 text-xs font-semibold">{t('fin.balance')}</p>
             <div className={`text-3xl sm:text-4xl font-bold tabular-nums mt-1 ${bal < 0 ? 'text-red-400' : 'text-lime-400'}`}>{fund ? formatVnd(bal) : '—'}</div>
           </div>
         )}

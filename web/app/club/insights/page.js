@@ -229,8 +229,7 @@ export default function InsightsPage() {
           {tab === 'time' && pt && (
             <>
               <section className="card !p-4">
-                <h2 className="text-white font-semibold text-sm mb-1">🗓 {t('insights.heatTitle')}</h2>
-                <Hint text={t('insights.heatHint')} className="mb-3" />
+                <h2 className="text-white font-semibold text-sm mb-1">🗓 {t('insights.heatTitle')} <Hint inline text={t('insights.heatHint')} /></h2>
                 <Heatmap data={pt.heatmap} t={t} />
               </section>
               <div className="grid md:grid-cols-2 gap-3">
@@ -252,8 +251,7 @@ export default function InsightsPage() {
                 />
               </div>
               <section className="card !p-4">
-                <h2 className="text-white font-semibold text-sm mb-1">📦 {t('insights.fillTitle')}</h2>
-                <Hint text={t('insights.fillHint')} className="mb-3" />
+                <h2 className="text-white font-semibold text-sm mb-1">📦 {t('insights.fillTitle')} <Hint inline text={t('insights.fillHint')} /></h2>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {['full', 'high', 'mid', 'low', 'open'].map((k) => (
                     <div key={k} className="rounded-lg bg-navy-900 px-2 py-2 text-center">
@@ -285,8 +283,7 @@ export default function InsightsPage() {
               )}
               <div className="grid lg:grid-cols-2 gap-3 items-start">
                 <section className="card !p-4">
-              <h2 className="text-white font-semibold text-sm mb-1">🎯 {t('insights.frequency')}</h2>
-              <Hint text={t('insights.frequencyHint')} className="mb-3" />
+              <h2 className="text-white font-semibold text-sm mb-1">🎯 {t('insights.frequency')} <Hint inline text={t('insights.frequencyHint')} /></h2>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {['high', 'mid', 'low', 'none'].map((b) => (
                   <div key={b} className="rounded-lg bg-navy-900 px-2 py-2 text-center">
@@ -307,7 +304,7 @@ export default function InsightsPage() {
                   <li key={m.member_id} className="py-1.5 flex items-center justify-between gap-2 text-sm">
                     <span className="flex items-center gap-2 min-w-0">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${STATE[m.state][0]}`} aria-hidden="true" />
-                      <span className="text-gray-200 truncate">{m.full_name}</span>
+                      <span className="text-gray-200 break-words">{m.full_name}</span>
                     </span>
                     <span className="text-gray-400 text-xs tabular-nums whitespace-nowrap">
                       {t('insights.memberLine', { n: m.sessions, f: m.per_month })} · {m.last_played ? t('insights.lastOn', { d: fmtDay(m.last_played) }) : t('insights.never')}

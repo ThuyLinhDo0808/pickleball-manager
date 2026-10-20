@@ -106,7 +106,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
           <>
             <span className="min-w-0 flex-1">
               <span className="block text-white text-sm font-semibold truncate">{current.name}</span>
-              {current.role && <span className="block text-lime-300/90 text-[11px] font-semibold uppercase tracking-wide">{current.role}</span>}
+              {current.role && <span className="block text-lime-300/90 text-[11px] font-semibold">{current.role}</span>}
             </span>
             <svg viewBox="0 0 24 24" className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M7 10l5-5 5 5M7 14l5 5 5-5" />
@@ -123,7 +123,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
         >
           {communities.length > 0 && (
             <>
-              <p className="px-2 pt-1 pb-1 text-amber-300/80 text-[11px] font-semibold uppercase tracking-wide">🎟 {t('hub.socialManager')} · {t('hub.communities')}</p>
+              <p className="px-2 pt-1 pb-1 text-amber-300/80 text-[11px] font-semibold">🎟 {t('hub.socialManager')} · {t('hub.communities')}</p>
               {communities.map((c) => (
                 <div key={c.id}>
                   {row(workspace === 'xeve' && club?.id === c.id, () => pickClub(c.id), <ClubAvatar id={c.id} name={c.name} sport={c.sport} size={32} />, c.name, t(ROLE_LABEL[c.role] || 'hub.roleOwner'))}
@@ -133,7 +133,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
           )}
           {clubs.length > 0 && (
             <>
-              <p className="px-2 pt-2 pb-1 text-gray-500 text-[11px] font-semibold uppercase tracking-wide">{t('hub.managing')}</p>
+              <p className="px-2 pt-2 pb-1 text-gray-500 text-[11px] font-semibold">{t('hub.managing')}</p>
               {clubs.map((c) => (
                 <div key={c.id}>
                   {row(

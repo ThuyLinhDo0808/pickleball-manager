@@ -58,7 +58,7 @@ export default function TournamentFees({ tour }) {
               >
                 <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border ${p.paid ? 'bg-lime-400 border-lime-400 text-navy-950' : 'border-gray-500'}`}>{p.paid ? '✓' : ''}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="text-white block truncate">{p.full_name}</span>
+                  <span className="text-white block break-words">{p.full_name}</span>
                   <span className="text-gray-500 text-xs block truncate">{p.team}</span>
                 </span>
                 <span className={`text-xs shrink-0 ${p.paid ? 'text-lime-300' : 'text-gray-400'}`}>{p.paid ? t('tfee.paid') : t('tfee.notPaid')}</span>

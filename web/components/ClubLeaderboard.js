@@ -51,7 +51,7 @@ const COLUMNS = [
 function AwardCard({ title, icon, rows, fmt, hint }) {
   return (
     <div className="card !p-4">
-      <div className="text-gray-300 text-xs font-semibold uppercase tracking-wide mb-2">
+      <div className="text-gray-300 text-xs font-semibold mb-2">
         {icon} {title}
       </div>
       {rows.length === 0 && <p className="text-gray-500 text-sm">—</p>}
@@ -152,7 +152,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
                 <div className={h} />
                 <div className={`rounded-full ring-2 ${ring}`}><Avatar name={r.full_name} size={idx === 0 ? 52 : 42} /></div>
                 <div className="text-2xl -mt-2" aria-hidden="true">{MEDALS[idx]}</div>
-                <div className="text-white font-semibold text-sm truncate max-w-full">{r.full_name}</div>
+                <div className="text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
                 <div className="text-lime-300 text-sm font-bold tabular-nums">{r.win_rate}%</div>
                 <div className="text-gray-400 text-[11px] tabular-nums">{r.wins}-{r.losses} · {r.point_diff > 0 ? `+${r.point_diff}` : r.point_diff}</div>
               </div>

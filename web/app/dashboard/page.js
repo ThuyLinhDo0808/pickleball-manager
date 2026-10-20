@@ -29,7 +29,7 @@ function Kpi({ icon, label, value, sub, href, tone = 'text-white', lines = null 
   const { t } = useI18n();
   return (
     <div className="card h-full !p-4 flex flex-col gap-1">
-      <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
+      <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
         <span>{label}</span>
         <span className="text-base" aria-hidden="true">{icon}</span>
       </div>
@@ -188,20 +188,130 @@ function ClubHome({ community = false }) {
                 </p>
               )}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/events/create" className="btn-primary text-sm">+ {t('nav.createGame')}</Link>
-              {canWeekly && <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>}
-              <Link href="/club/members" className="btn-secondary text-sm">{t('nav.members')}</Link>
-            </div>
+          </div>
+          {/* The three things a Host opens every day, as big tiles. */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4">
+            {[
+              ['/events/create', '➕', t('nav.createGame'), true],
+              ['/events', '📅', t('nav.schedule')],
+              ['/club/members', '👥', t('nav.members')],
+            ].map(([href, icon, label, main]) => (
+              <Link key={href} href={href} className={`rounded-xl flex flex-col items-center justify-center gap-1 py-3 text-center text-sm font-semibold ${main ? 'bg-lime-400 text-navy-950 hover:bg-lime-300' : 'bg-navy-800 border border-navy-600 text-white hover:border-lime-400'}`}>
+                <span className="text-2xl leading-none" aria-hidden>{icon}</span>
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       )}
 
-      {community && <h2 className="text-white text-lg font-semibold mt-6 mb-3">🗓 {t('social.thisMonth', { name: club?.name || '' })}</h2>}
+      {/* Today first: what needs the Host, then the next sessions, then money. */}
+      <div className="flex flex-col gap-4 mb-5">
+        <Section title={t('home.todo')}>
+            {todos.length === 0 ? (
+              <p className="text-gray-400 text-sm">✅ {t('home.allClear')}</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {todos.map((x) => (
+                  <li key={x.text}>
+                    <Link href={x.href} className="flex items-center gap-3 rounded-lg bg-navy-900 px-3 py-2 text-sm text-gray-100 hover:text-lime-300">
+                      <span aria-hidden="true">{x.icon}</span>
+                      <span className="flex-1">{x.text}</span>
+                      <span className="text-gray-500">›</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
 
-      {/* Club at a glance (a community has its own members / trend charts above) */}
+      </div>
+
+      <PendingPayments club={club} />
+
+      <div className="flex flex-col gap-4 mb-5">
+          <Section title={t('home.upcomingEvents')} action={<Link href="/events" className="text-lime-400 text-sm">{t('nav.schedule')} →</Link>}>
+            {upcoming.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-gray-400 text-sm mb-3">{t('home.noUpcoming')}</p>
+                <Link href={canWeekly ? '/events/create/weekly' : '/events/create'} className="btn-primary text-sm">{canWeekly ? t('nav.createWeekly') : `+ ${t('nav.createGame')}`}</Link>
+              </div>
+            ) : (
+              <ul className="flex flex-col divide-y divide-navy-700">
+                {upcoming.map((e) => {
+                  const d = new Date(`${e.event_date}T00:00:00`);
+                  const pct = e.slots ? Math.min(100, Math.round((100 * (e.main_count || 0)) / e.slots)) : 0;
+                  const left = free(e);
+                  const isToday = e.event_date === today;
+                  const state = isToday
+                    ? ['home.stToday', 'bg-lime-400 text-navy-950']
+                    : left === 0
+                      ? ['home.stFull', 'bg-red-500/20 text-red-300 border border-red-500/40']
+                      : e.allow_public_registration
+                        ? ['home.stOpen', 'bg-sky-400/15 text-sky-300 border border-sky-400/40']
+                        : ['home.stSoon', 'bg-navy-700 text-gray-200'];
+                  return (
+                    <li key={e.id}>
+                      <Link href={`/events/${e.id}`} className="flex items-center gap-4 py-3 group">
+                        <div className={`w-14 shrink-0 rounded-xl text-center py-1.5 ${e.event_date === today ? 'bg-lime-400 text-navy-950' : 'bg-navy-900 text-white'}`}>
+                          <div className="text-[10px] font-semibold opacity-80">{localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short' })}</div>
+                          <div className="text-xl font-bold leading-6">{d.getDate()}</div>
+                          <div className="text-[10px] opacity-80">{t('home.monthShort', { m: d.getMonth() + 1 })}</div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-white font-semibold break-words group-hover:text-lime-300">{e.title}</span>
+                            <span className={`shrink-0 text-[10px] font-semibold rounded-full px-2 py-0.5 ${state[1]}`}>{t(state[0])}</span>
+                          </div>
+                          <div className="text-gray-400 text-xs truncate">
+                            {e.start_time ? hhmm(e.start_time) : ''}
+                            {e.end_time ? `–${hhmm(e.end_time)}` : ''}
+                            {e.location ? ` · ${e.location}` : ''}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="h-1.5 flex-1 max-w-[12rem] rounded-full bg-navy-900 overflow-hidden">
+                              <span className="block h-full bg-lime-400" style={{ width: `${pct}%` }} />
+                            </span>
+                            <span className="text-gray-300 text-xs tabular-nums">{e.main_count || 0}/{e.slots || '∞'}</span>
+                            {left != null && left > 0 && <span className="text-lime-300 text-xs">{t('home.slotsLeft', { n: left })}</span>}
+                            {e.waitlist_count > 0 && <span className="text-sky-300 text-xs">+{e.waitlist_count} {t('home.waiting')}</span>}
+                          </div>
+                        </div>
+                        <span className="text-gray-500 group-hover:text-lime-300" aria-hidden="true">›</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Section>
+
+      </div>
+
+      {/* Money this month, in three numbers */}
+      <h2 className="text-gray-300 text-sm font-semibold mb-2">💰 {t('home.rowMoney')}</h2>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+        {[
+          [t('home.kpiIncome'), thisMonth.income, 'text-lime-400', canStats ? '/finance' : '/finance/ledger'],
+          [t('home.kpiExpense'), thisMonth.expense, 'text-red-300', '/finance/ledger'],
+          [t('home.kpiFund'), fund?.balance || 0, Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white', '/finance/ledger'],
+        ].map(([label, v, tone, href]) => (
+          <Link key={label} href={href} className="card !p-3 hover:border-lime-400/60">
+            <div className="text-gray-400 text-sm">{label}</div>
+            <div className={`text-sm sm:text-xl font-bold tabular-nums whitespace-nowrap ${tone}`}>{formatVnd(v)}</div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Everything else stays one tap away, folded. */}
+      <details className="group mb-5">
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden card !py-3 flex items-center justify-between text-white font-semibold">
+          <span>📊 {t('ux.moreStats')}</span>
+          <span className="text-gray-400 group-open:rotate-180 transition-transform" aria-hidden>▾</span>
+        </summary>
+        <div className="mt-4">
       {!community && (<>
-      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowClub')}</h2>
+      <h2 className="text-gray-400 text-xs font-semibold mb-2">{t('home.rowClub')}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <Kpi
           icon="👥"
@@ -241,76 +351,11 @@ function ClubHome({ community = false }) {
       </div>
       </>)}
 
-      {/* Money */}
-      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowMoney')}</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Kpi icon="💰" label={t('home.kpiIncome')} value={formatVnd(thisMonth.income)} tone="text-lime-400" href={canStats ? '/finance' : '/finance/ledger'} />
-        <Kpi icon="🧾" label={t('home.kpiExpense')} value={formatVnd(thisMonth.expense)} tone="text-red-300" href="/finance/ledger" />
-        <Kpi icon="🏦" label={t('home.kpiFund')} value={formatVnd(fund?.balance || 0)} tone={Number(fund?.balance) < 0 ? 'text-red-400' : 'text-white'} href="/finance/ledger" />
-        <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
-      </div>
-
-      <PendingPayments club={club} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Upcoming sessions */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
-          <Section title={t('home.upcomingEvents')} action={<Link href="/events" className="text-lime-400 text-sm">{t('nav.schedule')} →</Link>}>
-            {upcoming.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-gray-400 text-sm mb-3">{t('home.noUpcoming')}</p>
-                <Link href={canWeekly ? '/events/create/weekly' : '/events/create'} className="btn-primary text-sm">{canWeekly ? t('nav.createWeekly') : `+ ${t('nav.createGame')}`}</Link>
-              </div>
-            ) : (
-              <ul className="flex flex-col divide-y divide-navy-700">
-                {upcoming.map((e) => {
-                  const d = new Date(`${e.event_date}T00:00:00`);
-                  const pct = e.slots ? Math.min(100, Math.round((100 * (e.main_count || 0)) / e.slots)) : 0;
-                  const left = free(e);
-                  const isToday = e.event_date === today;
-                  const state = isToday
-                    ? ['home.stToday', 'bg-lime-400 text-navy-950']
-                    : left === 0
-                      ? ['home.stFull', 'bg-red-500/20 text-red-300 border border-red-500/40']
-                      : e.allow_public_registration
-                        ? ['home.stOpen', 'bg-sky-400/15 text-sky-300 border border-sky-400/40']
-                        : ['home.stSoon', 'bg-navy-700 text-gray-200'];
-                  return (
-                    <li key={e.id}>
-                      <Link href={`/events/${e.id}`} className="flex items-center gap-4 py-3 group">
-                        <div className={`w-14 shrink-0 rounded-xl text-center py-1.5 ${e.event_date === today ? 'bg-lime-400 text-navy-950' : 'bg-navy-900 text-white'}`}>
-                          <div className="text-[10px] uppercase font-semibold opacity-80">{localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short' })}</div>
-                          <div className="text-xl font-bold leading-6">{d.getDate()}</div>
-                          <div className="text-[10px] opacity-80">{t('home.monthShort', { m: d.getMonth() + 1 })}</div>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-white font-semibold truncate group-hover:text-lime-300">{e.title}</span>
-                            <span className={`shrink-0 text-[10px] font-semibold rounded-full px-2 py-0.5 ${state[1]}`}>{t(state[0])}</span>
-                          </div>
-                          <div className="text-gray-400 text-xs truncate">
-                            {e.start_time ? hhmm(e.start_time) : ''}
-                            {e.end_time ? `–${hhmm(e.end_time)}` : ''}
-                            {e.location ? ` · ${e.location}` : ''}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <span className="h-1.5 flex-1 max-w-[12rem] rounded-full bg-navy-900 overflow-hidden">
-                              <span className="block h-full bg-lime-400" style={{ width: `${pct}%` }} />
-                            </span>
-                            <span className="text-gray-300 text-xs tabular-nums">{e.main_count || 0}/{e.slots || '∞'}</span>
-                            {left != null && left > 0 && <span className="text-lime-300 text-xs">{t('home.slotsLeft', { n: left })}</span>}
-                            {e.waitlist_count > 0 && <span className="text-sky-300 text-xs">+{e.waitlist_count} {t('home.waiting')}</span>}
-                          </div>
-                        </div>
-                        <span className="text-gray-500 group-hover:text-lime-300" aria-hidden="true">›</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Section>
-
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 flex flex-col gap-4">
           <Section title={t('home.topMonth')} action={<Link href="/club/rankings" className="text-lime-400 text-sm">{t('nav.rankings')} →</Link>}>
             {!top || (!top.top_attendance.length && !top.top_win_rate.length && !top.top_point_diff.length) ? (
               <p className="text-gray-400 text-sm">{t('home.noTop')}</p>
@@ -322,7 +367,7 @@ function ClubHome({ community = false }) {
                   ['📈', t('rankings.topDiff'), top.top_point_diff, (v) => (v > 0 ? `+${v}` : v)],
                 ].map(([icon, title, list, fmt]) => (
                   <div key={title} className="rounded-xl bg-navy-900 p-3">
-                    <div className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1.5">{icon} {title}</div>
+                    <div className="text-gray-400 text-xs font-semibold mb-1.5">{icon} {title}</div>
                     {list.length === 0 ? (
                       <p className="text-gray-500 text-sm">—</p>
                     ) : (
@@ -338,28 +383,8 @@ function ClubHome({ community = false }) {
               </div>
             )}
           </Section>
-        </div>
-
-        {/* Side column */}
-        <div className="flex flex-col gap-4">
-          <Section title={t('home.todo')}>
-            {todos.length === 0 ? (
-              <p className="text-gray-400 text-sm">✅ {t('home.allClear')}</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {todos.map((x) => (
-                  <li key={x.text}>
-                    <Link href={x.href} className="flex items-center gap-3 rounded-lg bg-navy-900 px-3 py-2 text-sm text-gray-100 hover:text-lime-300">
-                      <span aria-hidden="true">{x.icon}</span>
-                      <span className="flex-1">{x.text}</span>
-                      <span className="text-gray-500">›</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
+            </div>
+            <div className="flex flex-col gap-4">
           <Section title={`🎂 ${t('home.birthdays')}`}>
             {birthdays.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('home.noBirthdays')}</p>
@@ -367,7 +392,7 @@ function ClubHome({ community = false }) {
               <ul className="flex flex-col gap-1.5 text-sm">
                 {birthdays.slice(0, 6).map((m) => (
                   <li key={m.id} className="flex justify-between gap-2">
-                    <span className="truncate text-gray-100">{m.full_name}</span>
+                    <span className="break-words text-gray-100">{m.full_name}</span>
                     <span className={`tabular-nums shrink-0 ${m.birth_date.slice(5) === today.slice(5) ? 'text-pink-300 font-semibold' : 'text-gray-400'}`}>
                       {m.birth_date.slice(8, 10)}/{m.birth_date.slice(5, 7)}
                     </span>
@@ -380,7 +405,7 @@ function ClubHome({ community = false }) {
           {usage && (
             <Section title={t('home.plan')} action={<Link href="/account" className="text-lime-400 text-sm">{t('nav.account')} →</Link>}>
               <div className="flex justify-between items-baseline gap-2 mb-2">
-                <span className="text-white font-bold uppercase">{usage.tier}</span>
+                <span className="text-white font-bold">{usage.tier}</span>
                 <span className="text-gray-400 text-xs">{t('home.planUsage', { used: usage.used, limit: usage.capacity_limit })}</span>
               </div>
               <div className="w-full bg-navy-900 rounded-full h-2 overflow-hidden">
@@ -389,8 +414,10 @@ function ClubHome({ community = false }) {
               <p className="text-gray-400 text-xs mt-2">{t('home.planLeft', { n: usage.remaining })}</p>
             </Section>
           )}
+            </div>
+          </div>
         </div>
-      </div>
+      </details>
     </>
   );
 }

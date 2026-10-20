@@ -22,7 +22,7 @@ function SpaceTile({ onClick, href, avatar, label, badge, badgeTone, lines = 2 }
     <>
       {avatar}
       <span className={`mt-1.5 w-full text-center text-white text-xs font-semibold leading-tight break-words ${lines === 3 ? 'line-clamp-3' : 'line-clamp-2'}`}>{label}</span>
-      {badge && <span className={`mt-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badgeTone}`}>{badge}</span>}
+      {badge && <span className={`mt-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${badgeTone}`}>{badge}</span>}
     </>
   );
   const cls = 'flex w-24 shrink-0 snap-start flex-col items-center rounded-2xl p-2 hover:bg-navy-800 transition';
@@ -208,7 +208,7 @@ export default function HomeHub() {
               <button key={c.club_id} type="button" onClick={() => memberClub(c.club_id)} className="card !p-3 flex items-center gap-3 text-left hover:border-lime-400/60 transition">
                 <ClubAvatar id={c.club_id} name={c.name} sport={c.sport} size={44} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-white font-semibold truncate">{c.name}</span>
+                  <span className="block text-white font-semibold break-words">{c.name}</span>
                   <span className="block text-gray-400 text-xs">
                     {c.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}
                     {c.current_period ? ` · ${c.current_period}` : ''}

@@ -7,6 +7,7 @@ import DatePopover from '@/components/DatePopover';
 import PageHeader from '@/components/ui/PageHeader';
 import SectionTabs from '@/components/ui/SectionTabs';
 import StatTile from '@/components/ui/StatTile';
+import Hint from '@/components/ui/Hint';
 import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
@@ -59,13 +60,13 @@ function EventCard({ e }) {
   return (
     <Link href={hrefOf(e)} className={`card !p-0 overflow-hidden hover:border-lime-400 transition flex ${e.status === 'cancelled' ? 'opacity-60' : ''}`}>
       <div className={`w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 py-3 ${e.tone ? e.tone.chip : 'bg-navy-900'}`}>
-        <span className="text-[11px] uppercase text-gray-300">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
+        <span className="text-[11px] text-gray-300">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
         <span className="text-white text-2xl font-bold leading-none tabular-nums">{Number(e.event_date.slice(8, 10))}</span>
         <span className="text-[11px] text-gray-400">{e.event_date.slice(5, 7)}/{e.event_date.slice(0, 4)}</span>
       </div>
       <div className="min-w-0 flex-1 p-3">
         <div className="flex justify-between gap-2">
-          <span className={`text-white font-semibold truncate ${e.status === 'cancelled' ? 'line-through' : ''}`}>
+          <span className={`text-white font-semibold break-words min-w-0 ${e.status === 'cancelled' ? 'line-through' : ''}`}>
             {KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}
             {e.title}
           </span>
@@ -73,7 +74,7 @@ function EventCard({ e }) {
             {e.kind === 'tournament' ? (e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)) : t(`events.status_${e.status}`)}
           </span>
         </div>
-        <div className="text-gray-400 text-sm truncate">
+        <div className="text-gray-400 text-sm break-words">
           {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
         </div>
         {e.club_name && (
@@ -231,6 +232,8 @@ export default function EventsPage() {
       <SectionTabs group="activities" />
 
       {/* Club: sessions and tournaments. Xé Vé sells places, so it shows how full the coming kèo are. */}
+      {/* On a phone the list comes first: the numbers are for bigger screens. */}
+      <div className="hidden sm:block">
       <KpiRow cols={3}>
         <StatTile icon="📅" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
         <StatTile icon="⏭" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
@@ -240,6 +243,7 @@ export default function EventsPage() {
           <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
         )}
       </KpiRow>
+      </div>
 
       <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
         <Segmented items={phone ? VIEWS.filter((v) => v !== 'week') : VIEWS} value={view} onChange={pickView} label={(v) => t(`cal.${v}`)} />
@@ -336,11 +340,10 @@ export default function EventsPage() {
                     {showDone ? '▾' : '▸'} {t('evlist.g_done')} ({rows.length})
                   </button>
                 ) : (
-                  <h2 className="text-gray-300 text-sm font-semibold mb-1">{t(`evlist.g_${g}`)} ({rows.length})</h2>
+                  <h2 className="text-gray-300 text-sm font-semibold mb-2 flex items-center gap-2">{t(`evlist.g_${g}`)} ({rows.length}) <Hint inline text={t(`evlist.h_${g}`, { n: SOON_DAYS })} /></h2>
                 )}
                 {!folded && (
                   <>
-                    <p className="text-gray-500 text-xs mb-2">{t(`evlist.h_${g}`, { n: SOON_DAYS })}</p>
                     {rows.length === 0 && <p className="text-gray-500 text-sm">{t('evlist.none')}</p>}
                     <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${g === 'done' ? 'opacity-80' : ''}`}>
                       {rows.map((e) => <EventCard key={e.id} e={e} />)}

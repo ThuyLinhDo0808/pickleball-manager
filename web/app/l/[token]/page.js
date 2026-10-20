@@ -1,4 +1,5 @@
 'use client';
+import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
@@ -39,9 +40,9 @@ export default function LiveBoardPage() {
   }, [token]);
 
   const langToggle = (
-    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button>
+    </button></span>
   );
 
   if (!data) {
@@ -82,7 +83,7 @@ export default function LiveBoardPage() {
         {data.champion && (
           <div className="card mb-5 text-center border-amber-300/60 bg-amber-300/5 py-5">
             <div className="text-4xl">🏆</div>
-            <div className="text-gray-400 text-xs uppercase tracking-wide">{t('tournaments.champion')}</div>
+            <div className="text-gray-400 text-xs">{t('tournaments.champion')}</div>
             <div className="text-amber-300 text-2xl font-bold">{data.champion}</div>
           </div>
         )}

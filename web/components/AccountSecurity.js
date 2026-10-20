@@ -153,8 +153,7 @@ export default function AccountSecurity() {
       <div className="rounded-xl border border-navy-700 bg-navy-900/40 p-4">
         <div className="flex flex-wrap items-center gap-2 justify-between">
           <div>
-            <p className="text-white font-semibold">🔐 {t('sec.mfaTitle')}</p>
-            <Hint text={t('sec.mfaHint')} className="mt-0.5" />
+            <p className="text-white font-semibold">🔐 {t('sec.mfaTitle')} <Hint inline text={t('sec.mfaHint')} /></p>
           </div>
           <span className={`text-xs font-semibold rounded-full border px-2.5 py-0.5 ${mfa.enabled ? 'border-lime-400/60 text-lime-300' : 'border-gray-500 text-gray-300'}`}>
             {mfa.enabled ? `✓ ${t('sec.on')}` : t('sec.off')}
@@ -259,8 +258,7 @@ export default function AccountSecurity() {
 
       {/* Devices */}
       <div className="rounded-xl border border-navy-700 bg-navy-900/40 p-4">
-        <p className="text-white font-semibold">💻 {t('sec.devicesTitle')}</p>
-        <Hint text={t('sec.devicesHint')} className="mt-0.5 mb-3" />
+        <p className="text-white font-semibold">💻 {t('sec.devicesTitle')} <Hint inline text={t('sec.devicesHint')} /></p>
         {data.devices.length === 0 ? (
           <p className="text-gray-500 text-sm">{t('sec.noDevices')}</p>
         ) : (
@@ -285,8 +283,7 @@ export default function AccountSecurity() {
           </ul>
         )}
         <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
-          <p className="text-red-200 text-sm font-semibold">{t('sec.logoutAll')}</p>
-          <Hint text={t('sec.logoutAllHint')} className="mt-0.5 mb-2" />
+          <p className="text-red-200 text-sm font-semibold">{t('sec.logoutAll')} <Hint inline text={t('sec.logoutAllHint')} /></p>
           <button type="button" className="rounded-lg px-3 py-2 text-sm font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/15" onClick={() => logoutAll().catch((e) => setMsg(errText(e, t)))}>
             🚪 {t('sec.logoutAll')}
           </button>

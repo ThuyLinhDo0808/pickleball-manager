@@ -122,8 +122,7 @@ export default function PlansPage() {
       {packs ? (
         <form onSubmit={create} className="card !p-5 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
           <div className="col-span-2 md:col-span-4 -mb-1">
-            <h2 className="text-white font-semibold">✨ {t('finX.newPlan')}</h2>
-            <Hint text={t('plans.packLead')} />
+            <h2 className="text-white font-semibold">✨ {t('finX.newPlan')} <Hint inline text={t('plans.packLead')} /></h2>
           </div>
           <div className="col-span-2 md:col-span-4">
             <label htmlFor="pk-name" className="text-xs text-gray-400">1. {t('plans.name')}</label>
@@ -153,8 +152,7 @@ export default function PlansPage() {
       ) : (
         <form onSubmit={create} className="card !p-5 mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
           <div className="col-span-2 md:col-span-5 -mb-1">
-            <h2 className="text-white font-semibold">✨ {t('finX.newPlan')}</h2>
-            <Hint text={t('finX.newPlanHint')} />
+            <h2 className="text-white font-semibold">✨ {t('finX.newPlan')} <Hint inline text={t('finX.newPlanHint')} /></h2>
           </div>
           <div className="col-span-2">
             <label className="text-xs text-gray-400">{t('plans.name')}</label>
@@ -203,7 +201,7 @@ export default function PlansPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-amber-300 text-xs" aria-hidden="true">{'⭐'.repeat(stars)} VIP</div>
-                  <div className="text-white font-semibold text-lg truncate">{p.name}</div>
+                  <div className="text-white font-semibold text-lg break-words">{p.name}</div>
                   <div className="text-gray-400 text-xs">{pack ? t('plans.packShort', { n: p.sessions_included, m: p.validity_months }) : t(`plans.${p.period}`)}</div>
                 </div>
                 <span className={`text-[11px] rounded-full px-2 py-0.5 shrink-0 ${p.is_active ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-700 text-gray-300'}`}>
