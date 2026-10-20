@@ -3430,6 +3430,7 @@ export const vi = {
     termsAccepted: "Người pass đã đồng ý điều khoản pass vé.",
   },
   featured: {
+    ownerConditions: "Điều kiện Top 10 (số liệu hiện tại)",
     hostInfo: "Host gửi: {members} thành viên · {sessions} buổi đã tổ chức · {active}% hoạt động · TB {newAvg} người mới/tháng",
     title: "Top 10 cộng đồng uy tín",
     migration: "Cần chạy migration 20261203090000_featured_communities.sql.",

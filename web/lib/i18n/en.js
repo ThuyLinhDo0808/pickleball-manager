@@ -3430,6 +3430,7 @@ export const en = {
     termsAccepted: "The holder agreed to the pass terms.",
   },
   featured: {
+    ownerConditions: "Top 10 conditions (current numbers)",
     hostInfo: "Host sent: {members} members · {sessions} sessions held · {active}% active · avg {newAvg} new/month",
     title: "Top 10 trusted communities",
     migration: "Run migration 20261203090000_featured_communities.sql.",

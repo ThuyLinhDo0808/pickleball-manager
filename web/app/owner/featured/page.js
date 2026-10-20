@@ -7,6 +7,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { localDate } from '@/lib/dates';
+import { Top10Checks, Top10Verdict } from '@/components/Top10';
 
 const FILTERS = ['todo', 'active', 'all'];
 const TONE = { awaiting_payment: 'bg-amber-300/20 text-amber-200', in_review: 'bg-sky-400/20 text-sky-200', active: 'bg-lime-400/20 text-lime-200', rejected: 'bg-red-500/20 text-red-200', cancelled: 'bg-navy-700 text-gray-400', ended: 'bg-navy-700 text-gray-400' };
@@ -70,6 +71,13 @@ export default function OwnerFeatured() {
                 {r.status === 'active' && <button type="button" className="btn-secondary !py-1.5 text-sm text-red-300" disabled={busy} onClick={() => { const note = window.prompt(t('featured.removeAsk')); if (note !== null) act(r, 'remove', { note }); }}>{t('featured.remove')}</button>}
               </div>
             </div>
+            {r.reputation && (
+              <div className="mt-3">
+                <p className="text-gray-300 text-xs font-semibold mb-1.5">{t('featured.ownerConditions')}</p>
+                <Top10Checks reputation={r.reputation} />
+                <div className="mt-2"><Top10Verdict reputation={r.reputation} /></div>
+              </div>
+            )}
             {/* What helps judge trust. */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3 text-center">
               {[
