@@ -164,6 +164,14 @@ async function listForOwner() {
   const { data: hosts } = hostIds.length ? await supabase.from('users').select('id, email').in('id', hostIds) : { data: [] };
   const emailOf = new Map((hosts || []).map((h) => [h.id, h.email]));
   const rows = (data || []).map(({ clubs: c, ...r }) => ({ ...r, amount: Number(r.amount), club: { name: c?.name, province: c?.province, district: c?.district }, host_email: emailOf.get(r.host_id) || null, stats: st.get(r.club_id) }));
+  // The Top 10 conditions as they stand now, for the requests still being handled.
+  const openIds = [...new Set(rows.filter((r) => OPEN.includes(r.status)).map((r) => r.club_id))];
+  if (openIds.length) {
+    const { data: clubs } = await supabase.from('clubs').select('*').in('id', openIds);
+    const rep = new Map();
+    for (const c of clubs || []) rep.set(c.id, await require('./communityBusiness').reputation(c).catch(() => null));
+    for (const r of rows) if (OPEN.includes(r.status)) r.reputation = rep.get(r.club_id) || null;
+  }
   return { price_month: pricePerMonth(), slots: SLOTS, active: rows.filter((r) => r.status === 'active').length, rows };
 }
 

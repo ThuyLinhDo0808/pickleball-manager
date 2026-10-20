@@ -2895,7 +2895,7 @@ export const en = {
   hostContact: {
     title: "Contact phone for players",
     hint: "Shown on quick booking links and booking pages: players who would rather not leave their phone call you to join, or when they want to pass a ticket on.",
-    missing: "No phone yet: quick bookings must leave their own phone.",
+    missing: "No phone yet: players who leave no phone have no number to call you to join / pass a ticket on.",
     label: "Phone number",
     migration: "Run migration 20261210090000_host_contact_phone.sql first.",
   },
@@ -3305,6 +3305,10 @@ export const en = {
     eventPage: 'Event page',
   },
   quick: {
+    phoneOptional: "optional",
+    hostNoPhone: "The Host has no contact phone yet — message the Host where you got this link.",
+    hostPhoneMissing: "You have no contact phone yet: players who leave no phone will not know whom to call to join or pass a ticket on.",
+    hostPhoneSet: "Add it in Account → Account details",
     phoneOrHost: "Enter a phone number, or tick \"I don't want to leave my phone\" to contact the Host yourself.",
     phoneNeeded: "Enter a phone number so the Host can reach you.",
     noPhone: "I don't want to leave my phone — I'll contact the Host myself to join.",
@@ -3430,6 +3434,7 @@ export const en = {
     termsAccepted: "The holder agreed to the pass terms.",
   },
   featured: {
+    ownerConditions: "Top 10 conditions (current numbers)",
     hostInfo: "Host sent: {members} members · {sessions} sessions held · {active}% active · avg {newAvg} new/month",
     title: "Top 10 trusted communities",
     migration: "Run migration 20261203090000_featured_communities.sql.",

@@ -149,6 +149,8 @@ export default function AccountPage() {
       <div className="flex flex-col">
         <SettingsSection id="login" hidden={tab !== 'login'} icon="🔑" tone="lime" title={t('auth.detailsTitle')} description={t('auth.detailsHint')}>
           <AccountDetails />
+          {/* Hosts: the phone players see on quick booking pages (join / pass a ticket on). */}
+          {clubs.length > 0 && <HostContactPhone />}
         </SettingsSection>
 
         {/* Two-step sign-in, devices, sign out everywhere. */}
@@ -168,7 +170,6 @@ export default function AccountPage() {
             <p className="text-gray-400 text-sm min-w-0 flex-1">{clubs.length ? t('acct.manageMoreBoth', { n: clubs.filter((c) => c.kind !== 'community').length, m: clubs.filter((c) => c.kind === 'community').length }) : t('acct.manageFirst')}</p>
             <Link href="/club-request" className="btn-primary">{lastRequest?.status === 'pending' ? t('acct.manageSeeRequest') : t('acct.manageApply')}</Link>
           </div>
-          {clubs.length > 0 && <HostContactPhone />}
         </SettingsSection>
 
         <SettingsSection id="plan" hidden={tab !== 'plan'} icon="💎" tone="amber" title={t('acct.s_plan')} description={t('acct.planHint')}>
