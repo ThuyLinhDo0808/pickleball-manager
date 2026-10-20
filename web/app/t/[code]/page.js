@@ -1,5 +1,4 @@
 'use client';
-import { TextSizeButton } from '@/components/TextSizeSwitch';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
 import { useParams } from 'next/navigation';
@@ -17,9 +16,9 @@ export default function TicketPage() {
   const { data: tk, error, loading } = useLoad(() => api.publicGet(`/api/public/tickets/${code}`), [code]);
 
   const langToggle = (
-    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button></span>
+    </button>
   );
 
   if (loading && !tk) return <div className="min-h-screen flex items-center justify-center text-gray-400">{t('common.loading')}</div>;

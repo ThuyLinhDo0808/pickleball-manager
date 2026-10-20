@@ -67,7 +67,7 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
     workspace === 'xeve' && club
       ? { avatar: <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={compact ? 32 : 40} />, name: club.name, role: `🎟 ${t(ROLE_LABEL[club.role] || 'hub.roleOwner')}` }
       : workspace === 'xeve'
-      ? { avatar: <ClubAvatar icon="🎟" size={compact ? 32 : 40} />, name: t('hub.oneOffKeo'), role: t('hub.roleOrganizer') }
+      ? { avatar: <ClubAvatar icon="🎟" size={compact ? 32 : 40} />, name: t('ux.noCommunity'), role: t('hub.roleOrganizer') }
       : workspace === 'staff'
         ? { avatar: <ClubAvatar icon="🦺" size={compact ? 32 : 40} />, name: t('hub.staff'), role: staffRole }
         : club

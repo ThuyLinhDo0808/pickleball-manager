@@ -36,6 +36,12 @@ async function clubByToken(token) {
 // =============================================================================
 // Public (no login): the club join page  —  /api/public
 // =============================================================================
+
+// "Không hoàn tiền" on events (migration 20261205090000_no_refund.sql).
+async function noRefundReady() {
+  const st = await require('../services/schemaCheck').schemaStatus();
+  return !st.missing_migrations.includes('20261205090000_no_refund.sql');
+}
 const publicRoutes = express.Router();
 
 publicRoutes.get('/clubs/:token', async (req, res) => {
@@ -564,10 +570,11 @@ player.get('/me', async (req, res) => {
     // Event history: sign-ups made while logged in + sessions as a club member.
     const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
     const tiers = await tiersReady();
+    const noRefund = await noRefundReady();
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
       .select(
-        `id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, cancelled_at${tiers ? ', refund_percent, cancel_reason, cancelled_by' : ''}, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours${tiers ? ', cancel_half_hours' : ''}, clubs(name))`
+        `id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, cancelled_at${tiers ? ', refund_percent, cancel_reason, cancelled_by' : ''}, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours${tiers ? ', cancel_half_hours' : ''}${noRefund ? ', no_refund' : ''}, clubs(name))`
       )
       .or(orFilter)
       .limit(500);
@@ -724,9 +731,10 @@ async function upcomingFor(uid, memberIds, clubId = null) {
   const today = todayYmd();
   const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
   const tiers = await tiersReady();
+  const noRefund = await noRefundReady();
   const { data: regs, error } = await supabase
     .from('event_participants')
-    .select(`id, status, event_id, ticket_code, payment_status, fee_amount, events!inner(id, title, event_date, start_time, end_time, location, map_url, status, club_id, public_token, allow_public_registration, cancel_deadline_hours, fee_amount${tiers ? ', cancel_half_hours' : ''})`)
+    .select(`id, status, event_id, ticket_code, payment_status, fee_amount, events!inner(id, title, event_date, start_time, end_time, location, map_url, status, club_id, public_token, allow_public_registration, cancel_deadline_hours, fee_amount${tiers ? ', cancel_half_hours' : ''}${noRefund ? ', no_refund' : ''})`)
     .or(orFilter)
     .gte('events.event_date', today)
     .limit(300);

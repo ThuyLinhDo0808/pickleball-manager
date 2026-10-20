@@ -1,5 +1,4 @@
 'use client';
-import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import HomeLink from '@/components/HomeLink';
@@ -37,9 +36,9 @@ export default function QuickBookPage() {
   }, [eventId, code]);
 
   const langToggle = (
-    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button></span>
+    </button>
   );
   const shell = (body) => (
     <div className="min-h-screen max-w-lg mx-auto px-4 pt-safe pb-safe-4">

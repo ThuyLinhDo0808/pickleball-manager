@@ -11,7 +11,6 @@ import CreateClubForm from '@/components/CreateClubForm';
 import ContextSwitcher from '@/components/ContextSwitcher';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import FeedbackButton from '@/components/FeedbackButton';
-import TextSizeSwitch, { TextSizeButton } from '@/components/TextSizeSwitch';
 import SignupBell from '@/components/SignupBell';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
@@ -109,29 +108,9 @@ const NAV_BY_WORKSPACE = {
       ],
     },
   ],
-  xeve: [
-    { href: '/events', key: 'nav.kevents', icon: 'ticket', exclude: ['/events/create'] },
-    { href: '/events/create', key: 'nav.createGame', icon: 'plans', exact: true },
-    { href: '/xeve/matches', key: 'nav.matches', icon: 'matches' },
-    { href: '/leaderboard', key: 'nav.globalRank', icon: 'rankings' },
-    {
-      key: 'nav.groupFinance',
-      icon: 'fund',
-      children: [
-        { href: '/finance', key: 'nav.finOverview', icon: 'fund', exact: true },
-        { href: '/finance/ledger', key: 'nav.ledger', icon: 'plans' },
-        { href: '/finance/inventory', key: 'nav.inventory', icon: 'box' },
-      ],
-    },
-    {
-      key: 'nav.groupSettings',
-      icon: 'clubs',
-      children: [
-        { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
-        { href: '/account', key: 'nav.account', icon: 'account' },
-      ],
-    },
-  ],
+  // Social Manager with no community yet: only the account (the page asks to create one).
+  // The old one-off kèo space (no community) is gone — every kèo belongs to a community.
+  xeve: [{ href: '/account', key: 'nav.account', icon: 'account' }],
   // Referees / coordinators: only their assigned events. No finance, no members.
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
 };
@@ -187,10 +166,7 @@ const TABS_BY_WORKSPACE = {
     { href: '/events', key: 'nav.schedule', icon: 'schedule', exclude: ['/events/create'] },
     { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
   ],
-  xeve: [
-    { href: '/events', key: 'nav.kevents', icon: 'ticket' },
-    { href: '/finance', key: 'nav.groupFinance', icon: 'fund' },
-  ],
+  xeve: [{ href: '/account', key: 'nav.account', icon: 'account' }],
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
   community: [
     { href: '/dashboard', key: 'nav.commOverview', icon: 'dashboard' },
@@ -593,7 +569,6 @@ export default function AppShell({ children, back }) {
                 <Icon name="chat" className="w-4 h-4" />
                 {t('feedback.button')}
               </FeedbackButton>
-              <TextSizeSwitch />
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">
                 {t('nav.signOut')}
@@ -610,7 +585,6 @@ export default function AppShell({ children, back }) {
             <Icon name="dashboard" className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">{workspace && <ContextSwitcher compact />}</div>
-          <TextSizeButton />
           {['club', 'xeve'].includes(workspace) && <SignupBell className="shrink-0" />}
         </div>
       </header>
@@ -636,7 +610,7 @@ export default function AppShell({ children, back }) {
           <ExpiredPlan product={mode === 'community' ? 'social_manager' : 'tier'} owner={!coAdmin} until={clubPlan?.paid_until} />
         ) : pageLocked && wsReady ? (
           <LockedFeature feature={pageFeature} owner={!coAdmin} product={mode === 'community' ? 'social_manager' : 'tier'} />
-        ) : !wsReady || !workspace ? null : mode === 'xeve' && plan && !plan.social_manager && !NO_CLUB_OK.some((p) => isActive(p)) ? (
+        ) : !wsReady || !workspace ? null : mode === 'xeve' && !clubsLoading && plan && !NO_CLUB_OK.some((p) => isActive(p)) ? (
           <div className="max-w-lg mx-auto mt-4 flex flex-col gap-3">
             {/* Social Manager now runs communities (cụm sân): open one like a club. */}
             <div className="card border-amber-300/50">
@@ -644,7 +618,7 @@ export default function AppShell({ children, back }) {
               <p className="text-gray-300 text-sm mt-1 mb-3">{t('social.startBody')}</p>
               <Link href="/club-request?kind=community" className="btn-primary inline-block">＋ {t('social.newCommunity')}</Link>
             </div>
-            <div className="card"><SocialManagerPanel /></div>
+            {!plan.social_manager && <div className="card"><SocialManagerPanel /></div>}
           </div>
         ) : needsClub ? (
           <div className="max-w-md mx-auto card mt-4">
@@ -730,8 +704,7 @@ export default function AppShell({ children, back }) {
               <Icon name="dashboard" />
               {t('hub.backHome')}
             </Link>
-            <TextSizeSwitch className="pt-3 mt-2 border-t border-navy-700" />
-            <div className="grid grid-cols-2 gap-2 pt-3">
+            <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-navy-700">
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">
                 {t('nav.signOut')}

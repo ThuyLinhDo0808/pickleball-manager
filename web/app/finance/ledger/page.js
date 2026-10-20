@@ -1,4 +1,5 @@
 'use client';
+import Hint from '@/components/ui/Hint';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
@@ -343,19 +344,19 @@ export default function LedgerPage() {
 
   return (
     <>
-      <p className="text-gray-400 text-sm mb-3">📒 {t('ledger.intro')}</p>
-      <div className="grid gap-3 mb-4 grid-cols-1 sm:grid-cols-3">
+      <div className="mb-2"><Hint text={t('ledger.intro')} /></div>
+      <div className="grid gap-2 sm:gap-3 mb-4 grid-cols-3">
         {[
           ['💚', t('analytics.income'), formatVnd(tin), 'text-lime-400'],
           ['🧾', t('analytics.expense'), formatVnd(tout), 'text-orange-300'],
           ['⚖️', t('finance.net'), formatVnd(tin - tout), tin - tout < 0 ? 'text-red-400' : 'text-white'],
         ].map(([icon, k, v, tone]) => (
-          <div key={k} className="card !p-4">
-            <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
+          <div key={k} className="card !p-2.5 sm:!p-4 min-w-0">
+            <div className="flex items-center justify-between gap-1 text-gray-400 text-xs font-semibold">
               <span>{k}</span>
-              <span aria-hidden="true">{icon}</span>
+              <span aria-hidden="true" className="hidden sm:inline">{icon}</span>
             </div>
-            <div className={`text-xl font-bold tabular-nums mt-1 whitespace-nowrap ${tone}`}>{v}</div>
+            <div className={`text-sm sm:text-xl font-bold tabular-nums mt-0.5 break-words ${tone}`}>{v}</div>
           </div>
         ))}
       </div>

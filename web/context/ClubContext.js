@@ -9,8 +9,9 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 const ClubContext = createContext(null);
 // The club picked in Club Manager, and the community picked in Social Manager.
 const STORAGE_KEY = { club: 'pickleball_club', community: 'pickleball_community' };
-// Social Manager without a community: the older one-off kèo ("Kèo lẻ").
-export const STANDALONE = 'standalone';
+// A saved choice from the old one-off kèo space (no community), which no longer exists:
+// it falls back to the first community.
+const STANDALONE = 'standalone';
 export const kindOf = (c) => (c?.kind === 'community' ? 'community' : 'club');
 
 function readSaved(kind) {
@@ -57,7 +58,7 @@ export function ClubProvider({ children }) {
         for (const kind of ['club', 'community']) {
           const mine = list.filter((c) => kindOf(c) === kind);
           const wanted = cur[kind] || readSaved(kind);
-          next[kind] = wanted === STANDALONE && kind === 'community' ? STANDALONE : mine.some((c) => c.id === wanted) ? wanted : mine[0]?.id || null;
+          next[kind] = wanted !== STANDALONE && mine.some((c) => c.id === wanted) ? wanted : mine[0]?.id || null;
         }
         return next;
       });
@@ -92,13 +93,12 @@ export function ClubProvider({ children }) {
     for (const kind of ['club', 'community']) if (picked[kind]) writeSaved(kind, picked[kind]);
   }, [picked]);
 
-  // Pick a club or community (its kind decides which space it belongs to). null in
-  // Social Manager = the one-off kèo without a community.
+  // Pick a club or community (its kind decides which space it belongs to).
   const selectClub = useCallback(
     (id) => {
       const c = allClubs.find((x) => x.id === id);
       const kind = c ? kindOf(c) : space;
-      setPicked((cur) => ({ ...cur, [kind]: id || (kind === 'community' ? STANDALONE : null) }));
+      setPicked((cur) => ({ ...cur, [kind]: id || null }));
     },
     [allClubs, space]
   );

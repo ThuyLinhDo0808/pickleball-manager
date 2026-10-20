@@ -13,6 +13,8 @@ export const MEMBER_FIELDS = [
   ['level', 'common.level'], // badminton: the level step
   ['dupr', 'members.colDuprLinked'], // pickleball: DUPR (linked) and DUPR the player typed
   ['dupr_self', 'members.colDuprSelf'],
+  ['skill', 'members.colSkill'], // the Host's own score (not DUPR)
+  ['skill_level', 'members.colLevel'], // level from the community control panel
   ['district', 'memberX.district'],
   ['play_duration', 'memberX.playDuration'],
   ['joined', 'members.joined'],
@@ -27,12 +29,12 @@ const headerOf = (t, [f, key]) => (f === 'stt' ? 'STT' : t(key));
 // Pickleball shows the two DUPR columns, badminton its level.
 const fieldsFor = (pickleball) => MEMBER_FIELDS.filter(([f]) => (pickleball ? f !== 'level' : !['dupr', 'dupr_self'].includes(f)));
 
-const WIDTH = { dupr: 10, dupr_self: 14, full_name: 26, member_type: 15, tier: 12, gender: 10, birth: 13, phone: 15, level: 12, district: 16, play_duration: 16, joined: 13, active: 12, notes: 32, account: 26, id: 38 };
+const WIDTH = { dupr: 10, dupr_self: 14, skill: 11, skill_level: 14, full_name: 26, member_type: 15, tier: 12, gender: 10, birth: 13, phone: 15, level: 12, district: 16, play_duration: 16, joined: 13, active: 12, notes: 32, account: 26, id: 38 };
 export function memberColumns(t, pickleball = true) {
   return fieldsFor(pickleball).map((fd) => {
     const [f] = fd;
     if (f === 'stt') return { header: 'STT', field: f, type: 'int', width: 6 };
-    return { header: headerOf(t, fd), field: f, width: WIDTH[f], ...(['dupr', 'dupr_self'].includes(f) ? { type: 'decimal' } : {}), ...(['birth', 'joined'].includes(f) ? { type: 'text' } : f === 'phone' ? { type: 'phone' } : {}), ...(f === 'notes' ? { wrap: true } : {}), ...(['account', 'id'].includes(f) ? { muted: true } : {}) };
+    return { header: headerOf(t, fd), field: f, width: WIDTH[f], ...(['dupr', 'dupr_self', 'skill'].includes(f) ? { type: 'decimal' } : {}), ...(['birth', 'joined'].includes(f) ? { type: 'text' } : f === 'phone' ? { type: 'phone' } : {}), ...(f === 'notes' ? { wrap: true } : {}), ...(['account', 'id'].includes(f) ? { muted: true } : {}) };
   });
 }
 
@@ -52,6 +54,8 @@ export function memberRow(m, i, t, levelText, pickleball = true) {
       case 'level': return m.dupr_level == null ? '' : levelText ? levelText(m.dupr_level) ?? '' : m.dupr_level;
       case 'dupr': return m.dupr_linked ?? m.dupr_manual ?? '';
       case 'dupr_self': return m.dupr_self ?? '';
+      case 'skill': return m.skill_score == null ? '' : Number(m.skill_score);
+      case 'skill_level': return m.level?.label || '';
       case 'district': return m.district || '';
       case 'play_duration': return m.play_duration ? t(`memberX.dur_${m.play_duration}`) : '';
       case 'joined': return m.joined_on ? m.joined_on.slice(0, 7).split('-').reverse().join('/') : '';

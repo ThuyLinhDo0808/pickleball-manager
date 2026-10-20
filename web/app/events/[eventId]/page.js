@@ -260,18 +260,15 @@ export default function EventDetailPage() {
         )}
         {/* The three things a Host does all the time, as big buttons. */}
         {event.kind !== 'meeting' && (
-          <div className="grid grid-cols-3 gap-2 mt-3">
-            <button type="button" className="btn-primary flex flex-col items-center justify-center !py-2.5 text-sm" onClick={copyLink} disabled={!event.allow_public_registration}>
-              <span className="text-xl leading-none mb-1" aria-hidden>📤</span>
-              {linkCopied ? t('events.copied') : t('ux.sendLink')}
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button type="button" className="btn-primary" onClick={copyLink} disabled={!event.allow_public_registration}>
+              <span aria-hidden>📤</span> {linkCopied ? t('events.copied') : t('ux.sendLink')}
             </button>
-            <button type="button" className="btn-secondary flex flex-col items-center justify-center !py-2.5 text-sm" onClick={() => setShowQr(true)}>
-              <span className="text-xl leading-none mb-1" aria-hidden>📷</span>
-              {t('ux.checkin')}
+            <button type="button" className="btn-secondary" onClick={() => setShowQr(true)}>
+              <span aria-hidden>📷</span> {t('ux.checkin')}
             </button>
-            <button type="button" className="btn-secondary flex flex-col items-center justify-center !py-2.5 text-sm" onClick={() => { setTab('participants'); setShowImport(true); }}>
-              <span className="text-xl leading-none mb-1" aria-hidden>➕</span>
-              {t('ux.addPlayer')}
+            <button type="button" className="btn-secondary" onClick={() => { setTab('participants'); setShowImport(true); }}>
+              <span aria-hidden>➕</span> {t('ux.addPlayer')}
             </button>
           </div>
         )}
@@ -301,7 +298,7 @@ export default function EventDetailPage() {
           {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={(e) => setEvent({ ...event, ...e })} />}
           {event.kind !== 'meeting' && <QuickInviteCard event={event} />}
           <div className="card !py-3 mb-4 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-gray-300 text-sm">{event.kind !== 'meeting' ? `⏰ ${policyText(t, event.cancel_deadline_hours, event.cancel_half_hours)}` : ''}</span>
+            <span className="text-gray-300 text-sm">{event.kind !== 'meeting' ? `⏰ ${policyText(t, event.cancel_deadline_hours, event.cancel_half_hours, event.no_refund)}` : ''}</span>
             <button className="btn-secondary text-sm" onClick={onExport}>⬇ {t('common.exportExcel')}</button>
           </div>
         </>
@@ -375,7 +372,8 @@ export default function EventDetailPage() {
               <button className="text-gray-400 text-lg leading-none" aria-label="Close" onClick={() => setFlash('')}>×</button>
             </div>
           )}
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
+          {/* The numbers of the kèo as one compact strip (wraps on a phone). */}
+          <div className="flex flex-wrap gap-1.5 mb-4">
             {[
               ['arrived', `${counts.arrived}/${counts.confirmed}`, 'text-lime-400'],
               ['confirmed', `${counts.confirmed + pending.length}/${event.slots}`, 'text-white'],
@@ -383,9 +381,9 @@ export default function EventDetailPage() {
               ['toPay', counts.toPay, counts.toPay ? 'text-yellow-300' : 'text-gray-500'],
               ['waitlist', waitlist.length, 'text-gray-300'],
             ].map(([k, v, tone]) => (
-              <div key={k} className="card !p-2 text-center">
-                <div className={`text-lg font-bold tabular-nums ${tone}`}>{v}</div>
-                <div className="text-gray-400 text-[11px] leading-tight">{t(`court.${k}`)}</div>
+              <div key={k} className="inline-flex items-baseline gap-1.5 rounded-lg border border-navy-700 bg-navy-800 px-2.5 py-1.5">
+                <span className={`font-bold tabular-nums ${tone}`}>{v}</span>
+                <span className="text-gray-400 text-xs">{t(`court.${k}`)}</span>
               </div>
             ))}
           </div>
@@ -404,7 +402,7 @@ export default function EventDetailPage() {
               open
               host
               name={cancelP.full_name}
-              percent={refundIfCancelNow({ ...deadlinesOf(eventStartMs(event.event_date, event.start_time), event.cancel_deadline_hours, event.cancel_half_hours), status: cancelP.status })}
+              percent={refundIfCancelNow({ ...deadlinesOf(eventStartMs(event.event_date, event.start_time), event.cancel_deadline_hours, event.cancel_half_hours, event.no_refund), status: cancelP.status })}
               fee={Number(cancelP.fee_amount ?? event.fee_amount ?? 0)}
               paid={!!cancelP.fee_paid}
               usesSession={cancelP.paid_by_plan}
@@ -504,10 +502,10 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                 tabIndex={0}
                 onClick={() => onManage(p)}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onManage(p))}
-                className={`flex items-center gap-3 rounded-lg px-2 py-2.5 cursor-pointer hover:bg-navy-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 ${kind === 'cancelled' ? 'opacity-70' : ''}`}
+                className={`flex items-center gap-2.5 rounded-lg px-2 py-2 cursor-pointer hover:bg-navy-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 ${kind === 'cancelled' ? 'opacity-70' : ''}`}
               >
                 <span className="relative shrink-0">
-                  <Avatar src={c.avatar} name={p.full_name} size={44} />
+                  <Avatar src={c.avatar} name={p.full_name} size={36} />
                   {p.is_organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden>🛡</span>}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -526,24 +524,28 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                       : <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('slot.refundDue')}</span>)}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2.5 text-xs text-gray-400 mt-0.5">
-                    <span>🎯 {level || '—'}</span>
+                    {/* Three different numbers, each with its own name: Điểm trình (the Host's
+                        score + level), DUPR ✓ (from DUPR), DUPR tự nhập (the player's own). */}
+                    {(c.skill_score != null || c.level_label) && (
+                      <span className="text-gray-200">🎯 {c.skill_score != null ? `${t('members.colSkill')} ${c.skill_score.toFixed(2)}` : ''}{c.level_label ? `${c.skill_score != null ? ' · ' : ''}${c.level_label}` : ''}</span>
+                    )}
+                    {sport !== 'pickleball' && <span>{level || '—'}</span>}
                     {(c.gender || p.gender) && <span>{(c.gender || p.gender) === 'male' ? '♂' : '♀'} {t(`members.${c.gender || p.gender}`)}</span>}
                     {p.booking && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
                     {sport === 'pickleball' && c.dupr_verified != null ? (
                       <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white" title={t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}>
                         DUPR ✓ {Number(c.dupr_verified).toFixed(2)} <span className="font-normal opacity-80">· {t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}</span>
                       </span>
-                    ) : sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
+                    ) : null}
+                    {sport === 'pickleball' && (c.dupr ?? c.level ?? p.dupr_level) != null && <span>{t('members.colDuprSelf')} {Number(c.dupr ?? c.level ?? p.dupr_level).toFixed(2)}</span>}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}
                   </span>
+                  {/* Phones: status chips and the check-in button on one line under the name. */}
                   <span className="flex sm:hidden flex-wrap items-center gap-1 mt-1">
                   <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${STATUS_PILL[p.status] || STATUS_PILL.registered}`}>{t(`player.status_${p.status}`)}</span>
                   {money && <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${money[1]}`}>{money[0]}</span>}
-                  </span>
-                  {/* Phones: the check-in button under the name, so the name keeps the full width. */}
                   {kind === 'main' && (
-                  <span className="flex sm:hidden mt-2">
-                    {(
+                    <span className="ml-auto">
                       <button
                         type="button"
                         title={p.status === 'checked_in' ? t('staffView.undo') : t('events.checkIn')}
@@ -552,13 +554,13 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                           e.stopPropagation();
                           onAction(p, p.status === 'checked_in' ? 'reset' : 'check-in');
                         }}
-                        className={`inline-flex items-center h-10 shrink-0 rounded-full border-2 px-2.5 text-sm font-semibold whitespace-nowrap ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-200 hover:border-lime-400 hover:text-lime-300'}`}
+                        className={`inline-flex items-center h-8 shrink-0 rounded-full border-2 px-3 text-sm font-semibold whitespace-nowrap ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-200 hover:border-lime-400 hover:text-lime-300'}`}
                       >
                         {p.status === 'checked_in' ? `✓ ${t('ux.arrived')}` : t('ux.markArrived')}
                       </button>
-                    )}
-                  </span>
+                    </span>
                   )}
+                  </span>
                   {kind === 'waitlist' && <span className="block text-sky-300 text-[11px] mt-0.5">{t('events.waitOrder', { n: idx + 1, at: localDate(p.joined_at, 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })}</span>}
                   {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
                   {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}

@@ -1,5 +1,4 @@
 'use client';
-import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
@@ -40,9 +39,9 @@ export default function LiveBoardPage() {
   }, [token]);
 
   const langToggle = (
-    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button></span>
+    </button>
   );
 
   if (!data) {

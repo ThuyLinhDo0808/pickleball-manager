@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { STATUS_STYLE } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import { localDate } from '@/lib/dates';
 
 // Host controls on the event page. Status is open → completed (automatic once the time
 // slot is over) or cancelled. Nobody signed up → it can be deleted; otherwise cancel it.
 export default function EventControls({ event, onChanged }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -17,6 +18,7 @@ export default function EventControls({ event, onChanged }) {
   const live = ['draft', 'open', 'closed'].includes(event.status);
   const deadlinePassed = event.registration_deadline && new Date(event.registration_deadline) < new Date();
   const takingSignups = event.allow_public_registration && live && !deadlinePassed;
+  const atText = (iso) => localDate(new Date(iso), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
 
   async function patch(fields, confirmMsg) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
@@ -69,22 +71,25 @@ export default function EventControls({ event, onChanged }) {
           {event.kind === 'meeting'
             ? live ? t('vote.openShort') : t('vote.closedShort')
             : takingSignups
-            ? t('events.registrationOpen')
-            : live && deadlinePassed
-              ? t('manage.lockedDeadline')
-              : live && !event.allow_public_registration
-                ? t('events.linkOff')
-                : t('events.registrationClosed')}
+            ? `🟢 ${t('reg.open')}`
+            : live && event.allow_public_registration && deadlinePassed
+              ? `🔒 ${t('reg.closedByTime', { at: atText(event.registration_deadline) })}`
+              : `🔒 ${t('reg.closed')}`}
         </span>
+        {/* The auto-close time stays on its own: closing / opening by hand never changes it. */}
+        {event.kind !== 'meeting' && live && event.registration_deadline && !deadlinePassed && (
+          <span className="text-xs text-gray-300">⏰ {t('reg.autoAt', { at: atText(event.registration_deadline) })}</span>
+        )}
         <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto sm:ml-auto [&>*]:text-center">
-          {/* One button each way: close now / open again (no date to set). */}
+          {/* One button each way: close now / open again. The auto-close time is left as it is,
+              unless it has already passed (then opening again removes it, after asking). */}
           {event.kind !== 'meeting' && live && takingSignups && (
-            <button className="btn-secondary !py-1.5 text-sm" disabled={busy} onClick={() => patch({ registration_deadline: new Date().toISOString() }, t('manage.closeSignupsAsk'))}>
+            <button className="btn-secondary !py-1.5 text-sm" disabled={busy} onClick={() => patch({ allow_public_registration: false }, t('manage.closeSignupsAsk'))}>
               🔒 {t('manage.closeSignups')}
             </button>
           )}
           {event.kind !== 'meeting' && live && !takingSignups && (
-            <button className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => patch({ registration_deadline: null, allow_public_registration: true }, deadlinePassed ? t('manage.openPastDeadline') : null)}>
+            <button className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => patch(deadlinePassed ? { registration_deadline: null, allow_public_registration: true } : { allow_public_registration: true }, deadlinePassed ? t('reg.openPastAsk', { at: atText(event.registration_deadline) }) : null)}>
               🔓 {t('manage.reopenSignups')}
             </button>
           )}

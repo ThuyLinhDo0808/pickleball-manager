@@ -50,6 +50,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   registration_deadline: '',
   cancel_deadline_hours: '12',
   cancel_half_hours: '6',
+  no_refund: false,
   notice: '',
   status: 'open',
   allow_public_registration: true,
@@ -60,6 +61,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   map_url: '',
   cost_items: [],
   deadline_auto: true,
+  deadline_mode: 'auto', // auto-close: 'none' | 'auto' (from the cancel deadline) | 'time'
   level_keys: [],
 });
 
@@ -117,7 +119,7 @@ function toLocalInput(iso) {
 
 // An existing event -> form values (for editing).
 export function formFromEvent(ev) {
-  return {
+  const out = {
     ...blankEvent(ev.event_date, ev.kind || 'game'),
     title: ev.title || '',
     start_time: ev.start_time ? ev.start_time.slice(0, 5) : '',
@@ -133,6 +135,7 @@ export function formFromEvent(ev) {
     registration_deadline: toLocalInput(ev.registration_deadline),
     cancel_deadline_hours: ev.cancel_deadline_hours == null ? '' : String(ev.cancel_deadline_hours),
     cancel_half_hours: ev.cancel_half_hours == null ? '' : String(ev.cancel_half_hours),
+    no_refund: !!ev.no_refund,
     notice: ev.notice || '',
     status: ['draft', 'closed'].includes(ev.status) ? 'open' : ev.status,
     allow_public_registration: !!ev.allow_public_registration,
@@ -147,6 +150,8 @@ export function formFromEvent(ev) {
       !!ev.registration_deadline &&
       toLocalInput(ev.registration_deadline) === autoDeadline(ev.event_date, ev.start_time, ev.cancel_deadline_hours == null ? '' : String(ev.cancel_deadline_hours)),
   };
+  out.deadline_mode = out.deadline_auto ? 'auto' : out.registration_deadline ? 'time' : 'none';
+  return out;
 }
 
 const costList = (items) =>
@@ -175,7 +180,9 @@ export function eventPayload(f) {
       cancel_half_hours: null,
     };
   }
-  const deadline = f.deadline_auto ? autoDeadline(f.event_date, f.start_time, f.cancel_deadline_hours) : f.registration_deadline;
+  // "Đang nhận / Đã đóng" is allow_public_registration; the auto-close time is separate.
+  const mode = f.deadline_mode || (f.deadline_auto ? 'auto' : f.registration_deadline ? 'time' : 'none');
+  const deadline = mode === 'auto' ? autoDeadline(f.event_date, f.start_time, f.cancel_deadline_hours) : mode === 'time' ? f.registration_deadline : '';
   return {
     kind: f.kind,
     title: f.title.trim(),
@@ -191,8 +198,9 @@ export function eventPayload(f) {
     level_max_f: f.level_max_f === '' || f.level_max_f == null ? null : Number(f.level_max_f),
     fee_amount: Number(f.fee_amount || 0),
     registration_deadline: deadline ? new Date(deadline).toISOString() : null,
-    cancel_deadline_hours: f.cancel_deadline_hours === '' ? null : Number(f.cancel_deadline_hours),
-    cancel_half_hours: halfHours(f.cancel_deadline_hours, f.cancel_half_hours),
+    cancel_deadline_hours: f.no_refund || f.cancel_deadline_hours === '' ? null : Number(f.cancel_deadline_hours),
+    cancel_half_hours: f.no_refund ? null : halfHours(f.cancel_deadline_hours, f.cancel_half_hours),
+    no_refund: !!f.no_refund,
     notice: f.notice.trim() || null,
     status: f.status,
     allow_public_registration: f.allow_public_registration,
@@ -325,6 +333,17 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const meeting = f.kind === 'meeting';
   const { data: cs } = useLoad(() => (community && clubId ? api.get(`/api/clubs/${clubId}/community-settings`).catch(() => null) : Promise.resolve(null)), [community, clubId]);
   const levelItems = cs?.ready && cs.settings?.levels?.mode !== 'none' ? cs.settings.levels.items : [];
+  // A new kèo starts with the community's refund rule (control panel); still editable here.
+  const refundRule = prefillFromClub && cs?.ready ? cs.settings?.refund : null;
+  useEffect(() => {
+    if (!refundRule) return;
+    setF((x) => ({
+      ...x,
+      no_refund: refundRule.mode === 'none',
+      cancel_deadline_hours: refundRule.mode === 'tiers' ? String(refundRule.full) : '',
+      cancel_half_hours: refundRule.mode === 'tiers' && refundRule.half != null ? String(refundRule.half) : '',
+    }));
+  }, [refundRule?.mode, refundRule?.full, refundRule?.half]); // eslint-disable-line react-hooks/exhaustive-deps
   // Picking levels fills the DUPR limits from their ranges (control panel); still editable.
   const pickLevel = (key) => {
     const keys = (f.level_keys || []).includes(key) ? f.level_keys.filter((k) => k !== key) : [...(f.level_keys || []), key];
@@ -523,9 +542,14 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               </div>
             )
           )}
-          <Field label={t('policy.label')} hint={f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
-            <select className="input" value={f.cancel_deadline_hours} onChange={(e) => set({ cancel_deadline_hours: e.target.value })}>
-              {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hoursShort', { h })}</option>)}
+          <Field label={t('policy.refundLabel')} hint={f.no_refund ? t('policy.noRefundHint') : f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
+            <select
+              className="input"
+              value={f.no_refund ? 'no' : f.cancel_deadline_hours}
+              onChange={(e) => (e.target.value === 'no' ? set({ no_refund: true, cancel_deadline_hours: '' }) : set({ no_refund: false, cancel_deadline_hours: e.target.value }))}
+            >
+              <option value="no">{t('policy.noRefund')}</option>
+              {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.fullBefore', { h })}</option>)}
             </select>
           </Field>
           {f.cancel_deadline_hours !== '' && (
@@ -535,18 +559,36 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               </select>
             </Field>
           )}
-          {f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">📋 {policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
-          <Field label={t('events.deadline')} span={2} hint={t('dl.reopenHint')}>
-            <label className="flex items-center gap-2 text-sm text-gray-200 mt-1">
-              <input type="checkbox" checked={f.deadline_auto} onChange={(e) => set({ deadline_auto: e.target.checked, registration_deadline: e.target.checked ? f.registration_deadline : f.registration_deadline || autoAt })} />
-              {t('dl.auto')}
-            </label>
-            {f.deadline_auto ? (
-              <p className="mt-1 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-100">
+          {!f.no_refund && f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">📋 {policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
+          {/* Sign-ups: one state (taking sign-ups / closed) and, apart from it, an optional
+              time at which they close by themselves. */}
+          <Field label={t('reg.label')} span={4} hint={t('reg.hint')}>
+            <div className="grid grid-cols-2 gap-1.5 mt-1 max-w-md" role="radiogroup" aria-label={t('reg.label')}>
+              {[[true, `🟢 ${t('reg.open')}`], [false, `🔒 ${t('reg.closed')}`]].map(([v, label]) => (
+                <button key={String(v)} type="button" role="radio" aria-checked={f.allow_public_registration === v} onClick={() => set({ allow_public_registration: v })} className={`rounded-lg border px-3 py-2 text-sm ${f.allow_public_registration === v ? 'border-lime-400 bg-lime-400/10 text-white font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label={t('reg.autoClose')} span={4}>
+            <div className="grid grid-cols-3 gap-1.5 mt-1 max-w-md" role="radiogroup" aria-label={t('reg.autoClose')}>
+              {['none', 'auto', 'time'].map((m) => {
+                const on = (f.deadline_mode || (f.deadline_auto ? 'auto' : 'none')) === m;
+                return (
+                  <button key={m} type="button" role="radio" aria-checked={on} onClick={() => set({ deadline_mode: m, deadline_auto: m === 'auto', registration_deadline: m === 'time' ? f.registration_deadline || autoAt : f.registration_deadline })} className={`rounded-lg border px-2 py-2 text-sm ${on ? 'border-lime-400 bg-lime-400/10 text-white font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                    {t(`reg.mode_${m}`)}
+                  </button>
+                );
+              })}
+            </div>
+            {(f.deadline_mode || (f.deadline_auto ? 'auto' : 'none')) === 'auto' && (
+              <p className="mt-1.5 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-100">
                 {autoAt ? (sessions > 1 ? t('dl.autoEach', { h: f.cancel_deadline_hours || 0, time: autoAt.slice(11, 16) }) : t('dl.autoAt', { at: fmtLocal(autoAt), h: f.cancel_deadline_hours || 0 })) : t('dl.needStart')}
               </p>
-            ) : (
-              <input className="input mt-1" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} />
+            )}
+            {f.deadline_mode === 'time' && (
+              <input className="input mt-1.5 max-w-md" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} aria-label={t('reg.autoClose')} />
             )}
           </Field>
           <CostItems items={f.cost_items} onChange={(cost_items) => set({ cost_items })} sessions={sessions || 1} />
@@ -556,10 +598,6 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('events.notice')} span={4}>
             <textarea className="input" rows={3} placeholder={t('events.noticeHint')} value={f.notice} onChange={(e) => set({ notice: e.target.value })} />
           </Field>
-          <label className="col-span-2 md:col-span-4 flex items-center gap-2 text-sm text-gray-200">
-            <input type="checkbox" checked={f.allow_public_registration} onChange={(e) => set({ allow_public_registration: e.target.checked })} />
-            {t('events.allowPublic')}
-          </label>
           {Number(f.fee_amount) > 0 && (
             <label className="col-span-2 md:col-span-4 flex items-start gap-2 text-sm text-gray-200">
               <input type="checkbox" className="mt-1" checked={f.allow_pay_later} onChange={(e) => set({ allow_pay_later: e.target.checked })} />
@@ -653,11 +691,11 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               ) : (
                 <>
                   <dt className="text-gray-400">⏳</dt>
-                  <dd className="text-gray-100">{f.cancel_deadline_hours === '' ? t('policy.none') : policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}</dd>
+                  <dd className="text-gray-100">{f.no_refund ? t('policy.noRefund') : f.cancel_deadline_hours === '' ? t('policy.none') : policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}</dd>
                   <dt className="text-gray-400">📝</dt>
-                  <dd className="text-gray-100">{f.deadline_auto ? (autoAt ? (sessions > 1 ? t('dl.previewEach', { time: autoAt.slice(11, 16) }) : fmtLocal(autoAt)) : '—') : fmtLocal(f.registration_deadline)}</dd>
+                  <dd className="text-gray-100">{f.deadline_mode === 'none' || (!f.deadline_mode && !f.deadline_auto && !f.registration_deadline) ? t('reg.mode_none') : f.deadline_auto ? (autoAt ? (sessions > 1 ? t('dl.previewEach', { time: autoAt.slice(11, 16) }) : fmtLocal(autoAt)) : '—') : fmtLocal(f.registration_deadline)}</dd>
                   <dt className="text-gray-400">🔗</dt>
-                  <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('createx.linkOn') : t('createx.linkOff')}</dd>
+                  <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('reg.open') : t('reg.closed')}</dd>
                 </>
               )}
             </dl>

@@ -8,7 +8,9 @@ export function halfHours(full, half) {
 }
 
 // One line for the event page / sign-up page: "Hủy trước 12 tiếng: hoàn 100% · …".
-export function policyText(t, full, half) {
+// noRefund: "Không hoàn tiền" — whenever a player cancels, nothing comes back.
+export function policyText(t, full, half, noRefund = false) {
+  if (noRefund) return t('policy.noRefundShort');
   if (full == null || full === '') return t('policy.noneShort');
   const h = halfHours(full, half);
   return h == null ? t('policy.tiers1', { full }) : t('policy.tiers2', { full, half: h });
@@ -22,7 +24,8 @@ export function refundIfCancelNow({ deadline, halfDeadline, status }, now = Date
 }
 
 // Hours from the deadline numbers and the start (for pages that only have the event).
-export function deadlinesOf(startMs, full, half) {
+export function deadlinesOf(startMs, full, half, noRefund = false) {
+  if (noRefund) return { deadline: new Date(0).toISOString(), halfDeadline: null };
   if (full == null || full === '' || !startMs) return { deadline: null, halfDeadline: null };
   const h = halfHours(full, half);
   return {

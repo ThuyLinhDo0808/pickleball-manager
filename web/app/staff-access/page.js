@@ -40,7 +40,7 @@ const CAN = [
   ['deleteClub', { coordinator: false, referee: false, co_admin: false, finance: false, operator: false }],
 ];
 // Where the access applies.
-const SCOPES = ['all', 'clubs', 'club', 'xeve', 'event'];
+const SCOPES = ['all', 'clubs', 'club', 'event']; // (old grants may still say 'xeve')
 const emptyForm = { email: '', full_name: '', role: 'coordinator', scope: 'all', club_id: '', event_id: '', valid_from: '', valid_until: '' };
 
 function status(g, today) {
@@ -290,9 +290,9 @@ export default function StaffAccessPage() {
       {/* Granted people */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 className="text-white font-semibold">{t('staffX.people', { n: (grants || []).length })}</h2>
-        <div className="flex gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 text-sm">
+        <div className="flex flex-wrap gap-1.5 text-sm">
           {['all', ...ROLES].map((r) => (
-            <button key={r} onClick={() => setFilter(r)} className={`rounded-lg px-3 py-1 ${filter === r ? 'bg-navy-700 text-white font-semibold' : 'text-gray-400 hover:text-white'}`}>
+            <button key={r} onClick={() => setFilter(r)} className={`rounded-full border px-3 py-1 whitespace-nowrap ${filter === r ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-300 hover:text-white'}`}>
               {r === 'all' ? t('staffX.allRoles') : t(`staff.${r}`)}
             </button>
           ))}
@@ -305,13 +305,13 @@ export default function StaffAccessPage() {
           const [st, stTone] = status(g, today);
           return (
             <div key={g.id} className="card !p-4 flex flex-col gap-3">
-              <div className="flex items-start gap-3">
+              <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5">
                 <span className="h-10 w-10 shrink-0 rounded-full bg-navy-700 text-lime-300 font-bold flex items-center justify-center">
                   {(g.full_name || g.email).slice(0, 1).toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-white font-semibold truncate">{g.full_name || g.email}</div>
-                  {g.full_name && <div className="text-gray-400 text-xs truncate">{g.email}</div>}
+                  <div className="text-white font-semibold break-all">{g.full_name || g.email}</div>
+                  {g.full_name && <div className="text-gray-400 text-xs break-all">{g.email}</div>}
                 </div>
                 <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 shrink-0 ${ROLE_STYLE[g.role]?.chip}`}>
                   {ROLE_STYLE[g.role]?.icon} {t(`staff.${g.role}`)}

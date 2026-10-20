@@ -264,7 +264,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
 
   // Cancel: a dialog says what comes back under the refund tiers and asks why (optional).
   const startMs = eventStartMs(ev.event_date, ev.start_time);
-  const cancelPercent = reg ? refundIfCancelNow({ ...deadlinesOf(startMs, ev.cancel_deadline_hours, ev.cancel_half_hours), status: reg.status }) : 100;
+  const cancelPercent = reg ? refundIfCancelNow({ ...deadlinesOf(startMs, ev.cancel_deadline_hours, ev.cancel_half_hours, ev.no_refund), status: reg.status }) : 100;
   function cancel() {
     setCancelErr('');
     setCancelOpen(true);
@@ -323,8 +323,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <TicketCard ticketCode={reg.ticket_code} name={reg.full_name} checkedIn={reg.status === 'checked_in'} />
         {reg.status === 'registered' && (
           <div className="flex flex-col items-center gap-2 mt-4">
-            <PassMyTicket reg={reg} waitlistCount={Number(ev.waitlist_count ?? (ev.participants || []).filter((p) => p.status === 'waitlisted').length)} onChanged={onChanged} />
-            <button type="button" className="text-red-400 text-sm" onClick={cancel}>{t('events.cancel')}</button>
+            {/* One "Tôi không đi được": pass the ticket to someone waiting, or cancel. */}
+            <PassMyTicket reg={reg} waitlistCount={Number(ev.waitlist_count ?? (ev.participants || []).filter((p) => p.status === 'waitlisted').length)} onChanged={onChanged} onCancel={cancel} />
             {cancelUi}
           </div>
         )}

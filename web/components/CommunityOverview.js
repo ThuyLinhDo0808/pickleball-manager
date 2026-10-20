@@ -61,19 +61,18 @@ export default function CommunityOverview({ children }) {
         title={t('social.overviewTitle')}
         subtitle={t('social.overviewSub', { n: clubs.length })}
       />
-      {/* The things a Host opens every day, as big tiles. */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-        {[
+      {/* The things a Host opens every day. */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[
           ['/events/create', '➕', t('nav.createGame'), true],
           [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? '🔁' : '📅', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
           ['/club/members', '👥', t('nav.members')],
         ].map(([href, icon, label, main]) => (
-          <Link key={href} href={href} className={`rounded-xl flex flex-col items-center justify-center gap-1 py-3 px-1 text-center text-sm font-semibold ${main ? 'bg-lime-400 text-navy-950 hover:bg-lime-300' : 'bg-navy-800 border border-navy-600 text-white hover:border-lime-400'}`}>
-            <span className="text-2xl leading-none" aria-hidden>{icon}</span>
-            {label}
-          </Link>
-        ))}
-      </div>
+              <Link key={href} href={href} className={main ? 'btn-primary' : 'btn-secondary'}>
+                <span aria-hidden>{icon}</span> {label}
+              </Link>
+            ))}
+          </div>
 
       {/* One tab per court cluster (community). */}
       <div className="-mx-4 px-4 md:mx-0 md:px-0 mb-4 overflow-x-auto" role="tablist" aria-label={t('hub.communities')}>

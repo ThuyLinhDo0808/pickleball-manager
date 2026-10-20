@@ -1,5 +1,4 @@
 'use client';
-import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import HomeLink from '@/components/HomeLink';
@@ -34,9 +33,9 @@ export default function QuickBookingPage() {
   }, [b?.state, reload]);
 
   const langToggle = (
-    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button></span>
+    </button>
   );
   if (loading && !b) return <div className="min-h-screen flex items-center justify-center text-gray-400">{t('common.loading')}</div>;
   if (error || !b) {
