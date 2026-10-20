@@ -2895,7 +2895,7 @@ export const vi = {
   hostContact: {
     title: "SĐT liên hệ cho người chơi",
     hint: "Hiện ở link đặt chỗ nhanh và trang đặt chỗ: người chơi không muốn để lại SĐT sẽ gọi bạn để tham gia, hoặc khi muốn pass lại vé đã đăng ký.",
-    missing: "Chưa có SĐT: người chơi đặt nhanh bắt buộc phải để lại SĐT của họ.",
+    missing: "Chưa có SĐT: người chơi không để lại SĐT sẽ không có số để gọi bạn khi tham gia / pass vé.",
     label: "Số điện thoại",
     migration: "Cần chạy migration 20261210090000_host_contact_phone.sql.",
   },
@@ -3305,6 +3305,10 @@ export const vi = {
     eventPage: 'Xem trang kèo',
   },
   quick: {
+    phoneOptional: "không bắt buộc",
+    hostNoPhone: "Host chưa để SĐT liên hệ — bạn có thể nhắn Host qua nơi bạn nhận link này.",
+    hostPhoneMissing: "Bạn chưa để SĐT liên hệ: người chơi không để lại SĐT sẽ không biết gọi ai để tham gia hoặc pass vé.",
+    hostPhoneSet: "Thêm ở Tài khoản → Thông tin tài khoản",
     phoneOrHost: "Nhập số điện thoại, hoặc tích \"Tôi không muốn để lại SĐT\" để tự liên hệ Host.",
     phoneNeeded: "Nhập số điện thoại để Host liên hệ với bạn.",
     noPhone: "Tôi không muốn để lại SĐT — tôi sẽ tự liên hệ Host để tham gia.",

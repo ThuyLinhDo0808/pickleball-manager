@@ -85,7 +85,7 @@ export default function QuickBookPage() {
     setBusy(true);
     setError('');
     try {
-      const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact: { ...contact, phone: contact.no_phone ? '' : contact.phone }, slots: rows, me_first: meFirst });
+      const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact: { ...contact, phone: contact.no_phone ? '' : contact.phone, no_phone: contact.no_phone || !contact.phone.trim() }, slots: rows, me_first: meFirst });
       try {
         window.localStorage.setItem(`pb_quick_${eventId}`, r.token);
         rememberBooking({ token: r.token, title: ev.title, event_date: ev.event_date });
@@ -95,7 +95,7 @@ export default function QuickBookPage() {
       router.replace(`/g/b/${r.token}`);
     } catch (err) {
       const p = err.payload || {};
-      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : p.code === 'bad_dupr_id' ? t('dupr.idOptional') : p.code === 'phone_required' || p.code === 'phone_or_contact' ? t(host ? 'quick.phoneOrHost' : 'quick.phoneNeeded') : err.message);
+      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : p.code === 'bad_dupr_id' ? t('dupr.idOptional') : p.code === 'phone_required' || p.code === 'phone_or_contact' ? t('quick.phoneOrHost') : err.message);
     } finally {
       setBusy(false);
     }
@@ -139,22 +139,26 @@ export default function QuickBookPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-400" htmlFor="q-phone">{t('quick.phone')}{contact.no_phone ? '' : ' *'}</label>
-                <input id="q-phone" className="input" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} required={!contact.no_phone} disabled={contact.no_phone} value={contact.no_phone ? '' : contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
+                <label className="text-xs text-gray-400" htmlFor="q-phone">{t('quick.phone')} <span className="text-gray-500">({t('quick.phoneOptional')})</span></label>
+                <input id="q-phone" className="input" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} disabled={contact.no_phone} value={contact.no_phone ? '' : contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-gray-400" htmlFor="q-level">{t(ev.sport === 'badminton' ? 'quick.levelBadminton' : 'quick.duprSelf')}</label>
                 <LevelInput id="q-level" sport={ev.sport} value={contact.dupr_level} onChange={(v) => setContact({ ...contact, dupr_level: v })} placeholder="3.25" />
               </div>
-              {host && (
+              {(
                 <div className="sm:col-span-2 rounded-lg border border-navy-600 bg-navy-900/60 px-3 py-2">
                   <label className="flex items-start gap-2 text-sm text-gray-200">
                     <input type="checkbox" className="mt-1" checked={contact.no_phone} onChange={(e) => setContact({ ...contact, no_phone: e.target.checked })} />
                     <span>{t('quick.noPhone')}</span>
                   </label>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {t('quick.hostContact')}: <b className="text-gray-200">{host.name || t('quick.theHost')}</b> · <a href={`tel:${host.phone}`} className="text-sky-300">{host.phone}</a>
-                  </p>
+                  {host ? (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {t('quick.hostContact')}: <b className="text-gray-200">{host.name || t('quick.theHost')}</b> · <a href={`tel:${host.phone}`} className="text-sky-300">{host.phone}</a>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-200 mt-1">{t('quick.hostNoPhone')}</p>
+                  )}
                 </div>
               )}
               {ev.sport !== 'badminton' && (

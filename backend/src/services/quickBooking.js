@@ -204,11 +204,10 @@ async function book(eventId, body, userId = null) {
   const extras = await extrasReady();
   const phone = String(contact.phone || '').trim();
   if (phone && (normalizePhone(phone).length < 9 || phone.length > 20)) throw fail('A valid phone number is required.', 400, 'phone_required');
-  // No phone: only when the player chose to contact the Host instead, and the Host left a
-  // contact phone for that (Tài khoản → Thông tin liên hệ).
+  // The phone is optional: without it the player contacts the Host themselves (the Host's
+  // contact phone — Tài khoản → Thông tin tài khoản — is shown on the form and booking page).
   if (!phone) {
     if (!extras) throw fail('A valid phone number is required.', 400, 'phone_required');
-    if (!(await hostContact(event))) throw fail('Leave a phone number (this organiser has no contact phone yet).', 400, 'phone_required');
     if (contact.no_phone !== true) throw fail('Leave a phone number, or choose to contact the organiser yourself.', 400, 'phone_or_contact');
   }
   const contactGender = ['male', 'female'].includes(contact.gender) ? contact.gender : null;

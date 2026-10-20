@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import Link from 'next/link';
 import Hint from '@/components/ui/Hint';
 
 // Host: the quick invite link of a kèo (no account, straight to the transfer). The link
@@ -16,6 +17,11 @@ export default function QuickInviteCard({ event }) {
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [origin, setOrigin] = useState('');
+  // The Host's contact phone (players who leave no phone call it): remind when missing.
+  const [hostPhone, setHostPhone] = useState(undefined);
+  useEffect(() => {
+    api.get('/api/host/contact').then((r) => setHostPhone(r.ready === false ? 'n/a' : r.contact_phone || null)).catch(() => setHostPhone('n/a'));
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -88,6 +94,11 @@ export default function QuickInviteCard({ event }) {
           </span>
         )}
       </div>
+      {hostPhone === null && (
+        <p className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-xs text-amber-100 my-2">
+          ⚠️ {t('quick.hostPhoneMissing')} <Link href="/account" className="underline text-lime-300">{t('quick.hostPhoneSet')}</Link>
+        </p>
+      )}
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       {inv && !inv.enabled && (
         <button type="button" className="btn-primary w-full sm:w-auto" disabled={busy} onClick={() => setOn(true)}>
