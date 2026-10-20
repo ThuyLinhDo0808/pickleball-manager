@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import PlayerShell from '@/components/PlayerShell';
+import TopCommunities from '@/components/TopCommunities';
 import ClubAvatar from '@/components/ClubAvatar';
 import { useI18n } from '@/context/I18nContext';
 import { api, clubImage } from '@/lib/api';
@@ -92,6 +93,7 @@ export default function DiscoverPage() {
     <PlayerShell requireAuth={false}>
       <h1 className="text-white text-2xl font-bold">{t('disc.title')}</h1>
       <p className="text-gray-400 text-sm mb-4">{t('disc.lead')}</p>
+      {!filtered && <TopCommunities className="mb-4" />}
 
       <form onSubmit={submit} className="card !p-3 mb-4 flex flex-col gap-2" role="search">
         <div className="flex gap-2">

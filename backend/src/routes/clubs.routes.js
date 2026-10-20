@@ -1208,6 +1208,32 @@ router.get('/:clubId/community-overview', async (req, res) => {
 });
 
 // ---- Community control panel: regular / drop-in rule, inactive days, levels ----------------
+// Top 10 cộng đồng uy tín (services/featured.js): the community pays to be shown, the Owner
+// checks it first. Owner of the community only for asking / cancelling.
+router.get('/:clubId/featured', async (req, res) => {
+  try {
+    res.json(await require('../services/featured').forClub(req.club));
+  } catch (err) {
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
+});
+router.post('/:clubId/featured', ownerOnly, async (req, res) => {
+  try {
+    await require('../services/featured').request(req.club, req.hostId, req.body?.months);
+    res.status(201).json(await require('../services/featured').forClub(req.club));
+  } catch (err) {
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
+});
+router.delete('/:clubId/featured', ownerOnly, async (req, res) => {
+  try {
+    await require('../services/featured').cancelByHost(req.club);
+    res.json(await require('../services/featured').forClub(req.club));
+  } catch (err) {
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
+});
+
 const communitySettings = require('../services/communitySettings');
 const settingsFail = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
 router.get('/:clubId/community-settings', async (req, res) => {

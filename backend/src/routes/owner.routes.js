@@ -779,6 +779,18 @@ const requestsGuard = async () => {
   if (!(await clubRequests.ready())) throw fail(409, `Run migration ${clubRequests.MIGRATION} first.`, 'migration_required');
 };
 
+// Top 10 cộng đồng uy tín: payments in, trust review, place 1-10, remove (owner only —
+// not in any support permission).
+router.get('/featured', wrap(async (req, res) => {
+  res.json(await require('../services/featured').listForOwner());
+}));
+router.post('/featured/:id/:action(paid|approve|reject|remove)', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Not found.', 'not_found');
+  const { before, after } = await require('../services/featured').decide(req.params.id, req.params.action, req.body || {}, req.hostEmail);
+  await owner.audit(req, { action: `featured.${req.params.action}`, oldValue: { status: before.status, position: before.position, trust_score: before.trust_score }, newValue: { status: after.status, position: after.position, trust_score: after.trust_score }, note: after.owner_note });
+  res.json(after);
+}));
+
 router.get('/club-requests', wrap(async (req, res) => {
   await requestsGuard();
   const status = REQUEST_STATUSES.includes(req.query.status) ? req.query.status : 'pending';

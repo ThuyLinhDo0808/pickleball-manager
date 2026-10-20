@@ -114,6 +114,15 @@ publicRoutes.get('/tickets/:code', async (req, res) => {
 // =============================================================================
 // ---- Club search (no login): find clubs, see one club and its coming sessions -------
 const discover = require('../services/discover');
+// Top 10 cộng đồng uy tín (paid placement, checked by the Owner).
+publicRoutes.get('/discover/top-communities', async (req, res) => {
+  try {
+    res.json(await require('../services/featured').top());
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 publicRoutes.get('/discover/clubs', async (req, res) => {
   try {
     res.json(await discover.search(req.query));
