@@ -77,8 +77,14 @@ export default function EventControls({ event, onChanged }) {
                 : t('events.registrationClosed')}
         </span>
         <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto sm:ml-auto [&>*]:text-center">
-          {live && deadlinePassed && (
-            <button className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => patch({ registration_deadline: null, allow_public_registration: true }, t('manage.openPastDeadline'))}>
+          {/* One button each way: close now / open again (no date to set). */}
+          {event.kind !== 'meeting' && live && takingSignups && (
+            <button className="btn-secondary !py-1.5 text-sm" disabled={busy} onClick={() => patch({ registration_deadline: new Date().toISOString() }, t('manage.closeSignupsAsk'))}>
+              🔒 {t('manage.closeSignups')}
+            </button>
+          )}
+          {event.kind !== 'meeting' && live && !takingSignups && (
+            <button className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => patch({ registration_deadline: null, allow_public_registration: true }, deadlinePassed ? t('manage.openPastDeadline') : null)}>
               🔓 {t('manage.reopenSignups')}
             </button>
           )}

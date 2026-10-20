@@ -200,7 +200,7 @@ export default function EventDetailPage() {
   const onEvent = new Set((participants || []).filter((p) => p.status !== 'cancelled').flatMap((p) => [p.source_club_member_id, p.guest_member_id, p.card?.member_id]).filter(Boolean));
   const pending = (participants || []).filter((p) => p.status === 'pending');
   // Guests with a perk go first off the waitlist, so show them first.
-  const waitlist = (participants || []).filter((p) => p.status === 'waitlisted').sort((a, b) => Number(!!b.priority) - Number(!!a.priority));
+  const waitlist = (participants || []).filter((p) => p.status === 'waitlisted').sort((a, b) => Number(!!b.priority) - Number(!!a.priority) || String(a.joined_at).localeCompare(String(b.joined_at)));
   const cancelled = (participants || []).filter((p) => p.status === 'cancelled');
   const requested = (participants || []).filter((p) => p.status === 'requested');
   const counts = {
@@ -297,8 +297,21 @@ export default function EventDetailPage() {
 
           {showImport && (
             <div className="card mb-4">
-              <p className="text-gray-400 text-sm mb-2">{t('events.importFromClub')}</p>
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-1">
+              {(() => {
+                const pickable = (clubMembers || []).filter((m) => m.is_active && !onEvent.has(m.id));
+                const all = pickable.length > 0 && pickable.every((m) => selectedIds.includes(m.id));
+                return (
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-gray-400 text-sm">{t('events.importFromClub')}</p>
+                    {pickable.length > 0 && (
+                      <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setSelectedIds(all ? [] : pickable.map((m) => m.id))}>
+                        {all ? `☐ ${t('events.selectNone')}` : `☑ ${t('events.selectAll', { n: pickable.length })}`}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+              <div className="max-h-64 overflow-y-auto flex flex-col gap-1">
                 {(clubMembers || []).filter((m) => m.is_active && !onEvent.has(m.id)).map((m) => (
                   <label key={m.id} className="flex items-center gap-2 text-sm text-gray-200">
                     <input
@@ -441,7 +454,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
       {kind === 'cancelled' && <p className="text-gray-500 text-xs mb-2 px-2 sm:px-0">{t('policy.cancelledHint')}</p>}
       {rows.length === 0 && <p className="text-gray-400 text-sm px-2 sm:px-0">—</p>}
       <ul className="divide-y divide-navy-700/70">
-        {rows.map((p) => {
+        {rows.map((p, idx) => {
           const c = p.card || {};
           const level = levelText(c.level ?? p.dupr_level, sport, t);
           const money = p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0
@@ -492,6 +505,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     ) : sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}
                   </span>
+                  {kind === 'waitlist' && <span className="block text-sky-300 text-[11px] mt-0.5">{t('events.waitOrder', { n: idx + 1, at: localDate(p.joined_at, 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })}</span>}
                   {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
                   {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}
                   {kind === 'cancelled' && (p.cancelled_at || p.cancel_reason) && (

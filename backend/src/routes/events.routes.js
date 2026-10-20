@@ -504,6 +504,31 @@ router.get('/pending-payments', async (req, res) => {
   }));
 });
 
+// The Host's 🔔: who signed up lately (last 7 days) on their upcoming events — the owner's,
+// co-admins' and Operations' clubs — newest first. The page keeps "seen up to" itself.
+router.get('/recent-signups', async (req, res) => {
+  const shared = await coAdminClubIds(req, ['co_admin', 'operator']).catch(() => []);
+  const base = supabase.from('events').select('id, title, event_date, start_time, club_id');
+  const { data: events, error } = await (shared.length ? base.or(`host_id.eq.${req.hostId},club_id.in.(${shared.join(',')})`) : base.eq('host_id', req.hostId))
+    .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10))
+    .neq('status', 'cancelled');
+  if (error) return dbError(res, error);
+  if (!events.length) return res.json([]);
+  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { data: rows, error: pErr } = await supabase
+    .from('event_participants')
+    .select('id, event_id, full_name, status, payment_status, joined_at, is_organizer, guest_booking_id')
+    .in('event_id', events.map((e) => e.id))
+    .gte('joined_at', since)
+    .neq('status', 'cancelled')
+    .eq('is_organizer', false)
+    .order('joined_at', { ascending: false })
+    .limit(40);
+  if (pErr) return dbError(res, pErr);
+  const byId = new Map(events.map((e) => [e.id, e]));
+  res.json(rows.map((r) => ({ ...r, event: byId.get(r.event_id) })));
+});
+
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).
 router.get('/', async (req, res) => {
   await completeFinished({ hostId: req.hostId });

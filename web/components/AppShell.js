@@ -11,6 +11,7 @@ import CreateClubForm from '@/components/CreateClubForm';
 import ContextSwitcher from '@/components/ContextSwitcher';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import FeedbackButton from '@/components/FeedbackButton';
+import SignupBell from '@/components/SignupBell';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
 import { api } from '@/lib/api';
@@ -606,10 +607,16 @@ export default function AppShell({ children, back }) {
             <Icon name="dashboard" className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">{workspace && <ContextSwitcher compact />}</div>
+          {['club', 'xeve'].includes(workspace) && <SignupBell className="shrink-0" />}
         </div>
       </header>
 
       <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
+        {['club', 'xeve'].includes(workspace) && (
+          <div className="hidden md:flex justify-end -mt-2 mb-2">
+            <SignupBell />
+          </div>
+        )}
         <AnnouncementBanner className="mb-4" />
         {workspace && workspace !== 'staff' && <SchemaBanner />}
         {suspended ? (

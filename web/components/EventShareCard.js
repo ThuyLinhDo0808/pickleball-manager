@@ -30,6 +30,7 @@ export default function EventShareCard({ event, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
   const [origin, setOrigin] = useState('');
   const [canShare, setCanShare] = useState(false);
 
@@ -58,6 +59,8 @@ export default function EventShareCard({ event, onSaved }) {
         cancel_half_hours: halfHours(patch.cancel_deadline_hours, patch.cancel_half_hours),
       });
       onSaved?.(updated);
+      setSavedMsg(true);
+      setTimeout(() => setSavedMsg(false), 4000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -128,12 +131,15 @@ export default function EventShareCard({ event, onSaved }) {
         <p className="text-gray-500 text-sm mb-4">{t('events.linkOff')}</p>
       )}
 
+      {/* Deadline, refund rules and the note: tucked away — open / close is one button above. */}
+      <details className="rounded-lg border border-navy-700 px-3 py-2">
+      <summary className="cursor-pointer text-sm text-gray-200 select-none">⚙️ {t('events.moreSettings')}</summary>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           save();
         }}
-        className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3"
       >
         <div>
           <label className="text-xs text-gray-400">{t('events.deadline')}</label>
@@ -174,8 +180,10 @@ export default function EventShareCard({ event, onSaved }) {
         <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3">
           <button className="btn-primary w-full sm:w-auto" disabled={busy || !dirty}>{t('common.save')}</button>
           {error && <span className="text-red-400 text-sm">{error}</span>}
+          {savedMsg && !error && <span className="text-lime-300 text-sm" role="status">✓ {t('common.savedLong')}</span>}
         </div>
       </form>
+      </details>
     </div>
   );
 }

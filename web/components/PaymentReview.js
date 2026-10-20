@@ -48,7 +48,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
   async function act(g, action, body = {}) {
     setBusy(true);
     try {
-      for (const p of action === 'cancel' ? g.rows : [g.p]) await api.post(`/api/events/${event.id}/participants/${p.id}/${action}`, body);
+      for (const p of ['cancel', 'place'].includes(action) ? g.rows : [g.p]) await api.post(`/api/events/${event.id}/participants/${p.id}/${action}`, body);
       setViewing(null);
       onChanged();
     } catch (err) {
@@ -102,6 +102,9 @@ export default function PaymentReview({ event, rows, onChanged }) {
               {p.has_proof && <button className="text-sky-300 text-xs font-semibold" onClick={() => open(g)}>{t('review.view')}</button>}
               <button className="text-lime-400 text-xs" disabled={busy} onClick={() => window.confirm(t('review.confirmAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'confirm-payment')}>
                 {p.has_proof ? t('review.confirm') : t('review.cash')}
+              </button>
+              <button className="text-sky-300 text-xs" disabled={busy} title={t('review.toWaitlistHint')} onClick={() => window.confirm(t('review.toWaitlistAsk', { name: nameOf(g) })) && act(g, 'place', { to: 'waitlist' })}>
+                ⏳ {t('review.toWaitlist')}
               </button>
               <button className="text-red-400 text-xs" disabled={busy} onClick={() => window.confirm(t('policy.cancelAsk', { name: nameOf(g) })) && act(g, 'cancel')}>
                 {t('events.cancel')}
