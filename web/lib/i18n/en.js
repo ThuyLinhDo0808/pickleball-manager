@@ -2153,6 +2153,10 @@ export const en = {
     notes: 'Notes',
   },
   members: {
+    colDuprLinked: "Linked DUPR",
+    colDuprSelf: "Self-entered DUPR",
+    duprManual: "(by Host)",
+    duprManualHint: "Typed by the Host from the DUPR app — not linked to a DUPR list yet",
     colScore: "DUPR rating",
     colLevel: "Level",
     phoneLinkHint: "Add their phone so their account links to this row by itself when they sign up later.",

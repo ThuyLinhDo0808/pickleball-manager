@@ -2153,6 +2153,10 @@ export const vi = {
     notes: 'Ghi chú',
   },
   members: {
+    colDuprLinked: "DUPR đã liên kết",
+    colDuprSelf: "DUPR tự nhập",
+    duprManual: "(Host nhập)",
+    duprManualHint: "Host nhập tay từ app DUPR — chưa liên kết với danh sách DUPR",
     colScore: "Điểm DUPR",
     colLevel: "Trình độ",
     phoneLinkHint: "Nhập SĐT để tài khoản của họ tự liên kết với dòng này khi họ đăng ký sau này.",

@@ -378,8 +378,17 @@ router.get('/:clubId/members', async (req, res) => {
   } catch (err) {
     return dbError(res, err);
   }
+  // Two DUPR columns: the rating DUPR gave (linked, with its date) and the one the player typed
+  // themselves (their profile; without an account, the level on the record while not linked).
+  const userIds = [...new Set(data.map((m) => m.user_id).filter(Boolean))];
+  const { data: profs } = userIds.length ? await supabase.from('player_profiles').select('user_id, dupr_level').in('user_id', userIds) : { data: [] };
+  const selfOf = new Map((profs || []).map((p) => [p.user_id, p.dupr_level]));
   const rows = data.map(({ users, ...m }) => ({
     ...m,
+    dupr_linked: m.dupr_synced_at && m.dupr_doubles != null ? Number(m.dupr_doubles) : null,
+    dupr_linked_at: m.dupr_synced_at && m.dupr_doubles != null ? m.dupr_synced_at : null,
+    dupr_manual: !m.dupr_synced_at && m.dupr_doubles != null ? Number(m.dupr_doubles) : null, // typed by the Host from the DUPR app
+    dupr_self: m.user_id && selfOf.get(m.user_id) != null ? Number(selfOf.get(m.user_id)) : !m.dupr_synced_at && m.dupr_doubles == null && m.dupr_level != null ? Number(m.dupr_level) : null,
     account_email: users?.email || null,
     ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
     ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
@@ -387,7 +396,7 @@ router.get('/:clubId/members', async (req, res) => {
   }));
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
   if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
-    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key'];
+    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
   res.json(rows);
