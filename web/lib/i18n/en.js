@@ -1957,6 +1957,9 @@ export const en = {
     signUp: "Create an account",
   },
   cpanel: {
+    byGender: "Separate levels for men and women",
+    byGenderHint: "Each level has its own DUPR range for men and for women, e.g. Series A: men 3.0 – 3.5, women 2.8 – 3.0. Picking levels on a kèo fills both ranges.",
+    womenFrom: "Women from",
     signupTitle: "Checking players who sign up for kèo",
     signupHint: "Every player (regular, drop-in or new) signs in and waits for the organisers to check their details before transferring; they are on the list once the organisers confirm the money.",
     autoDupr: "Confirm details automatically by DUPR",
@@ -2216,6 +2219,11 @@ export const en = {
     openHint: 'Tap a name to see details, memberships and notes; press ✏️ in the Edit column to edit (switching the type to Guest moves them to the Guest members tab).',
   },
   events: {
+    levelMinMen: "Men's DUPR from",
+    levelMaxMen: "Men's DUPR to",
+    levelMinWomen: "Women's DUPR from",
+    levelMaxWomen: "Women's DUPR to",
+    addWomenRange: "Add a separate range for women",
     waitOrder: "No. {n} on the waitlist · signed up {at}",
     selectAll: "Select all ({n})",
     selectNone: "Clear selection",
@@ -3207,6 +3215,10 @@ export const en = {
     badge: 'Quick booking',
     badgeHint: 'Booked by invite link by {name} · {phone}',
     slotsCount: '{n} slot(s)',
+  },
+  levels: {
+    men: "Men",
+    women: "Women",
   },
   bell: {
     title: "New sign-ups",

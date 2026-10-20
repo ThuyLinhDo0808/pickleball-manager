@@ -1957,6 +1957,9 @@ export const vi = {
     signUp: "Tạo tài khoản",
   },
   cpanel: {
+    byGender: "Chia trình độ riêng Nam / Nữ",
+    byGenderHint: "Mỗi trình độ có khoảng DUPR riêng cho nam và cho nữ. VD Series A: Nam 3.0 – 3.5, Nữ 2.8 – 3.0. Kèo chọn trình độ sẽ tự điền cả hai khoảng.",
+    womenFrom: "Nữ từ",
     signupTitle: "Xác nhận người chơi đăng ký kèo",
     signupHint: "Mọi người chơi (thường xuyên, vãng lai, mới vào) đăng ký kèo đều phải đăng nhập và chờ Ban quản trị xác nhận thông tin, sau đó mới chuyển khoản; Ban quản trị xác nhận đã nhận tiền thì mới vào danh sách tham gia.",
     autoDupr: "Tự xác nhận thông tin theo điểm DUPR",
@@ -2216,6 +2219,11 @@ export const vi = {
     openHint: "Bấm vào tên để xem chi tiết, gói hội viên và ghi chú; bấm ✏️ để sửa thông tin. Đổi Hình thức sang Giao lưu sẽ chuyển người đó sang tab Thành viên giao lưu.",
   },
   events: {
+    levelMinMen: "DUPR Nam từ",
+    levelMaxMen: "DUPR Nam đến",
+    levelMinWomen: "DUPR Nữ từ",
+    levelMaxWomen: "DUPR Nữ đến",
+    addWomenRange: "Thêm khoảng điểm riêng cho Nữ",
     waitOrder: "Thứ {n} trong danh sách chờ · đăng ký lúc {at}",
     selectAll: "Chọn tất cả ({n})",
     selectNone: "Bỏ chọn tất cả",
@@ -3207,6 +3215,10 @@ export const vi = {
     badge: 'Đặt nhanh',
     badgeHint: 'Đặt qua link mời bởi {name} · {phone}',
     slotsCount: '{n} slot',
+  },
+  levels: {
+    men: "Nam",
+    women: "Nữ",
   },
   bell: {
     title: "Người chơi mới đăng ký",

@@ -156,6 +156,15 @@ export default function CommunitySettingsPage() {
             ))}
           </div>
 
+          {['manual', 'score'].includes(mode) && (
+            <label className="mt-4 flex items-start gap-3 text-sm text-gray-200 cursor-pointer rounded-lg border border-navy-600 px-3 py-2">
+              <input type="checkbox" className="mt-1" checked={!!s.levels?.by_gender} onChange={(e) => setLevels({ by_gender: e.target.checked })} />
+              <span>
+                👫 {t('cpanel.byGender')}
+                <span className="block text-xs text-gray-500">{t('cpanel.byGenderHint')}</span>
+              </span>
+            </label>
+          )}
           {mode !== 'none' && (
             <div className="mt-4 flex flex-col gap-2">
               {items.map((it, i) => (
@@ -164,10 +173,18 @@ export default function CommunitySettingsPage() {
                   <input className="input !w-44 !py-1.5 text-sm" maxLength={30} placeholder={t('cpanel.levelName')} aria-label={t('cpanel.levelName')} value={it.label} onChange={(e) => setItem(i, { label: e.target.value })} />
                   {mode === 'manual' && (
                     <span className="flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
-                      {t(sport === 'badminton' ? 'cpanel.rangeStep' : 'cpanel.rangeDupr')}
+                      {s.levels?.by_gender ? `${t('levels.men')}:` : t(sport === 'badminton' ? 'cpanel.rangeStep' : 'cpanel.rangeDupr')}
                       <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-24 !py-1.5 text-sm" placeholder="—" aria-label={t('cpanel.rangeFromAria', { name: it.label })} value={it.dupr_min ?? ''} onChange={(e) => setItem(i, { dupr_min: e.target.value })} />
                       {t('cpanel.rangeTo')}
                       <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-24 !py-1.5 text-sm" placeholder="—" aria-label={t('cpanel.rangeToAria', { name: it.label })} value={it.dupr_max ?? ''} onChange={(e) => setItem(i, { dupr_max: e.target.value })} />
+                    </span>
+                  )}
+                  {mode === 'manual' && s.levels?.by_gender && (
+                    <span className="flex flex-wrap items-center gap-1.5 text-xs text-pink-200">
+                      {t('levels.women')}:
+                      <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-24 !py-1.5 text-sm" placeholder="—" aria-label={`${t('levels.women')} ${t('cpanel.rangeFromAria', { name: it.label })}`} value={it.f_min ?? ''} onChange={(e) => setItem(i, { f_min: e.target.value })} />
+                      {t('cpanel.rangeTo')}
+                      <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-24 !py-1.5 text-sm" placeholder="—" aria-label={`${t('levels.women')} ${t('cpanel.rangeToAria', { name: it.label })}`} value={it.f_max ?? ''} onChange={(e) => setItem(i, { f_max: e.target.value })} />
                     </span>
                   )}
                   {mode === 'score' && (
@@ -175,6 +192,12 @@ export default function CommunitySettingsPage() {
                       {t(sport === 'badminton' ? 'cpanel.fromStep' : 'cpanel.fromScore')}
                       <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-28 !py-1.5 text-sm" placeholder={i === 0 ? t('cpanel.lowest') : ''} value={it.min ?? ''} onChange={(e) => setItem(i, { min: e.target.value === '' ? null : e.target.value })} />
                       <span className="text-gray-500">{items[i + 1]?.min != null && items[i + 1]?.min !== '' ? t('cpanel.toNext', { n: items[i + 1].min }) : t('cpanel.andUp')}</span>
+                    </label>
+                  )}
+                  {mode === 'score' && s.levels?.by_gender && i > 0 && (
+                    <label className="flex items-center gap-1.5 text-xs text-pink-200">
+                      {t('cpanel.womenFrom')}
+                      <input type="number" step={sport === 'badminton' ? 1 : 0.05} min={0} max={sport === 'badminton' ? 6 : 8} className="input !w-28 !py-1.5 text-sm" placeholder={it.min ?? ''} value={it.f_min ?? ''} onChange={(e) => setItem(i, { f_min: e.target.value === '' ? null : e.target.value })} />
                     </label>
                   )}
                   {mode === 'experience' && (

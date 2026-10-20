@@ -43,7 +43,7 @@ function nowIso() {
 // Only what a player needs to see — no host id, fees config internals, or phones.
 const PUBLIC_EVENT_FIELDS = [
   'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
-  'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
+  'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
   'cancel_deadline_hours', 'cancel_half_hours', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
 ];
@@ -398,6 +398,11 @@ async function hostForClub(req, clubId) {
 const EVENT_KINDS = ['weekly', 'game', 'training', 'meeting', 'challenge'];
 
 // Normalises optional fields in place; returns an error message or null.
+async function genderLevelsReady() {
+  const st = await require('../services/schemaCheck').schemaStatus();
+  return !st.missing_migrations.includes('20261201090000_gender_levels.sql');
+}
+
 function cleanEventFields(fields) {
   // Host picks open / completed / cancelled only (no drafts, no "closed": a session that
   // won't happen is cancelled, or deleted while nobody has signed up).
@@ -433,6 +438,15 @@ function cleanEventFields(fields) {
     if (v && (v.length > 500 || !/^https:\/\/\S+$/i.test(v))) return 'map_url must be an https link (Google Maps).';
     fields.map_url = v || null;
   }
+  // Women's DUPR range (levels split by gender); empty = the same range as everyone.
+  for (const k of ['level_min_f', 'level_max_f']) {
+    if (!(k in fields)) continue;
+    const v = fields[k];
+    if (v === '' || v == null) fields[k] = null;
+    else if (!(Number(v) >= 0 && Number(v) <= 8)) return `${k} must be 0-8.`;
+    else fields[k] = Math.round(Number(v) * 100) / 100;
+  }
+  if (fields.level_min_f != null && fields.level_max_f != null && fields.level_max_f < fields.level_min_f) return "The women's upper level is below the lower one.";
   if ('level_keys' in fields) {
     // Kèo for some levels of the community (keys from its control panel).
     const keys = Array.isArray(fields.level_keys) ? [...new Set(fields.level_keys.map((k) => String(k)))] : [];
@@ -469,7 +483,7 @@ async function kindAllowed(clubId, kind) {
 }
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
-  'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max',
+  'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'allow_public_registration', 'cost_items',
 ];
 
@@ -560,7 +574,7 @@ router.post('/', async (req, res) => {
 
   const fields = pick(req.body, [
     'club_id', 'start_time', 'end_time', 'location', 'courts', 'slots',
-    'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
+    'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
@@ -568,6 +582,7 @@ router.post('/', async (req, res) => {
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
+  if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
   const hostId = await hostForClub(req, fields.club_id);
   if (!hostId) return notFound(res, 'Club');
   if (!(await kindAllowed(fields.club_id, fields.kind))) return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
@@ -810,7 +825,7 @@ router.put('/:eventId/votes/:clubMemberId', async (req, res) => {
 router.patch('/:eventId', async (req, res) => {
   const fields = pick(req.body, [
     'title', 'event_date', 'club_id', 'start_time', 'end_time', 'location', 'courts',
-    'slots', 'level_min', 'level_max', 'fee_amount', 'status', 'registration_deadline',
+    'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
   ]);
@@ -818,6 +833,7 @@ router.patch('/:eventId', async (req, res) => {
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
+  if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
   if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }

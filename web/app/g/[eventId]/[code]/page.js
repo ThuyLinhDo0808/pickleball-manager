@@ -9,7 +9,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
-import { levelRange } from '@/lib/levels';
+import { eventLevelText } from '@/lib/levels';
 
 const blankSlot = () => ({ full_name: '', gender: '', dupr_level: '', dupr_id: '' });
 const idChars = (v) => v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
@@ -68,7 +68,7 @@ export default function QuickBookPage() {
   const ev = opened.event;
   const max = Math.max(0, Math.min(ev.free_places, ev.max_slots));
   const time = [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join(' – ');
-  const level = levelRange(ev.level_min, ev.level_max, ev.sport, t) || t('public.anyLevel');
+  const level = eventLevelText(ev, ev.sport, t) || t('public.anyLevel');
   // Slot 1 = the person booking (same name / level), unless they book for others only.
   const rows = slots.map((s, i) => (i === 0 && meFirst ? { ...s, full_name: contact.full_name, dupr_level: contact.dupr_level, dupr_id: contact.dupr_id } : s));
   const total = ev.fee * rows.length;

@@ -3,7 +3,7 @@ import { policyText } from '@/lib/cancelPolicy';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
 import { useEffect } from 'react';
-import { levelRange, levelText } from '@/lib/levels';
+import { eventLevelText, levelText } from '@/lib/levels';
 import { useParams } from 'next/navigation';
 import EventSignup from '@/components/EventSignup';
 import { useI18n } from '@/context/I18nContext';
@@ -115,7 +115,7 @@ export default function PublicEventPage() {
 
   const main = ev.participants.filter((p) => p.status !== 'waitlisted');
   const waitlist = ev.participants.filter((p) => p.status === 'waitlisted');
-  const level = levelRange(ev.level_min, ev.level_max, ev.sport, t) || t('public.anyLevel');
+  const level = eventLevelText(ev, ev.sport, t) || t('public.anyLevel');
   const time = [formatTime(ev.start_time), formatTime(ev.end_time)].filter(Boolean).join(' – ');
 
   return (

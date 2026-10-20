@@ -43,6 +43,8 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   slots: 16,
   level_min: '',
   level_max: '',
+  level_min_f: '',
+  level_max_f: '',
   fee_amount: 0,
   registration_deadline: '',
   cancel_deadline_hours: '12',
@@ -114,6 +116,8 @@ export function formFromEvent(ev) {
     slots: ev.slots ?? 16,
     level_min: ev.level_min ?? '',
     level_max: ev.level_max ?? '',
+    level_min_f: ev.level_min_f ?? '',
+    level_max_f: ev.level_max_f ?? '',
     fee_amount: ev.fee_amount ?? 0,
     registration_deadline: toLocalInput(ev.registration_deadline),
     cancel_deadline_hours: ev.cancel_deadline_hours == null ? '' : String(ev.cancel_deadline_hours),
@@ -172,6 +176,8 @@ export function eventPayload(f) {
     slots: Number(f.slots),
     level_min: f.level_min === '' ? null : Number(f.level_min),
     level_max: f.level_max === '' ? null : Number(f.level_max),
+    level_min_f: f.level_min_f === '' || f.level_min_f == null ? null : Number(f.level_min_f),
+    level_max_f: f.level_max_f === '' || f.level_max_f == null ? null : Number(f.level_max_f),
     fee_amount: Number(f.fee_amount || 0),
     registration_deadline: deadline ? new Date(deadline).toISOString() : null,
     cancel_deadline_hours: f.cancel_deadline_hours === '' ? null : Number(f.cancel_deadline_hours),
@@ -279,6 +285,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false); // "✓ Đã lưu" after a successful save
+  const [showWomen, setShowWomen] = useState(false);
   const set = (patch) => {
     setSaved(false);
     setF((prev) => ({ ...prev, ...patch }));
@@ -290,6 +297,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     if (!f.event_date) return setError(t('create.needDate'));
     if (f.start_time && f.end_time && f.end_time <= f.start_time) return setError(t('create.endAfterStart'));
     if (f.level_min !== '' && f.level_max !== '' && Number(f.level_max) < Number(f.level_min)) return setError(t('create.duprRange'));
+    if (f.level_min_f !== '' && f.level_max_f !== '' && f.level_min_f != null && f.level_max_f != null && Number(f.level_max_f) < Number(f.level_min_f)) return setError(t('create.duprRange'));
     if (f.map_url.trim() && !/^https:\/\/\S+$/i.test(f.map_url.trim())) return setError(t('map.badLink'));
     if (f.cost_items.some((c) => c.category === 'other' && Number(c.amount) > 0 && !c.note.trim())) return setError(t('cost.otherNeedNote'));
     setBusy(true);
@@ -315,8 +323,17 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     const patch = { level_keys: keys };
     if (r) Object.assign(patch, { level_min: r.min ?? '', level_max: r.max ?? '' });
     else if (!keys.length && wasAuto) Object.assign(patch, { level_min: '', level_max: '' });
+    // Levels split by gender: the women's range too.
+    if (cs.settings.levels.by_gender) {
+      const rf = keys.length ? rangeOfKeys(cs.settings.levels, keys, true) : null;
+      if (rf) Object.assign(patch, { level_min_f: rf.min ?? '', level_max_f: rf.max ?? '' });
+      else if (!keys.length && wasAuto) Object.assign(patch, { level_min_f: '', level_max_f: '' });
+    }
     set(patch);
   };
+  // Women's own DUPR range: on when the community splits levels by gender, when the kèo
+  // already has one, or when the Host asks for it.
+  const genderSplit = showWomen || !!cs?.settings?.levels?.by_gender || (f.level_min_f !== '' && f.level_min_f != null) || (f.level_max_f !== '' && f.level_max_f != null);
   const levelRangeAuto = !!(f.level_keys || []).length && !!levelItems.length && !!rangeOfKeys(cs.settings.levels, f.level_keys);
   const autoAt = autoDeadline(deadlineDate || f.event_date, f.start_time, f.cancel_deadline_hours);
   const fmtLocal = (v) => (v ? localDate(new Date(v), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—');
@@ -472,12 +489,28 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               })}
             </div>
           </Field>
-          <Field label={t('events.levelMin')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null}>
+          <Field label={genderSplit ? t('events.levelMinMen') : t('events.levelMin')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null}>
             <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
           </Field>
-          <Field label={t('events.levelMax')}>
+          <Field label={genderSplit ? t('events.levelMaxMen') : t('events.levelMax')}>
             <LevelInput value={f.level_max} onChange={(v) => set({ level_max: v })} placeholder="—" />
           </Field>
+          {genderSplit ? (
+            <>
+              <Field label={t('events.levelMinWomen')}>
+                <LevelInput value={f.level_min_f} onChange={(v) => set({ level_min_f: v })} placeholder="—" />
+              </Field>
+              <Field label={t('events.levelMaxWomen')}>
+                <LevelInput value={f.level_max_f} onChange={(v) => set({ level_max_f: v })} placeholder="—" />
+              </Field>
+            </>
+          ) : (
+            !meeting && (
+              <div className="col-span-2 md:col-span-4 -mt-1">
+                <button type="button" className="text-xs text-lime-400 underline" onClick={() => setShowWomen(true)}>＋ {t('events.addWomenRange')}</button>
+              </div>
+            )
+          )}
           <Field label={t('policy.label')} hint={f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
             <select className="input" value={f.cancel_deadline_hours} onChange={(e) => set({ cancel_deadline_hours: e.target.value })}>
               {[...CANCEL_PRESETS, ...(CANCEL_PRESETS.includes(f.cancel_deadline_hours) ? [] : [f.cancel_deadline_hours])].map((h) => <option key={h} value={h}>{h === '' ? t('policy.none') : t('policy.hoursShort', { h })}</option>)}

@@ -23,6 +23,15 @@ export function levelRange(min, max, sport, t) {
   return a ? `≥ ${a}` : `≤ ${b}`;
 }
 
+// A kèo's range with the women's one when levels are split by gender:
+// "Nam 3.00 – 3.50 · Nữ 2.80 – 3.00".
+export function eventLevelText(ev, sport, t) {
+  const all = levelRange(ev.level_min, ev.level_max, sport, t);
+  const women = levelRange(ev.level_min_f, ev.level_max_f, sport, t);
+  if (!women) return all;
+  return `${t('levels.men')} ${all || t('public.anyLevel')} · ${t('levels.women')} ${women}`;
+}
+
 // Short tag next to a name: "DUPR 3.5" (pickleball) or "TB+" (badminton).
 export function levelTag(value, sport, t) {
   const v = levelText(value, sport, t);
