@@ -1344,7 +1344,7 @@ async function undoRefund(req, p) {
 
 // Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles
 async function withGroup(prior, act) {
-  const others = prior.status === 'pending' ? await require('../services/quickBooking').pendingSiblings(prior) : [];
+  const others = ['pending', 'requested'].includes(prior.status) ? await require('../services/quickBooking').pendingSiblings(prior) : [];
   const out = await act(prior);
   for (const p of others) await act(p);
   return others.length ? { ...out, group_count: others.length + 1 } : out;
@@ -1356,10 +1356,13 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
 
   try {
     if (ATTENDANCE_ACTIONS.includes(action)) return res.json(await setAttendance(req.event, prior, action));
-    if (action === 'cancel') return res.json(await cancelParticipant(req.event, prior, new Date(), { reason: req.body?.reason, by: 'host' }));
+    // A quick booking waiting for the info check is approved / declined as one group.
+    const cancel = (p) => cancelParticipant(req.event, p, new Date(), { reason: req.body?.reason, by: 'host' });
+    if (action === 'cancel') return res.json(prior.status === 'requested' ? await withGroup(prior, cancel) : await cancel(prior));
     if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
     // The sheet on a name: where they are (main / waitlist / waiting for approval / not playing)…
+    if (action === 'place' && req.body.to === 'main' && prior.status === 'requested' && prior.guest_booking_id) return res.json(await require('../services/quickBooking').approveGroup(req.event, prior));
     if (action === 'place') return res.json(await setPlace(req.event, prior, req.body.to));
     // …and their role: organizer (Host / co-host), coach, referee.
     if (action === 'roles') return res.json(await setRoles(req.event, prior, req.body || {}));

@@ -113,7 +113,7 @@ export function Top10Register({ club, data, reload }) {
         {cur.status === 'awaiting_payment' && (
           <>
             <p className="text-gray-300 text-sm">{t('featured.payHint', { n: cur.months })}</p>
-            <PaymentCard payment={cur.payment} />
+            <PaymentCard payment={cur.payment} hint={t('top10.payHint')} />
             {owner && (
               <div className="flex justify-end">
                 <button type="button" className="text-red-300 text-sm" disabled={busy} onClick={() => window.confirm(t('featured.cancelAsk')) && run(() => api.del(`/api/clubs/${club.id}/featured`))}>{t('featured.cancel')}</button>
@@ -142,6 +142,20 @@ export function Top10Register({ club, data, reload }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {data.dropped_not_eligible && <p className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">⚠️ {t('top10.dropped')}</p>}
+      {/* The conditions first: a community that does not reach them cannot register. */}
+      <section className={`rounded-xl border px-3 py-3 ${rep?.eligible ? 'border-lime-400/50 bg-lime-400/5' : 'border-amber-300/50 bg-amber-300/5'}`}>
+        <h3 className="text-white font-semibold text-sm">📋 {t('top10.rulesTitle')}</h3>
+        <ol className="list-decimal pl-5 mt-1 text-sm text-gray-200 space-y-0.5">
+          {(rep?.checks || []).map((c) => (
+            <li key={c.key}>
+              {t(`top10.rule_${c.key}`, { n: c.target })}{' '}
+              <span className={c.ok ? 'text-lime-300' : 'text-amber-200'}>{c.ok ? `✓ ${t('top10.ok')}` : `· ${t('top10.now', { v: valueText(c, t) })}`}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-2"><Top10Verdict reputation={rep} /></div>
+      </section>
       {data.last?.status === 'rejected' && <p className="rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">✕ {t('featured.rejected')}{data.last.owner_note ? `: ${data.last.owner_note}` : ''}</p>}
       <p className="text-gray-300 text-sm">{t('featured.what')}</p>
 
@@ -165,7 +179,6 @@ export function Top10Register({ club, data, reload }) {
       <section>
         <h3 className="text-white font-semibold text-sm mb-2">{t('top10.conditions')}</h3>
         <Top10Checks reputation={rep} compact />
-        <div className="mt-2"><Top10Verdict reputation={rep} /></div>
       </section>
 
       <section>
@@ -195,7 +208,7 @@ export function Top10Register({ club, data, reload }) {
       {err && <p className="text-red-400 text-sm">{err}</p>}
       {owner ? (
         <div className="flex justify-end">
-          <button type="button" className="btn-primary max-sm:w-full sm:px-8" disabled={busy} onClick={register}>
+          <button type="button" className={`${rep?.eligible ? 'btn-primary' : 'btn-secondary opacity-80'} max-sm:w-full sm:px-8`} disabled={busy} onClick={register}>
             {t('featured.ask', { amount: formatVnd(data.price_month * months) })}
           </button>
         </div>

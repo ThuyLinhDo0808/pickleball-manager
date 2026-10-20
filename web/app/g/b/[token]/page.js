@@ -13,8 +13,8 @@ import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 import { resizeImage } from '@/lib/image';
 
-// A quick booking (invite link, no account): pay the total, send the screenshot, then the
-// tickets. This page's link is the only way back to the booking — the guest keeps it.
+// A quick booking (invite link, no account): the Host checks the players' info, then pay the
+// total, send the screenshot, then the tickets. This page's link is the only way back to the booking — the guest keeps it.
 export default function QuickBookingPage() {
   const { token } = useParams();
   const { t, lang, setLang } = useI18n();
@@ -25,9 +25,9 @@ export default function QuickBookingPage() {
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // While the Host checks the transfer, look again now and then.
+  // While the Host checks the info or the transfer, look again now and then.
   useEffect(() => {
-    if (b?.state !== 'proof_submitted') return undefined;
+    if (!['proof_submitted', 'requested'].includes(b?.state)) return undefined;
     const id = setInterval(reload, 20000);
     return () => clearInterval(id);
   }, [b?.state, reload]);
@@ -124,6 +124,14 @@ export default function QuickBookingPage() {
             <p className="text-gray-300 text-sm">{t('quick.checkingHint')}</p>
           </div>
         )}
+        {b.state === 'requested' && (
+          <div className="rounded-xl border border-amber-300/50 bg-amber-300/10 px-3 py-3 text-center mb-1">
+            <div className="text-3xl">🔎</div>
+            <p className="text-amber-100 font-bold">{t('quick.requestedTitle')}</p>
+            <p className="text-gray-300 text-sm">{t('quick.requestedHint')}</p>
+          </div>
+        )}
+        {b.state === 'declined' && <p className="text-center text-red-300 mb-1">✕ {t('quick.declined')}</p>}
         {b.state === 'cancelled' && <p className="text-center text-yellow-300 mb-3">⌛ {t('quick.cancelled')}</p>}
         {(b.state === 'awaiting_proof' || b.state === 'rejected') && (
           <div className="flex flex-col gap-3 mb-3">
@@ -164,7 +172,7 @@ export default function QuickBookingPage() {
       <section className="card mb-4">
         <h2 className="text-white font-semibold mb-1">{t('quick.yourBooking')}</h2>
         <p className="text-gray-400 text-xs mb-2">
-          📞 {b.contact.full_name} · {b.contact.phone}
+          📞 {b.contact.full_name} · {b.contact.phone || t('quick.noPhoneShort')}
           {b.contact.dupr_level != null ? ` · ${t('quick.duprShort')} ${Number(b.contact.dupr_level).toFixed(2)}` : ''}
         </p>
         <ol className="flex flex-col divide-y divide-navy-700">
@@ -187,6 +195,17 @@ export default function QuickBookingPage() {
         </div>
         <p className="text-sky-200 text-xs mt-2">📞 {t('quick.contactNote')}</p>
       </section>
+
+      {b.host_contact && (
+        <section className="card mb-4">
+          <h2 className="text-white font-semibold">☎️ {t('quick.hostContactTitle')}</h2>
+          <p className="text-gray-400 text-sm mt-0.5">{t('quick.hostContactHint')}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+            <span className="text-gray-100 font-semibold">{b.host_contact.name || t('quick.theHost')} · <span className="tabular-nums">{b.host_contact.phone}</span></span>
+            <a href={`tel:${b.host_contact.phone}`} className="btn-primary text-sm max-sm:w-full text-center">📞 {t('quick.callHost')}</a>
+          </div>
+        </section>
+      )}
 
       {b.state === 'confirmed' && (
         <div className="flex flex-col items-center gap-4 mb-4">

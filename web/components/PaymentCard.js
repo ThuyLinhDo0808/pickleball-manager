@@ -30,7 +30,7 @@ function CopyRow({ label, value }) {
 
 // Bank transfer details + VietQR, for a membership request or an event fee.
 // `payment.total` (memberships) or `payment.amount` (events); `qr_image` = the Host's own bank QR.
-export default function PaymentCard({ payment }) {
+export default function PaymentCard({ payment, hint = null }) {
   const { t } = useI18n();
   const [qrFailed, setQrFailed] = useState(false);
   const [showOwnQr, setShowOwnQr] = useState(false);
@@ -41,7 +41,7 @@ export default function PaymentCard({ payment }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-gray-300 text-sm">{t('join.payHint')}</p>
+      <p className="text-gray-300 text-sm">{hint || t('join.payHint')}</p>
       {vietqr && !showOwnQr && (
         <div className="bg-white rounded-xl p-3 mx-auto w-full max-w-[280px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}

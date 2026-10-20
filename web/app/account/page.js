@@ -6,6 +6,7 @@ import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import SettingsSection from '@/components/SettingsSection';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
+import HostContactPhone from '@/components/HostContactPhone';
 import DeleteAccount from '@/components/DeleteAccount';
 import AccountDetails from '@/components/AccountDetails';
 import AccountSecurity from '@/components/AccountSecurity';
@@ -167,6 +168,7 @@ export default function AccountPage() {
             <p className="text-gray-400 text-sm min-w-0 flex-1">{clubs.length ? t('acct.manageMoreBoth', { n: clubs.filter((c) => c.kind !== 'community').length, m: clubs.filter((c) => c.kind === 'community').length }) : t('acct.manageFirst')}</p>
             <Link href="/club-request" className="btn-primary">{lastRequest?.status === 'pending' ? t('acct.manageSeeRequest') : t('acct.manageApply')}</Link>
           </div>
+          {clubs.length > 0 && <HostContactPhone />}
         </SettingsSection>
 
         <SettingsSection id="plan" hidden={tab !== 'plan'} icon="💎" tone="amber" title={t('acct.s_plan')} description={t('acct.planHint')}>

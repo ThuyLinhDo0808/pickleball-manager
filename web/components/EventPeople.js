@@ -89,9 +89,22 @@ export function OrganizersSection({ event, people, onOpen }) {
 
 // Sign-ups waiting for the Host to check them (level, who they are) before they get a place.
 // A loud box (amber, thick frame, count in a badge) so a waiting player is never missed.
-export function RequestsSection({ rows, community = false, onPlace, onOpen }) {
+// Requests waiting for the Host's info check. A quick booking (invite link) is one group:
+// approved or declined together, with who booked it and how to reach them.
+export function RequestsSection({ rows, community = false, onPlace, onOpen, onDecline }) {
   const { t } = useI18n();
   if (!rows.length) return null;
+  const groups = [];
+  const seen = new Map();
+  for (const p of rows) {
+    const key = p.guest_booking_id || p.id;
+    if (!seen.has(key)) {
+      seen.set(key, { key, booking: p.guest_booking_id ? p.booking || null : null, people: [] });
+      groups.push(seen.get(key));
+    }
+    seen.get(key).people.push(p);
+  }
+  const level = (p) => (p.dupr_level != null ? `${t('common.level')} ${Number(p.dupr_level).toFixed(2)}` : t('people.noLevel'));
   return (
     <section className="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-3 sm:p-4 shadow-lg shadow-amber-400/10" role="alert">
       <div className="flex items-start gap-3">
@@ -103,22 +116,53 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen }) {
         <Hint inline text={community ? `${t('people.commCheckTitle')}. ${t('people.commCheckHint')}` : t('people.requestsHint')} />
       </div>
       <ul className="mt-3 flex flex-col gap-2">
-        {rows.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
-            <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(p)}>
-              <span className="block text-white font-semibold break-words">{p.full_name}</span>
-              <span className="block text-gray-400 text-xs">
-                {p.dupr_level != null ? `${t('common.level')} ${Number(p.dupr_level).toFixed(2)}` : t('people.noLevel')}
-                {p.card?.member_type ? ` · ${t(p.card.member_type === 'fixed' ? 'events.fixedMember' : 'review.kind_guest')}` : ''}
-              </span>
-            </button>
-            <CancelHistoryBadge name={p.full_name} history={p.cancel_history} />
-            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-              <button type="button" className="btn-secondary text-sm justify-center" onClick={() => onPlace(p, 'waitlist')}>⏳ {t('place.waitlist')}</button>
-              <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(p, 'main')}>✓ {t('place.main')}</button>
-            </div>
-          </li>
-        ))}
+        {groups.map((g) => {
+          const first = g.people[0];
+          if (!g.booking && g.people.length === 1) {
+            return (
+              <li key={g.key} className="flex flex-wrap items-center gap-2 rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
+                <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(first)}>
+                  <span className="block text-white font-semibold break-words">{first.full_name}</span>
+                  <span className="block text-gray-400 text-xs">
+                    {level(first)}
+                    {first.card?.member_type ? ` · ${t(first.card.member_type === 'fixed' ? 'events.fixedMember' : 'review.kind_guest')}` : ''}
+                  </span>
+                </button>
+                <CancelHistoryBadge name={first.full_name} history={first.cancel_history} />
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                  <button type="button" className="btn-secondary text-sm justify-center" onClick={() => onPlace(first, 'waitlist')}>⏳ {t('place.waitlist')}</button>
+                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>✓ {t('place.main')}</button>
+                </div>
+              </li>
+            );
+          }
+          const b = g.booking;
+          return (
+            <li key={g.key} className="rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-white font-semibold break-words">⚡ {t('people.quickGroup', { name: b?.contact_name || first.full_name, n: g.people.length })}</p>
+                  <p className="text-xs mt-0.5">{b?.contact_phone ? <a href={`tel:${b.contact_phone}`} className="text-sky-300">📞 {b.contact_phone}</a> : <span className="text-amber-200">📵 {t('people.quickNoPhone')}</span>}</p>
+                </div>
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                  {onDecline && <button type="button" className="btn-secondary text-sm justify-center text-red-300" onClick={() => onDecline(first, g.people.length)}>✕ {t('people.decline')}</button>}
+                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>✓ {g.people.length > 1 ? t('people.approveGroup', { n: g.people.length }) : t('place.main')}</button>
+                </div>
+              </div>
+              <ol className="mt-2 flex flex-col gap-1">
+                {g.people.map((p, i) => (
+                  <li key={p.id}>
+                    <button type="button" className="w-full text-left text-sm rounded-lg px-2 py-1 hover:bg-navy-800" onClick={() => onOpen(p)}>
+                      <span className="text-gray-500 tabular-nums">{i + 1}.</span> <span className="text-gray-100">{p.full_name}</span>
+                      {p.gender && <span className={`ml-2 text-[11px] ${p.gender === 'male' ? 'text-sky-300' : 'text-pink-300'}`}>{t(`members.${p.gender}`)}</span>}
+                      <span className="ml-2 text-[11px] text-gray-400">{level(p)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
