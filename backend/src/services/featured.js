@@ -59,12 +59,20 @@ async function forClub(club) {
   await expire();
   const { data, error } = await supabase.from('featured_communities').select('id, status, months, amount, ref, paid_at, position, trust_score, owner_note, starts_on, ends_on, created_at').eq('club_id', club.id).order('created_at', { ascending: false }).limit(5);
   if (error) throw error;
-  const current = (data || []).find((r) => OPEN.includes(r.status)) || null;
+  let current = (data || []).find((r) => OPEN.includes(r.status)) || null;
   let reputation = null;
   try {
     reputation = await require('./communityBusiness').reputation(club);
   } catch {}
-  const last = !current ? (data || [])[0] || null : null;
+  // A request still waiting for the transfer from a community that does not (or no longer)
+  // meet the conditions (e.g. made before they existed) is dropped: nothing was paid yet.
+  let dropped = false;
+  if (current?.status === 'awaiting_payment' && reputation && !reputation.eligible) {
+    await supabase.from('featured_communities').update({ status: 'cancelled' }).eq('id', current.id).eq('status', 'awaiting_payment');
+    current = null;
+    dropped = true;
+  }
+  const last = !current && !dropped ? (data || []).find((r) => !OPEN.includes(r.status)) || null : null;
   const { count } = await supabase.from('featured_communities').select('id', { count: 'exact', head: true }).eq('status', 'active');
   return {
     ready: true,
@@ -72,6 +80,7 @@ async function forClub(club) {
     months: MONTHS,
     slots_left: Math.max(SLOTS - (count || 0), 0),
     reputation,
+    dropped_not_eligible: dropped,
     current: current ? { ...current, amount: Number(current.amount), payment: payment(current) } : null,
     // A rejected request shows its reason once (the Host can ask again).
     last: last && ['rejected'].includes(last.status) ? { status: last.status, owner_note: last.owner_note } : null,

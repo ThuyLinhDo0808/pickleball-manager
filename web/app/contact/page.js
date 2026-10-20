@@ -87,10 +87,15 @@ export default function ContactPage() {
                   <p className="text-white font-semibold">🏆 {t('contact.top10Title')}</p>
                   <p className="text-gray-400 text-sm">{t('contact.top10Ask')}</p>
                   {cur && <p className="text-sky-300 text-xs mt-1">{t(`featured.st_${cur.status}`)}</p>}
+                  {!cur && featured?.reputation && (
+                    <p className={`text-xs mt-1 ${featured.reputation.eligible ? 'text-lime-300' : 'text-amber-200'}`}>
+                      {featured.reputation.eligible ? `✓ ${t('top10.eligible')}` : t('top10.cardNotYet', { ok: featured.reputation.checks.length - featured.reputation.failing.length, total: featured.reputation.checks.length })}
+                    </p>
+                  )}
                   {!community && <p className="text-amber-200 text-xs mt-1">{t('contact.top10NeedCommunity')}</p>}
                 </div>
                 <button type="button" className="btn-primary text-sm max-sm:w-full" disabled={!community} onClick={() => setTop10(true)}>
-                  {cur ? t('contact.view') : t('contact.register')}
+                  {cur ? t('contact.view') : featured?.reputation && !featured.reputation.eligible ? t('top10.seeRules') : t('contact.register')}
                 </button>
               </div>
             </li>
