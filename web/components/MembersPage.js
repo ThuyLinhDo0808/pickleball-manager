@@ -9,7 +9,6 @@ import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
 import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
 import VipBadge from '@/components/VipBadge';
-import { playDurationText } from '@/components/MemberExtras';
 import { Avatar } from '@/components/PlayerChip';
 import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
@@ -34,11 +33,12 @@ import { localDate } from '@/lib/dates';
 const PLACE_PILL = {
   fixed: 'border-lime-400/50 text-lime-200',
   guest: 'border-sky-400/50 text-sky-200',
+  new: 'border-emerald-400/50 text-emerald-200',
   waiting: 'border-yellow-400/50 text-yellow-200',
   review: 'border-red-400/60 text-red-200',
 };
 
-export const MEMBER_ROUTES = { all: '/club/members/all', fixed: '/club/members', guest: '/club/members/guests', review: '/club/members/review', waiting: '/club/members/requests', dupr: '/club/members/dupr' };
+export const MEMBER_ROUTES = { all: '/club/members/all', fixed: '/club/members', guest: '/club/members/guests', new: '/club/members/new', review: '/club/members/review', waiting: '/club/members/requests', dupr: '/club/members/dupr' };
 
 export default function MembersPage({ tab = 'fixed' }) {
   const router = useRouter();
@@ -87,14 +87,18 @@ export default function MembersPage({ tab = 'fixed' }) {
   const reviewRows = (members || []).filter((m) => m.review_started_at);
   const all = (members || []).filter((m) => !m.review_started_at && !(m.join_requested && !m.account_verified && m.member_type === 'fixed'));
   const fixedRows = all.filter((m) => m.member_type === 'fixed');
-  const guestRows = all.filter((m) => m.member_type !== 'fixed');
+  // Communities: "Người mới" (first 30 days after joining) have their own tab, not Vãng lai.
+  const today = new Date().toLocaleDateString('sv-SE');
+  const isNew = (m) => isCommunity && m.member_type !== 'fixed' && !!m.newcomer_until && m.newcomer_until >= today;
+  const newRows = all.filter(isNew);
+  const guestRows = all.filter((m) => m.member_type !== 'fixed' && !isNew(m));
   // Tabs: fixed members, guests, to review, waiting list. Editing a member's type moves them across.
   // Where each person is: fixed / guest / Danh sách chờ / Danh sách đen.
   const waitingIds = new Set(pending.map((r) => r.id));
-  const placeOf = (m) => (m.review_started_at ? 'review' : waitingIds.has(m.id) || (m.join_requested && !m.account_verified && m.member_type === 'fixed') ? 'waiting' : m.member_type === 'fixed' ? 'fixed' : 'guest');
+  const placeOf = (m) => (m.review_started_at ? 'review' : waitingIds.has(m.id) || (m.join_requested && !m.account_verified && m.member_type === 'fixed') ? 'waiting' : m.member_type === 'fixed' ? 'fixed' : isNew(m) ? 'new' : 'guest');
   // "Tổng quan": everyone in one table, wherever they are.
   const everyone = (members || []).slice().sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
-  const rows = tab === 'fixed' ? fixedRows : tab === 'guest' ? guestRows : tab === 'review' ? reviewRows : tab === 'all' ? everyone : [];
+  const rows = tab === 'fixed' ? fixedRows : tab === 'guest' ? guestRows : tab === 'new' ? newRows : tab === 'review' ? reviewRows : tab === 'all' ? everyone : [];
   const isVip = (m) => (isCommunity ? m.membership_state === 'active' : m.vip_stars > 0 || m.tier === 'vip');
   const vipFilters = isCommunity ? ['all', 'vip', 'priority'] : ['all', 'vip', 'standard'];
   const vipOk = (m) => vipF === 'all' || (vipF === 'vip' ? isVip(m) : vipF === 'priority' ? !!m.guest_perk : !isVip(m));
@@ -103,11 +107,11 @@ export default function MembersPage({ tab = 'fixed' }) {
   // Everyone in the club with their details, in one Excel sheet.
   function exportAll() {
     if (!hasFeature(planFor(club, plan), 'excel_export')) return lockedNotice('excel_export');
-    const order = { fixed: 0, guest: 1, review: 2, waiting: 3 };
+    const order = { fixed: 0, new: 1, guest: 2, review: 3, waiting: 4 };
     const list = (members || []).map((m) => ({ ...m, place: placeOf(m) })).sort((a, b) => order[a.place] - order[b.place] || a.full_name.localeCompare(b.full_name, 'vi'));
     exportMembers(club, list, t, (v) => levelText(v, sport, t));
   }
-  const isGuestTab = tab === 'guest';
+  const isGuestTab = tab === 'guest' || tab === 'new';
   const detailMember = (members || []).find((m) => m.id === detailId) || null;
 
   function toggle(id) {
@@ -197,6 +201,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         tabs={[
           { key: 'all', label: t('nav.memAll'), icon: '📋', count: everyone.length },
           { key: 'fixed', label: t('requests.tabFixed'), icon: '🏠', count: fixedRows.length },
+          ...(isCommunity ? [{ key: 'new', label: t('memx.newTab'), icon: '🌱', count: newRows.length }] : []),
           { key: 'guest', label: t('requests.tabGuest'), icon: '🤝', count: guestRows.length },
           { key: 'waiting', label: t('nav.memRequests'), icon: '📝', alert: pending.length },
           { key: 'review', label: t('mod.tab'), icon: '⛔', count: reviewRows.length },
@@ -229,7 +234,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         </button>
       )}
 
-      {isGuestTab && club && <GuestPerkSettings />}
+      {tab === 'guest' && club && <GuestPerkSettings />}
 
       {!['waiting', 'dupr'].includes(tab) && (
         <section className={`card !p-0 overflow-hidden ${tab === 'review' ? 'mb-4 border-amber-300/30' : ''}`}>
@@ -288,7 +293,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
-                          {[m.gender ? t(`members.${m.gender}`) : null, m.district, playDurationText(m.play_duration, t), ...(pickleball ? [m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null, m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null] : [levelText(m.dupr_level, sport, t)]), isCommunity && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null, m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null].filter(Boolean).join(' · ') || '—'}
+                          {[m.gender ? t(`members.${m.gender}`) : null, ...(pickleball ? [m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null, m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null] : [levelText(m.dupr_level, sport, t)]), isCommunity && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null, m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null].filter(Boolean).join(' · ') || '—'}
                         </span>
                         {missingInfo(m).length > 0 && <span className="block text-amber-300 text-xs mt-0.5">⚠ {t('members.missingList', { list: missText(m) })}</span>}
                         <span className="block text-gray-500 text-xs mt-0.5">
@@ -324,8 +329,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <th>{t('members.birthDate')}</th>
                       {showPhone && <th>{t('common.phone')}</th>}
                       <th>{t('members.joined')}</th>
-                      <th>{t('memberX.district')}</th>
-                      <th>{t('memberX.playDuration')}</th>
+                      {/* Khu vực is kept (to suggest courts nearby) but not shown in the list. */}
                       {pickleball ? (
                         <>
                           <th>{t('members.colDuprLinked')}</th>
@@ -409,8 +413,6 @@ export default function MembersPage({ tab = 'fixed' }) {
                             </>
                           ) : '—'}
                         </td>
-                        <td className="text-gray-300 whitespace-nowrap">{m.district || '—'}</td>
-                        <td className="text-gray-300 whitespace-nowrap">{playDurationText(m.play_duration, t) || '—'}</td>
                         {pickleball ? (
                           <>
                             <td className="whitespace-nowrap">

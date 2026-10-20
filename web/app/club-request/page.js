@@ -373,7 +373,6 @@ export default function ClubRequestPage() {
                       ['creq.address', form.address],
                       ['creq.mapUrl', form.map_url ? <a href={form.map_url} target="_blank" rel="noopener noreferrer" className="text-lime-300 underline break-all">{form.map_url}</a> : '—'],
                       ['creq.where', [form.district, form.province, form.country].filter(Boolean).join(', ')],
-                      ['creq.schedule', form.schedule || '—'],
                       ['creq.contactEmail', form.contact_email],
                       ['creq.description', form.description || '—'],
                       ['creq.planPicked', `${product === 'social_manager' ? 'Social Manager ' : ''}${covered ? `${pv.current.toUpperCase()} · ${t('creq.covered')}` : quote ? `${quote.from.toUpperCase()} → ${tier.toUpperCase()} · ${formatVnd(amount)}` : `${tier.toUpperCase()} · ${t('plan.nMonths', { n: form.plan_months })} · ${formatVnd(amount)}`}`],

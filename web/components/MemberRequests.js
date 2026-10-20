@@ -159,6 +159,8 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                       <option value="">--- {t('requests.pickType')}</option>
                       <option value="fixed">{t('members.fixed')}</option>
                       <option value="guest">{t('members.guest')}</option>
+                      {/* Communities: "Người mới" = first 30 days, then moved by how often they play. */}
+                      {club?.kind === 'community' && <option value="new">{t('requests.typeNew')}</option>}
                     </select>
                   </label>
                   <label className="text-xs text-gray-400 flex flex-col gap-0.5">

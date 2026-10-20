@@ -27,8 +27,8 @@ export function playDurationText(v, t) {
   return v ? t(`memberX.dur_${v}`) : null;
 }
 
-// The two inputs, for the add / edit member forms. `value` holds district and
-// play_duration; `onChange(patch)`.
+// The district input, for the edit member form (Thời gian chơi is no longer asked).
+// `onChange(patch)`.
 export function MemberExtraFields({ value, onChange, idPrefix = 'mx' }) {
   const { t } = useI18n();
   return (
@@ -43,15 +43,6 @@ export function MemberExtraFields({ value, onChange, idPrefix = 'mx' }) {
           value={value.district || ''}
           onChange={(e) => onChange({ district: e.target.value })}
         />
-      </div>
-      <div className="min-w-0">
-        <label htmlFor={`${idPrefix}-dur`} className="text-xs text-gray-400">{t('memberX.playDuration')}</label>
-        <select id={`${idPrefix}-dur`} className="input" value={value.play_duration || ''} onChange={(e) => onChange({ play_duration: e.target.value })}>
-          <option value="">—</option>
-          {PLAY_DURATIONS.map((d) => (
-            <option key={d} value={d}>{t(`memberX.dur_${d}`)}</option>
-          ))}
-        </select>
       </div>
     </>
   );

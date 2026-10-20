@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
 import { useScope } from '@/lib/useScope';
+import { SHOW_TOURNAMENTS } from '@/lib/hidden';
 
 // The pages of one menu group as tabs, so the Host can move between them in one tap.
 // Club and community (Social Manager) only: in one-off Xé Vé these pages stand alone.
@@ -10,7 +11,7 @@ const GROUPS = {
   activities: [
     { href: '/events', key: 'nav.schedule', icon: '🗓', match: (p) => p === '/events' },
     { href: '/events/create/weekly', key: 'nav.createWeekly', icon: '🔁', match: (p) => p === '/events/create/weekly' },
-    { href: '/club/tournaments', key: 'nav.tournaments', icon: '🏆', match: (p) => p.startsWith('/club/tournaments') },
+    { href: '/club/tournaments', key: 'nav.tournaments', icon: '🏆', match: (p) => p.startsWith('/club/tournaments') , hidden: !SHOW_TOURNAMENTS },
     { href: '/events/create', key: 'nav.createGame', icon: '🏓', match: (p) => p === '/events/create' },
   ],
   stats: [
@@ -32,7 +33,7 @@ export default function SectionTabs({ group }) {
     // Wraps onto two lines on a phone rather than hiding tabs off the edge of the screen.
     <nav className="mb-5">
       <div className="flex flex-wrap gap-2">
-        {GROUPS[group].filter((tab) => (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport)).map((tab) => {
+        {GROUPS[group].filter((tab) => !tab.hidden && (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport)).map((tab) => {
           const active = tab.match(pathname);
           // Social Manager: the schedule tab reads like its menu entry ("Lịch xé vé").
           const key = community && tab.key === 'nav.schedule' ? 'nav.kevents' : tab.key;

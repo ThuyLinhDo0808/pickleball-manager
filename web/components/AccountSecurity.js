@@ -198,7 +198,7 @@ export default function AccountSecurity() {
                 <li>{t('sec.step2')}</li>
                 <li>{t('sec.step3')}</li>
               </ol>
-              <p className="text-sky-200 text-xs mt-3 rounded-lg border border-sky-400/30 bg-sky-400/5 px-2.5 py-2">💡 {t('sec.backupTip')}</p>
+              <Hint className="mt-3" text={t('sec.backupTip')} />
               <p className="text-gray-400 text-xs mt-3">{t('sec.manualKey')}</p>
               <code className="block break-all rounded bg-navy-950/70 border border-navy-700 px-2 py-1 mt-1 text-lime-200 text-xs select-all">{setup.secret}</code>
               <CodeForm

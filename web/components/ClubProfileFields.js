@@ -93,11 +93,7 @@ export function ClubProfileFields({ form, set, withName = false, sports = null }
           <input className="input" type="url" inputMode="url" maxLength={500} pattern="https://.*" value={form.map_url || ''} onChange={(e) => set('map_url', e.target.value.trim())} placeholder="https://maps.app.goo.gl/…" />
         </Field>
       </div>
-      <div className="sm:col-span-2">
-        <Field label={t('creq.schedule')} hint={t('creq.scheduleHint')}>
-          <input className="input" maxLength={300} value={form.schedule || ''} onChange={(e) => set('schedule', e.target.value)} placeholder={t('creq.schedulePh')} />
-        </Field>
-      </div>
+      {/* No "lịch sinh hoạt định kỳ" field: the schedule lives in Lịch / Tạo lịch cố định. */}
       <div className="sm:col-span-2">
         <Field label={t('creq.description')}>
           <textarea className="input" rows={3} maxLength={1000} value={form.description || ''} onChange={(e) => set('description', e.target.value)} placeholder={t('creq.descriptionPh')} />

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { SHOW_TOURNAMENTS } from '@/lib/hidden';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import EventCalendar, { KIND_ICON, LEGEND_STATUSES, STATUS_STYLE, hrefOf } from '@/components/EventCalendar';
@@ -22,7 +23,32 @@ import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } f
 
 const VIEWS = ['list', 'month', 'week', 'day'];
 const SOON_DAYS = 3; // "Sắp diễn ra": from now to 3 days ahead
-const LIST_GROUPS = ['soon', 'open', 'done'];
+const LIST_GROUPS = ['live', 'soon', 'open', 'done'];
+
+// Each state has its own frame and background, so the list reads at a glance.
+const PHASE = {
+  live: { card: 'border-emerald-400 bg-emerald-400/10', dot: 'bg-emerald-400' },
+  soon: { card: 'border-lime-400/70 bg-lime-400/5', dot: 'bg-lime-400' },
+  open: { card: 'border-sky-400/60 bg-sky-400/5', dot: 'bg-sky-400' },
+  closed: { card: 'border-violet-400/50 bg-violet-400/5', dot: 'bg-violet-400' },
+  done: { card: 'border-navy-600 bg-navy-900/60', dot: 'bg-gray-500' },
+  cancelled: { card: 'border-red-400/40 bg-red-400/5', dot: 'bg-red-400' },
+};
+
+// Playing right now: today, started, not ended.
+function isLive(e, today, nowHm) {
+  return e.status !== 'cancelled' && e.status !== 'completed' && e.event_date === today && !!e.start_time && e.start_time.slice(0, 5) <= nowHm && (!e.end_time || e.end_time.slice(0, 5) > nowHm);
+}
+
+// live / soon (next few days) / open (taking sign-ups) / closed (sign-ups not open or
+// closed) / done / cancelled.
+function phaseOf(e, today, nowHm, soonEnd) {
+  if (e.status === 'cancelled') return 'cancelled';
+  if (isOver(e, today, nowHm)) return 'done';
+  if (isLive(e, today, nowHm)) return 'live';
+  if (e.event_date <= soonEnd) return 'soon';
+  return e.kind === 'tournament' || e.allow_public_registration !== false ? 'open' : 'closed';
+}
 
 // Over already: marked done / cancelled, an earlier day, or today after its end time.
 function isOver(e, today, nowHm) {
@@ -53,12 +79,13 @@ function tournamentAsEvent(tr, club) {
   };
 }
 
-function EventCard({ e }) {
+function EventCard({ e, phase = 'open' }) {
   const { t, lang } = useI18n();
+  const look = PHASE[phase] || PHASE.open;
   const full = e.slots != null && e.slots > 0 && (e.main_count || 0) >= e.slots;
   const pct = e.slots ? Math.min(100, Math.round((100 * (e.main_count || 0)) / e.slots)) : 0;
   return (
-    <Link href={hrefOf(e)} className={`card !p-0 overflow-hidden hover:border-lime-400 transition flex ${e.status === 'cancelled' ? 'opacity-60' : ''}`}>
+    <Link href={hrefOf(e)} className={`card !p-0 overflow-hidden hover:border-lime-300 transition flex ${look.card} ${phase === 'done' || phase === 'cancelled' ? 'opacity-75' : ''}`}>
       <div className={`w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 py-3 ${e.tone ? e.tone.chip : 'bg-navy-900'}`}>
         <span className="text-[11px] text-gray-300">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
         <span className="text-white text-2xl font-bold leading-none tabular-nums">{Number(e.event_date.slice(8, 10))}</span>
@@ -70,22 +97,29 @@ function EventCard({ e }) {
             {KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}
             {e.title}
           </span>
-          <span className={`text-[11px] rounded-full border px-2 py-0.5 shrink-0 ${STATUS_STYLE[e.status] || 'border-navy-600 text-gray-300'}`}>
-            {e.kind === 'tournament' ? (e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)) : t(`events.status_${e.status}`)}
-          </span>
+          {/* Kèo show their state on the line below (colour + words); tournaments keep their stage here. */}
+          {e.kind === 'tournament' && (
+            <span className={`text-[11px] rounded-full border px-2 py-0.5 shrink-0 ${STATUS_STYLE[e.status] || 'border-navy-600 text-gray-300'}`}>
+              {e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs font-semibold text-gray-200">
+          <span className={`h-2 w-2 rounded-full ${look.dot} ${phase === 'live' ? 'animate-pulse' : ''}`} aria-hidden />
+          {t(`evlist.ph_${phase}`)}
         </div>
         <div className="text-gray-400 text-sm break-words">
           {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
         </div>
         {e.club_name && (
-          <div className="text-sky-300 text-xs mt-0.5 truncate">
+          <div className="text-sky-300 text-xs mt-0.5 break-words">
             {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}
             {e.kind && <span className="text-gray-500"> · {t(`kind.${e.kind}`)}</span>}
           </div>
         )}
         {e.slots != null ? (
-          <div className="mt-2 flex items-center gap-2 text-xs">
-            <span className="flex-1 h-1.5 rounded-full bg-navy-900 overflow-hidden">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span className="flex-1 min-w-[5rem] h-1.5 rounded-full bg-navy-900 overflow-hidden">
               <span className={`block h-full rounded-full ${full ? 'bg-amber-400' : 'bg-lime-400'}`} style={{ width: `${pct}%` }} />
             </span>
             <span className="text-gray-300 tabular-nums whitespace-nowrap">
@@ -120,7 +154,7 @@ export default function EventsPage() {
       list.map(async (c) => {
         const [evs, tours] = await Promise.all([
           api.get(`/api/clubs/${c.id}/events`).catch(() => []),
-          api.get(`/api/tournaments?club_id=${c.id}`).catch(() => []),
+          SHOW_TOURNAMENTS ? api.get(`/api/tournaments?club_id=${c.id}`).catch(() => []) : [],
         ]);
         return [...evs, ...tours.map((tr) => tournamentAsEvent(tr, c))].map((e) => ({ ...e, club_name: c.name, sport: c.sport || 'pickleball' }));
       })
@@ -171,7 +205,8 @@ export default function EventsPage() {
       (!needle || [e.title, e.location, e.club_name].filter(Boolean).some((x) => x.toLowerCase().includes(needle)))
   );
   const groups = {
-    soon: listed.filter((e) => !isOver(e, today, nowHm) && e.event_date <= soonEnd),
+    live: listed.filter((e) => isLive(e, today, nowHm)),
+    soon: listed.filter((e) => !isOver(e, today, nowHm) && !isLive(e, today, nowHm) && e.event_date <= soonEnd),
     open: listed.filter((e) => !isOver(e, today, nowHm) && e.event_date > soonEnd),
     done: listed.filter((e) => isOver(e, today, nowHm)).reverse(),
   };
@@ -237,7 +272,7 @@ export default function EventsPage() {
       <KpiRow cols={3}>
         <StatTile icon="📅" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
         <StatTile icon="⏭" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
-        {isClub && !community ? (
+        {isClub && !community && SHOW_TOURNAMENTS ? (
           <StatTile icon="🏆" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
         ) : (
           <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
@@ -333,6 +368,8 @@ export default function EventsPage() {
           {LIST_GROUPS.filter((g) => groupF === 'all' || groupF === g).map((g) => {
             const rows = groups[g];
             const folded = g === 'done' && groupF === 'all' && !showDone;
+            // Nothing playing right now: no empty "Đang diễn ra" block.
+            if (g === 'live' && !rows.length && groupF === 'all') return null;
             return (
               <section key={g} className="mb-6">
                 {g === 'done' && groupF === 'all' ? (
@@ -340,13 +377,13 @@ export default function EventsPage() {
                     {showDone ? '▾' : '▸'} {t('evlist.g_done')} ({rows.length})
                   </button>
                 ) : (
-                  <h2 className="text-gray-300 text-sm font-semibold mb-2 flex items-center gap-2">{t(`evlist.g_${g}`)} ({rows.length}) <Hint inline text={t(`evlist.h_${g}`, { n: SOON_DAYS })} /></h2>
+                  <h2 className="text-gray-300 text-sm font-semibold mb-2 flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${PHASE[g].dot}`} aria-hidden />{t(`evlist.g_${g}`)} ({rows.length}) <Hint inline text={t(`evlist.h_${g}`, { n: SOON_DAYS })} /></h2>
                 )}
                 {!folded && (
                   <>
                     {rows.length === 0 && <p className="text-gray-500 text-sm">{t('evlist.none')}</p>}
-                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${g === 'done' ? 'opacity-80' : ''}`}>
-                      {rows.map((e) => <EventCard key={e.id} e={e} />)}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {rows.map((e) => <EventCard key={e.id} e={e} phase={phaseOf(e, today, nowHm, soonEnd)} />)}
                     </div>
                   </>
                 )}

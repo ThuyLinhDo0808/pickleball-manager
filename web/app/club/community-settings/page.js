@@ -9,7 +9,8 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const MODES = ['none', 'manual', 'score', 'experience'];
+// 'experience' (by Thời gian chơi) is no longer offered; a community still on it keeps working.
+const MODES = ['none', 'manual', 'score'];
 const DURATIONS = ['lt6', '6_12', '12_18', 'gt18'];
 
 // Ready-made level sets the Host can start from (then rename / change).
@@ -97,7 +98,7 @@ export default function CommunitySettingsPage() {
   return (
     <AppShell>
       {header}
-      <p className="text-gray-400 text-sm mb-4 -mt-2">{t('cpanel.intro')}</p>
+      <Hint className="mb-4 -mt-2" text={t('cpanel.intro')} />
       <fieldset disabled={!canEdit || busy} className="contents">
         <Card icon="🔁" title={t('cpanel.regularTitle')} hint={t('cpanel.regularHint')}>
           <label className="flex flex-wrap items-center gap-2 text-sm text-gray-200">
@@ -173,8 +174,8 @@ export default function CommunitySettingsPage() {
         </Card>
 
         <Card icon="📶" title={t('cpanel.levelTitle')} hint={t('cpanel.levelHint')}>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label={t('cpanel.levelTitle')}>
-            {MODES.map((m) => (
+          <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t('cpanel.levelTitle')}>
+            {(mode === 'experience' ? [...MODES, 'experience'] : MODES).map((m) => (
               <button
                 key={m}
                 type="button"

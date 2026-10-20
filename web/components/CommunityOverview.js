@@ -60,19 +60,21 @@ export default function CommunityOverview({ children }) {
         icon="🎟"
         title={t('social.overviewTitle')}
         subtitle={t('social.overviewSub', { n: clubs.length })}
-      />
-      {/* The things a Host opens every day. */}
-          <div className="flex flex-wrap gap-2 mb-4">
+        actions={
+          // The things a Host opens every day, on the right of the title.
+          <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             {[
-          ['/events/create', '➕', t('nav.createGame'), true],
-          [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? '🔁' : '📅', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
-          ['/club/members', '👥', t('nav.members')],
-        ].map(([href, icon, label, main]) => (
-              <Link key={href} href={href} className={main ? 'btn-primary' : 'btn-secondary'}>
+              ['/events/create', '➕', t('nav.createGame'), true],
+              [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? '🔁' : '📅', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
+              ['/club/members', '👥', t('nav.members')],
+            ].map(([href, icon, label, main]) => (
+              <Link key={href} href={href} className={`${main ? 'btn-primary' : 'btn-secondary'} justify-center text-center text-xs sm:text-sm !px-2 sm:!px-3.5`}>
                 <span aria-hidden>{icon}</span> {label}
               </Link>
             ))}
           </div>
+        }
+      />
 
       {/* One tab per court cluster (community). */}
       <div className="-mx-4 px-4 md:mx-0 md:px-0 mb-4 overflow-x-auto" role="tablist" aria-label={t('hub.communities')}>
