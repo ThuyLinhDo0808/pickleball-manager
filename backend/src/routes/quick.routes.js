@@ -3,6 +3,7 @@ const express = require('express');
 const { isUuid } = require('../utils/respond');
 const quick = require('../services/quickBooking');
 const { suspensionOf } = require('../services/owner');
+const { optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -29,11 +30,11 @@ router.post('/:eventId/open', async (req, res) => {
   }
 });
 
-router.post('/:eventId/book', async (req, res) => {
+router.post('/:eventId/book', optionalAuth, async (req, res) => {
   if (!isUuid(req.params.eventId)) return res.status(404).json({ error: 'Not found.' });
   try {
     await hostActive(req.params.eventId);
-    res.status(201).json(await quick.book(req.params.eventId, req.body || {}));
+    res.status(201).json(await quick.book(req.params.eventId, req.body || {}, req.userId || null));
   } catch (err) {
     fail(res, err);
   }

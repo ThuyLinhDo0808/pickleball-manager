@@ -1,5 +1,7 @@
 'use client';
 import DuprExport from '@/components/DuprExport';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import EventStandings from '@/components/EventStandings';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
@@ -7,7 +9,7 @@ import EventShareCard from '@/components/EventShareCard';
 import QuickInviteCard from '@/components/QuickInviteCard';
 import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
-import MatchList from '@/components/MatchList';
+import MatchList, { isScored } from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
 import PaymentReview from '@/components/PaymentReview';
 import { HostTicketPasses } from '@/components/TicketPass';
@@ -84,7 +86,8 @@ export default function EventDetailPage() {
   const [showImport, setShowImport] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [flash, setFlash] = useState('');
-  const [showMatch, setShowMatch] = useState(false);
+  const [showMatch, setShowMatch] = useState(false); // false | true | { slots, extra } (challenge)
+  const [matchTab, setMatchTab] = useState('enter'); // Nhập điểm / Kết quả / Bảng xếp hạng
   // The place sheet on a name: { person (row or null for the Host without one), isHost }.
   const [sheet, setSheet] = useState(null);
   const { data: matches, reload: reloadMatches } = useLoad(() => api.get(`/api/matches?event_id=${eventId}`), [eventId]);
@@ -260,7 +263,7 @@ export default function EventDetailPage() {
         )}
         {/* The three things a Host does all the time, as big buttons. */}
         {event.kind !== 'meeting' && (
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex flex-wrap justify-end gap-2 mt-3">
             <button type="button" className="btn-primary" onClick={copyLink} disabled={!event.allow_public_registration}>
               <span aria-hidden>📤</span> {linkCopied ? t('events.copied') : t('ux.sendLink')}
             </button>
@@ -391,11 +394,11 @@ export default function EventDetailPage() {
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <HostTicketPasses event={event} onChanged={refresh} />
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
-          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} onManage={openSheet} onAction={doAction} />
+          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} onManage={openSheet} onAction={doAction} />
           <OrganizersSection event={event} people={participants || []} onOpen={openSheet} />
           {cancelled.length > 0 && (
-            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} sport={sport} fee={event.fee_amount} onManage={openSheet} onAction={doAction} />
+            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} onManage={openSheet} onAction={doAction} />
           )}
           {event.club_id && <EventSurveys eventId={event.id} />}
           {cancelP && (
@@ -437,17 +440,38 @@ export default function EventDetailPage() {
             </button>
             <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
           </div>
-          <MatchList matches={matches || []} onChanged={reloadMatches} />
-          {event.club_id && sport === 'pickleball' && <DuprExport clubId={event.club_id} scope={{ event: eventId }} fileName={`dupr-${event.event_date}`} reloadKey={JSON.stringify((matches || []).map((m) => [m.id, m.team1_score, m.team2_score]))} />}
-          <Modal open={showMatch} title={t('matches.add')} onClose={() => setShowMatch(false)}>
+          {/* Nhập điểm: set up matches and score the ones still open. Kết quả: every scored
+              match. Bảng xếp hạng: this kèo's standings + the challenge suggestion. */}
+          <UnderlineTabs
+            value={matchTab}
+            onChange={setMatchTab}
+            tabs={[
+              { key: 'enter', label: t('matches.tabEnter'), icon: '✏️', count: (matches || []).filter((m) => !isScored(m)).length },
+              { key: 'results', label: t('matches.tabResults'), icon: '📋', count: (matches || []).filter(isScored).length },
+              { key: 'standings', label: t('estand.title'), icon: '🏅' },
+            ]}
+          />
+          {matchTab === 'enter' && <MatchList matches={(matches || []).filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reloadMatches} />}
+          {matchTab === 'results' && <MatchList matches={(matches || []).filter(isScored)} onChanged={reloadMatches} />}
+          {matchTab === 'standings' && (
+            <EventStandings
+              matches={matches || []}
+              onChallenge={(pick, reward) => setShowMatch({ slots: { 1: pick.team1.map((r) => r.id), 2: pick.team2.map((r) => r.id) }, extra: { is_challenge: true, challenge_reward: reward } })}
+            />
+          )}
+          <Modal open={!!showMatch} title={showMatch?.extra ? `⚔️ ${t('matches.challenge')}` : t('matches.add')} onClose={() => setShowMatch(false)}>
             {showMatch && (
               <MatchForm
                 players={main.map((p) => ({ id: p.id, name: p.full_name }))}
+                pastMatches={matches || []}
+                initialSlots={showMatch?.slots || null}
+                extra={showMatch?.extra || {}}
                 idField="event_participant_id"
                 parent={{ event_id: eventId }}
                 onCancel={() => setShowMatch(false)}
                 onSaved={() => {
                   setShowMatch(false);
+                  setMatchTab('enter');
                   reloadMatches();
                 }}
               />
@@ -477,7 +501,7 @@ const shareOf = (p) => (p.refund_percent != null ? p.refund_percent : p.late_can
 // One list (main / waitlist / cancelled) as rows: photo, name + tags, level / gender / DUPR,
 // where they stand and the money. A tap opens the person's sheet with every action;
 // the main list keeps a one-tap check-in for the court.
-function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction }) {
+function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, onManage, onAction }) {
   return (
     <section className="card mb-4 !px-2 sm:!px-4">
       <h3 className="text-white font-semibold mb-1 px-2 sm:px-0">{title}</h3>
@@ -487,7 +511,9 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
         {rows.map((p, idx) => {
           const c = p.card || {};
           const level = levelText(c.level ?? p.dupr_level, sport, t);
-          const money = p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0
+          const money = (p.tags || []).includes('free') && kind !== 'cancelled'
+            ? [`🎁 ${t('people.tag_free')}`, 'border-violet-400/60 text-violet-200']
+            : p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0
             ? [t('people.noFee'), 'border-navy-600 text-gray-400']
             : p.paid_by_plan && kind !== 'cancelled'
               ? [c.vip ? t(`events.usesPass_${c.vip_period || 'any'}`) : t('events.paidByPlan'), 'border-lime-400/40 text-lime-300']
@@ -515,7 +541,10 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     {c.member_type === 'fixed' && <span className={`${BADGE} border-lime-400/50 text-lime-300`}>{t('events.fixedMember')}</span>}
                     {!p.is_organizer && c.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || c.member_type) && <span className={`${BADGE} border-navy-500 text-gray-300`}>{t('review.kind_guest')}</span>}
                     {p.is_organizer && <span className={`${BADGE} border-sky-400/60 text-sky-300`}>🛡 {t('people.organizer')}</span>}
-                    {(p.tags || []).map((tag) => <span key={tag} className={`${BADGE} border-navy-500 text-gray-300`}>{t(`people.tag_${tag}`)}</span>)}
+                    {(p.tags || []).filter((tag) => tag !== 'host_guest').map((tag) => <span key={tag} className={`${BADGE} ${['invited', 'free'].includes(tag) ? 'border-violet-400/60 text-violet-200' : 'border-navy-500 text-gray-300'}`}>{t(`people.tag_${tag}`)}</span>)}
+                    {/* Whose guest: the other slots of a quick booking, or someone the Host added. */}
+                    {p.booking && p.full_name !== p.booking.contact_name && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: p.booking.contact_name })}</span>}
+                    {(p.tags || []).includes('host_guest') && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: hostName || 'Host' })}</span>}
                     {p.priority && <span className={`${BADGE} border-sky-400/60 text-sky-300`} title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>}
                     {p.late_cancel && <span className={`${BADGE} border-orange-400/60 text-orange-300`}>{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>}
                     {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>}
@@ -532,7 +561,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     )}
                     {sport !== 'pickleball' && <span>{level || '—'}</span>}
                     {(c.gender || p.gender) && <span>{(c.gender || p.gender) === 'male' ? '♂' : '♀'} {t(`members.${c.gender || p.gender}`)}</span>}
-                    {p.booking && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
+                    {p.booking && p.booking.contact_phone && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
                     {sport === 'pickleball' && c.dupr_verified != null ? (
                       <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white" title={t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}>
                         DUPR ✓ {Number(c.dupr_verified).toFixed(2)} <span className="font-normal opacity-80">· {t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}</span>

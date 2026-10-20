@@ -94,6 +94,12 @@ function matchTypeFor(players, asked) {
 
 // Validates and stores a match. `parent` = { club_id } or { event_id } — ownership
 // (host or staff) must already have been checked by the caller.
+// Thách thức (challenge match from a kèo's rankings): needs migration 20261208090000.
+async function challengeReady() {
+  const { schemaStatus } = require('./schemaCheck');
+  return !(await schemaStatus()).missing_migrations.includes('20261208090000_event_extras.sql');
+}
+
 async function createMatch(parent, body) {
   const players = body.players;
   if (!Array.isArray(players)) throw badRequest('players[] is required.');
@@ -111,6 +117,9 @@ async function createMatch(parent, body) {
   const { team1_score, team2_score } = result;
   const video_url = cleanVideoUrl(body.video_url);
   const played_at = cleanDate(body.played_at);
+  const challenge = body.is_challenge && parent.event_id && (await challengeReady())
+    ? { is_challenge: true, challenge_reward: String(body.challenge_reward || '').trim().slice(0, 200) || null }
+    : {};
 
   const keys = players.map((p) => p.club_member_id || p.event_participant_id);
   if (new Set(keys).size !== keys.length) throw badRequest('a player cannot appear twice in a match.');
@@ -129,6 +138,7 @@ async function createMatch(parent, body) {
       ...(badminton && result.games ? { games: result.games } : {}),
       video_url,
       played_at,
+      ...challenge,
     })
     .select()
     .single();

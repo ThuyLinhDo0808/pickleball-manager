@@ -1,5 +1,6 @@
 'use client';
 import DuprCard from '@/components/DuprCard';
+import MyBookings from '@/components/MyBookings';
 import PlayerNotices from '@/components/PlayerNotices';
 import LinkRequests from '@/components/LinkRequests';
 import { levelText } from '@/lib/levels';
@@ -187,6 +188,8 @@ export default function PlayerHome() {
       )}
 
       {/* Updates reach players on the 🔔 bell (no e-mail setting any more). */}
+      <MyBookings signedIn />
+
       <section className="mb-4">
         <h2 className="text-white font-semibold mb-2">{t('player.myClubs')}</h2>
         {me.clubs.length === 0 && <p className="card text-gray-400 text-sm">{t('player.noClubs')}</p>}

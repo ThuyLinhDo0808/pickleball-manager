@@ -432,6 +432,15 @@ player.get('/updates', async (req, res) => {
   }
 });
 
+// Quick bookings made while signed in (link đặt nhanh): every slot with its ticket / QR.
+player.get('/bookings', async (req, res) => {
+  try {
+    res.json(await require('../services/quickBooking').bookingsOfUser(req.hostId));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // Join a club and request a membership. The Host confirms once the transfer arrives.
 player.post('/join/:token', async (req, res) => {
   try {

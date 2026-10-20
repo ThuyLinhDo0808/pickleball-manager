@@ -32,7 +32,7 @@ export function stopViewAs() {
   try { localStorage.removeItem('pickleball_club'); } catch {}
 }
 
-async function request(path, { method = 'GET', body, isPublic = false } = {}) {
+async function request(path, { method = 'GET', body, isPublic = false, withAuth = false } = {}) {
   const as = !isPublic && !path.startsWith('/api/owner') ? viewingAs() : null;
   if (as && method !== 'GET') {
     window.dispatchEvent(new CustomEvent('pb:read-only'));
@@ -43,7 +43,7 @@ async function request(path, { method = 'GET', body, isPublic = false } = {}) {
   }
   const send = async () => {
     const headers = { 'Content-Type': 'application/json' };
-    if (!isPublic) Object.assign(headers, await authHeader());
+    if (!isPublic || withAuth) Object.assign(headers, await authHeader());
     if (as) headers['X-View-As'] = as.id;
     return fetch(`${API_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   };
@@ -104,4 +104,6 @@ export const api = {
   del: (path) => request(path, { method: 'DELETE' }),
   publicGet: (path) => request(path, { isPublic: true }),
   publicPost: (path, body) => request(path, { method: 'POST', body, isPublic: true }),
+  // Public route that also knows the signed-in player when there is one.
+  optionalPost: (path, body) => request(path, { method: 'POST', body, isPublic: true, withAuth: true }),
 };

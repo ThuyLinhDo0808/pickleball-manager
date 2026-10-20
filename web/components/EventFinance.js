@@ -15,7 +15,9 @@ const today = () => {
 };
 
 // Income is "Thu"; money out on a session is "Chi phí phát sinh".
-const sideLabel = (ty, t) => (ty === 'expense' ? t('evfin.expense') : t('finance.income'));
+// "Thu ngoài": money in besides the players' fees (sponsor, drinks sold…); fees come in by themselves.
+const sideLabel = (ty, t) => (ty === 'expense' ? t('evfin.expense') : t('evfin.incomeOther'));
+const notePh = (f, t) => (f.type === 'income' ? t('evfin.incomeNotePh') : f.category === 'other' ? t('fin.otherNotePh') : t('fin.note'));
 
 // Fix an entry. A new amount or type is saved as a corrected entry (the old one is voided,
 // so the ledger keeps its history); category, date and note change in place.
@@ -153,9 +155,9 @@ export default function EventFinance({ event, finance, onChanged }) {
         </select>
         <input className="input md:col-span-2 h-[42px] text-right tabular-nums no-spin" type="number" inputMode="numeric" min="1" step="1" required placeholder={t('fin.amount')} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
         <input className="input md:col-span-2 h-[42px]" type="date" value={f.occurred_on} onChange={(e) => setF({ ...f, occurred_on: e.target.value })} aria-label={t('fin.date')} />
-        <input className="input col-span-2 md:col-span-3 h-[42px]" required={f.category === 'other'} placeholder={f.category === 'other' ? t('fin.otherNotePh') : t('fin.note')} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
+        <input className="input col-span-2 md:col-span-3 h-[42px]" required={f.category === 'other'} placeholder={notePh(f, t)} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         <div className="col-span-2 md:col-span-12 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-gray-500 text-xs">{t('evfin.costHint')}</span>
+          <span className="text-gray-500 text-xs">{t(f.type === 'income' ? 'evfin.incomeHint' : 'evfin.costHint')}</span>
           <button className="btn-primary" disabled={busy}>+ {t('fin.addBtn')}</button>
         </div>
         {error && <p className="col-span-2 md:col-span-12 text-red-400 text-sm">{error}</p>}
