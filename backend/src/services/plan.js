@@ -12,6 +12,8 @@ const { todayYmd } = require('./memberships');
 const MIGRATION = '20261018090000_social_manager_plans.sql';
 const V2_MIGRATION = '20261027090000_plans_v2.sql';
 const { TIERS } = PF;
+const ADDON_MIGRATION = '20261209090000_dev_requests.sql';
+const ADDONS = ['finance_pro', 'coach_manager', 'tournament_manager'];
 // Clubs a Host may own on each tier (null = unlimited).
 const CLUB_LIMIT = Object.fromEntries(TIERS.map((t) => [t, PF.LIMITS[t].clubs]));
 // People under management on each tier — a guard against abuse, well above the member
@@ -56,6 +58,7 @@ async function getPlan(hostId, { fresh = false } = {}) {
   const selfServe = await require('./appSettings').selfServe();
   const today = todayYmd();
   const smTier = billing.productOf(live, 'social_manager').tier;
+  const addons = await addonsOf(hostId);
   const onTrial = !!live?.trial_ends_on && live.tier_paid_until === live.trial_ends_on && today <= live.trial_ends_on && tier !== 'free';
   const value = {
     enforced: ready,
@@ -90,6 +93,8 @@ async function getPlan(hostId, { fresh = false } = {}) {
       features: ready && ready2 ? PF.featuresOf(smTier) : PF.featuresOf('pro'),
       role_seats: PF.ROLE_SEATS[smTier],
     },
+    // Tính năng Ban quản trị bật riêng cho Host này (services/devRequests.js).
+    addons,
     social_manager_requested_at: live?.social_manager_requested_at || null,
     upgrade_requested_at: live?.upgrade_requested_at || null,
     upgrade_requested_tier: live?.upgrade_requested_tier || null,
@@ -108,6 +113,26 @@ async function getPlan(hostId, { fresh = false } = {}) {
   return value;
 }
 
+// Add-ons the Owner switched on for this Host: { finance_pro, coach_manager, tournament_manager }.
+async function addonsOf(hostId) {
+  const out = Object.fromEntries(ADDONS.map((a) => [a, false]));
+  const s = await schemaStatus();
+  if (s.missing_migrations.includes(ADDON_MIGRATION)) return out;
+  const { data } = await supabase.from('host_addons').select('addon, enabled').eq('host_id', hostId);
+  for (const r of data || []) if (ADDONS.includes(r.addon)) out[r.addon] = !!r.enabled;
+  return out;
+}
+
+// Plan features plus the add-ons: Phân tích tài chính opens the analysis page (for a
+// community only through the add-on), Tournament Manager opens the tournaments.
+function withAddons(features, addons = {}, kind) {
+  return {
+    ...features,
+    advanced_analytics: kind === 'community' ? !!addons.finance_pro : !!features.advanced_analytics || !!addons.finance_pro,
+    tournaments: !!features.tournaments || !!addons.tournament_manager,
+  };
+}
+
 const locked = (message, code, extra = {}) => Object.assign(new Error(message), { status: 402, code, ...extra });
 
 // The plan that applies to one kind of space: 'club' -> the Club plan, 'community' -> the
@@ -116,14 +141,14 @@ function planView(p, kind = 'club') {
   if (kind === 'community') {
     const m = p.sm.limits.members;
     return {
-      kind, tier: p.sm.tier, no_plan: p.sm.no_plan, features: p.sm.features, features_enforced: p.features_enforced,
+      kind, tier: p.sm.tier, no_plan: p.sm.no_plan, features: withAddons(p.sm.features, p.addons, kind), features_enforced: p.features_enforced, addons: p.addons,
       // People per community count official + guest together.
       limits: { members: m, fixed: m, guest: m },
       role_seats: p.sm.role_seats, paid_until: p.sm.paid_until,
     };
   }
   return {
-    kind: 'club', tier: p.tier, no_plan: p.no_plan, features: p.features, features_enforced: p.features_enforced,
+    kind: 'club', tier: p.tier, no_plan: p.no_plan, features: withAddons(p.features, p.addons, 'club'), features_enforced: p.features_enforced, addons: p.addons,
     limits: p.limits, role_seats: p.role_seats, paid_until: p.tier_paid_until, trial: p.trial,
   };
 }
@@ -262,6 +287,7 @@ async function hasMemberRoom(club, type) {
 
 module.exports = {
   TIERS, CLUB_LIMIT, CAPACITY, plansReady, v2Ready, getPlan, forgetPlan,
+  ADDONS, addonsOf,
   assertPlanActive, assertCanCreateClub, assertSocialManager, assertFeature, requireFeature, planView, clubPlan, kindOf,
   memberRoom, assertMemberRoom, hasMemberRoom,
 };

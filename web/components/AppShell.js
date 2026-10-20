@@ -10,7 +10,6 @@ import { useWorkspace, WORKSPACE_HOME } from '@/context/WorkspaceContext';
 import CreateClubForm from '@/components/CreateClubForm';
 import ContextSwitcher from '@/components/ContextSwitcher';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
-import FeedbackButton from '@/components/FeedbackButton';
 import SignupBell from '@/components/SignupBell';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
@@ -74,6 +73,8 @@ const NAV_BY_WORKSPACE = {
         { href: '/events', key: 'nav.schedule', icon: 'schedule', exclude: ['/events/create'] },
         { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
         { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
+        // Tournament Manager: only for a Host the Ban quản trị switched it on for.
+        { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy', addon: 'tournament_manager' },
       ],
     },
     {
@@ -126,6 +127,7 @@ NAV_BY_WORKSPACE.community = [
       { href: '/events', key: 'nav.kevents', icon: 'schedule', exclude: ['/events/create'] },
       { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
       { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
+      { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy', addon: 'tournament_manager' },
     ],
   },
   NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance'),
@@ -136,6 +138,8 @@ NAV_BY_WORKSPACE.community = [
     children: [
       { href: '/club/business', key: 'nav.bizPlayers', icon: 'members', exact: true },
       { href: '/club/business/finance', key: 'nav.bizMoney', icon: 'fund' },
+      // Phân tích tài chính: an add-on (shown with 💎 until the Ban quản trị switches it on).
+      { href: '/club/insights', key: 'nav.finAnalysis', icon: 'chart', addon: 'finance_pro', showLocked: true },
       { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
@@ -148,7 +152,6 @@ NAV_BY_WORKSPACE.community = [
     icon: 'clubs',
     children: [
       { href: '/club/community-settings', key: 'nav.commPanel', icon: 'chart' },
-      { href: '/club/featured', key: 'nav.featured', icon: 'trophy' },
       { href: '/clubs', key: 'nav.communities', icon: 'clubs' },
       { href: '/staff-access', key: 'nav.staffAccess', icon: 'key' },
       { href: '/club/activity-log', key: 'nav.activityLog', icon: 'plans' },
@@ -441,7 +444,7 @@ export default function AppShell({ children, back }) {
   const roleOk = (href) => !rolePages || rolePages.some((p) => href === p || (p !== '/finance' && href.startsWith(`${p}/`)));
   const NAV = (NAV_BY_WORKSPACE[mode] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
-    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community')) } : g))
+    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
   const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
@@ -463,7 +466,7 @@ export default function AppShell({ children, back }) {
   // Sidebar: a section (or a single page) is a big row with an icon tile; its pages are
   // smaller, quieter rows on a guide line, the current one marked by a lime bar.
   const tileClass = (active) => `shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${active ? 'bg-lime-400 text-navy-950' : 'bg-navy-800 text-gray-300 group-hover:text-white'}`;
-  const headClass = (active) => `group w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-[0.9375rem] font-semibold tracking-tight transition-colors ${active ? 'text-white bg-navy-800/80' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
+  const headClass = (active) => `group w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-[0.8125rem] font-bold uppercase tracking-wide transition-colors ${active ? 'text-white bg-navy-800/80' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
   const subClass = (active) => `relative flex items-center gap-2 rounded-md pl-3 pr-2 py-1.5 text-[0.8125rem] transition-colors ${active ? 'text-lime-300 bg-lime-400/10 font-medium before:absolute before:-left-[13px] before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-lime-400' : 'text-gray-400 hover:text-gray-100 hover:bg-navy-800/60'}`;
 
   return (
@@ -564,10 +567,10 @@ export default function AppShell({ children, back }) {
             </button>
           ) : (
             <>
-              <FeedbackButton className="text-gray-300 text-sm flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-navy-800">
-                <Icon name="chat" className="w-4 h-4" />
-                {t('feedback.button')}
-              </FeedbackButton>
+              <Link href="/contact" className={`text-sm flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-navy-800 ${isActive('/contact') ? 'text-lime-300 bg-navy-800' : 'text-gray-300'}`}>
+                <Icon name="chat" className="w-4 h-4 shrink-0" />
+                {t('contact.nav')}
+              </Link>
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">
                 {t('nav.signOut')}
@@ -607,6 +610,15 @@ export default function AppShell({ children, back }) {
           // The plan of this club (Club plan) / community (Social Manager) ended: every
           // manager page stops until it is renewed (Account and the club list stay open).
           <ExpiredPlan product={mode === 'community' ? 'social_manager' : 'tier'} owner={!coAdmin} until={clubPlan?.paid_until} />
+        ) : pageLocked && wsReady && mode === 'community' && pageFeature === 'advanced_analytics' ? (
+          // An add-on: asked for in Báo lỗi / Liên hệ nhà phát triển, switched on by the Ban quản trị.
+          <div className="max-w-lg mx-auto card mt-4 border-amber-300/50">
+            <h1 className="text-white text-lg font-bold mb-1">💎 {t('contact.addonLockedTitle')}</h1>
+            <p className="text-gray-300 text-sm">{t('contact.addonLockedBody')}</p>
+            <div className="flex justify-end mt-4">
+              <Link href="/contact#dev" className="btn-primary text-sm">{t('contact.addonLockedCta')}</Link>
+            </div>
+          </div>
         ) : pageLocked && wsReady ? (
           <LockedFeature feature={pageFeature} owner={!coAdmin} product={mode === 'community' ? 'social_manager' : 'tier'} />
         ) : !wsReady || !workspace ? null : mode === 'xeve' && !clubsLoading && plan && !NO_CLUB_OK.some((p) => isActive(p)) ? (
@@ -665,7 +677,7 @@ export default function AppShell({ children, back }) {
                   <div key={item.key} className="mt-3">
                     <div className="flex items-center gap-2 px-1 mb-1.5">
                       <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
-                      <span className="text-white text-[0.9375rem] font-semibold">{t(item.key)}</span>
+                      <span className="text-white text-[0.8125rem] font-bold uppercase tracking-wide">{t(item.key)}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1">
                       {item.children.map((c) => (
@@ -689,16 +701,16 @@ export default function AppShell({ children, back }) {
                     className={`flex items-center gap-3 px-3 py-3 rounded-lg ${navActive(item) ? 'bg-navy-700 text-lime-400' : 'text-gray-200'}`}
                   >
                     <Icon name={item.icon} />
-                    <span className="flex-1">{t(item.key)}</span>
+                    <span className="flex-1 text-[0.8125rem] font-bold uppercase tracking-wide">{t(item.key)}</span>
                     <Badge n={badges[item.badge]} />
                   </Link>
                 )
               )}
             </div>
-            <FeedbackButton className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200 w-full text-left">
+            <Link href="/contact" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200 w-full text-left">
               <Icon name="chat" />
-              {t('feedback.button')}
-            </FeedbackButton>
+              {t('contact.nav')}
+            </Link>
             <Link href="/home" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200">
               <Icon name="dashboard" />
               {t('hub.backHome')}

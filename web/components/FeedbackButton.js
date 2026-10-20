@@ -22,24 +22,18 @@ function deviceInfo() {
   return [browser, os.trim(), screen, navigator.language].filter(Boolean).join(' · ').slice(0, 300);
 }
 
-// "Báo lỗi / Liên hệ" — a message to the app team (Owner → Báo lỗi / Liên hệ inbox, and
-// emailed when configured). Not for rating a session: that is the after-session review.
-export default function FeedbackButton({ className = '', children }) {
+// "Báo lỗi" — a message to the Ban quản trị (Owner → Báo lỗi / Liên hệ inbox, and emailed
+// when configured). Not for rating a session: that is the after-session review.
+// `onClose`: shown as a button after sending (in a pop-up); on a page, "Gửi thêm" instead.
+export function FeedbackForm({ onClose = null }) {
   const { t } = useI18n();
   const { user } = useAuth();
   const pathname = usePathname() || '';
-  const [open, setOpen] = useState(false);
   const [category, setCategory] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
-
-  function close() {
-    setOpen(false);
-    setSent(false);
-    setError('');
-  }
 
   async function send(e) {
     e.preventDefault();
@@ -60,50 +54,66 @@ export default function FeedbackButton({ className = '', children }) {
     }
   }
 
-  if (!user) return null;
+  if (sent) {
+    return (
+      <div className="text-center py-6">
+        <div className="text-5xl mb-3">💚</div>
+        <p className="text-white text-lg font-semibold">{t('feedback.thanksTitle')}</p>
+        <p className="text-gray-300 text-sm mt-1">{t('feedback.thanks')}</p>
+        {onClose ? (
+          <button className="btn-primary mt-5 w-full sm:w-auto sm:px-10" onClick={() => { setSent(false); onClose(); }}>{t('feedback.close')}</button>
+        ) : (
+          <button type="button" className="btn-secondary mt-5 w-full sm:w-auto sm:px-10" onClick={() => setSent(false)}>{t('feedback.again')}</button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={send} className="flex flex-col gap-3">
+      <p className="text-gray-400 text-sm">{t('feedback.hint')}</p>
+      <fieldset>
+        <legend className="text-xs text-gray-400 mb-1">{t('feedback.category')} <span className="text-lime-400">*</span></legend>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup">
+          {FEEDBACK_CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={category === c}
+              onClick={() => setCategory(c)}
+              className={`rounded-full px-3 py-1.5 text-sm border ${category === c ? 'border-lime-400 bg-lime-400 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+            >
+              {t(`feedback.cat_${c}`)}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <div>
+        <label htmlFor="feedback-message" className="text-xs text-gray-400">{t('feedback.message')}</label>
+        <textarea id="feedback-message" className="input" rows={5} required minLength={MIN} maxLength={4000} value={message} onChange={(e) => setMessage(e.target.value)} />
+        <p className="text-[11px] text-gray-500 mt-1">{t('feedback.attached')}</p>
+      </div>
+      {error && <p className="text-red-400 text-sm" role="alert">{error}</p>}
+      <div className="flex justify-end">
+        <button className="btn-primary max-sm:w-full sm:px-8" disabled={busy || !message.trim()}>{t('feedback.send')}</button>
+      </div>
+    </form>
+  );
+}
 
+// The same form in a pop-up (player pages).
+export default function FeedbackButton({ className = '', children }) {
+  const { t } = useI18n();
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  if (!user) return null;
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={className} title={t('feedback.button')}>
         {children || t('feedback.button')}
       </button>
-      <Modal open={open} title={t('feedback.title')} onClose={close}>
-        {sent ? (
-          <div className="text-center py-6">
-            <div className="text-5xl mb-3">💚</div>
-            <p className="text-white text-lg font-semibold">{t('feedback.thanksTitle')}</p>
-            <p className="text-gray-300 text-sm mt-1">{t('feedback.thanks')}</p>
-            <button className="btn-primary mt-5 w-full sm:w-auto sm:px-10" onClick={close}>{t('feedback.close')}</button>
-          </div>
-        ) : (
-          <form onSubmit={send} className="flex flex-col gap-3">
-            <p className="text-gray-400 text-sm">{t('feedback.hint')}</p>
-            <fieldset>
-              <legend className="text-xs text-gray-400 mb-1">{t('feedback.category')} <span className="text-lime-400">*</span></legend>
-              <div className="flex flex-wrap gap-1.5" role="radiogroup">
-                {FEEDBACK_CATEGORIES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    role="radio"
-                    aria-checked={category === c}
-                    onClick={() => setCategory(c)}
-                    className={`rounded-full px-3 py-1.5 text-sm border ${category === c ? 'border-lime-400 bg-lime-400 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
-                  >
-                    {t(`feedback.cat_${c}`)}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <div>
-              <label htmlFor="feedback-message" className="text-xs text-gray-400">{t('feedback.message')}</label>
-              <textarea id="feedback-message" className="input" rows={5} required minLength={MIN} maxLength={4000} value={message} onChange={(e) => setMessage(e.target.value)} />
-              <p className="text-[11px] text-gray-500 mt-1">{t('feedback.attached')}</p>
-            </div>
-            {error && <p className="text-red-400 text-sm" role="alert">{error}</p>}
-            <button className="btn-primary" disabled={busy || !message.trim()}>{t('feedback.send')}</button>
-          </form>
-        )}
+      <Modal open={open} title={t('feedback.title')} onClose={() => setOpen(false)}>
+        <FeedbackForm onClose={() => setOpen(false)} />
       </Modal>
     </>
   );

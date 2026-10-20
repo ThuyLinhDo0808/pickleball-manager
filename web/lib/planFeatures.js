@@ -25,7 +25,7 @@ export function featureForPath(path, workspace) {
 // Plan features in force for a club: its owner's plan (co-admins work under it),
 // else the signed-in account's own plan.
 export function planFor(club, plan) {
-  return club?.plan || (plan ? { tier: plan.tier, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced } : null);
+  return club?.plan || (plan ? { tier: plan.tier, features: plan.features, limits: plan.limits, features_enforced: plan.features_enforced, addons: plan.addons } : null);
 }
 
 export const hasFeature = (p, feature) => !feature || !p || !p.features_enforced || !p.features || p.features[feature] !== false;

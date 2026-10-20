@@ -7,6 +7,7 @@ import SectionTabs from '@/components/ui/SectionTabs';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import Hint from '@/components/ui/Hint';
+import { Top10Checks, Top10Verdict } from '@/components/Top10';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -45,6 +46,10 @@ export default function CommunityBusiness({ view = 'players' }) {
   const m = data?.money;
   const newest = p?.new_by_month?.at(-1);
   const peak = Math.max(1, ...(p?.new_by_month || []).map((x) => x.n));
+  const rep = data?.reputation;
+  const bar = (k) => rep?.checks.find((c) => c.key === k);
+  const share = (n) => (p?.total ? Math.round((1000 * n) / p.total) / 10 : 0);
+  const [missing, setMissing] = useState(false);
 
   return (
     <AppShell>
@@ -56,15 +61,32 @@ export default function CommunityBusiness({ view = 'players' }) {
       {view === 'players' && p && (
         <>
           <KpiRow cols={4}>
-            <StatTile icon="👥" label={t('biz.total')} value={p.total} sub={t('biz.totalSub')} />
-            <StatTile icon="🌱" label={t('biz.newMonth')} value={newest?.n ?? 0} tone="text-emerald-300" sub={newest ? fmtMonth(newest.month) : ''} />
-            <StatTile icon="🏠" label={t('biz.regular')} value={p.regular} tone="text-lime-300" />
-            <StatTile icon="🤝" label={t('biz.dropin')} value={p.dropin} tone="text-sky-300" />
+            <StatTile icon="👥" label={t('biz.total')} value={rep ? `${p.total}/${rep.thresholds.members}` : p.total} sub={rep ? t('biz.totalProgress', { pct: Math.round(bar('members').progress) }) : t('biz.totalSub')} />
+            <StatTile icon="🌱" label={t('biz.newMonth')} value={newest?.n ?? 0} tone="text-emerald-300" sub={t('biz.shareSub', { pct: share(newest?.n || 0), month: newest ? fmtMonth(newest.month) : '' })} />
+            <StatTile icon="🏠" label={t('biz.regular')} value={p.regular} tone="text-lime-300" sub={t('biz.shareTotal', { pct: share(p.regular) })} />
+            <StatTile icon="🤝" label={t('biz.dropin')} value={p.dropin} tone="text-sky-300" sub={t('biz.shareTotal', { pct: share(p.dropin) })} />
             <StatTile icon="⭐" label={t('biz.vip')} value={vips.length} tone="text-amber-300" />
-            <StatTile icon="🔁" label={t('biz.frequency')} value={p.regular_frequency == null ? '—' : `${p.regular_frequency}%`} sub={t('biz.frequencySub', { n: p.regular_avg_sessions ?? 0, total: p.sessions_held })} />
+            <StatTile icon="📅" label={t('biz.sessionsMonth')} value={bar('sessions')?.value ?? '—'} sub={rep ? t('biz.sessionsMonthSub', { n: rep.months }) : ''} />
             <StatTile icon="↩️" label={t('biz.returnRate')} value={p.return_rate == null ? '—' : `${p.return_rate}%`} tone="text-violet-300" sub={t('biz.returnSub', { back: p.came_back, all: p.played_once })} />
           </KpiRow>
           <Hint text={t('biz.playersHint')} className="mb-4" />
+
+          {rep && (
+            <section className="card mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h2 className="text-white font-semibold">🏆 {t('top10.cardTitle')}</h2>
+                <Link href="/contact?top10=1" onClick={(e) => { if (!rep.eligible) { e.preventDefault(); setMissing(true); } }} className="btn-primary text-sm max-sm:w-full text-center">{t('top10.registerBtn')}</Link>
+              </div>
+              <Top10Checks reputation={rep} />
+              <div className="mt-3"><Top10Verdict reputation={rep} /></div>
+              {missing && !rep.eligible && (
+                <div className="mt-2 rounded-xl border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-100" role="alert">
+                  <p className="font-semibold">✕ {t('top10.notEligible')}</p>
+                  <ul className="list-disc pl-5 mt-1">{rep.failing.map((k) => <li key={k}>{t(`top10.c_${k}`)} · {t(`top10.need_${k}`, { n: bar(k)?.target })}</li>)}</ul>
+                </div>
+              )}
+            </section>
+          )}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="card">

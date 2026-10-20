@@ -372,6 +372,39 @@ const FEEDBACK_MIN = 10;
 const FEEDBACK_DAILY_MAX = Number(process.env.FEEDBACK_DAILY_MAX || 5);
 const missingColumn = (e) => e && (e.code === '42703' || e.code === 'PGRST204');
 
+// Liên hệ nhà phát triển: paid features asked for by the Host (services/devRequests.js).
+const devFail = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
+router.get('/dev-requests', async (req, res) => {
+  try {
+    res.json(await require('../services/devRequests').forHost(req.hostId));
+  } catch (err) {
+    devFail(res, err);
+  }
+});
+router.post('/dev-requests', async (req, res) => {
+  try {
+    const dev = require('../services/devRequests');
+    // The community / club it is for, when one is named (only one of the Host's own).
+    let club = null;
+    if (req.body?.club_id && /^[0-9a-f-]{36}$/i.test(String(req.body.club_id))) {
+      ({ data: club } = await supabase.from('clubs').select('id, name').eq('id', req.body.club_id).eq('host_id', req.hostId).maybeSingle());
+    }
+    await dev.create(req.hostId, { kind: req.body?.kind, note: req.body?.note }, club);
+    res.status(201).json(await dev.forHost(req.hostId));
+  } catch (err) {
+    devFail(res, err);
+  }
+});
+router.delete('/dev-requests/:kind', async (req, res) => {
+  try {
+    const dev = require('../services/devRequests');
+    await dev.cancel(req.hostId, req.params.kind);
+    res.json(await dev.forHost(req.hostId));
+  } catch (err) {
+    devFail(res, err);
+  }
+});
+
 router.post('/feedback', async (req, res) => {
   const message = String(req.body.message || '').trim();
   const contact = String(req.body.contact || '').trim().slice(0, 200) || null;
