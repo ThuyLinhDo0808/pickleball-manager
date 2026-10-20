@@ -6,9 +6,12 @@ export const EXPENSE_CATEGORIES = ['court', 'balls', 'water', 'other'];
 // purchases from the ball store…).
 export const MANUAL_INCOME = ['monthly_fund', 'ball_fund', 'other'];
 export const MANUAL_EXPENSE = ['court', 'water', 'other'];
+// Social Manager (community) sells tickets per kèo: money in is "Tiền xé vé" only, money out
+// is court rent, water, balls (ball store) and anything else.
+export const COMMUNITY_MANUAL_INCOME = ['ticket'];
 // 'meeting': a get-together's surplus moved into the fund / a shortfall it paid.
 // 'coach', 'prize': older entries keep their label.
-const KNOWN = new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, 'meeting', 'coach', 'prize']);
+const KNOWN = new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, 'ticket', 'meeting', 'coach', 'prize']);
 
 export function categoryLabel(category, t) {
   if (!category) return t('fin.cat_other');

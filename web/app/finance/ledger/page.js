@@ -11,16 +11,16 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { categoryLabel, describeEntry, sessionLabel, MANUAL_EXPENSE, MANUAL_INCOME } from '@/lib/finance';
+import { categoryLabel, describeEntry, sessionLabel, COMMUNITY_MANUAL_INCOME, MANUAL_EXPENSE, MANUAL_INCOME } from '@/lib/finance';
 
 const LABEL = 'block text-xs text-gray-400 mb-1.5';
 const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
 
 // The categories a Host picks from; an older entry keeps its own as an extra choice.
 // `withBalls`: also list "Mua bóng", which only points the Host to the ball store.
-function CategorySelect({ type, value, onChange, withBalls = false }) {
+function CategorySelect({ type, value, onChange, withBalls = false, community = false }) {
   const { t } = useI18n();
-  const presets = type === 'income' ? MANUAL_INCOME : withBalls ? [...MANUAL_EXPENSE.slice(0, -1), 'balls', 'other'] : MANUAL_EXPENSE;
+  const presets = type === 'income' ? (community ? COMMUNITY_MANUAL_INCOME : MANUAL_INCOME) : withBalls ? [...MANUAL_EXPENSE.slice(0, -1), 'balls', 'other'] : MANUAL_EXPENSE;
   const choices = value && !presets.includes(value) ? [...presets, value] : presets;
   return (
     <select className="input h-[42px]" value={value} onChange={(e) => onChange(e.target.value)}>
@@ -36,8 +36,9 @@ function todayYmd() {
 
 // `events`: sessions the entry can belong to (optional for a club; a Xé Vé entry always
 // belongs to one of the kèo). Without a session it goes into the club fund.
-function AddEntry({ club, events = [], onDone }) {
+function AddEntry({ club, events = [], onDone, community = false }) {
   const { t } = useI18n();
+  const incomeCat = community ? 'ticket' : 'monthly_fund';
   const [f, setF] = useState({ type: 'expense', category: 'court', amount: '', occurred_on: todayYmd(), note: '', event_id: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -73,7 +74,7 @@ function AddEntry({ club, events = [], onDone }) {
     <form onSubmit={submit} className="card !p-0 mb-4 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-b border-navy-700">
         <h2 className="text-white font-semibold">✍️ {t('finX.addEntry')}</h2>
-        {club && <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => setCalc(true)}>🧮 {t('calc.title')}</button>}
+        {club && !community && <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => setCalc(true)}>🧮 {t('calc.title')}</button>}
       </div>
       {/* One row of equal-height fields, labels on top; hints and the button in the footer. */}
       <div className="grid grid-cols-2 md:grid-cols-12 gap-3 px-5 py-4 items-end">
@@ -84,7 +85,7 @@ function AddEntry({ club, events = [], onDone }) {
               <button
                 key={ty}
                 type="button"
-                onClick={() => setF({ ...f, type: ty, category: ty === 'income' ? 'monthly_fund' : 'court' })}
+                onClick={() => setF({ ...f, type: ty, category: ty === 'income' ? incomeCat : 'court' })}
                 className={`rounded-md ${f.type === ty ? (ty === 'income' ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-orange-500 text-white font-semibold') : 'text-gray-400 hover:text-white'}`}
               >
                 {t(`analytics.${ty}`)}
@@ -94,7 +95,7 @@ function AddEntry({ club, events = [], onDone }) {
         </div>
         <div className="col-span-2 md:col-span-3">
           <label className={LABEL}>{t('fin.category')}</label>
-          <CategorySelect type={f.type} value={f.category} withBalls onChange={(category) => setF({ ...f, category })} />
+          <CategorySelect type={f.type} value={f.category} withBalls community={community} onChange={(category) => setF({ ...f, category })} />
         </div>
         <div className="md:col-span-2">
           <label className={LABEL}>{t('fin.amount')}</label>
@@ -161,7 +162,7 @@ function AddEntry({ club, events = [], onDone }) {
 
 // Fix an entry. A new amount or type is saved as a corrected entry (the old one is voided,
 // so the ledger keeps its history); category, date and note change in place.
-function EditEntry({ entry, onClose, onSaved }) {
+function EditEntry({ entry, onClose, onSaved, community = false }) {
   const { t } = useI18n();
   const [f, setF] = useState(() => ({ type: entry.type, category: entry.category || '', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '' }));
   const [busy, setBusy] = useState(false);
@@ -183,14 +184,14 @@ function EditEntry({ entry, onClose, onSaved }) {
       <form onSubmit={save} className="grid grid-cols-2 gap-3">
         <div className="col-span-2 grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
           {['income', 'expense'].map((ty) => (
-            <button key={ty} type="button" onClick={() => setF({ ...f, type: ty, category: ty === entry.type ? entry.category || 'other' : ty === 'income' ? 'monthly_fund' : 'court' })} className={`rounded-md py-1.5 ${f.type === ty ? (ty === 'income' ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-orange-500 text-white font-semibold') : 'text-gray-400'}`}>
+            <button key={ty} type="button" onClick={() => setF({ ...f, type: ty, category: ty === entry.type ? entry.category || 'other' : ty === 'income' ? (community ? 'ticket' : 'monthly_fund') : 'court' })} className={`rounded-md py-1.5 ${f.type === ty ? (ty === 'income' ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-orange-500 text-white font-semibold') : 'text-gray-400'}`}>
               {t(`analytics.${ty}`)}
             </button>
           ))}
         </div>
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-gray-400">{t('fin.category')}</label>
-          <CategorySelect type={f.type} value={f.category} onChange={(category) => setF({ ...f, category })} />
+          <CategorySelect type={f.type} value={f.category} community={community} onChange={(category) => setF({ ...f, category })} />
         </div>
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-gray-400">{t('fin.amount')}</label>
@@ -218,7 +219,7 @@ export default function LedgerPage() {
   const { t } = useI18n();
   const { workspace } = useWorkspace();
   const { club } = useDefaultClub();
-  const { scoped: isClub } = useScope();
+  const { scoped: isClub, community } = useScope();
   const { data, loading, reload } = useLoad(() => {
     if (isClub) return club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null);
     return api.get('/api/transactions?scope=standalone').then((transactions) => ({ transactions, balance: null }));
@@ -268,6 +269,21 @@ export default function LedgerPage() {
       m.set(r.event_id, x);
     }
     return [...m.values()].sort((a, b) => String(b.ev?.event_date).localeCompare(String(a.ev?.event_date)));
+  }, [live]);
+  // "Theo ngày" (Social Manager): what each day took in from tickets and paid out. Money of a
+  // kèo counts on the day it was played.
+  const byDay = useMemo(() => {
+    const m = new Map();
+    for (const r of live) {
+      const day = r.events?.event_date || r.occurred_on;
+      const x = m.get(day) || { day, evs: new Set(), income: 0, expense: 0, payers: 0 };
+      if (r.event_id) x.evs.add(r.event_id);
+      if (r.type === 'income') x.income += Number(r.amount);
+      else x.expense += Number(r.amount);
+      if (r.category === 'event_fee') x.payers += 1;
+      m.set(day, x);
+    }
+    return [...m.values()].sort((a, b) => b.day.localeCompare(a.day));
   }, [live]);
 
   async function voidEntry(r) {
@@ -365,7 +381,7 @@ export default function LedgerPage() {
         <p className="text-gray-400 text-xs -mt-2 mb-4">🏦 {t('ledger.fundBalance', { v: formatVnd(data.balance) })}</p>
       )}
 
-      {isClub ? club && <AddEntry club={club} events={sessions} onDone={reload} /> : <AddEntry club={null} events={sessions} onDone={reload} />}
+      {isClub ? club && <AddEntry club={club} community={community} events={sessions} onDone={reload} /> : <AddEntry club={null} events={sessions} onDone={reload} />}
 
       <div className="card !p-3 flex flex-wrap items-center gap-2 mb-3">
         <span className="text-gray-400 text-sm px-1">🔎 {t('finX.filter')}</span>
@@ -386,8 +402,8 @@ export default function LedgerPage() {
           <input type="checkbox" checked={showVoided} onChange={(e) => setShowVoided(e.target.checked)} />
           {t('fin.showVoided')}
         </label>
-        <div className="ml-auto grid grid-cols-2 bg-navy-900 border border-navy-700 rounded-lg p-1 text-sm">
-          {['entries', 'sessions'].map((v) => (
+        <div className={`ml-auto grid ${community ? 'grid-cols-3' : 'grid-cols-2'} bg-navy-900 border border-navy-700 rounded-lg p-1 text-sm`}>
+          {(community ? ['entries', 'days', 'sessions'] : ['entries', 'sessions']).map((v) => (
             <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`rounded-md px-3 py-1 ${view === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300'}`}>
               {t(`ledger.view_${v}`)}
             </button>
@@ -401,6 +417,41 @@ export default function LedgerPage() {
         <div className="grid gap-4 2xl:grid-cols-2 items-start">
           {side('income')}
           {side('expense')}
+        </div>
+      ) : view === 'days' ? (
+        <div className="card !p-4">
+          <h2 className="text-white font-semibold mb-3">📅 {t('ledger.byDay')} <span className="text-gray-500 font-normal text-sm">({byDay.length})</span></h2>
+          {byDay.length === 0 ? (
+            <p className="text-gray-500 text-sm">{t('fin.noEntries')}</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="w-full text-sm grid-table !min-w-[32rem]">
+                <thead>
+                  <tr className="text-gray-300 text-left bg-navy-900">
+                    <th>{t('fin.date')}</th>
+                    <th className="text-right">{t('ledger.kevCount')}</th>
+                    <th className="text-right">{t('ledger.ticketIncome')}</th>
+                    <th className="text-right">{t('finance.expense')}</th>
+                    <th className="text-right">{t('finance.net')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byDay.map((x) => (
+                    <tr key={x.day}>
+                      <td className="text-gray-100 whitespace-nowrap">
+                        {`${x.day.slice(8, 10)}/${x.day.slice(5, 7)}/${x.day.slice(0, 4)}`}
+                        {x.payers > 0 && <span className="block text-gray-500 text-xs">{t('ledger.payers', { n: x.payers })}</span>}
+                      </td>
+                      <td className="text-right tabular-nums text-gray-300">{x.evs.size}</td>
+                      <td className="text-right tabular-nums text-lime-400">{formatVnd(x.income)}</td>
+                      <td className="text-right tabular-nums text-orange-300">{formatVnd(x.expense)}</td>
+                      <td className={`text-right tabular-nums font-semibold ${x.income - x.expense < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       ) : (
         <div className="card !p-4">
@@ -436,7 +487,7 @@ export default function LedgerPage() {
           )}
         </div>
       )}
-      {editing && <EditEntry entry={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}
+      {editing && <EditEntry entry={editing} community={community} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}
     </>
   );
 }

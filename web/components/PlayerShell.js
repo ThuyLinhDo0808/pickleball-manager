@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import PlayerBell from '@/components/PlayerBell';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -59,6 +60,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
                 </Link>
               ))}
           </nav>
+          {user && <PlayerBell className="shrink-0" />}
           <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-sm text-gray-200 border border-navy-700 rounded-full px-3 py-1.5 shrink-0">
             {lang === 'vi' ? 'EN' : 'VI'}
           </button>

@@ -277,17 +277,26 @@ export default function EventDetailPage() {
         {showQr && <QrCheckinPanel endpoint={`/api/events/${eventId}/checkin-code`} onCheckedIn={refresh} />}
       </Modal>
 
+      {/* Sign-ups waiting for the Host: on top of every tab, impossible to miss. */}
+      {event.kind !== 'meeting' && <RequestsSection rows={requested} community={ownerKind === 'community'} onPlace={placeTo} onOpen={(p) => openSheet(p)} />}
+
       <div role="tablist" className="grid grid-cols-4 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4">
         {['participants', 'finance', 'matches', 'details'].map((tb) => (
           <button
             key={tb}
             role="tab"
             aria-selected={tab === tb}
-            aria-label={tb === 'details' ? t('ux.tabSettings') : undefined}
             onClick={() => setTab(tb)}
-            className={`px-2 py-2 rounded-lg text-sm truncate ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
+            className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:flex-row sm:gap-1.5 sm:text-sm leading-tight ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
           >
-            {tb === 'details' ? <>⚙️<span className="hidden sm:inline"> {t('ux.tabSettings')}</span></> : tb === 'participants' ? `👥 ${main.length}` : tb === 'matches' ? `🏓 ${(matches || []).length}` : `💰 ${t('ux.tabMoney')}`}
+            {/* Every tab says what it is (icon + word), counts in brackets. */}
+            <span aria-hidden>{{ participants: '👥', finance: '💰', matches: '🏓', details: '⚙️' }[tb]}</span>
+            <span>
+              {{ participants: t('ux.tabPlayers'), finance: t('ux.tabMoney'), matches: t('ux.tabMatches'), details: t('ux.tabSettings') }[tb]}
+              {tb === 'participants' && ` (${main.length})`}
+              {tb === 'matches' && ` (${(matches || []).length})`}
+            </span>
+            {tb === 'participants' && requested.length > 0 && <span className="absolute -top-1 -right-1 min-w-[1.25rem] rounded-full bg-amber-400 px-1 text-[11px] font-bold text-navy-950">{requested.length}</span>}
           </button>
         ))}
       </div>
@@ -355,35 +364,27 @@ export default function EventDetailPage() {
               </div>
             )}
           </Modal>
-          {/* Communities: every sign-up is checked by the Host (setting: auto-confirm by DUPR). */}
-          {ownerKind === 'community' ? (
-            <div className="card !py-3 mb-4 text-sm flex items-center gap-2">
-              <p className="text-gray-200 flex-1">✅ {t('people.commCheckTitle')}</p>
-              <Hint inline text={t('people.commCheckHint')} />
-              <a href="/club/community-settings" className="text-lime-400 text-sm underline shrink-0">⚙️</a>
-            </div>
-          ) : (
-            <AutoApproveToggle event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
-          )}
-          <RequestsSection rows={requested} onPlace={placeTo} onOpen={(p) => openSheet(p)} />
+          {/* Communities: every sign-up is checked by the Host (explained in the requests box). */}
+          {ownerKind !== 'community' && <AutoApproveToggle event={event} onChanged={(e) => setEvent({ ...event, ...e })} />}
           {flash && (
             <div className="card mb-4 border-lime-400/50 text-lime-300 text-sm flex items-center justify-between gap-3">
               <span>{flash}</span>
               <button className="text-gray-400 text-lg leading-none" aria-label="Close" onClick={() => setFlash('')}>×</button>
             </div>
           )}
-          {/* The numbers of the kèo as one compact strip (wraps on a phone). */}
-          <div className="flex flex-wrap gap-1.5 mb-4">
+          {/* The numbers of the kèo: four equal tiles, the word first, then the number. One
+              "Chờ thanh toán" for everyone still paying (sent a screenshot or not). */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
             {[
-              ['arrived', `${counts.arrived}/${counts.confirmed}`, 'text-lime-400'],
-              ['confirmed', `${counts.confirmed + pending.length}/${event.slots}`, 'text-white'],
-              ['toReview', counts.toReview, counts.toReview ? 'text-sky-300' : 'text-gray-500'],
-              ['toPay', counts.toPay, counts.toPay ? 'text-yellow-300' : 'text-gray-500'],
-              ['waitlist', waitlist.length, 'text-gray-300'],
-            ].map(([k, v, tone]) => (
-              <div key={k} className="inline-flex items-baseline gap-1.5 rounded-lg border border-navy-700 bg-navy-800 px-2.5 py-1.5">
-                <span className={`font-bold tabular-nums ${tone}`}>{v}</span>
-                <span className="text-gray-400 text-xs">{t(`court.${k}`)}</span>
+              ['placed', `${counts.confirmed + pending.length}/${event.slots}`, 'text-white', null],
+              ['payWaiting', pending.length, pending.length ? 'text-yellow-300' : 'text-gray-500', counts.toReview ? t('court.proofN', { n: counts.toReview }) : null],
+              ['waitlist', waitlist.length, waitlist.length ? 'text-sky-300' : 'text-gray-500', null],
+              ['arrived', `${counts.arrived}/${counts.confirmed}`, 'text-lime-400', null],
+            ].map(([k, v, tone, sub]) => (
+              <div key={k} className="rounded-xl border border-navy-700 bg-navy-800 px-3 py-2">
+                <p className="text-gray-400 text-xs">{t(`court.${k}`)}</p>
+                <p className={`text-lg font-bold tabular-nums leading-tight ${tone}`}>{v}</p>
+                {sub && <p className="text-sky-300 text-[11px]">{sub}</p>}
               </div>
             ))}
           </div>

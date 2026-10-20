@@ -9,18 +9,21 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { todayYmd, localDate } from '@/lib/dates';
+import Hint from '@/components/ui/Hint';
 
 // At or below this many left in the box, an item shows as running low.
 const LOW = 6;
-// Columns of the ball table shown at once (the latest sessions; older ones scroll).
-const ROWS = [
+// Columns of the ball table (one row per session, newest at the bottom).
+const COLS = [
   ['new', 'text-lime-300'],
   ['old', 'text-gray-200'],
-  ['broken', 'text-red-300'],
-  ['used', 'text-gray-200'],
-  ['bought', 'text-amber-200 font-semibold', true],
-  ['left', 'text-amber-200 font-bold', true],
+  ['broken_now', 'text-red-300'],
+  ['played', 'text-white font-semibold'],
+  ['playable', 'text-sky-200'],
+  ['left', 'text-amber-200 font-bold'],
 ];
+// Pickleball balls come with 40 (outdoor) or 48 holes; nothing to type.
+const HOLES = [40, 48];
 const dm = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 
 function MoveForm({ base, item, kind, isClub, onDone, onCancel }) {
@@ -90,27 +93,32 @@ function MoveForm({ base, item, kind, isClub, onDone, onCancel }) {
   );
 }
 
-// One session of the ball table: new balls taken out, balls in play that broke.
+// One session of the ball table: new balls taken out, old balls played again, balls broken.
 function SessionForm({ base, item, session, onDone, onCancel }) {
   const { t } = useI18n();
-  const [f, setF] = useState(() => ({ occurred_on: session?.date || todayYmd(), new_out: session ? String(session.new_out ?? session.new) : '', broken: session ? String(session.broken_now) : '' }));
+  const [f, setF] = useState(() => ({
+    occurred_on: session?.date || todayYmd(),
+    new_out: session ? String(session.new_out ?? session.new) : '',
+    old_used: session ? String(session.old) : '',
+    broken: session ? String(session.broken_now) : '',
+  }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  // Balls in play before this date: the last logged session before it.
+  // Old balls still playable before this date: the last session before it.
   const before = [...(item.log || [])].filter((r) => r.date < f.occurred_on).at(-1);
-  const playing = before ? before.old + before.new : 0;
+  const playable = before ? before.playable : 0;
+  const oldUsed = f.old_used === '' ? playable : Number(f.old_used);
+  const onCourt = oldUsed + Number(f.new_out || 0);
 
   async function submit(e) {
     e.preventDefault();
-    // Broken balls: the old ones in play, or new ones taken out this session.
-    if (Number(f.broken || 0) > playing + Number(f.new_out || 0)) {
-      setError(t('inventory.brokenTooMany', { n: playing + Number(f.new_out || 0), old: playing, fresh: Number(f.new_out || 0) }));
-      return;
-    }
+    if (oldUsed > playable) return setError(t('inventory.oldTooMany', { n: playable }));
+    // Broken balls: old ones played, or new ones taken out this session.
+    if (Number(f.broken || 0) > onCourt) return setError(t('inventory.brokenTooMany', { n: onCourt, old: oldUsed, fresh: Number(f.new_out || 0) }));
     setBusy(true);
     setError('');
     try {
-      await api.post(`${base}/${item.id}/sessions`, { occurred_on: f.occurred_on, new_out: Number(f.new_out || 0), broken: Number(f.broken || 0) });
+      await api.post(`${base}/${item.id}/sessions`, { occurred_on: f.occurred_on, new_out: Number(f.new_out || 0), old_used: oldUsed, broken: Number(f.broken || 0) });
       onDone();
     } catch (err) {
       setError(err.message);
@@ -126,16 +134,21 @@ function SessionForm({ base, item, session, onDone, onCancel }) {
         <input className="input" type="date" required value={f.occurred_on} disabled={!!session} onChange={(e) => setF({ ...f, occurred_on: e.target.value })} />
       </div>
       <div>
-        <label className="text-xs text-gray-400">{t('inventory.brokenNow')}</label>
-        <input className="input" type="number" inputMode="numeric" min="0" value={f.broken} onChange={(e) => setF({ ...f, broken: e.target.value })} />
-        <p className="text-gray-500 text-[11px] mt-1">{t('inventory.brokenHint', { n: playing })}</p>
-      </div>
-      <div>
         <label className="text-xs text-gray-400">{t('inventory.newOut')}</label>
-        <input className="input" type="number" inputMode="numeric" min="0" autoFocus value={f.new_out} onChange={(e) => setF({ ...f, new_out: e.target.value })} />
+        <input className="input" type="number" inputMode="numeric" min="0" autoFocus placeholder="0" value={f.new_out} onChange={(e) => setF({ ...f, new_out: e.target.value })} />
         <p className="text-gray-500 text-[11px] mt-1">{t('inventory.inBox', { n: item.stock + (session ? session.new_out ?? session.new : 0) })}</p>
       </div>
-      <p className="col-span-2 text-gray-500 text-xs">{t('inventory.sessionHint')}</p>
+      <div>
+        <label className="text-xs text-gray-400">{t('inventory.oldUsed')}</label>
+        <input className="input" type="number" inputMode="numeric" min="0" max={playable} placeholder={String(playable)} value={f.old_used} onChange={(e) => setF({ ...f, old_used: e.target.value })} />
+        <p className="text-gray-500 text-[11px] mt-1">{t('inventory.oldHint', { n: playable })}</p>
+      </div>
+      <div className="col-span-2">
+        <label className="text-xs text-gray-400">{t('inventory.brokenNow')}</label>
+        <input className="input" type="number" inputMode="numeric" min="0" placeholder="0" value={f.broken} onChange={(e) => setF({ ...f, broken: e.target.value })} />
+        <p className="text-gray-500 text-[11px] mt-1">{t('inventory.onCourt', { n: onCourt })}</p>
+      </div>
+      <p className="col-span-2 text-gray-500 text-xs">{t('inventory.sessionHint2')}</p>
       {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
       <div className="col-span-2 flex gap-2">
         <button type="button" className="btn-secondary flex-1" onClick={onCancel}>{t('common.cancel')}</button>
@@ -145,37 +158,59 @@ function SessionForm({ base, item, session, onDone, onCancel }) {
   );
 }
 
-// The ball table (like the club's sheet): a column per session.
+// The ball table: one row per session (every session played, even with 0 new / 0 broken),
+// tap a date to fix it.
 function BallTable({ item, onEdit }) {
   const { t } = useI18n();
   const log = item.log || [];
   if (!log.length) return <p className="text-gray-500 text-sm mb-3">{t('inventory.noLog')}</p>;
   return (
-    <div className="overflow-x-auto mb-3 rounded-xl border border-navy-700">
-      <table className="text-sm w-full border-collapse">
-        <thead>
+    <div className="table-wrap mb-3 rounded-xl border border-navy-700 max-h-[28rem] overflow-y-auto">
+      <table className="text-sm w-full border-collapse min-w-[34rem]">
+        <thead className="sticky top-0 z-10">
           <tr className="bg-navy-900 text-gray-300">
-            <th className="text-left font-medium px-3 py-2 sticky left-0 bg-navy-900 min-w-[8.5rem]" />
-            {log.map((r) => (
-              <th key={r.date} className="px-2 py-1.5 text-center font-medium whitespace-nowrap border-l border-navy-700">
-                <button type="button" className="hover:text-lime-300 underline decoration-dotted underline-offset-2" title={t('inventory.editSession', { d: dm(r.date) })} onClick={() => onEdit(r)}>
-                  {dm(r.date)}
-                </button>
-              </th>
+            <th className="text-left font-medium px-3 py-2">{t('inventory.date')}</th>
+            {COLS.map(([k]) => (
+              <th key={k} className="px-2 py-2 text-center font-medium border-l border-navy-700 leading-tight">{t(`inventory.col_${k}`)}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {ROWS.map(([key, tone, total]) => (
-            <tr key={key} className={`border-t border-navy-700 ${total ? 'bg-amber-300/10' : ''}`}>
-              <td className={`px-3 py-1.5 sticky left-0 whitespace-nowrap ${total ? 'bg-[#2a2a24] text-amber-200 font-semibold' : 'bg-navy-800 text-gray-300'}`}>{t(`inventory.row_${key}`)}</td>
-              {log.map((r) => (
-                <td key={r.date} className={`px-2 py-1.5 text-center tabular-nums border-l border-navy-700 ${tone}`}>{r[key]}</td>
+          {log.map((r) => (
+            <tr key={r.date} className="border-t border-navy-700 hover:bg-navy-800/60">
+              <td className="px-3 py-1.5 whitespace-nowrap">
+                <button type="button" className="text-gray-100 hover:text-lime-300 underline decoration-dotted underline-offset-2" title={t('inventory.editSession', { d: dm(r.date) })} onClick={() => onEdit(r)}>
+                  {dm(r.date)}
+                </button>
+              </td>
+              {COLS.map(([k, tone]) => (
+                <td key={k} className={`px-2 py-1.5 text-center tabular-nums border-l border-navy-700 ${tone}`}>{r[k]}</td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Độ bền bóng of one ball type, from the table.
+function Durability({ item }) {
+  const { t } = useI18n();
+  if (!item.sessions_logged) return null;
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+      {[
+        [t('inventory.durability'), item.play_durability != null ? t('inventory.durabilityV', { n: item.play_durability }) : t('inventory.noBreakYet')],
+        [t('inventory.avgPlayed'), item.avg_played ?? '—'],
+        [t('inventory.costPerSession'), item.ball_cost_per_session != null ? formatVnd(item.ball_cost_per_session) : '—'],
+        [t('inventory.sessionsLogged'), item.sessions_logged],
+      ].map(([k, v]) => (
+        <div key={k} className="rounded-lg border border-navy-700 bg-navy-900/60 px-3 py-2">
+          <p className="text-gray-400 text-xs">{k}</p>
+          <p className="text-white font-semibold tabular-nums">{v}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -191,7 +226,7 @@ export default function InventoryPage() {
   const base = isClub ? (club ? `/api/clubs/${club.id}/inventory` : null) : '/api/inventory';
   const { data: items, loading, reload } = useLoad(() => (base ? api.get(base) : Promise.resolve([])), [base]);
   const [adding, setAdding] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', holes: '', unit: 'quả' });
+  const [newItem, setNewItem] = useState({ name: '', holes: 40, unit: 'quả' });
   const [move, setMove] = useState(null); // { item, kind }
   const [session, setSession] = useState(null); // { item, row? }
   const [openHistory, setOpenHistory] = useState(null);
@@ -201,9 +236,9 @@ export default function InventoryPage() {
     e.preventDefault();
     setError('');
     try {
-      await api.post(base, newItem);
+      await api.post(base, badminton ? { ...newItem, holes: null } : newItem);
       setAdding(false);
-      setNewItem({ name: '', holes: '', unit: 'quả' });
+      setNewItem({ name: '', holes: 40, unit: 'quả' });
       reload();
     } catch (err) {
       setError(err.message);
@@ -225,7 +260,7 @@ export default function InventoryPage() {
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-        <p className="text-gray-400 text-sm max-w-2xl">{t('inventory.hint')}</p>
+        <Hint text={t('inventory.hint')} />
         <button className="btn-primary text-sm shrink-0" onClick={() => setAdding(true)} disabled={!base}>+ {t('inventory.addItem')}</button>
       </div>
 
@@ -272,8 +307,8 @@ export default function InventoryPage() {
               </div>
             </div>
 
+            <Durability item={i} />
             <BallTable item={i} onEdit={(row) => setSession({ item: i, row })} />
-            {i.log?.length > 0 && <p className="text-gray-500 text-[11px] -mt-1 mb-3">{t('inventory.invariant')}</p>}
 
             <div className="flex flex-wrap gap-2">
               <button className="btn-primary text-sm" onClick={() => setSession({ item: i })}>+ {t('inventory.logSession')}</button>
@@ -311,7 +346,13 @@ export default function InventoryPage() {
           {!badminton && (
             <div>
               <label className="text-xs text-gray-400">{t('inventory.holes')}</label>
-              <input className="input" type="number" inputMode="numeric" min="10" max="80" placeholder="40" value={newItem.holes} onChange={(e) => setNewItem({ ...newItem, holes: e.target.value })} />
+              <div className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-lg p-1" role="radiogroup" aria-label={t('inventory.holes')}>
+                {HOLES.map((h) => (
+                  <button key={h} type="button" role="radio" aria-checked={Number(newItem.holes) === h} onClick={() => setNewItem({ ...newItem, holes: h })} className={`rounded-md py-1.5 text-sm ${Number(newItem.holes) === h ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300'}`}>
+                    {t('inventory.holesN', { n: h })}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <div>

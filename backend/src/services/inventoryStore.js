@@ -3,9 +3,10 @@
 const { supabase } = require('../supabase');
 const { isUuid } = require('../utils/respond');
 const { todayYmd } = require('./memberships');
-const { itemMetrics, ballLog } = require('./inventory');
+const { itemMetrics, ballLog, playStats } = require('./inventory');
 
 const MIGRATION = '20261023090000_ball_log_xeve_inventory.sql';
+const PLAY_MIGRATION = '20261207090000_ball_sessions.sql';
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
 function scoped(q, owner) {
@@ -15,6 +16,12 @@ function scoped(q, owner) {
 // Before the migration only club stores exist (no host_id, no 'broken').
 async function storeReady() {
   const { error } = await supabase.from('inventory_items').select('host_id').limit(1);
+  return !error;
+}
+
+// "Bóng cũ chơi lại" per session needs migration 20261207090000.
+async function playReady() {
+  const { error } = await supabase.from('inventory_moves').select('balls_played').limit(1);
   return !error;
 }
 
@@ -39,12 +46,17 @@ async function list(owner) {
     sessionDates(owner),
   ]);
   if (error) throw error;
-  return items.map(({ inventory_moves: moves, ...item }) => ({
+  return items.map(({ inventory_moves: moves, ...item }) => {
+    const metrics = itemMetrics(moves || []);
+    const log = ballLog(moves || [], sessions);
+    return {
     ...item,
-    ...itemMetrics(moves || []),
-    log: ballLog(moves || [], sessions),
-    moves: (moves || []).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || b.created_at.localeCompare(a.created_at)).slice(0, 40),
-  }));
+    ...metrics,
+    ...playStats(log, metrics.avg_unit_cost),
+    log,
+    moves: (moves || []).filter((m) => m.kind !== 'play').sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || b.created_at.localeCompare(a.created_at)).slice(0, 40),
+    };
+  });
 }
 
 async function createItem(owner, body) {
@@ -125,22 +137,29 @@ async function addMove(owner, item, body, hostId) {
   return data;
 }
 
-// One session of the ball table at once: balls in play that broke, new balls taken out.
-// Replaces what was logged for that date before.
+// One session of the ball table at once: new balls taken out, old balls played again, balls
+// that broke. Replaces what was logged for that date before. The session is kept even with
+// all zeros (it was played).
 async function logSession(owner, item, body) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(body.occurred_on || '') ? body.occurred_on : todayYmd();
   const newOut = Math.max(0, parseInt(body.new_out, 10) || 0);
   const broken = Math.max(0, parseInt(body.broken, 10) || 0);
   if (broken && !(await storeReady())) throw fail(409, `Run migration ${MIGRATION} first.`);
+  const withPlay = await playReady();
+  const oldGiven = body.old_used !== undefined && body.old_used !== '' && body.old_used !== null;
+  const oldUsed = oldGiven ? Math.max(0, parseInt(body.old_used, 10) || 0) : null;
+  if (oldGiven && !withPlay) throw fail(409, `Run migration ${PLAY_MIGRATION} first.`);
   const before = await movesOf(item.id);
-  const previous = before.filter((m) => m.occurred_on === date && (m.kind === 'use' || m.kind === 'broken'));
+  const previous = before.filter((m) => m.occurred_on === date && (m.kind === 'use' || m.kind === 'broken' || m.kind === 'play'));
   const rest = before.filter((m) => !previous.includes(m));
   const m = itemMetrics(rest);
   // Balls in play before this session (everything taken out earlier, less what broke).
   const inPlay = ballLog(rest.filter((x) => x.occurred_on < date)).at(-1);
-  const playing = inPlay ? inPlay.old + inPlay.new : 0;
-  // Broken balls are old ones in play, or new ones taken out (and broken) this session.
-  if (broken > playing + newOut) throw fail(400, `Only ${playing + newOut} balls were played this session (${playing} old + ${newOut} new).`);
+  const playing = inPlay ? inPlay.playable : 0;
+  if (oldUsed != null && oldUsed > playing) throw fail(400, `Only ${playing} old balls are still playable before ${date}.`);
+  const oldOnCourt = oldUsed ?? playing;
+  // Broken balls are old ones played, or new ones taken out (and broken) this session.
+  if (broken > oldOnCourt + newOut) throw fail(400, `Only ${oldOnCourt + newOut} balls were played this session (${oldOnCourt} old + ${newOut} new).`);
   // New balls come out of what was in the box on that day (and stay within today's stock).
   const boxThen = itemMetrics(rest.filter((x) => x.occurred_on <= date)).stock;
   const box = Math.min(boxThen, m.stock);
@@ -153,12 +172,13 @@ async function logSession(owner, item, body) {
   const rows = [
     ...(broken ? [{ item_id: item.id, kind: 'broken', quantity: broken, occurred_on: date }] : []),
     ...(newOut ? [{ item_id: item.id, kind: 'use', quantity: newOut, occurred_on: date }] : []),
+    ...(withPlay ? [{ item_id: item.id, kind: 'play', quantity: oldOnCourt, balls_played: oldOnCourt + newOut, occurred_on: date }] : []),
   ].map((r) => (event ? { ...r, event_id: event.id } : r));
   if (rows.length) {
     const { error } = await supabase.from('inventory_moves').insert(rows);
     if (error) throw error;
   }
-  return { date, new_out: newOut, broken };
+  return { date, new_out: newOut, old_used: oldOnCourt, broken };
 }
 
 // Undo a mistaken entry; a linked fund expense is voided (the ledger stays append-only).

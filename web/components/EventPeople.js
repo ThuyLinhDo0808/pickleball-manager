@@ -87,15 +87,23 @@ export function OrganizersSection({ event, people, onOpen }) {
 }
 
 // Sign-ups waiting for the Host to check them (level, who they are) before they get a place.
-export function RequestsSection({ rows, onPlace, onOpen }) {
+// A loud box (amber, thick frame, count in a badge) so a waiting player is never missed.
+export function RequestsSection({ rows, community = false, onPlace, onOpen }) {
   const { t } = useI18n();
   if (!rows.length) return null;
   return (
-    <section className="card mb-4 border-amber-300/40">
-      <h3 className="text-amber-200 font-semibold">🙋 {t('people.requests')} ({rows.length}) <Hint inline text={t('people.requestsHint')} /></h3>
-      <ul className="divide-y divide-navy-700">
+    <section className="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-3 sm:p-4 shadow-lg shadow-amber-400/10" role="alert">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-400 text-lg font-bold text-navy-950 tabular-nums">{rows.length}</span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-amber-100 text-base font-bold leading-tight">🙋 {t('people.requestsBig', { n: rows.length })}</h3>
+          <p className="text-amber-100/80 text-sm mt-0.5">{t('people.requestsHint')}</p>
+        </div>
+        <Hint inline text={community ? `${t('people.commCheckTitle')}. ${t('people.commCheckHint')}` : t('people.requestsHint')} />
+      </div>
+      <ul className="mt-3 flex flex-col gap-2">
         {rows.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center gap-2 py-2">
+          <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
             <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(p)}>
               <span className="block text-white font-semibold break-words">{p.full_name}</span>
               <span className="block text-gray-400 text-xs">
@@ -104,8 +112,10 @@ export function RequestsSection({ rows, onPlace, onOpen }) {
               </span>
             </button>
             <CancelHistoryBadge name={p.full_name} history={p.cancel_history} />
-            <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => onPlace(p, 'waitlist')}>⏳ {t('place.waitlist')}</button>
-            <button type="button" className="btn-primary !py-1 text-xs" onClick={() => onPlace(p, 'main')}>✓ {t('place.main')}</button>
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+              <button type="button" className="btn-secondary text-sm justify-center" onClick={() => onPlace(p, 'waitlist')}>⏳ {t('place.waitlist')}</button>
+              <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(p, 'main')}>✓ {t('place.main')}</button>
+            </div>
           </li>
         ))}
       </ul>

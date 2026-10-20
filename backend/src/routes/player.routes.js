@@ -389,6 +389,49 @@ player.post('/notices/:id/read', async (req, res) => {
   }
 });
 
+// 🔔 for players: everything new about them in the last 14 days, newest first — where each
+// sign-up stands (Host checked the info → transfer now, money confirmed, waitlist, payment
+// refused, cancelled by the Host), messages from clubs, link requests. Replaces the e-mail
+// notices setting: updates live on the bell only.
+player.get('/updates', async (req, res) => {
+  try {
+    const uid = req.hostId;
+    const since = new Date(Date.now() - 14 * 86400000).toISOString();
+    const sinceDay = since.slice(0, 10);
+    const load = (cols) => supabase.from('event_participants').select(`id, status, payment_status, joined_at, payment_submitted_at, cancelled_at, checked_in_at, ticket_code${cols}, events!inner(id, title, event_date, public_token, club_id)`).eq('user_id', uid).gte('events.event_date', sinceDay).limit(200);
+    let { data: parts, error } = await load(', cancelled_by');
+    if (error) ({ data: parts } = await load('')); // before the cancel-tiers migration
+    const kindOf = (p) => {
+      if (p.status === 'requested') return 'wait_check';
+      if (p.status === 'pending') return p.payment_status === 'proof_submitted' ? 'proof_wait' : p.payment_status === 'rejected' ? 'pay_rejected' : 'pay_now';
+      if (p.status === 'registered' || p.status === 'checked_in') return 'confirmed';
+      if (p.status === 'waitlisted') return 'waitlisted';
+      if (p.status === 'cancelled') return p.cancelled_by === 'host' ? 'cancelled_host' : 'cancelled';
+      return null;
+    };
+    const items = [];
+    for (const p of parts || []) {
+      const kind = kindOf(p);
+      if (!kind) continue;
+      const at = [p.joined_at, p.payment_submitted_at, p.cancelled_at, p.checked_in_at].filter(Boolean).sort().pop();
+      if (at < since) continue;
+      const ev = p.events;
+      items.push({ id: `p:${p.id}:${kind}`, kind, at, title: ev.title, event_date: ev.event_date, href: kind === 'confirmed' && p.ticket_code ? `/t/${p.ticket_code}` : ev.public_token ? `/e/${ev.public_token}` : '/p' });
+    }
+    for (const n of await moderation.noticesFor(uid).catch(() => [])) {
+      if (n.created_at < since && n.read_at) continue;
+      items.push({ id: `n:${n.id}`, kind: `notice_${n.kind}`, at: n.created_at, title: n.club_name || '', href: '/home', notice_id: n.id });
+    }
+    for (const r of await require('../services/memberLink').pendingFor(uid).catch(() => [])) {
+      items.push({ id: `l:${r.id}`, kind: 'link_request', at: r.created_at, title: r.club?.name || '', href: '/home' });
+    }
+    items.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    res.json(items.slice(0, 50));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // Join a club and request a membership. The Host confirms once the transfer arrives.
 player.post('/join/:token', async (req, res) => {
   try {

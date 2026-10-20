@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import SettingsSection from '@/components/SettingsSection';
-import NotifySettings from '@/components/NotifySettings';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import DeleteAccount from '@/components/DeleteAccount';
 import AccountDetails from '@/components/AccountDetails';
@@ -28,7 +27,6 @@ const SECTIONS = [
   ['manage', '🏟'],
   ['plan', '💎'],
   ['payout', '🏦'],
-  ['notify', '🔔'],
   ['backup', '🗂️'],
   ['feedback', '💬'],
   ['danger', '⚠️'],
@@ -223,9 +221,6 @@ export default function AccountPage() {
           <HostPaymentSettings bare />
         </SettingsSection>
 
-        <SettingsSection id="notify" hidden={tab !== 'notify'} icon="🔔" tone="sky" title={t('notify.title')} description={t('notify.hint')}>
-          <NotifySettings bare />
-        </SettingsSection>
 
         <SettingsSection id="backup" hidden={tab !== 'backup'} icon="🗂️" tone="violet" title={t('acct.s_backup')} description={t('acct.backupHint')}>
           <div className="flex flex-wrap items-center justify-between gap-3">
