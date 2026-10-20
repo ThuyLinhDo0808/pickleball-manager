@@ -189,8 +189,8 @@ function ClubHome({ community = false }) {
               )}
             </div>
           </div>
-          {/* The three things a Host opens every day. */}
-          <div className="flex flex-wrap gap-2 mt-4">
+          {/* The three things a Host opens every day, on the right. */}
+          <div className="flex flex-wrap justify-end gap-2 mt-4">
             {[
               ['/events/create', '➕', t('nav.createGame'), true],
               ['/events', '📅', t('nav.schedule')],

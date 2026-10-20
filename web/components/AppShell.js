@@ -53,6 +53,7 @@ const membersGroup = (key) => ({
   children: [
     { href: '/club/members/all', key: 'nav.memAll', icon: 'members' },
     { href: '/club/members', key: 'nav.memFixed', icon: 'members', exact: true },
+    { href: '/club/members/new', key: 'nav.memNew', icon: 'members', community: true },
     { href: '/club/members/guests', key: 'nav.memGuests', icon: 'members' },
     { href: '/club/members/requests', key: 'nav.memRequests', icon: 'members', badge: 'memberRequests' },
     { href: '/club/members/review', key: 'nav.memReview', icon: 'members' },
@@ -69,11 +70,10 @@ const NAV_BY_WORKSPACE = {
       icon: 'schedule',
       children: [
         // The calendar only shows; each kind of activity has its own create page.
+        // Giải đấu and Lịch trực are hidden from the menu for now (their pages stay).
         { href: '/events', key: 'nav.schedule', icon: 'schedule', exclude: ['/events/create'] },
         { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
-        { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
         { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
-        { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
       ],
     },
     {
@@ -126,8 +126,6 @@ NAV_BY_WORKSPACE.community = [
       { href: '/events', key: 'nav.kevents', icon: 'schedule', exclude: ['/events/create'] },
       { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'plans' },
       { href: '/events/create', key: 'nav.createGame', icon: 'ticket', exact: true },
-      { href: '/club/tournaments/new', key: 'nav.createTournament', icon: 'trophy', also: ['/club/tournaments'] },
-      { href: '/club/roster', key: 'nav.roster', icon: 'whistle' },
     ],
   },
   NAV_BY_WORKSPACE.club.find((g) => g.key === 'nav.groupFinance'),
@@ -442,7 +440,7 @@ export default function AppShell({ children, back }) {
   const roleOk = (href) => !rolePages || rolePages.some((p) => href === p || (p !== '/finance' && href.startsWith(`${p}/`)));
   const NAV = (NAV_BY_WORKSPACE[mode] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
-    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport)) } : g))
+    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community')) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
   const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;

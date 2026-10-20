@@ -396,7 +396,7 @@ router.get('/:clubId/members', async (req, res) => {
   }));
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
   if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
-    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score'];
+    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score', 'newcomer_until'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
   res.json(rows);
@@ -627,6 +627,8 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
       fields.skill_score = n == null ? null : Math.round(n * 100) / 100;
     }
   }
+  // The Host moved the person to another type by hand: no longer "Người mới".
+  if (fields.member_type && fields.member_type !== req.member.member_type && req.member.newcomer_until) fields.newcomer_until = null;
   // Reactivating a member, or moving one to the other type, takes a place on the plan.
   {
     const nextType = fields.member_type === 'guest' ? 'guest' : fields.member_type === 'fixed' ? 'fixed' : req.member.member_type;
@@ -778,11 +780,16 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
   const patch = { join_requested: false };
   if (m.user_id) patch.account_verified = true;
   // Not decided yet ("---"): the person stays in the waiting list until the Host picks a type.
-  if (m.join_requested && !['fixed', 'guest'].includes(req.body?.member_type)) {
-    return res.status(400).json({ error: 'Pick a type (fixed or guest) to approve; until then they stay in the waiting list.', code: 'type_required' });
+  // Communities also have "new" (Người mới): a drop-in for their first 30 days.
+  const CS = require('../services/communitySettings');
+  const asNew = req.body?.member_type === 'new' && (req.club.kind || 'club') === 'community' && (await CS.newcomersReady());
+  if (m.join_requested && !['fixed', 'guest'].includes(req.body?.member_type) && !asNew) {
+    return res.status(400).json({ error: 'Pick a type (fixed, guest or new) to approve; until then they stay in the waiting list.', code: 'type_required' });
   }
   if (m.join_requested) {
-    const type = req.body?.member_type === 'guest' ? 'guest' : 'fixed';
+    const type = req.body?.member_type === 'fixed' ? 'fixed' : 'guest';
+    if (asNew) patch.newcomer_until = CS.newcomerUntil();
+    else if (await CS.newcomersReady()) patch.newcomer_until = null;
     // Joining (or moving to another type) takes a place within the plan's limits.
     try {
       await assertMemberRoom(req.club, type, m.is_active && m.member_type === type ? 0 : 1);

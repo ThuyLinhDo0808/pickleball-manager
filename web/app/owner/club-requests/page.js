@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Hint from '@/components/ui/Hint';
 import Link from 'next/link';
 import OwnerShell, { fmtTime } from '@/components/OwnerShell';
 import Pager from '@/components/Pager';
@@ -84,7 +85,7 @@ export default function OwnerClubRequestsPage() {
 
   return (
     <OwnerShell title={t('owner.tabClubRequests')} description={t('owner.desc_requests')}>
-      <p className="text-gray-400 text-sm mb-3">{t('ownerReq.intro')}</p>
+      <Hint className="mb-3" text={t('ownerReq.intro')} />
       <div className="flex flex-wrap gap-1.5 mb-3">
         {STATUSES.map((s) => (
           <button key={s} type="button" onClick={() => { setStatus(s); setPage(1); }} className={`rounded-full px-3 py-1 text-sm border ${status === s ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>

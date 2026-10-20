@@ -75,6 +75,14 @@ function monthStart(ymd) {
 // Put a participant with a confirmed place on the club's guest list (or link them to the
 // record that's already there). Fixed members are left alone. Never throws: the sign-up,
 // payment or check-in that called this must not fail because of the guest list.
+// Someone new to a community (Social Manager) starts as "Người mới" for 30 days.
+async function newcomerFields(clubId) {
+  const CS = require('./communitySettings');
+  if (!(await CS.newcomersReady())) return {};
+  const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
+  return data?.kind === 'community' ? { newcomer_until: CS.newcomerUntil() } : {};
+}
+
 async function ensureGuestMember(event, p) {
   try {
     // Organizers (the Host, co-hosts) are not the club's guests.
@@ -113,6 +121,7 @@ async function ensureGuestMember(event, p) {
           birth_year: profile?.birth_year ?? null,
           member_type: 'guest',
           joined_on: monthStart(event.event_date),
+          ...(await newcomerFields(event.club_id)),
         })
         .select()
         .single();

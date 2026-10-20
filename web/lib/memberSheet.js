@@ -16,7 +16,6 @@ export const MEMBER_FIELDS = [
   ['skill', 'members.colSkill'], // the Host's own score (not DUPR)
   ['skill_level', 'members.colLevel'], // level from the community control panel
   ['district', 'memberX.district'],
-  ['play_duration', 'memberX.playDuration'],
   ['joined', 'members.joined'],
   ['active', 'xlsx.active'],
   ['notes', 'xlsx.notes'],
@@ -57,7 +56,6 @@ export function memberRow(m, i, t, levelText, pickleball = true) {
       case 'skill': return m.skill_score == null ? '' : Number(m.skill_score);
       case 'skill_level': return m.level?.label || '';
       case 'district': return m.district || '';
-      case 'play_duration': return m.play_duration ? t(`memberX.dur_${m.play_duration}`) : '';
       case 'joined': return m.joined_on ? m.joined_on.slice(0, 7).split('-').reverse().join('/') : '';
       case 'active': return m.is_active === false ? t('xlsx.no') : t('xlsx.yes');
       case 'notes': return m.notes || '';

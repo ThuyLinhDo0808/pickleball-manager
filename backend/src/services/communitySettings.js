@@ -1,8 +1,9 @@
 // The community control panel (Social Manager): each Host sets their own rules.
-//  * Regulars ("khách thường xuyên") = more than `regular.min` sessions played in the last
-//    30 days (default: more than 3); the rest are drop-ins ("vãng lai"). Stored as
-//    member_type fixed / guest. By default the Host gets suggestions (who should move) and
-//    decides; with `regular.auto` on, members move by themselves.
+//  * "Người mới" = the first 30 days after joining (club_members.newcomer_until). After that:
+//    more than `regular.min` sessions in the last 30 days (default: more than 3) ->
+//    khách thường xuyên (member_type fixed); no session for 3 weeks -> khách vãng lai
+//    (guest); in between nobody moves. By default the Host gets suggestions (who should
+//    move) and decides; with `regular.auto` on, members move by themselves.
 //  * "Khách VIP" = holds a paid pass (month / quarter / year) — not a type: the pass pays
 //    and loses a session at each check-in. "Khách ưu tiên" = guest_perk 'priority'.
 //  * `active_days`: no session for that many days = "không hoạt động".
@@ -25,6 +26,8 @@ const DURATIONS = ['lt6', '6_12', '12_18', 'gt18'];
 const PLAYED = ['registered', 'checked_in'];
 const REGULAR_DAYS = 30; // "a month"
 const NEW_GRACE_DAYS = 30; // someone just added is not moved down before they had a month
+const NEWCOMER_DAYS = 30; // "Người mới": the first 30 days after joining
+const AWAY_DAYS = 21; // no session for 3 weeks -> vãng lai
 const MAX_LEVELS = 12;
 
 // signup.auto_dupr: kèo sign-ups with a verified DUPR inside the kèo's range skip the
@@ -46,6 +49,12 @@ function cleanRefund(r) {
 }
 
 const fail = (message, code) => Object.assign(new Error(message), { status: 400, code });
+
+async function newcomersReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes('20261206090000_newcomers.sql');
+}
+const newcomerUntil = (from) => addDays(from || todayYmd(), NEWCOMER_DAYS - 1);
 
 async function ready() {
   const s = await schemaStatus();
@@ -211,7 +220,8 @@ async function all(build) {
 async function recentCounts(clubId) {
   const today = todayYmd();
   const since = addDays(today, -REGULAR_DAYS);
-  const events = await all(() => supabase.from('events').select('id').eq('club_id', clubId).gte('event_date', since).lte('event_date', today).neq('status', 'cancelled').order('id'));
+  const events = await all(() => supabase.from('events').select('id, event_date').eq('club_id', clubId).gte('event_date', since).lte('event_date', today).neq('status', 'cancelled').order('id'));
+  const dateOf = new Map(events.map((e) => [e.id, e.event_date]));
   const seen = new Map(); // member -> Set(event)
   const ids = events.map((e) => e.id);
   for (let i = 0; i < ids.length; i += 150) {
@@ -223,7 +233,10 @@ async function recentCounts(clubId) {
       seen.get(mid).add(p.event_id);
     }
   }
-  return new Map([...seen].map(([k, v]) => [k, v.size]));
+  const counts = new Map([...seen].map(([k, v]) => [k, v.size]));
+  // Last day each one played in the window (none in 30 days = longer ago than 3 weeks).
+  counts.last = new Map([...seen].map(([k, v]) => [k, [...v].map((e) => dateOf.get(e)).sort().pop()]));
+  return counts;
 }
 
 // Who should move, by the Host's rule (more than `min` sessions = regular). Nobody new
@@ -232,18 +245,29 @@ async function proposals(club) {
   const settings = await forClub(club.id);
   const today = todayYmd();
   const graceFrom = addDays(today, -NEW_GRACE_DAYS);
+  const newCol = (await newcomersReady()) ? ', newcomer_until' : '';
   const [members, counts] = await Promise.all([
-    all(() => supabase.from('club_members').select('id, full_name, member_type, is_active, join_requested, review_started_at, created_at').eq('club_id', club.id).order('id')),
+    all(() => supabase.from('club_members').select(`id, full_name, member_type, is_active, join_requested, review_started_at, created_at${newCol}`).eq('club_id', club.id).order('id')),
     recentCounts(club.id),
   ]);
   const roster = members.filter((m) => m.is_active && !m.join_requested && !m.review_started_at);
+  const awaySince = addDays(today, -AWAY_DAYS);
   const up = [];
   const down = [];
+  // "Người mới" whose 30 days are over and who did not come back often enough: they are
+  // drop-ins already (approved as guest), so they only stop being "new" (Vãng lai tab).
+  const settle = [];
   for (const m of roster) {
+    // "Người mới": nobody moves during the first 30 days.
+    if (m.newcomer_until && m.newcomer_until >= today) continue;
     const n = counts.get(m.id) || 0;
+    const last = counts.last?.get(m.id) || null;
     const regular = n > settings.regular.min;
-    if (regular && m.member_type === 'guest') up.push({ id: m.id, full_name: m.full_name, sessions: n });
-    if (!regular && m.member_type === 'fixed' && String(m.created_at).slice(0, 10) < graceFrom) down.push({ id: m.id, full_name: m.full_name, sessions: n });
+    const away = !last || last < awaySince; // no session for 3 weeks
+    const wasNew = !!m.newcomer_until;
+    if (regular && m.member_type === 'guest') up.push({ id: m.id, full_name: m.full_name, sessions: n, newcomer: wasNew });
+    else if (!regular && away && m.member_type === 'fixed' && String(m.created_at).slice(0, 10) < graceFrom) down.push({ id: m.id, full_name: m.full_name, sessions: n, newcomer: wasNew });
+    else if (wasNew) settle.push(m.id);
   }
   if (down.length) {
     const { data: passes, error } = await supabase.from('memberships').select('club_member_id').in('club_member_id', down.map((d) => d.id)).eq('status', 'paid').lte('starts_on', today).gte('ends_on', today);
@@ -251,7 +275,7 @@ async function proposals(club) {
     const keep = new Set((passes || []).map((p) => p.club_member_id));
     down.splice(0, down.length, ...down.filter((d) => !keep.has(d.id)));
   }
-  return { settings, roster, up, down };
+  return { settings, roster, up, down, settle };
 }
 
 // Move members between regular (fixed) and drop-in (guest) by the Host's rule. Never moves
@@ -266,17 +290,23 @@ async function reclassify(club, { force = false } = {}) {
   lastRun.set(club.id, Date.now());
   const settings = await forClub(club.id);
   if (!settings.regular.auto && !force) return null;
-  const { roster, up, down } = await proposals(club);
+  const { roster, up, down, settle } = await proposals(club);
+  const clearNew = (await newcomersReady()) ? { newcomer_until: null } : {};
   // "Khách ưu tiên" stays ưu tiên either way (the Host chose it).
   if (up.length) {
-    const { error } = await supabase.from('club_members').update({ member_type: 'fixed' }).in('id', up.map((x) => x.id));
+    const { error } = await supabase.from('club_members').update({ member_type: 'fixed', ...clearNew }).in('id', up.map((x) => x.id));
     if (error) throw error;
   }
   if (down.length) {
-    const { error } = await supabase.from('club_members').update({ member_type: 'guest', tier: null }).in('id', down.map((x) => x.id));
+    const { error } = await supabase.from('club_members').update({ member_type: 'guest', tier: null, ...clearNew }).in('id', down.map((x) => x.id));
+    if (error) throw error;
+  }
+  // Past their 30 days, played lately but not enough to be regular: no longer "new".
+  if (settle.length && clearNew.newcomer_until === null) {
+    const { error } = await supabase.from('club_members').update(clearNew).in('id', settle);
     if (error) throw error;
   }
   return { checked: roster.length, to_regular: up.length, to_dropin: down.length, min: settings.regular.min };
 }
 
-module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, ready, resolve, clean, levelOf, forClub, save, reclassify, proposals, recentCounts, forget };
+module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, NEWCOMER_DAYS, newcomersReady, newcomerUntil, ready, resolve, clean, levelOf, forClub, save, reclassify, proposals, recentCounts, forget };

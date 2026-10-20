@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { useI18n } from '@/context/I18nContext';
 import { levelTag } from '@/lib/levels';
 import { dmy, my } from '@/lib/memberDates';
-import { playDurationText } from '@/components/MemberExtras';
 import Hint from '@/components/ui/Hint';
 
 function initials(name) {
@@ -30,7 +29,6 @@ function ProfileCard({ name, card, sport, t }) {
     [t('common.level'), levelTag(c.level, sport, t)],
     sport === 'badminton' ? null : [t('playerCard.duprProfile'), c.dupr != null ? String(Number(c.dupr)) : null],
     [t('memberX.district'), c.district],
-    [t('memberX.playDuration'), playDurationText(c.play_duration, t)],
     [t('members.gender'), c.gender ? t(`members.${c.gender}`) : null],
     [t('members.birthDate'), c.birth_date ? dmy(c.birth_date) : c.birth_year || null],
     [t('members.joined'), c.joined_on ? my(c.joined_on) : null],

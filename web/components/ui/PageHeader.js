@@ -10,7 +10,7 @@ export default function PageHeader({ icon, title, subtitle, actions, children })
           {subtitle && <p className="text-gray-400 text-sm truncate">{subtitle}</p>}
         </div>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full">{actions}</div>}
       {children}
     </div>
   );

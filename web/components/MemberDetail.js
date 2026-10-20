@@ -135,7 +135,6 @@ const fromMember = (m) => ({
   joined: m.joined_on ? m.joined_on.slice(0, 7) : '',
   is_active: m.is_active !== false,
   district: m.district || '',
-  play_duration: m.play_duration || '',
 });
 
 function MemberEdit({ member, busy, onSave, autoEdit = false, community = false }) {
@@ -182,7 +181,6 @@ function MemberEdit({ member, busy, onSave, autoEdit = false, community = false 
       joined_on: f.joined ? `${f.joined}-01` : null,
       is_active: f.is_active,
       district: f.district,
-      play_duration: f.play_duration,
     });
     if (ok !== false) setOpen(false);
   }

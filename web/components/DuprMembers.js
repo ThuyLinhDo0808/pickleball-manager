@@ -5,6 +5,11 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import Modal from '@/components/Modal';
+import GuideModal from '@/components/ui/GuideModal';
+
+// Optional: a video guide (e.g. YouTube link) shown in the "Hướng dẫn bằng video" pop-up.
+const GUIDE_VIDEO = process.env.NEXT_PUBLIC_DUPR_GUIDE_VIDEO_URL || '';
 
 const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
 const fmtDate = (iso) => (iso ? localDate(new Date(iso), 'vi-VN') : '—');
@@ -42,6 +47,7 @@ export default function DuprMembers({ club }) {
   const [result, setResult] = useState(null);
   const [showFree, setShowFree] = useState(false);
   const [score, setScore] = useState(null); // { id, doubles, rel, singles } typed by hand
+  const [guide, setGuide] = useState(null); // 'image' | 'video'
 
   if (error?.payload?.code === 'not_pickleball') return <p className="card text-gray-300 text-sm">{t('dupr.onlyPickleball')}</p>;
   if (error) return <p className="card text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
@@ -100,24 +106,34 @@ export default function DuprMembers({ club }) {
       {/* Update from DUPR: the round trip, step by step */}
       <section className="card">
         <h2 className="text-white font-semibold">{t('duprm.importTitle')}</h2>
-        <p className="text-gray-400 text-sm mt-1">{t('duprm.flowIntro')}</p>
-        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((n) => (
-            <li key={n} className={`rounded-xl border p-3 ${n === 4 ? 'border-lime-400/50 bg-lime-400/5' : 'border-navy-600 bg-navy-900/50'}`}>
-              <p className="text-xs font-bold text-lime-300">{t('duprm.stepN', { n })} · {t(`duprm.step${n}Where`)}</p>
-              <p className="text-white text-sm font-semibold mt-1">{t(`duprm.step${n}Title`)}</p>
-              <p className="text-gray-400 text-xs mt-1">{t(`duprm.step${n}Body`)}</p>
-              {n === 4 && (
-                <label className={`btn-primary text-sm cursor-pointer inline-block mt-2 ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
-                  📂 {busy ? t('common.loading') : t('duprm.chooseFile')}
-                  <input type="file" accept=".csv,text/csv" className="hidden" onChange={pick} />
-                </label>
-              )}
-            </li>
-          ))}
-        </ol>
+        {/* The how-to is in pop-ups (pictures, video); the page keeps only the actions. */}
+        <div className="flex flex-wrap gap-2 mt-2">
+          <button type="button" className="btn-secondary text-sm" onClick={() => setGuide('image')}>📷 {t('duprm.guideImage')}</button>
+          <button type="button" className="btn-secondary text-sm" onClick={() => setGuide('video')}>🎬 {t('duprm.guideVideo')}</button>
+          <label className={`btn-primary text-sm cursor-pointer ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
+            📂 {busy ? t('common.loading') : t('duprm.chooseFile')}
+            <input type="file" accept=".csv,text/csv" className="hidden" onChange={pick} />
+          </label>
+        </div>
+        <GuideModal
+          open={guide === 'image'}
+          title={t('duprm.guideImage')}
+          onClose={() => setGuide(null)}
+          steps={[
+            { title: t('duprm.importTitle'), body: t('duprm.flowIntro') },
+            ...[1, 2, 3, 4].map((n) => ({ title: `${t(`duprm.step${n}Title`)} · ${t(`duprm.step${n}Where`)}`, body: t(`duprm.step${n}Body`), image: `/guides/dupr/step-${n}.png` })),
+            { title: t('duprm.manualTitle'), body: t('duprm.manualTip') },
+          ]}
+        />
+        <Modal open={guide === 'video'} title={t('duprm.guideVideo')} onClose={() => setGuide(null)}>
+          {GUIDE_VIDEO ? (
+            <a href={GUIDE_VIDEO} target="_blank" rel="noopener noreferrer" className="btn-primary w-full">▶ {t('duprm.watchVideo')}</a>
+          ) : (
+            <p className="text-gray-200 text-sm leading-relaxed">{t('duprm.videoSoon')}</p>
+          )}
+          <button type="button" className="btn-secondary w-full mt-3" onClick={() => setGuide(null)}>{t('guide.close')}</button>
+        </Modal>
         <p className="text-gray-500 text-xs mt-2">{t('duprm.lastImport', { date: fmtDate(data.last_import?.created_at), n: data.roster_size })}</p>
-        <p className="text-sky-200 text-xs mt-2 rounded-lg border border-sky-400/30 bg-sky-400/5 px-2.5 py-2">💡 {t('duprm.manualTip')}</p>
         {err && <p className="text-red-400 text-sm mt-2">{err}</p>}
         {result && <ImportResult r={result} />}
         <ClubIdField club={club} value={info?.dupr_club_id} onSaved={reloadInfo} />
@@ -142,8 +158,10 @@ export default function DuprMembers({ club }) {
                 <th className="py-2 px-3">{t('dupr.col_member')}</th>
                 <th className="py-2 pr-3">{t('dupr.col_id')}</th>
                 <th className="py-2 pr-3">{t('dupr.col_duprName')}</th>
-                <th className="py-2 pr-3 text-right">{t('dupr.col_doubles')}</th>
-                <th className="py-2 pr-3 text-right">{t('dupr.col_singles')}</th>
+                {/* Đôi and Đơn side by side, same width; reliability and date are shared. */}
+                <th className="py-2 pr-3 text-right w-24">{t('dupr.col_doubles')}</th>
+                <th className="py-2 pr-3 text-right w-24">{t('dupr.col_singles')}</th>
+                <th className="py-2 pr-3">{t('duprm.col_info')}</th>
                 <th className="py-2 pr-3">{t('dupr.col_status')}</th>
               </tr>
             </thead>
@@ -171,41 +189,56 @@ export default function DuprMembers({ club }) {
                     <span className="text-gray-300">{m.dupr_name || '—'}</span>
                     {m.name_fits === false && <span className="block text-[11px] text-amber-200" title={t('duprm.nameDiffHint')}>⚠ {t('dupr.nameMismatch')}</span>}
                   </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {score?.id === m.id ? (
-                      <span className="flex flex-wrap items-center justify-end gap-1">
+                  {score?.id === m.id ? (
+                    <>
+                      <td className="py-2 pr-3 text-right">
                         <input className="input !py-1 !w-20 text-right" type="number" step="0.001" min="1" max="8" autoFocus placeholder={t('dupr.col_doubles')} aria-label={t('dupr.col_doubles')} value={score.doubles} onChange={(e) => setScore({ ...score, doubles: e.target.value })} />
-                        <input className="input !py-1 !w-16 text-right" type="number" step="1" min="0" max="100" placeholder="%" aria-label={t('duprm.relLabel')} value={score.rel} onChange={(e) => setScore({ ...score, rel: e.target.value })} />
+                      </td>
+                      <td className="py-2 pr-3 text-right">
                         <input className="input !py-1 !w-20 text-right" type="number" step="0.001" min="1" max="8" placeholder={t('dupr.col_singles')} aria-label={t('dupr.col_singles')} value={score.singles} onChange={(e) => setScore({ ...score, singles: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && saveScore()} />
-                        <button type="button" className="text-lime-300 text-xs" onClick={saveScore}>{t('common.save')}</button>
-                        <button type="button" className="text-gray-400 text-xs" onClick={() => setScore(null)} aria-label={t('common.cancel')}>✕</button>
-                      </span>
-                    ) : m.status === 'linked' ? (
-                      <>
-                        <span className="text-white font-semibold">{fmtRating(m.doubles)}</span>
-                        <span className="block leading-tight">
-                          <Change v={m.change} />
-                          {m.doubles_rel != null && <span className="text-[11px] text-gray-500 ml-1">{t('dupr.rel', { n: m.doubles_rel })}</span>}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span className="flex flex-wrap items-center gap-1">
+                          <input className="input !py-1 !w-16 text-right" type="number" step="1" min="0" max="100" placeholder="%" aria-label={t('duprm.relLabel')} value={score.rel} onChange={(e) => setScore({ ...score, rel: e.target.value })} />
+                          <button type="button" className="text-lime-300 text-xs" onClick={saveScore}>{t('common.save')}</button>
+                          <button type="button" className="text-gray-400 text-xs" onClick={() => setScore(null)} aria-label={t('common.cancel')}>✕</button>
                         </span>
-                        {m.synced_at && <span className="block text-[10px] text-gray-500 whitespace-nowrap">{t('dupr.updatedOn', { date: fmtDate(m.synced_at) })}</span>}
-                      </>
-                    ) : (
-                      <button type="button" className="text-right hover:underline" title={t('duprm.typeScoreHint')} onClick={() => setScore({ id: m.id, doubles: m.doubles ?? '', rel: m.doubles_rel ?? '', singles: m.singles ?? '' })}>
-                        {m.status === 'manual' ? (
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      {['doubles', 'singles'].map((k) => {
+                        const has = ['linked', 'manual'].includes(m.status);
+                        const val = has ? m[k] : null;
+                        const cell = (
                           <>
-                            <span className="text-white font-semibold">{fmtRating(m.doubles)}</span>
-                            {m.doubles_rel != null && <span className="block text-[11px] text-gray-500">{t('dupr.rel', { n: m.doubles_rel })}</span>}
+                            <span className={val != null ? 'text-white font-semibold' : 'text-gray-500'}>{has ? fmtRating(val) : `+ ${t('duprm.typeScoreShort')}`}</span>
+                            {k === 'doubles' && m.status === 'linked' && <span className="block leading-tight"><Change v={m.change} /></span>}
                           </>
-                        ) : (
-                          <span className="text-gray-500 text-xs">
-                            + {t('duprm.typeScore')}
-                            {m.self_level != null && <span className="block text-[11px] text-gray-600">{t('duprm.selfLevel', { v: m.self_level })}</span>}
-                          </span>
-                        )}
-                      </button>
-                    )}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-gray-300">{['linked', 'manual'].includes(m.status) && m.singles != null ? fmtRating(m.singles) : '—'}</td>
+                        );
+                        return (
+                          <td key={k} className="py-2 pr-3 text-right tabular-nums align-top">
+                            {m.status === 'linked' ? cell : (
+                              <button type="button" className="text-right hover:underline" title={t('duprm.typeScoreHint')} onClick={() => setScore({ id: m.id, doubles: m.doubles ?? '', rel: m.doubles_rel ?? '', singles: m.singles ?? '' })}>
+                                {cell}
+                              </button>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="py-2 pr-3 text-xs text-gray-400 align-top">
+                        {['linked', 'manual'].includes(m.status) ? (
+                          <>
+                            {m.doubles_rel != null && <span className="block whitespace-nowrap">{t('dupr.rel', { n: m.doubles_rel })}</span>}
+                            {m.status === 'linked' && m.synced_at && <span className="block whitespace-nowrap">{t('dupr.updatedOn', { date: fmtDate(m.synced_at) })}</span>}
+                            {m.doubles_rel == null && !(m.status === 'linked' && m.synced_at) && '—'}
+                          </>
+                        ) : m.self_level != null ? (
+                          <span className="block whitespace-nowrap">{t('duprm.selfLevel', { v: m.self_level })}</span>
+                        ) : '—'}
+                      </td>
+                    </>
+                  )}
                   <td className="py-2 pr-3">
                     <span className={`text-[11px] rounded border px-1.5 py-0.5 whitespace-nowrap ${STATUS_TONE[m.status]}`}>{t(`duprm.status_${m.status}`)}</span>
                   </td>

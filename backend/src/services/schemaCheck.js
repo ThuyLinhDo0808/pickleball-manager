@@ -68,6 +68,7 @@ const PROBES = [
   { table: 'featured_communities', column: 'trust_score', migration: '20261203090000_featured_communities.sql' },
   { table: 'club_members', column: 'skill_score', migration: '20261204090000_skill_score.sql' },
   { table: 'events', column: 'no_refund', migration: '20261205090000_no_refund.sql' },
+  { table: 'club_members', column: 'newcomer_until', migration: '20261206090000_newcomers.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },
