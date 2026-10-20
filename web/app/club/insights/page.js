@@ -304,7 +304,7 @@ export default function InsightsPage() {
                   <li key={m.member_id} className="py-1.5 flex items-center justify-between gap-2 text-sm">
                     <span className="flex items-center gap-2 min-w-0">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${STATE[m.state][0]}`} aria-hidden="true" />
-                      <span className="text-gray-200 truncate">{m.full_name}</span>
+                      <span className="text-gray-200 break-words">{m.full_name}</span>
                     </span>
                     <span className="text-gray-400 text-xs tabular-nums whitespace-nowrap">
                       {t('insights.memberLine', { n: m.sessions, f: m.per_month })} · {m.last_played ? t('insights.lastOn', { d: fmtDay(m.last_played) }) : t('insights.never')}

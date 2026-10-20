@@ -42,7 +42,7 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
           <p className="text-white font-bold">{r.sport === 'badminton' ? '🏸' : '🏓'} {r.name}{r.kind === 'community' && <span className="ml-2 text-[11px] rounded-full border border-amber-300/60 text-amber-200 px-2 py-0.5 align-middle">🎟 {t('creq.kind_community')}</span>}</p>
           <p className="text-gray-400 text-xs">{[r.district, r.province, r.country].filter(Boolean).join(', ')} · {t('creq.sentOn', { date: fmtDate(r.created_at) })}</p>
         </div>
-        <span className="rounded-full border border-current px-2 py-0.5 text-[11px] font-bold uppercase">{t(`creq.status_${r.status}`)}</span>
+        <span className="rounded-full border border-current px-2 py-0.5 text-[11px] font-bold">{t(`creq.status_${r.status}`)}</span>
       </div>
       <p className="text-sm mt-2">{t(r.kind === 'community' && r.status === 'approved' ? 'creq.statusHint_approvedCommunity' : `creq.statusHint_${r.status}`, { tier: String(r.plan_tier || '').toUpperCase() })}</p>
       {r.owner_note && <p className="text-sm mt-1 text-gray-200">💬 {t('creq.ownerNote')}: {r.owner_note}</p>}
@@ -204,7 +204,7 @@ export default function ClubRequestPage() {
   return (
     <PlayerShell>
       <div className="mx-auto max-w-3xl">
-        <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{tk('creq.kicker')}</p>
+        <p className="text-lime-400 text-xs font-bold">{tk('creq.kicker')}</p>
         <h1 className="text-white text-2xl font-bold mt-1">{t(kind === 'community' ? 'creq.titleCommunity' : kind === 'club' ? 'creq.title' : 'creq.titlePick')}</h1>
         <p className="text-gray-400 text-sm mt-1 mb-4">{t(kind === 'community' ? 'creq.introCommunity' : kind === 'club' ? 'creq.intro' : 'creq.introPick')}</p>
 
@@ -310,7 +310,7 @@ export default function ClubRequestPage() {
                       >
                         {k === suggested && <span className="absolute -top-2 right-2 rounded-full bg-lime-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">{t('creq.suggested')}</span>}
                         <span className="flex items-baseline justify-between gap-2">
-                          <span className="text-white font-bold uppercase">{k}</span>
+                          <span className="text-white font-bold">{k}</span>
                           <span className="text-amber-200 text-xs font-semibold">{t('plan.perMonth', { price: formatVnd(priceOf(k)) })}</span>
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">{t(product === 'social_manager' ? `plan.smFor_${k}` : `plan.for_${k}`)}</span>

@@ -38,7 +38,7 @@ export default function LegalDoc({ kind, count }) {
           <BackButton fallback="/" className="!mb-0" />
           <div className="flex gap-1">
             {(langs || ['vi', 'en']).map((l) => (
-              <button key={l} type="button" onClick={() => setLang(l)} className={`text-xs rounded-full border px-2.5 py-0.5 uppercase ${lang === l ? 'border-lime-400 text-lime-300' : 'border-navy-600 text-gray-400'}`}>{l}</button>
+              <button key={l} type="button" onClick={() => setLang(l)} className={`text-xs rounded-full border px-2.5 py-0.5 ${lang === l ? 'border-lime-400 text-lime-300' : 'border-navy-600 text-gray-400'}`}>{l}</button>
             ))}
           </div>
         </div>
@@ -49,7 +49,7 @@ export default function LegalDoc({ kind, count }) {
             {t(kind === 'privacy' ? 'legal.termsTitle' : 'legal.privacyTitle')} →
           </Link>
         </nav>
-        <ol className="mt-8 space-y-8 leading-relaxed text-[15px]">
+        <ol className="mt-8 space-y-8 leading-relaxed text-[0.9375rem]">
           {Array.from({ length: count }, (_, i) => i + 1).map((n) => (
             <li key={n} id={`${prefix}${n}`} className="scroll-mt-6">
               <h2 className="text-white text-lg font-semibold">{n}. {t(`legal.${prefix}${n}t`)}</h2>

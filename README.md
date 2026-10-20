@@ -1164,6 +1164,14 @@ Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với
 - **Tạo / sửa kèo**: phần **1 · Thông tin cơ bản** có đủ những gì một kèo cần (loại, tên, ngày, giờ, địa điểm, trình độ, **số chỗ, phí tham gia**, số sân). **2 · Luật & tài chính** (thể thức, dịch vụ, DUPR, luật huỷ, hạn đăng ký, chi phí) và **3 · Lưu ý** (lời nhắn, link công khai, cho trả sau) **gập lại**, bấm tiêu đề để mở. Trên điện thoại nút **Tạo / Lưu** luôn nằm sát đáy màn hình (trên thanh menu). Lời giới thiệu đầu trang nằm sau nút **i** *Cách dùng trang này*.
 - **Lịch (`/events`)**: trên điện thoại ẩn hàng thẻ số liệu để danh sách hiện ngay; dòng giải thích mỗi nhóm (*Sắp diễn ra*, *Đang mở*…) chuyển vào nút **i**.
 
+### 8.10. Dễ dùng cho mọi người (người lớn tuổi, ít dùng công nghệ)
+- **Cỡ chữ A / A+ / A++**: nút **Aa** ở thanh trên cùng (điện thoại, trang người chơi, trang đăng ký kèo `/e/…`, vé `/t/…`, đăng nhập…) và mục **🔠 Cỡ chữ** cuối menu bên trái (máy tính) / menu *Thêm* (điện thoại). Chọn *Chữ lớn* hoặc *Chữ rất lớn* thì toàn bộ chữ, nút và ô nhập to lên theo. Cỡ chữ được nhớ trên máy đó (không cần đăng nhập).
+- **Chữ rõ hơn**: chữ xám phụ sáng hơn trên nền tối; bỏ các nhãn IN HOA nhỏ; ô nhập chữ cỡ 16px (điện thoại không tự phóng to khi gõ); nút / ô nhập cao tối thiểu ~44px; khi dùng bàn phím, nút đang chọn có viền xanh.
+- **Không cắt cụt tên**: tên người chơi, tên kèo, tên CLB xuống dòng thay vì bị cắt bằng "…". Trên điện thoại, danh sách người chơi của kèo hiện trạng thái (đã đăng ký / đã thu) và nút **Có mặt** (đổi thành **✓ Đã đến** khi đã điểm danh) ngay dưới tên.
+- **Tab xuống dòng**: các dải tab (Lịch / Tạo lịch cố định / Giải đấu…, Tài chính, Thành viên…) là các nút tròn, xuống dòng trên điện thoại — không còn tab bị che ở mép màn hình. Thẻ số liệu xếp 2 cột trên điện thoại (không phải vuốt ngang). Nhãn thanh menu dưới cùng to hơn, không bị cắt.
+- **Giải thích**: nút giải thích đứng riêng một dòng ghi rõ **ⓘ Giải thích**; cạnh tiêu đề vẫn là nút tròn **i**. Bấm vào mở pop-up.
+- **Lời dễ hiểu**: *slot* → **chỗ**; *check-in* → **điểm danh** (vé: **Vé vào sân**); *Chờ xác nhận TT* → **Chờ kiểm tra thông tin**.
+
 ## 9. Hướng dẫn nhanh theo tình huống
 
 ### Mở CLB mới và thu tiền hội viên

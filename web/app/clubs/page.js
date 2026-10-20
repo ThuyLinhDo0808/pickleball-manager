@@ -134,7 +134,7 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
               </form>
             ) : (
               <>
-                <h2 className="text-white font-semibold text-lg truncate">{c.name}</h2>
+                <h2 className="text-white font-semibold text-lg break-words">{c.name}</h2>
                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
                   <span className="text-[11px] rounded-full border border-navy-500 text-gray-300 px-2 py-0.5">{t(`clubs.sport_${c.sport || 'pickleball'}`)}</span>
                   {current && <span className="text-[11px] bg-lime-400 text-navy-950 font-semibold rounded-full px-2 py-0.5">{t('clubs.current')}</span>}

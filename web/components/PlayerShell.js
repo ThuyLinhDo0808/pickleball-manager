@@ -1,4 +1,5 @@
 'use client';
+import { TextSizeButton } from '@/components/TextSizeSwitch';
 import Link from 'next/link';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { usePathname, useRouter } from 'next/navigation';
@@ -49,8 +50,8 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-navy-900/95 backdrop-blur border-b border-navy-700 pt-safe">
         <div className="max-w-4xl mx-auto flex items-center gap-3 px-4 h-14">
-          <Link href="/home" className="text-lime-400 font-bold shrink-0">{t('appName')}</Link>
-          <nav className="hidden sm:flex gap-1 flex-1 min-w-0">
+          <Link href="/home" className="text-lime-400 font-bold min-w-0 truncate flex-1 sm:flex-none">{t('appName')}</Link>
+          <nav className="hidden sm:flex gap-1 flex-1 min-w-0 flex-wrap">
             {user &&
               NAV.map((n) => (
                 <Link key={n.href} href={n.href} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${n.match(pathname) ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:text-white'}`}>
@@ -59,12 +60,12 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
                 </Link>
               ))}
           </nav>
-          <span className="flex-1 sm:hidden" />
-          <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1 shrink-0">
+          <TextSizeButton />
+          <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-sm text-gray-200 border border-navy-700 rounded-full px-3 py-1.5 shrink-0">
             {lang === 'vi' ? 'EN' : 'VI'}
           </button>
           {user && (
-            <button onClick={() => signOut()} className="text-xs text-gray-400 shrink-0">
+            <button onClick={() => signOut()} className="text-sm text-gray-300 shrink-0">
               {t('nav.signOut')}
             </button>
           )}
@@ -81,7 +82,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
         <nav className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900/95 backdrop-blur border-t border-navy-700 pb-safe">
           <div className="grid grid-cols-5">
             {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className={`flex flex-col items-center justify-center gap-0.5 h-16 text-[11px] ${n.match(pathname) ? 'text-lime-400' : 'text-gray-400'}`}>
+              <Link key={n.href} href={n.href} className={`flex flex-col items-center justify-center gap-0.5 h-16 text-xs leading-tight ${n.match(pathname) ? 'text-lime-400' : 'text-gray-400'}`}>
                 <Icon d={n.icon} />
                 <span>{t(n.key)}</span>
               </Link>

@@ -201,7 +201,7 @@ export default function PlansPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-amber-300 text-xs" aria-hidden="true">{'⭐'.repeat(stars)} VIP</div>
-                  <div className="text-white font-semibold text-lg truncate">{p.name}</div>
+                  <div className="text-white font-semibold text-lg break-words">{p.name}</div>
                   <div className="text-gray-400 text-xs">{pack ? t('plans.packShort', { n: p.sessions_included, m: p.validity_months }) : t(`plans.${p.period}`)}</div>
                 </div>
                 <span className={`text-[11px] rounded-full px-2 py-0.5 shrink-0 ${p.is_active ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-navy-700 text-gray-300'}`}>

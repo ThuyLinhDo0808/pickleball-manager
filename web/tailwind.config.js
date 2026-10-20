@@ -4,6 +4,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Lighter greys than Tailwind's own: small print stays readable on the dark navy.
+        gray: {
+          400: '#b4becd',
+          500: '#97a2b5',
+        },
         navy: {
           950: '#0B1220',
           900: '#101a2e',

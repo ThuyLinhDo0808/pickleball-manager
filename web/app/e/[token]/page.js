@@ -1,4 +1,5 @@
 'use client';
+import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { policyText } from '@/lib/cancelPolicy';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
@@ -92,9 +93,9 @@ export default function PublicEventPage() {
   };
 
   const langToggle = (
-    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button>
+    </button></span>
   );
 
   if (loading && !ev) {
@@ -156,7 +157,7 @@ export default function PublicEventPage() {
 
       {ev.notice && (
         <section className="card mb-4 border-lime-400/40">
-          <h2 className="text-lime-400 text-xs font-semibold uppercase tracking-wide mb-1">{t('public.hostNotice')}</h2>
+          <h2 className="text-lime-400 text-xs font-semibold mb-1">{t('public.hostNotice')}</h2>
           <p className="text-gray-200 text-sm whitespace-pre-line">{ev.notice}</p>
         </section>
       )}

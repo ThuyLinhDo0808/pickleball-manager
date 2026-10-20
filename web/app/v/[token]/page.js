@@ -1,4 +1,5 @@
 'use client';
+import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -38,9 +39,9 @@ export default function MeetingVotePage() {
   }
 
   const langToggle = (
-    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button>
+    </button></span>
   );
   if (loading && !ev) return <div className="min-h-screen flex items-center justify-center text-gray-400">{t('common.loading')}</div>;
   if (error || !ev) {
@@ -64,7 +65,7 @@ export default function MeetingVotePage() {
       </header>
 
       <section className="card mb-4">
-        <p className="text-gray-400 text-xs uppercase tracking-wide">👥 {t('vote.kicker')}</p>
+        <p className="text-gray-400 text-xs">👥 {t('vote.kicker')}</p>
         <h1 className="text-white text-2xl font-bold leading-tight mt-1">{ev.title}</h1>
         <p className="text-lime-400 text-sm mt-1 capitalize">
           {formatDay(ev.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}

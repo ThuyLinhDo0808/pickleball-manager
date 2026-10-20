@@ -4,12 +4,12 @@ export default function StatTile({ icon, label, value, sub, tone = 'text-white',
   const cls = `card !p-3.5 h-full text-left flex flex-col gap-0.5 transition ${onClick ? 'hover:border-navy-500 cursor-pointer' : ''} ${active ? '!border-lime-400 bg-lime-400/5' : ''}`;
   const body = (
     <>
-      <div className="flex items-start justify-between gap-2 text-gray-400 text-[11px] font-semibold uppercase tracking-wide">
+      <div className="flex items-start justify-between gap-2 text-gray-300 text-sm font-semibold">
         <span className="leading-tight">{label}</span>
         <span className="text-base" aria-hidden="true">{icon}</span>
       </div>
-      <div className={`text-xl sm:text-2xl font-bold tabular-nums whitespace-nowrap ${tone}`}>{value}</div>
-      {sub && <div className="text-gray-400 text-xs truncate">{sub}</div>}
+      <div className={`text-xl sm:text-2xl font-bold tabular-nums break-words ${tone}`}>{value}</div>
+      {sub && <div className="text-gray-400 text-xs line-clamp-2">{sub}</div>}
     </>
   );
   return onClick ? (

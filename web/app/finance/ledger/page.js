@@ -351,7 +351,7 @@ export default function LedgerPage() {
           ['⚖️', t('finance.net'), formatVnd(tin - tout), tin - tout < 0 ? 'text-red-400' : 'text-white'],
         ].map(([icon, k, v, tone]) => (
           <div key={k} className="card !p-4">
-            <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
+            <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
               <span>{k}</span>
               <span aria-hidden="true">{icon}</span>
             </div>

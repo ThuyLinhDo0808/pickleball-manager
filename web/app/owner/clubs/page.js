@@ -24,7 +24,7 @@ function Row({ c, onDeleted }) {
     <>
       <tr className="border-b border-navy-800 hover:bg-navy-800/40 align-middle">
         <td className="px-3 py-2.5 max-w-[260px]">
-          <div className="text-white font-semibold truncate">{c.name}</div>
+          <div className="text-white font-semibold break-words">{c.name}</div>
           <div className="text-gray-500 text-xs">{t(`clubs.sport_${c.sport}`)}</div>
         </td>
         <td className="px-3 py-2.5 whitespace-nowrap">
@@ -32,7 +32,7 @@ function Row({ c, onDeleted }) {
         </td>
         <td className="px-3 py-2.5 max-w-[220px]">
           <Link href={`/owner/hosts/${c.host_id}`} className="text-gray-200 hover:text-amber-200 truncate block">{c.owner_email || '—'}</Link>
-          <span className={`mt-0.5 inline-block rounded px-1.5 text-[10px] font-bold uppercase ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
+          <span className={`mt-0.5 inline-block rounded px-1.5 text-[10px] font-bold ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
         </td>
         <td className="px-3 py-2.5 tabular-nums whitespace-nowrap">
           <span className="text-white font-semibold">{c.members.fixed + c.members.guest}</span>

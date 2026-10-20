@@ -31,7 +31,7 @@ export default function Podium({ podium, compact = false }) {
         {rows.map(([icon, label, teams, color], i) => (
           <div key={label} className={`rounded-lg bg-navy-900 px-3 ${i === 0 ? 'py-5 sm:order-2' : i === 1 ? 'py-4 sm:order-1' : 'py-3 sm:order-3'}`}>
             <div className={i === 0 ? 'text-4xl' : 'text-3xl'}>{icon}</div>
-            <div className="text-gray-400 text-xs uppercase tracking-wide mt-1">{label}</div>
+            <div className="text-gray-400 text-xs mt-1">{label}</div>
             {teams.map((x) => (
               <div key={x.id} className={`font-bold ${i === 0 ? 'text-2xl text-lime-400' : `text-lg ${color}`}`}>{x.name}</div>
             ))}

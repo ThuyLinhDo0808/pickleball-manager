@@ -1,4 +1,5 @@
 'use client';
+import { TextSizeButton } from '@/components/TextSizeSwitch';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import HomeLink from '@/components/HomeLink';
@@ -36,9 +37,9 @@ export default function QuickBookPage() {
   }, [eventId, code]);
 
   const langToggle = (
-    <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
+    <span className="inline-flex items-center gap-2"><TextSizeButton /><button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
       {lang === 'vi' ? 'EN' : 'VI'}
-    </button>
+    </button></span>
   );
   const shell = (body) => (
     <div className="min-h-screen max-w-lg mx-auto px-4 pt-safe pb-safe-4">
@@ -135,7 +136,7 @@ export default function QuickBookPage() {
               {ev.sport !== 'badminton' && (
                 <div className="sm:col-span-2">
                   <label className="text-xs text-gray-400" htmlFor="q-dupr">{t('quick.duprId')}</label>
-                  <input id="q-dupr" className="input uppercase tracking-wider font-mono placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdPh')} value={contact.dupr_id} onChange={(e) => setContact({ ...contact, dupr_id: idChars(e.target.value) })} />
+                  <input id="q-dupr" className="input font-mono placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdPh')} value={contact.dupr_id} onChange={(e) => setContact({ ...contact, dupr_id: idChars(e.target.value) })} />
                   <p className="text-gray-400 text-xs mt-1">ℹ️ {t('quick.duprIdNote')}</p>
                 </div>
               )}
@@ -175,7 +176,7 @@ export default function QuickBookPage() {
                       )}
                     </div>
                     {ev.sport !== 'badminton' && !mine && (
-                      <input className="input mt-2 uppercase tracking-wider font-mono text-sm placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdSlot')} aria-label={t('quick.duprIdSlot')} value={s.dupr_id} onChange={(e) => setSlot(i, { dupr_id: idChars(e.target.value) })} />
+                      <input className="input mt-2 font-mono text-sm placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdSlot')} aria-label={t('quick.duprIdSlot')} value={s.dupr_id} onChange={(e) => setSlot(i, { dupr_id: idChars(e.target.value) })} />
                     )}
                   </li>
                 );

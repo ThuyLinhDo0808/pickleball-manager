@@ -29,7 +29,7 @@ function Kpi({ icon, label, value, sub, href, tone = 'text-white', lines = null 
   const { t } = useI18n();
   return (
     <div className="card h-full !p-4 flex flex-col gap-1">
-      <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
+      <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
         <span>{label}</span>
         <span className="text-base" aria-hidden="true">{icon}</span>
       </div>
@@ -254,13 +254,13 @@ function ClubHome({ community = false }) {
                     <li key={e.id}>
                       <Link href={`/events/${e.id}`} className="flex items-center gap-4 py-3 group">
                         <div className={`w-14 shrink-0 rounded-xl text-center py-1.5 ${e.event_date === today ? 'bg-lime-400 text-navy-950' : 'bg-navy-900 text-white'}`}>
-                          <div className="text-[10px] uppercase font-semibold opacity-80">{localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short' })}</div>
+                          <div className="text-[10px] font-semibold opacity-80">{localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short' })}</div>
                           <div className="text-xl font-bold leading-6">{d.getDate()}</div>
                           <div className="text-[10px] opacity-80">{t('home.monthShort', { m: d.getMonth() + 1 })}</div>
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-white font-semibold truncate group-hover:text-lime-300">{e.title}</span>
+                            <span className="text-white font-semibold break-words group-hover:text-lime-300">{e.title}</span>
                             <span className={`shrink-0 text-[10px] font-semibold rounded-full px-2 py-0.5 ${state[1]}`}>{t(state[0])}</span>
                           </div>
                           <div className="text-gray-400 text-xs truncate">
@@ -311,7 +311,7 @@ function ClubHome({ community = false }) {
         </summary>
         <div className="mt-4">
       {!community && (<>
-      <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">{t('home.rowClub')}</h2>
+      <h2 className="text-gray-400 text-xs font-semibold mb-2">{t('home.rowClub')}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <Kpi
           icon="👥"
@@ -367,7 +367,7 @@ function ClubHome({ community = false }) {
                   ['📈', t('rankings.topDiff'), top.top_point_diff, (v) => (v > 0 ? `+${v}` : v)],
                 ].map(([icon, title, list, fmt]) => (
                   <div key={title} className="rounded-xl bg-navy-900 p-3">
-                    <div className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1.5">{icon} {title}</div>
+                    <div className="text-gray-400 text-xs font-semibold mb-1.5">{icon} {title}</div>
                     {list.length === 0 ? (
                       <p className="text-gray-500 text-sm">—</p>
                     ) : (
@@ -392,7 +392,7 @@ function ClubHome({ community = false }) {
               <ul className="flex flex-col gap-1.5 text-sm">
                 {birthdays.slice(0, 6).map((m) => (
                   <li key={m.id} className="flex justify-between gap-2">
-                    <span className="truncate text-gray-100">{m.full_name}</span>
+                    <span className="break-words text-gray-100">{m.full_name}</span>
                     <span className={`tabular-nums shrink-0 ${m.birth_date.slice(5) === today.slice(5) ? 'text-pink-300 font-semibold' : 'text-gray-400'}`}>
                       {m.birth_date.slice(8, 10)}/{m.birth_date.slice(5, 7)}
                     </span>
@@ -405,7 +405,7 @@ function ClubHome({ community = false }) {
           {usage && (
             <Section title={t('home.plan')} action={<Link href="/account" className="text-lime-400 text-sm">{t('nav.account')} →</Link>}>
               <div className="flex justify-between items-baseline gap-2 mb-2">
-                <span className="text-white font-bold uppercase">{usage.tier}</span>
+                <span className="text-white font-bold">{usage.tier}</span>
                 <span className="text-gray-400 text-xs">{t('home.planUsage', { used: usage.used, limit: usage.capacity_limit })}</span>
               </div>
               <div className="w-full bg-navy-900 rounded-full h-2 overflow-hidden">

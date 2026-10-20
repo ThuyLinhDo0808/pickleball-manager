@@ -20,11 +20,11 @@ function Change({ w }) {
   );
 }
 
-// One number: small uppercase label, the value, a line under it. Clickable when `href`.
+// One number: small label, the value, a line under it. Clickable when `href`.
 function Tile({ label, value, sub, href, tone = 'text-white' }) {
   const body = (
     <>
-      <div className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider">{label}</div>
+      <div className="text-gray-400 text-[11px] font-semibold">{label}</div>
       <div className={`text-[28px] leading-9 font-bold tabular-nums mt-1 ${tone}`}>{value}</div>
       <div className="mt-1.5 min-h-[1.25rem]">{sub}</div>
     </>
@@ -216,7 +216,7 @@ export default function OwnerOverview() {
                     <li key={`${x.host_id}-${x.kind}`} className="py-2 flex items-center justify-between gap-2">
                       <Link href={`/owner/hosts/${x.host_id}`} className="min-w-0 text-sm text-gray-200 hover:text-white truncate">{x.email}</Link>
                       <span className="flex items-center gap-2 shrink-0">
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${x.kind === 'tier' ? TIER_BADGE[x.tier] : 'bg-amber-300/20 text-amber-200'}`}>{x.kind === 'tier' ? x.tier : 'SM'}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${x.kind === 'tier' ? TIER_BADGE[x.tier] : 'bg-amber-300/20 text-amber-200'}`}>{x.kind === 'tier' ? x.tier : 'SM'}</span>
                         <span className={`text-xs tabular-nums ${x.days_left <= 3 ? 'text-red-300' : 'text-amber-200'}`}>
                           {x.days_left === 0 ? t('owner.endsToday') : t('owner.daysLeft', { n: x.days_left })}
                         </span>

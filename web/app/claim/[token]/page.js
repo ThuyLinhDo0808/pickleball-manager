@@ -45,7 +45,7 @@ export default function ClaimPage() {
           <div className="flex items-center gap-3">
             <ClubAvatar id={c.club.id} name={c.club.name} sport={c.club.sport} size={52} />
             <div className="min-w-0">
-              <p className="text-lime-400 text-xs font-bold uppercase tracking-widest">{t('mlink.kicker')}</p>
+              <p className="text-lime-400 text-xs font-bold">{t('mlink.kicker')}</p>
               <h1 className="text-white text-xl font-bold truncate">{c.club.name}</h1>
             </div>
           </div>

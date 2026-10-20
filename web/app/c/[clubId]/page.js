@@ -102,9 +102,9 @@ export default function MemberClubPage() {
         <div className="px-4 pb-4 -mt-8 flex items-end gap-3">
           <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={72} ring="ring-4 ring-navy-800" />
           <div className="min-w-0 flex-1 pb-1">
-            <h1 className="text-white text-xl font-bold truncate">{club.name}</h1>
+            <h1 className="text-white text-xl font-bold break-words">{club.name}</h1>
             <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs">
-              <span className="rounded-full bg-navy-700 px-2 py-0.5 font-bold uppercase tracking-wide text-gray-200">{t('hub.roleMember')}</span>
+              <span className="rounded-full bg-navy-700 px-2 py-0.5 font-bold text-gray-200">{t('hub.roleMember')}</span>
               <span className="text-gray-400">{member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</span>
               {community && data.membership_state === 'active' && <span className="rounded-full bg-amber-300/20 px-2 py-0.5 font-bold text-amber-200">👑 {t('social.vip')}</span>}
               {community && member.guest_perk && <span className="rounded-full bg-lime-400/15 px-2 py-0.5 font-bold text-lime-200">⚡ {t('social.priority')}</span>}
@@ -166,7 +166,7 @@ export default function MemberClubPage() {
             return (
               <div key={e.id} className="card !p-0 overflow-hidden flex">
                 <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 bg-navy-900 py-3">
-                  <span className="text-[11px] uppercase text-gray-400">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
+                  <span className="text-[11px] text-gray-400">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
                   <span className="text-white text-2xl font-bold leading-none">{Number(e.event_date.slice(8, 10))}</span>
                   <span className="text-[11px] text-gray-500">{e.event_date === today ? t('hub.today') : `${e.event_date.slice(5, 7)}/${e.event_date.slice(0, 4)}`}</span>
                 </div>
@@ -249,7 +249,7 @@ export default function MemberClubPage() {
             {data.history.map((h) => (
               <li key={h.event_id} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="min-w-0">
-                  <span className="block text-white truncate">{h.title}</span>
+                  <span className="block text-white break-words">{h.title}</span>
                   <span className="block text-gray-500 text-xs">{formatDay(h.event_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                 </span>
                 <span className={`text-xs shrink-0 ${h.status === 'checked_in' ? 'text-lime-400' : h.status === 'no_show' ? 'text-red-300' : 'text-gray-400'}`}>

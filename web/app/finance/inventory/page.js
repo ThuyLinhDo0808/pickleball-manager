@@ -238,7 +238,7 @@ export default function InventoryPage() {
             ['💸', t('inventory.spent'), formatVnd(list.reduce((s, i) => s + Number(i.total_spent || 0), 0)), 'text-orange-300'],
           ].map(([ic, k, v, tone]) => (
             <div key={k} className="card !p-4">
-              <div className="flex items-center justify-between text-gray-400 text-xs font-semibold uppercase tracking-wide">
+              <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
                 <span>{k}</span>
                 <span aria-hidden="true">{ic}</span>
               </div>

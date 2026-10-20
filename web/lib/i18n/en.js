@@ -3312,6 +3312,13 @@ export const en = {
     approveSave: "Save and show",
   },
   ux: {
+    arrived: 'Here',
+    markArrived: 'Arrived',
+    textSize: 'Text size',
+    textSize_normal: 'Normal text',
+    textSize_large: 'Large text',
+    textSize_xl: 'Extra large text',
+    textSizeHint: 'Pick the size that is easiest for you to read. It is remembered on this device.',
     sendLink: 'Send link',
     checkin: 'Check in',
     addPlayer: 'Add player',

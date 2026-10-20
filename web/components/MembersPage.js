@@ -282,7 +282,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <Avatar name={m.full_name} size={40} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-white font-semibold truncate">{m.full_name}</span>
+                          <span className="text-white font-semibold break-words">{m.full_name}</span>
                           {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
                           {tab === 'all' && <span className={`text-[10px] leading-4 rounded-full border px-1.5 ${PLACE_PILL[placeOf(m)]}`}>{t(`xlsx.place_${placeOf(m)}`)}</span>}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}

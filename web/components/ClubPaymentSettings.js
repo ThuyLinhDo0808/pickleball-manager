@@ -92,7 +92,7 @@ export default function ClubPaymentSettings({ club, onDone }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-gray-400">{t('payments.bankCode')}</label>
-          <input className="input uppercase" value={form.bank_code || ''} onChange={set('bank_code')} placeholder="VCB" />
+          <input className="input" value={form.bank_code || ''} onChange={set('bank_code')} placeholder="VCB" />
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('payments.bankAccount')}</label>
@@ -100,7 +100,7 @@ export default function ClubPaymentSettings({ club, onDone }) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-xs text-gray-400">{t('payments.bankHolder')}</label>
-          <input className="input uppercase" value={form.bank_holder || ''} onChange={set('bank_holder')} placeholder="NGUYEN VAN A" />
+          <input className="input" value={form.bank_holder || ''} onChange={set('bank_holder')} placeholder="NGUYEN VAN A" />
         </div>
       </div>
       {preview && (

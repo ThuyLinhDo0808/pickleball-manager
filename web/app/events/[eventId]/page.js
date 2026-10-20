@@ -512,7 +512,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-white font-semibold truncate max-w-full">{p.full_name}</span>
+                    <span className="text-white font-semibold break-words min-w-0">{p.full_name}</span>
                     {c.member_type === 'fixed' && <span className={`${BADGE} border-lime-400/50 text-lime-300`}>{t('events.fixedMember')}</span>}
                     {!p.is_organizer && c.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || c.member_type) && <span className={`${BADGE} border-navy-500 text-gray-300`}>{t('review.kind_guest')}</span>}
                     {p.is_organizer && <span className={`${BADGE} border-sky-400/60 text-sky-300`}>🛡 {t('people.organizer')}</span>}
@@ -536,6 +536,29 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     ) : sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}
                   </span>
+                  <span className="flex sm:hidden flex-wrap items-center gap-1 mt-1">
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${STATUS_PILL[p.status] || STATUS_PILL.registered}`}>{t(`player.status_${p.status}`)}</span>
+                  {money && <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${money[1]}`}>{money[0]}</span>}
+                  </span>
+                  {/* Phones: the check-in button under the name, so the name keeps the full width. */}
+                  {kind === 'main' && (
+                  <span className="flex sm:hidden mt-2">
+                    {(
+                      <button
+                        type="button"
+                        title={p.status === 'checked_in' ? t('staffView.undo') : t('events.checkIn')}
+                        aria-label={`${p.status === 'checked_in' ? t('staffView.undo') : t('events.checkIn')}: ${p.full_name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAction(p, p.status === 'checked_in' ? 'reset' : 'check-in');
+                        }}
+                        className={`inline-flex items-center h-10 shrink-0 rounded-full border-2 px-2.5 text-sm font-semibold whitespace-nowrap ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-200 hover:border-lime-400 hover:text-lime-300'}`}
+                      >
+                        {p.status === 'checked_in' ? `✓ ${t('ux.arrived')}` : t('ux.markArrived')}
+                      </button>
+                    )}
+                  </span>
+                  )}
                   {kind === 'waitlist' && <span className="block text-sky-300 text-[11px] mt-0.5">{t('events.waitOrder', { n: idx + 1, at: localDate(p.joined_at, 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })}</span>}
                   {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
                   {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}
@@ -546,7 +569,8 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                     </span>
                   )}
                 </span>
-                <span className="flex shrink-0 flex-col items-end gap-1">
+                {/* Bigger screens: status on the right. Phones: under the name (the name is never cut). */}
+                <span className="hidden sm:flex shrink-0 flex-col items-end gap-1">
                   <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${STATUS_PILL[p.status] || STATUS_PILL.registered}`}>{t(`player.status_${p.status}`)}</span>
                   {money && <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${money[1]}`}>{money[0]}</span>}
                 </span>
@@ -559,9 +583,9 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, onManage, onAction
                       e.stopPropagation();
                       onAction(p, p.status === 'checked_in' ? 'reset' : 'check-in');
                     }}
-                    className={`h-9 w-9 shrink-0 rounded-full border-2 text-base font-bold ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-400 hover:border-lime-400 hover:text-lime-300'}`}
+                    className={`hidden sm:inline-flex items-center h-10 shrink-0 rounded-full border-2 px-2.5 text-sm font-semibold whitespace-nowrap ${p.status === 'checked_in' ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-200 hover:border-lime-400 hover:text-lime-300'}`}
                   >
-                    ✓
+                    {p.status === 'checked_in' ? `✓ ${t('ux.arrived')}` : t('ux.markArrived')}
                   </button>
                 )}
                 <span className="text-gray-500 shrink-0" aria-hidden>›</span>

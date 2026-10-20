@@ -118,7 +118,7 @@ export default function ScorerPage() {
             <ul className="mt-1 flex flex-col gap-0.5 text-sm">
               {pos.map((id, i) => (
                 <li key={id} className={`flex items-center gap-1.5 ${s.server_id === id ? 'text-lime-300 font-semibold' : 'text-gray-300'}`}>
-                  <span className="text-[10px] uppercase rounded bg-navy-950/70 px-1.5 py-0.5 text-gray-400 w-12 text-center">{cfg.doubles ? (i === 0 ? t('live.right') : t('live.left')) : '—'}</span>
+                  <span className="text-[10px] rounded bg-navy-950/70 px-1.5 py-0.5 text-gray-400 w-12 text-center">{cfg.doubles ? (i === 0 ? t('live.right') : t('live.left')) : '—'}</span>
                   <span className="truncate">{name(id)}</span>
                   {s.server_id === id && <span aria-label={t('live.serving')}>{icon}</span>}
                 </li>
@@ -217,7 +217,7 @@ export default function ScorerPage() {
                 <div className="text-lime-300 text-xl font-bold">🏆 {t('live.winner', { name: teamLabel(s.winner) })}</div>
               ) : (
                 <>
-                  <div className="text-gray-400 text-[11px] uppercase tracking-wider">{t('live.call')}</div>
+                  <div className="text-gray-400 text-[11px]">{t('live.call')}</div>
                   <div className="text-white text-4xl font-black tabular-nums tracking-wider">{s.call}</div>
                   {s.point && <div className="mt-1 inline-block rounded-full bg-red-500 text-white text-xs font-bold px-3 py-0.5">{s.point.match ? t('live.matchPoint') : t('live.gamePoint')} · {teamLabel(s.point.team)}</div>}
                 </>

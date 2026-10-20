@@ -44,7 +44,7 @@ function Clubs() {
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="text-gray-300 tabular-nums">👥 {t('owner.fixedGuest', { f: c.members.fixed, g: c.members.guest })}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
               </div>
             </li>
           ))}
@@ -75,7 +75,7 @@ function Xeve() {
           {data.rows.map((e) => (
             <li key={e.id} className="py-2.5 flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="text-white font-semibold truncate">{e.title}</div>
+                <div className="text-white font-semibold break-words">{e.title}</div>
                 <div className="text-gray-400 text-xs">
                   {fmtDate(e.event_date)}{e.start_time ? ` ${String(e.start_time).slice(0, 5)}` : ''} · <Link href={`/owner/hosts/${e.host_id}`} className="hover:text-white">{e.host_email || '—'}</Link>
                 </div>

@@ -21,7 +21,7 @@ export default function TopCommunities({ className = '' }) {
               <span className={`w-8 text-center font-bold tabular-nums ${c.rank <= 3 ? 'text-amber-300 text-lg' : 'text-gray-400'}`}>{c.rank <= 3 ? ['🥇', '🥈', '🥉'][c.rank - 1] : c.rank}</span>
               <ClubAvatar id={c.id} name={c.name} sport={c.sport} size={40} img={clubImage(c.id, 'avatar', c.avatar_version)} />
               <span className="min-w-0 flex-1">
-                <span className="block text-white font-semibold truncate">{c.name} <span className="text-[11px] text-lime-300 font-normal">✓ {t('featured.verified')}</span></span>
+                <span className="block text-white font-semibold break-words">{c.name} <span className="text-[11px] text-lime-300 font-normal">✓ {t('featured.verified')}</span></span>
                 <span className="block text-gray-400 text-xs truncate">
                   {[c.district, c.province].filter(Boolean).join(', ')}
                   {` · ${t('featured.membersN', { n: c.members })}`}

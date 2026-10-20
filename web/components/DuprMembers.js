@@ -156,7 +156,7 @@ export default function DuprMembers({ club }) {
                   <td className="py-2 pr-3">
                     {edit?.id === m.id ? (
                       <span className="flex items-center gap-1">
-                        <input className="input !py-1 !w-28 uppercase font-mono" autoFocus maxLength={10} value={edit.value} aria-label={t('dupr.col_id')} onChange={(e) => setEdit({ ...edit, value: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} onKeyDown={(e) => e.key === 'Enter' && saveId()} />
+                        <input className="input !py-1 !w-28 font-mono" autoFocus maxLength={10} value={edit.value} aria-label={t('dupr.col_id')} onChange={(e) => setEdit({ ...edit, value: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} onKeyDown={(e) => e.key === 'Enter' && saveId()} />
                         <button type="button" className="text-lime-300 text-xs" onClick={saveId}>{t('common.save')}</button>
                         <button type="button" className="text-gray-400 text-xs" onClick={() => setEdit(null)} aria-label={t('common.cancel')}>✕</button>
                       </span>

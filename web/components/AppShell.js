@@ -11,6 +11,7 @@ import CreateClubForm from '@/components/CreateClubForm';
 import ContextSwitcher from '@/components/ContextSwitcher';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import FeedbackButton from '@/components/FeedbackButton';
+import TextSizeSwitch, { TextSizeButton } from '@/components/TextSizeSwitch';
 import SignupBell from '@/components/SignupBell';
 import SchemaBanner from '@/components/SchemaBanner';
 import BirthdayBanner from '@/components/BirthdayBanner';
@@ -487,8 +488,8 @@ export default function AppShell({ children, back }) {
   // Sidebar: a section (or a single page) is a big row with an icon tile; its pages are
   // smaller, quieter rows on a guide line, the current one marked by a lime bar.
   const tileClass = (active) => `shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${active ? 'bg-lime-400 text-navy-950' : 'bg-navy-800 text-gray-300 group-hover:text-white'}`;
-  const headClass = (active) => `group w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-[15px] font-semibold tracking-tight transition-colors ${active ? 'text-white bg-navy-800/80' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
-  const subClass = (active) => `relative flex items-center gap-2 rounded-md pl-3 pr-2 py-1.5 text-[13px] transition-colors ${active ? 'text-lime-300 bg-lime-400/10 font-medium before:absolute before:-left-[13px] before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-lime-400' : 'text-gray-400 hover:text-gray-100 hover:bg-navy-800/60'}`;
+  const headClass = (active) => `group w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-[0.9375rem] font-semibold tracking-tight transition-colors ${active ? 'text-white bg-navy-800/80' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
+  const subClass = (active) => `relative flex items-center gap-2 rounded-md pl-3 pr-2 py-1.5 text-[0.8125rem] transition-colors ${active ? 'text-lime-300 bg-lime-400/10 font-medium before:absolute before:-left-[13px] before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-lime-400' : 'text-gray-400 hover:text-gray-100 hover:bg-navy-800/60'}`;
 
   return (
     <div className="min-h-screen md:flex">
@@ -592,6 +593,7 @@ export default function AppShell({ children, back }) {
                 <Icon name="chat" className="w-4 h-4" />
                 {t('feedback.button')}
               </FeedbackButton>
+              <TextSizeSwitch />
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">
                 {t('nav.signOut')}
@@ -608,6 +610,7 @@ export default function AppShell({ children, back }) {
             <Icon name="dashboard" className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">{workspace && <ContextSwitcher compact />}</div>
+          <TextSizeButton />
           {['club', 'xeve'].includes(workspace) && <SignupBell className="shrink-0" />}
         </div>
       </header>
@@ -689,14 +692,14 @@ export default function AppShell({ children, back }) {
                   <div key={item.key} className="mt-3">
                     <div className="flex items-center gap-2 px-1 mb-1.5">
                       <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
-                      <span className="text-white text-[15px] font-semibold">{t(item.key)}</span>
+                      <span className="text-white text-[0.9375rem] font-semibold">{t(item.key)}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1">
                       {item.children.map((c) => (
                         <Link
                           key={c.href}
                           href={c.href}
-                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-[13px] ${navActive(c) ? 'bg-lime-400/15 text-lime-300 ring-1 ring-lime-400/40' : 'text-gray-300 bg-navy-800/60'}`}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-[0.8125rem] ${navActive(c) ? 'bg-lime-400/15 text-lime-300 ring-1 ring-lime-400/40' : 'text-gray-300 bg-navy-800/60'}`}
                         >
                           <Icon name={c.icon} className="w-4 h-4 shrink-0" />
                           <span className="leading-tight flex-1">{t(c.key)}</span>
@@ -727,7 +730,8 @@ export default function AppShell({ children, back }) {
               <Icon name="dashboard" />
               {t('hub.backHome')}
             </Link>
-            <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-navy-700">
+            <TextSizeSwitch className="pt-3 mt-2 border-t border-navy-700" />
+            <div className="grid grid-cols-2 gap-2 pt-3">
               <LangSelect />
               <button onClick={() => signOut()} className="btn-secondary text-sm">
                 {t('nav.signOut')}
@@ -746,7 +750,7 @@ export default function AppShell({ children, back }) {
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-col items-center justify-center gap-0.5 h-16 text-[11px] ${
+                className={`flex flex-col items-center justify-center gap-0.5 h-16 text-xs leading-tight ${
                   navActive(item) ? 'text-lime-400' : 'text-gray-400'
                 }`}
               >
@@ -754,13 +758,13 @@ export default function AppShell({ children, back }) {
                   <Icon name={item.icon} />
                   <Badge n={badges[item.badge]} className="absolute -top-2 -right-3" />
                 </span>
-                <span className="truncate max-w-full px-1">{t(item.key)}</span>
+                <span className="max-w-full px-0.5 text-center line-clamp-2">{t(item.key)}</span>
               </Link>
             );
           })}
           <button
             onClick={() => setMoreOpen((o) => !o)}
-            className={`flex flex-col items-center justify-center gap-0.5 h-16 text-[11px] ${
+            className={`flex flex-col items-center justify-center gap-0.5 h-16 text-xs leading-tight ${
               moreOpen || moreActive ? 'text-lime-400' : 'text-gray-400'
             }`}
           >

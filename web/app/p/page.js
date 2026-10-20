@@ -286,7 +286,7 @@ export default function PlayerHome() {
             const fmtAt = (d) => localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
             const info = (
               <div className="min-w-0">
-                <div className="text-white text-sm truncate">{h.title}</div>
+                <div className="text-white text-sm break-words">{h.title}</div>
                 <div className="text-gray-400 text-xs">
                   {localDate(new Date(`${h.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}
                   {h.start_time ? ` · ${h.start_time.slice(0, 5)}` : ''}

@@ -60,13 +60,13 @@ function EventCard({ e }) {
   return (
     <Link href={hrefOf(e)} className={`card !p-0 overflow-hidden hover:border-lime-400 transition flex ${e.status === 'cancelled' ? 'opacity-60' : ''}`}>
       <div className={`w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 py-3 ${e.tone ? e.tone.chip : 'bg-navy-900'}`}>
-        <span className="text-[11px] uppercase text-gray-300">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
+        <span className="text-[11px] text-gray-300">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
         <span className="text-white text-2xl font-bold leading-none tabular-nums">{Number(e.event_date.slice(8, 10))}</span>
         <span className="text-[11px] text-gray-400">{e.event_date.slice(5, 7)}/{e.event_date.slice(0, 4)}</span>
       </div>
       <div className="min-w-0 flex-1 p-3">
         <div className="flex justify-between gap-2">
-          <span className={`text-white font-semibold truncate ${e.status === 'cancelled' ? 'line-through' : ''}`}>
+          <span className={`text-white font-semibold break-words min-w-0 ${e.status === 'cancelled' ? 'line-through' : ''}`}>
             {KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}
             {e.title}
           </span>
@@ -74,7 +74,7 @@ function EventCard({ e }) {
             {e.kind === 'tournament' ? (e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)) : t(`events.status_${e.status}`)}
           </span>
         </div>
-        <div className="text-gray-400 text-sm truncate">
+        <div className="text-gray-400 text-sm break-words">
           {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
         </div>
         {e.club_name && (

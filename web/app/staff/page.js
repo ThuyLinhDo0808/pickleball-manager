@@ -48,7 +48,7 @@ function EventRow({ e, today }) {
   return (
     <Link href={`/staff/${e.id}`} className={`card !p-0 overflow-hidden flex hover:border-lime-400/60 transition ${past ? 'opacity-70' : ''}`}>
       <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 bg-navy-900 py-3">
-        <span className="text-[11px] uppercase text-gray-400">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
+        <span className="text-[11px] text-gray-400">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
         <span className="text-white text-2xl font-bold leading-none">{Number(e.event_date.slice(8, 10))}</span>
         <span className="text-[11px] text-gray-500">{`${e.event_date.slice(5, 7)}/${e.event_date.slice(0, 4)}`}</span>
       </div>
@@ -162,7 +162,7 @@ export default function StaffEventsPage() {
           ) : (
             Object.entries(groups).map(([k, rows]) => (
               <div key={k} className="mb-4">
-                <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2 capitalize">
+                <h3 className="text-gray-400 text-xs font-semibold mb-2 capitalize">
                   {localDate(new Date(`${k}-01T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { month: 'long', year: 'numeric' })}
                 </h3>
                 <div className="grid gap-2 md:grid-cols-2">

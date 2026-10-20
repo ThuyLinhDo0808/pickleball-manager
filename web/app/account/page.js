@@ -94,14 +94,14 @@ export default function AccountPage() {
             {(name || '?').slice(0, 1).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-gray-400 text-xs uppercase tracking-wider">{t('acct.kicker')}</p>
+            <p className="text-gray-400 text-xs">{t('acct.kicker')}</p>
             <h1 className="text-white text-2xl sm:text-3xl font-bold truncate">{name}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
               <span className="text-gray-300 truncate">{email}</span>
               {user?.email_confirmed_at && (
                 <span className="text-[11px] rounded-full border border-lime-400/50 text-lime-300 px-2 py-0.5">✓ {t('acct.verified')}</span>
               )}
-              {sub && <span className="text-[11px] rounded-full bg-amber-300 text-navy-950 font-bold px-2 py-0.5 uppercase">{sub.tier === 'free' ? t('plan.noPlan') : sub.tier}</span>}
+              {sub && <span className="text-[11px] rounded-full bg-amber-300 text-navy-950 font-bold px-2 py-0.5">{sub.tier === 'free' ? t('plan.noPlan') : sub.tier}</span>}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
@@ -161,8 +161,8 @@ export default function AccountPage() {
             <>
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <div className="text-gray-400 text-xs uppercase tracking-wide">{t('acct.currentPlan')}</div>
-                  <div className="text-white text-2xl font-bold uppercase">{plan.tier === 'free' ? t('plan.noPlan') : plan.tier}</div>
+                  <div className="text-gray-400 text-xs">{t('acct.currentPlan')}</div>
+                  <div className="text-white text-2xl font-bold">{plan.tier === 'free' ? t('plan.noPlan') : plan.tier}</div>
                 </div>
                 <div className="text-right text-sm">
                   <div className="text-white font-semibold">

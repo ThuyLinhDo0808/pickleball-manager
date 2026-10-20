@@ -30,7 +30,7 @@ export default function DuprCard({ dupr, showLink = true }) {
   }
   const Box = ({ label, value, change, rel }) => (
     <div className="rounded-xl border border-navy-700 bg-navy-900/40 px-3 py-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">{label}</p>
+      <p className="text-[11px] text-gray-400 font-semibold">{label}</p>
       <p className="text-2xl font-bold text-white tabular-nums">{fmtRating(value)}</p>
       <p className="text-xs leading-tight">
         <Change v={change} />
