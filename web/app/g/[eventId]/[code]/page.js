@@ -16,14 +16,16 @@ const blankSlot = () => ({ full_name: '', gender: '', dupr_level: '', dupr_id: '
 const idChars = (v) => v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
 
 // Quick booking from the Host's invite link (it changes every 30 s): no account. Contact
-// details, then how many players and who they are; the total is transferred on the next page.
+// details (phone, or "I'll contact the Host"), then how many players and who they are. The
+// request goes to the Host's info check first (like a normal sign-up); once approved, the
+// total is transferred on the booking page.
 export default function QuickBookPage() {
   const { eventId, code } = useParams();
   const router = useRouter();
   const { t, lang, setLang } = useI18n();
   const [opened, setOpened] = useState(null); // { pass, pass_expires_at, event }
   const [openErr, setOpenErr] = useState(null);
-  const [contact, setContact] = useState({ full_name: '', gender: '', dupr_level: '', dupr_id: '' });
+  const [contact, setContact] = useState({ full_name: '', gender: '', phone: '', dupr_level: '', dupr_id: '', no_phone: false });
   const [slots, setSlots] = useState([blankSlot()]);
   const [meFirst, setMeFirst] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -67,6 +69,8 @@ export default function QuickBookPage() {
   if (!opened) return <div className="min-h-screen flex items-center justify-center text-gray-400">{t('common.loading')}</div>;
 
   const ev = opened.event;
+  const host = ev.host_contact;
+  const check = ev.info_check !== false;
   const max = Math.max(0, Math.min(ev.free_places, ev.max_slots));
   const time = [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join(' – ');
   const level = eventLevelText(ev, ev.sport, t) || t('public.anyLevel');
@@ -81,7 +85,7 @@ export default function QuickBookPage() {
     setBusy(true);
     setError('');
     try {
-      const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact, slots: rows, me_first: meFirst });
+      const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact: { ...contact, phone: contact.no_phone ? '' : contact.phone }, slots: rows, me_first: meFirst });
       try {
         window.localStorage.setItem(`pb_quick_${eventId}`, r.token);
         rememberBooking({ token: r.token, title: ev.title, event_date: ev.event_date });
@@ -91,7 +95,7 @@ export default function QuickBookPage() {
       router.replace(`/g/b/${r.token}`);
     } catch (err) {
       const p = err.payload || {};
-      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : p.code === 'bad_dupr_id' ? t('dupr.idOptional') : err.message);
+      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : p.code === 'bad_dupr_id' ? t('dupr.idOptional') : p.code === 'phone_required' || p.code === 'phone_or_contact' ? t(host ? 'quick.phoneOrHost' : 'quick.phoneNeeded') : err.message);
     } finally {
       setBusy(false);
     }
@@ -135,9 +139,24 @@ export default function QuickBookPage() {
                 </select>
               </div>
               <div>
+                <label className="text-xs text-gray-400" htmlFor="q-phone">{t('quick.phone')}{contact.no_phone ? '' : ' *'}</label>
+                <input id="q-phone" className="input" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} required={!contact.no_phone} disabled={contact.no_phone} value={contact.no_phone ? '' : contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
+              </div>
+              <div>
                 <label className="text-xs text-gray-400" htmlFor="q-level">{t(ev.sport === 'badminton' ? 'quick.levelBadminton' : 'quick.duprSelf')}</label>
                 <LevelInput id="q-level" sport={ev.sport} value={contact.dupr_level} onChange={(v) => setContact({ ...contact, dupr_level: v })} placeholder="3.25" />
               </div>
+              {host && (
+                <div className="sm:col-span-2 rounded-lg border border-navy-600 bg-navy-900/60 px-3 py-2">
+                  <label className="flex items-start gap-2 text-sm text-gray-200">
+                    <input type="checkbox" className="mt-1" checked={contact.no_phone} onChange={(e) => setContact({ ...contact, no_phone: e.target.checked })} />
+                    <span>{t('quick.noPhone')}</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {t('quick.hostContact')}: <b className="text-gray-200">{host.name || t('quick.theHost')}</b> · <a href={`tel:${host.phone}`} className="text-sky-300">{host.phone}</a>
+                  </p>
+                </div>
+              )}
               {ev.sport !== 'badminton' && (
                 <div className="sm:col-span-2">
                   <label className="text-xs text-gray-400" htmlFor="q-dupr">{t('quick.duprId')}</label>
@@ -195,9 +214,9 @@ export default function QuickBookPage() {
               <span className="text-gray-300 text-sm">{t('quick.totalLabel', { n: rows.length, fee: formatVnd(ev.fee) })}</span>
               <b className="text-lime-300 text-xl tabular-nums">{formatVnd(total)}</b>
             </div>
-            <p className="text-gray-500 text-xs mt-1">{ev.fee ? t('quick.holdNote') : t('quick.freeNote')}</p>
+            <p className="text-gray-500 text-xs mt-1">{check ? t('quick.checkNote') : ev.fee ? t('quick.holdNote') : t('quick.freeNote')}</p>
             {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-            <button className="btn-primary w-full py-3 mt-3" disabled={busy}>{busy ? '…' : ev.fee ? t('quick.toPay') : t('quick.book')}</button>
+            <button className="btn-primary w-full py-3 mt-3" disabled={busy}>{busy ? '…' : check ? t('quick.sendRequest') : ev.fee ? t('quick.toPay') : t('quick.book')}</button>
           </section>
         </form>
       )}

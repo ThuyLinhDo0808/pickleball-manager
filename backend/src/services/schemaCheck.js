@@ -75,6 +75,7 @@ const PROBES = [
   { table: 'host_addons', column: 'addon', migration: '20261209090000_dev_requests.sql' },
   { table: 'dev_requests', column: 'kind', migration: '20261209090000_dev_requests.sql' },
   { table: 'featured_communities', column: 'host_note', migration: '20261209090000_dev_requests.sql' },
+  { table: 'users', column: 'contact_phone', migration: '20261210090000_host_contact_phone.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },

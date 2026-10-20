@@ -492,6 +492,26 @@ router.post('/notifications/test', async (req, res) => {
   res.json({ webhook: result });
 });
 
+// The Host's contact phone, shown to players on quick booking pages (to join without leaving
+// their own phone, or to pass a ticket on). Empty = not shown.
+const contactMissing = (e) => e && (e.code === '42703' || e.code === 'PGRST204' || /contact_phone/.test(e.message || ''));
+router.get('/contact', async (req, res) => {
+  const { data, error } = await supabase.from('users').select('contact_phone').eq('id', req.hostId).maybeSingle();
+  if (contactMissing(error)) return res.json({ ready: false, contact_phone: null });
+  if (error) return dbError(res, error);
+  res.json({ ready: true, contact_phone: data?.contact_phone || null });
+});
+router.patch('/contact', async (req, res) => {
+  const phone = String(req.body?.contact_phone ?? '').trim();
+  if (phone && (!/^[0-9+().\s-]{9,20}$/.test(phone) || phone.replace(/\D/g, '').length < 9)) {
+    return res.status(400).json({ error: 'Enter a valid phone number (at least 9 digits).', code: 'bad_phone' });
+  }
+  const { data, error } = await supabase.from('users').update({ contact_phone: phone || null }).eq('id', req.hostId).select('contact_phone').single();
+  if (contactMissing(error)) return res.status(409).json({ error: 'Run migration 20261210090000_host_contact_phone.sql first.', code: 'migration_required' });
+  if (error) return dbError(res, error);
+  res.json({ ready: true, contact_phone: data.contact_phone });
+});
+
 // Where guests pay for events (club sessions use the club's own account when it has one).
 router.get('/payment-settings', async (req, res) => {
   const { data, error } = await supabase

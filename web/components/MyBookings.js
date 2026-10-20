@@ -59,7 +59,7 @@ export default function MyBookings({ signedIn = false }) {
               {(b.slots || []).filter((s) => s.ticket_code).map((s) => (
                 <Link key={s.ticket_code} href={`/t/${s.ticket_code}`} className="btn-secondary text-sm">📱 {t('mybook.qr', { name: s.full_name })}</Link>
               ))}
-              {b.token && <Link href={`/g/b/${b.token}`} className="btn-primary text-sm">{b.state === 'confirmed' ? t('mybook.open') : t('mybook.pay')} →</Link>}
+              {b.token && <Link href={`/g/b/${b.token}`} className="btn-primary text-sm">{b.state === 'confirmed' ? t('mybook.open') : ['requested', 'declined'].includes(b.state) ? t('mybook.view') : t('mybook.pay')} →</Link>}
             </div>
           </div>
         ))}

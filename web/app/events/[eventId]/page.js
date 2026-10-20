@@ -157,9 +157,22 @@ export default function EventDetailPage() {
   // Quick buttons on a request: confirm (main list) or put on the waitlist.
   async function placeTo(p, to) {
     try {
-      await api.post(`/api/events/${eventId}/participants/${p.id}/place`, { to });
+      const r = await api.post(`/api/events/${eventId}/participants/${p.id}/place`, { to });
+      if (r?.group_count > 1) setFlash(t('people.groupApproved', { n: r.group_count }));
     } catch (err) {
       setFlash(err.payload?.code === 'full' ? t('place.full') : err.message);
+    }
+    reloadParticipants();
+    reloadEvent();
+  }
+  // Decline a quick booking's request (the whole group): the player sees it on their page.
+  async function declineGroup(p, n) {
+    if (!window.confirm(t('people.declineAsk', { name: p.booking?.contact_name || p.full_name, n }))) return;
+    try {
+      await api.post(`/api/events/${eventId}/participants/${p.id}/cancel`, { reason: t('people.declineReason') });
+      setFlash(t('people.declined', { name: p.booking?.contact_name || p.full_name }));
+    } catch (err) {
+      setFlash(err.message);
     }
     reloadParticipants();
     reloadEvent();
@@ -281,7 +294,7 @@ export default function EventDetailPage() {
       </Modal>
 
       {/* Sign-ups waiting for the Host: on top of every tab, impossible to miss. */}
-      {event.kind !== 'meeting' && <RequestsSection rows={requested} community={ownerKind === 'community'} onPlace={placeTo} onOpen={(p) => openSheet(p)} />}
+      {event.kind !== 'meeting' && <RequestsSection rows={requested} community={ownerKind === 'community'} onPlace={placeTo} onOpen={(p) => openSheet(p)} onDecline={declineGroup} />}
 
       <div role="tablist" className="grid grid-cols-4 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4">
         {['participants', 'finance', 'matches', 'details'].map((tb) => (

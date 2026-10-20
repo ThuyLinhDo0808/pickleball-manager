@@ -4,11 +4,14 @@
 //      the kèo and the current 30-second window), so a link that leaks stops working at once;
 //      the one just before still opens (up to ~60 s in all) so a scan at the turn works.
 //   2. Opening a live link gives a 30-minute form pass (signed with the same secret).
-//   3. With the pass the player sends their contact (name, phone, self-reported level) and N
-//      slots (name, gender, level each). No info check: every slot is held on the main list
-//      for 30 minutes, the total (fee × N) is transferred once, with one payment note.
-//   4. The player uploads the screenshot on the booking page (a secret link only they get);
-//      the Host confirms the money once and the whole group is on the list (or rejects it).
+//   3. With the pass the player sends their contact (name, gender, phone — or "I'll contact
+//      the Host" when the Host left a contact phone — self-reported level) and N slots.
+//   4. Info check, as for a normal sign-up: the group waits as a request ('requested', no
+//      place held yet); the Host checks who they are and approves the whole group at once
+//      (or declines it). A kèo with "auto approve" skips this step.
+//   5. Approved: every slot is held on the main list, the total (fee × N) is transferred once
+//      with one payment note; the player uploads the screenshot on the booking page (a secret
+//      link only they get), the Host confirms the money once and the group is on the list.
 //
 // Turning the invite off (or making a new one) changes the secret: every link and open pass
 // stops working. Bookings already made keep their own access link.
@@ -23,6 +26,7 @@ const MIGRATION = '20261129090000_quick_guest_booking.sql';
 const WINDOW_MS = 30 * 1000; // the link changes this often
 const PASS_MS = 30 * 60 * 1000; // time to fill in the form once the link is opened
 const HOLD_MS = 30 * 60 * 1000; // time to transfer once the slots are taken
+const APPROVED_HOLD_MS = 12 * 3600 * 1000; // an approved group has 12 hours to transfer
 const MAX_SLOTS = 10;
 const MAX_PROOF = 400000;
 
@@ -98,8 +102,25 @@ async function clubBits(event) {
   return { club_name: data?.name || null, sport: await require('./sport').clubSport(event.club_id).catch(() => 'pickleball') };
 }
 
+// Migration 20261210090000: the Host's contact phone (Tài khoản), shown to players.
+async function contactReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes('20261210090000_host_contact_phone.sql');
+}
+// Who to call about this kèo (joining without leaving a phone, passing a ticket on).
+async function hostContact(event) {
+  if (!event.host_id || !(await contactReady())) return null;
+  const { data } = await supabase.from('users').select('full_name, username, contact_phone').eq('id', event.host_id).maybeSingle();
+  if (!data?.contact_phone) return null;
+  const { data: prof } = data.full_name ? { data: null } : await supabase.from('player_profiles').select('full_name').eq('user_id', event.host_id).maybeSingle();
+  return { name: data.full_name || prof?.full_name || data.username || null, phone: data.contact_phone };
+}
+
 const summary = async (event) => ({
   ...(await clubBits(event)),
+  host_contact: await hostContact(event),
+  // The Host checks the players' info before they pay (unless the kèo is on auto approve).
+  info_check: !event.auto_approve,
   id: event.id,
   title: event.title,
   event_date: event.event_date,
@@ -182,9 +203,14 @@ async function book(eventId, body, userId = null) {
   const name = cleanName(contact.full_name, 'name_required');
   const extras = await extrasReady();
   const phone = String(contact.phone || '').trim();
-  // The phone is no longer asked (gender is); one given by an older page is still checked.
   if (phone && (normalizePhone(phone).length < 9 || phone.length > 20)) throw fail('A valid phone number is required.', 400, 'phone_required');
-  if (!phone && !extras) throw fail('A valid phone number is required.', 400, 'phone_required');
+  // No phone: only when the player chose to contact the Host instead, and the Host left a
+  // contact phone for that (Tài khoản → Thông tin liên hệ).
+  if (!phone) {
+    if (!extras) throw fail('A valid phone number is required.', 400, 'phone_required');
+    if (!(await hostContact(event))) throw fail('Leave a phone number (this organiser has no contact phone yet).', 400, 'phone_required');
+    if (contact.no_phone !== true) throw fail('Leave a phone number, or choose to contact the organiser yourself.', 400, 'phone_or_contact');
+  }
   const contactGender = ['male', 'female'].includes(contact.gender) ? contact.gender : null;
   const meFirst = body?.me_first !== false;
   const contactLevel = cleanLevel(contact.dupr_level);
@@ -210,6 +236,7 @@ async function book(eventId, body, userId = null) {
   if (slots.length > free) throw fail(`Only ${free} place(s) left.`, 409, 'not_enough_places', { free });
 
   const fee = Number(event.fee_amount || 0);
+  const check = !event.auto_approve;
   const token = crypto.randomBytes(24).toString('base64url');
   const { data: booking, error } = await supabase
     .from('event_guest_bookings')
@@ -233,12 +260,16 @@ async function book(eventId, body, userId = null) {
     kind: 'guest',
     guest_booking_id: booking.id,
     fee_amount: fee,
-    ...(paid ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: ref, hold_expires_at: hold } : { status: 'registered' }),
+    ...(check ? { status: 'requested' } : paid ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: ref, hold_expires_at: hold } : { status: 'registered' }),
   }));
   const { error: pErr } = await supabase.from('event_participants').insert(rows);
   if (pErr) {
     await supabase.from('event_guest_bookings').delete().eq('id', booking.id);
     throw pErr;
+  }
+  if (check) {
+    Promise.resolve(require('./notify').notifySignupRequest(event, { ...rows[0], full_name: `${name} (${rows.length} slot)` })).catch(() => {});
+    return { token, booking: await view(event, booking) };
   }
   // Many bookings at the same moment can all see the last places free: re-count after the
   // insert, and if this group went past the limit, take it back.
@@ -273,7 +304,9 @@ async function view(event, booking) {
   const rows = await rowsOf(booking);
   const live = rows.filter((r) => r.status !== 'cancelled');
   const pending = live.filter((r) => r.status === 'pending');
-  const state = !live.length ? 'cancelled' : pending.length ? (pending.some((r) => r.payment_status === 'rejected') ? 'rejected' : pending.some((r) => r.payment_status === 'proof_submitted') ? 'proof_submitted' : 'awaiting_proof') : 'confirmed';
+  // Waiting for the Host's info check; declined by the Host = cancelled by the Host.
+  const declined = !live.length && rows.some((r) => r.status === 'cancelled' && r.cancelled_by === 'host' && !r.payment_ref);
+  const state = live.some((r) => r.status === 'requested') ? 'requested' : !live.length ? (declined ? 'declined' : 'cancelled') : pending.length ? (pending.some((r) => r.payment_status === 'rejected') ? 'rejected' : pending.some((r) => r.payment_status === 'proof_submitted') ? 'proof_submitted' : 'awaiting_proof') : 'confirmed';
   const amount = live.reduce((s, r) => s + Number(r.fee_amount ?? event.fee_amount ?? 0), 0);
   const out = {
     state,
@@ -282,6 +315,7 @@ async function view(event, booking) {
     slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
     amount,
     hold_expires_at: pending[0]?.hold_expires_at || null,
+    host_contact: await hostContact(event),
     payment_note: pending.find((r) => r.payment_status === 'rejected')?.payment_note || null,
   };
   if (pending.length) {
@@ -311,12 +345,36 @@ async function submitProof(token, image) {
   return view(event, booking);
 }
 
-// Host side: the other slots of the same booking still waiting for the money.
+// Host side: the other slots of the same booking at the same step (waiting for the money,
+// or waiting for the info check).
 async function pendingSiblings(participant) {
-  if (!participant.guest_booking_id) return [];
-  const { data, error } = await supabase.from('event_participants').select('*').eq('guest_booking_id', participant.guest_booking_id).eq('status', 'pending').neq('id', participant.id);
+  if (!participant.guest_booking_id || !['pending', 'requested'].includes(participant.status)) return [];
+  const { data, error } = await supabase.from('event_participants').select('*').eq('guest_booking_id', participant.guest_booking_id).eq('status', participant.status).neq('id', participant.id);
   if (error) throw error;
   return data || [];
+}
+
+// Host approves a quick booking's info check: the whole group gets places together (or none
+// when there is not room for all), with one payment note for the one transfer.
+async function approveGroup(event, prior) {
+  const others = await pendingSiblings(prior);
+  const group = [prior, ...others];
+  await require('./signup').expireHolds(event);
+  const free = await freePlaces(event);
+  if (group.length > free) throw fail(`This booking has ${group.length} players but only ${free} place(s) are left.`, 409, 'full');
+  // Paid kèo: the group waits for its one transfer (12 hours, like an approved sign-up);
+  // a free kèo: straight on the list.
+  const fee = Number(event.fee_amount || 0);
+  const patch = fee > 0
+    ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: newPaymentRef(), hold_expires_at: new Date(Date.now() + APPROVED_HOLD_MS).toISOString() }
+    : { status: 'registered', hold_expires_at: null };
+  const { data: rows, error } = await supabase.from('event_participants').update(patch).in('id', group.map((p) => p.id)).eq('status', 'requested').select();
+  if (error) throw error;
+  if (patch.status === 'registered') for (const r of rows || []) await require('./guests').ensureGuestMember(event, r).catch(() => null);
+  const out = (rows || []).find((r) => r.id === prior.id) || rows?.[0] || prior;
+  const notify = require('./notify');
+  for (const r of rows || []) if (r.user_id) Promise.resolve(notify.notifyApproved(event, r)).catch(() => {});
+  return group.length > 1 ? { ...out, group_count: group.length } : out;
 }
 
 // Host's participant list: the booking each grouped slot belongs to.
@@ -341,4 +399,4 @@ async function bookingsOfUser(userId) {
   return out;
 }
 
-module.exports = { bookingsOfUser, MIGRATION, WINDOW_MS, MAX_SLOTS, ready, currentInvite, setInvite, open, book, bookingByToken, view, submitProof, pendingSiblings, bookingsFor, codeFor, windowAt };
+module.exports = { approveGroup, hostContact, bookingsOfUser, MIGRATION, WINDOW_MS, MAX_SLOTS, ready, currentInvite, setInvite, open, book, bookingByToken, view, submitProof, pendingSiblings, bookingsFor, codeFor, windowAt };
