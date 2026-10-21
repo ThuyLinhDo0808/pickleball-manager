@@ -25,8 +25,6 @@ const { normalizePhone } = require('./memberships');
 const MIGRATION = '20261129090000_quick_guest_booking.sql';
 const WINDOW_MS = 30 * 1000; // the link changes this often
 const PASS_MS = 30 * 60 * 1000; // time to fill in the form once the link is opened
-const HOLD_MS = 30 * 60 * 1000; // time to transfer once the slots are taken
-const APPROVED_HOLD_MS = 12 * 3600 * 1000; // an approved group has 12 hours to transfer
 const MAX_SLOTS = 10;
 const MAX_PROOF = 400000;
 
@@ -230,7 +228,9 @@ async function book(eventId, body, userId = null) {
   }
   const contactGender = ['male', 'female'].includes(contact.gender) ? contact.gender : null;
   const meFirst = body?.me_first !== false;
-  const contactLevel = cleanLevel(contact.dupr_level);
+  // Pickleball: no self-typed DUPR score (only the DUPR ID); badminton keeps its level (cấp).
+  const typedLevel = (await clubBits(event)).sport === 'badminton';
+  const contactLevel = typedLevel ? cleanLevel(contact.dupr_level) : null;
   const withDupr = await duprIdReady();
   const contactDupr = withDupr ? cleanDupr(contact.dupr_id) : null;
   const raw = Array.isArray(body?.slots) ? body.slots : [];
@@ -239,7 +239,7 @@ async function book(eventId, body, userId = null) {
   const slots = raw.map((s, i) => ({
     full_name: cleanName(s?.full_name, 'slot_name_required'),
     gender: ['male', 'female'].includes(s?.gender) ? s.gender : i === 0 && meFirst ? contactGender : null,
-    dupr_level: cleanLevel(s?.dupr_level),
+    dupr_level: typedLevel ? cleanLevel(s?.dupr_level) : null,
     dupr_id: withDupr ? cleanDupr(s?.dupr_id) : null,
   }));
   await require('./moderation').assertCanJoin(event, { phone: phone || null, userId }); // blocked by this Host / club
@@ -263,7 +263,7 @@ async function book(eventId, body, userId = null) {
   if (error) throw error;
   const paid = fee > 0;
   const ref = paid ? newPaymentRef() : null;
-  const hold = new Date(Date.now() + HOLD_MS).toISOString();
+  const hold = new Date(Date.now() + require('./attendance').approvedHoldMs(event)).toISOString();
   const at = Date.now();
   const rows = slots.map((s, i) => ({
     event_id: event.id,
@@ -388,11 +388,11 @@ async function approveGroup(event, prior) {
   await require('./signup').expireHolds(event);
   const free = await freePlaces(event);
   if (group.length > free) throw fail(`This booking has ${group.length} players but only ${free} place(s) are left.`, 409, 'full');
-  // Paid kèo: the group waits for its one transfer (12 hours, like an approved sign-up);
+  // Paid kèo: the group waits for its one transfer (until 12 hours before the start, like an approved sign-up);
   // a free kèo: straight on the list.
   const fee = Number(event.fee_amount || 0);
   const patch = fee > 0
-    ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: newPaymentRef(), hold_expires_at: new Date(Date.now() + APPROVED_HOLD_MS).toISOString() }
+    ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: newPaymentRef(), hold_expires_at: new Date(Date.now() + require('./attendance').approvedHoldMs(event)).toISOString() }
     : { status: 'registered', hold_expires_at: null };
   const { data: rows, error } = await supabase.from('event_participants').update(patch).in('id', group.map((p) => p.id)).eq('status', 'requested').select();
   if (error) throw error;

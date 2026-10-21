@@ -7,7 +7,15 @@ const { newPaymentRef } = require('./payment');
 const { ensureGuestMember, guestsReady } = require('./guests');
 
 const PROMOTED_HOLD_MS = 2 * 3600 * 1000; // a promoted guest has 2 hours to pay
-const APPROVED_HOLD_MS = 12 * 3600 * 1000; // an approved request has 12 hours to pay
+const PAY_BEFORE_START_MS = 12 * 3600 * 1000; // an approved request pays up to 12 hours before the start
+const LATE_HOLD_MS = 30 * 60 * 1000; // approved later than that: 30 minutes to pay
+
+// How long an approved (not yet paid) place is held: until 12 hours before the kèo starts
+// (VD bắt đầu 24/10 17:00 → giữ đến 24/10 05:00); approved later than that, 30 minutes.
+function approvedHoldMs(event, now = Date.now()) {
+  const until = eventStartMs(event) - PAY_BEFORE_START_MS;
+  return Number.isFinite(until) && until - now > LATE_HOLD_MS ? until - now : LATE_HOLD_MS;
+}
 
 const ATTENDANCE_ACTIONS = ['check-in', 'no-show', 'reset'];
 
@@ -159,7 +167,7 @@ async function setPlace(event, prior, to) {
       .in('status', HOLDS_PLACE);
     if (error) throw error;
     if ((count || 0) >= event.slots) throw httpError('The main list is full: add places or move someone out first.', 409, 'full');
-    patch = await placePatch(event, prior, prior.status === 'requested' ? APPROVED_HOLD_MS : PROMOTED_HOLD_MS);
+    patch = await placePatch(event, prior, prior.status === 'requested' ? approvedHoldMs(event) : PROMOTED_HOLD_MS);
   } else {
     if (prior.status === target) return prior;
     // Out of the main list: an unpaid hold is dropped (a paid fee stays paid).
@@ -311,6 +319,7 @@ async function checkInByCode(event, code) {
 
 module.exports = {
   eventStartMs,
+  approvedHoldMs,
   PLACES,
   setPlace,
   ATTENDANCE_ACTIONS,
