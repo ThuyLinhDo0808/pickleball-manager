@@ -4,12 +4,12 @@ import { BADMINTON_LEVELS } from '@/lib/levels';
 
 // Level field: a DUPR number (pickleball) or a named step (badminton: Yếu … Giỏi).
 // `sport` defaults to the current club's sport.
-export default function LevelInput({ value, onChange, sport: sportProp, id, placeholder, className = 'input', required = false }) {
+export default function LevelInput({ value, onChange, sport: sportProp, id, placeholder, className = 'input', required = false, 'aria-label': ariaLabel }) {
   const { t, sport: clubSport } = useI18n();
   const sport = sportProp || clubSport;
   if (sport === 'badminton') {
     return (
-      <select id={id} className={className} required={required} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+      <select id={id} aria-label={ariaLabel} className={className} required={required} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
         <option value="">{placeholder || '—'}</option>
         {BADMINTON_LEVELS.map((n) => (
           <option key={n} value={n}>{t(`level.b${n}`)}</option>
@@ -20,6 +20,7 @@ export default function LevelInput({ value, onChange, sport: sportProp, id, plac
   return (
     <input
       id={id}
+      aria-label={ariaLabel}
       className={className}
       type="number"
       step="0.01"

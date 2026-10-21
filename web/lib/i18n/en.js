@@ -2237,6 +2237,11 @@ export const en = {
     openHint: 'Tap a name to see details, memberships and notes; press ✏️ in the Edit column to edit (switching the type to Guest moves them to the Guest members tab).',
   },
   events: {
+    levelMen: "DUPR men",
+    levelWomen: "DUPR women",
+    levelRange: "DUPR",
+    rangeFrom: "from",
+    rangeTo: "to",
     levelMinMen: "Men's DUPR from",
     levelMaxMen: "Men's DUPR to",
     levelMinWomen: "Women's DUPR from",

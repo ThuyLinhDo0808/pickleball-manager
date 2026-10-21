@@ -2237,6 +2237,11 @@ export const vi = {
     openHint: "Bấm vào tên để xem chi tiết, gói hội viên và ghi chú; bấm ✏️ để sửa thông tin. Đổi Hình thức sang Giao lưu sẽ chuyển người đó sang tab Thành viên giao lưu.",
   },
   events: {
+    levelMen: "DUPR Nam",
+    levelWomen: "DUPR Nữ",
+    levelRange: "DUPR",
+    rangeFrom: "từ",
+    rangeTo: "đến",
     levelMinMen: "DUPR Nam từ",
     levelMaxMen: "DUPR Nam đến",
     levelMinWomen: "DUPR Nữ từ",

@@ -157,6 +157,20 @@ function CourtCards({ f, set }) {
   );
 }
 
+function LevelRange({ label, hint = null, min, max, onMin, onMax }) {
+  const { t } = useI18n();
+  return (
+    <fieldset className="col-span-2 min-w-0 rounded-xl border border-navy-600 px-3 pt-1 pb-3">
+      <legend className="flex items-center gap-1.5 px-1 text-sm text-gray-300">{label}{hint && <Hint inline text={hint} />}</legend>
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1"><LevelInput value={min ?? ''} onChange={onMin} placeholder="—" aria-label={`${label} ${t('events.rangeFrom')}`} /></div>
+        <span className="shrink-0 text-sm text-gray-400">{t('events.rangeTo')}</span>
+        <div className="min-w-0 flex-1"><LevelInput value={max ?? ''} onChange={onMax} placeholder="—" aria-label={`${label} ${t('events.rangeTo')}`} /></div>
+      </div>
+    </fieldset>
+  );
+}
+
 function Field({ label, hint, span = 1, children }) {
   const cls = `min-w-0 ${{ 1: 'col-span-1', 2: 'col-span-2', 4: 'col-span-2 md:col-span-4' }[span]}`;
   return (
@@ -397,7 +411,9 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     setBusy(true);
     setSaved(false);
     try {
-      await onSubmit(f);
+      // A new kèo always takes sign-ups and closes by itself at the cancel deadline
+      // (changed later on the kèo page / edit form).
+      await onSubmit(showStatus ? f : { ...f, allow_public_registration: true, deadline_mode: 'auto', deadline_auto: true });
       setSaved(true);
     } catch (err) {
       setError(err.message);
@@ -619,21 +635,10 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               })}
             </div>
           </Field>
-          <Field label={genderSplit ? t('events.levelMinMen') : t('events.levelMin')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null}>
-            <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
-          </Field>
-          <Field label={genderSplit ? t('events.levelMaxMen') : t('events.levelMax')}>
-            <LevelInput value={f.level_max} onChange={(v) => set({ level_max: v })} placeholder="—" />
-          </Field>
+          {/* One box per range: "DUPR Nam" with [từ] đến [đến]; women the same. */}
+          <LevelRange label={genderSplit ? t('events.levelMen') : t('events.levelRange')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null} min={f.level_min} max={f.level_max} onMin={(v) => set({ level_min: v })} onMax={(v) => set({ level_max: v })} />
           {genderSplit ? (
-            <>
-              <Field label={t('events.levelMinWomen')}>
-                <LevelInput value={f.level_min_f} onChange={(v) => set({ level_min_f: v })} placeholder="—" />
-              </Field>
-              <Field label={t('events.levelMaxWomen')}>
-                <LevelInput value={f.level_max_f} onChange={(v) => set({ level_max_f: v })} placeholder="—" />
-              </Field>
-            </>
+            <LevelRange label={t('events.levelWomen')} min={f.level_min_f} max={f.level_max_f} onMin={(v) => set({ level_min_f: v })} onMax={(v) => set({ level_max_f: v })} />
           ) : (
             !meeting && (
               <div className="col-span-2 md:col-span-4 -mt-1">
@@ -641,7 +646,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               </div>
             )
           )}
-          <Field label={t('policy.refundLabel')} hint={f.no_refund ? t('policy.noRefundHint') : f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
+          <Field span={2} label={t('policy.refundLabel')} hint={f.no_refund ? t('policy.noRefundHint') : f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
             <select
               className="input"
               value={f.no_refund ? 'no' : f.cancel_deadline_hours}
@@ -652,7 +657,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </select>
           </Field>
           {f.cancel_deadline_hours !== '' && (
-            <Field label={t('policy.halfLabel')}>
+            <Field span={2} label={t('policy.halfLabel')}>
               <select className="input" value={halfHours(f.cancel_deadline_hours, f.cancel_half_hours) ?? ''} onChange={(e) => set({ cancel_half_hours: e.target.value })}>
                 {HALF_PRESETS.filter((h) => h === '' || Number(h) < Number(f.cancel_deadline_hours)).map((h) => <option key={h} value={h}>{h === '' ? t('policy.noHalf') : t('policy.hoursShort', { h })}</option>)}
               </select>
@@ -661,6 +666,9 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           {!f.no_refund && f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">📋 {policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
           {/* Sign-ups: one state (taking sign-ups / closed) and, apart from it, an optional
               time at which they close by themselves. */}
+          {/* Create: always taking sign-ups, closing at the cancel deadline (one line). Edit: both choices. */}
+          {showStatus && (
+            <>
           <Field label={t('reg.label')} span={4} hint={t('reg.hint')}>
             <div className="grid grid-cols-2 gap-1.5 mt-1 max-w-md" role="radiogroup" aria-label={t('reg.label')}>
               {[[true, `🟢 ${t('reg.open')}`], [false, `🔒 ${t('reg.closed')}`]].map(([v, label]) => (
@@ -690,6 +698,13 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <input className="input mt-1.5 max-w-md" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} aria-label={t('reg.autoClose')} />
             )}
           </Field>
+            </>
+          )}
+          {!showStatus && (
+            <p className="col-span-2 md:col-span-4 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-100">
+              🟢 {t('reg.open')} · {autoAt ? (sessions > 1 ? t('dl.autoEach', { h: f.cancel_deadline_hours || 0, time: autoAt.slice(11, 16) }) : t('dl.autoAt', { at: fmtLocal(autoAt), h: f.cancel_deadline_hours || 0 })) : t('dl.needStart')}
+            </p>
+          )}
           <CostItems items={f.cost_items} onChange={(cost_items) => set({ cost_items })} sessions={sessions || 1} />
         </Section>
 
