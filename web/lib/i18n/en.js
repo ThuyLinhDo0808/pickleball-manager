@@ -2916,6 +2916,7 @@ export const en = {
     already_member: "This account is already another member of the club.",
     already_on: "This feature is already on for you.",
     already_on_event: "Everyone picked is already on this event.",
+    not_club_member: "The people picked are not in this event's community.",
     already_on_list: "This person is already on the list.",
     already_open: "You already asked for this feature.",
     already_owner: "This email is already an owner.",

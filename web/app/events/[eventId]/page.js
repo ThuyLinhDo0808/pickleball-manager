@@ -75,8 +75,8 @@ export default function EventDetailPage() {
     [eventId]
   );
   const { data: finance, reload: reloadFinance } = useLoad(() => api.get(`/api/events/${eventId}/finance`), [eventId]);
-  // Import from the club the event belongs to, falling back to the selected club.
-  const importClubId = event?.club_id || club?.id;
+  // Import only from the club / community the event belongs to (never the selected one).
+  const importClubId = event?.club_id || null;
   const { data: clubMembers } = useLoad(
     () => (importClubId ? api.get(`/api/clubs/${importClubId}/members`) : Promise.resolve([])),
     [importClubId]
@@ -354,9 +354,15 @@ export default function EventDetailPage() {
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <p className="text-gray-400 text-sm">{t('events.importFromClub')}</p>
                     {pickable.length > 0 && (
-                      <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setSelectedIds(all ? [] : pickable.map((m) => m.id))}>
-                        {all ? `☐ ${t('events.selectNone')}` : `☑ ${t('events.selectAll', { n: pickable.length })}`}
-                      </button>
+                      <label className="flex items-center gap-2 text-xs text-gray-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={all}
+                          ref={(el) => { if (el) el.indeterminate = !all && selectedIds.length > 0; }}
+                          onChange={() => setSelectedIds(all ? [] : pickable.map((m) => m.id))}
+                        />
+                        {all ? t('events.selectNone') : t('events.selectAll', { n: pickable.length })}
+                      </label>
                     )}
                   </div>
                 );

@@ -1185,11 +1185,20 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
     });
   }
 
+  // Only members of the event's own club / community (an old kèo without one: the Host's clubs).
+  let clubIds = [req.event.club_id];
+  if (!req.event.club_id) {
+    const { data: own } = await supabase.from('clubs').select('id').eq('host_id', req.event.host_id);
+    clubIds = (own || []).map((c) => c.id);
+  }
   const { data: found, error: mErr } = await supabase
     .from('club_members')
     .select('*')
+    .in('club_id', clubIds.length ? clubIds : ['00000000-0000-0000-0000-000000000000'])
     .in('id', memberIds);
   if (mErr) return dbError(res, mErr);
+  // Members of another club / community are never imported.
+  if (!(found || []).length) return res.status(400).json({ error: 'These members are not in this event\'s club.', code: 'not_club_member' });
   // Already on this event (any list but cancelled): not added a second time.
   const { data: onList, error: oErr } = await supabase
     .from('event_participants')

@@ -2916,6 +2916,7 @@ export const vi = {
     already_member: "Tài khoản này đã là một thành viên khác của CLB.",
     already_on: "Tính năng này đã được bật cho bạn.",
     already_on_event: "Những người đã chọn đều đã có trong sự kiện này.",
+    not_club_member: "Những người đã chọn không thuộc cộng đồng của kèo này.",
     already_on_list: "Người này đã có trong danh sách.",
     already_open: "Bạn đã gửi yêu cầu này rồi, đang chờ xử lý.",
     already_owner: "Email này đã là Owner.",
