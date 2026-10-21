@@ -61,3 +61,11 @@ export function translate(lang, key, params, sport, space) {
 
 export const SUPPORTED_LANGS = Object.keys(DICTS);
 export { DEFAULT_LANG };
+
+// A server error in the current language: its code looked up in that language's apiErr
+// (no fallback to another language). null = no translation, keep the server message.
+export function apiErrorText(lang, code, params) {
+  if (!code) return null;
+  const val = DICTS[lang]?.apiErr?.[code];
+  return typeof val === 'string' ? interpolate(val, params) : null;
+}

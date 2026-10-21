@@ -1,4 +1,6 @@
 'use client';
+import HostPaymentSettings from '@/components/HostPaymentSettings';
+import Modal from '@/components/Modal';
 import { rangeOfKeys } from '@/lib/levelRange';
 import LevelInput from '@/components/LevelInput';
 import { useEffect, useState } from 'react';
@@ -370,7 +372,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const maxIncome = Number(f.fee_amount) * Number(f.slots || 0);
   // Where players pay: the club's account, else the host's. Neither set -> players
   // cannot pay a fee, so say so before the kèo is opened.
-  const { data: payTo } = useLoad(
+  const { data: payTo, reload: reloadPayTo } = useLoad(
     () => Promise.all([
       clubId ? api.get(`/api/clubs/${clubId}`).catch(() => null) : null,
       api.get('/api/host/payment-settings').catch(() => null),
@@ -378,6 +380,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     [clubId]
   );
   const noPayout = Number(f.fee_amount) > 0 && payTo && !payTo.ok;
+  // Missing payout account: filled in a pop-up, then back to this form (nothing lost).
+  const [payoutOpen, setPayoutOpen] = useState(false);
   // A new kèo starts at the club's courts: address and Google Maps link from Hồ sơ CLB.
   useEffect(() => {
     if (!clubId || !prefillFromClub) return;
@@ -395,6 +399,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     set({ services: (has ? parts.filter((x) => x.toLowerCase() !== word.toLowerCase()) : [...parts, word]).join(', ') });
   };
   return (
+    <>
       <form onSubmit={submit} className="w-full lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-4 lg:items-start">
         <div className="min-w-0">
         <Section n={1} title={t('create.basic')}>
@@ -479,7 +484,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
             {noPayout && (
               <p className="mt-1 text-[11px] text-amber-300">
-                ⚠️ {t('create.noPayout')} <Link href="/account#payout" className="underline">{t('create.noPayoutLink')}</Link>
+                ⚠️ {t('create.noPayout')} <button type="button" className="underline text-lime-300" onClick={() => setPayoutOpen(true)}>{t('quickfix.add')}</button>
               </p>
             )}
           </Field>
@@ -715,6 +720,12 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </div>
           </div>
         </aside>
-      </form>
+    </form>
+      {/* Outside the event form: the pop-up's own form must not submit this one. */}
+      <Modal open={payoutOpen} title={`🏦 ${t('paySet.title')}`} onClose={() => setPayoutOpen(false)}>
+        <p className="text-gray-400 text-sm mb-3">{t('quickfix.payoutHint')}</p>
+        <HostPaymentSettings bare onSaved={() => { reloadPayTo(); setPayoutOpen(false); }} />
+      </Modal>
+    </>
   );
 }

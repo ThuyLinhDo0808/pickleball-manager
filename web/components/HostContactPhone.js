@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 
 // Host: the phone players see on quick booking pages — to join without leaving their own
 // phone, or to pass a ticket on. Empty = not shown (players must then leave a phone).
-export default function HostContactPhone() {
+export default function HostContactPhone({ bare = false, onSaved = null } = {}) {
   const { t } = useI18n();
   const [v, setV] = useState(null);
   const [saved, setSaved] = useState('');
@@ -28,6 +28,7 @@ export default function HostContactPhone() {
       setV(r.contact_phone || '');
       setSaved(r.contact_phone || '');
       setMsg(t('notify.saved'));
+      onSaved?.(r.contact_phone || null);
     } catch (err) {
       setMsg(err.message);
     } finally {
@@ -36,8 +37,8 @@ export default function HostContactPhone() {
   }
   if (v == null) return null;
   return (
-    <form onSubmit={save} className="rounded-xl border border-navy-600 p-3 mt-4">
-      <h3 className="text-white font-semibold">☎️ {t('hostContact.title')}</h3>
+    <form onSubmit={save} className={bare ? '' : 'rounded-xl border border-navy-600 p-3 mt-4'}>
+      {!bare && <h3 className="text-white font-semibold">☎️ {t('hostContact.title')}</h3>}
       <p className="text-gray-400 text-sm mt-0.5">{t('hostContact.hint')}</p>
       {!saved && <p className="text-amber-200 text-xs mt-1">⚠️ {t('hostContact.missing')}</p>}
       <div className="flex flex-wrap items-end gap-2 mt-2">

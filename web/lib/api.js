@@ -1,6 +1,6 @@
 'use client';
 import { supabase } from './supabaseClient';
-import { translate, DEFAULT_LANG } from './i18n/core';
+import { translate, DEFAULT_LANG, apiErrorText } from './i18n/core';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -32,11 +32,20 @@ export function stopViewAs() {
   try { localStorage.removeItem('pickleball_club'); } catch {}
 }
 
+function localError(data) {
+  if (typeof window === 'undefined' || !data?.code) return null;
+  let lang = 'vi';
+  try {
+    lang = window.localStorage.getItem('pickleball_lang') || 'vi';
+  } catch {}
+  return apiErrorText(lang, data.code, data);
+}
+
 async function request(path, { method = 'GET', body, isPublic = false, withAuth = false } = {}) {
   const as = !isPublic && !path.startsWith('/api/owner') ? viewingAs() : null;
   if (as && method !== 'GET') {
     window.dispatchEvent(new CustomEvent('pb:read-only'));
-    const err = new Error('Chế độ xem chỉ đọc — không thay đổi được dữ liệu.');
+    const err = new Error(localError({ code: 'read_only' }) || 'Chế độ xem chỉ đọc — không thay đổi được dữ liệu.');
     err.status = 403;
     err.payload = { code: 'read_only' };
     throw err;
@@ -88,7 +97,8 @@ async function request(path, { method = 'GET', body, isPublic = false, withAuth 
     window.dispatchEvent(new CustomEvent('pb:suspended', { detail: { reason: data.reason, since: data.since } }));
   }
   if (!res.ok) {
-    const err = new Error(data.error || `Request failed (${res.status})`);
+    // The message in the language the person reads (the server answers in English).
+    const err = new Error(localError(data) || data.error || `Request failed (${res.status})`);
     err.status = res.status;
     err.payload = data;
     throw err;

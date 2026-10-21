@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
-import Link from 'next/link';
+import Modal from '@/components/Modal';
+import HostContactPhone from '@/components/HostContactPhone';
 import Hint from '@/components/ui/Hint';
 
 // Host: the quick invite link of a kèo (no account, straight to the transfer). The link
@@ -19,6 +20,7 @@ export default function QuickInviteCard({ event }) {
   const [origin, setOrigin] = useState('');
   // The Host's contact phone (players who leave no phone call it): remind when missing.
   const [hostPhone, setHostPhone] = useState(undefined);
+  const [phoneOpen, setPhoneOpen] = useState(false);
   useEffect(() => {
     api.get('/api/host/contact').then((r) => setHostPhone(r.ready === false ? 'n/a' : r.contact_phone || null)).catch(() => setHostPhone('n/a'));
   }, []);
@@ -96,7 +98,7 @@ export default function QuickInviteCard({ event }) {
       </div>
       {hostPhone === null && (
         <p className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-xs text-amber-100 my-2">
-          ⚠️ {t('quick.hostPhoneMissing')} <Link href="/account" className="underline text-lime-300">{t('quick.hostPhoneSet')}</Link>
+          ⚠️ {t('quick.hostPhoneMissing')} <button type="button" className="underline text-lime-300" onClick={() => setPhoneOpen(true)}>{t('quickfix.addPhone')}</button>
         </p>
       )}
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
@@ -137,6 +139,10 @@ export default function QuickInviteCard({ event }) {
           </div>
         </div>
       )}
+      <Modal open={phoneOpen} title={`☎️ ${t('hostContact.title')}`} onClose={() => setPhoneOpen(false)}>
+        <p className="text-gray-400 text-sm mb-3">{t('hostContact.hint')}</p>
+        <HostContactPhone bare onSaved={(p) => { setHostPhone(p); if (p) setPhoneOpen(false); }} />
+      </Modal>
     </div>
   );
 }

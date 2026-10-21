@@ -83,7 +83,8 @@ router.get('/public/:publicToken', async (req, res) => {
   const cols = 'id, full_name, dupr_level, status, joined_at, is_organizer, user_id, source_club_member_id, guest_member_id';
   // Players with a place or on the waitlist (not requests waiting for the Host, nor organizers who don't play).
   const listOf = (c) => supabase.from('event_participants').select(c).eq('event_id', event.id).not('status', 'in', '(cancelled,no_show,requested,not_playing)').order('joined_at', { ascending: true });
-  let { data: people, error: pErr } = await listOf(`${cols}, dupr_id`);
+  let { data: people, error: pErr } = await listOf(`${cols}, dupr_id, gender`);
+  if (pErr) ({ data: people, error: pErr } = await listOf(`${cols}, dupr_id`));
   if (pErr) ({ data: people, error: pErr } = await listOf(cols)); // before 20261130090000_dupr_shared.sql
   if (pErr) return dbError(res, pErr);
 
@@ -107,6 +108,8 @@ router.get('/public/:publicToken', async (req, res) => {
       return people.map((p) => ({ full_name: p.full_name, dupr_level: p.dupr_level, status: p.status, is_organizer: p.is_organizer }));
     }),
     public_token: event.public_token,
+    // "Đăng ký nhanh" for players who are not members yet (quick booking, /g/<id>/p-<token>).
+    id: event.id,
   });
 });
 
@@ -148,7 +151,7 @@ async function publicPlayerInfo(event, people) {
   const shared = await require('../services/dupr').latestRatings(people.filter((p) => !memberOf(p)?.dupr_synced_at).map((p) => memberOf(p)?.dupr_id || p.dupr_id)).catch(() => new Map());
   return people.map((p) => {
     const m = memberOf(p);
-    const g = m?.gender || genderOf.get(p.user_id) || null;
+    const g = m?.gender || genderOf.get(p.user_id) || p.gender || null;
     const sh = m?.dupr_synced_at ? null : shared.get(m?.dupr_id || p.dupr_id);
     return {
       full_name: p.full_name,

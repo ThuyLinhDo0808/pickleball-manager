@@ -157,7 +157,8 @@ function MemberEdit({ member, busy, onSave, autoEdit = false, community = false 
         </button>
         {missingInfo(member).length > 0 && (
           <p className="w-full text-xs text-amber-300">
-            ⚠️ {t('members.incompleteDetail', { fields: missingInfo(member).map((k) => t(`members.miss_${k}`)).join(', ') })}
+            ⚠️ {t('members.incompleteDetail', { fields: missingInfo(member).map((k) => t(`members.miss_${k}`)).join(', ') })}{' '}
+            <button type="button" className="underline text-lime-300" onClick={() => { setF(fromMember(member)); setOpen(true); }}>{t('quickfix.add')}</button>
           </p>
         )}
       </div>
