@@ -4,7 +4,6 @@ import DeleteAccount from '@/components/DeleteAccount';
 import AccountSecurity from '@/components/AccountSecurity';
 import MyData from '@/components/MyData';
 import FeedbackButton from '@/components/FeedbackButton';
-import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
@@ -144,10 +143,6 @@ export default function PlayerProfile() {
               <DuprCard dupr={dupr} showLink={false} />
             </div>
           )}
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('level.badmintonProfile')}</label>
-          <LevelInput sport="badminton" value={form.badminton_level} onChange={(v) => setForm((x) => ({ ...x, badminton_level: v }))} />
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('members.birthDate')} *</label>

@@ -69,7 +69,7 @@ async function search(params = {}) {
     const v = term(params[k]);
     if (v) query = query.ilike(k, `%${v}%`);
   }
-  if (SPORTS.includes(params.sport)) query = query.eq('sport', params.sport);
+  query = query.eq('sport', SPORTS.includes(params.sport) ? params.sport : 'pickleball'); // only pickleball is shown for now
   const from = (page - 1) * PAGE;
   const { data, error } = await query.order('name').range(from, from + PAGE); // one extra row: is there a next page?
   if (error) throw error;
@@ -130,6 +130,62 @@ async function profile(clubId) {
       link: e.allow_public_registration && e.status === 'open' ? e.public_token : null,
     })),
   };
+}
+
+// "Tìm kèo": sessions in the next 3 days (today included) that anyone can sign up for,
+// from listed clubs / communities. Filters: q (title, place, club name), province,
+// district. Only pickleball for now.
+const EVENT_DAYS = 3;
+async function events(params = {}) {
+  const today = todayYmd();
+  const { data: clubs, error: cErr } = await supabase.from('clubs').select('id, host_id, name, sport, kind, province, district').eq('is_listed', true).limit(2000);
+  if (cErr) throw cErr;
+  const hidden = await suspendedHosts([...new Set((clubs || []).map((c) => c.host_id))]);
+  const prov = term(params.province).toLowerCase();
+  const dist = term(params.district).toLowerCase();
+  const byId = new Map(
+    (clubs || [])
+      .filter((c) => !hidden.has(c.host_id) && (c.sport || 'pickleball') === 'pickleball')
+      .map((c) => [c.id, c])
+  );
+  if (!byId.size) return { items: [], from: today, to: addDays(today, EVENT_DAYS - 1) };
+  const { data, error } = await supabase
+    .from('v_event_summary')
+    .select('id, club_id, title, event_date, start_time, end_time, location, slots, main_count, waitlist_count, fee_amount, status, kind, allow_public_registration, public_token')
+    .in('club_id', [...byId.keys()])
+    .gte('event_date', today)
+    .lte('event_date', addDays(today, EVENT_DAYS - 1))
+    .eq('status', 'open')
+    .eq('allow_public_registration', true)
+    .order('event_date')
+    .order('start_time')
+    .limit(300);
+  if (error) throw error;
+  const q = term(params.q).toLowerCase();
+  const has = (v, w) => String(v || '').toLowerCase().includes(w);
+  const endMs = require('./attendance').eventEndMs;
+  const items = (data || [])
+    .filter((e) => e.public_token && e.kind !== 'meeting' && endMs(e) > Date.now())
+    .map((e) => ({ e, c: byId.get(e.club_id) }))
+    .filter(({ e, c }) => (!q || has(e.title, q) || has(e.location, q) || has(c.name, q) || has(c.district, q) || has(c.province, q))
+      && (!prov || has(c.province, prov) || has(e.location, prov))
+      && (!dist || has(c.district, dist) || has(e.location, dist)))
+    .slice(0, 100)
+    .map(({ e, c }) => ({
+      id: e.id,
+      title: e.title,
+      event_date: e.event_date,
+      start_time: e.start_time,
+      end_time: e.end_time,
+      location: e.location,
+      slots: e.slots,
+      main_count: e.main_count,
+      waitlist_count: e.waitlist_count,
+      fee_amount: e.fee_amount,
+      link: e.public_token,
+      club: { id: c.id, name: c.name, kind: c.kind || 'club', province: c.province, district: c.district },
+    }));
+  return { items, from: today, to: addDays(today, EVENT_DAYS - 1) };
 }
 
 // The club's avatar / cover picture as an image (data URL stored in club_images).
@@ -223,4 +279,4 @@ async function joinClub(club, userId, body, source) {
   return { state: 'requested', member_id: member.id };
 }
 
-module.exports = { search, profile, image, relation, requestJoin, inviteClub, joinByInvite, term };
+module.exports = { events, addDays, search, profile, image, relation, requestJoin, inviteClub, joinByInvite, term };

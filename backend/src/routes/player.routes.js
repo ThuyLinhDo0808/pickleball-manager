@@ -136,6 +136,14 @@ publicRoutes.get('/discover/clubs', async (req, res) => {
     fail(res, err);
   }
 });
+// "Tìm kèo": open sessions of the next 3 days, by place.
+publicRoutes.get('/discover/events', async (req, res) => {
+  try {
+    res.json(await discover.events(req.query));
+  } catch (err) {
+    fail(res, err);
+  }
+});
 publicRoutes.get('/discover/clubs/:clubId', async (req, res) => {
   if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
   try {
@@ -865,6 +873,42 @@ player.get('/home', async (req, res) => {
         ...summarize((passes || []).filter((p) => p.club_member_id === m.id), today),
       }));
     const upcoming = await upcomingFor(uid, memberIds);
+    // Next 3 days of my clubs / communities (as a member), whether I signed up or not.
+    const memberClubIds = memberClubs.map((c) => c.club_id);
+    let clubSoon = [];
+    if (memberClubIds.length) {
+      const { data: soon } = await supabase
+        .from('v_event_summary')
+        .select('id, club_id, club_name, title, kind, event_date, start_time, end_time, location, status, slots, main_count, waitlist_count, fee_amount, public_token, allow_public_registration')
+        .in('club_id', memberClubIds)
+        .gte('event_date', today)
+        .lte('event_date', require('../services/discover').addDays(today, 2))
+        .in('status', ['open', 'closed'])
+        .order('event_date')
+        .order('start_time')
+        .limit(60);
+      const mine = new Map(upcoming.map((u) => [u.event_id, u.status]));
+      const endMs = require('../services/attendance').eventEndMs;
+      clubSoon = (soon || [])
+        .filter((e) => endMs(e) > Date.now())
+        .map((e) => ({
+          event_id: e.id,
+          club_id: e.club_id,
+          club_name: e.club_name,
+          title: e.title,
+          kind: e.kind,
+          event_date: e.event_date,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          location: e.location,
+          status: e.status,
+          slots: e.slots,
+          main_count: e.main_count,
+          fee_amount: e.fee_amount,
+          link: e.allow_public_registration && e.status === 'open' ? e.public_token : null,
+          my_status: mine.get(e.id) || null,
+        }));
+    }
     const account = await accountInfo(uid);
     res.json({
       email: req.accountEmail || req.hostEmail,
@@ -878,6 +922,7 @@ player.get('/home', async (req, res) => {
       xeve_events: xeve.count || 0,
       plan: await getPlan(uid).catch(() => null),
       upcoming: upcoming.slice(0, 40),
+      club_soon: clubSoon,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
       notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
     });

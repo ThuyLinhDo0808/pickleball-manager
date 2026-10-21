@@ -20,7 +20,6 @@ import { Avatar } from '@/components/PlayerChip';
 import { levelText } from '@/lib/levels';
 import EventFinance from '@/components/EventFinance';
 import { AutoApproveToggle, OrganizersSection, PlaceSheet, RequestsSection } from '@/components/EventPeople';
-import CourtPlan from '@/components/CourtPlan';
 import MapLink from '@/components/MapLink';
 import { exportMatchesJpg } from '@/lib/matchImage';
 import { formatDay, hhmm, localDate } from '@/lib/dates';
@@ -421,8 +420,12 @@ export default function EventDetailPage() {
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <HostTicketPasses event={event} onChanged={refresh} />
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} groups={event.groups} onManage={openSheet} onAction={doAction} />
-          {event.kind !== 'meeting' && <CourtPlan event={event} rows={[...main, ...pending]} onSaved={refresh} />}
+          {/* Several courts: one board per court with the players who signed up for it. */}
+          {event.groups?.length > 1 ? (
+            <CourtBoards event={event} rows={main} t={t} sport={sport} onManage={openSheet} onAction={doAction} />
+          ) : (
+            <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} groups={event.groups} onManage={openSheet} onAction={doAction} />
+          )}
           <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} groups={event.groups} onManage={openSheet} onAction={doAction} />
           <OrganizersSection event={event} people={participants || []} onOpen={openSheet} />
           {cancelled.length > 0 && (
@@ -529,6 +532,72 @@ const shareOf = (p) => (p.refund_percent != null ? p.refund_percent : p.late_can
 // One list (main / waitlist / cancelled) as rows: photo, name + tags, level / gender / DUPR,
 // where they stand and the money. A tap opens the person's sheet with every action;
 // the main list keeps a one-tap check-in for the court.
+// "DUPR 3.29 · Uy tín 80%" from the verified rating; no rating yet = "DUPR NR".
+function DuprBadge({ c, t }) {
+  if (c?.dupr_verified == null) return <span className="rounded border border-navy-500 px-1 text-[10px] font-bold text-gray-300">{t('dupr.nr')}</span>;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white">DUPR {Number(c.dupr_verified).toFixed(2)}</span>
+      {c.dupr_rel != null && <span className="text-[11px] text-gray-300">{t('public.reliability')} {Math.round(Number(c.dupr_rel))}%</span>}
+    </span>
+  );
+}
+
+// One board per court ("Sân 3 · 17:00–20:00 · 6/8"): each player a tile with the avatar,
+// name, gender, DUPR · Uy tín, and the check-in button. Tap a tile for the player's sheet.
+function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
+  const groups = event.groups || [];
+  const boards = [
+    ...groups.map((g) => ({ key: g.id, title: `${t('egroups.courtN', { n: g.courts || '?' })} · ${g.start_time}–${g.end_time}`, slots: g.slots, people: rows.filter((p) => p.group_id === g.id) })),
+    { key: 'none', title: t('egroups.noCourt'), slots: null, people: rows.filter((p) => !groups.some((g) => g.id === p.group_id)) },
+  ].filter((b) => b.key !== 'none' || b.people.length);
+  return (
+    <div className="flex flex-col gap-3 mb-4">
+      {boards.map((b) => (
+        <section key={b.key} className="card !px-3 sm:!px-4">
+          <h3 className="text-white font-semibold mb-2 tabular-nums">🏟 {b.title}{b.slots ? <span className="text-gray-400 font-normal"> · {b.people.length}/{b.slots}</span> : null}</h3>
+          {b.people.length === 0 && !b.slots ? (
+            <p className="text-gray-500 text-sm">—</p>
+          ) : (
+            <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {b.people.map((p) => {
+                const c = p.card || {};
+                const g = c.gender || p.gender;
+                const here = p.status === 'checked_in';
+                return (
+                  <li key={p.id}>
+                    <div role="button" tabIndex={0} onClick={() => onManage(p)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onManage(p))} className="flex h-full flex-col items-center gap-1 rounded-xl border border-navy-600 bg-navy-900/50 p-2.5 text-center cursor-pointer hover:border-navy-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400">
+                      <Avatar src={c.avatar} name={p.full_name} size={48} />
+                      <span className="text-white text-sm font-semibold break-words leading-tight">{p.full_name}</span>
+                      <span className="text-xs text-gray-400">{g ? `${g === 'male' ? '♂' : '♀'} ${t(`members.${g}`)}` : '—'}</span>
+                      {sport === 'pickleball' ? <DuprBadge c={c} t={t} /> : <span className="text-xs text-gray-300">{levelText(c.level ?? p.dupr_level, sport, t) || '—'}</span>}
+                      <button
+                        type="button"
+                        aria-label={`${here ? t('staffView.undo') : t('events.checkIn')}: ${p.full_name}`}
+                        onClick={(e) => { e.stopPropagation(); onAction(p, here ? 'reset' : 'check-in'); }}
+                        className={`mt-1 rounded-full border-2 px-3 py-0.5 text-xs font-semibold whitespace-nowrap ${here ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-500 text-gray-200 hover:border-lime-400 hover:text-lime-300'}`}
+                      >
+                        {here ? `✓ ${t('ux.arrived')}` : t('ux.markArrived')}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+              {/* Places nobody has taken yet. */}
+              {Array.from({ length: Math.max((b.slots || 0) - b.people.length, 0) }, (_, i) => (
+                <li key={`free-${i}`} aria-label={t('egroups.freeSlot')} className="flex min-h-[9.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-navy-600 p-2.5 text-center text-gray-500">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-navy-500 text-lg" aria-hidden>+</span>
+                  <span className="text-xs">{t('egroups.freeSlot')}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, onManage, onAction }) {
   return (
     <section className="card mb-4 !px-2 sm:!px-4">
@@ -585,20 +654,15 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
                       : <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('slot.refundDue')}</span>)}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2.5 text-xs text-gray-400 mt-0.5">
-                    {/* Three different numbers, each with its own name: Điểm trình (the Host's
-                        score + level), DUPR ✓ (from DUPR), DUPR tự nhập (the player's own). */}
+                    {/* Điểm trình (the Host's score + level), then DUPR + Uy tín. */}
                     {(c.skill_score != null || c.level_label) && (
                       <span className="text-gray-200">🎯 {c.skill_score != null ? `${t('members.colSkill')} ${c.skill_score.toFixed(2)}` : ''}{c.level_label ? `${c.skill_score != null ? ' · ' : ''}${c.level_label}` : ''}</span>
                     )}
                     {sport !== 'pickleball' && <span>{level || '—'}</span>}
                     {(c.gender || p.gender) && <span>{(c.gender || p.gender) === 'male' ? '♂' : '♀'} {t(`members.${c.gender || p.gender}`)}</span>}
                     {p.booking && p.booking.contact_phone && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
-                    {sport === 'pickleball' && c.dupr_verified != null ? (
-                      <span className="rounded bg-sky-600/80 px-1 text-[10px] font-bold text-white" title={t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}>
-                        DUPR ✓ {Number(c.dupr_verified).toFixed(2)} <span className="font-normal opacity-80">· {t('dupr.updatedOn', { date: localDate(new Date(c.dupr_updated_at), 'vi-VN') })}</span>
-                      </span>
-                    ) : null}
-                    {sport === 'pickleball' && (c.dupr ?? c.level ?? p.dupr_level) != null && <span>{t('members.colDuprSelf')} {Number(c.dupr ?? c.level ?? p.dupr_level).toFixed(2)}</span>}
+                    {/* DUPR (verified only; none yet = "DUPR NR") and its reliability as "Uy tín". */}
+                    {sport === 'pickleball' && <DuprBadge c={c} t={t} />}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}
                   </span>
                   {/* Phones: status chips and the check-in button on one line under the name. */}
@@ -623,7 +687,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
                   )}
                   </span>
                   {kind === 'waitlist' && <span className="block text-sky-300 text-[11px] mt-0.5">{t('events.waitOrder', { n: idx + 1, at: localDate(p.joined_at, 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) })}</span>}
-                  {kind !== 'cancelled' && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
+                  {!['cancelled', 'main'].includes(kind) && p.cancel_history && <span className="block mt-1" onClick={(e) => e.stopPropagation()}><CancelHistoryBadge name={p.full_name} history={p.cancel_history} /></span>}
                   {p.transferred_from && <span className="block text-gray-500 text-[11px] mt-0.5">{t('slot.from', { name: p.transferred_from })}</span>}
                   {kind === 'cancelled' && (p.cancelled_at || p.cancel_reason) && (
                     <span className="block text-gray-400 text-[11px] mt-0.5">

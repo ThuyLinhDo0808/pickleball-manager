@@ -1091,7 +1091,7 @@ async function playerCards(event, rows) {
     const m = byMember.get(p.source_club_member_id || p.guest_member_id) || null;
     const prof = byUser.get(p.user_id || m?.user_id) || null;
     const sh = shared.get(idOf(p, m, prof));
-    const verified = m?.dupr_synced_at && m.dupr_doubles != null ? { doubles: Number(m.dupr_doubles), at: m.dupr_synced_at } : sh?.doubles != null ? { doubles: sh.doubles, at: sh.at } : null;
+    const verified = m?.dupr_synced_at && m.dupr_doubles != null ? { doubles: Number(m.dupr_doubles), at: m.dupr_synced_at, rel: m.dupr_doubles_rel ?? null } : sh?.doubles != null ? { doubles: sh.doubles, at: sh.at, rel: sh.doubles_rel ?? null } : null;
     cards.set(p.id, {
       member_id: m?.id || null,
       member_type: m?.member_type || null,
@@ -1103,6 +1103,7 @@ async function playerCards(event, rows) {
       dupr: prof?.dupr_level ?? null,
       dupr_verified: verified?.doubles ?? null,
       dupr_updated_at: verified?.at ?? null,
+      dupr_rel: verified?.rel ?? null, // DUPR reliability (%), shown as "Uy tín"
       dupr_id: m?.dupr_id || prof?.dupr_id || p.dupr_id || null,
       district: m?.district || null,
       play_duration: m?.play_duration || null,
@@ -1414,28 +1415,6 @@ async function withGroup(prior, act) {
   for (const p of others) await act(p);
   return others.length ? { ...out, group_count: others.length + 1 } : out;
 }
-
-// Xếp sân: the Host puts each player on a court before they go out ({ assign: [{ id, court }] },
-// court null = not placed yet). Only players on the main list, only the event's / group's courts.
-router.put('/:eventId/courts', async (req, res) => {
-  const eg = require('../services/eventGroups');
-  if (!(await eg.ready())) return res.status(409).json({ error: `Run migration ${eg.MIGRATION} first.`, code: 'migration_required' });
-  const list = Array.isArray(req.body?.assign) ? req.body.assign.slice(0, 500) : [];
-  const { data: rows, error } = await supabase.from('event_participants').select('id, group_id, status').eq('event_id', req.event.id).in('status', MAIN_LIST);
-  if (error) return dbError(res, error);
-  const byId = new Map((rows || []).map((r) => [r.id, r]));
-  const courtsFor = (r) => eg.courtList(eg.groupOf(req.event, r.group_id)?.courts || req.event.court_labels);
-  for (const a of list) {
-    const r = byId.get(a?.id);
-    if (!r) continue;
-    const court = a.court == null || a.court === '' ? null : String(a.court).slice(0, 20);
-    const allowed = courtsFor(r);
-    if (court && allowed.length && !allowed.includes(court)) return res.status(400).json({ error: `Court ${court} is not one of ${allowed.join(', ')}.`, code: 'bad_court' });
-    const { error: uErr } = await supabase.from('event_participants').update({ court }).eq('id', r.id);
-    if (uErr) return dbError(res, uErr);
-  }
-  res.json({ ok: true });
-});
 
 // Delete a cancelled registration (e.g. someone the Host asked to test signing up): it no
 // longer shows in the cancelled list nor counts in the player's cancel history. Not when

@@ -30,7 +30,7 @@ function label(period, ymd, t) {
 // Leaderboard across the whole app: players of every club, guests and Xé Vé players.
 export default function LeaderboardPage() {
   const { t } = useI18n();
-  const [sport, setSport] = useState('pickleball');
+  const sport = 'pickleball'; // only pickleball for now
   const [period, setPeriod] = useState('month');
   const [date, setDate] = useState(todayYmd);
   const [q, setQ] = useState('');
@@ -51,19 +51,6 @@ export default function LeaderboardPage() {
           {['all', 'xeve'].map((s) => (
             <button key={s} role="tab" aria-selected={scope === s} onClick={() => setScope(s)} className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${scope === s ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}>
               {t(`leaderboard.scope_${s}`)}
-            </button>
-          ))}
-        </div>
-        <div role="tablist" className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1">
-          {['pickleball', 'badminton'].map((s) => (
-            <button
-              key={s}
-              role="tab"
-              aria-selected={sport === s}
-              onClick={() => setSport(s)}
-              className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${sport === s ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}
-            >
-              {t(`clubs.sport_${s}`)}
             </button>
           ))}
         </div>

@@ -63,6 +63,23 @@ export default function MembersPage({ tab = 'fixed' }) {
   };
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState([]);
+  // Columns the Host chose to see (kept on this device); Họ tên is always shown.
+  const [hiddenCols, setHiddenCols] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem('pb_member_hidden_cols') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const show = (k) => !hiddenCols.includes(k);
+  const setHidden = (next) => {
+    setHiddenCols(next);
+    try {
+      window.localStorage.setItem('pb_member_hidden_cols', JSON.stringify(next));
+    } catch {
+      /* private mode: just for now */
+    }
+  };
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
@@ -248,6 +265,16 @@ export default function MembersPage({ tab = 'fixed' }) {
             <select className="input !w-auto text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t('memx.sort')}>
               {['default', 'name', 'level', 'joined'].map((k) => <option key={k} value={k}>{t(`memx.sort_${k}`)}</option>)}
             </select>
+            <ColumnPicker
+              cols={[
+                'type', 'gender', 'birth', ...(showPhone ? ['phone'] : []), 'joined',
+                ...(pickleball ? ['dupr', 'duprSelf'] : ['score']),
+                ...(isCommunity ? ['skill'] : []), ...(levelCfg ? ['level'] : []),
+                ...(isGuestTab ? ['played', 'perk', 'notes'] : ['tier']),
+              ]}
+              hidden={hiddenCols}
+              onChange={setHidden}
+            />
             {inactiveCount > 0 && (
               <label className="flex items-center gap-2 text-sm text-gray-300 whitespace-nowrap">
                 <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
@@ -288,7 +315,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-white font-semibold break-words">{m.full_name}</span>
-                          {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
+                          {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} tier={m.vip_tier} />}
                           {tab === 'all' && <span className={`text-[10px] leading-4 rounded-full border px-1.5 ${PLACE_PILL[placeOf(m)]}`}>{t(`xlsx.place_${placeOf(m)}`)}</span>}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
                         </span>
@@ -324,30 +351,30 @@ export default function MembersPage({ tab = 'fixed' }) {
                       </th>
                       <th className="w-12 text-center">{t('members.no')}</th>
                       <th>{t('common.name')}</th>
-                      <th>{t('members.type')}</th>
-                      <th>{t('members.gender')}</th>
-                      <th>{t('members.birthDate')}</th>
-                      {showPhone && <th>{t('common.phone')}</th>}
-                      <th>{t('members.joined')}</th>
+                      {show('type') && <th>{t('members.type')}</th>}
+                      {show('gender') && <th>{t('members.gender')}</th>}
+                      {show('birth') && <th>{t('members.birthDate')}</th>}
+                      {showPhone && show('phone') && <th>{t('common.phone')}</th>}
+                      {show('joined') && <th>{t('members.joined')}</th>}
                       {/* Khu vực is kept (to suggest courts nearby) but not shown in the list. */}
                       {pickleball ? (
                         <>
-                          <th>{t('members.colDuprLinked')}</th>
-                          <th>{t('members.colDuprSelf')}</th>
+                          {show('dupr') && <th>{t('members.colDuprLinked')}</th>}
+                          {show('duprSelf') && <th>{t('members.colDuprSelf')}</th>}
                         </>
                       ) : (
-                        <th>{t('members.colScore')}</th>
+                        show('score') && <th>{t('members.colScore')}</th>
                       )}
-                      {isCommunity && <th>{t('members.colSkill')} <Hint inline text={t('members.colSkillHint')} /></th>}
-                      {levelCfg && <th>{t('members.colLevel')}</th>}
+                      {isCommunity && show('skill') && <th>{t('members.colSkill')} <Hint inline text={t('members.colSkillHint')} /></th>}
+                      {levelCfg && show('level') && <th>{t('members.colLevel')}</th>}
                       {isGuestTab ? (
                         <>
-                          <th>{t('guests.played')}</th>
-                          <th>{t('guests.perk')}</th>
-                          <th>{t('guests.notes')}</th>
+                          {show('played') && <th>{t('guests.played')}</th>}
+                          {show('perk') && <th>{t('guests.perk')}</th>}
+                          {show('notes') && <th>{t('guests.notes')}</th>}
                         </>
                       ) : (
-                        <th>{t('members.tier')}</th>
+                        show('tier') && <th>{t('members.tier')}</th>
                       )}
                       <th className="w-14 text-center">{t('members.editCol')}</th>
                     </tr>
@@ -373,7 +400,6 @@ export default function MembersPage({ tab = 'fixed' }) {
                               >
                                 {m.full_name}
                               </button>
-                              {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} />}
                               {isCommunity && !isGuestTab && m.guest_perk && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
                               {m.account_email && !m.account_verified && (
                                 <span className="text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 whitespace-nowrap">{t('verify.pending')}</span>
@@ -390,54 +416,64 @@ export default function MembersPage({ tab = 'fixed' }) {
                             </div>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap">
-                          <span className={`text-xs rounded-full border px-2 py-0.5 ${PLACE_PILL[placeOf(m)]}`}>
-                            {t(`xlsx.place_${placeOf(m)}`)}
-                          </span>
-                        </td>
-                        <td className="text-gray-300 whitespace-nowrap">{m.gender ? t(`members.${m.gender}`) : miss(m, 'gender')}</td>
-                        <td className="text-gray-300 whitespace-nowrap">
-                          {m.birth_date ? dmy(m.birth_date) : m.birth_year ? (
-                            <>
-                              {m.birth_year} <span className="text-yellow-300/80 text-xs" title={t('members.noDayMonth')}>· {t('members.noDayMonthShort')}</span>
-                            </>
-                          ) : miss(m, 'birthday')}
-                          {isBirthdayMonth(m.birth_date) && <span className="ml-1" title={t('members.birthdayMonth')}>🎂</span>}
-                        </td>
-                        {showPhone && <td className="text-gray-300 whitespace-nowrap tabular-nums">{m.phone || miss(m, 'phone')}</td>}
-                        <td className="text-gray-300 whitespace-nowrap">
-                          {m.joined_on ? (
-                            <>
-                              {my(m.joined_on)}
-                              {!isGuestTab && <span className="text-gray-500 text-xs"> · {tenureLabel(m.joined_on, t)}</span>}
-                            </>
-                          ) : '—'}
-                        </td>
+                        {show('type') && (
+                          <td className="whitespace-nowrap">
+                            <span className={`text-xs rounded-full border px-2 py-0.5 ${PLACE_PILL[placeOf(m)]}`}>
+                              {t(`xlsx.place_${placeOf(m)}`)}
+                            </span>
+                          </td>
+                        )}
+                        {show('gender') && (
+                          <td className="text-gray-300 whitespace-nowrap">{m.gender ? t(`members.${m.gender}`) : miss(m, 'gender')}</td>
+                        )}
+                        {show('birth') && (
+                          <td className="text-gray-300 whitespace-nowrap">
+                            {m.birth_date ? dmy(m.birth_date) : m.birth_year ? (
+                              <>
+                                {m.birth_year} <span className="text-yellow-300/80 text-xs" title={t('members.noDayMonth')}>· {t('members.noDayMonthShort')}</span>
+                              </>
+                            ) : miss(m, 'birthday')}
+                            {isBirthdayMonth(m.birth_date) && <span className="ml-1" title={t('members.birthdayMonth')}>🎂</span>}
+                          </td>
+                        )}
+                        {showPhone && show('phone') && <td className="text-gray-300 whitespace-nowrap tabular-nums">{m.phone || miss(m, 'phone')}</td>}
+                        {show('joined') && (
+                          <td className="text-gray-300 whitespace-nowrap">
+                            {m.joined_on ? (
+                              <>
+                                {my(m.joined_on)}
+                                {!isGuestTab && <span className="text-gray-500 text-xs"> · {tenureLabel(m.joined_on, t)}</span>}
+                              </>
+                            ) : '—'}
+                          </td>
+                        )}
                         {pickleball ? (
                           <>
-                            <td className="whitespace-nowrap">
-                              {m.dupr_linked != null ? (
-                                <>
-                                  <span className="text-white font-semibold tabular-nums">{m.dupr_linked.toFixed(2)}</span>
-                                  <span className="block text-[10px] text-gray-500">{t('dupr.updatedOn', { date: localDate(new Date(m.dupr_linked_at), 'vi-VN') })}</span>
-                                </>
-                              ) : m.dupr_manual != null ? (
-                                <span className="text-gray-300 tabular-nums" title={t('members.duprManualHint')}>{m.dupr_manual.toFixed(2)} <span className="text-[10px] text-gray-500">{t('members.duprManual')}</span></span>
-                              ) : (
-                                <span className="text-gray-500">—</span>
-                              )}
-                            </td>
-                            <td className="text-gray-300 tabular-nums">{m.dupr_self != null ? m.dupr_self.toFixed(2) : '—'}</td>
+                            {show('dupr') && (
+                              <td className="whitespace-nowrap">
+                                {m.dupr_linked != null ? (
+                                  <>
+                                    <span className="text-white font-semibold tabular-nums">{m.dupr_linked.toFixed(2)}</span>
+                                    <span className="block text-[10px] text-gray-500">{t('dupr.updatedOn', { date: localDate(new Date(m.dupr_linked_at), 'vi-VN') })}</span>
+                                  </>
+                                ) : m.dupr_manual != null ? (
+                                  <span className="text-gray-300 tabular-nums" title={t('members.duprManualHint')}>{m.dupr_manual.toFixed(2)} <span className="text-[10px] text-gray-500">{t('members.duprManual')}</span></span>
+                                ) : (
+                                  <span className="text-gray-500">—</span>
+                                )}
+                              </td>
+                            )}
+                            {show('duprSelf') && <td className="text-gray-300 tabular-nums">{m.dupr_self != null ? m.dupr_self.toFixed(2) : '—'}</td>}
                           </>
                         ) : (
-                          <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
+                          show('score') && <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>
                         )}
-                        {isCommunity && (
+                        {isCommunity && show('skill') && (
                           <td onClick={(e) => e.stopPropagation()}>
                             <SkillScoreCell club={club} member={m} onSaved={reload} />
                           </td>
                         )}
-                        {levelCfg && (
+                        {levelCfg && show('level') && (
                           <td className="text-gray-200 whitespace-nowrap" onClick={(e) => levelCfg.mode === 'manual' && e.stopPropagation()}>
                             {levelCfg.mode === 'manual' ? (
                               <select
@@ -463,15 +499,17 @@ export default function MembersPage({ tab = 'fixed' }) {
                         )}
                         {isGuestTab ? (
                           <>
-                            <td className="text-gray-300 whitespace-nowrap">
-                              {m.guest_stats?.played ?? 0}
-                              {m.guest_stats?.last_played && <span className="text-gray-500 text-xs"> · {dmy(m.guest_stats.last_played).slice(0, 5)}</span>}
-                            </td>
-                            <td><GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} /></td>
-                            <td className="!whitespace-normal min-w-[11rem] max-w-[16rem]" onClick={(e) => e.stopPropagation()}><GuestNoteCell club={club} member={m} onSaved={reload} /></td>
+                            {show('played') && (
+                              <td className="text-gray-300 whitespace-nowrap">
+                                {m.guest_stats?.played ?? 0}
+                                {m.guest_stats?.last_played && <span className="text-gray-500 text-xs"> · {dmy(m.guest_stats.last_played).slice(0, 5)}</span>}
+                              </td>
+                            )}
+                            {show('perk') && <td><GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} /></td>}
+                            {show('notes') && <td className="!whitespace-normal min-w-[11rem] max-w-[16rem]" onClick={(e) => e.stopPropagation()}><GuestNoteCell club={club} member={m} onSaved={reload} /></td>}
                           </>
                         ) : (
-                          <td className="text-gray-300">{m.vip_stars > 0 ? <VipBadge stars={m.vip_stars} /> : m.tier ? t(`members.${m.tier}`) : '—'}</td>
+                          show('tier') && <td className="text-gray-300">{m.vip_tier || m.vip_stars > 0 ? <VipBadge stars={m.vip_stars} tier={m.vip_tier} /> : m.tier ? t(`members.${m.tier}`) : '—'}</td>
                         )}
                         <td className="text-center">
                           <button
@@ -552,5 +590,37 @@ function SkillScoreCell({ club, member, onSaved }) {
       onBlur={save}
       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
     />
+  );
+}
+
+// "Cột hiển thị": tick the columns to see (Họ tên always stays); kept on this device.
+function ColumnPicker({ cols, hidden, onChange }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const shownN = cols.filter((k) => !hidden.includes(k)).length;
+  return (
+    <div className="relative">
+      <button type="button" className="btn-secondary text-sm !py-2 whitespace-nowrap" aria-expanded={open} onClick={() => setOpen(!open)}>
+        ⚙️ {t('memx.cols')} ({shownN + 1}/{cols.length + 1})
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-navy-600 bg-navy-900 p-3 shadow-xl">
+          <p className="text-xs text-gray-400 mb-2">{t('memx.colsHint')}</p>
+          <label className="flex items-center gap-2 text-sm text-gray-400 py-0.5">
+            <input type="checkbox" checked disabled /> {t('common.name')}
+          </label>
+          {cols.map((k) => (
+            <label key={k} className="flex items-center gap-2 text-sm text-gray-200 py-0.5 cursor-pointer">
+              <input type="checkbox" checked={!hidden.includes(k)} onChange={(e) => onChange(e.target.checked ? hidden.filter((x) => x !== k) : [...hidden, k])} />
+              {t(`memx.col_${k}`)}
+            </label>
+          ))}
+          <div className="flex justify-between gap-2 mt-2 pt-2 border-t border-navy-700">
+            <button type="button" className="text-xs text-lime-300 underline" onClick={() => onChange([])}>{t('memx.colsAll')}</button>
+            <button type="button" className="text-xs text-gray-300" onClick={() => setOpen(false)}>{t('common.close')}</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

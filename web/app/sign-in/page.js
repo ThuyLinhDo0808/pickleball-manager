@@ -1,4 +1,5 @@
 'use client';
+import { peekReturn, rememberReturn } from '@/lib/returnTo';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,7 +13,11 @@ import { localDate } from '@/lib/dates';
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
   const next = new URLSearchParams(window.location.search).get('next') || '';
-  return next.startsWith('/') && !next.startsWith('//') ? next : '/home';
+  if (next.startsWith('/') && !next.startsWith('//')) {
+    rememberReturn(next); // kept for after an email confirmation link
+    return next;
+  }
+  return peekReturn() || '/home';
 }
 
 const USERNAME = /^[a-z][a-z0-9._]{2,29}$/;

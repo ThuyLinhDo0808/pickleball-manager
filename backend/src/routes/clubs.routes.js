@@ -371,6 +371,13 @@ router.get('/:clubId/members', async (req, res) => {
     : { data: [] };
   if (pErr) return dbError(res, pErr);
   const today = todayYmd();
+  // Hạng hội viên (Bạc / Vàng / Kim cương) of each plan, for the member's current pass.
+  const planIds = [...new Set((passes || []).map((p) => p.plan_id))];
+  const tierOf = new Map();
+  if (planIds.length && (await tierReady())) {
+    const { data: tiers } = await supabase.from('membership_plans').select('id, tier').in('id', planIds);
+    for (const x of tiers || []) if (x.tier) tierOf.set(x.id, x.tier);
+  }
   // Guests: sessions played and cancellations after a paid / confirmed place.
   let stats = {};
   try {
@@ -390,13 +397,13 @@ router.get('/:clubId/members', async (req, res) => {
     dupr_manual: !m.dupr_synced_at && m.dupr_doubles != null ? Number(m.dupr_doubles) : null, // typed by the Host from the DUPR app
     dupr_self: m.user_id && selfOf.get(m.user_id) != null ? Number(selfOf.get(m.user_id)) : !m.dupr_synced_at && m.dupr_doubles == null && m.dupr_level != null ? Number(m.dupr_level) : null,
     account_email: users?.email || null,
-    ...summarize(passes.filter((p) => p.club_member_id === m.id), today),
+    ...summarize(passes.filter((p) => p.club_member_id === m.id), today, tierOf),
     ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
     ...(settings && settings.levels.mode !== 'none' ? { level: CS.levelOf(m, settings) } : {}),
   }));
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
   if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
-    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score', 'newcomer_until'];
+    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'vip_tier', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score', 'newcomer_until'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
   res.json(rows);
@@ -938,8 +945,16 @@ function cleanValidity(v) {
   return n;
 }
 
+const PLAN_TIERS = ['silver', 'gold', 'diamond']; // Hội viên Bạc / Vàng / Kim cương
+async function tierReady() {
+  const st = await require('../services/schemaCheck').schemaStatus();
+  return !st.missing_migrations.includes('20261213090000_plan_tiers.sql');
+}
+
 router.post('/:clubId/plans', requireFeature('membership_plans'), async (req, res) => {
   const { name, price, sessions_included } = req.body;
+  if (req.body.tier != null && req.body.tier !== '' && !PLAN_TIERS.includes(req.body.tier)) return res.status(400).json({ error: 'tier must be silver, gold or diamond.', code: 'bad_tier' });
+  const tier = PLAN_TIERS.includes(req.body.tier) && (await tierReady()) ? { tier: req.body.tier } : {};
   let validity;
   try {
     validity = cleanValidity(req.body.validity_months);
@@ -961,7 +976,7 @@ router.post('/:clubId/plans', requireFeature('membership_plans'), async (req, re
   }
   const { data, error } = await supabase
     .from('membership_plans')
-    .insert({ club_id: req.club.id, name, period, price: Number(price), sessions_included: Math.floor(Number(sessions_included || 0)), ...(validity ? { validity_months: validity } : {}) })
+    .insert({ club_id: req.club.id, name, period, price: Number(price), sessions_included: Math.floor(Number(sessions_included || 0)), ...(validity ? { validity_months: validity } : {}), ...tier })
     .select()
     .single();
   if (error) return dbError(res, error);
@@ -971,7 +986,12 @@ router.post('/:clubId/plans', requireFeature('membership_plans'), async (req, re
 // Edit a plan. Periods already registered keep their dates and amounts; the new
 // period / price apply to the next registrations.
 router.patch('/:clubId/plans/:planId', requireFeature('membership_plans'), async (req, res) => {
-  const fields = pick(req.body, ['name', 'period', 'price', 'sessions_included', 'is_active', 'validity_months']);
+  const fields = pick(req.body, ['name', 'period', 'price', 'sessions_included', 'is_active', 'validity_months', 'tier']);
+  if ('tier' in fields) {
+    if (fields.tier === '' || fields.tier == null) fields.tier = null;
+    else if (!PLAN_TIERS.includes(fields.tier)) return res.status(400).json({ error: 'tier must be silver, gold or diamond.', code: 'bad_tier' });
+    if (!(await tierReady())) delete fields.tier;
+  }
   if ('validity_months' in fields) {
     try {
       fields.validity_months = cleanValidity(fields.validity_months);
@@ -1031,12 +1051,27 @@ router.post('/:clubId/members/:memberId/memberships', requireFeature('membership
   } catch (err) {
     return res.status(err.status || 400).json({ error: err.message });
   }
+  // Bought part-way through a month / quarter / year (one period): it starts on the day bought
+  // and holds only the sessions left (VD gói tháng 8 buổi mua sau 1 tuần -> 4 buổi), set by the Host.
+  let partial = null;
+  if (!plan.validity_months && count === 1 && /^\d{4}-\d{2}-\d{2}$/.test(req.body.start_date || '')) {
+    const day = req.body.start_date;
+    if (day < ranges[0].starts_on || day > ranges[0].ends_on) return res.status(400).json({ error: 'start_date must be inside the period.', code: 'start_outside_period' });
+    ranges[0] = { ...ranges[0], starts_on: day };
+    const n = parseInt(req.body.sessions, 10);
+    if (Number(plan.sessions_included) > 0 && Number.isInteger(n)) {
+      if (n < 1 || n > Number(plan.sessions_included)) return res.status(400).json({ error: `sessions must be 1-${plan.sessions_included}.`, code: 'bad_sessions' });
+      const st = await require('../services/schemaCheck').schemaStatus();
+      if (!st.missing_migrations.includes('20261212090000_membership_partial.sql')) partial = n;
+    }
+  }
   const rows = ranges.map((range) => ({
     club_member_id: req.member.id,
     plan_id: plan.id,
     ...range,
     amount,
     status: PAY_STATUSES.includes(status) ? status : 'pending',
+    ...(partial ? { sessions_included: partial } : {}),
   }));
   const { data, error } = await supabase.from('memberships').insert(rows).select();
   if (error) return dbError(res, error);

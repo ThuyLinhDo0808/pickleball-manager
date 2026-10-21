@@ -1,6 +1,7 @@
 'use client';
+import { clearReturn } from '@/lib/returnTo';
 import { QuickProfileModal } from '@/components/QuickProfileModal';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
@@ -16,6 +17,10 @@ export default function InvitePage() {
   const { t } = useI18n();
   const { user } = useAuth();
   const { data: c, error, loading } = useLoad(() => api.publicGet(`/api/public/invite/${token}`), [token]);
+  // Back on the invite after signing up: no more redirect to it.
+  useEffect(() => {
+    if (user) clearReturn(`/invite/${token}`);
+  }, [user, token]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);

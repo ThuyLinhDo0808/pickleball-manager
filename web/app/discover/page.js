@@ -10,7 +10,7 @@ import { formatDay } from '@/lib/dates';
 import { COUNTRIES, PROVINCES, VIETNAM } from '@/lib/regions';
 import Hint from '@/components/ui/Hint';
 
-const EMPTY = { q: '', country: VIETNAM, province: '', district: '', sport: '' };
+const EMPTY = { q: '', country: VIETNAM, province: '', district: '' };
 
 // One club in the results: cover strip, avatar, where / when, members, next session.
 function ClubCard({ c }) {
@@ -101,7 +101,7 @@ export default function DiscoverPage() {
           <input className="input flex-1 min-w-0" value={f.q} onChange={set('q')} placeholder={t('disc.qPh')} aria-label={t('disc.qPh')} />
           <button className="btn-primary shrink-0" disabled={busy}>🔍 {t('disc.search')}</button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <select className="input text-sm" value={f.country} onChange={set('country')} aria-label={t('creq.country')}>
             {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -114,11 +114,6 @@ export default function DiscoverPage() {
             <input className="input text-sm" value={f.province} onChange={set('province')} placeholder={t('creq.province')} aria-label={t('creq.province')} />
           )}
           <input className="input text-sm" value={f.district} onChange={set('district')} placeholder={t('disc.districtPh')} aria-label={t('creq.district')} />
-          <select className="input text-sm" value={f.sport} onChange={set('sport')} aria-label={t('creq.sport')}>
-            <option value="">{t('disc.anySport')}</option>
-            <option value="pickleball">🏓 {t('onb.sport_pickleball')}</option>
-            <option value="badminton">🏸 {t('onb.sport_badminton')}</option>
-          </select>
         </div>
         {filtered && (
           <button type="button" className="self-start text-gray-400 hover:text-white underline text-xs" onClick={() => { setF(EMPTY); window.history.replaceState(null, '', '/discover'); run(EMPTY); }}>

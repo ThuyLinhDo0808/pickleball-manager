@@ -87,7 +87,18 @@ function vipStars(current) {
 }
 
 // Per-member pass summary used by the members table.
-function summarize(memberships, today = todayYmd()) {
+const TIER_RANK = { silver: 1, gold: 2, diamond: 3 };
+// The best Hội viên tier (Bạc / Vàng / Kim cương) among the paid passes in use now.
+function bestTier(paidNow, tierOf) {
+  let best = null;
+  for (const m of paidNow) {
+    const tr = tierOf?.get(m.plan_id);
+    if (tr && (!best || TIER_RANK[tr] > TIER_RANK[best])) best = tr;
+  }
+  return best;
+}
+
+function summarize(memberships, today = todayYmd(), tierOf = null) {
   const current = memberships.filter((m) => m.starts_on <= today && m.ends_on >= today);
   const paidNow = current.filter((m) => m.status === 'paid');
   const unlimited = paidNow.some((m) => m.sessions_included === 0);
@@ -99,6 +110,7 @@ function summarize(memberships, today = todayYmd()) {
   return {
     membership_state: state,
     vip_stars: vipStars(current),
+    vip_tier: bestTier(paidNow, tierOf),
     current_period: (paidNow[0] || current[0])?.period_label || null,
     sessions_unlimited: unlimited,
     sessions_remaining: paidNow.length ? paidNow.reduce((s, m) => s + (m.sessions_remaining || 0), 0) : null,

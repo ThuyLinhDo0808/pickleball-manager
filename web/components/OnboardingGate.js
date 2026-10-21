@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import { clearReturn } from '@/lib/returnTo';
 
 // Pages a signed-in account may open before finishing the first-visit wizard. Kèo links
 // (/e, the vote page /v, the survey /s, tickets /t), club invite / join links and the
@@ -17,6 +18,10 @@ export default function OnboardingGate() {
   const pathname = usePathname();
   const router = useRouter();
   const checked = useRef(null); // user id already known to be done
+  // Signed in and on the page they signed up for (invite, kèo…): nothing left to go back to.
+  useEffect(() => {
+    if (!loading && user) clearReturn(pathname);
+  }, [loading, user, pathname]);
   useEffect(() => {
     if (loading || !user || checked.current === user.id) return;
     if (OPEN.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return;

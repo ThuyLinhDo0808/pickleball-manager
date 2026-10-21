@@ -79,6 +79,8 @@ const PROBES = [
   { table: 'events', column: 'groups', migration: '20261211090000_event_groups_courts.sql' },
   { table: 'event_participants', column: 'court', migration: '20261211090000_event_groups_courts.sql' },
   { table: 'v_event_summary', column: 'groups', migration: '20261211090000_event_groups_courts.sql' },
+  { table: 'memberships', column: 'sessions_included', migration: '20261212090000_membership_partial.sql' },
+  { table: 'membership_plans', column: 'tier', migration: '20261213090000_plan_tiers.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },
