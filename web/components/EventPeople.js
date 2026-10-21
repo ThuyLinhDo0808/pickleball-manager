@@ -336,7 +336,6 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
               <button type="button" disabled={busy} aria-pressed={!!row.fee_paid} className={`${chip} ${row.fee_paid ? 'border-navy-500 text-gray-200' : 'border-lime-400 bg-lime-400/15 text-lime-200'}`} onClick={() => act(() => actions.onFee(row))}>
                 {/* The button says what pressing it does: not paid yet -> "Đã thu", paid -> "Chưa thu". */}
                 {row.fee_paid ? `↺ ${t('people.markUnpaid')}` : `💰 ${t('people.markPaid')}`}
-                {!row.fee_paid && fee > 0 && ` · ${formatVnd(fee)}`}
               </button>
             )}
             {cancelled && row.late_cancel && (

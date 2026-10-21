@@ -1,5 +1,4 @@
 'use client';
-import { courtList } from '@/components/CourtPlan';
 import QuickLevelsModal from '@/components/QuickLevelsModal';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import Modal from '@/components/Modal';
@@ -44,7 +43,7 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   start_time: '00:00',
   end_time: '',
   location: '',
-  courts: 2,
+  courts: 1,
   court_labels: '',
   // Several time groups (VD 17h–20h 120k, 18h–20h 100k): each its own hours, fee, places, courts.
   groups_on: false,
@@ -104,29 +103,11 @@ function Section({ n, title, hint, more = false, children }) {
   );
 }
 
-// Two courts or more: play at the same time (just the court numbers), or at different times —
-// then each court is its own card: players (max), start, end, fee per slot, all starting blank.
-// The player picks a court (group) when signing up.
-export const groupsForCourts = (courts, existing = []) =>
-  courts.map((c) => existing.find((g) => courtList(g.courts)[0] === c) || { id: `c${c}`.replace(/[^a-z0-9_-]/gi, '').slice(0, 20) || `c${Date.now().toString(36)}`, start_time: '', end_time: '', fee_amount: '', slots: '', courts: c });
-
-function CourtMode({ f, set }) {
-  const { t } = useI18n();
-  const courts = courtList(f.court_labels);
-  if (courts.length < 2) return null;
-  const pick = (on) => set(on ? { groups_on: true, groups: groupsForCourts(courts, f.groups) } : { groups_on: false });
-  return (
-    <Field label={t('egroups.timeMode')} span={2}>
-      <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={t('egroups.timeMode')}>
-        {[[false, t('egroups.sameTime')], [true, t('egroups.diffTime')]].map(([on, label]) => (
-          <button key={String(on)} type="button" role="radio" aria-checked={!!f.groups_on === on} onClick={() => pick(on)} className={`rounded-lg border px-3 py-2 text-sm ${!!f.groups_on === on ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
-    </Field>
-  );
-}
+// "Số lượng sân": 2 courts or more -> one card per court (Sân 1, Sân 2…); the Host fills in each
+// court's number, players (max), start, end and fee per slot. The player picks a court when
+// signing up. Cards already filled keep their values when the count changes.
+export const groupsForCount = (n, existing = []) =>
+  Array.from({ length: n }, (_, i) => existing[i] || { id: `s${i + 1}${Date.now().toString(36).slice(-4)}`, start_time: '', end_time: '', fee_amount: '', slots: '', courts: String(i + 1) });
 
 function CourtCards({ f, set }) {
   const { t } = useI18n();
@@ -135,10 +116,13 @@ function CourtCards({ f, set }) {
   return (
     <div className="col-span-2 md:col-span-4 grid gap-3 md:grid-cols-2">
       {groups.map((g, i) => (
-        <section key={g.id} className="rounded-xl border border-navy-600 bg-navy-900/40 p-3" aria-label={t('egroups.courtN', { n: g.courts })}>
-          <p className="text-lime-300 font-semibold text-sm mb-2">🏟 {t('egroups.courtN', { n: g.courts })}</p>
+        <section key={g.id} className="rounded-xl border border-navy-600 bg-navy-900/40 p-3" aria-label={t('egroups.courtN', { n: i + 1 })}>
+          <p className="text-lime-300 font-semibold text-sm mb-2">🏟 {t('egroups.courtN', { n: i + 1 })}</p>
           <div className="grid grid-cols-2 gap-2">
-            <label className="min-w-0 text-[11px] text-gray-400 col-span-2">{t('egroups.slotsMax')}
+            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.courtNo')}
+              <input className="input" maxLength={20} required value={g.courts} onChange={(e) => put(i, { courts: e.target.value })} />
+            </label>
+            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.slotsMax')}
               <input className="input" type="number" inputMode="numeric" min="1" max="500" required value={g.slots} onChange={(e) => put(i, { slots: e.target.value })} />
             </label>
             <label className="min-w-0 text-[11px] text-gray-400">{t('create.start')}
@@ -153,6 +137,7 @@ function CourtCards({ f, set }) {
           </div>
         </section>
       ))}
+      <p className="md:col-span-2 text-xs text-gray-400">{t('egroups.totalSlots', { n: groups.reduce((x, g) => x + (Number(g.slots) || 0), 0) })}</p>
     </div>
   );
 }
@@ -200,7 +185,7 @@ export function formFromEvent(ev) {
     start_time: ev.start_time ? ev.start_time.slice(0, 5) : '',
     end_time: ev.end_time ? ev.end_time.slice(0, 5) : '',
     location: ev.location || '',
-    courts: ev.courts ?? 1,
+    courts: Array.isArray(ev.groups) && ev.groups.length > 1 ? ev.groups.length : ev.courts ?? 1,
     court_labels: ev.court_labels || '',
     groups_on: Array.isArray(ev.groups) && ev.groups.length > 1,
     groups: (ev.groups || []).map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, fee_amount: String(g.fee_amount ?? 0), slots: String(g.slots ?? ''), courts: g.courts || '' })),
@@ -273,19 +258,21 @@ export function eventPayload(f) {
   const deadline = mode === 'auto' ? autoDeadline(f.event_date, f.start_time, f.cancel_deadline_hours) : mode === 'time' ? f.registration_deadline : '';
   return {
     groups: groups && groups.length > 1 ? groups : [],
-    court_labels: f.court_labels?.trim() || null,
+    // Court numbers come from the court cards (server-side); one court: none.
+    court_labels: null,
     kind: f.kind,
     title: f.title.trim(),
     event_date: f.event_date,
     start_time: f.start_time || null,
     end_time: f.end_time || null,
     location: f.location.trim() || null,
-    courts: Number(f.courts),
+    courts: Math.max(1, Math.min(12, parseInt(f.courts, 10) || 1)),
     slots: Number(f.slots),
     level_min: f.level_min === '' ? null : Number(f.level_min),
     level_max: f.level_max === '' ? null : Number(f.level_max),
-    level_min_f: f.level_min_f === '' || f.level_min_f == null ? null : Number(f.level_min_f),
-    level_max_f: f.level_max_f === '' || f.level_max_f == null ? null : Number(f.level_max_f),
+    // A women's range only for a mixed kèo (Full nữ uses the one range above).
+    level_min_f: playFormatOf(f.play_format) !== 'mixed' || f.level_min_f === '' || f.level_min_f == null ? null : Number(f.level_min_f),
+    level_max_f: playFormatOf(f.play_format) !== 'mixed' || f.level_max_f === '' || f.level_max_f == null ? null : Number(f.level_max_f),
     fee_amount: Number(f.fee_amount || 0),
     registration_deadline: deadline ? new Date(deadline).toISOString() : null,
     cancel_deadline_hours: f.no_refund || f.cancel_deadline_hours === '' ? null : Number(f.cancel_deadline_hours),
@@ -393,7 +380,6 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false); // "✓ Đã lưu" after a successful save
-  const [showWomen, setShowWomen] = useState(false);
   const set = (patch) => {
     setSaved(false);
     setF((prev) => ({ ...prev, ...patch }));
@@ -454,7 +440,6 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   };
   // Women's own DUPR range: on when the community splits levels by gender, when the kèo
   // already has one, or when the Host asks for it.
-  const genderSplit = showWomen || !!cs?.settings?.levels?.by_gender || (f.level_min_f !== '' && f.level_min_f != null) || (f.level_max_f !== '' && f.level_max_f != null);
   const levelRangeAuto = !!(f.level_keys || []).length && !!levelItems.length && !!rangeOfKeys(cs.settings.levels, f.level_keys);
   const autoAt = autoDeadline(deadlineDate || f.event_date, f.start_time, f.cancel_deadline_hours);
   const fmtLocal = (v) => (v ? localDate(new Date(v), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—');
@@ -572,21 +557,22 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </>
           )}
           {!meeting && (
-            <Field label={t('egroups.courtNo')} hint={t('egroups.courtNoHint')}>
+            <Field label={t('egroups.courtCount')} hint={t('egroups.courtCountHint')}>
               <input
                 className="input"
-                maxLength={60}
-                aria-label={t('egroups.courtNo')}
-                value={f.court_labels}
+                type="number"
+                inputMode="numeric"
+                min="1"
+                max="12"
+                aria-label={t('egroups.courtCount')}
+                value={f.courts}
                 onChange={(e) => {
-                  const courts = courtList(e.target.value);
-                  // Court cards follow the court numbers; under 2 courts there is nothing to split.
-                  set(courts.length < 2 ? { court_labels: e.target.value, groups_on: false } : { court_labels: e.target.value, ...(f.groups_on ? { groups: groupsForCourts(courts, f.groups) } : {}) });
+                  const n = Math.min(Math.max(parseInt(e.target.value, 10) || 0, 0), 12);
+                  set(n >= 2 ? { courts: e.target.value, groups_on: true, groups: groupsForCount(n, f.groups) } : { courts: e.target.value, groups_on: false });
                 }}
               />
             </Field>
           )}
-          {!meeting && <CourtMode f={f} set={set} />}
           {!meeting && !f.groups_on && (
           <>
           <Field label={t('events.slots')}>
@@ -635,16 +621,11 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               })}
             </div>
           </Field>
-          {/* One box per range: "DUPR Nam" with [từ] đến [đến]; women the same. */}
-          <LevelRange label={genderSplit ? t('events.levelMen') : t('events.levelRange')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null} min={f.level_min} max={f.level_max} onMin={(v) => set({ level_min: v })} onMax={(v) => set({ level_max: v })} />
-          {genderSplit ? (
+          {/* The DUPR condition follows the play format: Full nam -> DUPR Nam only, Full nữ ->
+              DUPR Nữ only, Mix -> both. Each is one box: [từ] đến [đến]. */}
+          <LevelRange label={playFormatOf(f.play_format) === 'women' ? t('events.levelWomen') : t('events.levelMen')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null} min={f.level_min} max={f.level_max} onMin={(v) => set({ level_min: v })} onMax={(v) => set({ level_max: v })} />
+          {playFormatOf(f.play_format) === 'mixed' && (
             <LevelRange label={t('events.levelWomen')} min={f.level_min_f} max={f.level_max_f} onMin={(v) => set({ level_min_f: v })} onMax={(v) => set({ level_max_f: v })} />
-          ) : (
-            !meeting && (
-              <div className="col-span-2 md:col-span-4 -mt-1">
-                <button type="button" className="text-xs text-lime-400 underline" onClick={() => setShowWomen(true)}>＋ {t('events.addWomenRange')}</button>
-              </div>
-            )
           )}
           <Field span={2} label={t('policy.refundLabel')} hint={f.no_refund ? t('policy.noRefundHint') : f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
             <select
@@ -789,7 +770,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                   : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
               </dd>
               <dt className="text-gray-400">📍</dt>
-              <dd className="text-gray-100 truncate">{f.location || '—'}{f.court_labels.trim() && !meeting && !f.groups_on ? ` · ${t('egroups.courtsShort', { list: f.court_labels.trim() })}` : ''}</dd>
+              <dd className="text-gray-100 truncate">{f.location || '—'}{!meeting && !f.groups_on && Number(f.courts) > 0 ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
               {!meeting && !f.groups_on && <dt className="text-gray-400">👥</dt>}
               {!meeting && !f.groups_on && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
               <dt className="text-gray-400">💰</dt>

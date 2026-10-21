@@ -1031,12 +1031,27 @@ router.post('/:clubId/members/:memberId/memberships', requireFeature('membership
   } catch (err) {
     return res.status(err.status || 400).json({ error: err.message });
   }
+  // Bought part-way through a month / quarter / year (one period): it starts on the day bought
+  // and holds only the sessions left (VD gói tháng 8 buổi mua sau 1 tuần -> 4 buổi), set by the Host.
+  let partial = null;
+  if (!plan.validity_months && count === 1 && /^\d{4}-\d{2}-\d{2}$/.test(req.body.start_date || '')) {
+    const day = req.body.start_date;
+    if (day < ranges[0].starts_on || day > ranges[0].ends_on) return res.status(400).json({ error: 'start_date must be inside the period.', code: 'start_outside_period' });
+    ranges[0] = { ...ranges[0], starts_on: day };
+    const n = parseInt(req.body.sessions, 10);
+    if (Number(plan.sessions_included) > 0 && Number.isInteger(n)) {
+      if (n < 1 || n > Number(plan.sessions_included)) return res.status(400).json({ error: `sessions must be 1-${plan.sessions_included}.`, code: 'bad_sessions' });
+      const st = await require('../services/schemaCheck').schemaStatus();
+      if (!st.missing_migrations.includes('20261212090000_membership_partial.sql')) partial = n;
+    }
+  }
   const rows = ranges.map((range) => ({
     club_member_id: req.member.id,
     plan_id: plan.id,
     ...range,
     amount,
     status: PAY_STATUSES.includes(status) ? status : 'pending',
+    ...(partial ? { sessions_included: partial } : {}),
   }));
   const { data, error } = await supabase.from('memberships').insert(rows).select();
   if (error) return dbError(res, error);

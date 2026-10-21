@@ -30,19 +30,41 @@ const PAY_STYLE = {
   overdue: 'bg-red-500/20 text-red-300',
 };
 
+// The last day of a month / quarter / year plan bought from `month` (YYYY-MM).
+function periodEnd(month, period) {
+  const [y, m] = month.split('-').map(Number);
+  const last = y * 12 + (m - 1) + ({ month: 1, quarter: 3, year: 12 }[period] || 1) - 1;
+  const ly = Math.floor(last / 12);
+  const lm = (last % 12) + 1;
+  return `${ly}-${String(lm).padStart(2, '0')}-${String(new Date(Date.UTC(ly, lm, 0)).getUTCDate()).padStart(2, '0')}`;
+}
+
 function RegisterForm({ club, member, plans, onDone }) {
   const { t, sport } = useI18n();
   const active = plans.filter((p) => p.is_active);
-  const [form, setForm] = useState({ plan_id: active[0]?.id || '', start_month: thisMonth(), start_date: todayYmd(), count: 1, amount: active[0]?.price ?? '', paid: true });
+  const [form, setForm] = useState({ plan_id: active[0]?.id || '', start_month: thisMonth(), start_date: todayYmd(), count: 1, amount: '', from: '', sessions: '', paid: true });
   // A session pack (community) starts on a day and runs N months; a period plan starts on a month.
   const plan = plans.find((p) => p.id === form.plan_id);
   const pack = !!plan?.validity_months;
+  // Month / quarter / year bought part-way through (one period): from the day bought to the end
+  // of the period, with only the sessions left — counted from the club's kèo in those days.
+  const { data: clubEvents } = useLoad(() => (pack || !plan ? Promise.resolve([]) : api.get(`/api/clubs/${club.id}/events`).catch(() => [])), [club.id, pack, plan?.id]);
+  const single = !pack && plan && Number(form.count) === 1;
+  const periodStart = `${form.start_month}-01`;
+  const periodLast = single ? periodEnd(form.start_month, plan.period) : null;
+  const from = single ? (form.from && form.from >= periodStart && form.from <= periodLast ? form.from : todayYmd() > periodStart && todayYmd() <= periodLast ? todayYmd() : periodStart) : null;
+  const partial = single && from > periodStart;
+  const limited = Number(plan?.sessions_included) > 0;
+  const sessionsInRange = (clubEvents || []).filter((e) => e.event_date >= from && e.event_date <= periodLast && e.status !== 'cancelled' && !['meeting', 'tournament'].includes(e.kind)).length;
+  const autoSessions = limited && !partial ? Number(plan.sessions_included) : limited ? Math.min(Number(plan.sessions_included), sessionsInRange || Math.round((Number(plan.sessions_included) * (Date.parse(periodLast) - Date.parse(from) + 86400000)) / (Date.parse(periodLast) - Date.parse(periodStart) + 86400000))) : null;
+  const sessions = form.sessions === '' || form.sessions == null ? autoSessions : Number(form.sessions);
+  const autoAmount = partial && limited && sessions ? Math.round((Number(plan.price) * sessions) / Number(plan.sessions_included) / 1000) * 1000 : plan?.price ?? '';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   function pickPlan(id) {
     const plan = plans.find((p) => p.id === id);
-    setForm({ ...form, plan_id: id, amount: plan?.price ?? '' });
+    setForm({ ...form, plan_id: id, amount: '', sessions: '' });
   }
 
   async function submit(e) {
@@ -53,7 +75,8 @@ function RegisterForm({ club, member, plans, onDone }) {
       await api.post(`/api/clubs/${club.id}/members/${member.id}/memberships`, {
         plan_id: form.plan_id,
         ...(pack ? { start_date: form.start_date } : { start_month: form.start_month, count: Number(form.count) }),
-        amount: form.amount === '' ? null : Number(form.amount),
+        ...(partial ? { start_date: from, ...(limited ? { sessions } : {}) } : {}),
+        amount: form.amount === '' ? (autoAmount === '' ? null : Number(autoAmount)) : Number(form.amount),
         status: form.paid ? 'paid' : 'pending',
       });
       onDone();
@@ -104,11 +127,31 @@ function RegisterForm({ club, member, plans, onDone }) {
             <input className="input" type="number" inputMode="numeric" min="1" max="12" value={form.count} onChange={(e) => setForm({ ...form, count: e.target.value })} />
           </div>
           <p className="col-span-2 text-gray-500 text-xs -mt-2">{t('membership.countHint')}</p>
+          {single && (
+            <>
+              <div>
+                <label className="text-xs text-gray-400" htmlFor="ms-from">{t('membership.fromDay')}</label>
+                <input id="ms-from" className="input" type="date" min={periodStart} max={periodLast} value={from} onChange={(e) => setForm({ ...form, from: e.target.value, sessions: '', amount: '' })} />
+              </div>
+              <div>
+                <span className="text-xs text-gray-400">{t('membership.toDay')}</span>
+                <p className="input !bg-navy-900/60 tabular-nums">{dmy(periodLast)}</p>
+              </div>
+              {limited && !partial && <p className="col-span-2 text-gray-500 text-xs -mt-1">{t('membership.fullHint', { total: plan.sessions_included })}</p>}
+              {limited && partial && (
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-400" htmlFor="ms-sessions">{t('membership.sessionsBought')}</label>
+                  <input id="ms-sessions" className="input" type="number" inputMode="numeric" min="1" max={plan.sessions_included} value={sessions ?? ''} onChange={(e) => setForm({ ...form, sessions: e.target.value, amount: '' })} />
+                  <p className="text-gray-500 text-xs mt-1">{t('membership.partialHint', { n: sessions || 0, total: plan.sessions_included, events: sessionsInRange })}</p>
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
       <div className="col-span-2">
         <label className="text-xs text-gray-400">{t('membership.amount')}</label>
-        <input className="input" type="number" inputMode="numeric" min="0" step="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+        <input className="input" type="number" inputMode="numeric" min="0" step="1" value={form.amount === '' ? autoAmount : form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
       </div>
       <label className="col-span-2 flex items-center gap-2 text-sm text-gray-200">
         <input type="checkbox" checked={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.checked })} />
