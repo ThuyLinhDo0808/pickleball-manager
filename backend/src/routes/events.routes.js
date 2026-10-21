@@ -1437,6 +1437,18 @@ router.put('/:eventId/courts', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Delete a cancelled registration (e.g. someone the Host asked to test signing up): it no
+// longer shows in the cancelled list nor counts in the player's cancel history. Not when
+// money was paid and not refunded (the ledger keeps that record).
+router.delete('/:eventId/participants/:participantId', async (req, res) => {
+  const p = req.participant;
+  if (p.status !== 'cancelled') return res.status(409).json({ error: 'Only cancelled registrations can be deleted.', code: 'not_cancelled' });
+  if (p.fee_paid && !p.refunded_at) return res.status(409).json({ error: 'Paid and not refunded: mark the refund first.', code: 'paid_not_refunded' });
+  const { error } = await supabase.from('event_participants').delete().eq('id', p.id).eq('status', 'cancelled');
+  if (error) return dbError(res, error);
+  res.status(204).end();
+});
+
 router.post('/:eventId/participants/:participantId/:action', async (req, res) => {
   const { action } = req.params;
   const prior = req.participant;
