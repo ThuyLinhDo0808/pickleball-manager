@@ -333,8 +333,9 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                 <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onRefund(row))}>💸 {t('slot.markRefunded')}</button>
               )
             ) : (!cancelled || row.late_cancel || row.fee_paid) && (
-              <button type="button" disabled={busy} aria-pressed={!!row.fee_paid} className={`${chip} ${row.fee_paid ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-500 text-gray-200'}`} onClick={() => act(() => actions.onFee(row))}>
-                {row.fee_paid ? `✓ ${t('common.paid')}` : t('common.unpaid')}
+              <button type="button" disabled={busy} aria-pressed={!!row.fee_paid} className={`${chip} ${row.fee_paid ? 'border-navy-500 text-gray-200' : 'border-lime-400 bg-lime-400/15 text-lime-200'}`} onClick={() => act(() => actions.onFee(row))}>
+                {/* The button says what pressing it does: not paid yet -> "Đã thu", paid -> "Chưa thu". */}
+                {row.fee_paid ? `↺ ${t('people.markUnpaid')}` : `💰 ${t('people.markPaid')}`}
                 {!row.fee_paid && fee > 0 && ` · ${formatVnd(fee)}`}
               </button>
             )}
@@ -344,8 +345,20 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {!cancelled && (
               <button type="button" disabled={busy} className={`${chip} border-red-500/60 text-red-300 hover:bg-red-500/10`} onClick={() => { onClose(); actions.onCancel(row); }}>✕ {t('events.cancel')}</button>
             )}
+            {/* A test sign-up that was cancelled: delete it so it does not count as a cancel. */}
+            {cancelled && (
+              <button
+                type="button"
+                disabled={busy || (row.fee_paid && !row.refunded_at)}
+                className={`${chip} border-red-500/60 text-red-300 hover:bg-red-500/10`}
+                onClick={() => window.confirm(t('people.deleteHistoryAsk', { name })) && run(async () => { await api.del(`/api/events/${event.id}/participants/${row.id}`); onClose(); })}
+              >
+                🗑 {t('people.deleteHistory')}
+              </button>
+            )}
           </div>
         )}
+        {cancelled && row.fee_paid && !row.refunded_at && <p className="text-xs text-gray-400 text-center">{t('people.deleteHistoryPaid')}</p>}
         {error && <p className="text-red-400 text-sm">{error}</p>}
       </div>
     </Modal>

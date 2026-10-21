@@ -2903,6 +2903,8 @@ export const vi = {
   },
   // Server error codes in the current language (lib/api.js); a code missing here keeps the server message.
   apiErr: {
+    not_cancelled: "Chỉ xoá được lượt đăng ký đã huỷ.",
+    paid_not_refunded: "Lượt này đã thu tiền và chưa hoàn: đánh dấu đã hoàn tiền trước.",
     group_required: "Hãy chọn nhóm giờ bạn muốn chơi.",
     group_full: "Nhóm giờ này đã đủ người.",
     bad_group: "Nhóm giờ không tồn tại.",
@@ -5333,6 +5335,11 @@ export const vi = {
     requests: "{n} chờ duyệt",
   },
   people: {
+    markPaid: "Đã thu",
+    markUnpaid: "Chưa thu",
+    deleteHistory: "Xoá khỏi lịch sử",
+    deleteHistoryAsk: "Xoá lượt đăng ký đã huỷ của {name}? Lượt này sẽ không còn trong danh sách Đã huỷ và không bị tính vào lịch sử huỷ của người chơi (VD đăng ký thử). Không hoàn tác được.",
+    deleteHistoryPaid: "Lượt này đã thu tiền: đánh dấu đã hoàn tiền trước rồi mới xoá được.",
     quickGroup: "Đặt nhanh: {name} · {n} người",
     quickNoPhone: "Không để SĐT — người chơi sẽ tự liên hệ bạn",
     decline: "Từ chối",

@@ -2903,6 +2903,8 @@ export const en = {
   },
   // Server error codes in the current language (lib/api.js); a code missing here keeps the server message.
   apiErr: {
+    not_cancelled: "Only cancelled registrations can be deleted.",
+    paid_not_refunded: "Paid and not refunded: mark the refund first.",
     group_required: "Pick the time group you want to play in.",
     group_full: "This time group is full.",
     bad_group: "Unknown time group.",
@@ -5333,6 +5335,11 @@ export const en = {
     requests: "{n} to approve",
   },
   people: {
+    markPaid: "Paid",
+    markUnpaid: "Not paid",
+    deleteHistory: "Delete from history",
+    deleteHistoryAsk: "Delete the cancelled registration of {name}? It leaves the Cancelled list and no longer counts in the player's cancel history (e.g. a test sign-up). This cannot be undone.",
+    deleteHistoryPaid: "This one was paid: mark the refund first, then it can be deleted.",
     quickGroup: "Quick booking: {name} · {n} player(s)",
     quickNoPhone: "No phone left — the player will contact you",
     decline: "Decline",
