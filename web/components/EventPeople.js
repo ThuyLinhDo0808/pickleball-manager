@@ -245,9 +245,11 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
         {row && !locked && event.groups?.length > 1 && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-gray-400 text-xs mr-1">{t('egroups.group')}</span>
-            {event.groups.map((g) => (
-              <button key={g.id} type="button" disabled={busy} aria-pressed={row.group_id === g.id} onClick={() => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/group`, { group_id: g.id }))} className={`${chip} tabular-nums ${row.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
-                🕒 {g.start_time}–{g.end_time}
+            {/* One button per court ("Sân 2"), its hours under it. */}
+            {event.groups.map((g, i) => (
+              <button key={g.id} type="button" disabled={busy} aria-pressed={row.group_id === g.id} onClick={() => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/group`, { group_id: g.id }))} className={`${chip} tabular-nums text-left leading-tight ${row.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
+                <span className="block font-semibold">🏟 {t('egroups.courtN', { n: g.courts || i + 1 })}</span>
+                <span className="block text-[11px] opacity-80">{g.start_time}–{g.end_time}</span>
               </button>
             ))}
           </div>

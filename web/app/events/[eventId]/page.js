@@ -271,8 +271,8 @@ export default function EventDetailPage() {
         {/* Kèo with time groups: each group's hours, fee per slot, places and courts. */}
         {event.groups?.length > 1 && (
           <p className="text-gray-300 text-sm mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
-            {event.groups.map((g) => (
-              <span key={g.id} className="tabular-nums">🕒 {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+            {event.groups.map((g, gi) => (
+              <span key={g.id} className="tabular-nums">🏟 {t('egroups.courtN', { n: g.courts || gi + 1 })} · {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}</span>
             ))}
           </p>
         )}
@@ -643,7 +643,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
                     {p.booking && p.full_name !== p.booking.contact_name && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: p.booking.contact_name })}</span>}
                     {(p.tags || []).includes('host_guest') && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: hostName || 'Host' })}</span>}
                     {/* Kèo with time groups: the group's hours; the court the Host put them on. */}
-                    {groups?.length > 1 && (() => { const g = groups.find((x) => x.id === p.group_id); return g ? <span className={`${BADGE} border-violet-400/60 text-violet-200 tabular-nums`}>🕒 {g.start_time}–{g.end_time}</span> : null; })()}
+                    {groups?.length > 1 && (() => { const g = groups.find((x) => x.id === p.group_id); return g ? <span className={`${BADGE} border-violet-400/60 text-violet-200 tabular-nums`}>🏟 {t('egroups.courtN', { n: g.courts || groups.indexOf(g) + 1 })} · {g.start_time}–{g.end_time}</span> : null; })()}
                     {p.court && <span className={`${BADGE} border-lime-400/60 text-lime-200`}>🏟 {t('egroups.courtN', { n: p.court })}</span>}
                     {p.priority && <span className={`${BADGE} border-sky-400/60 text-sky-300`} title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>}
                     {p.late_cancel && <span className={`${BADGE} border-orange-400/60 text-orange-300`}>{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>}

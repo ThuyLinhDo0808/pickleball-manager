@@ -14,7 +14,8 @@ import { PROVINCES } from '@/lib/regions';
 // "Tìm CLB / cộng đồng" (the club search, /discover).
 const FIRST = 5;
 
-export default function HomeFind() {
+// eventsOnly: just the "Tìm kèo" part (the /discover page has its own tabs).
+export default function HomeFind({ eventsOnly = false }) {
   const { t, lang } = useI18n();
   const router = useRouter();
   const [tab, setTab] = useState('events');
@@ -46,7 +47,7 @@ export default function HomeFind() {
   const today = todayYmd();
   const days = [];
   const items = res?.items || [];
-  for (const e of all ? items : items.slice(0, FIRST)) {
+  for (const e of all || eventsOnly ? items : items.slice(0, FIRST)) {
     const last = days[days.length - 1];
     if (last && last.date === e.event_date) last.items.push(e);
     else days.push({ date: e.event_date, items: [e] });
@@ -54,8 +55,8 @@ export default function HomeFind() {
 
   return (
     <section className="card !p-3 mb-4">
-      <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? `🎟 ${t('findx.tabEvents')}` : `🏟 ${t('findx.tabClubs')}`)} className="mb-3 w-full" />
-      {tab === 'clubs' ? (
+      {!eventsOnly && <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? `🎟 ${t('findx.tabEvents')}` : `🏟 ${t('findx.tabClubs')}`)} className="mb-3 w-full" />}
+      {tab === 'clubs' && !eventsOnly ? (
         <form
           onSubmit={(e) => { e.preventDefault(); router.push(`/discover${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`); }}
           className="flex items-center gap-2"
@@ -111,7 +112,7 @@ export default function HomeFind() {
               </div>
             ))}
           </div>
-          {items.length > FIRST && (
+          {!eventsOnly && items.length > FIRST && (
             <div className="mt-2 text-right">
               <button type="button" className="text-lime-300 text-sm underline" onClick={() => setAll(!all)}>
                 {all ? t('findx.less') : t('findx.more', { n: items.length - FIRST })}

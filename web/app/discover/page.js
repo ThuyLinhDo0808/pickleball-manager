@@ -9,6 +9,8 @@ import { api, clubImage } from '@/lib/api';
 import { formatDay } from '@/lib/dates';
 import { COUNTRIES, PROVINCES, VIETNAM } from '@/lib/regions';
 import Hint from '@/components/ui/Hint';
+import Segmented from '@/components/ui/Segmented';
+import HomeFind from '@/components/HomeFind';
 
 const EMPTY = { q: '', country: VIETNAM, province: '', district: '' };
 
@@ -47,6 +49,7 @@ function ClubCard({ c }) {
 // everyone; asking to join needs an account.
 export default function DiscoverPage() {
   const { t } = useI18n();
+  const [tab, setTab] = useState('events'); // Tìm kèo | Tìm CLB / cộng đồng
   const [f, setF] = useState(EMPTY);
   const [applied, setApplied] = useState(null);
   const [items, setItems] = useState([]);
@@ -77,6 +80,8 @@ export default function DiscoverPage() {
     const sp = new URLSearchParams(window.location.search);
     const start = { ...EMPTY, ...Object.fromEntries(Object.keys(EMPTY).map((k) => [k, sp.get(k) || ''])) };
     setF(start);
+    // A search from the home page (?q=…) or ?tab=clubs opens the club tab.
+    if (sp.get('tab') === 'clubs' || Object.keys(EMPTY).some((k) => k !== 'country' && sp.get(k))) setTab('clubs');
     run(start);
   }, [run]);
 
@@ -92,8 +97,11 @@ export default function DiscoverPage() {
 
   return (
     <PlayerShell requireAuth={false}>
-      <h1 className="text-white text-2xl font-bold">{t('disc.title')}</h1>
-      <p className="text-gray-400 text-sm mb-4">{t('disc.lead')}</p>
+      <h1 className="text-white text-2xl font-bold">{t('findx.pageTitle')}</h1>
+      <p className="text-gray-400 text-sm mb-3">{t('disc.lead')}</p>
+      <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? `🎟 ${t('findx.tabEvents')}` : `🏟 ${t('findx.tabClubs')}`)} className="mb-4 w-full" />
+      {tab === 'events' ? <HomeFind eventsOnly /> : (
+      <>
       {!filtered && <TopCommunities className="mb-4" />}
 
       <form onSubmit={submit} className="card !p-3 mb-4 flex flex-col gap-2" role="search">
@@ -138,6 +146,8 @@ export default function DiscoverPage() {
         <button type="button" className="btn-secondary w-full mt-4" disabled={busy} onClick={() => run(applied, page + 1)}>
           {busy ? t('common.loading') : t('disc.more')}
         </button>
+      )}
+      </>
       )}
       <p className="text-gray-500 text-xs mt-6 text-center">
         {t('disc.ownClub')} <Link href="/club-request" className="text-lime-300 underline">{t('disc.ownClubLink')}</Link>
