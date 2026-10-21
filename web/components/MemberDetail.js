@@ -127,6 +127,7 @@ const fromMember = (m) => ({
   phone: m.phone || '',
   gender: m.gender || '',
   dupr_level: m.dupr_level ?? '',
+  dupr_id: m.dupr_id || '',
   member_type: m.member_type || 'fixed',
   tier: m.tier || '',
   guest_perk: m.guest_perk ? 'priority' : '',
@@ -137,7 +138,7 @@ const fromMember = (m) => ({
   district: m.district || '',
 });
 
-function MemberEdit({ member, busy, onSave, autoEdit = false, community = false }) {
+function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, community = false }) {
   const { t, sport } = useI18n();
   const [open, setOpen] = useState(autoEdit);
   const [f, setF] = useState(() => fromMember(member));
@@ -167,6 +168,11 @@ function MemberEdit({ member, busy, onSave, autoEdit = false, community = false 
 
   async function save(e) {
     e.preventDefault();
+    // DUPR ID (pickleball): saved on its own, so a taken / bad ID says so before the rest.
+    const duprId = f.dupr_id.trim().toUpperCase();
+    if (sport !== 'badminton' && onSaveDupr && duprId !== (member.dupr_id || '')) {
+      if ((await onSaveDupr(duprId || null)) === false) return;
+    }
     const ok = await onSave({
       full_name: f.full_name.trim(),
       phone: f.phone.trim() || null,
@@ -209,6 +215,12 @@ function MemberEdit({ member, busy, onSave, autoEdit = false, community = false 
         <label className="text-xs text-gray-400">{t('common.level')}</label>
         <LevelInput value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
       </div>
+      {sport !== 'badminton' && (
+        <div className="min-w-0">
+          <label className="text-xs text-gray-400" htmlFor="edit-dupr-id">{t('dupr.idLabel')}</label>
+          <input id="edit-dupr-id" className="input font-mono placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('dupr.idPh')} value={f.dupr_id} onChange={(e) => set({ dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10) })} />
+        </div>
+      )}
       <BirthInput id="edit-birth-year" value={f.birth} onChange={(birth) => set({ birth })} required={f.member_type === 'fixed'} />
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('members.type')}</label>
@@ -333,6 +345,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
   }
 
   const patchMember = (body) => run(() => api.patch(`/api/clubs/${club.id}/members/${member.id}`, body));
+  const saveDupr = (duprId) => run(() => api.patch(`/api/clubs/${club.id}/members/${member.id}/dupr`, { dupr_id: duprId }));
 
   function toggleFlag(f) {
     const next = flags.includes(f) ? flags.filter((x) => x !== f) : [...flags, f];
@@ -363,7 +376,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
           {member.debt > 0 && <span className="text-red-300">{t('membership.debt')}: {formatVnd(member.debt)}</span>}
         </div>
 
-        <MemberEdit community={club?.kind === 'community'} key={member.id} member={member} busy={busy} onSave={patchMember} autoEdit={autoEdit} />
+        <MemberEdit community={club?.kind === 'community'} key={member.id} member={member} busy={busy} onSave={patchMember} onSaveDupr={saveDupr} autoEdit={autoEdit} />
 
         {member.account_email && (
           <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">
