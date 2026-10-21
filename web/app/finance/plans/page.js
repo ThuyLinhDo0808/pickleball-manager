@@ -7,11 +7,27 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import Modal from '@/components/Modal';
 import Hint from '@/components/ui/Hint';
+import VipBadge, { PLAN_TIERS } from '@/components/VipBadge';
 
-const emptyForm = { name: '', period: 'month', price: '', sessions_included: '8', validity_months: '' };
+// Hạng hội viên of a plan: 🥈 Bạc · 🥇 Vàng · 💎 Kim cương (the Host picks; e.g. Bạc ≤ 10 buổi
+// for 1 month, Vàng ≤ 30 buổi for 2 months, Kim cương ≤ 50 buổi for 5 months).
+function TierPicker({ value, onChange }) {
+  const { t } = useI18n();
+  return (
+    <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={t('vip.tierLabel')}>
+      {PLAN_TIERS.map((k) => (
+        <button key={k} type="button" role="radio" aria-checked={value === k} onClick={() => onChange(k)} className={`rounded-lg border px-2 py-2 text-sm ${value === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+          {{ silver: '🥈', gold: '🥇', diamond: '💎' }[k]} {t(`vip.tier_${k}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const emptyForm = { name: '', period: 'month', price: '', sessions_included: '8', validity_months: '', tier: 'silver' };
 // Social Manager (communities): a plan is a session pack — name, sessions, price, validity
 // (e.g. "VIP 1": 10 sessions within 6 months for 300,000đ). Clubs keep month / quarter / year.
-const packForm = { name: '', price: '', sessions_included: '10', validity_months: '6' };
+const packForm = { name: '', price: '', sessions_included: '10', validity_months: '6', tier: 'silver' };
 
 export default function PlansPage() {
   const { t } = useI18n();
@@ -37,6 +53,7 @@ export default function PlansPage() {
         price: Number(f.price || 0),
         sessions_included: Number(f.sessions_included || 0),
         ...(packs ? { validity_months: Number(f.validity_months) } : { period: f.period }),
+        tier: f.tier || 'silver',
       });
       setForm(blank);
       reload();
@@ -60,6 +77,7 @@ export default function PlansPage() {
         price: Number(editing.price || 0),
         sessions_included: Number(editing.sessions_included || 0),
         ...(editing.validity_months ? { validity_months: Number(editing.validity_months) } : { period: editing.period }),
+        tier: editing.tier || null,
       });
       setEditing(null);
       reload();
@@ -83,6 +101,10 @@ export default function PlansPage() {
             <div>
               <label htmlFor="pe-name" className="text-xs text-gray-400">{t('plans.name')}</label>
               <input id="pe-name" className="input" required value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+            </div>
+            <div>
+              <span className="text-xs text-gray-400">{t('vip.tierLabel')}</span>
+              <TierPicker value={editing.tier} onChange={(tier) => setEditing({ ...editing, tier })} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               {editing.validity_months ? (
@@ -128,6 +150,10 @@ export default function PlansPage() {
             <label htmlFor="pk-name" className="text-xs text-gray-400">1. {t('plans.name')}</label>
             <input id="pk-name" className="input" required placeholder={t('plans.packNamePh')} value={f.name} onChange={(e) => setForm({ ...f, name: e.target.value })} />
           </div>
+          <div className="col-span-2 md:col-span-4">
+            <span className="text-xs text-gray-400">{t('vip.tierLabel')} <Hint inline text={t('vip.tierHint')} /></span>
+            <TierPicker value={f.tier} onChange={(tier) => setForm({ ...f, tier })} />
+          </div>
           <div>
             <label htmlFor="pk-sessions" className="text-xs text-gray-400">2. {t('plans.packSessions')}</label>
             <input id="pk-sessions" className="input" required type="number" inputMode="numeric" min="1" value={f.sessions_included} onChange={(e) => setForm({ ...f, sessions_included: e.target.value })} />
@@ -157,6 +183,10 @@ export default function PlansPage() {
           <div className="col-span-2">
             <label className="text-xs text-gray-400">{t('plans.name')}</label>
             <input className="input" required placeholder={t('plans.namePh')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="col-span-2 md:col-span-5 order-last md:order-none">
+            <span className="text-xs text-gray-400">{t('vip.tierLabel')} <Hint inline text={t('vip.tierHint')} /></span>
+            <TierPicker value={form.tier} onChange={(tier) => setForm({ ...form, tier })} />
           </div>
           <div>
             <label className="text-xs text-gray-400">{t('plans.period')}</label>
@@ -197,10 +227,10 @@ export default function PlansPage() {
           const perSession = p.sessions_included ? Math.round(Number(p.price) / p.sessions_included) : null;
           return (
           <div key={p.id} className={`card !p-0 overflow-hidden flex flex-col ${p.is_active ? '' : 'opacity-50'}`}>
-            <div className={`px-5 pt-5 pb-4 bg-gradient-to-br ${stars === 3 ? 'from-amber-400/20' : stars === 2 ? 'from-sky-400/20' : 'from-lime-400/15'} to-transparent`}>
+            <div className={`px-5 pt-5 pb-4 bg-gradient-to-br ${p.tier === 'diamond' ? 'from-sky-300/20' : p.tier === 'gold' ? 'from-amber-400/20' : p.tier === 'silver' ? 'from-slate-300/15' : stars === 3 ? 'from-amber-400/20' : stars === 2 ? 'from-sky-400/20' : 'from-lime-400/15'} to-transparent`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-amber-300 text-xs" aria-hidden="true">{'⭐'.repeat(stars)} VIP</div>
+                  <VipBadge tier={p.tier} stars={stars} />
                   <div className="text-white font-semibold text-lg break-words">{p.name}</div>
                   <div className="text-gray-400 text-xs">{pack ? t('plans.packShort', { n: p.sessions_included, m: p.validity_months }) : t(`plans.${p.period}`)}</div>
                 </div>
@@ -222,7 +252,7 @@ export default function PlansPage() {
                 className="btn-secondary text-sm"
                 onClick={() => {
                   setEditErr('');
-                  setEditing({ id: p.id, name: p.name, period: p.period, price: String(Number(p.price)), sessions_included: String(p.sessions_included ?? 0), validity_months: p.validity_months ? String(p.validity_months) : '' });
+                  setEditing({ id: p.id, name: p.name, period: p.period, price: String(Number(p.price)), sessions_included: String(p.sessions_included ?? 0), validity_months: p.validity_months ? String(p.validity_months) : '', tier: p.tier || '' });
                 }}
               >
                 ✏️ {t('plans.edit')}

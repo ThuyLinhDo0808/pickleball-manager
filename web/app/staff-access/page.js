@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useClubs } from '@/context/ClubContext';
+import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
@@ -13,6 +14,8 @@ import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import Hint from '@/components/ui/Hint';
 
 const ROLES = ['coordinator', 'referee', 'co_admin', 'finance', 'operator'];
+// Roles given from now on (Trọng tài and Vận hành are no longer offered; old grants keep showing).
+const GRANT_ROLES = ['coordinator', 'co_admin', 'finance'];
 // Roles that are always for one club; Finance / Operations need the Advanced plan.
 const CLUB_ONLY = ['co_admin', 'finance', 'operator'];
 const PLAN_ROLES = ['finance', 'operator'];
@@ -40,7 +43,6 @@ const CAN = [
   ['deleteClub', { coordinator: false, referee: false, co_admin: false, finance: false, operator: false }],
 ];
 // Where the access applies.
-const SCOPES = ['all', 'clubs', 'club', 'event']; // (old grants may still say 'xeve')
 const emptyForm = { email: '', full_name: '', role: 'coordinator', scope: 'all', club_id: '', event_id: '', valid_from: '', valid_until: '' };
 
 function status(g, today) {
@@ -53,6 +55,9 @@ export default function StaffAccessPage() {
   const { t } = useI18n();
   const { clubs: allClubs } = useClubs();
   const clubs = allClubs.filter((c) => !c.role || c.role === 'owner'); // only clubs I own can be shared
+  // Every grant is for the club / community picked in the menu (no "Áp dụng cho" choice).
+  const { club: current } = useDefaultClub();
+  const target = clubs.find((c) => c.id === current?.id) || null;
   const { plan } = useWorkspace();
   const rolesLocked = !hasFeature(planFor(null, plan), 'staff_roles');
   const customLocked = !hasFeature(planFor(null, plan), 'custom_roles');
@@ -74,7 +79,6 @@ export default function StaffAccessPage() {
     }
   }
   const { data: grants, loading, reload } = useLoad(() => api.get('/api/staff-grants'), []);
-  const { data: events } = useLoad(() => api.get('/api/events'), []);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -83,9 +87,7 @@ export default function StaffAccessPage() {
   const today = todayYmd();
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
-  const upcoming = (events || []).filter((e) => e.event_date >= today && e.status !== 'cancelled');
   const isCo = CLUB_ONLY.includes(form.role);
-  const scopes = isCo ? ['club'] : SCOPES;
 
   function pickRole(r) {
     // Finance / Operations need the Advanced plan.
@@ -109,9 +111,9 @@ export default function StaffAccessPage() {
         email: form.email,
         full_name: form.full_name,
         role: form.role,
-        scope: ['all', 'clubs', 'xeve'].includes(form.scope) ? form.scope : 'all',
-        club_id: form.scope === 'club' ? form.club_id || null : null,
-        event_id: form.scope === 'event' ? form.event_id || null : null,
+        scope: 'all',
+        club_id: target?.id || null,
+        event_id: null,
         valid_from: form.valid_from || null,
         valid_until: form.valid_until || null,
       });
@@ -152,7 +154,9 @@ export default function StaffAccessPage() {
 
   const list = (grants || []).filter((g) => filter === 'all' || g.role === filter);
   const counts = Object.fromEntries(ROLES.map((r) => [r, (grants || []).filter((g) => g.role === r).length]));
-  const scopeReady = !isCo && form.scope === 'event' ? !!form.event_id : form.scope === 'club' ? !!form.club_id : true;
+  const scopeReady = !!target;
+  // Role counts: the roles offered, plus an old one while someone still holds it.
+  const shown = ROLES.filter((r) => GRANT_ROLES.includes(r) || counts[r] > 0);
 
   return (
     <AppShell>
@@ -162,7 +166,7 @@ export default function StaffAccessPage() {
           <p className="text-gray-400 text-sm max-w-2xl">{t('staffX.lead')}</p>
         </div>
         <div className="flex gap-2">
-          {ROLES.map((r) => (
+          {shown.map((r) => (
             <div key={r} className="rounded-xl border border-navy-700 bg-navy-900 px-3 py-2 text-center min-w-[5.5rem]">
               <div className="text-white font-bold tabular-nums">{counts[r]}</div>
               <div className="text-gray-400 text-[11px]">{ROLE_STYLE[r].icon} {t(`staff.${r}`)}</div>
@@ -189,7 +193,7 @@ export default function StaffAccessPage() {
           <fieldset>
             <legend className="text-xs text-gray-400 mb-1.5">1. {t('staff.role')}</legend>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {ROLES.map((r) => (
+              {GRANT_ROLES.map((r) => (
                 <button
                   key={r}
                   type="button"
@@ -205,41 +209,13 @@ export default function StaffAccessPage() {
             </div>
           </fieldset>
 
-          <fieldset>
-            <legend className="text-xs text-gray-400 mb-1.5">2. {t('staff.scope')}</legend>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {scopes.map((s) => (
-                <label
-                  key={s}
-                  className={`rounded-xl border px-3 py-2.5 cursor-pointer ${form.scope === s ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
-                >
-                  <input type="radio" name="scope" className="sr-only" checked={form.scope === s} onChange={() => set({ scope: s })} />
-                  <div className={`text-sm font-semibold ${form.scope === s ? 'text-lime-300' : 'text-white'}`}>{t(`staffX.pick_${s}`)}</div>
-                  <div className="text-gray-400 text-xs mt-0.5">{t(`staffX.pickHint_${s}`)}</div>
-                </label>
-              ))}
-            </div>
-            {form.scope === 'club' && (
-              <select className="input mt-2" required value={form.club_id} onChange={(e) => set({ club_id: e.target.value })} aria-label={t('staffX.pickClub')}>
-                <option value="">{t('staffX.pickClub')}</option>
-                {clubs.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            )}
-            {form.scope === 'event' && (
-              <select className="input mt-2" required value={form.event_id} onChange={(e) => set({ event_id: e.target.value })} aria-label={t('staffX.pickEvent')}>
-                <option value="">{t('staffX.pickEvent')}</option>
-                {upcoming.map((ev) => (
-                  <option key={ev.id} value={ev.id}>{dmy(ev.event_date)} · {ev.title}{ev.club_name ? ` · ${ev.club_name}` : ''}</option>
-                ))}
-              </select>
-            )}
-            {isCo && <p className="text-sky-300 text-xs mt-2">{t('coadmin.grantNote')}</p>}
-          </fieldset>
+          <p className="rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-200">
+            {target ? <>📍 {t('staffX.forClub', { name: target.name })}</> : <span className="text-amber-200">{t('staffX.pickClubMenu')}</span>}
+            {isCo && <span className="block text-sky-300 text-xs mt-1">{t('coadmin.grantNote')}</span>}
+          </p>
 
           <fieldset>
-            <legend className="text-xs text-gray-400 mb-1.5">3. {t('staffX.window')}</legend>
+            <legend className="text-xs text-gray-400 mb-1.5">2. {t('staffX.window')}</legend>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="sg-from" className="text-xs text-gray-500">{t('staffX.from')}</label>
@@ -267,7 +243,7 @@ export default function StaffAccessPage() {
             <thead>
               <tr className="text-gray-400 text-xs">
                 <th className="text-left font-normal pb-2" />
-                {ROLES.map((r) => (
+                {GRANT_ROLES.map((r) => (
                   <th key={r} className="font-normal pb-2 text-center" title={t(`staff.${r}`)}>{ROLE_STYLE[r].icon}</th>
                 ))}
               </tr>
@@ -276,7 +252,7 @@ export default function StaffAccessPage() {
               {CAN.map(([k, by]) => (
                 <tr key={k} className="border-t border-navy-700">
                   <td className="py-2 text-gray-200">{t(`staffX.can_${k}`)}</td>
-                  {ROLES.map((r) => (
+                  {GRANT_ROLES.map((r) => (
                     <td key={r} className={`text-center ${by[r] ? 'text-lime-400' : 'text-gray-600'}`}>{by[r] ? '✓' : '—'}</td>
                   ))}
                 </tr>
@@ -291,7 +267,7 @@ export default function StaffAccessPage() {
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 className="text-white font-semibold">{t('staffX.people', { n: (grants || []).length })}</h2>
         <div className="flex flex-wrap gap-1.5 text-sm">
-          {['all', ...ROLES].map((r) => (
+          {['all', ...shown].map((r) => (
             <button key={r} onClick={() => setFilter(r)} className={`rounded-full border px-3 py-1 whitespace-nowrap ${filter === r ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-300 hover:text-white'}`}>
               {r === 'all' ? t('staffX.allRoles') : t(`staff.${r}`)}
             </button>
@@ -333,7 +309,7 @@ export default function StaffAccessPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-navy-700">
                 <select className="input text-sm !w-auto !py-1.5" value={g.role} onChange={(e) => changeRole(g, e.target.value)} aria-label={t('staff.role')}>
-                  {ROLES.map((r) => (
+                  {ROLES.filter((r) => GRANT_ROLES.includes(r) || r === g.role).map((r) => (
                     <option key={r} value={r} disabled={CLUB_ONLY.includes(r) && !g.club_id}>{t(`staff.${r}`)}</option>
                   ))}
                 </select>

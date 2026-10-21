@@ -556,7 +556,7 @@ function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
       {boards.map((b) => (
         <section key={b.key} className="card !px-3 sm:!px-4">
           <h3 className="text-white font-semibold mb-2 tabular-nums">🏟 {b.title}{b.slots ? <span className="text-gray-400 font-normal"> · {b.people.length}/{b.slots}</span> : null}</h3>
-          {b.people.length === 0 ? (
+          {b.people.length === 0 && !b.slots ? (
             <p className="text-gray-500 text-sm">—</p>
           ) : (
             <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -583,6 +583,13 @@ function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
                   </li>
                 );
               })}
+              {/* Places nobody has taken yet. */}
+              {Array.from({ length: Math.max((b.slots || 0) - b.people.length, 0) }, (_, i) => (
+                <li key={`free-${i}`} aria-label={t('egroups.freeSlot')} className="flex min-h-[9.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-navy-600 p-2.5 text-center text-gray-500">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-navy-500 text-lg" aria-hidden>+</span>
+                  <span className="text-xs">{t('egroups.freeSlot')}</span>
+                </li>
+              ))}
             </ul>
           )}
         </section>

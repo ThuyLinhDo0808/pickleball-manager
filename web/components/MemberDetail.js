@@ -412,7 +412,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
             {member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}
             {member.member_type === 'fixed' && member.tier && ` · ${t(`members.${member.tier}`)}`}
           </span>
-          {member.member_type === 'fixed' && <VipBadge stars={member.vip_stars} />}
+          {member.member_type === 'fixed' && <VipBadge stars={member.vip_stars} tier={member.vip_tier} />}
           {(member.member_type !== 'fixed' || club?.kind === 'community') && member.guest_perk && <GuestPerkBadge perk={member.guest_perk} pct={member.guest_discount_pct} />}
           {member.phone && <a href={`tel:${member.phone}`} className="text-lime-400">{member.phone}</a>}
           {member.dupr_level != null && <span>{levelTag(member.dupr_level, sport, t)}</span>}

@@ -1,4 +1,5 @@
 'use client';
+import { peekReturn } from '@/lib/returnTo';
 import { QuickProfileModal, QuickBirthModal } from '@/components/QuickProfileModal';
 import { useEffect, useMemo, useState } from 'react';
 import MyBookings from '@/components/MyBookings';
@@ -71,6 +72,11 @@ export default function HomeHub() {
   // New accounts first say which sports they play and whether they run a club.
   useEffect(() => {
     if (data && data.onboarded === false) router.replace('/onboarding');
+    // Signed up from a club invite / kèo link (and confirmed from the email): back to it.
+    else if (data) {
+      const back = peekReturn();
+      if (back) router.replace(back);
+    }
   }, [data, router]);
 
   const days = useMemo(() => {

@@ -1,4 +1,5 @@
 'use client';
+import { peekReturn } from '@/lib/returnTo';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,7 +16,7 @@ const COOLDOWN = 60; // seconds between two "send a new code"
 // Only same-site paths, so ?next= can't bounce people to another website.
 function nextPath() {
   const next = new URLSearchParams(window.location.search).get('next') || '';
-  return next.startsWith('/') && !next.startsWith('//') ? next : '/home';
+  return next.startsWith('/') && !next.startsWith('//') ? next : peekReturn() || '/home';
 }
 
 const fmt = (d) => (d ? localDate(new Date(d), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '');

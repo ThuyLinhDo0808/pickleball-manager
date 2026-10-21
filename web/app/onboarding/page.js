@@ -1,4 +1,5 @@
 'use client';
+import { peekReturn } from '@/lib/returnTo';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
@@ -83,7 +84,7 @@ export default function OnboardingPage() {
       // their club / community.
       const next = new URLSearchParams(window.location.search).get('next') || '';
       const safe = next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/onboarding') ? next : null;
-      router.replace(safe || (role === 'manager' ? '/club-request?from=onboarding' : '/home'));
+      router.replace(safe || peekReturn() || (role === 'manager' ? '/club-request?from=onboarding' : '/home'));
     } catch (err) {
       setError(err.payload?.code === 'birth_date_required' ? t('onb.errBirth') : err.message);
       setBusy(false);
