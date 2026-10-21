@@ -1398,9 +1398,7 @@ async function changeGroup(event, prior, groupId) {
   const group = eg.groupOf(event, groupId);
   if (!group) throw Object.assign(new Error('Unknown group.'), { status: 400, code: 'bad_group' });
   if (prior.group_id === group.id) return prior;
-  if (MAIN_LIST.includes(prior.status) && ((await eg.takenByGroup(event))[group.id] || 0) >= group.slots) {
-    throw Object.assign(new Error('That group is full.'), { status: 409, code: 'group_full' });
-  }
+  // The Host moves people between courts freely, even into a court that is already full.
   const patch = { group_id: group.id, court: null };
   if (!prior.fee_paid && prior.payment_status !== 'proof_submitted') patch.fee_amount = group.fee_amount;
   const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();

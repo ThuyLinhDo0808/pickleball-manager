@@ -138,16 +138,19 @@ export default function PublicEventPage() {
         <div className="grid grid-cols-2 gap-2 mt-4">
           <Info label={t('public.fee')} value={ev.groups?.length ? t('egroups.feeFrom', { amount: `${Math.min(...ev.groups.map((g) => Number(g.fee_amount) || 0)).toLocaleString('vi-VN')} ₫` }) : Number(ev.fee_amount) ? `${Number(ev.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')} />
           <Info label={t('public.level')} value={level} />
-          <Info label={t('egroups.courtNo')} value={ev.court_labels || ev.courts} />
+          {!(ev.groups?.length > 0) && <Info label={t('egroups.courtNo')} value={ev.court_labels || ev.courts} />}
           <Info label={t('events.slots')} value={`${ev.main_count}/${ev.slots}`} />
         </div>
         {/* Kèo with time groups: each with its hours, fee and places left. */}
         {ev.groups?.length > 0 && (
           <ul className="mt-2 flex flex-col gap-1.5 text-sm">
-            {ev.groups.map((g) => (
+            {ev.groups.map((g, i) => (
               <li key={g.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-lg bg-navy-900 px-3 py-2">
-                <span className="text-white font-semibold tabular-nums">🕒 {g.start_time}–{g.end_time}</span>
-                <span className="text-gray-200">{Number(g.fee_amount) ? `${Number(g.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+                <span className="text-white font-semibold">
+                  🏟 {t('egroups.courtN', { n: g.courts || i + 1 })}
+                  {g.play_format && <span className="ml-1.5 rounded-full border border-sky-400/60 px-1.5 text-[11px] font-normal text-sky-200">{t(`fmt.${g.play_format}`)}</span>}
+                </span>
+                <span className="text-gray-200 tabular-nums">🕒 {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? `${Number(g.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')}</span>
                 <span className={g.left > 0 ? 'text-lime-300 text-xs' : 'text-amber-300 text-xs'}>{g.left > 0 ? t('egroups.left', { n: g.left, total: g.slots }) : t('egroups.full')}</span>
               </li>
             ))}

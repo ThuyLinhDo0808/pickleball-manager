@@ -272,7 +272,7 @@ export default function EventDetailPage() {
         {event.groups?.length > 1 && (
           <p className="text-gray-300 text-sm mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
             {event.groups.map((g, gi) => (
-              <span key={g.id} className="tabular-nums">🏟 {t('egroups.courtN', { n: g.courts || gi + 1 })} · {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}</span>
+              <span key={g.id} className="tabular-nums">🏟 {t('egroups.courtN', { n: g.courts || gi + 1 })}{g.play_format ? ` (${t(`fmt.${g.play_format}`)})` : ''} · {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}</span>
             ))}
           </p>
         )}
@@ -548,7 +548,7 @@ function DuprBadge({ c, t }) {
 function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
   const groups = event.groups || [];
   const boards = [
-    ...groups.map((g) => ({ key: g.id, title: `${t('egroups.courtN', { n: g.courts || '?' })} · ${g.start_time}–${g.end_time}`, slots: g.slots, people: rows.filter((p) => p.group_id === g.id) })),
+    ...groups.map((g) => ({ key: g.id, title: `${t('egroups.courtN', { n: g.courts || '?' })}${g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''} · ${g.start_time}–${g.end_time}`, slots: g.slots, people: rows.filter((p) => p.group_id === g.id) })),
     { key: 'none', title: t('egroups.noCourt'), slots: null, people: rows.filter((p) => !groups.some((g) => g.id === p.group_id)) },
   ].filter((b) => b.key !== 'none' || b.people.length);
   return (

@@ -249,7 +249,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {event.groups.map((g, i) => (
               <button key={g.id} type="button" disabled={busy} aria-pressed={row.group_id === g.id} onClick={() => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/group`, { group_id: g.id }))} className={`${chip} tabular-nums text-left leading-tight ${row.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
                 <span className="block font-semibold">🏟 {t('egroups.courtN', { n: g.courts || i + 1 })}</span>
-                <span className="block text-[11px] opacity-80">{g.start_time}–{g.end_time}</span>
+                <span className="block text-[11px] opacity-80">{g.start_time}–{g.end_time}{g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''}</span>
               </button>
             ))}
           </div>

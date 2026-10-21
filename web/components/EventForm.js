@@ -107,7 +107,7 @@ function Section({ n, title, hint, more = false, children }) {
 // court's number, players (max), start, end and fee per slot. The player picks a court when
 // signing up. Cards already filled keep their values when the count changes.
 export const groupsForCount = (n, existing = []) =>
-  Array.from({ length: n }, (_, i) => existing[i] || { id: `s${i + 1}${Date.now().toString(36).slice(-4)}`, start_time: '', end_time: '', fee_amount: '', slots: '', courts: String(i + 1) });
+  Array.from({ length: n }, (_, i) => existing[i] || { id: `s${i + 1}${Date.now().toString(36).slice(-4)}`, start_time: '', end_time: '', fee_amount: '', slots: '', courts: String(i + 1), play_format: 'mixed' });
 
 function CourtCards({ f, set }) {
   const { t } = useI18n();
@@ -134,6 +134,17 @@ function CourtCards({ f, set }) {
             <label className="min-w-0 text-[11px] text-gray-400 col-span-2">{t('egroups.feeSlot')}
               <input className="input" type="number" inputMode="numeric" min="0" step="1000" required value={g.fee_amount} onChange={(e) => put(i, { fee_amount: e.target.value })} />
             </label>
+            {/* What this court plays: full men, full women or mixed (shown to players). */}
+            <div className="min-w-0 col-span-2 text-[11px] text-gray-400" role="radiogroup" aria-label={t('fmt.label')}>
+              {t('fmt.label')}
+              <div className="grid grid-cols-3 gap-1.5 mt-1">
+                {PLAY_FORMATS.map((k) => (
+                  <button key={k} type="button" role="radio" aria-checked={(g.play_format || 'mixed') === k} onClick={() => put(i, { play_format: k })} className={`rounded-lg border px-2 py-1.5 text-sm ${(g.play_format || 'mixed') === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                    {t(`fmt.${k}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       ))}
@@ -188,7 +199,7 @@ export function formFromEvent(ev) {
     courts: Array.isArray(ev.groups) && ev.groups.length > 1 ? ev.groups.length : ev.courts ?? 1,
     court_labels: ev.court_labels || '',
     groups_on: Array.isArray(ev.groups) && ev.groups.length > 1,
-    groups: (ev.groups || []).map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, fee_amount: String(g.fee_amount ?? 0), slots: String(g.slots ?? ''), courts: g.courts || '' })),
+    groups: (ev.groups || []).map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, fee_amount: String(g.fee_amount ?? 0), slots: String(g.slots ?? ''), courts: g.courts || '', play_format: g.play_format || 'mixed' })),
     slots: ev.slots ?? 16,
     level_min: ev.level_min ?? '',
     level_max: ev.level_max ?? '',
@@ -220,7 +231,7 @@ export function formFromEvent(ev) {
 const groupList = (items) =>
   (items || [])
     .filter((g) => g.start_time && g.end_time)
-    .map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, fee_amount: Math.round(Number(g.fee_amount || 0)), slots: Math.round(Number(g.slots || 0)), courts: (g.courts || '').trim() || null }));
+    .map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, fee_amount: Math.round(Number(g.fee_amount || 0)), slots: Math.round(Number(g.slots || 0)), courts: (g.courts || '').trim() || null, play_format: PLAY_FORMATS.includes(g.play_format) ? g.play_format : 'mixed' }));
 
 const costList = (items) =>
   (items || [])
@@ -253,7 +264,9 @@ export function eventPayload(f) {
   // Time groups: the kèo starts with the earliest group, ends with the latest, has all their places.
   const groups = f.groups_on ? groupList(f.groups) : null;
   if (groups) {
-    f = { ...f, start_time: groups.map((g) => g.start_time).sort()[0] || f.start_time, end_time: groups.map((g) => g.end_time).sort().reverse()[0] || f.end_time, slots: groups.reduce((n, g) => n + g.slots, 0), fee_amount: Math.min(...groups.map((g) => g.fee_amount)) };
+    f = { ...f, start_time: groups.map((g) => g.start_time).sort()[0] || f.start_time, end_time: groups.map((g) => g.end_time).sort().reverse()[0] || f.end_time, slots: groups.reduce((n, g) => n + g.slots, 0), fee_amount: Math.min(...groups.map((g) => g.fee_amount)),
+      // Each court says what it plays; the kèo itself: that one if every court agrees, else mixed.
+      play_format: new Set(groups.map((g) => g.play_format)).size === 1 ? groups[0].play_format : 'mixed' };
   }
   const deadline = mode === 'auto' ? autoDeadline(f.event_date, f.start_time, f.cancel_deadline_hours) : mode === 'time' ? f.registration_deadline : '';
   return {
@@ -599,6 +612,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         {!meeting && (
         <>
         <Section n={2} title={t('create.rules')} more>
+          {!f.groups_on && (
           <Field label={t('fmt.label')} span={2} hint={t('fmt.hint')}>
             <div className="grid grid-cols-3 gap-1.5 mt-1">
               {PLAY_FORMATS.map((k) => (
@@ -608,6 +622,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               ))}
             </div>
           </Field>
+          )}
           <Field label={t('svc.label')} span={4} hint={t('svc.hint')}>
             <input className="input" maxLength={300} placeholder={t('svc.ph')} value={f.services} onChange={(e) => set({ services: e.target.value })} />
             <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -765,7 +780,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <dd className="text-gray-100 tabular-nums">
                 {f.groups_on && !meeting
                   ? (f.groups || []).map((g) => (
-                      <span key={g.id} className="block">{g.start_time || '—'}–{g.end_time || '—'} · {g.fee_amount === '' ? '—' : Number(g.fee_amount) > 0 ? `${Number(g.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')} · {g.slots === '' ? '—' : t('createx.slotsN', { n: g.slots })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+                      <span key={g.id} className="block">{g.start_time || '—'}–{g.end_time || '—'} · {g.fee_amount === '' ? '—' : Number(g.fee_amount) > 0 ? `${Number(g.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')} · {g.slots === '' ? '—' : t('createx.slotsN', { n: g.slots })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''} · {t(`fmt.${g.play_format || 'mixed'}`)}</span>
                     ))
                   : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
               </dd>
