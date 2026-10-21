@@ -3,7 +3,6 @@ import { peekReturn } from '@/lib/returnTo';
 import { QuickProfileModal, QuickBirthModal } from '@/components/QuickProfileModal';
 import { useEffect, useMemo, useState } from 'react';
 import MyBookings from '@/components/MyBookings';
-import HomeFind from '@/components/HomeFind';
 import { formatVnd } from '@/lib/format';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -131,8 +130,6 @@ export default function HomeHub() {
         </button>
       )}
 
-      {/* Find a kèo (next 3 days, by place) or a club / community */}
-      <HomeFind />
 
       {cr && (cr.status === 'pending' || (cr.status !== 'cancelled' && cr.decided_at && Date.now() - Date.parse(cr.decided_at) < 14 * 86400000)) && (
         <Link href="/club-request" className={`card block mb-4 text-sm ${cr.status === 'approved' ? 'border-lime-400/50' : cr.status === 'rejected' ? 'border-red-400/50' : 'border-amber-300/50'}`}>

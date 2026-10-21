@@ -56,7 +56,9 @@ function cleanGroups(raw) {
     let id = String(g?.id || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 20) || `g${i + 1}`;
     while (used.has(id)) id = `${id}x`.slice(-20);
     used.add(id);
-    groups.push({ id, start_time: start, end_time: end, fee_amount: Math.round(fee), slots, courts: courtList(g?.courts).join(', ') || null });
+    // What the court plays (Full nam / Full nữ / Mix), shown to players; null = not said.
+    const play_format = ['men', 'women', 'mixed'].includes(g?.play_format) ? g.play_format : null;
+    groups.push({ id, start_time: start, end_time: end, fee_amount: Math.round(fee), slots, courts: courtList(g?.courts).join(', ') || null, play_format });
   }
   const courts = [...new Set(groups.flatMap((g) => courtList(g.courts)))];
   return {
