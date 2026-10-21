@@ -322,6 +322,59 @@ router.get('/public/:publicToken/me', requireAuth, async (req, res) => {
   }
 });
 
+// "Lịch chơi" of a kèo for a player who has a place in it (or its Host): who plays on which
+// court (updated when the Host moves people), the scored matches, the session rankings and
+// the challenge matches. No phone, email or account ids.
+router.get('/public/:publicToken/live', requireAuth, async (req, res) => {
+  const event = await publicEvent(req, res);
+  if (!event) return;
+  try {
+    const { participant } = await signup.myRegistration(event, req.userId);
+    const isHost = event.host_id === req.userId;
+    if (!isHost && !(participant && ['registered', 'checked_in', 'pending'].includes(participant.status))) {
+      return res.status(403).json({ error: 'Only players of this kèo see its schedule.', code: 'not_playing' });
+    }
+    const eg = require('../services/eventGroups');
+    const moves = await movesReady();
+    const base = 'id, full_name, dupr_level, status, joined_at, is_organizer, user_id, source_club_member_id, guest_member_id, group_id, dupr_id, gender';
+    const { data: people, error: pErr } = await supabase
+      .from('event_participants')
+      .select(moves ? `${base}, group_moved_at, group_moved_from` : base)
+      .eq('event_id', event.id)
+      .in('status', ['registered', 'checked_in', 'pending'])
+      .order('joined_at', { ascending: true });
+    if (pErr) throw pErr;
+    const cards = await publicPlayerInfo(event, people).catch(() => people.map((p) => ({ full_name: p.full_name, status: p.status })));
+    const { data: matches, error: mErr } = await supabase
+      .from('matches')
+      .select('id, team1_score, team2_score, played_at, created_at, is_challenge, challenge_reward, match_players(team, event_participant_id, club_member_id, event_participants(full_name), club_members(full_name))')
+      .eq('event_id', event.id)
+      .order('created_at', { ascending: true });
+    let rows = matches;
+    if (mErr) {
+      // Before the challenge migration.
+      const r = await supabase.from('matches').select('id, team1_score, team2_score, played_at, created_at, match_players(team, event_participant_id, club_member_id, event_participants(full_name), club_members(full_name))').eq('event_id', event.id).order('created_at', { ascending: true });
+      if (r.error) throw r.error;
+      rows = r.data;
+    }
+    const since = Date.now() - 24 * 3600000;
+    res.json({
+      event: { id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time },
+      groups: await eg.publicGroups(event).catch(() => null),
+      me: participant ? { id: participant.id, group_id: participant.group_id || null } : null,
+      players: people.map((p, i) => ({ ...cards[i], id: p.id, group_id: p.group_id || null, me: participant?.id === p.id })),
+      // Court moves of the last day, newest first: "A đã được điều chuyển sang chơi sân …".
+      moves: people
+        .filter((p) => p.group_moved_at && Date.parse(p.group_moved_at) > since)
+        .sort((a, b) => b.group_moved_at.localeCompare(a.group_moved_at))
+        .map((p) => ({ id: p.id, full_name: p.full_name, to: p.group_id, from: p.group_moved_from, at: p.group_moved_at, me: participant?.id === p.id })),
+      matches: rows || [],
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
   const event = await publicEvent(req, res);
   if (!event) return;
@@ -1393,6 +1446,8 @@ async function undoRefund(req, p) {
   return data;
 }
 
+const movesReady = async () => !(await require('../services/schemaCheck').schemaStatus()).missing_migrations.includes('20261214090000_court_moves.sql');
+
 async function changeGroup(event, prior, groupId) {
   const eg = require('../services/eventGroups');
   const group = eg.groupOf(event, groupId);
@@ -1400,6 +1455,8 @@ async function changeGroup(event, prior, groupId) {
   if (prior.group_id === group.id) return prior;
   // The Host moves people between courts freely, even into a court that is already full.
   const patch = { group_id: group.id, court: null };
+  // Remember the move so the player sees "Bạn đã được chuyển sang sân …" (after its migration).
+  if (await movesReady()) Object.assign(patch, { group_moved_at: new Date().toISOString(), group_moved_from: prior.group_id || null });
   if (!prior.fee_paid && prior.payment_status !== 'proof_submitted') patch.fee_amount = group.fee_amount;
   const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
   if (error) throw error;

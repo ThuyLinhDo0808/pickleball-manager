@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { eventLevelText, levelText } from '@/lib/levels';
 import { useParams } from 'next/navigation';
 import EventSignup from '@/components/EventSignup';
+import PlayerEventLive from '@/components/PlayerEventLive';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
@@ -176,6 +177,9 @@ export default function PublicEventPage() {
       <section className="card mb-4">
         <EventSignup ev={ev} me={me} meError={meError} user={user} token={token} onChanged={refresh} />
       </section>
+
+      {/* Players with a place: who plays on which court, scores, session rankings. */}
+      <PlayerEventLive token={ev.public_token || token} sport={ev.sport} />
 
       <section className="card mb-6">
         <h2 className="text-white font-semibold mb-2">

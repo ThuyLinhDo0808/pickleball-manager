@@ -3,6 +3,7 @@ import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
 import { useParams } from 'next/navigation';
 import TicketCard from '@/components/TicketCard';
+import PlayerEventLive from '@/components/PlayerEventLive';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -69,6 +70,7 @@ export default function TicketPage() {
           </div>
         )}
       </section>
+      {e.public_token && tk.valid && <PlayerEventLive token={e.public_token} />}
       {e.public_token && (
         <a href={`/e/${e.public_token}`} className="block text-center text-gray-400 text-sm underline mb-6">{t('ticket.eventPage')}</a>
       )}

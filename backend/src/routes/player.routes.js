@@ -426,6 +426,18 @@ player.get('/updates', async (req, res) => {
       const ev = p.events;
       items.push({ id: `p:${p.id}:${kind}`, kind, at, title: ev.title, event_date: ev.event_date, href: kind === 'confirmed' && p.ticket_code ? `/t/${p.ticket_code}` : ev.public_token ? `/e/${ev.public_token}` : '/p' });
     }
+    // The Host moved me to another court ("Bạn đã được chuyển sang sân …").
+    const { data: moved } = await supabase
+      .from('event_participants')
+      .select('id, group_id, group_moved_at, events!inner(title, event_date, public_token, groups)')
+      .eq('user_id', uid)
+      .gte('group_moved_at', since)
+      .limit(50);
+    for (const p of moved || []) {
+      const groups = Array.isArray(p.events.groups) ? p.events.groups : [];
+      const i = groups.findIndex((g) => g.id === p.group_id);
+      items.push({ id: `m:${p.id}:${p.group_moved_at}`, kind: 'court_moved', at: p.group_moved_at, title: p.events.title, event_date: p.events.event_date, court: i < 0 ? null : groups[i].courts || String(i + 1), href: p.events.public_token ? `/e/${p.events.public_token}` : '/p' });
+    }
     for (const n of await moderation.noticesFor(uid).catch(() => [])) {
       if (n.created_at < since && n.read_at) continue;
       items.push({ id: `n:${n.id}`, kind: `notice_${n.kind}`, at: n.created_at, title: n.club_name || '', href: '/home', notice_id: n.id });

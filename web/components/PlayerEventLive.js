@@ -1,0 +1,199 @@
+'use client';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '@/context/I18nContext';
+import { useAuth } from '@/context/AuthContext';
+import Segmented from '@/components/ui/Segmented';
+import { api } from '@/lib/api';
+import { eventStandings } from '@/lib/eventStandings';
+
+const POLL_MS = 20000;
+const scored = (m) => m.team1_score != null && m.team2_score != null && m.team1_score !== m.team2_score;
+const nameOf = (mp) => mp.event_participants?.full_name || mp.club_members?.full_name || '?';
+const teamNames = (m, team) => (m.match_players || []).filter((mp) => mp.team === team).map(nameOf).join(' & ') || '—';
+
+// "Lịch chơi" of a kèo for a player who has a place in it (like Reclub): who plays on which
+// court (refreshed every 20 s, with a notice when the Host moves someone), the scores, the
+// session rankings and the challenge matches. Hidden for everyone else.
+export default function PlayerEventLive({ token, sport = 'pickleball' }) {
+  const { t } = useI18n();
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
+  const [tab, setTab] = useState('players');
+  const [toast, setToast] = useState('');
+  const lastMove = useRef(null);
+
+  const courtName = useCallback((groups, id) => {
+    const i = (groups || []).findIndex((g) => g.id === id);
+    return i < 0 ? t('egroups.noCourt') : t('egroups.courtN', { n: groups[i].courts || i + 1 });
+  }, [t]);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get(`/api/events/public/${token}/live`);
+      setData(r);
+      // A new court move since the last look: say so (the newest one).
+      const top = r.moves?.[0];
+      if (top && lastMove.current && top.at > lastMove.current) {
+        setToast(top.me ? t('elive.movedMe', { court: courtName(r.groups, top.to) }) : t('elive.moved', { name: top.full_name, court: courtName(r.groups, top.to) }));
+      }
+      lastMove.current = top?.at || lastMove.current || '0';
+    } catch {
+      setData(null); // not playing in this kèo (or signed out): nothing to show
+    }
+  }, [token, t, courtName]);
+  useEffect(() => {
+    if (!user) return undefined;
+    load();
+    const id = setInterval(load, POLL_MS);
+    return () => clearInterval(id);
+  }, [user, load]);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const id = setTimeout(() => setToast(''), 8000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  const matches = data?.matches || [];
+  const rows = useMemo(() => eventStandings(matches), [matches]);
+  if (!user || !data) return null;
+
+  const groups = data.groups || [];
+  const boards = groups.length
+    ? [
+        ...groups.map((g, i) => ({ key: g.id, title: t('egroups.courtN', { n: g.courts || i + 1 }), sub: [g.play_format ? t(`fmt.${g.play_format}`) : null, `${g.start_time}–${g.end_time}`].filter(Boolean).join(' · '), slots: g.slots, people: data.players.filter((p) => p.group_id === g.id) })),
+        ...(data.players.some((p) => !groups.some((g) => g.id === p.group_id)) ? [{ key: 'none', title: t('egroups.noCourt'), people: data.players.filter((p) => !groups.some((g) => g.id === p.group_id)) }] : []),
+      ]
+    : [{ key: 'all', title: t('elive.allPlayers'), people: data.players }];
+  const results = matches.filter(scored);
+  const challenges = matches.filter((m) => m.is_challenge);
+  const myId = data.me?.id;
+
+  return (
+    <section className="card mb-4" aria-label={t('elive.title')}>
+      <h2 className="text-white font-semibold mb-1">📅 {t('elive.title')}</h2>
+      {groups.length > 0 && data.me && (
+        <p className="text-lime-300 text-sm mb-2">🏟 {t('elive.myCourt', { court: courtName(groups, data.me.group_id) })}</p>
+      )}
+      {toast && <p role="status" className="mb-2 rounded-lg border border-amber-300/60 bg-amber-300/10 px-3 py-2 text-amber-100 text-sm">🔔 {toast}</p>}
+      <Segmented full items={['players', 'matches']} value={tab} onChange={setTab} label={(k) => (k === 'players' ? `👥 ${t('elive.tabPlayers')}` : `🏓 ${t('elive.tabMatches')} (${results.length})`)} className="mb-3 w-full" />
+
+      {tab === 'players' && (
+        <div className="flex flex-col gap-3">
+          {data.moves?.length > 0 && (
+            <ul className="flex flex-col gap-1 text-xs text-amber-100">
+              {data.moves.slice(0, 5).map((mv) => (
+                <li key={`${mv.id}${mv.at}`} className="rounded-md bg-amber-300/10 px-2 py-1">↪ {mv.me ? t('elive.movedMe', { court: courtName(groups, mv.to) }) : t('elive.moved', { name: mv.full_name, court: courtName(groups, mv.to) })}</li>
+              ))}
+            </ul>
+          )}
+          {boards.map((b) => (
+            <div key={b.key} className={`rounded-xl border p-2.5 ${b.people.some((p) => p.id === myId) ? 'border-lime-400/60' : 'border-navy-700'}`}>
+              <p className="text-white text-sm font-semibold mb-2">
+                🏟 {b.title}
+                {b.sub && <span className="text-gray-400 font-normal"> · {b.sub}</span>}
+                {b.slots ? <span className="text-gray-400 font-normal tabular-nums"> · {b.people.length}/{b.slots}</span> : null}
+              </p>
+              {b.people.length === 0 ? (
+                <p className="text-gray-500 text-xs">{t('elive.empty')}</p>
+              ) : (
+                <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {b.people.map((p) => (
+                    <li key={p.id} className={`rounded-lg px-2 py-2 text-center ${p.id === myId ? 'bg-lime-400/15 ring-1 ring-lime-400/60' : 'bg-navy-900'}`}>
+                      <span className="mx-auto mb-1 flex h-9 w-9 items-center justify-center rounded-full bg-navy-700 text-lime-300 font-bold">{String(p.full_name || '?').slice(0, 1).toUpperCase()}</span>
+                      <span className="block text-white text-xs font-semibold break-words">{p.full_name}{p.id === myId ? ` (${t('elive.you')})` : ''}</span>
+                      <span className="block text-gray-400 text-[11px]">
+                        {p.gender ? `${p.gender === 'male' ? '♂' : '♀'} ` : ''}
+                        {sport === 'pickleball' ? (p.dupr != null ? `DUPR ${Number(p.dupr).toFixed(2)}` : 'DUPR NR') : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'matches' && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <h3 className="text-white text-sm font-semibold mb-1">📋 {t('elive.results')}</h3>
+            {results.length === 0 ? (
+              <p className="text-gray-400 text-sm">{t('elive.noResults')}</p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {results.map((m, i) => {
+                  const w = m.team1_score > m.team2_score ? 1 : 2;
+                  return (
+                    <li key={m.id} className="grid grid-cols-[1.5rem_1fr_auto_1fr] items-center gap-2 rounded-lg bg-navy-900 px-2 py-1.5 text-sm">
+                      <span className="text-gray-500 text-xs tabular-nums">{m.is_challenge ? '⚔️' : i + 1}</span>
+                      <span className={`text-right break-words ${w === 1 ? 'text-lime-200 font-semibold' : 'text-gray-300'}`}>{teamNames(m, 1)}</span>
+                      <span className="text-white font-bold tabular-nums">{m.team1_score} – {m.team2_score}</span>
+                      <span className={`break-words ${w === 2 ? 'text-lime-200 font-semibold' : 'text-gray-300'}`}>{teamNames(m, 2)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-white text-sm font-semibold mb-1">🏅 {t('elive.standings')}</h3>
+            <p className="text-gray-500 text-xs mb-1">{t('elive.standingsHint')}</p>
+            {rows.length === 0 ? (
+              <p className="text-gray-400 text-sm">{t('estand.none')}</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="w-full text-xs sm:text-sm grid-table !min-w-0">
+                  <thead>
+                    <tr className="text-gray-300 text-left bg-navy-900">
+                      <th className="w-9 text-center">#</th>
+                      <th>{t('common.name')}</th>
+                      <th className="text-right">{t('estand.played')}</th>
+                      <th className="text-right">{t('estand.won')}</th>
+                      <th className="text-right">{t('estand.lost')}</th>
+                      <th className="text-right">{t('estand.rate')}</th>
+                      <th className="text-right">{t('elive.diff')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.id} className={r.id === myId ? 'bg-lime-400/10' : ''}>
+                        <td className="text-center font-bold">{r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank}</td>
+                        <td className="text-white !whitespace-normal">{r.name}</td>
+                        <td className="text-right tabular-nums">{r.played}</td>
+                        <td className="text-right tabular-nums text-lime-300">{r.won}</td>
+                        <td className="text-right tabular-nums text-red-300">{r.lost}</td>
+                        <td className="text-right tabular-nums font-semibold">{r.rate}%</td>
+                        <td className={`text-right tabular-nums ${r.diff < 0 ? 'text-red-300' : 'text-gray-200'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-violet-400/60 bg-violet-400/10 p-2.5">
+            <h3 className="text-violet-100 text-sm font-semibold mb-1">⚔️ {t('elive.challenges')}</h3>
+            {challenges.length === 0 ? (
+              <p className="text-gray-300 text-sm">{t('elive.noChallenges')}</p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {challenges.map((m) => (
+                  <li key={m.id} className="rounded-lg bg-navy-900/80 px-2 py-1.5 text-sm">
+                    <span className="text-white">{teamNames(m, 1)}</span>
+                    <span className="text-violet-200 font-bold tabular-nums"> {scored(m) ? `${m.team1_score} – ${m.team2_score}` : 'VS'} </span>
+                    <span className="text-white">{teamNames(m, 2)}</span>
+                    {m.challenge_reward && <span className="block text-xs text-amber-200">🎁 {m.challenge_reward}</span>}
+                    {!scored(m) && <span className="block text-xs text-gray-400">{t('elive.challengeOpen')}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
