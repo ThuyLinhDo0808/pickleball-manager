@@ -59,7 +59,7 @@ export default function PlayerBell({ className = '' }) {
         {fresh > 0 && <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">{fresh > 9 ? '9+' : fresh}</span>}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto rounded-xl border border-navy-600 bg-navy-900 shadow-2xl z-50">
+        <div className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+3.75rem)] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] max-h-[70vh] overflow-y-auto rounded-xl border border-navy-600 bg-navy-900 shadow-2xl z-50">
           <p className="px-4 pt-3 pb-2 text-white font-semibold">{t('bell.title')}</p>
           {rows.length === 0 && <p className="px-4 pb-4 text-gray-400 text-sm">{t('pbell.empty')}</p>}
           <ul className="divide-y divide-navy-700">

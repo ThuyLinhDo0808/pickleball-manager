@@ -30,7 +30,7 @@ function Icon({ d, className = 'w-5 h-5' }) {
 // back: false = page has its own way back (or is a step-by-step flow); a string = where to go
 // when there is no history. Tab pages (Trang chủ, Tìm CLB, Xếp hạng, Hoạt động, Hồ sơ) have none.
 export default function PlayerShell({ children, requireAuth = true, sport = 'pickleball', back }) {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const { t, lang, setLang, setSport } = useI18n();
   // Personal pages speak the sport of the club shown (member page) or the default one;
   // not whichever club was last open on the manager side.
@@ -60,15 +60,12 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
                 </Link>
               ))}
           </nav>
-          {user && <PlayerBell className="shrink-0" />}
           <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-sm text-gray-200 border border-navy-700 rounded-full px-3 py-1.5 shrink-0">
             {lang === 'vi' ? 'EN' : 'VI'}
           </button>
-          {user && (
-            <button onClick={() => signOut()} className="text-sm text-gray-300 shrink-0">
-              {t('nav.signOut')}
-            </button>
-          )}
+          {/* Bell last, at the right edge, so its panel opens inside the screen. Sign out is
+              on Hồ sơ (/p/profile). */}
+          {user && <PlayerBell className="shrink-0" />}
         </div>
       </header>
       <main className="max-w-5xl mx-auto p-4 pb-tabbar-lg">

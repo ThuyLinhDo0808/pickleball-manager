@@ -35,7 +35,7 @@ function resizePhoto(file) {
 
 export default function PlayerProfile() {
   const { t } = useI18n();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const fileRef = useRef(null);
   const [form, setForm] = useState(empty);
@@ -183,6 +183,12 @@ export default function PlayerProfile() {
         <h2 className="text-white font-bold text-lg mb-1">🛟 {t('feedback.helpTitle')}</h2>
         <p className="text-gray-400 text-sm mb-3">{t('feedback.helpHint')}</p>
         <FeedbackButton className="btn-secondary text-sm">💬 {t('feedback.button')}</FeedbackButton>
+      </section>
+
+      {/* Sign out lives here (not in the top bar). */}
+      <section className="card mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-gray-300 text-sm min-w-0">{user?.email}</p>
+        <button type="button" className="btn-secondary text-sm" onClick={() => signOut()}>↩ {t('nav.signOut')}</button>
       </section>
 
       <DeleteAccount />

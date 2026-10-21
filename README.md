@@ -110,7 +110,7 @@ Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **tra
 - **Lịch sắp tới của tôi**: mọi buổi bạn đã đăng ký (mọi CLB + Xé Vé), **nhóm theo ngày**: giờ, tên buổi, CLB, trạng thái (đã đăng ký / danh sách chờ / chờ thanh toán), số chỗ `x/y`, vé QR. Lọc theo từng CLB hoặc Xé Vé.
 - Nhắc hoàn thiện hồ sơ (*"Bạn chưa cập nhật thông tin cá nhân. Vui lòng bấm vào đây để cập nhật."* — bấm vào là mở Hồ sơ), khảo sát sau buổi.
 
-Thanh điều hướng cá nhân: **Trang chủ · Tìm kèo / CLB** (`/discover`) **· Xếp hạng** (`/rankings`) **· Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, thông báo qua email) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới.
+Thanh điều hướng cá nhân: **Trang chủ · Tìm kèo / CLB** (`/discover`) **· Xếp hạng** (`/rankings`) **· Hoạt động** (`/p`: mã QR check-in, công nợ, lịch sử, phong độ, DUPR, thông báo qua email) **· Hồ sơ** (`/p/profile`). Trên điện thoại là thanh dưới. Thanh trên cùng chỉ còn logo, nút **EN / VI** và chuông **🔔** (ở sát mép phải; trên điện thoại khung thông báo mở rộng hết bề ngang ngay dưới thanh, không bị lệch ra ngoài màn hình). Nút **Đăng xuất** nằm ở cuối trang **Hồ sơ** (kèm email đang đăng nhập), không còn ở thanh trên cùng.
 
 ### 3.2. Trang CLB cho thành viên (`/c/<clubId>`)
 Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được. Gồm: ảnh/tên CLB, nhãn *Thành viên* (+ *chờ xác thực* nếu CLB chưa duyệt), liên hệ; 4 ô số liệu (buổi còn lại, buổi đã đăng ký, buổi đã chơi, công nợ) và 4 tab:
