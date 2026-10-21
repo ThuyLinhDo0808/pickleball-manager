@@ -228,8 +228,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
 
   const fee = Number(ev.fee_amount || 0);
   const next = `/sign-in?next=${encodeURIComponent(`/e/${token}`)}`;
-  // Not a member of the club / community yet: "Đăng ký nhanh" (quick booking, no account
-  // needed; the Host checks the info, then the transfer).
+  // Not signed in: "Đăng ký nhanh" (quick booking, no account needed; the Host checks the
+  // info, then the transfer) next to signing in.
   const quickHref = ev.id && ev.kind !== 'meeting' ? `/g/${ev.id}/p-${ev.public_token || token}` : null;
   const quickBox = quickHref && ev.registration_open && (
     <Link href={quickHref} className="btn-primary block w-full py-3 text-center mt-3">{t('signup.quickCta')}</Link>
@@ -444,17 +444,9 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!ev.registration_open) {
     return <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>;
   }
-  // Signed in but not a member: offer the quick booking first (the account sign-up stays below).
-  const notMember = me.member?.state !== 'verified';
-  if (!me.profile?.full_name || !me.profile?.phone) return notMember && quickBox ? (
-    <>
-      {quickBox}
-      <details className="mt-3">
-        <summary className="text-sm text-gray-300 cursor-pointer">{t('signup.orAccount')}</summary>
-        <div className="mt-2"><ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} /></div>
-      </details>
-    </>
-  ) : <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} />;
+  // Signed in: always the account sign-up (never "Đăng ký nhanh", which is for people
+  // without an account), so the Host sees a normal sign-up, not a quick booking.
+  if (!me.profile?.full_name || !me.profile?.phone) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} />;
 
   async function register() {
     setBusy(true);
@@ -482,7 +474,6 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const paysNow = guestPays && !(v && useVoucher && withVoucher === 0); // a free-kèo voucher skips payment
   return (
     <div className="flex flex-col">
-      {notMember && quickBox && <div className="mb-3 -mt-3">{quickBox}</div>}
       <Steps current="confirm" guestPays={paysNow} approval={approval} />
       {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}

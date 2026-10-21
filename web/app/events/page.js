@@ -161,7 +161,11 @@ export default function EventsPage() {
     );
     return perClub.flat();
   }, [workspace, clubKey, club?.id]);
-  const [clubFilter, setClubFilter] = useState('all');
+  // Opens on the club / community picked in the menu; "Tất cả cộng đồng" shows every one.
+  // Switching club in the menu goes back to that club.
+  const [clubPick, setClubFilter] = useState(null);
+  useEffect(() => setClubFilter(null), [club?.id]);
+  const clubFilter = clubPick || (isClub && club?.id && (clubs || []).some((c) => c.id === club.id) ? club.id : 'all');
 
   // Opens on the list (search, filters, Sắp diễn ra / Đang mở / Đã xong) in clubs and
   // communities alike; Tháng / Tuần / Ngày are one tap away.
@@ -252,7 +256,7 @@ export default function EventsPage() {
       <PageHeader
         icon={isClub && !community ? '🗓' : '🎟'}
         title={isClub && !community ? t('nav.schedule') : t('nav.kevents')}
-        subtitle={isClub ? (manyClubs ? t(community ? 'social.allCommunities' : 'calx.allYourClubs', { n: clubs.length }) : club?.name) : t('finX.scopeXeve')}
+        subtitle={isClub ? (manyClubs && clubFilter === 'all' ? t(community ? 'social.allCommunities' : 'calx.allYourClubs', { n: clubs.length }) : (clubs || []).find((c) => c.id === clubFilter)?.name || club?.name) : t('finX.scopeXeve')}
         actions={
           isClub ? (
             <>
