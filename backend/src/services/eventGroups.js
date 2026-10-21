@@ -5,7 +5,7 @@ const { supabase } = require('../supabase');
 const { HOLDS_PLACE } = require('./fees');
 
 const MIGRATION = '20261211090000_event_groups_courts.sql';
-const MAX_GROUPS = 6;
+const MAX_GROUPS = 12; // one group per court at most (courtList keeps 12)
 
 async function ready() {
   const s = await require('./schemaCheck').schemaStatus();

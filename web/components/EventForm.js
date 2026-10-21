@@ -1,4 +1,5 @@
 'use client';
+import { courtList } from '@/components/CourtPlan';
 import QuickLevelsModal from '@/components/QuickLevelsModal';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import Modal from '@/components/Modal';
@@ -103,55 +104,70 @@ function Section({ n, title, hint, more = false, children }) {
   );
 }
 
-// "Chia nhóm giờ": one kèo, several groups (VD 17h–20h 120k/slot sân 3, 18h–20h 100k/slot sân 2).
-// Each group: hours, fee per slot, places and court numbers; the player picks one.
-function GroupsEditor({ f, set }) {
+// Two courts or more: play at the same time (just the court numbers), or at different times —
+// then each court is its own card: players (max), start, end, fee per slot, all starting blank.
+// The player picks a court (group) when signing up.
+export const groupsForCourts = (courts, existing = []) =>
+  courts.map((c) => existing.find((g) => courtList(g.courts)[0] === c) || { id: `c${c}`.replace(/[^a-z0-9_-]/gi, '').slice(0, 20) || `c${Date.now().toString(36)}`, start_time: '', end_time: '', fee_amount: '', slots: '', courts: c });
+
+function CourtMode({ f, set }) {
+  const { t } = useI18n();
+  const courts = courtList(f.court_labels);
+  if (courts.length < 2) return null;
+  const pick = (on) => set(on ? { groups_on: true, groups: groupsForCourts(courts, f.groups) } : { groups_on: false });
+  return (
+    <Field label={t('egroups.timeMode')} span={2}>
+      <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={t('egroups.timeMode')}>
+        {[[false, t('egroups.sameTime')], [true, t('egroups.diffTime')]].map(([on, label]) => (
+          <button key={String(on)} type="button" role="radio" aria-checked={!!f.groups_on === on} onClick={() => pick(on)} className={`rounded-lg border px-3 py-2 text-sm ${!!f.groups_on === on ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+function CourtCards({ f, set }) {
   const { t } = useI18n();
   const groups = f.groups || [];
   const put = (i, patch) => set({ groups: groups.map((g, j) => (j === i ? { ...g, ...patch } : g)) });
-  const turnOn = () => set({ groups_on: true, groups: groups.length > 1 ? groups : [{ ...blankGroup(0, f), courts: f.court_labels || '' }, blankGroup(1, f)] });
-  if (!f.groups_on) {
-    return (
-      <div className="col-span-2 md:col-span-4 -mt-1">
-        <button type="button" className="text-xs text-lime-400 underline" onClick={turnOn}>＋ {t('egroups.turnOn')}</button>
-        <span className="text-[11px] text-gray-500 ml-2">{t('egroups.turnOnHint')}</span>
-      </div>
-    );
-  }
-  const total = groups.reduce((n, g) => n + (Number(g.slots) || 0), 0);
   return (
-    <div className="col-span-2 md:col-span-4 rounded-xl border border-navy-600 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <p className="text-white text-sm font-semibold">🕒 {t('egroups.title')} <span className="text-gray-400 font-normal">· {t('egroups.total', { n: total })}</span></p>
-        <button type="button" className="text-xs text-red-300" onClick={() => set({ groups_on: false, ...(groups[0] ? { start_time: groups[0].start_time, end_time: groups[0].end_time, slots: total || f.slots, fee_amount: groups[0].fee_amount, court_labels: groups.map((g) => g.courts).filter(Boolean).join(', ') } : {}) })}>✕ {t('egroups.turnOff')}</button>
-      </div>
-      <ol className="flex flex-col gap-2">
-        {groups.map((g, i) => (
-          <li key={g.id} className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end rounded-lg bg-navy-900/60 p-2">
+    <div className="col-span-2 md:col-span-4 grid gap-3 md:grid-cols-2">
+      {groups.map((g, i) => (
+        <section key={g.id} className="rounded-xl border border-navy-600 bg-navy-900/40 p-3" aria-label={t('egroups.courtN', { n: g.courts })}>
+          <p className="text-lime-300 font-semibold text-sm mb-2">🏟 {t('egroups.courtN', { n: g.courts })}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="min-w-0 text-[11px] text-gray-400 col-span-2">{t('egroups.slotsMax')}
+              <input className="input" type="number" inputMode="numeric" min="1" max="500" required value={g.slots} onChange={(e) => put(i, { slots: e.target.value })} />
+            </label>
             <label className="min-w-0 text-[11px] text-gray-400">{t('create.start')}
               <input className="input" type="time" required value={g.start_time} onChange={(e) => put(i, { start_time: e.target.value })} />
             </label>
             <label className="min-w-0 text-[11px] text-gray-400">{t('create.end')}
               <input className="input" type="time" required value={g.end_time} onChange={(e) => put(i, { end_time: e.target.value })} />
             </label>
-            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.feeSlot')}
-              <input className="input" type="number" inputMode="numeric" min="0" step="1000" value={g.fee_amount} onChange={(e) => put(i, { fee_amount: e.target.value })} />
+            <label className="min-w-0 text-[11px] text-gray-400 col-span-2">{t('egroups.feeSlot')}
+              <input className="input" type="number" inputMode="numeric" min="0" step="1000" required value={g.fee_amount} onChange={(e) => put(i, { fee_amount: e.target.value })} />
             </label>
-            <label className="min-w-0 text-[11px] text-gray-400">{t('events.slots')}
-              <input className="input" type="number" inputMode="numeric" min="1" max="500" required value={g.slots} onChange={(e) => put(i, { slots: e.target.value })} />
-            </label>
-            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.courtNo')}
-              <input className="input" maxLength={40} placeholder={t('egroups.courtNoPh')} value={g.courts} onChange={(e) => put(i, { courts: e.target.value })} />
-            </label>
-            <button type="button" className="btn-secondary !px-3 !py-2 text-sm justify-self-end" disabled={groups.length <= 2} aria-label={t('egroups.remove')} onClick={() => set({ groups: groups.filter((_, j) => j !== i) })}>✕</button>
-          </li>
-        ))}
-      </ol>
-      <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
-        <p className="text-[11px] text-gray-500">{t('egroups.hint')}</p>
-        {groups.length < 6 && <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => set({ groups: [...groups, blankGroup(groups.length, groups[groups.length - 1] || f)] })}>＋ {t('egroups.add')}</button>}
-      </div>
+          </div>
+        </section>
+      ))}
     </div>
+  );
+}
+
+function LevelRange({ label, hint = null, min, max, onMin, onMax }) {
+  const { t } = useI18n();
+  return (
+    <fieldset className="col-span-2 min-w-0 rounded-xl border border-navy-600 px-3 pt-1 pb-3">
+      <legend className="flex items-center gap-1.5 px-1 text-sm text-gray-300">{label}{hint && <Hint inline text={hint} />}</legend>
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1"><LevelInput value={min ?? ''} onChange={onMin} placeholder="—" aria-label={`${label} ${t('events.rangeFrom')}`} /></div>
+        <span className="shrink-0 text-sm text-gray-400">{t('events.rangeTo')}</span>
+        <div className="min-w-0 flex-1"><LevelInput value={max ?? ''} onChange={onMax} placeholder="—" aria-label={`${label} ${t('events.rangeTo')}`} /></div>
+      </div>
+    </fieldset>
   );
 }
 
@@ -216,7 +232,6 @@ export function formFromEvent(ev) {
   return out;
 }
 
-export const blankGroup = (i, from = {}) => ({ id: `g${Date.now().toString(36)}${i}`, start_time: from.start_time || '', end_time: from.end_time || '', fee_amount: String(from.fee_amount ?? 0), slots: String(from.slots || 8), courts: '' });
 const groupList = (items) =>
   (items || [])
     .filter((g) => g.start_time && g.end_time)
@@ -396,7 +411,9 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     setBusy(true);
     setSaved(false);
     try {
-      await onSubmit(f);
+      // A new kèo always takes sign-ups and closes by itself at the cancel deadline
+      // (changed later on the kèo page / edit form).
+      await onSubmit(showStatus ? f : { ...f, allow_public_registration: true, deadline_mode: 'auto', deadline_auto: true });
       setSaved(true);
     } catch (err) {
       setError(err.message);
@@ -554,6 +571,22 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <p className="col-span-2 md:col-span-4 rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-100">🗳 {t('meeting.voteNote')}</p>
             </>
           )}
+          {!meeting && (
+            <Field label={t('egroups.courtNo')} hint={t('egroups.courtNoHint')}>
+              <input
+                className="input"
+                maxLength={60}
+                aria-label={t('egroups.courtNo')}
+                value={f.court_labels}
+                onChange={(e) => {
+                  const courts = courtList(e.target.value);
+                  // Court cards follow the court numbers; under 2 courts there is nothing to split.
+                  set(courts.length < 2 ? { court_labels: e.target.value, groups_on: false } : { court_labels: e.target.value, ...(f.groups_on ? { groups: groupsForCourts(courts, f.groups) } : {}) });
+                }}
+              />
+            </Field>
+          )}
+          {!meeting && <CourtMode f={f} set={set} />}
           {!meeting && !f.groups_on && (
           <>
           <Field label={t('events.slots')}>
@@ -562,17 +595,14 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('create.fee')}>
             <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
           </Field>
-          <Field label={t('egroups.courtNo')} hint={t('egroups.courtNoHint')}>
-            <input className="input" maxLength={60} placeholder={t('egroups.courtNoPh')} value={f.court_labels} onChange={(e) => set({ court_labels: e.target.value })} />
-          </Field>
           </>
           )}
+          {!meeting && f.groups_on && <CourtCards f={f} set={set} />}
           {!meeting && noPayout && (
             <p className="col-span-2 md:col-span-4 -mt-1 text-[11px] text-amber-300">
               ⚠️ {t('create.noPayout')} <button type="button" className="underline text-lime-300" onClick={() => setPayoutOpen(true)}>{t('quickfix.add')}</button>
             </p>
           )}
-          {!meeting && <GroupsEditor f={f} set={set} />}
           {showRepeat && (
             <Field label={t('events.repeatWeeks')} hint={t('events.repeatHint')}>
               <input className="input" type="number" inputMode="numeric" min="1" max="26" value={f.repeat_weeks} onChange={(e) => set({ repeat_weeks: e.target.value })} />
@@ -605,21 +635,10 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               })}
             </div>
           </Field>
-          <Field label={genderSplit ? t('events.levelMinMen') : t('events.levelMin')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null}>
-            <LevelInput value={f.level_min} onChange={(v) => set({ level_min: v })} placeholder="—" />
-          </Field>
-          <Field label={genderSplit ? t('events.levelMaxMen') : t('events.levelMax')}>
-            <LevelInput value={f.level_max} onChange={(v) => set({ level_max: v })} placeholder="—" />
-          </Field>
+          {/* One box per range: "DUPR Nam" with [từ] đến [đến]; women the same. */}
+          <LevelRange label={genderSplit ? t('events.levelMen') : t('events.levelRange')} hint={levelRangeAuto ? t('cpanel.rangeAutoHint') : null} min={f.level_min} max={f.level_max} onMin={(v) => set({ level_min: v })} onMax={(v) => set({ level_max: v })} />
           {genderSplit ? (
-            <>
-              <Field label={t('events.levelMinWomen')}>
-                <LevelInput value={f.level_min_f} onChange={(v) => set({ level_min_f: v })} placeholder="—" />
-              </Field>
-              <Field label={t('events.levelMaxWomen')}>
-                <LevelInput value={f.level_max_f} onChange={(v) => set({ level_max_f: v })} placeholder="—" />
-              </Field>
-            </>
+            <LevelRange label={t('events.levelWomen')} min={f.level_min_f} max={f.level_max_f} onMin={(v) => set({ level_min_f: v })} onMax={(v) => set({ level_max_f: v })} />
           ) : (
             !meeting && (
               <div className="col-span-2 md:col-span-4 -mt-1">
@@ -627,7 +646,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               </div>
             )
           )}
-          <Field label={t('policy.refundLabel')} hint={f.no_refund ? t('policy.noRefundHint') : f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
+          <Field span={2} label={t('policy.refundLabel')} hint={f.no_refund ? t('policy.noRefundHint') : f.cancel_deadline_hours === '' ? t('policy.noneHint') : null}>
             <select
               className="input"
               value={f.no_refund ? 'no' : f.cancel_deadline_hours}
@@ -638,7 +657,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </select>
           </Field>
           {f.cancel_deadline_hours !== '' && (
-            <Field label={t('policy.halfLabel')}>
+            <Field span={2} label={t('policy.halfLabel')}>
               <select className="input" value={halfHours(f.cancel_deadline_hours, f.cancel_half_hours) ?? ''} onChange={(e) => set({ cancel_half_hours: e.target.value })}>
                 {HALF_PRESETS.filter((h) => h === '' || Number(h) < Number(f.cancel_deadline_hours)).map((h) => <option key={h} value={h}>{h === '' ? t('policy.noHalf') : t('policy.hoursShort', { h })}</option>)}
               </select>
@@ -647,6 +666,9 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           {!f.no_refund && f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">📋 {policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
           {/* Sign-ups: one state (taking sign-ups / closed) and, apart from it, an optional
               time at which they close by themselves. */}
+          {/* Create: always taking sign-ups, closing at the cancel deadline (one line). Edit: both choices. */}
+          {showStatus && (
+            <>
           <Field label={t('reg.label')} span={4} hint={t('reg.hint')}>
             <div className="grid grid-cols-2 gap-1.5 mt-1 max-w-md" role="radiogroup" aria-label={t('reg.label')}>
               {[[true, `🟢 ${t('reg.open')}`], [false, `🔒 ${t('reg.closed')}`]].map(([v, label]) => (
@@ -676,6 +698,13 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <input className="input mt-1.5 max-w-md" type="datetime-local" value={f.registration_deadline} onChange={(e) => set({ registration_deadline: e.target.value })} aria-label={t('reg.autoClose')} />
             )}
           </Field>
+            </>
+          )}
+          {!showStatus && (
+            <p className="col-span-2 md:col-span-4 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-100">
+              🟢 {t('reg.open')} · {autoAt ? (sessions > 1 ? t('dl.autoEach', { h: f.cancel_deadline_hours || 0, time: autoAt.slice(11, 16) }) : t('dl.autoAt', { at: fmtLocal(autoAt), h: f.cancel_deadline_hours || 0 })) : t('dl.needStart')}
+            </p>
+          )}
           <CostItems items={f.cost_items} onChange={(cost_items) => set({ cost_items })} sessions={sessions || 1} />
         </Section>
 
@@ -755,7 +784,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <dd className="text-gray-100 tabular-nums">
                 {f.groups_on && !meeting
                   ? (f.groups || []).map((g) => (
-                      <span key={g.id} className="block">{g.start_time || '—'}–{g.end_time || '—'} · {Number(g.fee_amount) > 0 ? `${Number(g.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')} · {t('createx.slotsN', { n: g.slots || 0 })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+                      <span key={g.id} className="block">{g.start_time || '—'}–{g.end_time || '—'} · {g.fee_amount === '' ? '—' : Number(g.fee_amount) > 0 ? `${Number(g.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')} · {g.slots === '' ? '—' : t('createx.slotsN', { n: g.slots })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
                     ))
                   : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
               </dd>
