@@ -142,10 +142,13 @@ export default function QuickBookPage() {
                 <label className="text-xs text-gray-400" htmlFor="q-phone">{t('quick.phone')} <span className="text-gray-500">({t('quick.phoneOptional')})</span></label>
                 <input id="q-phone" className="input" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} disabled={contact.no_phone} value={contact.no_phone ? '' : contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
               </div>
-              <div>
-                <label className="text-xs text-gray-400" htmlFor="q-level">{t(ev.sport === 'badminton' ? 'quick.levelBadminton' : 'quick.duprSelf')}</label>
-                <LevelInput id="q-level" sport={ev.sport} value={contact.dupr_level} onChange={(v) => setContact({ ...contact, dupr_level: v })} placeholder="3.25" />
-              </div>
+              {/* Pickleball: no self-typed DUPR score, only the DUPR ID below. */}
+              {ev.sport === 'badminton' && (
+                <div>
+                  <label className="text-xs text-gray-400" htmlFor="q-level">{t('quick.levelBadminton')}</label>
+                  <LevelInput id="q-level" sport={ev.sport} value={contact.dupr_level} onChange={(v) => setContact({ ...contact, dupr_level: v })} />
+                </div>
+              )}
               {(
                 <div className="sm:col-span-2 rounded-lg border border-navy-600 bg-navy-900/60 px-3 py-2">
                   <label className="flex items-start gap-2 text-sm text-gray-200">
@@ -190,18 +193,18 @@ export default function QuickBookPage() {
                 return (
                   <li key={i} className="rounded-lg bg-navy-900 p-3">
                     <p className="text-xs text-gray-400 mb-2">{t('quick.slotN', { n: i + 1 })}{mine ? ` · ${t('quick.you')}` : ''}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_7rem_6rem] gap-2">
+                    <div className={`grid grid-cols-1 gap-2 ${ev.sport === 'badminton' ? 'sm:grid-cols-[1fr_7rem_6rem]' : 'sm:grid-cols-[1fr_7rem]'}`}>
                       <input className="input" required maxLength={120} placeholder={t('quick.fullName')} aria-label={t('quick.fullName')} value={s.full_name} disabled={mine} onChange={(e) => setSlot(i, { full_name: e.target.value })} />
                       <select className="input" value={s.gender} disabled={mine} aria-label={t('quick.gender')} onChange={(e) => setSlot(i, { gender: e.target.value })}>
                         <option value="">{t('quick.gender')}</option>
                         <option value="male">{t('members.male')}</option>
                         <option value="female">{t('members.female')}</option>
                       </select>
-                      {mine ? (
+                      {ev.sport === 'badminton' && (mine ? (
                         <input className="input" disabled value={s.dupr_level || '—'} aria-label={t('quick.level')} />
                       ) : (
                         <LevelInput sport={ev.sport} value={s.dupr_level} onChange={(v) => setSlot(i, { dupr_level: v })} placeholder={t('quick.level')} />
-                      )}
+                      ))}
                     </div>
                     {ev.sport !== 'badminton' && !mine && (
                       <input className="input mt-2 font-mono text-sm placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdSlot')} aria-label={t('quick.duprIdSlot')} value={s.dupr_id} onChange={(e) => setSlot(i, { dupr_id: idChars(e.target.value) })} />
