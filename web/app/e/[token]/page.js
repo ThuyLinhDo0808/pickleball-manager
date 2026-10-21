@@ -136,11 +136,23 @@ export default function PublicEventPage() {
         {ev.play_format && <p className="text-gray-300 text-sm mt-1">🏓 {t(`fmt.${ev.play_format}`)}</p>}
 
         <div className="grid grid-cols-2 gap-2 mt-4">
-          <Info label={t('public.fee')} value={Number(ev.fee_amount) ? `${Number(ev.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')} />
+          <Info label={t('public.fee')} value={ev.groups?.length ? t('egroups.feeFrom', { amount: `${Math.min(...ev.groups.map((g) => Number(g.fee_amount) || 0)).toLocaleString('vi-VN')} ₫` }) : Number(ev.fee_amount) ? `${Number(ev.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')} />
           <Info label={t('public.level')} value={level} />
-          <Info label={t('events.courts')} value={ev.courts} />
+          <Info label={t('egroups.courtNo')} value={ev.court_labels || ev.courts} />
           <Info label={t('events.slots')} value={`${ev.main_count}/${ev.slots}`} />
         </div>
+        {/* Kèo with time groups: each with its hours, fee and places left. */}
+        {ev.groups?.length > 0 && (
+          <ul className="mt-2 flex flex-col gap-1.5 text-sm">
+            {ev.groups.map((g) => (
+              <li key={g.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-lg bg-navy-900 px-3 py-2">
+                <span className="text-white font-semibold tabular-nums">🕒 {g.start_time}–{g.end_time}</span>
+                <span className="text-gray-200">{Number(g.fee_amount) ? `${Number(g.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+                <span className={g.left > 0 ? 'text-lime-300 text-xs' : 'text-amber-300 text-xs'}>{g.left > 0 ? t('egroups.left', { n: g.left, total: g.slots }) : t('egroups.full')}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {ev.services && <p className="text-gray-300 text-sm mt-2">🎁 {t('svc.included')}: <span className="text-white">{ev.services}</span></p>}
       </section>
 

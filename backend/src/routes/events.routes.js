@@ -42,7 +42,7 @@ function nowIso() {
 // so a matching request is handled here and never falls through to it. ------
 // Only what a player needs to see — no host id, fees config internals, or phones.
 const PUBLIC_EVENT_FIELDS = [
-  'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'slots',
+  'title', 'event_date', 'start_time', 'end_time', 'location', 'courts', 'court_labels', 'slots',
   'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
   'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
@@ -108,6 +108,8 @@ router.get('/public/:publicToken', async (req, res) => {
       return people.map((p) => ({ full_name: p.full_name, dupr_level: p.dupr_level, status: p.status, is_organizer: p.is_organizer }));
     }),
     public_token: event.public_token,
+    // Time groups (giờ / phí / còn chỗ): the player picks one when signing up.
+    groups: await require('../services/eventGroups').publicGroups(event).catch(() => null),
     // "Đăng ký nhanh" for players who are not members yet (quick booking, /g/<id>/p-<token>).
     id: event.id,
   });
@@ -327,7 +329,7 @@ router.post('/public/:publicToken/register', requireAuth, async (req, res) => {
   try {
     const profile = await playerProfile(req.userId);
     await linkByPhone(req.userId, profile);
-    res.status(201).json(await signup.registerOnline(event, req.userId, profile, { payLater: req.body?.pay_later === true, useVoucher: req.body?.use_voucher !== false }));
+    res.status(201).json(await signup.registerOnline(event, req.userId, profile, { payLater: req.body?.pay_later === true, useVoucher: req.body?.use_voucher !== false, groupId: req.body?.group_id || null }));
   } catch (err) {
     fail(res, err);
   }
@@ -411,6 +413,30 @@ async function noRefundReady() {
   return !st.missing_migrations.includes('20261205090000_no_refund.sql');
 }
 
+// Time groups (giờ / phí / số chỗ / sân riêng) and court numbers; the event row carries the
+// total places, earliest start, latest end, lowest fee. Dropped before the migration.
+async function applyGroups(fields) {
+  if (!('groups' in fields) && !('court_labels' in fields)) return null;
+  const eg = require('../services/eventGroups');
+  if (!(await eg.ready())) {
+    delete fields.groups;
+    delete fields.court_labels;
+    return null;
+  }
+  if ('court_labels' in fields) {
+    const list = eg.courtList(fields.court_labels);
+    fields.court_labels = list.join(', ') || null;
+    if (list.length) fields.courts = list.length;
+  }
+  if ('groups' in fields) {
+    const r = eg.cleanGroups(fields.groups);
+    if (r.error) return r.error;
+    fields.groups = r.groups;
+    Object.assign(fields, r.derived);
+  }
+  return null;
+}
+
 function cleanEventFields(fields) {
   // Host picks open / completed / cancelled only (no drafts, no "closed": a session that
   // won't happen is cancelled, or deleted while nobody has signed up).
@@ -491,7 +517,7 @@ async function kindAllowed(clubId, kind) {
 }
 // Fields a weekly schedule edit copies to every upcoming session (each keeps its own day).
 const SERIES_FIELDS = [
-  'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f',
+  'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'court_labels', 'groups', 'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'allow_public_registration', 'cost_items',
 ];
 
@@ -619,8 +645,9 @@ router.post('/', async (req, res) => {
     'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
+    'groups', 'court_labels',
   ]);
-  const bad = cleanEventFields(fields);
+  const bad = cleanEventFields(fields) || (await applyGroups(fields));
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
@@ -868,8 +895,9 @@ router.patch('/:eventId', async (req, res) => {
     'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
+    'groups', 'court_labels',
   ]);
-  const bad = cleanEventFields(fields);
+  const bad = cleanEventFields(fields) || (await applyGroups(fields));
   if (bad) return res.status(400).json({ error: bad });
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
@@ -1108,8 +1136,12 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
     .select('id', { count: 'exact', head: true })
     .eq('event_id', req.event.id)
     .in('status', MAIN_LIST);
-  const status = (count || 0) >= req.event.slots ? 'waitlisted' : 'registered';
-  const perks = await perksFor(req.event, { phone });
+  // Kèo with time groups: the Host picks the group (default: the first); its fee and places.
+  const eg = require('../services/eventGroups');
+  const tg = eg.groupsOf(req.event).length ? eg.groupOf(req.event, req.body.group_id) || eg.groupsOf(req.event)[0] : null;
+  const groupFull = tg && ((await eg.takenByGroup(req.event))[tg.id] || 0) >= tg.slots;
+  const status = (count || 0) >= req.event.slots || groupFull ? 'waitlisted' : 'registered';
+  const perks = await perksFor(eg.forGroup(req.event, tg), { phone });
 
   const { data, error } = await supabase
     .from('event_participants')
@@ -1119,7 +1151,8 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
       full_name,
       phone: phone || null,
       dupr_level: dupr_level ?? null,
-      fee_amount: fee_amount ?? null,
+      fee_amount: fee_amount ?? (tg ? tg.fee_amount : null),
+      ...(tg ? { group_id: tg.id } : {}),
       status,
       source_club_member_id: memberId,
       kind: memberId ? 'member' : 'guest',
@@ -1220,9 +1253,13 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
     .in('status', MAIN_LIST);
   let mainCount = count || 0;
 
+  // Kèo with time groups: everyone picked goes into one group (default: the first).
+  const eg = require('../services/eventGroups');
+  const tg = eg.groupsOf(req.event).length ? eg.groupOf(req.event, req.body.group_id) || eg.groupsOf(req.event)[0] : null;
+  let groupLeft = tg ? tg.slots - ((await eg.takenByGroup(req.event))[tg.id] || 0) : Infinity;
   const payload = members.map((m) => {
-    const status = mainCount < req.event.slots ? 'registered' : 'waitlisted';
-    if (status === 'registered') mainCount += 1;
+    const status = mainCount < req.event.slots && groupLeft > 0 ? 'registered' : 'waitlisted';
+    if (status === 'registered') { mainCount += 1; groupLeft -= 1; }
     return {
       event_id: req.event.id,
       full_name: m.full_name,
@@ -1231,6 +1268,7 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
       source_club_member_id: m.id,
       kind: 'member',
       status,
+      ...(tg ? { group_id: tg.id, fee_amount: tg.fee_amount } : {}),
     };
   });
 
@@ -1354,13 +1392,50 @@ async function undoRefund(req, p) {
   return data;
 }
 
-// Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles
+async function changeGroup(event, prior, groupId) {
+  const eg = require('../services/eventGroups');
+  const group = eg.groupOf(event, groupId);
+  if (!group) throw Object.assign(new Error('Unknown group.'), { status: 400, code: 'bad_group' });
+  if (prior.group_id === group.id) return prior;
+  if (MAIN_LIST.includes(prior.status) && ((await eg.takenByGroup(event))[group.id] || 0) >= group.slots) {
+    throw Object.assign(new Error('That group is full.'), { status: 409, code: 'group_full' });
+  }
+  const patch = { group_id: group.id, court: null };
+  if (!prior.fee_paid && prior.payment_status !== 'proof_submitted') patch.fee_amount = group.fee_amount;
+  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles / group
 async function withGroup(prior, act) {
   const others = ['pending', 'requested'].includes(prior.status) ? await require('../services/quickBooking').pendingSiblings(prior) : [];
   const out = await act(prior);
   for (const p of others) await act(p);
   return others.length ? { ...out, group_count: others.length + 1 } : out;
 }
+
+// Xếp sân: the Host puts each player on a court before they go out ({ assign: [{ id, court }] },
+// court null = not placed yet). Only players on the main list, only the event's / group's courts.
+router.put('/:eventId/courts', async (req, res) => {
+  const eg = require('../services/eventGroups');
+  if (!(await eg.ready())) return res.status(409).json({ error: `Run migration ${eg.MIGRATION} first.`, code: 'migration_required' });
+  const list = Array.isArray(req.body?.assign) ? req.body.assign.slice(0, 500) : [];
+  const { data: rows, error } = await supabase.from('event_participants').select('id, group_id, status').eq('event_id', req.event.id).in('status', MAIN_LIST);
+  if (error) return dbError(res, error);
+  const byId = new Map((rows || []).map((r) => [r.id, r]));
+  const courtsFor = (r) => eg.courtList(eg.groupOf(req.event, r.group_id)?.courts || req.event.court_labels);
+  for (const a of list) {
+    const r = byId.get(a?.id);
+    if (!r) continue;
+    const court = a.court == null || a.court === '' ? null : String(a.court).slice(0, 20);
+    const allowed = courtsFor(r);
+    if (court && allowed.length && !allowed.includes(court)) return res.status(400).json({ error: `Court ${court} is not one of ${allowed.join(', ')}.`, code: 'bad_court' });
+    const { error: uErr } = await supabase.from('event_participants').update({ court }).eq('id', r.id);
+    if (uErr) return dbError(res, uErr);
+  }
+  res.json({ ok: true });
+});
 
 router.post('/:eventId/participants/:participantId/:action', async (req, res) => {
   const { action } = req.params;
@@ -1376,6 +1451,8 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     // The sheet on a name: where they are (main / waitlist / waiting for approval / not playing)…
     if (action === 'place' && req.body.to === 'main' && prior.status === 'requested' && prior.guest_booking_id) return res.json(await require('../services/quickBooking').approveGroup(req.event, prior));
     if (action === 'place') return res.json(await setPlace(req.event, prior, req.body.to));
+    // Kèo with time groups: move them to another group (its fee if not paid yet).
+    if (action === 'group') return res.json(await changeGroup(req.event, prior, req.body?.group_id));
     // …and their role: organizer (Host / co-host), coach, referee.
     if (action === 'roles') return res.json(await setRoles(req.event, prior, req.body || {}));
     // A quick booking (invite link) is paid in one transfer: confirming / rejecting one slot

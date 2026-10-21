@@ -44,6 +44,10 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   end_time: '',
   location: '',
   courts: 2,
+  court_labels: '',
+  // Several time groups (VD 17h–20h 120k, 18h–20h 100k): each its own hours, fee, places, courts.
+  groups_on: false,
+  groups: [],
   slots: 16,
   level_min: '',
   level_max: '',
@@ -99,6 +103,58 @@ function Section({ n, title, hint, more = false, children }) {
   );
 }
 
+// "Chia nhóm giờ": one kèo, several groups (VD 17h–20h 120k/slot sân 3, 18h–20h 100k/slot sân 2).
+// Each group: hours, fee per slot, places and court numbers; the player picks one.
+function GroupsEditor({ f, set }) {
+  const { t } = useI18n();
+  const groups = f.groups || [];
+  const put = (i, patch) => set({ groups: groups.map((g, j) => (j === i ? { ...g, ...patch } : g)) });
+  const turnOn = () => set({ groups_on: true, groups: groups.length > 1 ? groups : [{ ...blankGroup(0, f), courts: f.court_labels || '' }, blankGroup(1, f)] });
+  if (!f.groups_on) {
+    return (
+      <div className="col-span-2 md:col-span-4 -mt-1">
+        <button type="button" className="text-xs text-lime-400 underline" onClick={turnOn}>＋ {t('egroups.turnOn')}</button>
+        <span className="text-[11px] text-gray-500 ml-2">{t('egroups.turnOnHint')}</span>
+      </div>
+    );
+  }
+  const total = groups.reduce((n, g) => n + (Number(g.slots) || 0), 0);
+  return (
+    <div className="col-span-2 md:col-span-4 rounded-xl border border-navy-600 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <p className="text-white text-sm font-semibold">🕒 {t('egroups.title')} <span className="text-gray-400 font-normal">· {t('egroups.total', { n: total })}</span></p>
+        <button type="button" className="text-xs text-red-300" onClick={() => set({ groups_on: false, ...(groups[0] ? { start_time: groups[0].start_time, end_time: groups[0].end_time, slots: total || f.slots, fee_amount: groups[0].fee_amount, court_labels: groups.map((g) => g.courts).filter(Boolean).join(', ') } : {}) })}>✕ {t('egroups.turnOff')}</button>
+      </div>
+      <ol className="flex flex-col gap-2">
+        {groups.map((g, i) => (
+          <li key={g.id} className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end rounded-lg bg-navy-900/60 p-2">
+            <label className="min-w-0 text-[11px] text-gray-400">{t('create.start')}
+              <input className="input" type="time" required value={g.start_time} onChange={(e) => put(i, { start_time: e.target.value })} />
+            </label>
+            <label className="min-w-0 text-[11px] text-gray-400">{t('create.end')}
+              <input className="input" type="time" required value={g.end_time} onChange={(e) => put(i, { end_time: e.target.value })} />
+            </label>
+            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.feeSlot')}
+              <input className="input" type="number" inputMode="numeric" min="0" step="1000" value={g.fee_amount} onChange={(e) => put(i, { fee_amount: e.target.value })} />
+            </label>
+            <label className="min-w-0 text-[11px] text-gray-400">{t('events.slots')}
+              <input className="input" type="number" inputMode="numeric" min="1" max="500" required value={g.slots} onChange={(e) => put(i, { slots: e.target.value })} />
+            </label>
+            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.courtNo')}
+              <input className="input" maxLength={40} placeholder={t('egroups.courtNoPh')} value={g.courts} onChange={(e) => put(i, { courts: e.target.value })} />
+            </label>
+            <button type="button" className="btn-secondary !px-3 !py-2 text-sm justify-self-end" disabled={groups.length <= 2} aria-label={t('egroups.remove')} onClick={() => set({ groups: groups.filter((_, j) => j !== i) })}>✕</button>
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+        <p className="text-[11px] text-gray-500">{t('egroups.hint')}</p>
+        {groups.length < 6 && <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => set({ groups: [...groups, blankGroup(groups.length, groups[groups.length - 1] || f)] })}>＋ {t('egroups.add')}</button>}
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, hint, span = 1, children }) {
   const cls = `min-w-0 ${{ 1: 'col-span-1', 2: 'col-span-2', 4: 'col-span-2 md:col-span-4' }[span]}`;
   return (
@@ -129,6 +185,9 @@ export function formFromEvent(ev) {
     end_time: ev.end_time ? ev.end_time.slice(0, 5) : '',
     location: ev.location || '',
     courts: ev.courts ?? 1,
+    court_labels: ev.court_labels || '',
+    groups_on: Array.isArray(ev.groups) && ev.groups.length > 1,
+    groups: (ev.groups || []).map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, fee_amount: String(g.fee_amount ?? 0), slots: String(g.slots ?? ''), courts: g.courts || '' })),
     slots: ev.slots ?? 16,
     level_min: ev.level_min ?? '',
     level_max: ev.level_max ?? '',
@@ -156,6 +215,12 @@ export function formFromEvent(ev) {
   out.deadline_mode = out.deadline_auto ? 'auto' : out.registration_deadline ? 'time' : 'none';
   return out;
 }
+
+export const blankGroup = (i, from = {}) => ({ id: `g${Date.now().toString(36)}${i}`, start_time: from.start_time || '', end_time: from.end_time || '', fee_amount: String(from.fee_amount ?? 0), slots: String(from.slots || 8), courts: '' });
+const groupList = (items) =>
+  (items || [])
+    .filter((g) => g.start_time && g.end_time)
+    .map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, fee_amount: Math.round(Number(g.fee_amount || 0)), slots: Math.round(Number(g.slots || 0)), courts: (g.courts || '').trim() || null }));
 
 const costList = (items) =>
   (items || [])
@@ -185,8 +250,15 @@ export function eventPayload(f) {
   }
   // "Đang nhận / Đã đóng" is allow_public_registration; the auto-close time is separate.
   const mode = f.deadline_mode || (f.deadline_auto ? 'auto' : f.registration_deadline ? 'time' : 'none');
+  // Time groups: the kèo starts with the earliest group, ends with the latest, has all their places.
+  const groups = f.groups_on ? groupList(f.groups) : null;
+  if (groups) {
+    f = { ...f, start_time: groups.map((g) => g.start_time).sort()[0] || f.start_time, end_time: groups.map((g) => g.end_time).sort().reverse()[0] || f.end_time, slots: groups.reduce((n, g) => n + g.slots, 0), fee_amount: Math.min(...groups.map((g) => g.fee_amount)) };
+  }
   const deadline = mode === 'auto' ? autoDeadline(f.event_date, f.start_time, f.cancel_deadline_hours) : mode === 'time' ? f.registration_deadline : '';
   return {
+    groups: groups && groups.length > 1 ? groups : [],
+    court_labels: f.court_labels?.trim() || null,
     kind: f.kind,
     title: f.title.trim(),
     event_date: f.event_date,
@@ -380,7 +452,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
     ]).then(([c, h]) => ({ ok: !!(c?.bank_account || h?.bank_account) })),
     [clubId]
   );
-  const noPayout = Number(f.fee_amount) > 0 && payTo && !payTo.ok;
+  const feeNow = f.groups_on ? Math.max(0, ...(f.groups || []).map((g) => Number(g.fee_amount) || 0)) : Number(f.fee_amount);
+  const noPayout = feeNow > 0 && payTo && !payTo.ok;
   // Missing payout account: filled in a pop-up, then back to this form (nothing lost).
   const [payoutOpen, setPayoutOpen] = useState(false);
   const [levelsOpen, setLevelsOpen] = useState(false);
@@ -441,12 +514,16 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <DatePopover value={f.event_date} onChange={(d) => set({ event_date: d })} />
             </Field>
           )}
-          <Field label={t('create.start')}>
-            <input className="input" type="time" value={f.start_time} onChange={(e) => set({ start_time: e.target.value })} />
-          </Field>
-          <Field label={t('create.end')}>
-            <input className="input" type="time" value={f.end_time} onChange={(e) => set({ end_time: e.target.value })} />
-          </Field>
+          {!f.groups_on && (
+            <>
+              <Field label={t('create.start')}>
+                <input className="input" type="time" value={f.start_time} onChange={(e) => set({ start_time: e.target.value })} />
+              </Field>
+              <Field label={t('create.end')}>
+                <input className="input" type="time" value={f.end_time} onChange={(e) => set({ end_time: e.target.value })} />
+              </Field>
+            </>
+          )}
           <LocationField f={f} set={set} meeting={meeting} />
           {community && !meeting && cs?.ready && (
             <Field label={t('cpanel.forLevels')} span={2} hint={levelItems.length ? t('cpanel.forLevelsHint') : null}>
@@ -477,24 +554,25 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <p className="col-span-2 md:col-span-4 rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-100">🗳 {t('meeting.voteNote')}</p>
             </>
           )}
-          {!meeting && (
+          {!meeting && !f.groups_on && (
           <>
           <Field label={t('events.slots')}>
             <input className="input" type="number" inputMode="numeric" min="1" max="500" value={f.slots} onChange={(e) => set({ slots: e.target.value })} />
           </Field>
           <Field label={t('create.fee')}>
             <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
-            {noPayout && (
-              <p className="mt-1 text-[11px] text-amber-300">
-                ⚠️ {t('create.noPayout')} <button type="button" className="underline text-lime-300" onClick={() => setPayoutOpen(true)}>{t('quickfix.add')}</button>
-              </p>
-            )}
           </Field>
-          <Field label={t('events.courts')}>
-            <input className="input" type="number" inputMode="numeric" min="1" max="50" value={f.courts} onChange={(e) => set({ courts: e.target.value })} />
+          <Field label={t('egroups.courtNo')} hint={t('egroups.courtNoHint')}>
+            <input className="input" maxLength={60} placeholder={t('egroups.courtNoPh')} value={f.court_labels} onChange={(e) => set({ court_labels: e.target.value })} />
           </Field>
           </>
           )}
+          {!meeting && noPayout && (
+            <p className="col-span-2 md:col-span-4 -mt-1 text-[11px] text-amber-300">
+              ⚠️ {t('create.noPayout')} <button type="button" className="underline text-lime-300" onClick={() => setPayoutOpen(true)}>{t('quickfix.add')}</button>
+            </p>
+          )}
+          {!meeting && <GroupsEditor f={f} set={set} />}
           {showRepeat && (
             <Field label={t('events.repeatWeeks')} hint={t('events.repeatHint')}>
               <input className="input" type="number" inputMode="numeric" min="1" max="26" value={f.repeat_weeks} onChange={(e) => set({ repeat_weeks: e.target.value })} />
@@ -674,14 +752,20 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                     : '—'}
               </dd>
               <dt className="text-gray-400">🕒</dt>
-              <dd className="text-gray-100 tabular-nums">{f.start_time || '—'}{f.end_time ? ` – ${f.end_time}` : ''}</dd>
+              <dd className="text-gray-100 tabular-nums">
+                {f.groups_on && !meeting
+                  ? (f.groups || []).map((g) => (
+                      <span key={g.id} className="block">{g.start_time || '—'}–{g.end_time || '—'} · {Number(g.fee_amount) > 0 ? `${Number(g.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')} · {t('createx.slotsN', { n: g.slots || 0 })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+                    ))
+                  : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
+              </dd>
               <dt className="text-gray-400">📍</dt>
-              <dd className="text-gray-100 truncate">{f.location || '—'}{f.courts && !meeting ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
-              {!meeting && <dt className="text-gray-400">👥</dt>}
-              {!meeting && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
+              <dd className="text-gray-100 truncate">{f.location || '—'}{f.court_labels.trim() && !meeting && !f.groups_on ? ` · ${t('egroups.courtsShort', { list: f.court_labels.trim() })}` : ''}</dd>
+              {!meeting && !f.groups_on && <dt className="text-gray-400">👥</dt>}
+              {!meeting && !f.groups_on && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
               <dt className="text-gray-400">💰</dt>
               <dd className="text-gray-100 tabular-nums">
-                {Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ / ${t('createx.perPerson')}` : t('createx.free')}
+                {f.groups_on && !meeting ? t('egroups.perGroup') : Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ / ${t('createx.perPerson')}` : t('createx.free')}
                 {f.services.trim() && <span className="block text-gray-400 text-xs">🎁 {f.services}</span>}
               </dd>
               {!meeting && (

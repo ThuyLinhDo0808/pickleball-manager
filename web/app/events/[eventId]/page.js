@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import EventShareCard from '@/components/EventShareCard';
-import QuickInviteCard from '@/components/QuickInviteCard';
 import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList, { isScored } from '@/components/MatchList';
@@ -21,6 +20,7 @@ import { Avatar } from '@/components/PlayerChip';
 import { levelText } from '@/lib/levels';
 import EventFinance from '@/components/EventFinance';
 import { AutoApproveToggle, OrganizersSection, PlaceSheet, RequestsSection } from '@/components/EventPeople';
+import CourtPlan from '@/components/CourtPlan';
 import MapLink from '@/components/MapLink';
 import { exportMatchesJpg } from '@/lib/matchImage';
 import { formatDay, hhmm, localDate } from '@/lib/dates';
@@ -267,7 +267,16 @@ export default function EventDetailPage() {
         <p className="text-gray-300 text-base mt-1">
           📅 {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
           {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`}
+          {event.court_labels && !(event.groups?.length > 1) && ` · 🏟 ${t('egroups.courtsShort', { list: event.court_labels })}`}
         </p>
+        {/* Kèo with time groups: each group's hours, fee per slot, places and courts. */}
+        {event.groups?.length > 1 && (
+          <p className="text-gray-300 text-sm mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+            {event.groups.map((g) => (
+              <span key={g.id} className="tabular-nums">🕒 {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+            ))}
+          </p>
+        )}
         {(event.location || event.map_url || event.club_map_url) && <div className="mt-0.5"><MapLink location={event.location} mapUrl={event.map_url || event.club_map_url} /></div>}
         {(event.play_format || event.services || event.series_id) && (
           <p className="text-gray-400 text-sm mt-0.5">
@@ -321,7 +330,6 @@ export default function EventDetailPage() {
         <>
           <EventControls event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
           {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={(e) => setEvent({ ...event, ...e })} />}
-          {event.kind !== 'meeting' && <QuickInviteCard event={event} />}
           <div className="card !py-3 mb-4 flex flex-wrap items-center justify-between gap-2">
             <span className="text-gray-300 text-sm">{event.kind !== 'meeting' ? `⏰ ${policyText(t, event.cancel_deadline_hours, event.cancel_half_hours, event.no_refund)}` : ''}</span>
             <button className="btn-secondary text-sm" onClick={onExport}>⬇ {t('common.exportExcel')}</button>
@@ -413,11 +421,12 @@ export default function EventDetailPage() {
           {event.club_id && sport === 'badminton' && <EventShuttles event={event} />}
           <HostTicketPasses event={event} onChanged={refresh} />
           <PaymentReview event={event} rows={pending} onChanged={() => { refresh(); reloadFinance(); }} />
-          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} onManage={openSheet} onAction={doAction} />
-          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} onManage={openSheet} onAction={doAction} />
+          <ParticipantTable kind="main" title={`${t('events.mainList')} · ${counts.confirmed}/${event.slots}${pending.length ? ` (+${pending.length} ${t('court.holding')})` : ''}`} rows={main} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} groups={event.groups} onManage={openSheet} onAction={doAction} />
+          {event.kind !== 'meeting' && <CourtPlan event={event} rows={[...main, ...pending]} onSaved={refresh} />}
+          <ParticipantTable kind="waitlist" title={`${t('events.waitlist')} (${waitlist.length})`} rows={waitlist} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} groups={event.groups} onManage={openSheet} onAction={doAction} />
           <OrganizersSection event={event} people={participants || []} onOpen={openSheet} />
           {cancelled.length > 0 && (
-            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} onManage={openSheet} onAction={doAction} />
+            <ParticipantTable kind="cancelled" title={`${t('policy.cancelledList')} (${cancelled.length})`} rows={cancelled} t={t} sport={sport} fee={event.fee_amount} hostName={event.host_name} groups={event.groups} onManage={openSheet} onAction={doAction} />
           )}
           {event.club_id && <EventSurveys eventId={event.id} />}
           {cancelP && (
@@ -520,7 +529,7 @@ const shareOf = (p) => (p.refund_percent != null ? p.refund_percent : p.late_can
 // One list (main / waitlist / cancelled) as rows: photo, name + tags, level / gender / DUPR,
 // where they stand and the money. A tap opens the person's sheet with every action;
 // the main list keeps a one-tap check-in for the court.
-function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, onManage, onAction }) {
+function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, onManage, onAction }) {
   return (
     <section className="card mb-4 !px-2 sm:!px-4">
       <h3 className="text-white font-semibold mb-1 px-2 sm:px-0">{title}</h3>
@@ -564,6 +573,9 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, onManage
                     {/* Whose guest: the other slots of a quick booking, or someone the Host added. */}
                     {p.booking && p.full_name !== p.booking.contact_name && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: p.booking.contact_name })}</span>}
                     {(p.tags || []).includes('host_guest') && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: hostName || 'Host' })}</span>}
+                    {/* Kèo with time groups: the group's hours; the court the Host put them on. */}
+                    {groups?.length > 1 && (() => { const g = groups.find((x) => x.id === p.group_id); return g ? <span className={`${BADGE} border-violet-400/60 text-violet-200 tabular-nums`}>🕒 {g.start_time}–{g.end_time}</span> : null; })()}
+                    {p.court && <span className={`${BADGE} border-lime-400/60 text-lime-200`}>🏟 {t('egroups.courtN', { n: p.court })}</span>}
                     {p.priority && <span className={`${BADGE} border-sky-400/60 text-sky-300`} title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>}
                     {p.late_cancel && <span className={`${BADGE} border-orange-400/60 text-orange-300`}>{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>}
                     {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>}
