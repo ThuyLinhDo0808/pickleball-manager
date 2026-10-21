@@ -1,4 +1,5 @@
 'use client';
+import { QuickProfileModal, QuickBirthModal } from '@/components/QuickProfileModal';
 import { useEffect, useMemo, useState } from 'react';
 import MyBookings from '@/components/MyBookings';
 import Link from 'next/link';
@@ -64,6 +65,7 @@ export default function HomeHub() {
   const { manageClub, space, memberClub } = useEnter();
   const { data, loading, reload } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
+  const [fixOpen, setFixOpen] = useState(null); // 'profile' | 'birth': missing info pop-up
   const [query, setQuery] = useState('');
   const router = useRouter();
   // New accounts first say which sports they play and whether they run a club.
@@ -117,9 +119,9 @@ export default function HomeHub() {
       </div>
 
       {(!data.profile || !data.profile.birth_date) && (
-        <Link href="/p/profile" className="card block mb-4 border-lime-400/50 text-lime-300 text-sm">
-          {data.profile ? t('player.needBirthDate') : t('player.completeProfile')}
-        </Link>
+        <button type="button" onClick={() => setFixOpen(data.profile ? 'birth' : 'profile')} className="card block w-full text-left mb-4 border-lime-400/50 text-lime-300 text-sm">
+          {data.profile ? t('player.needBirthDate') : t('player.completeProfile')} →
+        </button>
       )}
 
       {/* Find a club: by name, place or area -> /discover */}
@@ -287,6 +289,8 @@ export default function HomeHub() {
         </div>
       </section>
 
+      <QuickProfileModal open={fixOpen === 'profile'} onClose={() => setFixOpen(null)} onSaved={reload} />
+      <QuickBirthModal open={fixOpen === 'birth'} onClose={() => setFixOpen(null)} onSaved={reload} />
     </PlayerShell>
   );
 }

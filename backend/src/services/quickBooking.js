@@ -137,14 +137,32 @@ const summary = async (event) => ({
   max_slots: MAX_SLOTS,
 });
 
+// "Đăng ký nhanh" from the public event page (code 'p-<public token>'): anyone with the
+// event's public link may book quickly while its public sign-up is on. Those passes are
+// signed with a server key (no invite needed).
+const PUBLIC_PREFIX = 'p-';
+function publicSecret(eventId) {
+  const key = process.env.QUICK_PASS_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'quick-pass';
+  return sign(key, `quick-public:${eventId}`);
+}
+
 // Player opens the link: still live? -> a form pass for 30 minutes.
 async function open(eventId, code, now = Date.now()) {
   await assertReady();
   const event = await eventById(eventId);
-  const secret = await secretOf(event.id);
-  const w = windowAt(now);
-  if (!secret || ![w, w - 1].some((x) => same(String(code || ''), codeFor(secret, event.id, x)))) {
-    throw fail('This invite link has expired. Ask the organiser for a new one.', 410, 'link_expired');
+  const raw = String(code || '');
+  let secret;
+  if (raw.startsWith(PUBLIC_PREFIX)) {
+    if (!event.public_token || raw.slice(PUBLIC_PREFIX.length) !== String(event.public_token) || event.allow_public_registration === false) {
+      throw fail('This sign-up link is not valid.', 404, 'not_found');
+    }
+    secret = publicSecret(event.id);
+  } else {
+    secret = await secretOf(event.id);
+    const w = windowAt(now);
+    if (!secret || ![w, w - 1].some((x) => same(raw, codeFor(secret, event.id, x)))) {
+      throw fail('This invite link has expired. Ask the organiser for a new one.', 410, 'link_expired');
+    }
   }
   assertTaking(event);
   const exp = now + PASS_MS;
@@ -152,9 +170,9 @@ async function open(eventId, code, now = Date.now()) {
 }
 
 async function checkPass(event, pass, now = Date.now()) {
-  const secret = await secretOf(event.id);
   const [exp, mac] = String(pass || '').split('.');
-  if (!secret || !mac || !(Number(exp) > now) || !same(mac, sign(secret, `pass:${event.id}:${exp}`))) {
+  const secrets = [await secretOf(event.id), event.allow_public_registration === false ? null : publicSecret(event.id)].filter(Boolean);
+  if (!mac || !(Number(exp) > now) || !secrets.some((secret) => same(mac, sign(secret, `pass:${event.id}:${exp}`)))) {
     throw fail('The time to fill in the form is over, or the invite was turned off. Open a new invite link.', 410, 'pass_expired');
   }
 }
@@ -307,11 +325,20 @@ async function view(event, booking) {
   const declined = !live.length && rows.some((r) => r.status === 'cancelled' && r.cancelled_by === 'host' && !r.payment_ref);
   const state = live.some((r) => r.status === 'requested') ? 'requested' : !live.length ? (declined ? 'declined' : 'cancelled') : pending.length ? (pending.some((r) => r.payment_status === 'rejected') ? 'rejected' : pending.some((r) => r.payment_status === 'proof_submitted') ? 'proof_submitted' : 'awaiting_proof') : 'confirmed';
   const amount = live.reduce((s, r) => s + Number(r.fee_amount ?? event.fee_amount ?? 0), 0);
+  // Play is over: no more tickets; the booker (slot 1) gets the session review instead.
+  const ended = !!event.event_date && require('./attendance').eventEndMs(event) <= Date.now();
+  let review = null;
+  if (ended && state === 'confirmed') {
+    const first = live.find((r) => require('./survey').PLAYED.includes(r.status));
+    review = first ? await require('./survey').surveyFor(event, first).catch(() => null) : null;
+  }
   const out = {
-    state,
+    state: ended && state === 'confirmed' ? 'ended' : state,
+    ended,
+    review,
     event: { ...(await clubBits(event)), id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, location: event.location, map_url: event.map_url },
     contact: { full_name: booking.contact_name, phone: booking.contact_phone, gender: booking.contact_gender || null, dupr_level: booking.contact_level, dupr_id: booking.contact_dupr_id || null },
-    slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
+    slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: !ended && ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
     amount,
     hold_expires_at: pending[0]?.hold_expires_at || null,
     host_contact: await hostContact(event),

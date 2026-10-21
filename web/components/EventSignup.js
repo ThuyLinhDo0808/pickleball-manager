@@ -228,6 +228,13 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
 
   const fee = Number(ev.fee_amount || 0);
   const next = `/sign-in?next=${encodeURIComponent(`/e/${token}`)}`;
+  // Not a member of the club / community yet: "Đăng ký nhanh" (quick booking, no account
+  // needed; the Host checks the info, then the transfer).
+  const quickHref = ev.id && ev.kind !== 'meeting' ? `/g/${ev.id}/p-${ev.public_token || token}` : null;
+  const quickBox = quickHref && ev.registration_open && (
+    <Link href={quickHref} className="btn-primary block w-full py-3 text-center mt-3">{t('signup.quickCta')}</Link>
+  );
+
 
   if (!user || meError?.status === 401) {
     return (
@@ -237,7 +244,14 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <p className="text-gray-300 text-sm mb-3">{t('signup.loginWhy')}</p>
         {ev.registration_open && ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
         {ev.registration_open ? (
-          <Link href={next} className="btn-primary block w-full py-3 text-center">{t('signup.loginToJoin')}</Link>
+          <>
+            <div className="rounded-xl border border-navy-600 p-3">
+              <p className="text-white font-semibold text-sm">👥 {t('signup.memberTitle')}</p>
+              <p className="text-gray-400 text-xs mt-0.5 mb-2">{t('signup.memberHint')}</p>
+              <Link href={next} className="btn-secondary block w-full py-3 text-center">{t('signup.loginToJoin')}</Link>
+            </div>
+            {quickBox}
+          </>
         ) : (
           <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>
         )}
@@ -299,6 +313,27 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   );
 
   // ---- already registered -----------------------------------------------------
+  // Play is over: no ticket any more — the session review instead.
+  const endMs = ev.end_time ? eventStartMs(ev.event_date, ev.end_time) : startMs + 2 * 3600000;
+  if ((reg?.status === 'registered' || reg?.status === 'checked_in') && Date.now() >= endMs) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <div className="text-4xl">🏁</div>
+        <p className="text-white font-bold text-lg mt-1">{t('quick.endedTitle')}</p>
+        {me.survey ? (
+          <div className="w-full rounded-xl border-2 border-lime-400 bg-lime-400/10 px-3 py-3 mt-3">
+            <p className="text-lime-300 font-bold">⭐ {t('signup.surveyTitle')}</p>
+            <p className="text-gray-200 text-sm mt-0.5 mb-2">{me.survey.answered ? t('signup.surveyDone') : t('signup.surveyHint')}</p>
+            <Link href={`/s/${me.survey.token}`} className={me.survey.answered ? 'btn-secondary inline-block' : 'btn-primary inline-block'}>
+              {me.survey.answered ? t('signup.surveyView') : t('signup.surveyCta')}
+            </Link>
+          </div>
+        ) : (
+          <p className="text-gray-400 text-sm">{t('quick.endedHint')}</p>
+        )}
+      </div>
+    );
+  }
   if (reg?.status === 'registered' || reg?.status === 'checked_in') {
     return (
       <div className="flex flex-col items-center text-center">
@@ -409,7 +444,17 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!ev.registration_open) {
     return <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>;
   }
-  if (!me.profile?.full_name || !me.profile?.phone) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} />;
+  // Signed in but not a member: offer the quick booking first (the account sign-up stays below).
+  const notMember = me.member?.state !== 'verified';
+  if (!me.profile?.full_name || !me.profile?.phone) return notMember && quickBox ? (
+    <>
+      {quickBox}
+      <details className="mt-3">
+        <summary className="text-sm text-gray-300 cursor-pointer">{t('signup.orAccount')}</summary>
+        <div className="mt-2"><ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} /></div>
+      </details>
+    </>
+  ) : <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} />;
 
   async function register() {
     setBusy(true);
@@ -437,6 +482,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const paysNow = guestPays && !(v && useVoucher && withVoucher === 0); // a free-kèo voucher skips payment
   return (
     <div className="flex flex-col">
+      {notMember && quickBox && <div className="mb-3 -mt-3">{quickBox}</div>}
       <Steps current="confirm" guestPays={paysNow} approval={approval} />
       {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}

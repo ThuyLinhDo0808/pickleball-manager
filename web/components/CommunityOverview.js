@@ -1,4 +1,6 @@
 'use client';
+import { useState } from 'react';
+import QuickLevelsModal from '@/components/QuickLevelsModal';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import ClubAvatar from '@/components/ClubAvatar';
@@ -52,6 +54,7 @@ export default function CommunityOverview({ children }) {
   const r = data?.regularity;
   // Only buttons the plan allows (the weekly schedule is a Standard feature).
   const canWeekly = hasFeature(planFor(club, plan), 'weekly_schedule');
+  const [levelsOpen, setLevelsOpen] = useState(false);
   const rules = data?.rules || { active_days: 30, regular_min: 3 };
 
   return (
@@ -122,7 +125,7 @@ export default function CommunityOverview({ children }) {
             <h3 className="text-gray-300 text-sm font-semibold mt-4 mb-2">{t('social.byLevel')}</h3>
             {!(m.by_level || []).length ? (
               <p className="text-gray-500 text-sm">
-                {t('social.noLevels')} <Link href="/club/community-settings" className="text-lime-400 hover:underline">{t('cpanel.title')} →</Link>
+                {t('social.noLevels')} <button type="button" className="text-lime-400 hover:underline" onClick={() => setLevelsOpen(true)}>{t('quickfix.levelsAdd')}</button>
               </p>
             ) : (
               <div className="table-wrap">
@@ -190,6 +193,7 @@ export default function CommunityOverview({ children }) {
           </div>
         </details>
       )}
+      <QuickLevelsModal open={levelsOpen} clubId={club?.id} sport={club?.sport || 'pickleball'} onClose={() => setLevelsOpen(false)} onSaved={() => reload()} />
     </AppShell>
   );
 }

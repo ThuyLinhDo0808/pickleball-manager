@@ -1,4 +1,5 @@
 'use client';
+import { QuickProfileModal, QuickBirthModal } from '@/components/QuickProfileModal';
 import DuprCard from '@/components/DuprCard';
 import MyBookings from '@/components/MyBookings';
 import PlayerNotices from '@/components/PlayerNotices';
@@ -40,6 +41,7 @@ export default function PlayerHome() {
   const { data: me, reload } = useLoad(() => (user ? api.get('/api/player/me') : Promise.resolve(null)), [user?.id]);
   const [qr, setQr] = useState(null);
   const [flash, setFlash] = useState('');
+  const [fixOpen, setFixOpen] = useState(null); // 'profile' | 'birth': missing info pop-up
   const [cancelling, setCancelling] = useState(null); // history row being cancelled
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelErr, setCancelErr] = useState('');
@@ -108,9 +110,9 @@ export default function PlayerHome() {
       </div>
 
       {(!p || !p.birth_date) && (
-        <Link href="/p/profile" className="card block mb-4 border-lime-400/50 text-lime-300 text-sm">
+        <button type="button" onClick={() => setFixOpen(p ? 'birth' : 'profile')} className="card block w-full text-left mb-4 border-lime-400/50 text-lime-300 text-sm">
           {p ? t('player.needBirthDate') : t('player.completeProfile')} →
-        </Link>
+        </button>
       )}
 
       {flash && (
@@ -231,7 +233,7 @@ export default function PlayerHome() {
         <h2 className="text-white font-semibold mb-2">{t('player.dupr')}</h2>
         {me.dupr && (
           <div className="mb-3">
-            <DuprCard dupr={me.dupr} />
+            <DuprCard dupr={me.dupr} onChanged={reload} />
           </div>
         )}
         {me.dupr?.history?.length > 1 ? (
@@ -327,6 +329,8 @@ export default function PlayerHome() {
       <Modal open={!!qr} title={t('join.payTitle')} onClose={() => setQr(null)}>
         {qr && <PaymentCard payment={qr} />}
       </Modal>
+      <QuickProfileModal open={fixOpen === 'profile'} onClose={() => setFixOpen(null)} onSaved={reload} />
+      <QuickBirthModal open={fixOpen === 'birth'} onClose={() => setFixOpen(null)} onSaved={reload} />
     </PlayerShell>
   );
 }

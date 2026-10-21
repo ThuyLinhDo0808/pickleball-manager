@@ -43,7 +43,6 @@ function Info({ label, value }) {
 function PlayerTable({ rows, sport, muted = false }) {
   const { t } = useI18n();
   const badminton = sport === 'badminton';
-  const chip = 'rounded border border-navy-600 px-1.5 py-px whitespace-nowrap';
   return (
     <>
       <ol className="flex flex-col divide-y divide-navy-700">
@@ -54,24 +53,22 @@ function PlayerTable({ rows, sport, muted = false }) {
               {p.full_name}
               {p.status === 'pending' && <span className="ml-2 text-[11px] text-sky-300">({t('signup.pendingShort')})</span>}
             </div>
-            <div className="mt-1 ml-6 flex flex-wrap gap-1.5 text-[11px] text-gray-400 tabular-nums">
-              {p.gender && <span className={`${chip} ${p.gender === 'male' ? 'text-sky-300' : 'text-pink-300'}`}>{t(`members.${p.gender}`)}</span>}
-              {!badminton && p.dupr != null ? (
-                <>
-                  <span className={chip}>{t('public.colDupr')} <b className="text-lime-300">{p.dupr.toFixed(3)}</b></span>
-                  {p.dupr_rel != null && <span className={chip}>{t('public.colRel')} {p.dupr_rel}%</span>}
-                </>
-              ) : p.dupr_level != null ? (
-                <span className={chip} title={badminton ? undefined : t('public.selfLevel')}>{badminton ? t('public.colLevel') : t('public.selfShort')} {levelText(p.dupr_level, sport, t)}</span>
-              ) : (
-                !badminton && <span className={`${chip} text-gray-500`}>{t('public.noDupr')}</span>
-              )}
-              {!badminton && p.dupr_matches != null && <span className={chip}>{t('public.duprMatchesN', { n: p.dupr_matches })}</span>}
+            {/* Giới tính | DUPR | Uy tín (DUPR reliability). Self-entered levels are not shown:
+                they say little. Badminton: the level instead of DUPR. */}
+            <div className="mt-0.5 ml-6 text-xs text-gray-400 tabular-nums">
+              {[
+                p.gender ? <span key="g" className={p.gender === 'male' ? 'text-sky-300' : 'text-pink-300'}>{t(`members.${p.gender}`)}</span> : null,
+                badminton
+                  ? p.dupr_level != null ? <span key="l">{t('public.colLevel')} {levelText(p.dupr_level, sport, t)}</span> : null
+                  : p.dupr != null ? <span key="d">DUPR <b className="text-lime-300">{p.dupr.toFixed(2)}</b></span> : <span key="d" className="text-gray-500">{t('public.noDupr')}</span>,
+                !badminton && p.dupr != null && p.dupr_rel != null ? <span key="r">{t('public.reliability')} {p.dupr_rel}%</span> : null,
+              ]
+                .filter(Boolean)
+                .reduce((out, x, i) => (i ? [...out, <span key={`s${i}`} className="text-gray-600"> | </span>, x] : [x]), [])}
             </div>
           </li>
         ))}
       </ol>
-      {!badminton && rows.some((p) => p.dupr == null && p.dupr_level != null) && <p className="mt-1 text-[11px] text-gray-500">{t('public.selfLevel')}</p>}
     </>
   );
 }
@@ -167,7 +164,7 @@ export default function PublicEventPage() {
 
       <section className="card mb-6">
         <h2 className="text-white font-semibold mb-2">
-          {t('public.players')} <span className="text-gray-400 font-normal">({main.length}/{ev.slots})</span>
+          {t('public.playerList')} <span className="text-gray-400 font-normal">({main.length}/{ev.slots})</span>
         </h2>
         {main.length === 0 && <p className="text-gray-400 text-sm">{t('public.nobody')}</p>}
         {main.length > 0 && <PlayerTable rows={main} sport={ev.sport} />}

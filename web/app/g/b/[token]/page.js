@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
 import PaymentCard from '@/components/PaymentCard';
@@ -133,6 +134,15 @@ export default function QuickBookingPage() {
         )}
         {b.state === 'declined' && <p className="text-center text-red-300 mb-1">✕ {t('quick.declined')}</p>}
         {b.state === 'cancelled' && <p className="text-center text-yellow-300 mb-3">⌛ {t('quick.cancelled')}</p>}
+        {b.state === 'ended' && (
+          <div className="text-center">
+            <div className="text-4xl">🏁</div>
+            <p className="text-white font-bold text-lg">{t('quick.endedTitle')}</p>
+            <p className="text-gray-300 text-sm">{t('quick.endedHint')}</p>
+            {b.review && !b.review.answered && <Link href={`/s/${b.review.token}`} className="btn-primary inline-block mt-3 px-8">⭐ {t('mybook.review')}</Link>}
+            {b.review?.answered && <p className="text-lime-300 text-sm mt-2">✓ {t('mybook.reviewed')}</p>}
+          </div>
+        )}
         {(b.state === 'awaiting_proof' || b.state === 'rejected') && (
           <div className="flex flex-col gap-3 mb-3">
             <h2 className="text-white font-semibold">{t('signup.payTitle', { amount: formatVnd(b.amount) })}</h2>

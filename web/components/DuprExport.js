@@ -5,6 +5,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import Modal from '@/components/Modal';
 
 // "Gửi trận lên DUPR" inside one event (kèo / session), one tournament, or the club's own
 // matches: what can be sent, what is missing, the CSV in DUPR's "Import Matches via CSV"
@@ -20,6 +21,10 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Missing DUPR IDs filled in a pop-up right here (saved on the member, like the members page).
+  const [fixOpen, setFixOpen] = useState(false);
+  const [ids, setIds] = useState({});
+  const [fixErr, setFixErr] = useState('');
   if (!clubId || error || !data) return null;
 
   const list = data.matches || [];
@@ -29,6 +34,24 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const blocked = list.filter((m) => !m.exported_at && !m.ready && !m.no_score);
   const noScore = list.filter((m) => !m.exported_at && m.no_score);
   const missingNames = [...new Set(blocked.flatMap((m) => m.missing))];
+  const missingPeople = [...new Map(blocked.flatMap((m) => [...m.a, ...m.b]).filter((p) => !p.dupr_id).map((p) => [p.member_id || `n:${p.name}`, p])).values()];
+  async function saveIds() {
+    setBusy(true);
+    setFixErr('');
+    try {
+      for (const p of missingPeople) {
+        const v = String(ids[p.member_id] || '').trim();
+        if (p.member_id && v) await api.patch(`/api/clubs/${clubId}/members/${p.member_id}/dupr`, { dupr_id: v });
+      }
+      setIds({});
+      setFixOpen(false);
+      await reload();
+    } catch (e) {
+      setFixErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const needsScoring = ready.some((m) => !m.scoring);
 
   const download = async () => {
@@ -87,7 +110,31 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
         <Count n={blocked.length} label={t('duprx.blocked')} tone={blocked.length ? 'text-amber-300' : 'text-gray-500'} />
         <Count n={noScore.length} label={t('duprx.noScore')} tone="text-gray-500" />
       </div>
-      {missingNames.length > 0 && <p className="text-amber-200 text-xs mt-2">⚠ {t('duprx.missing', { names: missingNames.join(', ') })}</p>}
+      {missingNames.length > 0 && (
+        <p className="text-amber-200 text-xs mt-2">
+          ⚠ {t('duprx.missing', { names: missingNames.join(', ') })}{' '}
+          {missingPeople.some((p) => p.member_id) && <button type="button" className="underline text-lime-300" onClick={() => setFixOpen(true)}>{t('quickfix.addDupr')}</button>}
+        </p>
+      )}
+      <Modal open={fixOpen} title={`📈 ${t('quickfix.duprTitle')}`} onClose={() => setFixOpen(false)}>
+        <p className="text-gray-400 text-sm mb-3">{t('quickfix.duprHint')}</p>
+        <ul className="flex flex-col gap-2">
+          {missingPeople.map((p) => (
+            <li key={p.member_id || p.name} className="flex flex-wrap items-center gap-2">
+              <span className="text-gray-100 text-sm min-w-0 flex-1">{p.name}</span>
+              {p.member_id ? (
+                <input className="input !w-40 font-mono uppercase" maxLength={10} placeholder="Nxxxxxx" value={ids[p.member_id] || ''} onChange={(e) => setIds({ ...ids, [p.member_id]: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} aria-label={`DUPR ID ${p.name}`} />
+              ) : (
+                <span className="text-gray-500 text-xs">{t('quickfix.duprNoMember')}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+        {fixErr && <p className="text-red-400 text-sm mt-2">{fixErr}</p>}
+        <div className="flex justify-end mt-4">
+          <button type="button" className="btn-primary max-sm:w-full sm:px-8" disabled={busy || !Object.values(ids).some((v) => v)} onClick={saveIds}>{t('common.save')}</button>
+        </div>
+      </Modal>
 
       <div className="flex flex-wrap items-end gap-2 mt-3">
         {needsScoring && ready.length > 0 && (

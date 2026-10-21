@@ -1,4 +1,5 @@
 'use client';
+import { QuickProfileModal } from '@/components/QuickProfileModal';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -17,6 +18,7 @@ export default function InvitePage() {
   const { data: c, error, loading } = useLoad(() => api.publicGet(`/api/public/invite/${token}`), [token]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [msg, setMsg] = useState(null);
 
   async function join(e) {
@@ -79,7 +81,7 @@ export default function InvitePage() {
               {msg && (
                 <p className="text-red-300 text-sm">
                   {msg.text}
-                  {msg.code === 'profile_required' && <> <Link href="/p/profile" className="underline">{t('disc.completeProfile')}</Link></>}
+                  {msg.code === 'profile_required' && <> <button type="button" className="underline" onClick={() => setProfileOpen(true)}>{t('disc.completeProfile')}</button></>}
                   {msg.code === 'email_verify_required' && <> <Link href={`/verify-email?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/home')}`} className="underline">{t('everify.barCta')}</Link></>}
                 </p>
               )}
@@ -88,6 +90,8 @@ export default function InvitePage() {
           )}
         </section>
       </div>
+      {/* Missing profile info: filled in here, then the request is sent again. */}
+      <QuickProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={() => join({ preventDefault() {} })} />
     </PlayerShell>
   );
 }

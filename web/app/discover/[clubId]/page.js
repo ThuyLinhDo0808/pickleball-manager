@@ -1,4 +1,5 @@
 'use client';
+import { QuickProfileModal } from '@/components/QuickProfileModal';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -23,6 +24,7 @@ export default function DiscoverClubPage() {
   const { data: rel, reload: reloadRel } = useLoad(() => (user ? api.get(`/api/player/discover/${clubId}`).catch(() => null) : Promise.resolve(null)), [clubId, user?.id]);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [msg, setMsg] = useState(null);
   // Schedule: the next 7 days, or one month at a time (◀ ▶).
   const [view, setView] = useState('week');
@@ -98,7 +100,7 @@ export default function DiscoverClubPage() {
           {msg && (
             <p className={`mt-3 text-sm ${msg.ok ? 'text-lime-300' : 'text-red-300'}`}>
               {msg.ok ? '✓ ' : ''}{msg.text}
-              {msg.code === 'profile_required' && <> <Link href="/p/profile" className="underline">{t('disc.completeProfile')}</Link></>}
+              {msg.code === 'profile_required' && <> <button type="button" className="underline" onClick={() => setProfileOpen(true)}>{t('disc.completeProfile')}</button></>}
                   {msg.code === 'email_verify_required' && <> <Link href={`/verify-email?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/home')}`} className="underline">{t('everify.barCta')}</Link></>}
             </p>
           )}
@@ -170,6 +172,8 @@ export default function DiscoverClubPage() {
           </div>
         </form>
       </Modal>
+      {/* Missing profile info: filled in here, then the request is sent again. */}
+      <QuickProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={() => askToJoin({ preventDefault() {} })} />
     </PlayerShell>
   );
 }

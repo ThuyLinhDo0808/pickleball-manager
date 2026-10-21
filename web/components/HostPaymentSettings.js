@@ -6,7 +6,7 @@ import { resizeImage } from '@/lib/image';
 
 // Host: where guests transfer event fees — bank details (for the auto VietQR) and/or
 // the Host's own bank QR image. Club sessions use the club's account first when it has one.
-export default function HostPaymentSettings({ bare = false } = {}) {
+export default function HostPaymentSettings({ bare = false, onSaved = null } = {}) {
   const { t } = useI18n();
   const file = useRef(null);
   const [f, setF] = useState(null);
@@ -43,6 +43,7 @@ export default function HostPaymentSettings({ bare = false } = {}) {
       setF(v);
       setSaved(v);
       setMsg(t('notify.saved'));
+      onSaved?.(r);
     } catch (err) {
       setMsg(err.message);
     } finally {
