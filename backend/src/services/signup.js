@@ -201,12 +201,17 @@ async function registerOnline(event, userId, profile, opts = {}) {
     throw httpError('This phone number is already registered for this event.', 409, 'duplicate_phone');
   }
 
-  const { count } = await supabase
+  // Kèo with time groups: the player picks one; its places, fee and hours count.
+  const group = require('./eventGroups').pickGroup(event, opts.groupId);
+  const ev = require('./eventGroups').forGroup(event, group);
+  let cq = supabase
     .from('event_participants')
     .select('id', { count: 'exact', head: true })
     .eq('event_id', event.id)
     .in('status', HOLDS_PLACE);
-  const hasPlace = (count || 0) < event.slots;
+  if (group) cq = cq.eq('group_id', group.id);
+  const { count } = await cq;
+  const hasPlace = (count || 0) < ev.slots;
 
   // A pass holder ("VIP") plays on the pass even when listed as a guest.
   const isMember = standing.state === 'verified' || (standing.state === 'guest' && !!standing.pass);
@@ -219,6 +224,7 @@ async function registerOnline(event, userId, profile, opts = {}) {
     kind: isMember ? 'member' : 'guest',
     source_club_member_id: isMember ? standing.member.id : null,
     status: hasPlace ? 'registered' : 'waitlisted',
+    ...(group ? { group_id: group.id, fee_amount: group.fee_amount } : {}),
   };
   // The Host checks new players first (level, who they are): no place or payment yet.
   const approval = await needsApproval(event, standing, userId);
@@ -226,7 +232,7 @@ async function registerOnline(event, userId, profile, opts = {}) {
   // Guest perks: priority goes first off the waitlist (+ the % off). Communities: regulars
   // can be priority too.
   if (!isMember || standing.member?.guest_perk) {
-    const perks = await perksFor(event, { userId, phone: profile.phone });
+    const perks = await perksFor(ev, { userId, phone: profile.phone });
     if (perks.priority) row.priority = true;
     if (perks.fee_amount != null) row.fee_amount = perks.fee_amount;
   }
@@ -255,19 +261,21 @@ async function registerOnline(event, userId, profile, opts = {}) {
   // Many people tapping "Đăng ký" at the same moment can all see the last place free.
   // Settle it after the insert: in sign-up order, whoever is past the number of places
   // goes to the waitlist (and pays nothing yet).
-  if (HOLDS_PLACE.includes(data.status)) data = (await settleOverbooking(event, data)) || data;
+  if (HOLDS_PLACE.includes(data.status)) data = (await settleOverbooking(ev, data, group)) || data;
   if (claimed) await require('./race').attachVoucher(claimed.voucher.id, data.id);
   if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
   if (data.status === 'requested') notifySignupRequest(event, data); // Host webhook, in the background
   return registrationView(event, data);
 }
 
-async function settleOverbooking(event, mine) {
-  const { data: rows, error } = await supabase
+async function settleOverbooking(event, mine, group = null) {
+  let q = supabase
     .from('event_participants')
     .select('id, joined_at')
     .eq('event_id', event.id)
-    .in('status', HOLDS_PLACE)
+    .in('status', HOLDS_PLACE);
+  if (group) q = q.eq('group_id', group.id); // event = the group's view: its places
+  const { data: rows, error } = await q
     .order('joined_at', { ascending: true })
     .order('id', { ascending: true })
     .limit(2000);

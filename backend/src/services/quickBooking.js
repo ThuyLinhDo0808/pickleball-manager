@@ -88,10 +88,15 @@ async function eventById(eventId) {
   return data;
 }
 
-async function freePlaces(event) {
+async function freePlaces(event, groupId = null) {
   const { count, error } = await supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', event.id).in('status', HOLDS_PLACE);
   if (error) throw error;
-  return Math.max((event.slots || 0) - (count || 0), 0);
+  const total = Math.max((event.slots || 0) - (count || 0), 0);
+  // Kèo with time groups: the group's own places too.
+  const g = groupId ? require('./eventGroups').groupOf(event, groupId) : null;
+  if (!g) return total;
+  const taken = (await require('./eventGroups').takenByGroup(event))[g.id] || 0;
+  return Math.min(total, Math.max(g.slots - taken, 0));
 }
 
 async function clubBits(event) {
@@ -132,6 +137,7 @@ const summary = async (event) => ({
   level_min_f: event.level_min_f ?? null,
   level_max_f: event.level_max_f ?? null,
   free_places: await freePlaces(event),
+  groups: await require('./eventGroups').publicGroups(event).catch(() => null),
   max_slots: MAX_SLOTS,
 });
 
@@ -249,10 +255,12 @@ async function book(eventId, body, userId = null) {
     if (already?.length) throw fail('You are already on this kèo.', 409, 'already_registered');
   }
   await require('./signup').expireHolds(event);
-  const free = await freePlaces(event);
+  // Kèo with time groups: the whole booking plays in the one group picked.
+  const tg = require('./eventGroups').pickGroup(event, body?.group_id);
+  const free = await freePlaces(event, tg?.id);
   if (slots.length > free) throw fail(`Only ${free} place(s) left.`, 409, 'not_enough_places', { free });
 
-  const fee = Number(event.fee_amount || 0);
+  const fee = Number((tg ? tg.fee_amount : event.fee_amount) || 0);
   const check = !event.auto_approve;
   const token = crypto.randomBytes(24).toString('base64url');
   const { data: booking, error } = await supabase
@@ -277,6 +285,7 @@ async function book(eventId, body, userId = null) {
     kind: 'guest',
     guest_booking_id: booking.id,
     fee_amount: fee,
+    ...(tg ? { group_id: tg.id } : {}),
     ...(check ? { status: 'requested' } : paid ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: ref, hold_expires_at: hold } : { status: 'registered' }),
   }));
   const { error: pErr } = await supabase.from('event_participants').insert(rows);
@@ -290,8 +299,9 @@ async function book(eventId, body, userId = null) {
   }
   // Many bookings at the same moment can all see the last places free: re-count after the
   // insert, and if this group went past the limit, take it back.
-  const { data: holders } = await supabase.from('event_participants').select('id, guest_booking_id, joined_at').eq('event_id', event.id).in('status', HOLDS_PLACE).order('joined_at', { ascending: true }).order('id', { ascending: true });
-  const over = (holders || []).slice(event.slots || 0).some((h) => h.guest_booking_id === booking.id);
+  const { data: holders } = await supabase.from('event_participants').select('id, guest_booking_id, group_id, joined_at').eq('event_id', event.id).in('status', HOLDS_PLACE).order('joined_at', { ascending: true }).order('id', { ascending: true });
+  const over = (holders || []).slice(event.slots || 0).some((h) => h.guest_booking_id === booking.id)
+    || (tg && (holders || []).filter((h) => h.group_id === tg.id).slice(tg.slots).some((h) => h.guest_booking_id === booking.id));
   if (over) {
     await supabase.from('event_participants').delete().eq('guest_booking_id', booking.id);
     await supabase.from('event_guest_bookings').delete().eq('id', booking.id);
@@ -316,6 +326,11 @@ async function rowsOf(booking) {
 }
 
 // What the booking page shows (only this booking's own data).
+function timesOf(event, row) {
+  const g = require('./eventGroups').groupOf(event, row?.group_id);
+  return g ? { start_time: g.start_time, end_time: g.end_time, courts: g.courts || null } : { start_time: event.start_time, end_time: event.end_time };
+}
+
 async function view(event, booking) {
   await require('./signup').expireHolds(event).catch(() => null);
   const rows = await rowsOf(booking);
@@ -336,7 +351,8 @@ async function view(event, booking) {
     state: ended && state === 'confirmed' ? 'ended' : state,
     ended,
     review,
-    event: { ...(await clubBits(event)), id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, location: event.location, map_url: event.map_url },
+    // Kèo with time groups: the hours (and courts) of the group booked.
+    event: { ...(await clubBits(event)), id: event.id, title: event.title, event_date: event.event_date, ...timesOf(event, rows[0]), location: event.location, map_url: event.map_url },
     contact: { full_name: booking.contact_name, phone: booking.contact_phone, gender: booking.contact_gender || null, dupr_level: booking.contact_level, dupr_id: booking.contact_dupr_id || null },
     slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: !ended && ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
     amount,
@@ -386,11 +402,11 @@ async function approveGroup(event, prior) {
   const others = await pendingSiblings(prior);
   const group = [prior, ...others];
   await require('./signup').expireHolds(event);
-  const free = await freePlaces(event);
+  const free = await freePlaces(event, prior.group_id);
   if (group.length > free) throw fail(`This booking has ${group.length} players but only ${free} place(s) are left.`, 409, 'full');
   // Paid kèo: the group waits for its one transfer (until 12 hours before the start, like an approved sign-up);
   // a free kèo: straight on the list.
-  const fee = Number(event.fee_amount || 0);
+  const fee = Number(prior.fee_amount ?? event.fee_amount ?? 0);
   const patch = fee > 0
     ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: newPaymentRef(), hold_expires_at: new Date(Date.now() + require('./attendance').approvedHoldMs(event)).toISOString() }
     : { status: 'registered', hold_expires_at: null };

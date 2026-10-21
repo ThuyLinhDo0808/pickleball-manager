@@ -3,6 +3,7 @@ import { CancelDialog } from '@/components/CancelHistory';
 import { deadlinesOf, eventStartMs, refundIfCancelNow } from '@/lib/cancelPolicy';
 import LevelInput from '@/components/LevelInput';
 import { useEffect, useRef, useState } from 'react';
+import GroupPicker, { firstOpenGroup } from '@/components/GroupPicker';
 import Link from 'next/link';
 import PaymentCard from '@/components/PaymentCard';
 import TicketCard from '@/components/TicketCard';
@@ -221,12 +222,16 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelErr, setCancelErr] = useState('');
   const [, tick] = useState(0);
+  // Kèo with time groups (giờ / phí riêng): the one the player signs up for.
+  const groups = ev.groups?.length ? ev.groups : null;
+  const [groupId, setGroupId] = useState(() => firstOpenGroup(groups));
+  const gSel = groups ? groups.find((g) => g.id === groupId) || groups[0] : null;
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30000); // hold countdown
     return () => clearInterval(id);
   }, []);
 
-  const fee = Number(ev.fee_amount || 0);
+  const fee = Number((gSel ? gSel.fee_amount : ev.fee_amount) || 0);
   const next = `/sign-in?next=${encodeURIComponent(`/e/${token}`)}`;
   // Not signed in: "Đăng ký nhanh" (quick booking, no account needed; the Host checks the
   // info, then the transfer) next to signing in.
@@ -272,7 +277,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const reg = me.registration && ACTIVE.includes(me.registration.status) ? me.registration : null;
   const fmtWhen = (iso) => localDate(new Date(iso), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
   const memberFree = me.member.state === 'verified' && me.member.has_pass;
-  const myFee = me.member.my_fee ?? fee; // priority guests pay the price after their discount
+  // Priority guests pay the price after their discount (with groups: the same share of the group's fee).
+  const myFee = me.member.my_fee == null ? fee : gSel && Number(ev.fee_amount) > 0 ? Math.round((fee * me.member.my_fee) / Number(ev.fee_amount)) : me.member.my_fee;
   const guestPays = myFee > 0 && !memberFree;
   const approval = !!me.member.needs_approval;
 
@@ -452,7 +458,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     setBusy(true);
     setError('');
     try {
-      await api.post(`/api/events/public/${token}/register`, { ...(payLater && paysNow ? { pay_later: true } : {}), ...(me.voucher ? { use_voucher: useVoucher } : {}) });
+      await api.post(`/api/events/public/${token}/register`, { ...(payLater && paysNow ? { pay_later: true } : {}), ...(me.voucher ? { use_voucher: useVoucher } : {}), ...(gSel ? { group_id: gSel.id } : {}) });
       onChanged();
     } catch (err) {
       // Kept out by the club: suspended ("to review") until a date, or blocked.
@@ -467,7 +473,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     }
   }
 
-  const full = ev.main_count >= ev.slots;
+  const full = gSel ? gSel.left <= 0 || ev.main_count >= ev.slots : ev.main_count >= ev.slots;
   // Top-month voucher: what this sign-up would cost with it.
   const v = me.voucher && !memberFree && myFee > 0 ? me.voucher : null;
   const withVoucher = v ? (v.kind === 'free' ? 0 : myFee - Math.round(myFee / 2)) : myFee;
@@ -478,6 +484,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
       {me.registration?.status === 'cancelled' && <p className="text-gray-400 text-xs mb-2">{t('signup.cancelledBefore')}</p>}
       <MemberStanding me={me} clubName={ev.club_name} />
+      <GroupPicker groups={groups} value={gSel?.id} onChange={setGroupId} />
       <div className="rounded-lg bg-navy-900 px-3 py-2 text-sm mb-3">
         <div className="flex justify-between gap-2">
           <span className="text-gray-400">{t('signup.registerAs')}</span>

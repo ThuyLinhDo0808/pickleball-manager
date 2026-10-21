@@ -11,6 +11,7 @@ import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 import { eventLevelText } from '@/lib/levels';
 import { rememberBooking } from '@/components/MyBookings';
+import GroupPicker, { firstOpenGroup } from '@/components/GroupPicker';
 
 const blankSlot = () => ({ full_name: '', gender: '', dupr_level: '', dupr_id: '' });
 const idChars = (v) => v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
@@ -30,6 +31,7 @@ export default function QuickBookPage() {
   const [meFirst, setMeFirst] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [groupId, setGroupId] = useState(null); // kèo with time groups: the one booked
 
   useEffect(() => {
     api
@@ -71,12 +73,15 @@ export default function QuickBookPage() {
   const ev = opened.event;
   const host = ev.host_contact;
   const check = ev.info_check !== false;
-  const max = Math.max(0, Math.min(ev.free_places, ev.max_slots));
-  const time = [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join(' – ');
+  const groups = ev.groups?.length ? ev.groups : null;
+  const gSel = groups ? groups.find((g) => g.id === (groupId || firstOpenGroup(groups))) || groups[0] : null;
+  const fee = gSel ? Number(gSel.fee_amount || 0) : ev.fee;
+  const max = Math.max(0, Math.min(gSel ? gSel.left : ev.free_places, ev.max_slots));
+  const time = gSel ? `${gSel.start_time} – ${gSel.end_time}` : [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join(' – ');
   const level = eventLevelText(ev, ev.sport, t) || t('public.anyLevel');
   // Slot 1 = the person booking (same name / level), unless they book for others only.
   const rows = slots.map((s, i) => (i === 0 && meFirst ? { ...s, full_name: contact.full_name, gender: contact.gender, dupr_level: contact.dupr_level, dupr_id: contact.dupr_id } : s));
-  const total = ev.fee * rows.length;
+  const total = fee * rows.length;
   const setSlot = (i, patch) => setSlots(slots.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const setCount = (n) => setSlots(Array.from({ length: n }, (_, i) => slots[i] || blankSlot()));
 
@@ -85,7 +90,7 @@ export default function QuickBookPage() {
     setBusy(true);
     setError('');
     try {
-      const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact: { ...contact, phone: contact.no_phone ? '' : contact.phone, no_phone: contact.no_phone || !contact.phone.trim() }, slots: rows, me_first: meFirst });
+      const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact: { ...contact, phone: contact.no_phone ? '' : contact.phone, no_phone: contact.no_phone || !contact.phone.trim() }, slots: rows, me_first: meFirst, ...(gSel ? { group_id: gSel.id } : {}) });
       try {
         window.localStorage.setItem(`pb_quick_${eventId}`, r.token);
         rememberBooking({ token: r.token, title: ev.title, event_date: ev.event_date });
@@ -111,10 +116,11 @@ export default function QuickBookPage() {
         </p>
         {(ev.location || ev.map_url) && <p className="mt-1"><MapLink location={ev.location} mapUrl={ev.map_url} /></p>}
         <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-          <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('public.fee')}</div><div className="text-white font-semibold text-sm">{ev.fee ? formatVnd(ev.fee) : t('public.free')}</div></div>
+          <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('public.fee')}</div><div className="text-white font-semibold text-sm">{fee ? formatVnd(fee) : t('public.free')}</div></div>
           <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('public.level')}</div><div className="text-white font-semibold text-sm">{level}</div></div>
-          <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('quick.freePlaces')}</div><div className="text-white font-semibold text-sm">{ev.free_places}</div></div>
+          <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('quick.freePlaces')}</div><div className="text-white font-semibold text-sm">{gSel ? gSel.left : ev.free_places}</div></div>
         </div>
+        {groups && <div className="mt-3"><GroupPicker groups={groups} value={gSel.id} onChange={(id) => { setGroupId(id); setSlots([blankSlot()]); }} /></div>}
       </section>
 
       {max === 0 ? (
@@ -218,12 +224,12 @@ export default function QuickBookPage() {
 
           <section className="card">
             <div className="flex items-baseline justify-between">
-              <span className="text-gray-300 text-sm">{t('quick.totalLabel', { n: rows.length, fee: formatVnd(ev.fee) })}</span>
+              <span className="text-gray-300 text-sm">{t('quick.totalLabel', { n: rows.length, fee: formatVnd(fee) })}</span>
               <b className="text-lime-300 text-xl tabular-nums">{formatVnd(total)}</b>
             </div>
-            <p className="text-gray-500 text-xs mt-1">{check ? t('quick.checkNote') : ev.fee ? t('quick.holdNote') : t('quick.freeNote')}</p>
+            <p className="text-gray-500 text-xs mt-1">{check ? t('quick.checkNote') : fee ? t('quick.holdNote') : t('quick.freeNote')}</p>
             {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-            <button className="btn-primary w-full py-3 mt-3" disabled={busy}>{busy ? '…' : check ? t('quick.sendRequest') : ev.fee ? t('quick.toPay') : t('quick.book')}</button>
+            <button className="btn-primary w-full py-3 mt-3" disabled={busy}>{busy ? '…' : check ? t('quick.sendRequest') : fee ? t('quick.toPay') : t('quick.book')}</button>
           </section>
         </form>
       )}

@@ -167,6 +167,11 @@ async function setPlace(event, prior, to) {
       .in('status', HOLDS_PLACE);
     if (error) throw error;
     if ((count || 0) >= event.slots) throw httpError('The main list is full: add places or move someone out first.', 409, 'full');
+    // Kèo with time groups: the person's group must have a place too.
+    const group = require('./eventGroups').groupOf(event, prior.group_id);
+    if (group && ((await require('./eventGroups').takenByGroup(event))[group.id] || 0) >= group.slots) {
+      throw httpError(`The ${group.start_time}–${group.end_time} group is full: move them to another group or add places.`, 409, 'group_full');
+    }
     patch = await placePatch(event, prior, prior.status === 'requested' ? approvedHoldMs(event) : PROMOTED_HOLD_MS);
   } else {
     if (prior.status === target) return prior;
@@ -188,7 +193,18 @@ async function setPlace(event, prior, to) {
 async function promoteNext(event) {
   let q = supabase.from('event_participants').select('*').eq('event_id', event.id).eq('status', 'waitlisted');
   if (await guestsReady()) q = q.order('priority', { ascending: false });
-  const { data: nextUp } = await q.order('joined_at', { ascending: true }).limit(1).maybeSingle();
+  const { data: queue } = await q.order('joined_at', { ascending: true }).limit(200);
+  // Kèo with time groups: the first one whose group has a free place.
+  const eg = require('./eventGroups');
+  const groups = eg.groupsOf(event);
+  let nextUp = (queue || [])[0] || null;
+  if (groups.length && queue?.length) {
+    const taken = await eg.takenByGroup(event);
+    nextUp = queue.find((p) => {
+      const g = eg.groupOf(event, p.group_id);
+      return !g || (taken[g.id] || 0) < g.slots;
+    }) || null;
+  }
   if (!nextUp) return null;
   const { data: promoted, error } = await supabase
     .from('event_participants')
