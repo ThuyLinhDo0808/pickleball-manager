@@ -98,7 +98,6 @@ export default function ClubRequestPage() {
   const { user } = useAuth();
   const { plan } = useWorkspace();
   const { data, loading, error, reload } = useLoad(() => (user ? api.get('/api/host/club-requests') : Promise.resolve(null)), [user?.id]);
-  const { data: me } = useLoad(() => (user ? api.get('/api/host/me').catch(() => null) : Promise.resolve(null)), [user?.id]);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ name: '', sport: 'pickleball', country: VIETNAM, province: '', district: '', address: '', map_url: '', schedule: '', description: '', contact_email: '', member_count: '', plan_tier: '', plan_months: 1 });
   const [avatar, setAvatar] = useState(null);
@@ -118,10 +117,6 @@ export default function ClubRequestPage() {
   useEffect(() => {
     if (user?.email) setForm((f) => ({ ...f, contact_email: f.contact_email || user.email }));
   }, [user?.email]);
-  const sports = me?.sports?.length ? me.sports : ['pickleball', 'badminton'];
-  useEffect(() => {
-    if (me?.sports?.length) setForm((f) => (me.sports.includes(f.sport) ? f : { ...f, sport: me.sports[0] }));
-  }, [me?.sports?.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Club -> the Club plan; community -> the Social Manager plan (separate products).
   const product = kind === 'community' ? 'social_manager' : 'tier';
@@ -252,7 +247,7 @@ export default function ClubRequestPage() {
               <form onSubmit={next} className="card flex flex-col gap-4">
                 <I18nSpace space={space}>
                   <ClubImagesPicker avatar={avatar} cover={cover} onAvatar={setAvatar} onCover={setCover} name={form.name} />
-                  <ClubProfileFields form={form} set={set} withName sports={sports} />
+                  <ClubProfileFields form={form} set={set} withName />
                 </I18nSpace>
                 <div className="flex justify-end">
                   <button className="btn-primary">{t('onb.next')} →</button>

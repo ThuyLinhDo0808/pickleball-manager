@@ -3,6 +3,8 @@ import { peekReturn } from '@/lib/returnTo';
 import { QuickProfileModal, QuickBirthModal } from '@/components/QuickProfileModal';
 import { useEffect, useMemo, useState } from 'react';
 import MyBookings from '@/components/MyBookings';
+import HomeFind from '@/components/HomeFind';
+import { formatVnd } from '@/lib/format';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
@@ -67,7 +69,6 @@ export default function HomeHub() {
   const { data, loading, reload } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
   const [fixOpen, setFixOpen] = useState(null); // 'profile' | 'birth': missing info pop-up
-  const [query, setQuery] = useState('');
   const router = useRouter();
   // New accounts first say which sports they play and whether they run a club.
   useEffect(() => {
@@ -130,22 +131,8 @@ export default function HomeHub() {
         </button>
       )}
 
-      {/* Find a club: by name, place or area -> /discover */}
-      <form
-        onSubmit={(e) => { e.preventDefault(); router.push(`/discover${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`); }}
-        className="card !p-3 mb-4 flex items-center gap-2"
-        role="search"
-      >
-        <span className="text-xl" aria-hidden="true">🔍</span>
-        <input
-          className="input !py-2 flex-1 min-w-0"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('disc.homePh')}
-          aria-label={t('disc.homeTitle')}
-        />
-        <button className="btn-primary !py-2 shrink-0">{t('disc.search')}</button>
-      </form>
+      {/* Find a kèo (next 3 days, by place) or a club / community */}
+      <HomeFind />
 
       {cr && (cr.status === 'pending' || (cr.status !== 'cancelled' && cr.decided_at && Date.now() - Date.parse(cr.decided_at) < 14 * 86400000)) && (
         <Link href="/club-request" className={`card block mb-4 text-sm ${cr.status === 'approved' ? 'border-lime-400/50' : cr.status === 'rejected' ? 'border-red-400/50' : 'border-amber-300/50'}`}>
@@ -237,6 +224,47 @@ export default function HomeHub() {
               </button>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* The next 3 days of my clubs / communities, signed up or not */}
+      {member.length > 0 && (
+        <section className="mb-6">
+          <h2 className="text-white font-semibold mb-2">{t('findx.soonTitle')}</h2>
+          {!(data.club_soon || []).length ? (
+            <p className="card text-gray-400 text-sm">{t('findx.soonNone')}</p>
+          ) : (
+            <ul className="rounded-2xl border border-navy-700 bg-navy-900/60 divide-y divide-navy-700 overflow-hidden">
+              {data.club_soon.map((e) => (
+                <li key={e.event_id}>
+                  <Link href={e.link ? `/e/${e.link}` : `/c/${e.club_id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-navy-800/60">
+                    <span className="w-16 shrink-0">
+                      <span className="block text-gray-400 text-[11px] capitalize leading-tight">{e.event_date === today ? t('hub.today') : formatDay(e.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })}</span>
+                      <span className="block text-gray-200 font-bold tabular-nums">{e.start_time ? hhmm(e.start_time) : '—'}</span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-white text-sm font-semibold leading-snug break-words">{e.title}</span>
+                      <span className="block text-gray-400 text-xs break-words">{[e.club_name, e.location].filter(Boolean).join(' · ')}</span>
+                      <span className="block text-xs mt-0.5">
+                        {e.my_status ? (
+                          <span className="text-lime-300">✓ {t(`player.status_${e.my_status}`)}</span>
+                        ) : e.status === 'closed' ? (
+                          <span className="text-gray-400">{t('findx.closed')}</span>
+                        ) : (
+                          <span className="text-lime-400">{e.link ? t('findx.signUp') : t('findx.view')} →</span>
+                        )}
+                        {Number(e.fee_amount) > 0 && <span className="text-gray-400"> · {formatVnd(e.fee_amount)}</span>}
+                      </span>
+                    </span>
+                    <span className="flex flex-col items-end gap-1.5 shrink-0">
+                      {e.slots ? <span className="rounded-full bg-navy-700 px-2 py-0.5 text-xs text-gray-200 tabular-nums">{e.main_count}/{e.slots}</span> : null}
+                      <ClubAvatar id={e.club_id} name={e.club_name} size={30} />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 

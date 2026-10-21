@@ -9,11 +9,8 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import Hint from '@/components/ui/Hint';
 
-const STEPS = ['sports', 'role', 'info'];
-const SPORTS = [
-  ['pickleball', '🏓'],
-  ['badminton', '🏸'],
-];
+// Only pickleball is offered for now: no sport step (badminton is hidden everywhere).
+const STEPS = ['role', 'info'];
 const ROLES = [
   ['player', '🙋'],
   ['manager', '🧑‍💼'],
@@ -45,7 +42,7 @@ export default function OnboardingPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [sports, setSports] = useState([]);
+  const sports = ['pickleball'];
   const [role, setRole] = useState('player');
   const [f, setF] = useState({ full_name: '', phone: '', gender: '', birth_date: '', dupr_level: '', badminton_level: '' });
   const [busy, setBusy] = useState(false);
@@ -56,7 +53,6 @@ export default function OnboardingPage() {
     if (!user) return;
     Promise.all([api.get('/api/host/me').catch(() => null), api.get('/api/player/me').catch(() => null)]).then(([me, pm]) => {
       const p = pm?.profile || {};
-      if (me?.sports?.length) setSports(me.sports);
       if (me?.account_role) setRole(me.account_role);
       setF((x) => ({
         ...x,
@@ -71,8 +67,7 @@ export default function OnboardingPage() {
   }, [user]);
 
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e?.target ? e.target.value : e }));
-  const toggleSport = (s) => setSports((x) => (x.includes(s) ? x.filter((y) => y !== s) : [...x, s]));
-  const canNext = step === 0 ? sports.length > 0 : true;
+  const canNext = true;
 
   async function finish(e) {
     e.preventDefault();
@@ -107,16 +102,7 @@ export default function OnboardingPage() {
           ))}
         </ol>
 
-        {step === 0 && (
-          <div className="flex flex-col gap-3">
-            {SPORTS.map(([s, icon]) => (
-              <Choice key={s} on={sports.includes(s)} onClick={() => toggleSport(s)} icon={icon} title={t(`onb.sport_${s}`)} body={t(`onb.sportHint_${s}`)} />
-            ))}
-            <p className="text-gray-500 text-xs">{t('onb.sportsMany')}</p>
-          </div>
-        )}
-
-        {step === 1 && (
+        {STEPS[step] === 'role' && (
           <div className="flex flex-col gap-3" role="radiogroup" aria-label={t('onb.step_role')}>
             {ROLES.map(([r, icon]) => (
               <Choice key={r} role="radio" on={role === r} onClick={() => setRole(r)} icon={icon} title={t(`onb.role_${r}`)} body={t(`onb.roleHint_${r}`)} />
@@ -126,7 +112,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step === 2 && (
+        {STEPS[step] === 'info' && (
           <form id="onb-info" onSubmit={finish} className="card flex flex-col gap-3">
             <label className="block">
               <span className="text-xs text-gray-300">{t('onb.fullName')} <span className="text-lime-400">*</span></span>
@@ -158,12 +144,6 @@ export default function OnboardingPage() {
                   <label className="block">
                     <span className="text-xs text-gray-300">🏓 {t('onb.levelPickleball')}</span>
                     <LevelInput sport="pickleball" className="input mt-1" value={f.dupr_level} onChange={set('dupr_level')} placeholder="3.25" />
-                  </label>
-                )}
-                {sports.includes('badminton') && (
-                  <label className="block">
-                    <span className="text-xs text-gray-300">🏸 {t('onb.levelBadminton')}</span>
-                    <LevelInput sport="badminton" className="input mt-1" value={f.badminton_level} onChange={set('badminton_level')} />
                   </label>
                 )}
               </div>

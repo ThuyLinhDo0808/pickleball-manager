@@ -101,11 +101,7 @@ export default function PlayerHome() {
         )}
         <div className="min-w-0">
           <h1 className="text-white text-xl font-bold truncate">{t('player.hello', { name: me.username || p?.full_name || String(me.email || '').split('@')[0] })}</h1>
-          {(p?.dupr_level != null || p?.badminton_level != null) && (
-            <div className="text-gray-400 text-sm">
-              {[p.dupr_level != null && `🏓 DUPR ${levelText(p.dupr_level, 'pickleball', t)}`, p.badminton_level != null && `🏸 ${levelText(p.badminton_level, 'badminton', t)}`].filter(Boolean).join(' · ')}
-            </div>
-          )}
+          {p?.dupr_level != null && <div className="text-gray-400 text-sm">🏓 DUPR {levelText(p.dupr_level, 'pickleball', t)}</div>}
         </div>
       </div>
 

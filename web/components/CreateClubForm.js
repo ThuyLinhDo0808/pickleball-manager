@@ -36,7 +36,7 @@ function DirectCreateForm({ onCreated, autoFocus = false }) {
   const { workspace } = useWorkspace();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [sport, setSport] = useState('pickleball');
+  const sport = 'pickleball'; // only pickleball for now
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [limited, setLimited] = useState(false);
@@ -64,24 +64,6 @@ function DirectCreateForm({ onCreated, autoFocus = false }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <div>
-        <label className="text-xs text-gray-400">{t('clubs.sport')}</label>
-        <div className="grid grid-cols-2 gap-2 mt-1" role="radiogroup">
-          {['pickleball', 'badminton'].map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="radio"
-              aria-checked={sport === s}
-              onClick={() => setSport(s)}
-              className={`rounded-lg border px-3 py-2.5 text-sm font-semibold ${sport === s ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
-            >
-              {t(`clubs.sport_${s}`)}
-            </button>
-          ))}
-        </div>
-        <Hint text={t('clubs.sportHint')} className="mt-1" />
-      </div>
       <div>
         <label className="text-xs text-gray-400">{t('clubs.name')}</label>
         <input
