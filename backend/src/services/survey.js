@@ -38,6 +38,10 @@ async function selectSurveys(cols, build) {
 
 // ---- sending -------------------------------------------------------------------------
 
+// Who played a session: checked in, or still on the main list when it ended (many Hosts
+// don't check people in at a casual kèo). No-shows and cancels get no survey.
+const PLAYED = ['checked_in', 'registered'];
+
 // Find the players of sessions that just ended and send them the survey (once each).
 async function sendDueSurveys(now = Date.now()) {
   if (!(await guestsReady())) return 0;
@@ -56,7 +60,7 @@ async function sendDueSurveys(now = Date.now()) {
       .from('event_participants')
       .select('*')
       .eq('event_id', event.id)
-      .eq('status', 'checked_in')
+      .in('status', PLAYED)
       .is('survey_sent_at', null);
     for (const p of people || []) {
       // Claim it first so two sweeps never send twice.
@@ -96,7 +100,7 @@ async function participantByToken(token) {
     .eq('survey_token', token)
     .maybeSingle();
   const event = p?.events;
-  if (!p || !event?.club_id || p.status !== 'checked_in') throw httpError('Survey not found.', 404, 'not_found');
+  if (!p || !event?.club_id || !PLAYED.includes(p.status)) throw httpError('Survey not found.', 404, 'not_found');
   if (event.event_date < daysAgo(OPEN_DAYS)) throw httpError('This survey has closed.', 410, 'closed');
   return { p, event };
 }
@@ -338,12 +342,13 @@ async function surveysDueFor(userId) {
   if (!(await guestsReady())) return [];
   const { data } = await supabase
     .from('event_participants')
-    .select('id, survey_token, guest_member_id, source_club_member_id, events(title, event_date, start_time, end_time, club_id, clubs(name))')
+    .select('id, survey_token, guest_member_id, source_club_member_id, events(title, event_date, start_time, end_time, club_id, status, clubs(name))')
     .eq('user_id', userId)
-    .eq('status', 'checked_in')
-    .not('survey_sent_at', 'is', null)
-    .limit(50);
-  const rows = (data || []).filter((r) => r.events?.club_id && r.events.event_date >= daysAgo(OPEN_DAYS));
+    .in('status', PLAYED)
+    .limit(100);
+  // Once play is over (no need to wait for the email sweep).
+  const now = Date.now();
+  const rows = (data || []).filter((r) => r.events?.club_id && r.survey_token && r.events.status !== 'cancelled' && r.events.event_date >= daysAgo(OPEN_DAYS) && eventEndMs(r.events) <= now);
   if (!rows.length) return [];
   const { data: answered } = await supabase.from('event_surveys').select('participant_id').in('participant_id', rows.map((r) => r.id));
   const done = new Set((answered || []).map((a) => a.participant_id));
@@ -356,11 +361,11 @@ async function surveysDueFor(userId) {
 // The survey link of one registration, shown on the event page once play is over
 // (so a player does not have to wait for the email or the sweeper).
 async function surveyFor(event, p, now = Date.now()) {
-  if (!p || p.status !== 'checked_in' || !event?.club_id || !p.survey_token) return null;
+  if (!p || !PLAYED.includes(p.status) || !event?.club_id || !p.survey_token) return null;
   if (now < eventEndMs(event) || event.event_date < daysAgo(OPEN_DAYS)) return null;
   if (!(await guestsReady())) return null;
   const { data } = await supabase.from('event_surveys').select('participant_id').eq('participant_id', p.id).maybeSingle();
   return { token: p.survey_token, answered: !!data };
 }
 
-module.exports = { sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, eventSurveys, clubSurveys, surveysDueFor, surveyFor, summarizeAnswers };
+module.exports = { PLAYED, sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, eventSurveys, clubSurveys, surveysDueFor, surveyFor, summarizeAnswers };

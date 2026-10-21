@@ -1,5 +1,6 @@
 'use client';
-import Link from 'next/link';
+import { useState } from 'react';
+import { QuickDuprIdModal } from '@/components/QuickProfileModal';
 import { useI18n } from '@/context/I18nContext';
 import { Change } from '@/components/DuprMembers';
 import { localDate } from '@/lib/dates';
@@ -9,8 +10,9 @@ const fmtRating = (v) => (v == null ? 'NR' : Number(v).toFixed(3));
 
 // The player's own DUPR ratings (player pages), as last imported by one of their clubs from
 // the DUPR Club member list. `dupr` = GET /api/player/me → dupr.
-export default function DuprCard({ dupr, showLink = true }) {
+export default function DuprCard({ dupr, showLink = true, onChanged }) {
   const { t } = useI18n();
+  const [idOpen, setIdOpen] = useState(false);
   if (!dupr) return null;
   if (!dupr.linked) {
     return (
@@ -22,9 +24,10 @@ export default function DuprCard({ dupr, showLink = true }) {
         ) : (
           <p className="text-gray-300">
             {t('duprp.noId')}{' '}
-            {showLink && <Link href="/p/profile" className="text-lime-300 underline">{t('duprp.addId')}</Link>}
+            {showLink && <button type="button" className="text-lime-300 underline" onClick={() => setIdOpen(true)}>{t('duprp.addId')}</button>}
           </p>
         )}
+        <QuickDuprIdModal open={idOpen} onClose={() => setIdOpen(false)} onSaved={onChanged} />
       </div>
     );
   }

@@ -232,12 +232,9 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   // needed; the Host checks the info, then the transfer).
   const quickHref = ev.id && ev.kind !== 'meeting' ? `/g/${ev.id}/p-${ev.public_token || token}` : null;
   const quickBox = quickHref && ev.registration_open && (
-    <div className="rounded-xl border border-amber-300/50 bg-amber-300/5 p-3 mt-3">
-      <p className="text-amber-100 font-semibold text-sm">⚡ {t('signup.quickTitle')}</p>
-      <p className="text-gray-300 text-xs mt-0.5 mb-2">{t('signup.quickHint')}</p>
-      <Link href={quickHref} className="btn-primary block w-full py-3 text-center">{t('signup.quickCta')}</Link>
-    </div>
+    <Link href={quickHref} className="btn-primary block w-full py-3 text-center mt-3">{t('signup.quickCta')}</Link>
   );
+
 
   if (!user || meError?.status === 401) {
     return (
@@ -316,6 +313,27 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   );
 
   // ---- already registered -----------------------------------------------------
+  // Play is over: no ticket any more — the session review instead.
+  const endMs = ev.end_time ? eventStartMs(ev.event_date, ev.end_time) : startMs + 2 * 3600000;
+  if ((reg?.status === 'registered' || reg?.status === 'checked_in') && Date.now() >= endMs) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <div className="text-4xl">🏁</div>
+        <p className="text-white font-bold text-lg mt-1">{t('quick.endedTitle')}</p>
+        {me.survey ? (
+          <div className="w-full rounded-xl border-2 border-lime-400 bg-lime-400/10 px-3 py-3 mt-3">
+            <p className="text-lime-300 font-bold">⭐ {t('signup.surveyTitle')}</p>
+            <p className="text-gray-200 text-sm mt-0.5 mb-2">{me.survey.answered ? t('signup.surveyDone') : t('signup.surveyHint')}</p>
+            <Link href={`/s/${me.survey.token}`} className={me.survey.answered ? 'btn-secondary inline-block' : 'btn-primary inline-block'}>
+              {me.survey.answered ? t('signup.surveyView') : t('signup.surveyCta')}
+            </Link>
+          </div>
+        ) : (
+          <p className="text-gray-400 text-sm">{t('quick.endedHint')}</p>
+        )}
+      </div>
+    );
+  }
   if (reg?.status === 'registered' || reg?.status === 'checked_in') {
     return (
       <div className="flex flex-col items-center text-center">

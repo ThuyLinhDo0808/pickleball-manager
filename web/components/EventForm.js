@@ -1,4 +1,5 @@
 'use client';
+import QuickLevelsModal from '@/components/QuickLevelsModal';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import Modal from '@/components/Modal';
 import { rangeOfKeys } from '@/lib/levelRange';
@@ -333,7 +334,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   }
 
   const meeting = f.kind === 'meeting';
-  const { data: cs } = useLoad(() => (community && clubId ? api.get(`/api/clubs/${clubId}/community-settings`).catch(() => null) : Promise.resolve(null)), [community, clubId]);
+  const { data: cs, reload: reloadCs } = useLoad(() => (community && clubId ? api.get(`/api/clubs/${clubId}/community-settings`).catch(() => null) : Promise.resolve(null)), [community, clubId]);
   const levelItems = cs?.ready && cs.settings?.levels?.mode !== 'none' ? cs.settings.levels.items : [];
   // A new kèo starts with the community's refund rule (control panel); still editable here.
   const refundRule = prefillFromClub && cs?.ready ? cs.settings?.refund : null;
@@ -382,6 +383,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
   const noPayout = Number(f.fee_amount) > 0 && payTo && !payTo.ok;
   // Missing payout account: filled in a pop-up, then back to this form (nothing lost).
   const [payoutOpen, setPayoutOpen] = useState(false);
+  const [levelsOpen, setLevelsOpen] = useState(false);
   // A new kèo starts at the club's courts: address and Google Maps link from Hồ sơ CLB.
   useEffect(() => {
     if (!clubId || !prefillFromClub) return;
@@ -460,7 +462,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">{t('cpanel.noLevelsYet')} <a href="/club/community-settings" className="text-lime-400 underline">{t('cpanel.title')}</a></p>
+                <p className="text-xs text-gray-400">{t('quickfix.noLevels')} <button type="button" className="text-lime-400 underline" onClick={() => setLevelsOpen(true)}>{t('quickfix.levelsAdd')}</button></p>
               )}
             </Field>
           )}
@@ -726,6 +728,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         <p className="text-gray-400 text-sm mb-3">{t('quickfix.payoutHint')}</p>
         <HostPaymentSettings bare onSaved={() => { reloadPayTo(); setPayoutOpen(false); }} />
       </Modal>
+      <QuickLevelsModal open={levelsOpen} clubId={clubId} settings={cs?.settings} sport={cs?.sport || 'pickleball'} onClose={() => setLevelsOpen(false)} onSaved={() => reloadCs()} />
     </>
   );
 }

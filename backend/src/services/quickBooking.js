@@ -325,11 +325,20 @@ async function view(event, booking) {
   const declined = !live.length && rows.some((r) => r.status === 'cancelled' && r.cancelled_by === 'host' && !r.payment_ref);
   const state = live.some((r) => r.status === 'requested') ? 'requested' : !live.length ? (declined ? 'declined' : 'cancelled') : pending.length ? (pending.some((r) => r.payment_status === 'rejected') ? 'rejected' : pending.some((r) => r.payment_status === 'proof_submitted') ? 'proof_submitted' : 'awaiting_proof') : 'confirmed';
   const amount = live.reduce((s, r) => s + Number(r.fee_amount ?? event.fee_amount ?? 0), 0);
+  // Play is over: no more tickets; the booker (slot 1) gets the session review instead.
+  const ended = !!event.event_date && require('./attendance').eventEndMs(event) <= Date.now();
+  let review = null;
+  if (ended && state === 'confirmed') {
+    const first = live.find((r) => require('./survey').PLAYED.includes(r.status));
+    review = first ? await require('./survey').surveyFor(event, first).catch(() => null) : null;
+  }
   const out = {
-    state,
+    state: ended && state === 'confirmed' ? 'ended' : state,
+    ended,
+    review,
     event: { ...(await clubBits(event)), id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, location: event.location, map_url: event.map_url },
     contact: { full_name: booking.contact_name, phone: booking.contact_phone, gender: booking.contact_gender || null, dupr_level: booking.contact_level, dupr_id: booking.contact_dupr_id || null },
-    slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
+    slots: rows.map((r) => ({ full_name: r.full_name, gender: r.gender, dupr_level: r.dupr_level, dupr_id: r.dupr_id || null, status: r.status, ticket_code: !ended && ['registered', 'checked_in'].includes(r.status) ? r.ticket_code : null })),
     amount,
     hold_expires_at: pending[0]?.hold_expires_at || null,
     host_contact: await hostContact(event),

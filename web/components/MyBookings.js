@@ -53,13 +53,22 @@ export default function MyBookings({ signedIn = false }) {
                 <p className="text-white font-semibold break-words">{b.event.title}</p>
                 <p className="text-gray-400 text-xs capitalize">{formatDay(b.event.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit' })}{b.event.club_name ? ` · ${b.event.club_name}` : ''}</p>
               </div>
-              <span className={`text-[11px] rounded-full border px-2 py-0.5 ${b.state === 'confirmed' ? 'border-lime-400/60 text-lime-200' : 'border-amber-300/60 text-amber-200'}`}>{t(`mybook.st_${b.state}`)}</span>
+              <span className={`text-[11px] rounded-full border px-2 py-0.5 ${b.state === 'confirmed' ? 'border-lime-400/60 text-lime-200' : b.state === 'ended' ? 'border-navy-500 text-gray-300' : 'border-amber-300/60 text-amber-200'}`}>{t(`mybook.st_${b.state}`)}</span>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {(b.slots || []).filter((s) => s.ticket_code).map((s) => (
                 <Link key={s.ticket_code} href={`/t/${s.ticket_code}`} className="btn-secondary text-sm">📱 {t('mybook.qr', { name: s.full_name })}</Link>
               ))}
-              {b.token && <Link href={`/g/b/${b.token}`} className="btn-primary text-sm">{b.state === 'confirmed' ? t('mybook.open') : ['requested', 'declined'].includes(b.state) ? t('mybook.view') : t('mybook.pay')} →</Link>}
+              {/* Play is over: no more QR tickets — the session review instead. */}
+              {b.state === 'ended' ? (
+                b.review && !b.review.answered ? (
+                  <Link href={`/s/${b.review.token}`} className="btn-primary text-sm">⭐ {t('mybook.review')}</Link>
+                ) : b.review?.answered ? (
+                  <span className="text-lime-300 text-sm">✓ {t('mybook.reviewed')}</span>
+                ) : null
+              ) : (
+                b.token && <Link href={`/g/b/${b.token}`} className="btn-primary text-sm">{b.state === 'confirmed' ? t('mybook.open') : ['requested', 'declined'].includes(b.state) ? t('mybook.view') : t('mybook.pay')} →</Link>
+              )}
             </div>
           </div>
         ))}

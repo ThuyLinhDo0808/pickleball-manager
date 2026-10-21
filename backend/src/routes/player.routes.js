@@ -794,7 +794,8 @@ async function upcomingFor(uid, memberIds, clubId = null) {
   const order = { checked_in: 0, registered: 1, pending: 2, waitlisted: 3, requested: 4 };
   const seen = new Set();
   const rows = (regs || [])
-    .filter((r) => LIVE_STATUSES.includes(r.status) && r.events.status !== 'cancelled' && (!clubId || r.events.club_id === clubId))
+    // Upcoming = not over yet (a kèo of today that already ended goes to the review instead).
+    .filter((r) => LIVE_STATUSES.includes(r.status) && r.events.status !== 'cancelled' && (!clubId || r.events.club_id === clubId) && require('../services/attendance').eventEndMs(r.events) > Date.now())
     .sort((a, b) => order[a.status] - order[b.status])
     .filter((r) => (seen.has(r.event_id) ? false : seen.add(r.event_id)));
   const ids = rows.map((r) => r.event_id);
