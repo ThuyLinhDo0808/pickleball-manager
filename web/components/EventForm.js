@@ -1,4 +1,5 @@
 'use client';
+import { courtList } from '@/components/CourtPlan';
 import QuickLevelsModal from '@/components/QuickLevelsModal';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import Modal from '@/components/Modal';
@@ -103,54 +104,55 @@ function Section({ n, title, hint, more = false, children }) {
   );
 }
 
-// "Chia nhóm giờ": one kèo, several groups (VD 17h–20h 120k/slot sân 3, 18h–20h 100k/slot sân 2).
-// Each group: hours, fee per slot, places and court numbers; the player picks one.
-function GroupsEditor({ f, set }) {
+// Two courts or more: play at the same time (just the court numbers), or at different times —
+// then each court is its own card: players (max), start, end, fee per slot, all starting blank.
+// The player picks a court (group) when signing up.
+export const groupsForCourts = (courts, existing = []) =>
+  courts.map((c) => existing.find((g) => courtList(g.courts)[0] === c) || { id: `c${c}`.replace(/[^a-z0-9_-]/gi, '').slice(0, 20) || `c${Date.now().toString(36)}`, start_time: '', end_time: '', fee_amount: '', slots: '', courts: c });
+
+function CourtMode({ f, set }) {
+  const { t } = useI18n();
+  const courts = courtList(f.court_labels);
+  if (courts.length < 2) return null;
+  const pick = (on) => set(on ? { groups_on: true, groups: groupsForCourts(courts, f.groups) } : { groups_on: false });
+  return (
+    <Field label={t('egroups.timeMode')} span={2}>
+      <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={t('egroups.timeMode')}>
+        {[[false, t('egroups.sameTime')], [true, t('egroups.diffTime')]].map(([on, label]) => (
+          <button key={String(on)} type="button" role="radio" aria-checked={!!f.groups_on === on} onClick={() => pick(on)} className={`rounded-lg border px-3 py-2 text-sm ${!!f.groups_on === on ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+function CourtCards({ f, set }) {
   const { t } = useI18n();
   const groups = f.groups || [];
   const put = (i, patch) => set({ groups: groups.map((g, j) => (j === i ? { ...g, ...patch } : g)) });
-  const turnOn = () => set({ groups_on: true, groups: groups.length > 1 ? groups : [{ ...blankGroup(0, f), courts: f.court_labels || '' }, blankGroup(1, f)] });
-  if (!f.groups_on) {
-    return (
-      <div className="col-span-2 md:col-span-4 -mt-1">
-        <button type="button" className="text-xs text-lime-400 underline" onClick={turnOn}>＋ {t('egroups.turnOn')}</button>
-        <span className="text-[11px] text-gray-500 ml-2">{t('egroups.turnOnHint')}</span>
-      </div>
-    );
-  }
-  const total = groups.reduce((n, g) => n + (Number(g.slots) || 0), 0);
   return (
-    <div className="col-span-2 md:col-span-4 rounded-xl border border-navy-600 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <p className="text-white text-sm font-semibold">🕒 {t('egroups.title')} <span className="text-gray-400 font-normal">· {t('egroups.total', { n: total })}</span></p>
-        <button type="button" className="text-xs text-red-300" onClick={() => set({ groups_on: false, ...(groups[0] ? { start_time: groups[0].start_time, end_time: groups[0].end_time, slots: total || f.slots, fee_amount: groups[0].fee_amount, court_labels: groups.map((g) => g.courts).filter(Boolean).join(', ') } : {}) })}>✕ {t('egroups.turnOff')}</button>
-      </div>
-      <ol className="flex flex-col gap-2">
-        {groups.map((g, i) => (
-          <li key={g.id} className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end rounded-lg bg-navy-900/60 p-2">
+    <div className="col-span-2 md:col-span-4 grid gap-3 md:grid-cols-2">
+      {groups.map((g, i) => (
+        <section key={g.id} className="rounded-xl border border-navy-600 bg-navy-900/40 p-3" aria-label={t('egroups.courtN', { n: g.courts })}>
+          <p className="text-lime-300 font-semibold text-sm mb-2">🏟 {t('egroups.courtN', { n: g.courts })}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="min-w-0 text-[11px] text-gray-400 col-span-2">{t('egroups.slotsMax')}
+              <input className="input" type="number" inputMode="numeric" min="1" max="500" required value={g.slots} onChange={(e) => put(i, { slots: e.target.value })} />
+            </label>
             <label className="min-w-0 text-[11px] text-gray-400">{t('create.start')}
               <input className="input" type="time" required value={g.start_time} onChange={(e) => put(i, { start_time: e.target.value })} />
             </label>
             <label className="min-w-0 text-[11px] text-gray-400">{t('create.end')}
               <input className="input" type="time" required value={g.end_time} onChange={(e) => put(i, { end_time: e.target.value })} />
             </label>
-            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.feeSlot')}
-              <input className="input" type="number" inputMode="numeric" min="0" step="1000" value={g.fee_amount} onChange={(e) => put(i, { fee_amount: e.target.value })} />
+            <label className="min-w-0 text-[11px] text-gray-400 col-span-2">{t('egroups.feeSlot')}
+              <input className="input" type="number" inputMode="numeric" min="0" step="1000" required value={g.fee_amount} onChange={(e) => put(i, { fee_amount: e.target.value })} />
             </label>
-            <label className="min-w-0 text-[11px] text-gray-400">{t('events.slots')}
-              <input className="input" type="number" inputMode="numeric" min="1" max="500" required value={g.slots} onChange={(e) => put(i, { slots: e.target.value })} />
-            </label>
-            <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.courtNo')}
-              <input className="input" maxLength={40} placeholder={t('egroups.courtNoPh')} value={g.courts} onChange={(e) => put(i, { courts: e.target.value })} />
-            </label>
-            <button type="button" className="btn-secondary !px-3 !py-2 text-sm justify-self-end" disabled={groups.length <= 2} aria-label={t('egroups.remove')} onClick={() => set({ groups: groups.filter((_, j) => j !== i) })}>✕</button>
-          </li>
-        ))}
-      </ol>
-      <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
-        <p className="text-[11px] text-gray-500">{t('egroups.hint')}</p>
-        {groups.length < 6 && <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => set({ groups: [...groups, blankGroup(groups.length, groups[groups.length - 1] || f)] })}>＋ {t('egroups.add')}</button>}
-      </div>
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
@@ -216,7 +218,6 @@ export function formFromEvent(ev) {
   return out;
 }
 
-export const blankGroup = (i, from = {}) => ({ id: `g${Date.now().toString(36)}${i}`, start_time: from.start_time || '', end_time: from.end_time || '', fee_amount: String(from.fee_amount ?? 0), slots: String(from.slots || 8), courts: '' });
 const groupList = (items) =>
   (items || [])
     .filter((g) => g.start_time && g.end_time)
@@ -554,6 +555,22 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <p className="col-span-2 md:col-span-4 rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-100">🗳 {t('meeting.voteNote')}</p>
             </>
           )}
+          {!meeting && (
+            <Field label={t('egroups.courtNo')} hint={t('egroups.courtNoHint')}>
+              <input
+                className="input"
+                maxLength={60}
+                aria-label={t('egroups.courtNo')}
+                value={f.court_labels}
+                onChange={(e) => {
+                  const courts = courtList(e.target.value);
+                  // Court cards follow the court numbers; under 2 courts there is nothing to split.
+                  set(courts.length < 2 ? { court_labels: e.target.value, groups_on: false } : { court_labels: e.target.value, ...(f.groups_on ? { groups: groupsForCourts(courts, f.groups) } : {}) });
+                }}
+              />
+            </Field>
+          )}
+          {!meeting && <CourtMode f={f} set={set} />}
           {!meeting && !f.groups_on && (
           <>
           <Field label={t('events.slots')}>
@@ -562,17 +579,14 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <Field label={t('create.fee')}>
             <input className="input" type="number" inputMode="numeric" min="0" step="1" value={f.fee_amount} onChange={(e) => set({ fee_amount: e.target.value })} />
           </Field>
-          <Field label={t('egroups.courtNo')} hint={t('egroups.courtNoHint')}>
-            <input className="input" maxLength={60} placeholder={t('egroups.courtNoPh')} value={f.court_labels} onChange={(e) => set({ court_labels: e.target.value })} />
-          </Field>
           </>
           )}
+          {!meeting && f.groups_on && <CourtCards f={f} set={set} />}
           {!meeting && noPayout && (
             <p className="col-span-2 md:col-span-4 -mt-1 text-[11px] text-amber-300">
               ⚠️ {t('create.noPayout')} <button type="button" className="underline text-lime-300" onClick={() => setPayoutOpen(true)}>{t('quickfix.add')}</button>
             </p>
           )}
-          {!meeting && <GroupsEditor f={f} set={set} />}
           {showRepeat && (
             <Field label={t('events.repeatWeeks')} hint={t('events.repeatHint')}>
               <input className="input" type="number" inputMode="numeric" min="1" max="26" value={f.repeat_weeks} onChange={(e) => set({ repeat_weeks: e.target.value })} />
@@ -755,7 +769,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <dd className="text-gray-100 tabular-nums">
                 {f.groups_on && !meeting
                   ? (f.groups || []).map((g) => (
-                      <span key={g.id} className="block">{g.start_time || '—'}–{g.end_time || '—'} · {Number(g.fee_amount) > 0 ? `${Number(g.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')} · {t('createx.slotsN', { n: g.slots || 0 })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
+                      <span key={g.id} className="block">{g.start_time || '—'}–{g.end_time || '—'} · {g.fee_amount === '' ? '—' : Number(g.fee_amount) > 0 ? `${Number(g.fee_amount).toLocaleString('vi-VN')}đ` : t('createx.free')} · {g.slots === '' ? '—' : t('createx.slotsN', { n: g.slots })}{g.courts ? ` · ${t('egroups.courtsShort', { list: g.courts })}` : ''}</span>
                     ))
                   : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
               </dd>
