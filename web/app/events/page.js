@@ -82,7 +82,8 @@ function tournamentAsEvent(tr, club) {
 // What tells sessions of the same schedule apart: series label, community levels (Series
 // A, B…), DUPR range (women's range for mixed) and what is played (Full nam / nữ / Mix).
 const dupr = (v) => (v == null || v === '' ? null : Number(v).toFixed(2));
-const range = (a, b) => (dupr(a) && dupr(b) ? `${dupr(a)}–${dupr(b)}` : dupr(a) ? `≥ ${dupr(a)}` : dupr(b) ? `≤ ${dupr(b)}` : null);
+// Never split inside a range (word joiners around the dash, no-break spaces).
+const range = (a, b) => (dupr(a) && dupr(b) ? `${dupr(a)}\u2060–\u2060${dupr(b)}` : dupr(a) ? `≥\u00a0${dupr(a)}` : dupr(b) ? `≤\u00a0${dupr(b)}` : null);
 function EventTags({ e }) {
   const { t } = useI18n();
   if (e.kind === 'tournament' || e.kind === 'meeting') return null;
@@ -93,14 +94,14 @@ function EventTags({ e }) {
     membersNow && { k: 'm', text: `🔒 ${t('mfirst.badge')}`, cls: 'border-violet-400 bg-violet-400/15 text-violet-100' },
     e.series_label && { k: 's', text: `🏷 ${e.series_label}`, cls: 'border-violet-400/60 text-violet-200' },
     ...(e.level_names || []).map((n) => ({ k: `l${n}`, text: `🎯 ${n}`, cls: 'border-amber-300/60 text-amber-200' })),
-    women && men ? { k: 'dm', text: `♂ DUPR ${men}`, cls: 'border-sky-400/60 text-sky-200' } : men && { k: 'd', text: `DUPR ${men}`, cls: 'border-sky-400/60 text-sky-200' },
-    women && { k: 'df', text: `♀ DUPR ${women}`, cls: 'border-pink-400/60 text-pink-200' },
+    women && men ? { k: 'dm', text: `♂\u00a0DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' } : men && { k: 'd', text: `DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' },
+    women && { k: 'df', text: `♀\u00a0DUPR\u00a0${women}`, cls: 'border-pink-400/60 text-pink-200' },
     e.play_format && { k: 'f', text: t(`fmt.${e.play_format}`), cls: 'border-lime-400/60 text-lime-200' },
   ].filter(Boolean);
   if (!tags.length) return null;
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {tags.map((x) => <span key={x.k} className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${x.cls}`}>{x.text}</span>)}
+    <div className="flex shrink-0 max-w-[50%] flex-col items-end gap-1">
+      {tags.map((x) => <span key={x.k} className={`max-w-full rounded-full border px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold leading-tight text-right break-words ${x.cls}`}>{x.text}</span>)}
     </div>
   );
 }
@@ -118,32 +119,38 @@ function EventCard({ e, phase = 'open' }) {
         <span className="text-[11px] text-gray-400">{e.event_date.slice(5, 7)}/{e.event_date.slice(0, 4)}</span>
       </div>
       <div className="min-w-0 flex-1 p-3">
-        <div className="flex justify-between gap-2">
-          <span className={`text-white font-semibold break-words min-w-0 ${e.status === 'cancelled' ? 'line-through' : ''}`}>
-            {KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}
-            {e.title}
-          </span>
-          {/* Kèo show their state on the line below (colour + words); tournaments keep their stage here. */}
-          {e.kind === 'tournament' && (
-            <span className={`text-[11px] rounded-full border px-2 py-0.5 shrink-0 ${STATUS_STYLE[e.status] || 'border-navy-600 text-gray-300'}`}>
-              {e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs font-semibold text-gray-200">
-          <span className={`h-2 w-2 rounded-full ${look.dot} ${phase === 'live' ? 'animate-pulse' : ''}`} aria-hidden />
-          {t(`evlist.ph_${phase}`)}
-        </div>
-        <div className="text-gray-400 text-sm break-words">
-          {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
-        </div>
-        <EventTags e={e} />
-        {e.club_name && (
-          <div className="text-sky-300 text-xs mt-0.5 break-words">
-            {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}
-            {e.kind && <span className="text-gray-500"> · {t(`kind.${e.kind}`)}</span>}
+        {/* Main info on the left; what tells this session apart (series, level, DUPR, format)
+            sits on the right like a note, so cards don't grow taller. */}
+        <div className="flex gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex justify-between gap-2">
+              <span className={`text-white font-semibold break-words min-w-0 ${e.status === 'cancelled' ? 'line-through' : ''}`}>
+                {KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}
+                {e.title}
+              </span>
+              {/* Kèo show their state on the line below (colour + words); tournaments keep their stage here. */}
+              {e.kind === 'tournament' && (
+                <span className={`text-[11px] rounded-full border px-2 py-0.5 shrink-0 ${STATUS_STYLE[e.status] || 'border-navy-600 text-gray-300'}`}>
+                  {e.tkind === 'team' && e.tstatus === 'groups' ? t('league.inProgress') : t(`tournaments.status_${e.tstatus}`)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs font-semibold text-gray-200">
+              <span className={`h-2 w-2 rounded-full ${look.dot} ${phase === 'live' ? 'animate-pulse' : ''}`} aria-hidden />
+              {t(`evlist.ph_${phase}`)}
+            </div>
+            <div className="text-gray-400 text-sm break-words">
+              {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
+            </div>
+            {e.club_name && (
+              <div className="text-sky-300 text-xs mt-0.5 break-words">
+                {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}
+                {e.kind && <span className="text-gray-500"> · {t(`kind.${e.kind}`)}</span>}
+              </div>
+            )}
           </div>
-        )}
+          <EventTags e={e} />
+        </div>
         {e.slots != null ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="flex-1 min-w-[5rem] h-1.5 rounded-full bg-navy-900 overflow-hidden">
@@ -284,6 +291,7 @@ export default function EventsPage() {
         icon={isClub && !community ? '🗓' : '🎟'}
         title={isClub && !community ? t('nav.schedule') : t('nav.kevents')}
         subtitle={isClub ? (manyClubs && clubFilter === 'all' ? t(community ? 'social.allCommunities' : 'calx.allYourClubs', { n: clubs.length }) : (clubs || []).find((c) => c.id === clubFilter)?.name || club?.name) : t('finX.scopeXeve')}
+        actionsWide={isClub} // phone: the tabs below lead to the create pages
         actions={
           isClub ? (
             <>

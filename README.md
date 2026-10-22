@@ -723,13 +723,15 @@ Chỉ có ở **cộng đồng** (Social Manager) dùng **gói PRO** — gói ca
 ### 5.1. Lịch kèo dạng calendar (`/events`)
 Trang Lịch/Kèo có 4 chế độ xem; **mở ra luôn là *Danh sách*** (cả CLB lẫn Social Manager), bấm *Tháng / Tuần / Ngày* để đổi.
 
-**Nhãn phân biệt lịch trên mỗi thẻ:** kèo / lịch cố định có đặt thì thẻ hiện thêm các nhãn màu: **🔒 Thành viên trước** (đang ưu tiên thành viên), **🏷 nhãn series** (VD *Series A*), **🎯 trình độ cộng đồng** đã chọn (Series A, B, C… theo Bảng điều khiển), **DUPR 3.00–3.50** (kèo Mix có cả *♂ DUPR* và *♀ DUPR*), **Full nam / Full nữ / Mix**. Nhờ đó ba buổi cùng giờ nhưng khác trình độ nhìn là phân biệt được.
+**Nhãn phân biệt lịch trên mỗi thẻ:** kèo / lịch cố định có đặt thì góc phải thẻ (như một ghi chú, không làm thẻ dài thêm) hiện các nhãn màu xếp dọc: **🔒 Riêng tư** (đang ưu tiên thành viên), **🏷 nhãn series** (VD *Series A*), **🎯 trình độ cộng đồng** đã chọn (Series A, B, C… theo Bảng điều khiển), **DUPR 3.00–3.50** (kèo Mix có cả *♂ DUPR* và *♀ DUPR*), **Full nam / Full nữ / Mix**. Nhờ đó ba buổi cùng giờ nhưng khác trình độ nhìn là phân biệt được.
 
-**Ai được đăng ký — Công khai / Riêng tư (thành viên trước):** ở mục *Luật & tài chính* của form tạo / sửa kèo và lịch cố định:
+**Ai được đăng ký — Công khai / Riêng tư:** ở mục *Luật & tài chính* của form tạo / sửa kèo và lịch cố định:
 - **🌐 Công khai** (mặc định): ai có link đều đăng ký được.
-- **🔒 Riêng tư — thành viên trước**: chỉ **thành viên chính thức** của CLB / **khách thường xuyên** của cộng đồng (tài khoản đã được xác nhận) đăng ký được. Người khác mở link thấy *"Kèo đang dành cho thành viên đăng ký trước. Mở công khai cho mọi người lúc …"*; đăng ký → `403 members_only`; không đặt nhanh được; kèo không hiện trong *Tìm kèo*.
+- **🔒 Riêng tư**: chỉ **thành viên chính thức** của CLB / **khách thường xuyên** của cộng đồng (tài khoản đã được xác nhận) đăng ký được. Người khác mở link thấy *"Kèo đang dành cho thành viên đăng ký trước. Mở công khai cho mọi người lúc …"*; đăng ký → `403 members_only`; không đặt nhanh được; kèo không hiện trong *Tìm kèo*.
 - Ô **Mở công khai lúc** (không bắt buộc): đến giờ đó kèo tự mở cho mọi người (khách vãng lai, đặt nhanh, *Tìm kèo*). Để trống = chỉ thành viên cho đến khi Host đổi sang *Công khai*. Lịch cố định nhiều buổi: mỗi buổi mở công khai cách giờ chơi đúng như buổi đầu; sửa *Áp dụng cho tất cả các buổi* cũng dời theo từng buổi.
-- Trang kèo của Host ghi *🔒 Thành viên đăng ký trước — mở công khai lúc …* (hoặc *Đã mở công khai*).
+- Trang kèo của Host ghi *🔒 Riêng tư — mở công khai lúc …* (hoặc *Đã mở công khai*).
+
+**Trên điện thoại (trang Lịch hoạt động, Tạo lịch cố định, Tạo kèo lẻ):** thanh tab đầu trang là **một hàng ô bằng nhau** (biểu tượng trên, chữ dưới, ô đang mở tô xanh) thay cho các nút bo tròn xuống nhiều dòng; nút *Lịch sự kiện* / *Tạo lịch cố định* / *Tạo kèo lẻ* ở đầu trang chỉ hiện trên máy tính (điện thoại đã có ở thanh tab); dòng *💡 Cách dùng trang này* thu thành nút **(i)** cạnh tiêu đề; tiêu đề và biểu tượng nhỏ hơn.
 
 **Ba nút chính trên điện thoại:** *Gửi link · Điểm danh · Thêm người* nằm một hàng, ba ô bằng nhau (biểu tượng ở trên, chữ ở dưới); máy tính vẫn xếp bên phải như cũ.
 

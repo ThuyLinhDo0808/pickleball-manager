@@ -69,10 +69,12 @@ export default function CreateEventView({ weekly = false }) {
         icon={weekly ? '🔁' : '🏓'}
         title={weekly ? t('nav.createWeekly') : t('nav.createGame')}
         subtitle={isClub && club ? t(community ? 'social.forCommunity' : 'create.forClub', { name: club.name }) : t('finX.scopeXeve')}
+        hint={<Hint inline text={weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')} />}
+        // Phone: the tabs below already lead to the schedule.
+        actionsWide
         actions={<Link href="/events" className="btn-secondary text-sm">🗓 {isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
       />
       <SectionTabs group="activities" />
-      <p className="text-gray-300 text-sm mb-4 flex items-center gap-2">💡 {t('ux.howItWorks')} <Hint inline text={weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')} /></p>
       {initial && (
         <EventForm
           initial={initial}
