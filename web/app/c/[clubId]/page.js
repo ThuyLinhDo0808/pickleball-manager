@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
 import ClubAvatar from '@/components/ClubAvatar';
 import StatTile from '@/components/ui/StatTile';
@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 const PAY_STYLE = { paid: 'text-lime-400', pending: 'text-yellow-300', overdue: 'text-red-300' };
 const MY_TONE = {
@@ -45,6 +46,7 @@ function phaseOf(e, now) {
 // sessions by time (sign up with one tap), my sign-ups, my history there and the club's rankings.
 export default function MemberClubPage() {
   const { clubId } = useParams();
+  const router = useRouter();
   const { t: tBase, lang } = useI18n();
   // A community reads as one ("Lịch cộng đồng", thường xuyên / vãng lai), set once the data is in.
   let t = tBase;
@@ -162,8 +164,23 @@ export default function MemberClubPage() {
           {shown.map((e) => {
             const full = e.slots && e.main_count >= e.slots;
             const ended = shownPhase === 'done';
+            // The whole card opens the kèo (sign-up, my ticket, Lịch chơi) — or the meeting's
+            // vote page; links and buttons inside the card keep their own job.
+            const href = e.public_token ? (e.kind === 'meeting' ? `/v/${e.public_token}` : `/e/${e.public_token}`) : null;
+            const open = (ev) => {
+              if (!href || ev.target.closest('a, button')) return;
+              router.push(href);
+            };
             return (
-              <div key={e.id} className="card !p-0 overflow-hidden flex">
+              <div
+                key={e.id}
+                role={href ? 'link' : undefined}
+                tabIndex={href ? 0 : undefined}
+                aria-label={href ? `${e.title} · ${formatDay(e.event_date, lang)}` : undefined}
+                onClick={open}
+                onKeyDown={(ev) => href && ev.key === 'Enter' && ev.target === ev.currentTarget && router.push(href)}
+                className={`card !p-0 overflow-hidden flex ${href ? 'cursor-pointer transition-colors hover:border-lime-400/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400' : ''}`}
+              >
                 <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-navy-700 bg-navy-900 py-3">
                   <span className="text-[11px] text-gray-400">{formatDay(e.event_date, lang, { weekday: 'short' })}</span>
                   <span className="text-white text-2xl font-bold leading-none">{Number(e.event_date.slice(8, 10))}</span>
@@ -208,6 +225,7 @@ export default function MemberClubPage() {
                     )}
                   </div>
                 </div>
+                {href && <span className="flex items-center pr-3 text-gray-500" aria-hidden="true"><UiIcon name="chevronRight" className="w-5 h-5" /></span>}
               </div>
             );
           })}
@@ -245,18 +263,31 @@ export default function MemberClubPage() {
           </div>
           {data.history.length === 0 && <p className="text-gray-400 text-sm">{t('player.noHistory')}</p>}
           <ul className="divide-y divide-navy-700">
-            {data.history.map((h) => (
-              <li key={h.event_id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span className="min-w-0">
-                  <span className="block text-white break-words">{h.title}</span>
-                  <span className="block text-gray-500 text-xs">{formatDay(h.event_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                </span>
-                <span className={`text-xs shrink-0 ${h.status === 'checked_in' ? 'text-lime-400' : h.status === 'no_show' ? 'text-red-300' : 'text-gray-400'}`}>
-                  {t(`player.status_${h.status}`)}
-                  {h.late_cancel && ` · ${t('policy.lateBadge')}`}
-                </span>
-              </li>
-            ))}
+            {data.history.map((h) => {
+              const href = h.public_token ? (h.kind === 'meeting' ? `/v/${h.public_token}` : `/e/${h.public_token}`) : null;
+              const body = (
+                <>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-white break-words">{h.title}</span>
+                    <span className="block text-gray-500 text-xs">{formatDay(h.event_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                  </span>
+                  <span className={`text-xs shrink-0 ${h.status === 'checked_in' ? 'text-lime-400' : h.status === 'no_show' ? 'text-red-300' : 'text-gray-400'}`}>
+                    {t(`player.status_${h.status}`)}
+                    {h.late_cancel && ` · ${t('policy.lateBadge')}`}
+                  </span>
+                  {href && <UiIcon name="chevronRight" className="w-4 h-4 text-gray-500" />}
+                </>
+              );
+              return (
+                <li key={h.event_id}>
+                  {href ? (
+                    <Link href={href} className="flex min-h-[44px] items-center gap-2 py-2 text-sm hover:bg-navy-800/50 -mx-2 px-2 rounded-lg transition-colors">{body}</Link>
+                  ) : (
+                    <div className="flex items-center gap-2 py-2 text-sm">{body}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
