@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useI18n } from '@/context/I18nContext';
-import UiIcon from '@/components/ui/UiIcon';
+import BrandLogo from '@/components/BrandLogo';
 
 // Opened from the "reset your password" email. Supabase signs the person in from the
 // link (recovery session); here they choose a new password.
@@ -53,8 +53,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-navy-950 px-4">
       <div className="card w-full max-w-sm !p-6">
         <div className="flex items-center gap-2 mb-5">
-          <span className="h-9 w-9 rounded-lg bg-lime-400 text-navy-950 flex items-center justify-center text-xl" aria-hidden="true"><UiIcon name="paddle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
-          <span className="text-lime-400 font-bold text-lg">{t('appName')}</span>
+          <BrandLogo markClass="h-8" wordClass="h-[18px]" />
         </div>
         <h1 className="text-white text-2xl font-bold mb-1">{t('auth.newPasswordTitle')}</h1>
         {error && <div className="bg-red-900/40 border border-red-700 text-red-200 text-sm rounded-lg p-3 my-3" role="alert">{error}</div>}

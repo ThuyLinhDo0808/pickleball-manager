@@ -10,6 +10,7 @@ import { localDate } from '@/lib/dates';
 import { NAV_ACTIVE } from '@/lib/nav';
 import LangSelect from '@/components/LangSelect';
 import UiIcon from '@/components/ui/UiIcon';
+import BrandLogo from '@/components/BrandLogo';
 
 // Line icons (24×24, stroke) for the console menu.
 const ICON = {
@@ -116,7 +117,7 @@ function Brand({ me }) {
   const { t } = useI18n();
   return (
     <Link href="/owner" className="flex items-center gap-3 min-w-0">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-lime-400 text-navy-950 font-bold text-sm">NZ</span>
+      <BrandLogo variant="mark" markClass="h-8" />
       <span className="min-w-0">
         <span className="block text-white font-bold leading-tight">NexusZone</span>
         <span className="block text-xs text-gray-400 font-semibold">

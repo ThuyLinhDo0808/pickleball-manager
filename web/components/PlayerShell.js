@@ -9,6 +9,7 @@ import { useI18n } from '@/context/I18nContext';
 import BackButton from '@/components/BackButton';
 import LangSelect from '@/components/LangSelect';
 import { NAV_ACTIVE } from '@/lib/nav';
+import BrandLogo from '@/components/BrandLogo';
 
 // The personal side of the app: the home hub (all clubs and roles), my activity
 // (QR, history, form) and my profile. Club management lives in AppShell; a club the
@@ -52,7 +53,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-navy-900 border-b border-navy-700 pt-safe">
         <div className="max-w-6xl mx-auto flex items-center gap-3 px-4 h-14">
-          <Link href="/home" className="text-lime-400 font-bold min-w-0 flex-1 lg:flex-none">{t('appName')}</Link>
+          <Link href="/home" aria-label={t('appName')} className="min-w-0 flex-1 lg:flex-none flex items-center min-h-[44px]"><BrandLogo markClass="h-7" wordClass="h-4" /></Link>
           <nav className="hidden lg:flex gap-1 flex-1 min-w-0">
             {user &&
               NAV.map((n) => (
