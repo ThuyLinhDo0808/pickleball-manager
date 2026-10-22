@@ -80,7 +80,7 @@ async function clubStats(club, query = {}) {
   // Two leaderboards: the club community (fixed members) and the guests. No group = all.
   const group = ['club', 'guest'].includes(query.group) ? query.group : null;
   const allMembers = await fetchAll(() =>
-    supabase.from('club_members').select('id, full_name, gender, member_type, dupr_level').eq('club_id', club.id).order('id')
+    supabase.from('club_members').select('id, full_name, gender, member_type, dupr_level, user_id').eq('club_id', club.id).order('id')
   );
   const members = allMembers.filter((m) => !group || (group === 'club' ? m.member_type === 'fixed' : m.member_type !== 'fixed'));
   const linkGuests = await guestsReady(); // guests in sessions are linked by guest_member_id
@@ -114,6 +114,14 @@ async function clubStats(club, query = {}) {
   const levelOf = new Map(members.map((m) => [m.id, m.dupr_level == null ? null : Number(m.dupr_level)]));
   const rankings = rankByWinRate(aggregate(matches, members).map((r) => ({ ...r, level: levelOf.get(r.club_member_id) ?? null })), minMatches);
   const ids = new Set(members.map((m) => m.id));
+  const weeks = weeksAtTop(bounds ? await clubMatches(club.id, null, personOf, { mainOnly }) : matches, members);
+  // The players' own photos (latest version) on the rows.
+  const userOf = new Map(allMembers.map((m) => [m.id, m.user_id || null]));
+  const photoV = await require('./playerAvatars').versions([...userOf.values()]).catch(() => new Map());
+  const withPhoto = (r) => {
+    const uid = userOf.get(r.club_member_id);
+    return uid && photoV.has(uid) ? { ...r, avatar_uid: uid, avatar_v: photoV.get(uid) } : r;
+  };
   return {
     period,
     date,
@@ -121,10 +129,10 @@ async function clubStats(club, query = {}) {
     range: bounds,
     // matches with a score that someone of this leaderboard played
     match_count: matches.filter((m) => isScored(m) && m.match_players.some((p) => ids.has(p.club_member_id))).length,
-    rankings,
+    rankings: rankings.map(withPhoto),
     awards: awards(rankings, attendance, members, minMatches),
     // Weeks at No. 1 of this leaderboard, since the club's first match.
-    weeks_at_top: weeksAtTop(bounds ? await clubMatches(club.id, null, personOf, { mainOnly }) : matches, members),
+    weeks_at_top: weeks.map(withPhoto),
     min_matches: minMatches,
     main_only: mainOnly,
   };

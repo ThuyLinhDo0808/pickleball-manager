@@ -6,6 +6,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // A club's avatar / cover picture (served by the API; the version busts the cache).
 export const clubImage = (clubId, kind, version) => (clubId && version ? `${API_URL}/api/public/discover/clubs/${clubId}/${kind}?v=${version}` : null);
+// A player's photo; `version` (avatar_v from the lists) changes when they change it.
+export const playerPhoto = (userId, version) => (userId && version ? `${API_URL}/api/public/players/${userId}/avatar?v=${version}` : null);
 
 async function authHeader() {
   const { data } = await supabase.auth.getSession();

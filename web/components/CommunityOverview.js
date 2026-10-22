@@ -70,7 +70,7 @@ export default function CommunityOverview({ children }) {
             {[
               ['/events/create', 'plus', t('nav.createGame'), true],
               [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? 'repeat' : 'calendar', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
-              ['/club/members', 'users', t('nav.members')],
+              ['/club/members/all', 'users', t('nav.members')],
             ].map(([href, icon, label, main]) => (
               <Link key={href} href={href} className={`${main ? 'btn-primary' : 'btn-secondary'} justify-center text-center text-xs sm:text-sm !px-2 sm:!px-3.5`}>
                 <UiIcon name={icon} className="w-4 h-4" />{label}

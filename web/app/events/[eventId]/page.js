@@ -37,6 +37,9 @@ import { CancelDialog, CancelHistoryBadge, CancelLine } from '@/components/Cance
 import { deadlinesOf, eventStartMs, policyText, refundIfCancelNow } from '@/lib/cancelPolicy';
 import Hint from '@/components/ui/Hint';
 
+// "Thêm thành viên": họ tên, giới tính, DUPR ID và DUPR tự nhập (2 ô cuối không bắt buộc).
+const EMPTY_MEMBER = { full_name: '', gender: '', dupr_id: '', dupr_self: '' };
+
 export default function EventDetailPage() {
   const { eventId } = useParams();
   const { t, lang, sport } = useI18n();
@@ -82,9 +85,12 @@ export default function EventDetailPage() {
     [importClubId]
   );
 
-  const [form, setForm] = useState({ full_name: '', phone: '' });
+  const [form, setForm] = useState(EMPTY_MEMBER);
+  const [formError, setFormError] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  // Kèo with 2+ time groups: which group the people added by hand go into.
+  const [addGroup, setAddGroup] = useState(null);
   const [flash, setFlash] = useState('');
   const [showMatch, setShowMatch] = useState(false); // false | true | { slots, extra } (challenge)
   const [matchTab, setMatchTab] = useState('enter'); // Nhập điểm / Kết quả / Bảng xếp hạng
@@ -94,8 +100,14 @@ export default function EventDetailPage() {
 
   async function addParticipant(e) {
     e.preventDefault();
-    await api.post(`/api/events/${eventId}/participants`, form);
-    setForm({ full_name: '', phone: '' });
+    setFormError('');
+    try {
+      await api.post(`/api/events/${eventId}/participants`, { ...form, full_name: form.full_name.trim(), as_member: true, ...(pickGroup ? { group_id: pickGroup } : {}) });
+    } catch (err) {
+      setFormError(err.message);
+      return;
+    }
+    setForm(EMPTY_MEMBER);
     setShowImport(false);
     reloadParticipants();
     reloadEvent();
@@ -210,7 +222,7 @@ export default function EventDetailPage() {
   async function importFromClub() {
     if (!selectedIds.length) return;
     try {
-      await api.post(`/api/events/${eventId}/participants/import`, { club_member_ids: selectedIds });
+      await api.post(`/api/events/${eventId}/participants/import`, { club_member_ids: selectedIds, ...(pickGroup ? { group_id: pickGroup } : {}) });
     } catch (err) {
       setFlash(err.payload?.code === 'already_on_event' ? t('events.alreadyOnEvent') : err.message);
     }
@@ -229,6 +241,12 @@ export default function EventDetailPage() {
   if (!event) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
 
   const main = (participants || []).filter((p) => ['registered', 'checked_in', 'no_show'].includes(p.status));
+  // Time groups to add into ("Sân 3 · 17:00–20:00 · còn 2/8 chỗ"); default: the first with room.
+  const groupChoices = (event?.groups || []).map((g, i) => {
+    const taken = (participants || []).filter((p) => p.group_id === g.id && ['registered', 'checked_in', 'no_show', 'pending'].includes(p.status)).length;
+    return { id: g.id, slots: g.slots, left: Math.max((g.slots || 0) - taken, 0), title: `${t('egroups.courtN', { n: g.courts || i + 1 })}${g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''} · ${g.start_time}–${g.end_time}` };
+  });
+  const pickGroup = groupChoices.length >= 2 ? (groupChoices.some((g) => g.id === addGroup) ? addGroup : (groupChoices.find((g) => g.left > 0) || groupChoices[0]).id) : null;
   // Members already on this kèo (any list but cancelled): not offered again in "Import from club".
   const onEvent = new Set((participants || []).filter((p) => p.status !== 'cancelled').flatMap((p) => [p.source_club_member_id, p.guest_member_id, p.card?.member_id]).filter(Boolean));
   const pending = (participants || []).filter((p) => p.status === 'pending');
@@ -346,17 +364,69 @@ export default function EventDetailPage() {
       {tab === 'participants' && (
         <>
           <Modal open={showImport} title={t('ux.addPlayer')} onClose={() => setShowImport(false)}>
-            <p className="text-white font-semibold mb-2">{t('ux.addByHand')}</p>
-            <form onSubmit={addParticipant} className="flex flex-col gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-gray-400">{t('common.name')}</label>
-                <input className="input" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            {groupChoices.length >= 2 && (
+              <fieldset className="mb-4">
+                <legend className="text-white font-semibold mb-1">{t('ux.pickSlot')}</legend>
+                <p className="text-gray-400 text-xs mb-2">{t('ux.pickSlotHint')}</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t('ux.pickSlot')}>
+                  {groupChoices.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={pickGroup === g.id}
+                      onClick={() => setAddGroup(g.id)}
+                      className={`min-h-[2.75rem] rounded-lg border px-3 py-2 text-left text-sm transition-colors ${pickGroup === g.id ? 'border-lime-400 bg-lime-400/15' : 'border-navy-600 hover:border-navy-500'}`}
+                    >
+                      <span className={`block font-semibold tabular-nums ${pickGroup === g.id ? 'text-lime-200' : 'text-white'}`}>{g.title}</span>
+                      <span className={`block text-xs tabular-nums ${g.left > 0 ? 'text-gray-400' : 'text-amber-300'}`}>
+                        {g.left > 0 ? t('egroups.left', { n: g.left, total: g.slots }) : t('egroups.full')}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            <p className="text-white font-semibold mb-1">{t('ux.addByHand')}</p>
+            <p className="text-gray-400 text-xs mb-3">{t('ux.addMemberHint')}</p>
+            <form onSubmit={addParticipant} className="flex flex-col gap-3">
+              <div>
+                <label className="text-sm text-gray-300" htmlFor="am-name">{t('ux.fullName')}</label>
+                <input id="am-name" className="input" required maxLength={120} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
               </div>
-              <div className="flex-1">
-                <label className="text-xs text-gray-400">{t('common.phone')}</label>
-                <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <div>
+                <span className="text-sm text-gray-300">{t('members.gender')}</span>
+                <div className="mt-1 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('members.gender')}>
+                  {['male', 'female'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      role="radio"
+                      aria-checked={form.gender === g}
+                      onClick={() => setForm({ ...form, gender: g })}
+                      className={`min-h-[2.75rem] rounded-lg border px-3 text-sm font-semibold transition-colors ${form.gender === g ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-200 hover:border-navy-500'}`}
+                    >
+                      {t(`members.${g}`)}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <button className="btn-primary">{t('common.add')}</button>
+              {sport === 'pickleball' && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-gray-300" htmlFor="am-dupr-id">{t('quick.duprId')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
+                    <input id="am-dupr-id" className="input uppercase" maxLength={10} autoCapitalize="characters" placeholder="VD: YN9N0G" value={form.dupr_id} onChange={(e) => setForm({ ...form, dupr_id: e.target.value.toUpperCase() })} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-300" htmlFor="am-dupr">{t('members.colDuprSelf')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
+                    <input id="am-dupr" className="input tabular-nums" type="number" inputMode="decimal" min="1" max="8" step="0.01" placeholder="VD: 3.25" value={form.dupr_self} onChange={(e) => setForm({ ...form, dupr_self: e.target.value })} />
+                  </div>
+                </div>
+              )}
+              {formError && <p className="text-red-300 text-sm" role="alert">{formError}</p>}
+              <div className="flex justify-end">
+                <button className="btn-primary" disabled={!form.full_name.trim() || !form.gender}>{t('ux.addMemberBtn')}</button>
+              </div>
             </form>
             {(clubMembers || []).length > 0 && (
               <div className="mt-5 pt-4 border-t border-navy-700">

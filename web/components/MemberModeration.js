@@ -187,7 +187,7 @@ export function ReviewTab({ club, members, onChanged }) {
         return (
           <div key={m.id} className="card !py-3 border-amber-300/40">
             <div className="flex flex-wrap items-start gap-3">
-              <Avatar name={m.full_name} size={36} />
+              <Avatar uid={m.user_id} v={m.avatar_v} name={m.full_name} size={36} />
               <div className="flex-1 min-w-[12rem]">
                 <p className="text-white font-semibold">{m.full_name} <span className="text-gray-400 text-xs font-normal">· {t('mod.wasPlace', { place: t(`mod.place_${m.review_from || 'fixed'}`) })}</span></p>
                 <p className="text-amber-200 text-sm">“{m.review_reason}”</p>

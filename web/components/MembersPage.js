@@ -313,7 +313,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                   <li key={m.id} className={`flex items-start gap-3 px-3 py-3 ${selected.includes(m.id) ? 'bg-red-500/10' : ''} ${m.is_active ? '' : 'opacity-50'}`}>
                     <input type="checkbox" className="mt-3" checked={selected.includes(m.id)} onChange={() => toggle(m.id)} aria-label={m.full_name} />
                     <button type="button" className="flex-1 min-w-0 text-left flex items-start gap-3" onClick={() => openMember(m, false)}>
-                      <Avatar name={m.full_name} size={40} />
+                      <Avatar uid={m.user_id} v={m.avatar_v} name={m.full_name} size={40} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-white font-semibold break-words">{m.full_name}</span>
@@ -407,7 +407,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                         <td className="text-center text-gray-400">{i + 1}</td>
                         <td>
                           <div className="flex items-center gap-2.5">
-                            <Avatar name={m.full_name} size={30} />
+                            <Avatar uid={m.user_id} v={m.avatar_v} name={m.full_name} size={30} />
                             <div className="min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-1">
                               <button
                                 type="button"
