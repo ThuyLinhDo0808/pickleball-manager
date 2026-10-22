@@ -1659,9 +1659,11 @@ router.get('/:clubId/race', async (req, res) => {
 router.patch('/:clubId/race', async (req, res) => {
   try {
     if (!raceManager(req)) return res.status(403).json(ROLE_FORBIDDEN);
+    // Top tháng is in the top Social Manager plan only (402 feature_locked otherwise).
+    if (req.body?.enabled) await require('../services/plan').assertFeature(req.club.host_id, 'monthly_race', require('../services/plan').kindOf(req.club));
     res.json(await race.updateSettings(req.club, req.body || {}));
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code, feature: err.feature, min_tier: err.min_tier, kind: err.kind });
     dbError(res, err);
   }
 });

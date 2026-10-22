@@ -221,6 +221,8 @@ async function book(eventId, body, userId = null) {
   const event = await eventById(eventId);
   await checkPass(event, body?.pass);
   assertTaking(event);
+  // Members first: quick booking (people without an account) waits until it is public.
+  if (require('./signup').membersOnlyNow(event)) throw fail('Members of the club sign up first; this session opens to everyone later.', 403, 'members_only');
   const contact = body?.contact || {};
   const name = cleanName(contact.full_name, 'name_required');
   const extras = await extrasReady();

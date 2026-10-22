@@ -62,6 +62,7 @@ const FEATURES = {
   duty_roster: 'pro', // shifts / who is on duty
   advanced_analytics: 'pro', // retention, active / inactive members, revenue per member…
   full_export: 'pro', // whole-club data export
+  monthly_race: 'pro', // Top tháng race + vouchers (Social Manager PRO: big communities)
 };
 
 // How many people may hold each staff role on a plan (null = unlimited).

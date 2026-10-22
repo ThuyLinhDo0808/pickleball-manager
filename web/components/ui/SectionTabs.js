@@ -46,11 +46,13 @@ export default function SectionTabs({ group }) {
   if (!scoped) return null;
   const rankingsPage = pathname.startsWith('/club/rankings') || pathname.startsWith('/leaderboard');
   const tabsOf = community ? COMMUNITY_GROUPS[rankingsPage ? 'rankings' : group] || GROUPS[group] : GROUPS[group];
+  const shown = tabsOf.filter((tab) => !tab.hidden && (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport));
   return (
-    // Wraps onto two lines on a phone rather than hiding tabs off the edge of the screen.
-    <nav className="mb-5">
-      <div className="flex flex-wrap gap-2">
-        {tabsOf.filter((tab) => !tab.hidden && (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport)).map((tab) => {
+    // Phone: one row of equal cells (icon over the word), like a segmented control; up to 3
+    // tabs per row, more wrap to a second row. Wider screens: pills.
+    <nav className="mb-4 sm:mb-5">
+      <div className={`grid gap-1 rounded-xl border border-navy-700 bg-navy-900 p-1 sm:flex sm:flex-wrap sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0 ${shown.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        {shown.map((tab) => {
           const active = tab.match(pathname);
           // Social Manager: the schedule tab reads like its menu entry ("Lịch xé vé").
           const key = community && tab.key === 'nav.schedule' ? 'nav.kevents' : tab.key;
@@ -59,10 +61,10 @@ export default function SectionTabs({ group }) {
               key={tab.href}
               href={tab.href}
               aria-current={active ? 'page' : undefined}
-              className={`rounded-full border px-3.5 py-2 text-sm whitespace-nowrap transition ${active ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400 hover:text-white'}`}
+              className={`flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-center text-xs leading-tight transition sm:flex-row sm:gap-0 sm:rounded-full sm:border sm:px-3.5 sm:py-2 sm:text-sm sm:whitespace-nowrap ${active ? 'bg-lime-400 text-navy-950 font-semibold sm:border-lime-400 sm:bg-lime-400/15 sm:text-lime-200' : 'text-gray-300 sm:border-navy-600 sm:text-gray-200 hover:text-white sm:hover:border-lime-400'}`}
             >
-              <span aria-hidden="true" className="mr-1.5">{tab.icon}</span>
-              {t(key)}
+              <span aria-hidden="true" className="sm:mr-1.5">{tab.icon}</span>
+              <span>{t(key)}</span>
             </Link>
           );
         })}

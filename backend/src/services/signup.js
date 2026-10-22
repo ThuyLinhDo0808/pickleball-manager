@@ -155,6 +155,13 @@ async function registrationView(event, p) {
 }
 
 // The signed-in player's live registration for this event (their own, or via their verified member record).
+// Riêng tư — thành viên trước: still only for members (public_from not reached, or none).
+function membersOnlyNow(event, now = Date.now()) {
+  return !!event?.members_only && (!event.public_from || Date.parse(event.public_from) > now);
+}
+// A member of the club / community (official, account checked, not just asking to join).
+const isMemberStanding = (standing) => standing?.state === 'verified' && standing.member?.is_active !== false && !standing.member?.join_requested;
+
 async function myRegistration(event, userId) {
   const standing = await memberStanding(event, userId);
   const filters = [`user_id.eq.${userId}`];
@@ -192,6 +199,10 @@ async function registerOnline(event, userId, profile, opts = {}) {
   await expireHolds(event);
   const { standing, participant: existing } = await myRegistration(event, userId);
   if (existing && ACTIVE.includes(existing.status)) throw httpError('You are already registered for this event.', 409, 'already_registered');
+  // Riêng tư — thành viên trước: only the club's own members until it opens to everyone.
+  if (membersOnlyNow(event) && event.host_id !== userId && !isMemberStanding(standing)) {
+    throw Object.assign(httpError('Members of the club sign up first; this session opens to everyone later.', 403, 'members_only'), { public_from: event.public_from || null });
+  }
   // Email not confirmed yet: one upcoming place, inside 48 hours.
   await require('./emailVerify').assertCanRegister(userId);
 
@@ -367,6 +378,8 @@ async function rejectPayment(event, participant, note) {
 }
 
 module.exports = {
+  membersOnlyNow,
+  isMemberStanding,
   expireHolds,
   payeeFor,
   registrationView,
