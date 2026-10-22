@@ -19,9 +19,9 @@ export default function Hint({ text, title, className = '', inline = false }) {
     <button
       type="button"
       onClick={open_}
-      className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/50 px-2.5 py-1 text-sky-200 text-sm hover:bg-sky-300/10"
+      className="relative inline-flex items-center gap-1 rounded-full border border-sky-300/30 px-2 py-0.5 text-sky-200/90 text-xs hover:bg-sky-300/10 hover:text-sky-100 transition-colors after:absolute after:-inset-2 after:content-['']"
     >
-      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-sky-300/70 text-xs font-bold" aria-hidden>i</span>
+      <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-sky-300/60 text-[9px] font-bold leading-none" aria-hidden>i</span>
       {t('ui.helpTitle')}
     </button>
   );
@@ -35,14 +35,14 @@ export default function Hint({ text, title, className = '', inline = false }) {
       }}
       aria-label={t('ui.showHelp')}
       title={t('ui.showHelp')}
-      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-sky-300/70 text-sky-300 text-xs font-bold hover:bg-sky-300/10 align-middle"
+      className="relative inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-sky-300/60 text-sky-300 text-[10px] font-bold leading-none hover:bg-sky-300/10 align-middle transition-colors after:absolute after:-inset-3 after:content-['']"
     >
       i
     </button>
   );
   return (
     <>
-      {inline ? button : <div className={`mt-1 ${className}`}>{wide}</div>}
+      {inline ? button : <div className={`mt-1.5 ${className}`}>{wide}</div>}
       <Modal open={open} title={title || t('ui.helpTitle')} onClose={() => setOpen(false)}>
         <p className="text-gray-200 text-base leading-relaxed whitespace-pre-line">{text}</p>
         <button type="button" className="btn-primary w-full mt-5" onClick={() => setOpen(false)}>

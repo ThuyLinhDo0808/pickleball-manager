@@ -4045,7 +4045,7 @@ export const en = {
     clubIdPh: "Club code on DUPR",
     col_member: "Member",
     col_id: "DUPR ID",
-    col_duprName: "Name on DUPR",
+    col_duprName: "Name on DUPR.com",
     col_doubles: "Doubles",
     col_singles: "Singles",
     col_status: "Status",
@@ -6105,5 +6105,13 @@ export const en = {
       "insights.avgFreqHint": "Average of {n} regulars",
       "insights.frequencyHint": "Average sessions per month of each regular",
     },
+  },
+  ginfo: {
+    noAccount: "This player has no account (added by the Host / quick booking).",
+    edit: "Edit details",
+    title: "Edit player details",
+    hint: "For details that come later, e.g. they made a DUPR account after the kèo and now have a DUPR ID. The new details are saved for this person in the kèo and in the member list.\n\nTo send matches already exported to DUPR again: open DUPR export, press \"Unmark\" on that match and export again. Matches that could not be exported for lack of a DUPR ID become ready by themselves.",
+    saved: "New details saved.",
+    badId: "A DUPR ID is 4–10 letters or digits, e.g. YN9N0G.",
   },
 };

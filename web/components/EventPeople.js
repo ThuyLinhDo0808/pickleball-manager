@@ -176,6 +176,81 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
 // chips, where they go — Tạm hoãn duyệt / Đặt vào danh sách chờ / Xác nhận tham gia
 // (+ Không chơi for organizers) — then everything else the Host can do for this person:
 // check-in / absent, payment, refund, cancel. Same sheet for clubs and communities.
+function GuestInfoEditor({ event, row, card, sport, onSaved }) {
+  const { t } = useI18n();
+  const start = () => ({ full_name: row.full_name || '', gender: card.gender || row.gender || '', dupr_id: row.dupr_id || card.dupr_id || '', dupr_self: row.dupr_level ?? '' });
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState(start);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await api.post(`/api/events/${event.id}/participants/${row.id}/info`, { ...f, full_name: f.full_name.trim() });
+      setOpen(false);
+      setSaved(true);
+      onSaved();
+    } catch (err) {
+      setError(err.payload?.code === 'bad_dupr_id' ? t('ginfo.badId') : err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!open) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-navy-900/60 px-3 py-2">
+        <p className="text-sm text-gray-300">
+          {saved ? <span className="text-lime-300">{t('ginfo.saved')}</span> : t('ginfo.noAccount')}
+          <Hint inline text={t('ginfo.hint')} />
+        </p>
+        <button type="button" className="btn-secondary text-sm gap-1.5 ml-auto" onClick={() => { setF(start()); setSaved(false); setOpen(true); }}>
+          <UiIcon name="edit" className="w-4 h-4" />
+          {t('ginfo.edit')}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={save} className="flex flex-col gap-3 rounded-lg border border-navy-600 bg-navy-900/60 p-3">
+      <p className="text-white font-semibold">{t('ginfo.title')}</p>
+      <div>
+        <label className="text-sm text-gray-300" htmlFor="gi-name">{t('ux.fullName')}</label>
+        <input id="gi-name" className="input" required maxLength={120} value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} />
+      </div>
+      <div>
+        <span className="text-sm text-gray-300">{t('members.gender')}</span>
+        <div className="mt-1 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('members.gender')}>
+          {['male', 'female'].map((g) => (
+            <button key={g} type="button" role="radio" aria-checked={f.gender === g} onClick={() => setF({ ...f, gender: g })} className={`min-h-[2.75rem] rounded-lg border px-3 text-sm font-semibold transition-colors ${f.gender === g ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-200 hover:border-navy-500'}`}>
+              {t(`members.${g}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+      {sport === 'pickleball' && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="text-sm text-gray-300" htmlFor="gi-id">{t('quick.duprId')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
+            <input id="gi-id" className="input uppercase" maxLength={10} autoCapitalize="characters" placeholder="VD: YN9N0G" value={f.dupr_id} onChange={(e) => setF({ ...f, dupr_id: e.target.value.toUpperCase() })} />
+          </div>
+          <div>
+            <label className="text-sm text-gray-300" htmlFor="gi-dupr">{t('members.colDuprSelf')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
+            <input id="gi-dupr" className="input tabular-nums" type="number" inputMode="decimal" min="1" max="8" step="0.01" placeholder="VD: 3.25" value={f.dupr_self} onChange={(e) => setF({ ...f, dupr_self: e.target.value })} />
+          </div>
+        </div>
+      )}
+      {error && <p className="text-red-300 text-sm" role="alert">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary text-sm" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
+        <button className="btn-primary text-sm" disabled={busy || !f.full_name.trim()}>{busy ? t('auth.working') : t('common.save')}</button>
+      </div>
+    </form>
+  );
+}
+
 export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions }) {
   const { t, sport } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -244,6 +319,10 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             </p>
           </div>
         </div>
+
+        {/* Added by hand or booked quickly (no account): the Host fixes their details later
+            (e.g. a DUPR ID made after the kèo), so the matches can go to DUPR again. */}
+        {row && !row.user_id && !isHost && <GuestInfoEditor event={event} row={row} card={c} sport={sport} onSaved={onChanged} />}
 
         {/* Kèo with time groups: which group they play in (its fee if not paid yet). */}
         {row && !locked && event.groups?.length > 1 && (

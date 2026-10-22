@@ -4045,7 +4045,7 @@ export const vi = {
     clubIdPh: "Mã club trên DUPR",
     col_member: "Thành viên",
     col_id: "DUPR ID",
-    col_duprName: "Tên trên DUPR",
+    col_duprName: "Tên trên DUPR.com",
     col_doubles: "Điểm đôi",
     col_singles: "Điểm đơn",
     col_status: "Trạng thái",
@@ -6105,5 +6105,13 @@ export const vi = {
       "insights.avgFreqHint": "Trung bình {n} khách thường xuyên",
       "insights.frequencyHint": "Số buổi trung bình mỗi tháng của từng khách thường xuyên",
     },
+  },
+  ginfo: {
+    noAccount: "Người chơi chưa có tài khoản (Host thêm tay / đặt nhanh).",
+    edit: "Sửa thông tin",
+    title: "Sửa thông tin người chơi",
+    hint: "Dùng khi người chơi có thêm thông tin sau buổi chơi, ví dụ mới tạo tài khoản DUPR và có DUPR ID. Thông tin mới được lưu cho người này trong kèo và trong danh sách thành viên.\n\nĐể gửi lại các trận đã xuất lên DUPR: vào Xuất DUPR, bấm \"Bỏ đánh dấu\" ở trận đó rồi xuất lại. Trận trước đây chưa xuất được vì thiếu DUPR ID sẽ tự sẵn sàng để xuất.",
+    saved: "Đã lưu thông tin mới.",
+    badId: "DUPR ID gồm 4–10 chữ hoặc số, ví dụ YN9N0G.",
   },
 };
