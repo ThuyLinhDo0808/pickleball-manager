@@ -112,9 +112,9 @@ function Brand({ me }) {
   const { t } = useI18n();
   return (
     <Link href="/owner" className="flex items-center gap-3 min-w-0">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-300 text-navy-950 font-black text-sm">PM</span>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-300 text-navy-950 font-black text-sm">NZ</span>
       <span className="min-w-0">
-        <span className="block text-white font-bold leading-tight truncate">Pickleball Manager</span>
+        <span className="block text-white font-bold leading-tight truncate">NexusZone</span>
         <span className="block text-[11px] text-amber-300/90 font-semibold">
           {me.support ? t('owner.supportBadge') : 'Owner Console'}
         </span>
