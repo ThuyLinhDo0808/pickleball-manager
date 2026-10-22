@@ -42,7 +42,7 @@ export default function ScoreEntry({ sport, labels, initial = {}, onChange, with
             [labels?.[1], s2, setS2],
           ].map(([name, v, set], i) => (
             <div key={i} className="flex items-center gap-3">
-              <span className="flex-1 text-white truncate">{name || t(i === 0 ? 'matches.team1' : 'matches.team2')}</span>
+              <span className="flex-1 text-white break-words">{name || t(i === 0 ? 'matches.team1' : 'matches.team2')}</span>
               <div className="w-20 shrink-0">
                 <input
                   className="input text-center text-lg font-bold"

@@ -51,7 +51,7 @@ function SubMatchForm({ tour, fixture, sub, onSaved, onClose }) {
     return (
       <div className="rounded-lg bg-navy-900 p-3">
         <div className="flex items-center gap-3 mb-2">
-          <span className="flex-1 text-white font-semibold truncate">{team(tid)?.name}</span>
+          <span className="flex-1 text-white font-semibold break-words">{team(tid)?.name}</span>
         </div>
         <div className={`grid gap-2 ${size === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {ids.map((id, k) => (
@@ -115,7 +115,7 @@ export default function TeamLeagueView({ tour, onChange }) {
         <div className="overflow-x-auto">
           <table className="w-full text-xs sm:text-sm grid-table compact-cells">
             <thead>
-              <tr className="text-gray-300 bg-navy-900">
+              <tr className="text-gray-300">
                 <th className="w-8 text-center">#</th>
                 <th className="text-left">{t('tournaments.team')}</th>
                 <th className="text-right">{t('tournaments.played')}</th>
@@ -172,11 +172,11 @@ export default function TeamLeagueView({ tour, onChange }) {
           return (
             <div key={f.id} className="card !p-3">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`flex-1 truncate font-semibold ${win(1)}`}>{teamName(f.team1_id)}</span>
+                <span className={`flex-1 break-words font-semibold ${win(1)}`}>{teamName(f.team1_id)}</span>
                 <span className="tabular-nums text-lg font-bold text-white shrink-0">
                   {r.played ? `${r.sub_wins[0]} – ${r.sub_wins[1]}` : 'vs'}
                 </span>
-                <span className={`flex-1 truncate font-semibold text-right ${win(2)}`}>{teamName(f.team2_id)}</span>
+                <span className={`flex-1 break-words font-semibold text-right ${win(2)}`}>{teamName(f.team2_id)}</span>
               </div>
               {tour.win_rule === 'points' && r.played > 0 && (
                 <p className="text-gray-400 text-xs text-center -mt-1 mb-2">{t('league.totalPoints', { a: r.points[0], b: r.points[1] })}</p>
@@ -199,8 +199,8 @@ export default function TeamLeagueView({ tour, onChange }) {
                       </div>
                       {(s.team1_p1 || s.team2_p1) && (
                         <div className="text-gray-300 text-xs mt-0.5 grid grid-cols-2 gap-2">
-                          <span className={`truncate ${played && s.team1_score > s.team2_score ? 'text-lime-300' : ''}`}>{lineup(s.team1_p1, s.team1_p2) || '—'}</span>
-                          <span className={`truncate text-right ${played && s.team2_score > s.team1_score ? 'text-lime-300' : ''}`}>{lineup(s.team2_p1, s.team2_p2) || '—'}</span>
+                          <span className={`break-words ${played && s.team1_score > s.team2_score ? 'text-lime-300' : ''}`}>{lineup(s.team1_p1, s.team1_p2) || '—'}</span>
+                          <span className={`break-words text-right ${played && s.team2_score > s.team1_score ? 'text-lime-300' : ''}`}>{lineup(s.team2_p1, s.team2_p2) || '—'}</span>
                         </div>
                       )}
                     </button>
@@ -223,7 +223,7 @@ export default function TeamLeagueView({ tour, onChange }) {
             <ul className="text-sm text-gray-300">
               {tm.players.map((p) => (
                 <li key={p.id} className="flex justify-between gap-2">
-                  <span className="truncate">{p.full_name}</span>
+                  <span className="break-words">{p.full_name}</span>
                   <span className="text-gray-500 tabular-nums">{levelText(p.dupr_level, sport, t) ?? '—'}</span>
                 </li>
               ))}

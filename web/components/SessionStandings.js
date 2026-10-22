@@ -52,7 +52,7 @@ export default function SessionStandings({ participants, matches }) {
           {rows.map((r, i) => (
             <tr key={r.id} className="border-b border-navy-800 last:border-0">
               <td className="px-3 py-2 text-gray-400"><span className={i < 3 ? 'text-lime-300 font-semibold' : ''}>{i + 1}</span></td>
-              <td className="px-3 py-2 text-white truncate max-w-[12rem]">{r.name}</td>
+              <td className="px-3 py-2 text-white break-words max-w-[12rem]">{r.name}</td>
               <td className="px-3 py-2 text-right tabular-nums text-gray-300">{r.played}</td>
               <td className="px-3 py-2 text-right tabular-nums text-lime-300 font-semibold">{r.won}</td>
               <td className="px-3 py-2 text-right tabular-nums text-gray-400">{r.lost}</td>

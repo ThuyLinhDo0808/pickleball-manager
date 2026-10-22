@@ -395,7 +395,7 @@ function ClubRow({ club, onChanged }) {
   return (
     <li className="py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-gray-200 truncate">
+        <span className="text-gray-200 break-words">
           {club.name}
           {club.kind === 'community' && <span className="ml-1.5 text-[10px] rounded-full border border-amber-300/60 text-amber-200 px-1.5 py-0.5 align-middle">{t('creq.kind_community')}</span>}
         </span>
@@ -458,7 +458,7 @@ function StaffRoles({ staff, clubs }) {
                 <ul className="mt-1 divide-y divide-navy-800">
                   {mine.map((g) => (
                     <li key={g.id} className="py-1.5 flex items-center justify-between gap-2 text-sm">
-                      <span className="text-gray-300 truncate">{g.full_name ? `${g.full_name} · ` : ''}{g.email}</span>
+                      <span className="text-gray-300 break-words">{g.full_name ? `${g.full_name} · ` : ''}{g.email}</span>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${ROLE_BADGE[g.role] || 'bg-navy-700 text-gray-300'}`}>{t(`staff.${g.role}`)}</span>
                     </li>
                   ))}
@@ -522,7 +522,7 @@ export default function OwnerHostPage() {
         <div className="flex flex-col gap-4 mt-3">
           <div className="card !p-4 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-white truncate">{h.full_name || h.email}</h1>
+              <h1 className="text-xl font-bold text-white break-words">{h.full_name || h.email}</h1>
               <p className="text-gray-400 text-sm break-all">{h.email}{h.phone ? ` · ${h.phone}` : ''}</p>
               <p className="text-gray-500 text-xs mt-1">{t('owner.joined', { at: fmtDate(h.created_at) })} · {t('owner.lastSeen', { at: fmtTime(h.last_sign_in_at) })}</p>
             </div>

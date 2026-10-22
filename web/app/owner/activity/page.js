@@ -38,7 +38,7 @@ function Clubs() {
           {data.rows.map((c) => (
             <li key={c.id} className="py-2.5 flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="text-white font-semibold truncate">{c.name}</div>
+                <div className="text-white font-semibold break-words">{c.name}</div>
                 <Link href={`/owner/hosts/${c.host_id}`} className="text-gray-400 text-xs hover:text-white">{c.owner_email || '—'}</Link>
                 <span className="text-gray-500 text-xs"> · {t('owner.createdOn', { d: fmtDate(c.created_at) })}</span>
               </div>

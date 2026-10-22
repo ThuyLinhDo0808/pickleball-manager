@@ -24,7 +24,7 @@ export default function EventStandings({ matches, onChallenge }) {
         <div className="table-wrap">
           <table className="w-full text-sm grid-table !min-w-[30rem]">
             <thead>
-              <tr className="text-gray-300 text-left bg-navy-900">
+              <tr className="text-left">
                 <th className="w-10 text-center">#</th>
                 <th>{t('common.name')}</th>
                 <th className="text-right">{t('estand.played')}</th>

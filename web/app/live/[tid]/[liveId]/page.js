@@ -115,12 +115,12 @@ export default function ScorerPage() {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-white text-lg font-bold truncate">{teamLabel(side)}</div>
+            <div className="text-white text-lg font-bold break-words">{teamLabel(side)}</div>
             <ul className="mt-1 flex flex-col gap-0.5 text-sm">
               {pos.map((id, i) => (
                 <li key={id} className={`flex items-center gap-1.5 ${s.server_id === id ? 'text-lime-300 font-semibold' : 'text-gray-300'}`}>
                   <span className="text-[10px] rounded bg-navy-950/70 px-1.5 py-0.5 text-gray-400 w-12 text-center">{cfg.doubles ? (i === 0 ? t('live.right') : t('live.left')) : '—'}</span>
-                  <span className="truncate">{name(id)}</span>
+                  <span className="break-words">{name(id)}</span>
                   {s.server_id === id && <span aria-label={t('live.serving')}><UiIcon name={icon} className="inline-block w-4 h-4 text-lime-300" /></span>}
                 </li>
               ))}
@@ -154,7 +154,7 @@ export default function ScorerPage() {
         <div className="flex items-center justify-between gap-2 mb-3">
           <Link href={`/live/${tid}`} className="text-gray-400 text-sm hover:text-white">← {t('live.back')}</Link>
           <span className="flex items-center gap-2 min-w-0">
-            <span className="text-gray-400 text-xs truncate">{tourName}</span>
+            <span className="text-gray-400 text-xs break-words">{tourName}</span>
             <LiveGuide sport={sport} scoring={live?.config?.scoring} autoOpen />
           </span>
         </div>

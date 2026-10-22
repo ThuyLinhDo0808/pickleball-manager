@@ -78,7 +78,7 @@ export function OrganizersSection({ event, people, onOpen }) {
           return (
             <button key={o.key} type="button" onClick={() => onOpen(o.row, o.host)} className="flex w-20 flex-col items-center gap-1 text-center">
               <Initial name={o.name} organizer />
-              <span className="text-white text-xs leading-tight line-clamp-2">{o.name}</span>
+              <span className="text-white text-xs leading-tight break-words">{o.name}</span>
               <span className={`rounded-full border px-1.5 text-[10px] ${PLACE_TONE[place]}`}>{t(`place.short_${place}`)}</span>
             </button>
           );
@@ -232,7 +232,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[11px] leading-5" aria-hidden><UiIcon name="shield" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
           </span>
           <div className="min-w-0">
-            <p className="text-white text-lg font-bold truncate">{name}</p>
+            <p className="text-white text-lg font-bold break-words">{name}</p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-300">
               {level ? <span>{level}</span> : <span className="text-gray-500">{t('people.noLevel')}</span>}
               {c.gender && <span>{t(`members.${c.gender}`)}</span>}

@@ -374,7 +374,7 @@ export default function InsightsPage() {
                   {d.sessions.map((x) => (
                     <tr key={x.event_id} className="border-b border-navy-800 last:border-0 tabular-nums">
                       <td className="px-3 py-2 whitespace-nowrap">{fmtDay(x.date)}</td>
-                      <td className="px-3 py-2 text-white max-w-[220px] truncate">{x.title}</td>
+                      <td className="px-3 py-2 text-white max-w-[220px] break-words">{x.title}</td>
                       <td className="px-3 py-2">{x.players}{x.slots ? `/${x.slots}` : ''}</td>
                       <td className="px-3 py-2">{pctText(x.fill)}</td>
                       <td className="px-3 py-2 text-lime-300">{formatVnd(x.income)}</td>

@@ -107,7 +107,7 @@ function MonthAgenda({ month, map, onPickDay }) {
                         <Kind e={e} />
                         {e.title}
                       </span>
-                      <span className="block text-xs text-gray-400 truncate">
+                      <span className="block text-xs text-gray-400 break-words">
                         {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : t('cal.allDay')}
                         {e.location ? ` · ${e.location}` : ''}
                       </span>
@@ -156,7 +156,7 @@ function MonthView({ date, events, onPickDay }) {
               </div>
               <div className="space-y-0.5">
                 {list.slice(0, 3).map((e) => (
-                  <div key={e.id} className={`truncate rounded border-l-2 px-1 text-[11px] ${chipOf(e)}`}>
+                  <div key={e.id} className={`break-words rounded border-l-2 px-1 text-[11px] ${chipOf(e)}`}>
                     {hhmm(e.start_time)} <Kind e={e} />{e.title}
                   </div>
                 ))}
@@ -184,8 +184,8 @@ function Block({ e, lane, lanes, from }) {
       style={{ top, height, left: `calc(${lane * width}% + 2px)`, width: `calc(${width}% - 4px)` }}
       title={`${hhmm(e.start_time)}–${hhmm(e.end_time)} ${e.title}`}
     >
-      <div className="font-semibold truncate"><Kind e={e} />{e.title}</div>
-      <div className="opacity-80 truncate">{hhmm(e.start_time)}–{hhmm(e.end_time) || '…'}</div>
+      <div className="font-semibold break-words"><Kind e={e} />{e.title}</div>
+      <div className="opacity-80 break-words">{hhmm(e.start_time)}–{hhmm(e.end_time) || '…'}</div>
       <Fill e={e} />
     </Link>
   );
@@ -227,7 +227,7 @@ function TimeGrid({ days, events, onPickDay }) {
             {days.map((d) => (
               <div key={d} className="p-0.5 space-y-0.5">
                 {(map[d] || []).filter((e) => !span(e)).map((e) => (
-                  <Link key={e.id} href={hrefOf(e)} className={`block truncate rounded border-l-2 px-1 text-[11px] ${chipOf(e)}`}><Kind e={e} />{e.title}</Link>
+                  <Link key={e.id} href={hrefOf(e)} className={`block break-words rounded border-l-2 px-1 text-[11px] ${chipOf(e)}`}><Kind e={e} />{e.title}</Link>
                 ))}
               </div>
             ))}

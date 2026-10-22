@@ -68,8 +68,8 @@ export default function LiveBoardPage() {
     <div className="min-h-screen bg-navy-950 px-4 py-5 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-3 mb-5 max-w-6xl mx-auto">
         <div className="min-w-0">
-          <p className="text-gray-400 text-sm truncate">{tour.club_name}</p>
-          <h1 className="text-white text-2xl sm:text-3xl font-bold truncate">{tour.name}</h1>
+          <p className="text-gray-400 text-sm break-words">{tour.club_name}</p>
+          <h1 className="text-white text-2xl sm:text-3xl font-bold break-words">{tour.name}</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 rounded-full bg-red-500/15 border border-red-500/40 px-3 py-1 text-red-200 text-sm font-semibold">
@@ -96,7 +96,7 @@ export default function LiveBoardPage() {
               <article key={l.id} className="rounded-2xl border border-navy-700 bg-navy-900 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-xs">
                   <span className="text-red-200 font-semibold">● {l.court || t('live.noCourt')}</span>
-                  <span className="text-gray-300 truncate ml-2">
+                  <span className="text-gray-300 break-words ml-2">
                     {label(l)} · {t('live.gameN', { n: s?.game_no || 1 })}
                     {s?.timing?.started_at && <span className="text-white tabular-nums"> · {clock(elapsed(s.timing, now).match)}</span>}
                   </span>
@@ -106,8 +106,8 @@ export default function LiveBoardPage() {
                   return (
                     <div key={side} className={`flex items-center gap-3 px-4 py-3 ${side === 1 ? 'border-b border-navy-700' : ''}`}>
                       <div className="min-w-0 flex-1">
-                        <div className={`truncate text-lg ${serving ? 'text-white font-bold' : 'text-gray-300'}`}>{side === 1 ? l.team1 : l.team2}</div>
-                        <div className="text-gray-500 text-xs truncate">
+                        <div className={`break-words text-lg ${serving ? 'text-white font-bold' : 'text-gray-300'}`}>{side === 1 ? l.team1 : l.team2}</div>
+                        <div className="text-gray-500 text-xs break-words">
                           {(s?.positions?.[side] || []).map((id) => (
                             <span key={id} className={s?.server_id === id ? 'text-lime-300' : ''}>
                               {l.names[id]}
@@ -150,9 +150,9 @@ export default function LiveBoardPage() {
                     {l.state?.timing?.started_at && l.state?.timing?.ended_at ? ` · ${minutesText((l.state.timing.ended_at - l.state.timing.started_at) / 1000, t)}` : ''}
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`truncate ${l.state?.winner === 1 ? 'text-white font-semibold' : 'text-gray-400'}`}>{l.team1}</span>
+                    <span className={`break-words ${l.state?.winner === 1 ? 'text-white font-semibold' : 'text-gray-400'}`}>{l.team1}</span>
                     <span className="tabular-nums text-gray-300 shrink-0">{(l.state?.games || []).map(([a, b]) => `${a}-${b}`).join(', ')}</span>
-                    <span className={`truncate text-right ${l.state?.winner === 2 ? 'text-white font-semibold' : 'text-gray-400'}`}>{l.team2}</span>
+                    <span className={`break-words text-right ${l.state?.winner === 2 ? 'text-white font-semibold' : 'text-gray-400'}`}>{l.team2}</span>
                   </div>
                 </li>
               ))}
@@ -165,7 +165,7 @@ export default function LiveBoardPage() {
               {next.map((m) => (
                 <li key={m.match_id || m.sub_match_id} className="py-2 text-sm">
                   <div className="text-gray-500 text-xs">{matchLabel(m, matches, t)}</div>
-                  <div className="text-gray-200 truncate">{m.team1} <span className="text-gray-500">vs</span> {m.team2}</div>
+                  <div className="text-gray-200 break-words">{m.team1} <span className="text-gray-500">vs</span> {m.team2}</div>
                 </li>
               ))}
             </ul>

@@ -170,11 +170,11 @@ export default function MemberClubPage() {
                   <span className="text-[11px] text-gray-500">{e.event_date === today ? t('hub.today') : `${e.event_date.slice(5, 7)}/${e.event_date.slice(0, 4)}`}</span>
                 </div>
                 <div className="min-w-0 flex-1 p-3">
-                  <div className="text-white font-semibold truncate">
+                  <div className="text-white font-semibold break-words">
                     {shownPhase === 'live' && <span className="mr-1.5 rounded-full bg-red-500/20 px-2 py-0.5 text-[11px] font-bold text-red-200 align-middle">● {t('hub.phase_live')}</span>}
                     {e.title}
                   </div>
-                  <div className="text-gray-400 text-xs truncate">
+                  <div className="text-gray-400 text-xs break-words">
                     {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''}
                     {Number(e.fee_amount) > 0 ? ` · ${formatVnd(e.fee_amount)}` : ''}
                   </div>

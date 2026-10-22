@@ -62,10 +62,10 @@ function HostList() {
         {data?.rows.map((r) => (
           <Link key={r.id} href={`/owner/hosts/${r.id}`} className="card !p-3 block">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-white font-semibold truncate">{r.full_name || r.email}</span>
+              <span className="text-white font-semibold break-words">{r.full_name || r.email}</span>
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TIER_BADGE[r.tier]}`}>{r.tier}{r.on_trial ? ` · ${t('owner.trialShort')}` : ''}{r.billing === 'gifted' ? ` · ${t('owner.billGiftedShort')}` : ''}</span>
             </div>
-            <div className="text-gray-400 text-xs truncate">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div>
+            <div className="text-gray-400 text-xs break-words">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div>
             <div className="flex flex-wrap gap-x-3 text-xs text-gray-400 mt-1">
               <span>{r.clubs_owned}/{r.club_limit ?? '∞'}</span>
               <span>{r.people_used}/{r.people_limit}</span>
@@ -91,8 +91,8 @@ function HostList() {
             {data?.rows.map((r) => (
               <tr key={r.id} className="border-b border-navy-800 last:border-0 hover:bg-navy-800/50">
                 <td className="px-3 py-2 max-w-[280px]">
-                  <Link href={`/owner/hosts/${r.id}`} className="text-white font-semibold hover:underline block truncate">{r.full_name || r.email}</Link>
-                  <div className="text-gray-400 text-xs truncate">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div>
+                  <Link href={`/owner/hosts/${r.id}`} className="text-white font-semibold hover:underline block break-words">{r.full_name || r.email}</Link>
+                  <div className="text-gray-400 text-xs break-words">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div>
                 </td>
                 <td className="px-3 py-2">
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TIER_BADGE[r.tier]}`}>{r.tier}</span>

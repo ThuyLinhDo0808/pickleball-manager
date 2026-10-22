@@ -322,9 +322,9 @@ export default function LedgerPage() {
         {!loading && list.length === 0 && <p className="text-gray-500 text-sm">{t('fin.noEntries')}</p>}
         {list.length > 0 && (
           <div className="table-wrap">
-            <table className="w-full text-sm grid-table !min-w-[26rem]">
+            <table className="w-full text-sm grid-table mobile-list !min-w-[26rem]">
               <thead>
-                <tr className="text-gray-300 text-left bg-navy-900">
+                <tr className="text-left">
                   <th>{t('fin.date')}</th>
                   <th>{t('fin.category')}</th>
                   <th className="text-right">{t('fin.amount')}</th>
@@ -335,12 +335,12 @@ export default function LedgerPage() {
                 {list.map((r) => (
                   <tr key={r.id} className={r.is_voided ? 'opacity-40 line-through' : ''}>
                     <td className="text-gray-300 whitespace-nowrap">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</td>
-                    <td className="text-gray-200 whitespace-nowrap">
+                    <td className="first text-gray-200 whitespace-nowrap">
                       {categoryLabel(r.category, t)}
                       {(AUTO.has(r.category) || r.event_cost) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
                     </td>
-                    <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(r.amount)}</td>
-                    <td className="text-gray-400 !whitespace-normal break-words text-xs">
+                    <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${income ? '!text-lime-400' : '!text-orange-300'}`}>{formatVnd(r.amount)}</td>
+                    <td className="text-gray-400 !whitespace-normal break-words text-xs max-sm:basis-full">
                       <div className="flex items-start justify-between gap-2">
                         <span className="min-w-0">
                           {r.events && (
@@ -425,9 +425,9 @@ export default function LedgerPage() {
             <p className="text-gray-500 text-sm">{t('fin.noEntries')}</p>
           ) : (
             <div className="table-wrap">
-              <table className="w-full text-sm grid-table !min-w-[32rem]">
+              <table className="w-full text-sm grid-table mobile-list !min-w-[32rem]">
                 <thead>
-                  <tr className="text-gray-300 text-left bg-navy-900">
+                  <tr className="text-left">
                     <th>{t('fin.date')}</th>
                     <th className="text-right">{t('ledger.kevCount')}</th>
                     <th className="text-right">{t('ledger.ticketIncome')}</th>
@@ -442,10 +442,10 @@ export default function LedgerPage() {
                         {`${x.day.slice(8, 10)}/${x.day.slice(5, 7)}/${x.day.slice(0, 4)}`}
                         {x.payers > 0 && <span className="block text-gray-500 text-xs">{t('ledger.payers', { n: x.payers })}</span>}
                       </td>
-                      <td className="text-right tabular-nums text-gray-300">{x.evs.size}</td>
-                      <td className="text-right tabular-nums text-lime-400">{formatVnd(x.income)}</td>
-                      <td className="text-right tabular-nums text-orange-300">{formatVnd(x.expense)}</td>
-                      <td className={`text-right tabular-nums font-semibold ${x.income - x.expense < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</td>
+                      <td className="text-right tabular-nums text-gray-300" data-label={`${t('ledger.kevCount')}:`}>{x.evs.size}</td>
+                      <td className="text-right tabular-nums text-lime-400" data-label={`${t('ledger.ticketIncome')}:`}>{formatVnd(x.income)}</td>
+                      <td className="text-right tabular-nums text-orange-300" data-label={`${t('finance.expense')}:`}>{formatVnd(x.expense)}</td>
+                      <td className={`key text-right tabular-nums font-semibold ${x.income - x.expense < 0 ? '!text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -460,9 +460,9 @@ export default function LedgerPage() {
             <p className="text-gray-500 text-sm">{t('fin.eventPnlNone')}</p>
           ) : (
             <div className="table-wrap">
-              <table className="w-full text-sm grid-table !min-w-[32rem]">
+              <table className="w-full text-sm grid-table mobile-list !min-w-[32rem]">
                 <thead>
-                  <tr className="text-gray-300 text-left bg-navy-900">
+                  <tr className="text-left">
                     <th>{t('ledger.session')}</th>
                     <th className="text-right">{t('finance.income')}</th>
                     <th className="text-right">{t('finance.expense')}</th>
@@ -476,9 +476,9 @@ export default function LedgerPage() {
                         <Link href={`/events/${x.id}`} className="text-gray-100 hover:text-lime-400">{sessionLabel(x.ev, t)}</Link>
                         {x.payers > 0 && <span className="block text-gray-500 text-xs">{t('ledger.payers', { n: x.payers })}</span>}
                       </td>
-                      <td className="text-right tabular-nums text-lime-400">{formatVnd(x.income)}</td>
-                      <td className="text-right tabular-nums text-orange-300">{formatVnd(x.expense)}</td>
-                      <td className={`text-right tabular-nums font-semibold ${x.income - x.expense < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</td>
+                      <td className="text-right tabular-nums text-lime-400" data-label={`${t('finance.income')}:`}>{formatVnd(x.income)}</td>
+                      <td className="text-right tabular-nums text-orange-300" data-label={`${t('finance.expense')}:`}>{formatVnd(x.expense)}</td>
+                      <td className={`key text-right tabular-nums font-semibold ${x.income - x.expense < 0 ? '!text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</td>
                     </tr>
                   ))}
                 </tbody>

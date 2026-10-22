@@ -188,7 +188,7 @@ export default function OwnerOverview() {
                 <ul className="divide-y divide-navy-700">
                   {d.trials.active.slice(0, 8).map((x) => (
                     <li key={x.host_id} className="py-2 flex items-center justify-between gap-2">
-                      <Link href={`/owner/hosts/${x.host_id}`} className="min-w-0 text-sm text-gray-200 hover:text-white truncate">{x.email}</Link>
+                      <Link href={`/owner/hosts/${x.host_id}`} className="min-w-0 text-sm text-gray-200 hover:text-white break-words">{x.email}</Link>
                       <span className={`text-xs tabular-nums shrink-0 ${x.days_left <= 3 ? 'text-red-300' : 'text-amber-200'}`}>
                         {x.days_left === 0 ? t('owner.endsToday') : t('owner.daysLeft', { n: x.days_left })}
                       </span>
@@ -214,7 +214,7 @@ export default function OwnerOverview() {
                 <ul className="divide-y divide-navy-700">
                   {d.expiring.filter((x) => x.days_left <= days).map((x) => (
                     <li key={`${x.host_id}-${x.kind}`} className="py-2 flex items-center justify-between gap-2">
-                      <Link href={`/owner/hosts/${x.host_id}`} className="min-w-0 text-sm text-gray-200 hover:text-white truncate">{x.email}</Link>
+                      <Link href={`/owner/hosts/${x.host_id}`} className="min-w-0 text-sm text-gray-200 hover:text-white break-words">{x.email}</Link>
                       <span className="flex items-center gap-2 shrink-0">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${x.kind === 'tier' ? TIER_BADGE[x.tier] : 'bg-amber-300/20 text-amber-200'}`}>{x.kind === 'tier' ? x.tier : 'SM'}</span>
                         <span className={`text-xs tabular-nums ${x.days_left <= 3 ? 'text-red-300' : 'text-amber-200'}`}>

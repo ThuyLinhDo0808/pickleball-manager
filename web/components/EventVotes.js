@@ -52,7 +52,7 @@ export default function EventVotes({ event }) {
       {link && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-lime-400/30 bg-lime-400/5 px-3 py-2 mb-3">
           <span className="text-gray-300 text-xs flex-1 min-w-[12rem]">{t('vote.linkHint')}</span>
-          <code className="text-lime-200 text-xs truncate max-w-full">{link}</code>
+          <code className="text-lime-200 text-xs break-words max-w-full">{link}</code>
           <button type="button" className="btn-primary !py-1 text-sm" onClick={copy}>{copied ? `✓ ${t('vote.copied')}` : `${t('vote.copy')}`}</button>
           <a href={link} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white text-xs underline">{t('vote.open')}</a>
         </div>
@@ -80,7 +80,7 @@ export default function EventVotes({ event }) {
       <ul className="divide-y divide-navy-700">
         {rows.map((m) => (
           <li key={m.club_member_id} className="flex items-center gap-2 py-1.5 text-sm">
-            <span className="flex-1 min-w-0 truncate text-white">
+            <span className="flex-1 min-w-0 break-words text-white">
               {m.full_name}
               {m.member_type !== 'fixed' && <span className="text-gray-500 text-xs"> · {t('members.guest')}</span>}
               {m.by_host && m.choice && <span className="text-gray-500 text-xs"> · {t('meeting.byHost')}</span>}

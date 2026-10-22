@@ -63,7 +63,7 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, end
   }
 
   const name = (p) => (
-    <span className="block truncate">
+    <span className="block break-words">
       {p.full_name}
       {p.dupr_level != null && <span className="text-gray-500 text-[11px]"> · {levelTag(p.dupr_level, sport, t)}</span>}
     </span>

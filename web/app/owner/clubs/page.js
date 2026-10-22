@@ -22,8 +22,8 @@ function Row({ c, onDeleted }) {
   const [del, setDel] = useState(false);
   return (
     <>
-      <tr className="border-b border-navy-800 hover:bg-navy-800/40 align-middle">
-        <td className="px-3 py-2.5 max-w-[260px]">
+      <tr className="border-b border-navy-700 hover:bg-navy-800/40 align-middle">
+        <td className="px-3 py-2.5 max-w-[260px] max-sm:max-w-none">
           <div className="text-white font-semibold break-words">{c.name}</div>
           <div className="text-gray-500 text-xs">{t(`clubs.sport_${c.sport}`)}</div>
         </td>
@@ -31,7 +31,7 @@ function Row({ c, onDeleted }) {
           <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${KIND_CHIP[c.kind]}`}>{t(c.kind === 'community' ? 'creq.kind_community' : 'creq.kind_club')}</span>
         </td>
         <td className="px-3 py-2.5 max-w-[220px]">
-          <Link href={`/owner/hosts/${c.host_id}`} className="text-gray-200 hover:text-amber-200 truncate block">{c.owner_email || '—'}</Link>
+          <Link href={`/owner/hosts/${c.host_id}`} className="text-gray-200 hover:text-amber-200 break-words block">{c.owner_email || '—'}</Link>
           <span className={`mt-0.5 inline-block rounded px-1.5 text-[10px] font-bold ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
         </td>
         <td className="px-3 py-2.5 tabular-nums whitespace-nowrap">
@@ -43,7 +43,7 @@ function Row({ c, onDeleted }) {
           <span className="text-gray-500 text-xs block">{c.last_event ? t('owner.clubsLast', { d: fmtDate(c.last_event) }) : '—'}</span>
         </td>
         <td className="px-3 py-2.5 text-gray-400 text-xs whitespace-nowrap">{fmtDate(c.created_at)}</td>
-        <td className="px-3 py-2.5 text-right whitespace-nowrap">
+        <td className="act px-3 py-2.5 text-right whitespace-nowrap">
           {me?.owner && (
             <button type="button" onClick={() => setDel(!del)} className={`rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${del ? 'bg-red-500/20 text-red-200 ring-red-400/40' : 'text-red-300 ring-red-400/30 hover:bg-red-500/10'}`}>
               {t('owner.delClubBtn')}
@@ -94,11 +94,11 @@ export default function OwnerClubsPage() {
       {data && <p className="text-gray-500 text-xs mb-2">{t('owner.nResults', { n: data.total })}</p>}
       {data && data.rows.length === 0 && <p className="card text-gray-500 text-sm">{t('owner.noResults')}</p>}
       {data && data.rows.length > 0 && (
-        <div className="rounded-xl border border-navy-700 bg-navy-900/60 overflow-x-auto">
-          <table className="w-full text-sm min-w-[860px]">
-            <thead className="text-gray-400 text-xs text-left bg-navy-900">
+        <div className="rounded-xl border border-navy-700 bg-navy-900 overflow-x-auto max-sm:px-3">
+          <table className="w-full text-sm min-w-[860px] mobile-list">
+            <thead className="text-gray-400 text-sm text-left">
               <tr className="border-b border-navy-700">
-                {['colName', 'colKind', 'colOwner', 'colMembers', 'colSessions', 'colCreated'].map((k) => <th key={k} className="px-3 py-2.5 font-medium">{t(`owner.clubs_${k}`)}</th>)}
+                {['colName', 'colKind', 'colOwner', 'colMembers', 'colSessions', 'colCreated'].map((k) => <th key={k} className="px-3 py-2.5 font-normal">{t(`owner.clubs_${k}`)}</th>)}
                 <th className="px-3 py-2.5" />
               </tr>
             </thead>

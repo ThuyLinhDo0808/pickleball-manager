@@ -48,7 +48,7 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
       <div className="grid grid-cols-2 gap-3">
         {[1, 2].map((team) => (
           <div key={team} className="min-w-0">
-            <label htmlFor={`edit-score-${team}`} className="text-xs text-gray-400 block truncate" title={names[team - 1]}>
+            <label htmlFor={`edit-score-${team}`} className="text-xs text-gray-400 block break-words" title={names[team - 1]}>
               {names[team - 1]}
             </label>
             <input
@@ -115,7 +115,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
               <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 items-center">
                 {[1, 2].map((n) => (
                   <div key={n} className="contents">
-                    <span className={`truncate ${winner === n ? 'text-lime-400 font-semibold' : 'text-gray-200'}`}>
+                    <span className={`break-words ${winner === n ? 'text-lime-400 font-semibold' : 'text-gray-200'}`}>
                       {winner === n && <UiIcon name="trophy" className="inline-block w-4 h-4 mr-1 -mt-0.5 text-lime-300" />}
                       {team(n)}
                     </span>

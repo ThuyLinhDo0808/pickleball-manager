@@ -46,7 +46,7 @@ export default function ClaimPage() {
             <ClubAvatar id={c.club.id} name={c.club.name} sport={c.club.sport} size={52} />
             <div className="min-w-0">
               <p className="text-lime-400 text-xs font-bold">{t('mlink.kicker')}</p>
-              <h1 className="text-white text-xl font-bold truncate">{c.club.name}</h1>
+              <h1 className="text-white text-xl font-bold break-words">{c.club.name}</h1>
             </div>
           </div>
 

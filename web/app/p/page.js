@@ -101,7 +101,7 @@ export default function PlayerHome() {
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-white text-xl font-bold truncate">{t('player.hello', { name: me.username || p?.full_name || String(me.email || '').split('@')[0] })}</h1>
+          <h1 className="text-white text-xl font-bold break-words">{t('player.hello', { name: me.username || p?.full_name || String(me.email || '').split('@')[0] })}</h1>
           {p?.dupr_level != null && <div className="text-gray-400 text-sm">DUPR {levelText(p.dupr_level, 'pickleball', t)}</div>}
         </div>
       </div>
@@ -175,7 +175,7 @@ export default function PlayerHome() {
           <h2 className="text-yellow-300 font-semibold mb-2">{t('pp.eventDebts')}</h2>
           {me.event_debts.map((d) => (
             <div key={d.event_id} className="flex items-center justify-between gap-2 py-1.5 text-sm border-b border-navy-700 last:border-0">
-              <span className="text-gray-200 min-w-0 truncate">
+              <span className="text-gray-200 min-w-0 break-words">
                 {d.title} · {localDate(new Date(`${d.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}
                 {d.late_cancel && <span className="ml-2 text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>}
               </span>

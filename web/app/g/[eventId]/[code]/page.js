@@ -48,7 +48,7 @@ export default function QuickBookPage() {
   const shell = (body) => (
     <div className="min-h-screen max-w-lg mx-auto px-4 pt-safe pb-safe-4">
       <header className="flex items-center justify-between py-4">
-        <span className="text-lime-400 font-bold truncate">{opened?.event?.club_name || t('appName')}</span>
+        <span className="text-lime-400 font-bold break-words">{opened?.event?.club_name || t('appName')}</span>
         <div className="flex items-center gap-2">
           <HomeLink />
           {langToggle}

@@ -162,7 +162,7 @@ export default function ReviewsPage() {
                 {d.sessions.map((x) => (
                   <tr key={x.event_id} className="border-b border-navy-800 last:border-0 tabular-nums">
                     <td className="px-3 py-2 whitespace-nowrap">{fmtDay(x.date)}</td>
-                    <td className="px-3 py-2 max-w-[220px] truncate"><Link href={`/events/${x.event_id}`} className="text-white hover:underline">{x.title}</Link></td>
+                    <td className="px-3 py-2 max-w-[220px] break-words"><Link href={`/events/${x.event_id}`} className="text-white hover:underline">{x.title}</Link></td>
                     <td className="px-3 py-2">{x.count}</td>
                     <td className="px-3 py-2 text-amber-300">★ {num(x.average)}</td>
                     <td className="px-3 py-2">{num(x.court)}</td>

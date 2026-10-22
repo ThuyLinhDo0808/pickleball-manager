@@ -40,7 +40,7 @@ function Kpi({ icon, label, value, sub, href, tone = 'text-white', lines = null 
         <dl className="mt-1.5 pt-1.5 border-t border-navy-700 grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-xs">
           {lines.map(([k, v, tone2]) => (
             <div key={k} className="contents">
-              <dt className="text-gray-400 truncate">{k}</dt>
+              <dt className="text-gray-400 break-words">{k}</dt>
               <dd className={`text-right tabular-nums font-semibold ${tone2 || 'text-gray-100'}`}>{v}</dd>
             </div>
           ))}
@@ -180,7 +180,7 @@ function ClubHome({ community = false }) {
               <p className="text-gray-400 text-sm capitalize">
                 {localDate(new Date(), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
-              <h1 className="text-white text-2xl sm:text-3xl font-bold mt-1 truncate">
+              <h1 className="text-white text-2xl sm:text-3xl font-bold mt-1 break-words">
                 {greeting(t)}{name ? `, ${name}` : ''}
               </h1>
               {club && (
@@ -263,7 +263,7 @@ function ClubHome({ community = false }) {
                             <span className="text-white font-semibold break-words group-hover:text-lime-300">{e.title}</span>
                             <span className={`shrink-0 text-[10px] font-semibold rounded-full px-2 py-0.5 ${state[1]}`}>{t(state[0])}</span>
                           </div>
-                          <div className="text-gray-400 text-xs truncate">
+                          <div className="text-gray-400 text-xs break-words">
                             {e.start_time ? hhmm(e.start_time) : ''}
                             {e.end_time ? `–${hhmm(e.end_time)}` : ''}
                             {e.location ? ` · ${e.location}` : ''}

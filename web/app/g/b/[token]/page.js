@@ -90,7 +90,7 @@ export default function QuickBookingPage() {
   return (
     <div className="min-h-screen max-w-lg mx-auto px-4 pt-safe pb-safe-4">
       <header className="flex items-center justify-between py-4">
-        <span className="text-lime-400 font-bold truncate">{e.club_name || t('appName')}</span>
+        <span className="text-lime-400 font-bold break-words">{e.club_name || t('appName')}</span>
         <div className="flex items-center gap-2">
           <HomeLink />
           {langToggle}
@@ -189,7 +189,7 @@ export default function QuickBookingPage() {
         <ol className="flex flex-col divide-y divide-navy-700">
           {b.slots.map((s, i) => (
             <li key={i} className="py-2 text-sm flex items-center justify-between gap-2">
-              <span className="text-gray-200 min-w-0 truncate">
+              <span className="text-gray-200 min-w-0 break-words">
                 <span className="text-gray-500 w-6 inline-block">{i + 1}.</span>
                 {s.full_name}
                 {s.gender && <span className={`ml-2 text-[11px] ${s.gender === 'male' ? 'text-sky-300' : 'text-pink-300'}`}>{t(`members.${s.gender}`)}</span>}

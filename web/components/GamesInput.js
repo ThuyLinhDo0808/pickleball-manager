@@ -130,8 +130,8 @@ export default function GamesInput({ value, onChange, labels = null, sport = 'ba
       {onFormatChange && <FormatPicker sport={sport} value={fmt} onChange={onFormatChange} />}
       <div className="grid grid-cols-[4.5rem_1fr_1fr] gap-2 items-center text-xs text-gray-400">
         <span>{t('games.label')}</span>
-        <span className="text-center truncate">{labels ? labels[0] : t('matches.team1')}</span>
-        <span className="text-center truncate">{labels ? labels[1] : t('matches.team2')}</span>
+        <span className="text-center break-words">{labels ? labels[0] : t('matches.team1')}</span>
+        <span className="text-center break-words">{labels ? labels[1] : t('matches.team2')}</span>
       </div>
       {value.map((_, i) => (
         <div key={i} className="grid grid-cols-[4.5rem_1fr_1fr] gap-2 items-center">

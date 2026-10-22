@@ -77,7 +77,7 @@ export default function MeetingEvent({ event, onChanged }) {
               setTab(tb);
               if (tb !== 'details') reload();
             }}
-            className={`px-2 py-2 rounded-lg text-sm truncate ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
+            className={`px-2 py-2 rounded-lg text-sm break-words ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
           >
             {tb === 'people' ? `${t('mtg.tabPeople')} (${m ? m.totals.headcount : '…'})` : t(`mtg.tab_${tb}`)}
           </button>
@@ -127,7 +127,7 @@ function People({ event, m, coming, run }) {
           <ul className="divide-y divide-navy-700">
             {coming.map((r) => (
               <li key={r.club_member_id} className="flex items-center gap-2 py-2 text-sm">
-                <span className="flex-1 min-w-0 truncate text-white">
+                <span className="flex-1 min-w-0 break-words text-white">
                   {r.full_name}
                   {r.member_type !== 'fixed' && <span className="text-gray-500 text-xs"> · {t('members.guest')}</span>}
                 </span>
@@ -162,7 +162,7 @@ function People({ event, m, coming, run }) {
         ) : (
           <table className="w-full text-sm grid-table compact-cells">
             <thead>
-              <tr className="text-gray-300 bg-navy-900 text-left">
+              <tr className="text-gray-300 text-left">
                 <th>{t('mtg.guestCol')}</th>
                 <th>{t('mtg.invitedBy')}</th>
                 <th className="w-10" />
@@ -220,7 +220,7 @@ function Finance({ event, m, run }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm grid-table compact-cells">
             <thead>
-              <tr className="text-gray-300 bg-navy-900 text-left">
+              <tr className="text-gray-300 text-left">
                 <th>{t('mtg.colName')}</th>
                 <th>{t('mtg.colStatus')}</th>
                 <th className="text-right">{t('mtg.colDue')}</th>
@@ -282,7 +282,7 @@ function Finance({ event, m, run }) {
                 </li>
               ) : (
                 <li key={e.id} className="flex items-center gap-3 py-2 text-sm">
-                  <span className="flex-1 min-w-0 truncate text-gray-100">{e.label}</span>
+                  <span className="flex-1 min-w-0 break-words text-gray-100">{e.label}</span>
                   <span className="tabular-nums text-orange-300">−{formatVnd(e.amount)}</span>
                   <button type="button" className="text-gray-400 hover:text-white text-xs" onClick={() => setEditing({ id: e.id, label: e.label, amount: e.amount })}>{t('mtg.edit')}</button>
                   <button type="button" className="text-red-400 text-xs" onClick={() => run(() => api.del(`/api/events/${event.id}/meeting/expenses/${e.id}`))}>{t('common.delete')}</button>

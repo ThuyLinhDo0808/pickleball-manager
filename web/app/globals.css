@@ -180,6 +180,10 @@ body {
 .table-wrap td {
   @apply pr-3 whitespace-nowrap;
 }
+/* Names and notes may wrap; numbers and dates stay on one line. */
+.table-wrap td.wrap {
+  @apply whitespace-normal;
+}
 
 /* iOS zooms into inputs smaller than 16px; keep them at 16px on phones. */
 @media (max-width: 767px) {
@@ -188,9 +192,10 @@ body {
   }
 }
 
-/* Spreadsheet-style table: horizontal + vertical cell borders. */
+/* Data table: no box, no vertical lines — one faint rule under each row, a slightly
+   stronger one under the grey sentence-case header. Numbers: add .num to the cell. */
 .grid-table {
-  @apply border-collapse border border-navy-600;
+  @apply border-collapse w-full;
 }
 
 /* Wide tables (guest list): headers may wrap so the notes column stays on screen. */
@@ -200,7 +205,114 @@ body {
 
 .grid-table th,
 .grid-table td {
-  @apply border border-navy-600 px-3 py-2;
+  @apply border-b border-navy-700 px-3 py-2.5 align-middle;
+}
+.grid-table th {
+  @apply border-navy-600 text-gray-400 text-sm font-normal text-left;
+}
+.grid-table th.num,
+.grid-table td.num {
+  text-align: right;
+}
+.grid-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Phones (<640px): a table with .mobile-list becomes a list of two-line rows —
+   line 1: the first cell (name) and the cell marked .key (main number) or .act (action)
+   on the right; line 2: every other cell, small and grey, side by side. A cell with
+   data-label="…" shows that label before its value. Empty cells are hidden. */
+@media (max-width: 639px) {
+  .table-wrap:has(> .mobile-list),
+  .table-wrap:has(> table.mobile-list) {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    overflow: visible;
+  }
+  table.mobile-list {
+    min-width: 0 !important;
+    width: 100%;
+    display: block;
+  }
+  .mobile-list thead {
+    display: none;
+  }
+  .mobile-list tbody,
+  .mobile-list tfoot {
+    display: block;
+  }
+  .mobile-list tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.125rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid #1e2f4d;
+  }
+  .mobile-list tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .mobile-list tr::before {
+    content: '';
+    order: 2;
+    flex-basis: 100%;
+    height: 0;
+  }
+  .mobile-list td,
+  .mobile-list th {
+    display: block;
+    order: 3;
+    padding: 0 !important;
+    border: 0 !important;
+    white-space: normal !important;
+    text-align: left !important;
+    font-size: 0.875rem;
+    color: #97a2b5;
+    min-width: 0;
+  }
+  .mobile-list td:first-child,
+  .mobile-list th:first-child {
+    order: 0;
+    flex: 1 1 0;
+    font-size: 0.9375rem;
+    color: #fff;
+  }
+  .mobile-list td.first {
+    order: 0;
+    flex: 1 1 0;
+    font-size: 0.9375rem;
+    color: #fff;
+  }
+  .mobile-list tr:has(> td.first) > td:first-child:not(.first) {
+    order: 3;
+    flex: none;
+    font-size: 0.875rem;
+    color: #97a2b5;
+  }
+  .mobile-list td.key {
+    order: 1;
+    margin-left: auto;
+    font-size: 0.9375rem;
+    color: #e6ecf5;
+    text-align: right !important;
+  }
+  .mobile-list td.act {
+    order: 1;
+    margin-left: auto;
+  }
+  .mobile-list td.key + td.act {
+    margin-left: 0;
+  }
+  .mobile-list td[data-label]::before {
+    content: attr(data-label) ' ';
+  }
+  .mobile-list td:empty,
+  .mobile-list td.m-hide {
+    display: none;
+  }
 }
 
 /* Tighter cells for small tables (e.g. tournament group standings on phones). */

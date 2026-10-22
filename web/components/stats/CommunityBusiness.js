@@ -175,7 +175,7 @@ export default function CommunityBusiness({ view = 'players' }) {
               <div className="table-wrap">
                 <table className="w-full text-sm grid-table !min-w-[28rem]">
                   <thead>
-                    <tr className="text-gray-300 text-left bg-navy-900">
+                    <tr className="text-left">
                       <th>{t('common.name')}</th>
                       <th>{t('biz.kev')}</th>
                       <th className="text-right">{t('biz.amount')}</th>

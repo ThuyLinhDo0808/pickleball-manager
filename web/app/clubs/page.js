@@ -145,7 +145,7 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
             )}
           </div>
         </div>
-        {c.description && <p className="text-gray-400 text-sm -mt-1 line-clamp-2">{c.description}</p>}
+        {c.description && <p className="text-gray-400 text-sm -mt-1 break-words">{c.description}</p>}
 
         <div className="grid grid-cols-3 gap-2 text-center">
           {[

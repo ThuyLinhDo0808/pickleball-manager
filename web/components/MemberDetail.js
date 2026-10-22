@@ -423,7 +423,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
 
         {member.account_email && (
           <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">
-            <span className="min-w-0 truncate">
+            <span className="min-w-0 break-words">
               <span className="text-gray-400">{t('payments.linked')}: </span>
               <span className="text-white">{member.account_email}</span>
               {member.account_verified ? (
@@ -523,7 +523,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="text-white text-sm font-semibold">{p.period_label}</div>
-                      <div className="text-gray-400 text-xs truncate">{planName(p.plan_id)} · {formatVnd(p.amount)}</div>
+                      <div className="text-gray-400 text-xs break-words">{planName(p.plan_id)} · {formatVnd(p.amount)}</div>
                     </div>
                     <span className={`text-xs rounded-full px-2 py-0.5 shrink-0 font-semibold ${PAY_STYLE[p.status]}`}>
                       {t(`membership.${p.status}`)}

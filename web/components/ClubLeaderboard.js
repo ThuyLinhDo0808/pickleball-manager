@@ -58,7 +58,7 @@ function AwardCard({ title, icon, rows, fmt, hint }) {
       <ol className="flex flex-col gap-1">
         {rows.map((r, i) => (
           <li key={r.club_member_id} className="flex items-center justify-between gap-2 text-sm">
-            <span className="truncate text-white">
+            <span className="break-words text-white">
               {rows.length > 1 ? <span className="text-lime-300 tabular-nums mr-1.5">{i + 1}</span> : null}{r.full_name}
             </span>
             <span className="text-lime-400 font-semibold tabular-nums shrink-0">{fmt(r.value)}</span>
@@ -184,7 +184,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
                 <span className={`w-6 text-center text-sm tabular-nums ${i < 3 ? 'text-lime-300 font-semibold' : 'text-gray-400'}`}>{i + 1}</span>
                 <Avatar name={w.full_name} size={30} />
                 <div className="min-w-0 flex-1">
-                  <div className="text-white text-sm font-semibold truncate">
+                  <div className="text-white text-sm font-semibold break-words">
                     {w.full_name}
                     {w.current && <span className="ml-1.5 text-[10px] rounded-full bg-amber-300/20 text-amber-200 px-1.5 py-0.5 align-middle">{t('rankings.weeksCurrent')}</span>}
                   </div>
@@ -212,7 +212,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
             <div className="table-wrap">
               <table className="w-full text-sm grid-table">
                 <thead>
-                  <tr className="text-gray-300 text-left bg-navy-900">
+                  <tr className="text-left">
                     <th className="w-12 text-center">#</th>
                     <th>{t('common.name')}</th>
                     {COLUMNS.map((c) => (

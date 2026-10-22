@@ -113,7 +113,7 @@ export default function HomeHub() {
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="min-w-0">
           <p className="text-gray-400 text-sm">{t(`hub.greet_${new Date().getHours() < 11 ? 'morning' : new Date().getHours() < 18 ? 'day' : 'evening'}`)}</p>
-          <h1 className="text-white text-2xl font-bold truncate">{t('hub.hello', { name })}</h1>
+          <h1 className="text-white text-2xl font-bold break-words">{t('hub.hello', { name })}</h1>
         </div>
         <Link href="/p/profile" className="shrink-0" aria-label={t('hub.navProfile')}>
           {data.profile?.avatar ? (
@@ -302,7 +302,7 @@ export default function HomeHub() {
                       <span className="w-14 shrink-0 text-gray-300 text-lg font-bold tabular-nums">{e.start_time ? hhmm(e.start_time) : '—'}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-white font-semibold leading-snug">{e.title}</span>
-                        <span className="block text-gray-400 text-xs truncate">{[e.club_name || t('hub.oneOff'), e.location].filter(Boolean).join(' · ')}</span>
+                        <span className="block text-gray-400 text-xs break-words">{[e.club_name || t('hub.oneOff'), e.location].filter(Boolean).join(' · ')}</span>
                         <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] ${STATUS_TONE[e.status] || 'border-navy-600 text-gray-300'}`}>
                           {t(`player.status_${e.status}`)}
                           {e.ticket_code ? ` · ${t('pp.ticket')}` : ''}

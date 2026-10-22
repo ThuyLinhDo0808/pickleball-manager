@@ -139,7 +139,7 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
           {active.map((m) => (
             <label key={m.id} className="flex items-center gap-2 text-sm text-gray-200 py-1">
               <input type="checkbox" checked={picked.includes(m.id)} onChange={() => togglePlayer(m.id)} />
-              <span className="truncate">{label(m)}</span>
+              <span className="break-words">{label(m)}</span>
             </label>
           ))}
         </div>
@@ -183,7 +183,7 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
               <ul className="flex flex-col gap-1">
                 {info[ti].players.map((p) => (
                   <li key={p.id} className="flex items-center gap-2 text-sm">
-                    <span className="flex-1 truncate text-gray-200">{label(p)}</span>
+                    <span className="flex-1 break-words text-gray-200">{label(p)}</span>
                     <select aria-label={t('league.moveTo')} className="input !py-1 !w-auto text-xs" value={ti} onChange={(e) => move(p.id, Number(e.target.value))}>
                       {teams.map((x, i) => <option key={i} value={i}>{x.name || t('league.teamN', { n: i + 1 })}</option>)}
                       <option value={-1}>{t('league.bench')}</option>
@@ -204,7 +204,7 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
             <ul className="flex flex-col gap-1">
               {unassigned.map((id) => byId.get(id)).filter(Boolean).map((p) => (
                 <li key={p.id} className="flex items-center gap-2 text-sm">
-                  <span className="flex-1 truncate text-gray-300">{label(p)}</span>
+                  <span className="flex-1 break-words text-gray-300">{label(p)}</span>
                   <select className="input !py-1 !w-auto text-xs" value="" onChange={(e) => e.target.value !== '' && move(p.id, Number(e.target.value))}>
                     <option value="">{t('league.addTo')}</option>
                     {teams.map((x, i) => <option key={i} value={i}>{x.name || t('league.teamN', { n: i + 1 })}</option>)}

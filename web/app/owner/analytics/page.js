@@ -81,7 +81,7 @@ function HBars({ items, color = C1, fmt = (v) => v }) {
       {items.map((x) => (
         <li key={x.label} title={x.title || ''}>
           <div className="flex justify-between gap-2 text-xs mb-1">
-            <span className="text-gray-200 truncate">{x.label}</span>
+            <span className="text-gray-200 break-words">{x.label}</span>
             <span className="text-gray-300 tabular-nums shrink-0">{fmt(x.value)}{x.sub ? <span className="text-gray-500"> · {x.sub}</span> : null}</span>
           </div>
           <div className="h-2 rounded-full bg-navy-800 overflow-hidden">

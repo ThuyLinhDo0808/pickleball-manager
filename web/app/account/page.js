@@ -123,7 +123,7 @@ export default function AccountPage() {
               [since || '—', t('acct.statSince')],
             ].map(([v, k]) => (
               <div key={k} className="rounded-lg bg-navy-950/60 border border-navy-700 px-2.5 py-1.5 text-center">
-                <div className="text-white font-bold tabular-nums truncate capitalize">{v}</div>
+                <div className="text-white font-bold tabular-nums break-words capitalize">{v}</div>
                 <div className="text-gray-400 text-[11px]">{k}</div>
               </div>
             ))}
@@ -229,7 +229,7 @@ export default function AccountPage() {
         <SettingsSection id="backup" hidden={tab !== 'backup'} icon="list" tone="violet" title={t('acct.s_backup')} description={t('acct.backupHint')}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-white font-semibold truncate">{club?.name || '—'}</div>
+              <div className="text-white font-semibold break-words">{club?.name || '—'}</div>
               <div className="text-gray-400 text-xs">{t('acct.backupWhat')}</div>
             </div>
             <button className="btn-secondary" onClick={onBackup} disabled={!club || backupBusy}>{t('common.exportExcel')}</button>

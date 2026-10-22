@@ -147,7 +147,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
               <div className="table-wrap">
                 <table className="w-full text-xs sm:text-sm grid-table !min-w-0">
                   <thead>
-                    <tr className="text-gray-300 text-left bg-navy-900">
+                    <tr className="text-left">
                       <th className="w-9 text-center">#</th>
                       <th>{t('common.name')}</th>
                       <th className="text-right">{t('estand.played')}</th>

@@ -787,7 +787,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           <div className="card !p-0 overflow-hidden">
             <div className="px-4 py-3 border-b border-navy-700 bg-navy-900/50">
               <p className="text-gray-400 text-[11px] font-semibold">{t('createx.preview')}</p>
-              <p className="text-white font-semibold truncate mt-0.5">
+              <p className="text-white font-semibold break-words mt-0.5">
                 {KIND_ICON[f.kind] && <UiIcon name={KIND_ICON[f.kind]} className="inline-block w-4 h-4 mr-1 -mt-0.5" />}
                 {f.title || <span className="text-gray-500">{t('createx.untitled')}</span>}
               </p>
@@ -810,7 +810,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                   : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
               </dd>
               <dt className="text-gray-400"><UiIcon name="pin" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
-              <dd className="text-gray-100 truncate">{f.location || '—'}{!meeting && !f.groups_on && Number(f.courts) > 0 ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
+              <dd className="text-gray-100 break-words">{f.location || '—'}{!meeting && !f.groups_on && Number(f.courts) > 0 ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
               {!meeting && !f.groups_on && <dt className="text-gray-400"><UiIcon name="users" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>}
               {!meeting && !f.groups_on && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
               <dt className="text-gray-400"><UiIcon name="money" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>

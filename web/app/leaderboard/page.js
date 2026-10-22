@@ -83,7 +83,7 @@ export default function LeaderboardPage() {
           <div className="table-wrap">
             <table className="w-full text-sm grid-table">
               <thead>
-                <tr className="text-gray-300 text-left bg-navy-900">
+                <tr className="text-left">
                   <th className="w-12 text-center">#</th>
                   <th>{t('common.name')}</th>
                   <th>{t('leaderboard.where')}</th>
