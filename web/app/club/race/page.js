@@ -28,6 +28,18 @@ export default function RacePage() {
   const s = d?.settings;
   const canEdit = !club?.role || ['owner', 'co_admin'].includes(club.role);
 
+  const toggle = async (enabled) => {
+    setBusy('settings');
+    setErr('');
+    try {
+      await api.patch(`/api/clubs/${club.id}/race`, { enabled });
+      await reload();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
   const act = async (v, body) => {
     setBusy(v.id);
     setErr('');
@@ -52,13 +64,17 @@ export default function RacePage() {
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && (
         <div className="flex flex-col gap-5">
-          {/* Settings live in Bảng điều khiển; here only a pointer while the race is off. */}
-          {!s.enabled && (
-            <p className="card text-gray-300 text-sm">
-              {t('race.offHere')}{' '}
-              <Link href="/club/community-settings" className="text-lime-300 underline">{t('nav.commPanel')}</Link>
-            </p>
-          )}
+          {/* Only on / off here; prizes and rules keep their defaults. */}
+          <section className="card flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-white font-semibold">{t('race.title')}</h2>
+              <p className="text-gray-400 text-xs mt-0.5">{t('race.rules', { min: s.min_sessions, day: s.join_by_day })}</p>
+            </div>
+            <label className="flex items-center gap-2 min-h-[44px] text-sm text-white cursor-pointer">
+              <input type="checkbox" checked={s.enabled} disabled={!canEdit || busy === 'settings'} onChange={(e) => toggle(e.target.checked)} />
+              {s.enabled ? t('race.on') : t('race.off')}
+            </label>
+          </section>
 
           {/* Table */}
           <section className="card !p-0 overflow-x-auto">

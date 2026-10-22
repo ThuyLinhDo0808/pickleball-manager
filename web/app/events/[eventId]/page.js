@@ -388,7 +388,7 @@ export default function EventDetailPage() {
               </fieldset>
             )}
             <p className="text-white font-semibold mb-1">{t('ux.addByHand')}</p>
-            <p className="text-gray-400 text-xs mb-3">{t(workspace === 'xeve' ? 'ux.addMemberHintSm' : 'ux.addMemberHint')}</p>
+            <p className="text-gray-400 text-xs mb-3">{t('ux.addMemberHint')}</p>
             <form onSubmit={addParticipant} className="flex flex-col gap-3">
               <div>
                 <label className="text-sm text-gray-300" htmlFor="am-name">{t('ux.fullName')}</label>

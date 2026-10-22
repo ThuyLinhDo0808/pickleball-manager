@@ -3839,8 +3839,7 @@ export const en = {
     communityStats: 'Community numbers',
     howItWorks: 'How this page works',
     fullName: "Full name",
-    addMemberHint: "They get a place in this kèo and are saved to the member list (as a guest) — pick them below next time; their DUPR stays with them.",
-    addMemberHintSm: "They get a place in this kèo only and are not added to the member list. To join the community, send them the link to create an account and ask to join.",
+    addMemberHint: "They get a place in this kèo only and are not saved to the member list. To join the club / community, send them the link to create an account and ask to join.",
     addMemberBtn: "Add to kèo",
     pickSlot: "Pick the time slot / court",
     pickSlotHint: "Everyone you add (new members and people picked from the community) goes into this slot at its fee. A full slot puts them on the waitlist.",
@@ -4203,7 +4202,6 @@ export const en = {
   },
 
   race: {
-    offHere: "The monthly Top race is off. Turn it on and set the prizes in",
     title: 'Monthly Top race',
     tab: 'Top of the month',
     communityOnly: 'The monthly Top race is only available for Communities (Social Manager).',

@@ -3839,8 +3839,7 @@ export const vi = {
     communityStats: 'Số liệu cộng đồng',
     howItWorks: 'Cách dùng trang này',
     fullName: "Họ và tên",
-    addMemberHint: "Người này có chỗ trong kèo và được lưu vào danh sách thành viên (khách) — lần sau chọn lại nhanh ở mục bên dưới, DUPR đi theo người đó.",
-    addMemberHintSm: "Người này chỉ có chỗ trong kèo này, không được thêm vào danh sách thành viên. Muốn vào cộng đồng: gửi link để họ tạo tài khoản và xin gia nhập.",
+    addMemberHint: "Người này chỉ có chỗ trong kèo này, không được lưu vào danh sách thành viên. Muốn vào CLB / cộng đồng: gửi link để họ tạo tài khoản và xin gia nhập.",
     addMemberBtn: "Thêm vào kèo",
     pickSlot: "Chọn khung giờ / sân",
     pickSlotHint: "Người được thêm (cả thành viên mới và người chọn từ cộng đồng) vào khung giờ này, tính phí của khung giờ đó. Khung giờ hết chỗ thì vào danh sách chờ.",
@@ -4203,7 +4202,6 @@ export const vi = {
   },
 
   race: {
-    offHere: "Cuộc đua Top tháng đang tắt. Bật và chỉnh giải thưởng ở",
     title: 'Cuộc đua Top tháng',
     tab: 'Top tháng',
     communityOnly: 'Cuộc đua Top tháng chỉ có ở Cộng đồng (Social Manager).',
