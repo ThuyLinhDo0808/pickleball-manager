@@ -5394,6 +5394,7 @@ export const vi = {
     badge: "Lịch hàng tuần",
   },
   evfin: {
+    courtExtra: "Thuê thêm giờ",
     expense: "Chi phí phát sinh",
     deleteAsk: "Xoá khoản \"{what}\" ({amount})? Bạn có thể ghi lý do (không bắt buộc). Khoản này vẫn được giữ trong lịch sử dưới dạng gạch ngang.",
     linked: "Mọi khoản ở đây đều nằm trong Sổ thu chi của bạn.",

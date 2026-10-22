@@ -326,15 +326,17 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
 
         {/* Kèo with time groups: which group they play in (its fee if not paid yet). */}
         {row && !locked && event.groups?.length > 1 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-gray-400 text-xs mr-1">{t('egroups.group')}</span>
-            {/* One button per court ("Sân 2"), its hours under it. */}
-            {event.groups.map((g, i) => (
-              <button key={g.id} type="button" disabled={busy} aria-pressed={row.group_id === g.id} onClick={() => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/group`, { group_id: g.id }))} className={`${chip} tabular-nums text-left leading-tight ${row.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
-                <span className="block font-semibold">{t('egroups.courtN', { n: g.courts || i + 1 })}</span>
-                <span className="block text-[11px] opacity-80">{g.start_time}–{g.end_time}{g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''}</span>
-              </button>
-            ))}
+          <div>
+            <p className="text-gray-400 text-xs mb-1.5">{t('egroups.group')}</p>
+            {/* One button per court ("Sân 2"), its hours under it — equal cells in a grid. */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {event.groups.map((g, i) => (
+                <button key={g.id} type="button" disabled={busy} aria-pressed={row.group_id === g.id} onClick={() => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/group`, { group_id: g.id }))} className={`min-h-[2.75rem] rounded-xl border px-3 py-2 text-left leading-tight tabular-nums transition-colors disabled:opacity-40 ${row.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                  <span className="block text-sm font-semibold">{t('egroups.courtN', { n: g.courts || i + 1 })}</span>
+                  <span className="block text-xs opacity-80">{g.start_time}–{g.end_time}{g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 border-y border-navy-700 py-3">

@@ -6,7 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { categoryLabel, describeEntry, EVENT_EXPENSE, EVENT_INCOME } from '@/lib/finance';
+import { categoryLabel, describeEntry, EVENT_EXPENSE, EVENT_EXPENSE_SOCIAL, EVENT_INCOME } from '@/lib/finance';
 
 const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
 const today = () => {
@@ -17,16 +17,19 @@ const today = () => {
 // Income is "Thu"; money out on a session is "Chi phí phát sinh".
 // "Thu ngoài": money in besides the players' fees (sponsor, drinks sold…); fees come in by themselves.
 const sideLabel = (ty, t) => (ty === 'expense' ? t('evfin.expense') : t('evfin.incomeOther'));
+// The expense choices and their names: Social Manager kèo show only "Thuê thêm giờ" / "Khác".
+const expenseCats = (social) => (social ? EVENT_EXPENSE_SOCIAL : EVENT_EXPENSE);
+const catName = (c, t, social) => (social && c === 'court' ? t('evfin.courtExtra') : categoryLabel(c, t));
 const notePh = (f, t) => (f.type === 'income' ? t('evfin.incomeNotePh') : f.category === 'other' ? t('fin.otherNotePh') : t('fin.note'));
 
 // Fix an entry. A new amount or type is saved as a corrected entry (the old one is voided,
 // so the ledger keeps its history); category, date and note change in place.
-function EditEntry({ entry, onClose, onSaved }) {
+function EditEntry({ entry, social, onClose, onSaved }) {
   const { t } = useI18n();
   const [f, setF] = useState({ type: entry.type, category: entry.category || 'other', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const cats = f.type === 'income' ? EVENT_INCOME : EVENT_EXPENSE;
+  const cats = f.type === 'income' ? EVENT_INCOME : expenseCats(social);
   const choices = cats.includes(f.category) ? cats : [...cats, f.category];
   async function save(e) {
     e.preventDefault();
@@ -52,7 +55,7 @@ function EditEntry({ entry, onClose, onSaved }) {
         </div>
         <label className="col-span-2 sm:col-span-1 text-xs text-gray-400">{t('fin.category')}
           <select className="input mt-1" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
-            {choices.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
+            {choices.map((c) => <option key={c} value={c}>{catName(c, t, social)}</option>)}
           </select>
         </label>
         <label className="col-span-2 sm:col-span-1 text-xs text-gray-400">{t('fin.amount')}
@@ -85,7 +88,8 @@ export default function EventFinance({ event, finance, onChanged }) {
   const { workspace } = useWorkspace();
   const netLabel = workspace === 'xeve' ? t('social.profit') : t('finance.net');
   const rows = (finance?.transactions || []).filter((r) => !r.is_voided);
-  const cats = f.type === 'income' ? EVENT_INCOME : EVENT_EXPENSE;
+  const social = workspace === 'xeve';
+  const cats = f.type === 'income' ? EVENT_INCOME : expenseCats(social);
 
   async function add(e) {
     e.preventDefault();
@@ -151,7 +155,7 @@ export default function EventFinance({ event, finance, onChanged }) {
           ))}
         </div>
         <select className="input md:col-span-2 h-[42px]" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} aria-label={t('fin.category')}>
-          {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
+          {cats.map((c) => <option key={c} value={c}>{catName(c, t, social)}</option>)}
         </select>
         <input className="input md:col-span-2 h-[42px] text-right tabular-nums no-spin" type="number" inputMode="numeric" min="1" step="1" required placeholder={t('fin.amount')} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
         <input className="input md:col-span-2 h-[42px]" type="date" value={f.occurred_on} onChange={(e) => setF({ ...f, occurred_on: e.target.value })} aria-label={t('fin.date')} />
@@ -183,10 +187,10 @@ export default function EventFinance({ event, finance, onChanged }) {
                   <tr key={r.id}>
                     <td className="text-gray-300 whitespace-nowrap">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</td>
                     <td className="first text-gray-200 whitespace-nowrap">
-                      {categoryLabel(r.category, t)}
+                      {r.event_cost ? categoryLabel(r.category, t) : catName(r.category, t, social)}
                       {(AUTO.has(r.category) || r.event_cost) && <span className="ml-1.5 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
                     </td>
-                    <td className="text-gray-300 !whitespace-normal break-words">{describeEntry(r, t) || '—'}</td>
+                    <td className="text-gray-300 !whitespace-normal break-words">{(social && !r.event_cost && r.type === 'expense' && r.category === 'court' ? ((r.note || '').trim() ? t('fin.d_costNote', { what: t('evfin.courtExtra'), note: r.note.trim() }) : t('fin.d_cost', { what: t('evfin.courtExtra') })) : describeEntry(r, t)) || '—'}</td>
                     <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${r.type === 'income' ? '!text-lime-400' : '!text-orange-300'}`}>
                       {r.type === 'income' ? '+' : '−'}{formatVnd(r.amount)}
                     </td>
@@ -207,7 +211,7 @@ export default function EventFinance({ event, finance, onChanged }) {
           </div>
         )}
       </div>
-      {editing && <EditEntry entry={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onChanged(); }} />}
+      {editing && <EditEntry entry={editing} social={social} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onChanged(); }} />}
     </>
   );
 }

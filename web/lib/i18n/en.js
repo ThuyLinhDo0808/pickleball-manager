@@ -5394,6 +5394,7 @@ export const en = {
     badge: "Weekly schedule",
   },
   evfin: {
+    courtExtra: "Extra court time",
     expense: "Extra costs",
     deleteAsk: "Delete \"{what}\" ({amount})? Add a reason (optional) — it stays in the history, struck out.",
     linked: "Every entry here is also in your ledger.",
