@@ -269,8 +269,8 @@ function ExpiredPlan({ product, owner, until }) {
       <p className="text-gray-300 text-sm mt-2">{t(sm ? 'plan.expiredBodySm' : 'plan.expiredBody', { date: until ? until.split('-').reverse().join('/') : '' })}</p>
       {owner ? (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>{t('plan.renewNow')}</button>
           <Link href="/home" className="btn-secondary">{t('owner.suspendedHome')}</Link>
+          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>{t('plan.renewNow')}</button>
         </div>
       ) : (
         <p className="text-gray-400 text-sm mt-3">{t('plan.expiredAskOwner')}</p>

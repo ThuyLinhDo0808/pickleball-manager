@@ -11,6 +11,7 @@ import Hint from '@/components/ui/Hint';
 
 // Categorical slots validated for the dark surface (CVD-safe): blue, orange, aqua.
 import { DATA as C1, DATA_2 as C2, DATA_3 as C3 } from '@/lib/chartTheme';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 const card = 'rounded-xl border border-navy-700 bg-navy-900/60 p-4';
 const mShort = (m) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 // 1.250.000 -> "1,3tr"; 450.000 -> "450k"
@@ -399,13 +400,7 @@ export default function OwnerAnalyticsPage() {
         </>
       }
     >
-      <div className="flex gap-1 border-b border-navy-800 mb-6 overflow-x-auto" role="tablist">
-        {TABS.map((k) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm ${tab === k ? 'border-amber-300 text-white font-semibold' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
-            {t(`ana.tab_${k}`)}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs value={tab} onChange={setTab} tabs={TABS.map((k) => ({ key: k, label: t(`ana.tab_${k}`) }))} />
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && tab === 'revenue' && <Revenue d={d} />}

@@ -63,14 +63,14 @@ export default function ClaimPage() {
               <p className="mt-4 text-gray-200">{t('mlink.claimAsk', { name: c.member_name })}</p>
               <p className="mt-1 text-xs text-gray-400">{t('mlink.claimHint', { date: localDate(new Date(c.expires_at), 'vi-VN') })}</p>
               {!user ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={`/sign-in?next=${encodeURIComponent(here)}`} className="btn-primary">{t('mlink.signIn')}</Link>
+                <div className="mt-4 flex justify-end flex-wrap gap-2">
                   <Link href={`/sign-in?mode=signUp&next=${encodeURIComponent(here)}`} className="btn-secondary">{t('mlink.signUp')}</Link>
+                  <Link href={`/sign-in?next=${encodeURIComponent(here)}`} className="btn-primary">{t('mlink.signIn')}</Link>
                 </div>
               ) : (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" className="btn-primary" disabled={busy} onClick={claim}>✓ {busy ? t('common.loading') : t('mlink.claimBtn', { name: c.member_name })}</button>
+                <div className="mt-4 flex justify-end flex-wrap gap-2">
                   <Link href="/home" className="btn-secondary">{t('mlink.notMe')}</Link>
+                  <button type="button" className="btn-primary" disabled={busy} onClick={claim}>✓ {busy ? t('common.loading') : t('mlink.claimBtn', { name: c.member_name })}</button>
                 </div>
               )}
               {msg && (

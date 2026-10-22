@@ -6,8 +6,9 @@ import Pager from '@/components/Pager';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 
-const chip = (on) => `rounded-full px-3 py-1 text-sm border ${on ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`;
+const chip = (on) => `rounded-full px-3 py-1 text-sm border ${on ? 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold' : 'border-navy-600 text-gray-300'}`;
 
 // Every club: owner, plan, member counts. Numbers only — no member names or phones.
 function Clubs() {
@@ -103,9 +104,7 @@ export default function OwnerActivityPage() {
   const [tab, setTab] = useState('clubs');
   return (
     <OwnerShell title={t('owner.tabActivity')} description={t('owner.activityHint')}>
-      <div className="flex gap-1.5 mb-4" role="tablist">
-        {['clubs', 'xeve'].map((k) => <button key={k} type="button" role="tab" aria-selected={tab === k} className={chip(tab === k)} onClick={() => setTab(k)}>{t(`owner.act_tab_${k}`)}</button>)}
-      </div>
+      <UnderlineTabs value={tab} onChange={setTab} tabs={['clubs', 'xeve'].map((k) => ({ key: k, label: t(`owner.act_tab_${k}`) }))} />
       {tab === 'clubs' ? <Clubs /> : <Xeve />}
     </OwnerShell>
   );

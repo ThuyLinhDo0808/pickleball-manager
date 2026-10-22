@@ -51,7 +51,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-navy-900 border-b border-navy-700 pt-safe">
-        <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 h-14">
+        <div className="max-w-6xl mx-auto flex items-center gap-3 px-4 h-14">
           <Link href="/home" className="text-lime-400 font-bold min-w-0 flex-1 lg:flex-none">{t('appName')}</Link>
           <nav className="hidden lg:flex gap-1 flex-1 min-w-0">
             {user &&
@@ -69,7 +69,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
           {user && <PlayerBell className="shrink-0" />}
         </div>
       </header>
-      <main className="max-w-5xl mx-auto p-4 pb-tabbar-lg">
+      <main className="max-w-6xl mx-auto p-4 pb-tabbar-lg">
         {back !== false && !NAV.some((n) => n.href === pathname) && <BackButton fallback={typeof back === 'string' ? back : '/home'} />}
         <AnnouncementBanner className="mb-4" />
         {children}

@@ -95,6 +95,7 @@ Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **tra
 ### 3.1. Trang chủ (`/home`) — mọi vai trò ở một chỗ
 Đăng nhập xong (và khi mở địa chỉ gốc `/`) app luôn mở **Trang chủ**. Tài khoản mới đăng nhập lần đầu được đưa qua trang **Chào mừng** (`/onboarding`, xem [8.1](#81-đăng-nhập-đăng-ký-quên-mật-khẩu-sign-in)) trước — trừ khi đang mở link kèo / link mời (vào thẳng kèo). Lời chào gọi bạn bằng **tên đăng nhập** (không bao giờ bằng email; chưa có tên đăng nhập thì dùng họ tên). Trên trang chủ chỉ có **2 vai trò**: **Host** (CLB bạn quản lý) và **Thành viên** (CLB bạn tham gia chơi):
 
+- **Kèo tiếp theo của bạn**: ngay dưới lời chào là một khối trả lời câu hỏi đầu tiên — kèo gần nhất bạn đã đăng ký (tên, thứ / ngày, giờ, CLB · địa điểm) và nút bên phải **Mở vé** (khi đã có vé QR) hoặc **Xem kèo**. Không có kèo sắp tới thì khối này không hiện. Khi đang tải, trang hiện các thanh xám đúng chỗ; tải lỗi thì hiện khối báo lỗi kèm nút **Thử lại**. Trên máy tính, nội dung trang người chơi rộng tối đa 1152px (trước là 1024px).
 - **Tìm kèo / CLB**: không còn ô tìm kiếm trên Trang chủ — dùng mục **Tìm kèo / CLB** trên thanh điều hướng (xem [3.4](#34-tìm-kèo--clb-discover)).
 - **Lịch 3 ngày tới của CLB / cộng đồng của tôi**: mọi buổi trong 3 ngày tới của các CLB / cộng đồng bạn là thành viên — kể cả buổi bạn chưa đăng ký. Mỗi dòng ghi ngày, giờ, tên, địa điểm, số chỗ, và *✓ trạng thái của bạn* nếu đã đăng ký, *Đăng ký →* nếu buổi mở link đăng ký, *Đã đóng đăng ký* nếu đã đóng.
 - **Yêu cầu tạo CLB**: khi bạn có yêu cầu đang chờ duyệt (hoặc vừa được duyệt / từ chối trong 14 ngày) hiện một thẻ trạng thái — bấm để mở trang yêu cầu.
@@ -1269,6 +1270,8 @@ Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với
 - **Chữ nhỏ trên điện thoại** tối thiểu 13px (trước là 12px); chữ nội dung 14px.
 - **Không dùng tím / chàm**: các nhãn, chip trước đây màu tím (vd *Riêng tư*, *Series*, gói Standard ở Owner) chuyển sang màu trung tính; ảnh đại diện CLB dùng bảng màu dịu.
 - **Không cắt chữ "…"**: tên người, tên kèo, tên CLB, tên mục menu, tiêu đề trang… xuống dòng thay vì bị cắt (trừ trang giới thiệu, làm ở đợt sau).
+- **Thanh chọn / tab thống nhất**: các nhóm nút chọn (Tuần / Tháng, Danh sách / Nhánh đấu, phạm vi và kỳ của Bảng xếp hạng chung…) dùng một kiểu: ô đang chọn nền navy đậm chữ trắng (màu xanh chanh dành cho nút chính); các dải tab dạng viên (Tài khoản, lịch của CLB, Owner) cùng một kiểu viền xanh chanh nhạt; trên điện thoại mỗi ô cao tối thiểu 44px. Ở **Tài khoản**, tab *Xoá tài khoản* màu đỏ và đứng tách về cuối hàng.
+- **Nút chính bên phải** ở mọi hàng nút: gửi ảnh chuyển khoản, xác nhận thanh toán, duyệt yêu cầu / chuyển giao (Owner), nhận liên kết thành viên, nhận chỗ… — nút phụ / từ chối bên trái, nút chính bên phải. *Cài đặt cộng đồng*: một thanh **Lưu** dính ở cuối trang (trên thanh tab ở điện thoại), nút Lưu bên phải.
 - **Hộp thoại**: nút phụ bên trái, nút chính bên phải (trên điện thoại xếp dọc, nút chính ở trên); nút đóng **×** đủ lớn để bấm (44px).
 
 ### 8.y. Sau buổi chơi: hết vé, sang đánh giá

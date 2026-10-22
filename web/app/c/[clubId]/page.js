@@ -149,7 +149,7 @@ export default function MemberClubPage() {
                 role="tab"
                 aria-selected={shownPhase === k}
                 onClick={() => setPhase(k)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold ${shownPhase === k ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+                className={`min-h-[44px] sm:min-h-0 rounded-full border px-3.5 py-2 text-sm ${shownPhase === k ? 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400'}`}
               >
                 {k === 'live' && groups.live.length ? <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-400 align-middle animate-pulse" aria-hidden="true" /> : null}
                 {t(`hub.phase_${k}`)} <span className="tabular-nums opacity-70">{groups[k].length}</span>

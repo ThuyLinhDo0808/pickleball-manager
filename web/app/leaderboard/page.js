@@ -6,6 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
+import Segmented from '@/components/ui/Segmented';
 
 const PERIODS = ['month', 'quarter', 'year', 'all'];
 
@@ -46,24 +47,8 @@ export default function LeaderboardPage() {
       <p className="text-gray-500 text-xs mb-4">{t('leaderboard.rule', { n: data?.min_matches || 3 })}</p>
 
       <div className="flex flex-wrap gap-3 mb-3">
-        <div role="tablist" aria-label={t('leaderboard.scope')} className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1">
-          {['all', 'xeve'].map((s) => (
-            <button key={s} role="tab" aria-selected={scope === s} onClick={() => setScope(s)} className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${scope === s ? 'bg-lime-400 text-navy-950' : 'text-gray-400 hover:text-white'}`}>
-              {t(`leaderboard.scope_${s}`)}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 flex-1 min-w-[16rem]">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`rounded-lg py-1.5 text-sm ${period === p ? 'bg-navy-700 text-white font-semibold' : 'text-gray-400 hover:text-white'}`}
-            >
-              {t(`rankings.${p}`)}
-            </button>
-          ))}
-        </div>
+        <Segmented full items={['all', 'xeve']} value={scope} onChange={setScope} label={(k) => t(`leaderboard.scope_${k}`)} />
+        <Segmented full className="flex-1 min-w-[16rem]" items={PERIODS} value={period} onChange={setPeriod} label={(k) => t(`rankings.${k}`)} />
       </div>
 
       <div className="flex items-center justify-between gap-2 mb-4">

@@ -137,8 +137,8 @@ export default function StaffEventsPage() {
                 <div className="grid grid-cols-3 gap-2 mt-3">
                   {e.role === 'coordinator' ? (
                     <>
-                      <Link href={`/staff/${e.id}?tab=checkin`} className="btn-primary !py-2 text-sm text-center">{t('staffView.checkInTab')}</Link>
                       <Link href={`/staff/${e.id}?tab=courts`} className="btn-secondary !py-2 text-sm text-center">{t('staffX.courtsTab')}</Link>
+                      <Link href={`/staff/${e.id}?tab=checkin`} className="btn-primary !py-2 text-sm text-center">{t('staffView.checkInTab')}</Link>
                     </>
                   ) : (
                     <Link href={`/staff/${e.id}?tab=board`} className="col-span-2 btn-secondary !py-2 text-sm text-center">{t('staffX.boardTab')}</Link>

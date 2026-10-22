@@ -13,6 +13,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api, clubImage } from '@/lib/api';
 import { addDays, addMonths, formatDay, hhmm, todayYmd } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
+import Segmented from '@/components/ui/Segmented';
 
 // A club found in the search: its profile, its coming sessions (sign up through the
 // public link when the club opened it), and "ask to join".
@@ -116,13 +117,7 @@ export default function DiscoverClubPage() {
       <section className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h2 className="text-white font-semibold">{t('disc.events')}</h2>
-          <div className="flex rounded-lg border border-navy-600 p-0.5 text-sm" role="tablist">
-            {['week', 'month'].map((v) => (
-              <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`rounded-md px-3 py-1 ${view === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300'}`}>
-                {t(v === 'week' ? 'disc.viewWeek' : 'disc.viewMonth')}
-              </button>
-            ))}
-          </div>
+          <Segmented items={['week', 'month']} value={view} onChange={setView} label={(v) => t(v === 'week' ? 'disc.viewWeek' : 'disc.viewMonth')} />
         </div>
         {view === 'month' && (
           <div className="flex items-center justify-between mb-2">

@@ -18,6 +18,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import Segmented from '@/components/ui/Segmented';
 
 // Badminton events by format/division (Đơn nam, Đôi nữ, Đôi nam nữ...).
 const BADMINTON_CAT = { 'singles/men': 'ms', 'singles/women': 'ws', 'doubles/men': 'md', 'doubles/women': 'wd', 'mixed/open': 'xd' };
@@ -270,13 +271,7 @@ export default function TournamentPage() {
         return (
         <>
           <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="grid grid-cols-2 bg-navy-900 rounded-lg p-1 text-xs" role="tablist">
-              {['list', 'bracket'].map((v) => (
-                <button key={v} type="button" role="tab" aria-selected={koView === v} onClick={() => setKoView(v)} className={`rounded-md px-3 py-1.5 ${koView === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
-                  {t(`bracket.${v}`)}
-                </button>
-              ))}
-            </div>
+            <Segmented items={['list', 'bracket']} value={koView} onChange={setKoView} label={(v) => t(`bracket.${v}`)} />
             {koView === 'bracket' && <span className="md:hidden text-gray-500 text-xs">{t('bracket.swipe')}</span>}
           </div>
 

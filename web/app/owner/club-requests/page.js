@@ -126,8 +126,8 @@ export default function OwnerClubRequestsPage() {
               <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => show(r)}>{t('ownerReq.view')}</button>
               {r.status === 'pending' && (
                 <>
-                  <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === r.id} onClick={() => decide(r, 'approve', r.payment?.status === 'pending')}>{r.payment?.status === 'pending' ? `${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
                   <button type="button" className="btn-secondary !py-1 text-xs text-red-300" disabled={busy === r.id} onClick={() => decide(r, 'reject')}>✕ {t('ownerReq.reject')}</button>
+                  <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === r.id} onClick={() => decide(r, 'approve', r.payment?.status === 'pending')}>{r.payment?.status === 'pending' ? `${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
                 </>
               )}
               {r.club_id && <Link href={`/discover/${r.club_id}`} className="btn-secondary !py-1 text-xs">{t('ownerReq.openClub')}</Link>}
@@ -152,9 +152,9 @@ export default function OwnerClubRequestsPage() {
             <PaymentLine r={open} />
             <p className="text-sm text-gray-200 whitespace-pre-line">{open.description || '—'}</p>
             {open.status === 'pending' && (
-              <div className="flex gap-2">
-                <button type="button" className="btn-primary flex-1" disabled={busy === open.id} onClick={() => decide(open, 'approve', open.payment?.status === 'pending')}>{open.payment?.status === 'pending' ? `${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
+              <div className="flex justify-end gap-2">
                 <button type="button" className="btn-secondary flex-1 text-red-300" disabled={busy === open.id} onClick={() => decide(open, 'reject')}>✕ {t('ownerReq.reject')}</button>
+                <button type="button" className="btn-primary flex-1" disabled={busy === open.id} onClick={() => decide(open, 'approve', open.payment?.status === 'pending')}>{open.payment?.status === 'pending' ? `${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
               </div>
             )}
           </div>

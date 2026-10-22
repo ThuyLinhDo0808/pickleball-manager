@@ -674,6 +674,9 @@ export const vi = {
     hoursMin: '{h} giờ {m} phút',
   },
   hub: {
+    nextUp: "Kèo tiếp theo của bạn",
+    nextOpenTicket: "Mở vé",
+    nextOpen: "Xem kèo",
     communities: "Cộng đồng",
     oneOffKeo: "Kèo lẻ (không thuộc cộng đồng)",
     oneOffKeoHint: "Kèo Xé Vé tạo trước khi có cộng đồng",

@@ -674,6 +674,9 @@ export const en = {
     hoursMin: '{h} h {m} min',
   },
   hub: {
+    nextUp: "Your next game",
+    nextOpenTicket: "Open ticket",
+    nextOpen: "View game",
     communities: "Communities",
     oneOffKeo: "One-off event (no community)",
     oneOffKeoHint: "Xé Vé events made before communities",

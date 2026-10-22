@@ -7,8 +7,9 @@ import Pager from '@/components/Pager';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 
-const chip = (on) => `rounded-full px-3 py-1 text-sm border ${on ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`;
+const chip = (on) => `rounded-full px-3 py-1 text-sm border ${on ? 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold' : 'border-navy-600 text-gray-300'}`;
 
 const KIND_CHIP = {
   community: 'bg-amber-300/15 text-amber-200 ring-amber-300/30',
@@ -76,13 +77,7 @@ export default function OwnerClubsPage() {
   const tot = data?.totals;
   return (
     <OwnerShell title={t('owner.tabClubs')} description={t('owner.clubsHint')}>
-      <div className="flex flex-wrap gap-1.5 mb-2" role="tablist">
-        {['all', 'club', 'community'].map((k) => (
-          <button key={k} type="button" role="tab" aria-selected={kind === k} className={chip(kind === k)} onClick={() => { setKind(k); setPage(1); }}>
-            {t(`owner.clubsKind_${k}`)}{tot ? <span className="ml-1 opacity-70 tabular-nums">{tot[k]}</span> : null}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs value={kind} onChange={(k) => { setKind(k); setPage(1); }} tabs={['all', 'club', 'community'].map((k) => ({ key: k, label: t(`owner.clubsKind_${k}`), count: tot ? tot[k] : null }))} />
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
         <input className="input text-sm sm:max-w-sm" type="search" placeholder={t('owner.searchClubs')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('owner.searchClubs')} />
         <div className="flex flex-wrap gap-1.5">

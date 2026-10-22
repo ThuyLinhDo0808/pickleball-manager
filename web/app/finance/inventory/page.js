@@ -308,9 +308,9 @@ export default function InventoryPage() {
             <Durability item={i} />
             <BallTable item={i} onEdit={(row) => setSession({ item: i, row })} />
 
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-primary text-sm" onClick={() => setSession({ item: i })}>+ {t('inventory.logSession')}</button>
+            <div className="flex justify-end flex-wrap gap-2">
               <button className="btn-secondary text-sm" onClick={() => setMove({ item: i, kind: 'purchase' })}>+ {t('inventory.purchase')}</button>
+              <button className="btn-primary text-sm" onClick={() => setSession({ item: i })}>+ {t('inventory.logSession')}</button>
               <button className="btn-secondary text-sm" onClick={() => setMove({ item: i, kind: 'adjust' })}>{t('inventory.adjust')}</button>
               <button className="text-gray-400 text-sm underline ml-auto" onClick={() => setOpenHistory(openHistory === i.id ? null : i.id)}>{t('inventory.history')}</button>
             </div>

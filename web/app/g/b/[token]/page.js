@@ -165,9 +165,9 @@ export default function QuickBookingPage() {
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={preview} alt="" className="max-h-72 w-auto self-center rounded-lg border border-navy-600" />
-                <div className="flex gap-2">
-                  <button type="button" className="btn-primary flex-1 py-3" disabled={busy} onClick={send}>{busy ? '…' : t('signup.sendProof')}</button>
+                <div className="flex justify-end gap-2">
                   <button type="button" className="btn-secondary" onClick={() => file.current?.click()}>{t('signup.otherImage')}</button>
+                  <button type="button" className="btn-primary flex-1 py-3" disabled={busy} onClick={send}>{busy ? '…' : t('signup.sendProof')}</button>
                 </div>
               </>
             ) : (

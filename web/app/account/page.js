@@ -139,7 +139,7 @@ export default function AccountPage() {
             role="tab"
             aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${tab === id ? (id === 'danger' ? 'border-red-400 bg-red-500/15 text-red-200 font-semibold' : 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold') : id === 'danger' ? 'border-red-500/40 text-red-300 hover:bg-red-500/10' : 'border-navy-600 text-gray-300 hover:border-lime-400 hover:text-lime-300'}`}
+            className={`min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm whitespace-nowrap ${tab === id ? (id === 'danger' ? 'border-bad-line bg-bad-bg text-bad-fg font-semibold' : 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold') : id === 'danger' ? 'border-bad-line text-bad-fg hover:bg-bad-bg sm:ml-auto' : 'border-navy-600 text-gray-200 hover:border-lime-400'}`}
           >
             <UiIcon name={icon} className="w-4 h-4 shrink-0" /> {id === 'login' ? t('auth.detailsTitle') : t(`acct.s_${id}`)}
           </a>
