@@ -44,7 +44,7 @@ export function PassMyTicket({ reg, waitlistCount, onChanged, onCancel }) {
     const cantGo = () => (waitlistCount ? setChoosing(true) : onCancel?.());
     return (
       <>
-        <button type="button" className="btn-secondary" onClick={cantGo}>🙋 {t('pass.cantGoBtn')}</button>
+        <button type="button" className="btn-secondary" onClick={cantGo}>{t('pass.cantGoBtn')}</button>
         <Modal open={choosing} title={t('pass.cantGoBtn')} onClose={() => setChoosing(false)}>
           <div className="flex flex-col gap-2">
             <button
@@ -53,12 +53,12 @@ export function PassMyTicket({ reg, waitlistCount, onChanged, onCancel }) {
               disabled={busy}
               onClick={() => window.confirm(t('pass.askConfirm')) && run(() => api.post(`/api/player/participations/${reg.id}/pass`, {})).then(() => setChoosing(false))}
             >
-              <span className="block text-white font-semibold">🎟 {t('pass.optPass')}</span>
+              <span className="block text-white font-semibold">{t('pass.optPass')}</span>
               <span className="block text-gray-300 text-sm mt-0.5">{t('pass.optPassHint', { n: waitlistCount })}</span>
             </button>
             {onCancel && (
               <button type="button" className="rounded-xl border border-navy-600 px-3 py-3 text-left hover:border-red-400/60" onClick={() => { setChoosing(false); onCancel(); }}>
-                <span className="block text-white font-semibold">✖️ {t('pass.optCancel')}</span>
+                <span className="block text-white font-semibold">{t('pass.optCancel')}</span>
                 <span className="block text-gray-300 text-sm mt-0.5">{t('pass.optCancelHint')}</span>
               </button>
             )}
@@ -71,12 +71,12 @@ export function PassMyTicket({ reg, waitlistCount, onChanged, onCancel }) {
 
   return (
     <div className="w-full rounded-xl border border-sky-400/50 bg-sky-400/5 px-3 py-3 text-left">
-      <p className="text-sky-100 font-semibold">🎟 {t(`pass.st_${pass.status}`)}</p>
+      <p className="text-sky-100 font-semibold">{t(`pass.st_${pass.status}`)}</p>
       {pass.status === 'open' && <p className="text-gray-300 text-sm mt-1">{t('pass.openHint')}</p>}
       {['matched', 'proof_submitted'].includes(pass.status) && (
         <p className="text-gray-200 text-sm mt-1">{t('pass.matchedHint', { name: pass.to_name || '—', amount: formatVnd(pass.amount) })}</p>
       )}
-      {pass.host_note && <p className="text-red-200 text-sm mt-1">⚠️ {pass.host_note}</p>}
+      {pass.host_note && <p className="text-red-200 text-sm mt-1">{pass.host_note}</p>}
       {pass.status === 'matched' && (
         <div className="flex flex-col gap-2 mt-3">
           <input ref={file} type="file" accept="image/*" className="hidden" onChange={async (e) => {
@@ -88,7 +88,7 @@ export function PassMyTicket({ reg, waitlistCount, onChanged, onCancel }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="" className="max-h-60 w-auto self-center rounded-lg border border-navy-600" />
           ) : null}
-          <button type="button" className="btn-secondary" onClick={() => file.current?.click()}>📎 {preview ? t('signup.otherImage') : t('pass.uploadProof')}</button>
+          <button type="button" className="btn-secondary" onClick={() => file.current?.click()}>{preview ? t('signup.otherImage') : t('pass.uploadProof')}</button>
           <label className="flex items-start gap-2 text-sm text-gray-200">
             <input type="checkbox" className="mt-1" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
             <span>{t('pass.terms', { amount: formatVnd(pass.amount) })}</span>
@@ -147,7 +147,7 @@ export function HostTicketPasses({ event, onChanged }) {
 
   return (
     <div className="card mb-4 border-sky-400/40">
-      <h3 className="text-sky-200 font-semibold mb-1">🎟 {t('pass.hostTitle')} ({live.length}) <Hint inline text={t('pass.hostHint')} /></h3>
+      <h3 className="text-sky-200 font-semibold mb-1">{t('pass.hostTitle')} ({live.length}) <Hint inline text={t('pass.hostHint')} /></h3>
       <ul className="divide-y divide-navy-700">
         {live.map((x) => (
           <li key={x.id} className="py-3 flex flex-col gap-2 text-sm">

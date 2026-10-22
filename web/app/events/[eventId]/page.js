@@ -265,22 +265,22 @@ export default function EventDetailPage() {
       <div className="mb-4">
         <h1 className="text-white text-2xl font-bold leading-tight">{event.title}</h1>
         <p className="text-gray-300 text-base mt-1">
-          📅 {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
+          {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
           {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`}
-          {event.court_labels && !(event.groups?.length > 1) && ` · 🏟 ${t('egroups.courtsShort', { list: event.court_labels })}`}
+          {event.court_labels && !(event.groups?.length > 1) && ` · ${t('egroups.courtsShort', { list: event.court_labels })}`}
         </p>
         {/* Kèo with time groups: each group's hours, fee per slot, places and courts. */}
         {event.groups?.length > 1 && (
           <p className="text-gray-300 text-sm mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
             {event.groups.map((g, gi) => (
-              <span key={g.id} className="tabular-nums">🏟 {t('egroups.courtN', { n: g.courts || gi + 1 })}{g.play_format ? ` (${t(`fmt.${g.play_format}`)})` : ''} · {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}</span>
+              <span key={g.id} className="tabular-nums">{t('egroups.courtN', { n: g.courts || gi + 1 })}{g.play_format ? ` (${t(`fmt.${g.play_format}`)})` : ''} · {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}</span>
             ))}
           </p>
         )}
         {(event.location || event.map_url || event.club_map_url) && <div className="mt-0.5"><MapLink location={event.location} mapUrl={event.map_url || event.club_map_url} /></div>}
         {event.members_only && (
           <p className="text-violet-200 text-sm mt-0.5">
-            🔒 {event.public_from && Date.parse(event.public_from) > Date.now() ? t('mfirst.badgeUntil', { at: new Date(event.public_from).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) }) : event.public_from ? t('mfirst.nowPublic') : t('mfirst.badge')}
+            {event.public_from && Date.parse(event.public_from) > Date.now() ? t('mfirst.badgeUntil', { at: new Date(event.public_from).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) }) : event.public_from ? t('mfirst.nowPublic') : t('mfirst.badge')}
           </p>
         )}
         {(event.play_format || event.services || event.series_id) && (

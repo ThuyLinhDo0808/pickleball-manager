@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Segmented from '@/components/ui/Segmented';
 import ClubAvatar from '@/components/ClubAvatar';
+import UiIcon from '@/components/ui/UiIcon';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { formatDay, hhmm, todayYmd } from '@/lib/dates';
@@ -55,7 +56,7 @@ export default function HomeFind({ eventsOnly = false }) {
 
   return (
     <section className="card !p-3 mb-4">
-      {!eventsOnly && <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? `🎟 ${t('findx.tabEvents')}` : `🏟 ${t('findx.tabClubs')}`)} className="mb-3 w-full" />}
+      {!eventsOnly && <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? t('findx.tabEvents') : t('findx.tabClubs'))} className="mb-3 w-full" />}
       {tab === 'clubs' && !eventsOnly ? (
         <form
           onSubmit={(e) => { e.preventDefault(); router.push(`/discover${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`); }}
@@ -63,7 +64,7 @@ export default function HomeFind({ eventsOnly = false }) {
           role="search"
         >
           <input className="input !py-2 flex-1 min-w-0" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('disc.homePh')} aria-label={t('disc.homeTitle')} />
-          <button className="btn-primary !py-2 shrink-0">🔍 {t('disc.search')}</button>
+          <button className="btn-primary !py-2 shrink-0 gap-1.5"><UiIcon name="search" className="w-4 h-4" />{t('disc.search')}</button>
         </form>
       ) : (
         <>
@@ -73,7 +74,7 @@ export default function HomeFind({ eventsOnly = false }) {
               {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
             <input className="input !py-2 text-sm min-w-0" value={place} onChange={(e) => setPlace(e.target.value)} placeholder={t('findx.placePh')} aria-label={t('findx.placePh')} />
-            <button className="btn-primary !py-2 justify-self-end" disabled={busy}>🔍 {t('disc.search')}</button>
+            <button className="btn-primary !py-2 justify-self-end gap-1.5" disabled={busy}><UiIcon name="search" className="w-4 h-4" />{t('disc.search')}</button>
           </form>
           <p className="text-gray-500 text-xs mt-2">{t('findx.hint')}</p>
           {error && <p className="text-red-300 text-sm mt-2">{error}</p>}

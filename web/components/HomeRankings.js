@@ -6,7 +6,6 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-const MEDALS = ['🥇', '🥈', '🥉'];
 // Level groups (same bands as the Top tháng race).
 const BANDS = {
   pickleball: [
@@ -55,20 +54,20 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
   const placed = rows.filter((r) => r.place != null).length;
   const mine = rows.find(isMe);
   const scopeLabel = club ? (club.kind === 'community' ? t('homeRank.community') : t('homeRank.club')) : t('homeRank.xeveAll');
-  const chip = (on) => `rounded-full border px-3 py-1 text-xs font-semibold ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`;
-  const small = (on) => `rounded-md px-2 py-0.5 text-[11px] ${on ? 'bg-navy-600 text-white' : 'text-gray-400 hover:text-gray-200'}`;
+  const chip = (on) => `inline-flex items-center min-h-[2.75rem] sm:min-h-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`;
+  const small = (on) => `rounded-md px-2.5 py-2 sm:px-2 sm:py-0.5 text-xs sm:text-[11px] transition-colors ${on ? 'bg-navy-600 text-white' : 'text-gray-400 hover:text-gray-200'}`;
 
   return (
     <section className="mb-6" aria-labelledby="home-rank-title">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <h2 id="home-rank-title" className={showTitle ? 'text-white font-semibold' : 'sr-only'}>🏆 {t('homeRank.title')}</h2>
+        <h2 id="home-rank-title" className={showTitle ? 'text-white font-semibold' : 'sr-only'}>{t('homeRank.title')}</h2>
         {club && <Link href={`/c/${club.club_id}`} className="text-lime-400 text-xs hover:underline">{t('homeRank.full')} →</Link>}
       </div>
       <div className="flex flex-wrap gap-1.5 mb-2" role="tablist" aria-label={t('homeRank.title')}>
-        <button type="button" role="tab" aria-selected={pick === 'xeve'} onClick={() => setPick('xeve')} className={chip(pick === 'xeve')}>🌐 {t('homeRank.xeveTab')}</button>
+        <button type="button" role="tab" aria-selected={pick === 'xeve'} onClick={() => setPick('xeve')} className={chip(pick === 'xeve')}>{t('homeRank.xeveTab')}</button>
         {clubs.map((c) => (
           <button key={c.club_id} type="button" role="tab" aria-selected={c.club_id === pick} onClick={() => setPick(c.club_id)} className={chip(c.club_id === pick)}>
-            {c.kind === 'community' ? '🎟 ' : '🏠 '}{c.name}
+            {c.name}
           </button>
         ))}
       </div>
@@ -87,7 +86,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
           </span>
         </div>
         {loading && !data && <p className="p-4 text-gray-400 text-sm">{t('common.loading')}</p>}
-        {error?.status === 402 && <p className="p-4 text-gray-400 text-sm">💎 {t('plan.rankingsOff')}</p>}
+        {error?.status === 402 && <p className="p-4 text-gray-400 text-sm">{t('plan.rankingsOff')}</p>}
         {error && error.status !== 402 && <p className="p-4 text-red-300 text-sm">{error.message}</p>}
         {data && (
           <>
@@ -114,7 +113,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
               <ol className="divide-y divide-navy-700">
                 {rows.map((r) => (
                   <li key={keyOf(r)} className={`flex items-center gap-3 px-4 py-2 text-sm ${isMe(r) ? 'bg-lime-400/10' : ''} ${r.place == null ? 'opacity-60' : ''}`}>
-                    <span className="w-7 text-center text-gray-400 tabular-nums">{r.place == null ? '—' : r.place <= 3 ? MEDALS[r.place - 1] : r.place}</span>
+                    <span className={`w-7 text-center tabular-nums ${r.place != null && r.place <= 3 ? 'text-lime-300 font-bold' : 'text-gray-400'}`}>{r.place == null ? '—' : r.place}</span>
                     <span className="min-w-0 flex-1 break-words text-gray-100">
                       {r.full_name}
                       {isMe(r) && <span className="ml-1.5 text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import Segmented from '@/components/ui/Segmented';
+import UiIcon from '@/components/ui/UiIcon';
 import { api } from '@/lib/api';
 import { eventStandings } from '@/lib/eventStandings';
 
@@ -70,26 +71,26 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
 
   return (
     <section className="card mb-4" aria-label={t('elive.title')}>
-      <h2 className="text-white font-semibold mb-1">📅 {t('elive.title')}</h2>
+      <h2 className="text-white font-semibold mb-1 flex items-center gap-2"><UiIcon name="calendar" className="w-4 h-4 text-gray-400" />{t('elive.title')}</h2>
       {groups.length > 0 && data.me && (
-        <p className="text-lime-300 text-sm mb-2">🏟 {t('elive.myCourt', { court: courtName(groups, data.me.group_id) })}</p>
+        <p className="text-lime-300 text-sm mb-2 flex items-center gap-2"><UiIcon name="court" className="w-4 h-4" />{t('elive.myCourt', { court: courtName(groups, data.me.group_id) })}</p>
       )}
-      {toast && <p role="status" className="mb-2 rounded-lg border border-amber-300/60 bg-amber-300/10 px-3 py-2 text-amber-100 text-sm">🔔 {toast}</p>}
-      <Segmented full items={['players', 'matches']} value={tab} onChange={setTab} label={(k) => (k === 'players' ? `👥 ${t('elive.tabPlayers')}` : `🏓 ${t('elive.tabMatches')} (${results.length})`)} className="mb-3 w-full" />
+      {toast && <p role="status" className="mb-2 rounded-lg border border-amber-300/60 bg-amber-300/10 px-3 py-2 text-amber-100 text-sm flex items-start gap-2"><UiIcon name="bell" className="w-4 h-4 mt-0.5" /><span>{toast}</span></p>}
+      <Segmented full items={['players', 'matches']} value={tab} onChange={setTab} label={(k) => (k === 'players' ? t('elive.tabPlayers') : `${t('elive.tabMatches')} (${results.length})`)} className="mb-3 w-full" />
 
       {tab === 'players' && (
         <div className="flex flex-col gap-3">
           {data.moves?.length > 0 && (
             <ul className="flex flex-col gap-1 text-xs text-amber-100">
               {data.moves.slice(0, 5).map((mv) => (
-                <li key={`${mv.id}${mv.at}`} className="rounded-md bg-amber-300/10 px-2 py-1">↪ {mv.me ? t('elive.movedMe', { court: courtName(groups, mv.to) }) : t('elive.moved', { name: mv.full_name, court: courtName(groups, mv.to) })}</li>
+                <li key={`${mv.id}${mv.at}`} className="rounded-md bg-amber-300/10 px-2 py-1 flex items-start gap-1.5"><UiIcon name="move" className="w-3.5 h-3.5 mt-px" />{mv.me ? t('elive.movedMe', { court: courtName(groups, mv.to) }) : t('elive.moved', { name: mv.full_name, court: courtName(groups, mv.to) })}</li>
               ))}
             </ul>
           )}
           {boards.map((b) => (
             <div key={b.key} className={`rounded-xl border p-2.5 ${b.people.some((p) => p.id === myId) ? 'border-lime-400/60' : 'border-navy-700'}`}>
               <p className="text-white text-sm font-semibold mb-2">
-                🏟 {b.title}
+                {b.title}
                 {b.sub && <span className="text-gray-400 font-normal"> · {b.sub}</span>}
                 {b.slots ? <span className="text-gray-400 font-normal tabular-nums"> · {b.people.length}/{b.slots}</span> : null}
               </p>
@@ -99,10 +100,10 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                 <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {b.people.map((p) => (
                     <li key={p.id} className={`rounded-lg px-2 py-2 text-center ${p.id === myId ? 'bg-lime-400/15 ring-1 ring-lime-400/60' : 'bg-navy-900'}`}>
-                      <span className="mx-auto mb-1 flex h-9 w-9 items-center justify-center rounded-full bg-navy-700 text-lime-300 font-bold">{String(p.full_name || '?').slice(0, 1).toUpperCase()}</span>
+                      <span className="mx-auto mb-1 flex h-9 w-9 items-center justify-center rounded-full bg-navy-700 text-lime-300 font-bold">{String(p.full_name || '?').trim().split(/\s+/).pop().slice(0, 1).toUpperCase()}</span>
                       <span className="block text-white text-xs font-semibold break-words">{p.full_name}{p.id === myId ? ` (${t('elive.you')})` : ''}</span>
                       <span className="block text-gray-400 text-[11px]">
-                        {p.gender ? `${p.gender === 'male' ? '♂' : '♀'} ` : ''}
+                        {p.gender ? `${t(`members.${p.gender}`)} · ` : ''}
                         {sport === 'pickleball' ? (p.dupr != null ? `DUPR ${Number(p.dupr).toFixed(2)}` : 'DUPR NR') : ''}
                       </span>
                     </li>
@@ -117,7 +118,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
       {tab === 'matches' && (
         <div className="flex flex-col gap-4">
           <div>
-            <h3 className="text-white text-sm font-semibold mb-1">📋 {t('elive.results')}</h3>
+            <h3 className="text-white text-sm font-semibold mb-1">{t('elive.results')}</h3>
             {results.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('elive.noResults')}</p>
             ) : (
@@ -126,7 +127,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                   const w = m.team1_score > m.team2_score ? 1 : 2;
                   return (
                     <li key={m.id} className="grid grid-cols-[1.5rem_1fr_auto_1fr] items-center gap-2 rounded-lg bg-navy-900 px-2 py-1.5 text-sm">
-                      <span className="text-gray-500 text-xs tabular-nums">{m.is_challenge ? '⚔️' : i + 1}</span>
+                      <span className="text-gray-500 text-xs tabular-nums">{m.is_challenge ? <UiIcon name="swords" className="w-3.5 h-3.5 text-violet-300" /> : i + 1}</span>
                       <span className={`text-right break-words ${w === 1 ? 'text-lime-200 font-semibold' : 'text-gray-300'}`}>{teamNames(m, 1)}</span>
                       <span className="text-white font-bold tabular-nums">{m.team1_score} – {m.team2_score}</span>
                       <span className={`break-words ${w === 2 ? 'text-lime-200 font-semibold' : 'text-gray-300'}`}>{teamNames(m, 2)}</span>
@@ -138,7 +139,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
           </div>
 
           <div>
-            <h3 className="text-white text-sm font-semibold mb-1">🏅 {t('elive.standings')}</h3>
+            <h3 className="text-white text-sm font-semibold mb-1">{t('elive.standings')}</h3>
             <p className="text-gray-500 text-xs mb-1">{t('elive.standingsHint')}</p>
             {rows.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('estand.none')}</p>
@@ -159,7 +160,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                   <tbody>
                     {rows.map((r) => (
                       <tr key={r.id} className={r.id === myId ? 'bg-lime-400/10' : ''}>
-                        <td className="text-center font-bold">{r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank}</td>
+                        <td className={`text-center font-bold tabular-nums ${r.rank <= 3 ? 'text-lime-300' : 'text-gray-400'}`}>{r.rank}</td>
                         <td className="text-white !whitespace-normal">{r.name}</td>
                         <td className="text-right tabular-nums">{r.played}</td>
                         <td className="text-right tabular-nums text-lime-300">{r.won}</td>
@@ -175,7 +176,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
           </div>
 
           <div className="rounded-xl border border-violet-400/60 bg-violet-400/10 p-2.5">
-            <h3 className="text-violet-100 text-sm font-semibold mb-1">⚔️ {t('elive.challenges')}</h3>
+            <h3 className="text-violet-100 text-sm font-semibold mb-1 flex items-center gap-2"><UiIcon name="swords" className="w-4 h-4" />{t('elive.challenges')}</h3>
             {challenges.length === 0 ? (
               <p className="text-gray-300 text-sm">{t('elive.noChallenges')}</p>
             ) : (
@@ -185,7 +186,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                     <span className="text-white">{teamNames(m, 1)}</span>
                     <span className="text-violet-200 font-bold tabular-nums"> {scored(m) ? `${m.team1_score} – ${m.team2_score}` : 'VS'} </span>
                     <span className="text-white">{teamNames(m, 2)}</span>
-                    {m.challenge_reward && <span className="block text-xs text-amber-200">🎁 {m.challenge_reward}</span>}
+                    {m.challenge_reward && <span className="mt-0.5 flex items-center gap-1 text-xs text-amber-200"><UiIcon name="gift" className="w-3.5 h-3.5" />{m.challenge_reward}</span>}
                     {!scored(m) && <span className="block text-xs text-gray-400">{t('elive.challengeOpen')}</span>}
                   </li>
                 ))}

@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
 import ClubAvatar from '@/components/ClubAvatar';
 import Segmented from '@/components/ui/Segmented';
+import UiIcon from '@/components/ui/UiIcon';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -133,7 +134,7 @@ export default function HomeHub() {
 
       {cr && (cr.status === 'pending' || (cr.status !== 'cancelled' && cr.decided_at && Date.now() - Date.parse(cr.decided_at) < 14 * 86400000)) && (
         <Link href="/club-request" className={`card block mb-4 text-sm ${cr.status === 'approved' ? 'border-lime-400/50' : cr.status === 'rejected' ? 'border-red-400/50' : 'border-amber-300/50'}`}>
-          <span className="font-semibold text-white">{cr.kind === 'community' ? '🎟' : '🏟'} {cr.name}</span>
+          <span className="font-semibold text-white">{cr.name}</span>
           <span className="text-gray-300"> · {t(`creq.status_${cr.status}`)}</span>
           <span className="block text-gray-400 text-xs mt-0.5">{t(cr.kind === 'community' && ['pending', 'approved'].includes(cr.status) ? `creq.homeHintCommunity_${cr.status}` : `creq.homeHint_${cr.status}`)}</span>
         </Link>
@@ -141,7 +142,7 @@ export default function HomeHub() {
 
       {data.surveys_due?.length > 0 && (
         <Link href={`/s/${data.surveys_due[0].token}`} className="card block mb-4 border-lime-400/40 text-sm">
-          <span className="text-lime-300 font-semibold">🙏 {t('survey.portalTitle')}</span>
+          <span className="text-lime-300 font-semibold">{t('survey.portalTitle')}</span>
           <span className="text-gray-300"> · {data.surveys_due[0].title}</span>
           <span className="text-lime-400 ml-1">→</span>
         </Link>
@@ -160,7 +161,7 @@ export default function HomeHub() {
               onClick={() => manageClub(c.club_id)}
               avatar={<ClubAvatar id={c.club_id} name={c.name} sport={c.sport} size={36} />}
               label={c.name}
-              badge={`${c.kind === 'community' ? '🎟 ' : ''}${t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}`}
+              badge={`${t({ owner: 'hub.roleOwner', finance: 'hub.roleFinance', operator: 'hub.roleOperator' }[c.role] || 'hub.roleCoAdmin')}`}
               badgeTone={ROLE_TONE[c.role]}
             />
           ))}
@@ -189,7 +190,7 @@ export default function HomeHub() {
         )}
         {isStaff && (
           <button type="button" onClick={() => space('staff')} className="mt-3 w-full card !py-3 flex items-center gap-3 text-left text-sm hover:border-orange-400/60">
-            <span className="text-xl" aria-hidden="true">🦺</span>
+            <span className="text-gray-400"><UiIcon name="shield" className="w-5 h-5" /></span>
             <span className="flex-1 text-gray-200">{t('hub.staffCard')}</span>
             <span className="text-lime-400">→</span>
           </button>
@@ -209,7 +210,7 @@ export default function HomeHub() {
                   <span className="block text-gray-400 text-xs">
                     {c.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}
                     {c.current_period ? ` · ${c.current_period}` : ''}
-                    {c.account_verified === false && <span className="text-yellow-300"> · ⏳ {t('verify.pendingPlayer')}</span>}
+                    {c.account_verified === false && <span className="text-yellow-300"> · {t('verify.pendingPlayer')}</span>}
                   </span>
                 </span>
                 <span className="text-right shrink-0">
@@ -283,7 +284,7 @@ export default function HomeHub() {
         </div>
         {days.length === 0 && (
           <div className="card text-center py-8">
-            <div className="text-4xl mb-2" aria-hidden="true">📅</div>
+            <div className="mb-2 flex justify-center text-gray-500"><UiIcon name="calendar" className="w-8 h-8" /></div>
             <p className="text-gray-300 text-sm">{t('hub.noUpcoming')}</p>
             {member.length > 0 && <Hint text={t('hub.noUpcomingHint')} className="mt-1" />}
           </div>
@@ -304,12 +305,12 @@ export default function HomeHub() {
                         <span className="block text-gray-400 text-xs truncate">{[e.club_name || t('hub.oneOff'), e.location].filter(Boolean).join(' · ')}</span>
                         <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] ${STATUS_TONE[e.status] || 'border-navy-600 text-gray-300'}`}>
                           {t(`player.status_${e.status}`)}
-                          {e.ticket_code ? ` · 🎟 ${t('pp.ticket')}` : ''}
+                          {e.ticket_code ? ` · ${t('pp.ticket')}` : ''}
                         </span>
                       </span>
                       <span className="flex flex-col items-end gap-1.5 shrink-0">
                         {e.slots ? <span className="rounded-full bg-navy-700 px-2 py-0.5 text-xs text-gray-200 tabular-nums">{e.main_count}/{e.slots}</span> : null}
-                        {e.club_id ? <ClubAvatar id={e.club_id} name={e.club_name} size={30} /> : <ClubAvatar icon="🎟" size={30} />}
+                        {e.club_id ? <ClubAvatar id={e.club_id} name={e.club_name} size={30} /> : <ClubAvatar icon={<UiIcon name="ticket" className="w-4 h-4" />} size={30} />}
                       </span>
                     </Link>
                   </li>

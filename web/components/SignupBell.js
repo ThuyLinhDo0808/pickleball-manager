@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 const SEEN_KEY = 'pb_signups_seen';
 const readSeen = () => {
@@ -54,12 +55,12 @@ export default function SignupBell({ className = '' }) {
   }
   const KINDS = ['pass_open', 'pass_proof', 'proof_sent', 'cancelled', 'join'];
   const state = (r) => (KINDS.includes(r.status) ? r.status : r.status === 'requested' ? 'requested' : r.status === 'pending' ? (r.payment_status === 'proof_submitted' ? 'proof' : 'pay') : r.status === 'waitlisted' ? 'waitlisted' : 'registered');
-  const ICON = { requested: '🙋', pay: '💳', proof: '🧾', proof_sent: '🧾', waitlisted: '⏳', registered: '✅', pass_open: '🎟', pass_proof: '🎟', cancelled: '✖️', join: '👋' };
+  const ICON = { requested: 'hourglass', pay: 'card', proof: 'list', proof_sent: 'list', waitlisted: 'hourglass', registered: 'checkCircle', pass_open: 'ticket', pass_proof: 'ticket', cancelled: 'x', join: 'userPlus' };
 
   return (
     <div ref={box} className={`relative ${className}`}>
-      <button type="button" onClick={toggle} aria-label={t('bell.title')} title={t('bell.title')} className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-navy-800 text-xl hover:bg-navy-700">
-        🔔
+      <button type="button" onClick={toggle} aria-label={t('bell.title')} title={t('bell.title')} className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-navy-800 text-gray-200 hover:bg-navy-700 transition-colors">
+        <UiIcon name="bell" className="w-5 h-5" />
         {fresh > 0 && <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">{fresh > 9 ? '9+' : fresh}</span>}
       </button>
       {open && (
@@ -71,7 +72,7 @@ export default function SignupBell({ className = '' }) {
               <li key={r.id}>
                 <Link href={r.href || `/events/${r.event_id}`} onClick={() => setOpen(false)} className="flex gap-2.5 px-4 py-3 hover:bg-navy-800">
                   <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${!seen || r.joined_at > seen ? 'bg-red-500' : 'bg-transparent'}`} aria-hidden />
-                  <span className="shrink-0 text-base leading-5" aria-hidden>{ICON[state(r)]}</span>
+                  <span className="shrink-0 mt-0.5 text-gray-400"><UiIcon className="w-4 h-4" name={ICON[state(r)]} /></span>
                   <span className="min-w-0">
                     <span className="block text-white text-sm">
                       <b>{r.full_name}</b> · {t(`bell.st_${state(r)}`)}

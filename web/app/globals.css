@@ -335,3 +335,9 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   outline: 2px solid #B6F03B;
   outline-offset: 2px;
 }
+
+/* Vietnamese sentence case: "Hôm nay", "Tháng 10 năm 2026" — only the first letter goes up
+   (Tailwind's capitalize would give "Hôm Nay", "Tháng 10 Năm 2026"). */
+.capitalize { text-transform: none; }
+.capitalize::first-letter { text-transform: uppercase; }
+span.capitalize:not(.block) { display: inline-block; }

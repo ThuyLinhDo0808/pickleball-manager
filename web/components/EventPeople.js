@@ -106,12 +106,11 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
   }
   const level = (p) => (p.dupr_level != null ? `${t('common.level')} ${Number(p.dupr_level).toFixed(2)}` : t('people.noLevel'));
   return (
-    <section className="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-3 sm:p-4 shadow-lg shadow-amber-400/10" role="alert">
+    <section className="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-3 sm:p-4" role="alert">
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-400 text-lg font-bold text-navy-950 tabular-nums">{rows.length}</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400 text-lg font-bold text-navy-950 tabular-nums">{rows.length}</span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-amber-100 text-base font-bold leading-tight">🙋 {t('people.requestsBig', { n: rows.length })}</h3>
-          <p className="text-amber-100/80 text-sm mt-0.5">{t('people.requestsHint')}</p>
+          <h3 className="text-amber-100 text-base font-bold leading-tight">{t('people.requestsBig', { n: rows.length })}</h3>
         </div>
         <Hint inline text={community ? `${t('people.commCheckTitle')}. ${t('people.commCheckHint')}` : t('people.requestsHint')} />
       </div>
@@ -120,7 +119,7 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
           const first = g.people[0];
           if (!g.booking && g.people.length === 1) {
             return (
-              <li key={g.key} className="flex flex-wrap items-center gap-2 rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
+              <li key={g.key} className="flex items-center gap-2 rounded-xl bg-navy-900/80 border border-amber-300/30 pl-3 pr-2 py-2">
                 <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(first)}>
                   <span className="block text-white font-semibold break-words">{first.full_name}</span>
                   <span className="block text-gray-400 text-xs">
@@ -129,9 +128,13 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
                   </span>
                 </button>
                 <CancelHistoryBadge name={first.full_name} history={first.cancel_history} />
-                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-                  <button type="button" className="btn-secondary text-sm justify-center" onClick={() => onPlace(first, 'waitlist')}>⏳ {t('place.waitlist')}</button>
-                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>✓ {t('place.main')}</button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button type="button" className="min-h-[2.75rem] rounded-lg px-2.5 text-sm text-gray-200 underline-offset-2 hover:underline active:bg-navy-800 sm:min-h-0 sm:py-2" onClick={() => onPlace(first, 'waitlist')} aria-label={t('place.waitlist')}>
+                    <span className="sm:hidden">{t('place.waitShort')}</span><span className="hidden sm:inline">{t('place.waitlist')}</span>
+                  </button>
+                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')} aria-label={t('place.main')}>
+                    <span className="sm:hidden">{t('place.okShort')}</span><span className="hidden sm:inline">{t('place.main')}</span>
+                  </button>
                 </div>
               </li>
             );
@@ -141,12 +144,12 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
             <li key={g.key} className="rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-white font-semibold break-words">⚡ {t('people.quickGroup', { name: b?.contact_name || first.full_name, n: g.people.length })}</p>
-                  <p className="text-xs mt-0.5">{b?.contact_phone ? <a href={`tel:${b.contact_phone}`} className="text-sky-300">📞 {b.contact_phone}</a> : <span className="text-amber-200">📵 {t('people.quickNoPhone')}</span>}</p>
+                  <p className="text-white font-semibold break-words">{t('people.quickGroup', { name: b?.contact_name || first.full_name, n: g.people.length })}</p>
+                  <p className="text-xs mt-0.5">{b?.contact_phone ? <a href={`tel:${b.contact_phone}`} className="text-sky-300">{b.contact_phone}</a> : <span className="text-amber-200">{t('people.quickNoPhone')}</span>}</p>
                 </div>
                 <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-                  {onDecline && <button type="button" className="btn-secondary text-sm justify-center text-red-300" onClick={() => onDecline(first, g.people.length)}>✕ {t('people.decline')}</button>}
-                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>✓ {g.people.length > 1 ? t('people.approveGroup', { n: g.people.length }) : t('place.main')}</button>
+                  {onDecline && <button type="button" className="btn-secondary text-sm justify-center text-red-300" onClick={() => onDecline(first, g.people.length)}>{t('people.decline')}</button>}
+                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>{g.people.length > 1 ? t('people.approveGroup', { n: g.people.length }) : t('place.main')}</button>
                 </div>
               </div>
               <ol className="mt-2 flex flex-col gap-1">

@@ -10,6 +10,7 @@ import { formatDay } from '@/lib/dates';
 import { COUNTRIES, PROVINCES, VIETNAM } from '@/lib/regions';
 import Hint from '@/components/ui/Hint';
 import Segmented from '@/components/ui/Segmented';
+import UiIcon from '@/components/ui/UiIcon';
 import HomeFind from '@/components/HomeFind';
 
 const EMPTY = { q: '', country: VIETNAM, province: '', district: '' };
@@ -29,13 +30,13 @@ function ClubCard({ c }) {
       </div>
       <div className="p-3 pt-8 flex-1 flex flex-col">
         <p className="text-white font-bold leading-snug group-hover:text-lime-300">{c.name}</p>
-        <p className="text-gray-400 text-xs mt-0.5">📍 {[c.district, c.province, c.country !== VIETNAM ? c.country : null].filter(Boolean).join(', ') || '—'}</p>
-        {c.schedule && <p className="text-gray-300 text-xs mt-1 line-clamp-1">🗓 {c.schedule}</p>}
+        <p className="text-gray-400 text-xs mt-0.5 flex items-start gap-1"><UiIcon name="pin" className="w-3.5 h-3.5 mt-px" /><span>{[c.district, c.province, c.country !== VIETNAM ? c.country : null].filter(Boolean).join(', ') || '—'}</span></p>
+        {c.schedule && <p className="text-gray-300 text-xs mt-1 flex items-start gap-1"><UiIcon name="clock" className="w-3.5 h-3.5 mt-px text-gray-400" /><span>{c.schedule}</span></p>}
         {c.description && <p className="text-gray-400 text-xs mt-1 line-clamp-2">{c.description}</p>}
         <div className="mt-auto pt-2 flex flex-wrap gap-1.5 text-[11px]">
-          <span className="rounded-full bg-navy-700 px-2 py-0.5 text-gray-200">👥 {t('disc.members', { n: c.member_count ?? c.member_count_hint ?? 0 })}</span>
+          <span className="rounded-full bg-navy-700 px-2 py-0.5 text-gray-200 whitespace-nowrap">{t('disc.members', { n: c.member_count ?? c.member_count_hint ?? 0 })}</span>
           {c.upcoming > 0 ? (
-            <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-lime-200">📅 {t('disc.nextOn', { n: c.upcoming, date: formatDay(c.next_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit' }) })}</span>
+            <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-lime-200 whitespace-nowrap">{t('disc.nextOn', { n: c.upcoming, date: formatDay(c.next_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit' }) })}</span>
           ) : (
             <span className="rounded-full bg-navy-800 px-2 py-0.5 text-gray-500">{t('disc.noUpcoming')}</span>
           )}
@@ -99,7 +100,7 @@ export default function DiscoverPage() {
     <PlayerShell requireAuth={false}>
       <h1 className="text-white text-2xl font-bold">{t('findx.pageTitle')}</h1>
       <p className="text-gray-400 text-sm mb-3">{t('disc.lead')}</p>
-      <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? `🎟 ${t('findx.tabEvents')}` : `🏟 ${t('findx.tabClubs')}`)} className="mb-4 w-full" />
+      <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? t('findx.tabEvents') : t('findx.tabClubs'))} className="mb-4 w-full" />
       {tab === 'events' ? <HomeFind eventsOnly /> : (
       <>
       {!filtered && <TopCommunities className="mb-4" />}
@@ -107,7 +108,7 @@ export default function DiscoverPage() {
       <form onSubmit={submit} className="card !p-3 mb-4 flex flex-col gap-2" role="search">
         <div className="flex gap-2">
           <input className="input flex-1 min-w-0" value={f.q} onChange={set('q')} placeholder={t('disc.qPh')} aria-label={t('disc.qPh')} />
-          <button className="btn-primary shrink-0" disabled={busy}>🔍 {t('disc.search')}</button>
+          <button className="btn-primary shrink-0 gap-1.5" disabled={busy}><UiIcon name="search" className="w-4 h-4" />{t('disc.search')}</button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <select className="input text-sm" value={f.country} onChange={set('country')} aria-label={t('creq.country')}>
@@ -134,7 +135,7 @@ export default function DiscoverPage() {
       {!applied && busy && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {applied && items.length === 0 && !busy && (
         <div className="card text-center py-8">
-          <div className="text-4xl mb-2" aria-hidden="true">🔎</div>
+          <div className="mb-2 flex justify-center text-gray-500"><UiIcon name="search" className="w-8 h-8" /></div>
           <p className="text-gray-300 text-sm">{t('disc.none')}</p>
           <Hint text={t('disc.noneHint')} className="mt-1" />
         </div>

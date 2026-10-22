@@ -144,6 +144,10 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 
 **Giao diện điện thoại (biểu tượng & nút bấm):** tiêu đề trang, các tab (*Lịch hoạt động · Tạo lịch cố định · Tạo kèo lẻ*, tab trong trang kèo *Người chơi · Tài chính · Trận đấu · Cài đặt*…) và các nút chính của trang kèo (*Gửi link · Điểm danh · Thêm người*) dùng **biểu tượng nét mảnh** cùng kiểu với menu, thay cho emoji (emoji hiện khác nhau trên mỗi điện thoại). Trên điện thoại, mọi nút chính và ô tab cao tối thiểu **44px** cho dễ bấm, có **hiệu ứng khi chạm** (nút tối đi một chút) và không bị phóng to khi bấm đúp. Khung báo *Cơ sở dữ liệu cần cập nhật* tự xuống dòng tên file migration nên không làm trang tràn ngang.
 
+**Giao diện người chơi trên điện thoại (đợt 2):** các trang người chơi hay dùng — *Trang chủ*, *Tìm kèo / CLB*, *Hoạt động*, trang kèo công khai (phần đăng ký, vé, *Tôi không đi được*, *Lịch chơi* với tab *Danh sách người chơi · Trận đấu*), bảng xếp hạng ở trang chủ và chuông thông báo — bỏ hết emoji, dùng biểu tượng nét mảnh màu xám hoặc chỉ để chữ. Bảng xếp hạng ghi **số hạng** (1, 2, 3 tô xanh) thay cho huy chương. Ô người chơi trong *Lịch chơi* lấy chữ cái của **tên gọi** (vd *Nguyễn Văn **A**n* → *A*). Các nút chọn trong bảng xếp hạng trang chủ cao tối thiểu 44px trên điện thoại. Ngày tháng chỉ viết hoa chữ cái đầu (*Hôm nay*, *Tháng 10 năm 2026*). Chân trang kèo công khai ghi *Quản lý bởi NexusZone*.
+
+**Khung "N người đang chờ bạn xác nhận tham gia"** (trang kèo của Host): mỗi người một hàng gọn — tên, trình độ, bên phải là chữ **Để chờ** (đưa vào danh sách chờ) và nút **Xác nhận**; trên máy tính hiện đủ chữ *Đặt vào danh sách chờ* / *Xác nhận tham gia*. Phần giải thích nằm trong nút **(i)**.
+
 **Menu:**
 - Trên máy tính, menu bên trái chia theo **nhóm (segment)**. Mỗi nhóm thu gọn/mở rộng được, app nhớ trạng thái. Nhóm chứa trang đang mở tự bung ra.
 - Nút mũi tên thu menu lại thành dải icon.
