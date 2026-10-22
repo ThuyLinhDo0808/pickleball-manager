@@ -1067,11 +1067,11 @@ router.get('/system', wrap(async (req, res) => {
 router.post('/system/test-email', wrap(async (req, res) => {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw fail(409, 'RESEND_API_KEY is not set on the server.', 'not_configured');
-  const from = process.env.FEEDBACK_FROM_EMAIL || process.env.NOTIFY_FROM_EMAIL || 'Pickleball Manager <onboarding@resend.dev>';
+  const from = process.env.FEEDBACK_FROM_EMAIL || process.env.NOTIFY_FROM_EMAIL || 'NexusZone <onboarding@resend.dev>';
   const r = await fetch(`${process.env.RESEND_API_URL || 'https://api.resend.com'}/emails`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [req.hostEmail], subject: 'Pickleball Manager — email thử', text: 'Email gửi thử từ Trang Owner. Nếu bạn nhận được thư này, cấu hình Resend đang hoạt động.' }),
+    body: JSON.stringify({ from, to: [req.hostEmail], subject: 'NexusZone — email thử', text: 'Email gửi thử từ Trang Owner. Nếu bạn nhận được thư này, cấu hình Resend đang hoạt động.' }),
     signal: AbortSignal.timeout(8000),
   });
   if (!r.ok) throw fail(502, `Resend answered ${r.status}.`, 'send_failed');

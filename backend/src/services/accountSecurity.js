@@ -291,7 +291,7 @@ async function startSetup(userId, label) {
     .from('user_mfa')
     .upsert({ user_id: userId, secret_enc: encrypt(secret), enabled_at: null, recovery_hashes: [], last_step: 0 }, { onConflict: 'user_id' });
   if (error) throw error;
-  const issuer = 'Pickleball Manager';
+  const issuer = 'NexusZone';
   const otpauth = `otpauth://totp/${encodeURIComponent(`${issuer}:${label}`)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=${DIGITS}&period=${STEP}`;
   return { secret, otpauth };
 }
@@ -411,7 +411,7 @@ async function applyReset(userId) {
 
 async function sendMail(email, subject, text, html) {
   if (!process.env.RESEND_API_KEY || !email) return 'off';
-  const from = process.env.NOTIFY_FROM_EMAIL || process.env.FEEDBACK_FROM_EMAIL || 'Pickleball Manager <onboarding@resend.dev>';
+  const from = process.env.NOTIFY_FROM_EMAIL || process.env.FEEDBACK_FROM_EMAIL || 'NexusZone <onboarding@resend.dev>';
   try {
     const r = await fetch(`${process.env.RESEND_API_URL || 'https://api.resend.com'}/emails`, {
       method: 'POST',
@@ -429,15 +429,30 @@ const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 function emailReset(email, { resetAt, cancelUrl, profileUrl }) {
   const when = require('./dates').vnDateTime(resetAt);
   const text =
-    `Ban quản trị Pickleball Manager vừa nhận yêu cầu đặt lại xác thực 2 lớp cho tài khoản của bạn (mất điện thoại và mã khôi phục).\n\n` +
+    `Ban quản trị NexusZone vừa nhận yêu cầu đặt lại xác thực 2 lớp cho tài khoản của bạn (mất điện thoại và mã khôi phục).\n\n` +
     `Việc đặt lại sẽ có hiệu lực lúc ${when}. Khi đó xác thực 2 lớp bị tắt, mọi thiết bị bị đăng xuất và bạn cần bật lại.\n\n` +
     `Nếu là bạn yêu cầu, không cần làm gì thêm.\n` +
     `Nếu KHÔNG phải bạn: bấm huỷ ngay${cancelUrl ? ` — ${cancelUrl}` : ''}${profileUrl ? ` (hoặc đăng nhập, mở ${profileUrl} và bấm "Huỷ đặt lại")` : ''}, rồi đổi mật khẩu.`;
-  const html = `<p>Ban quản trị Pickleball Manager vừa nhận yêu cầu <b>đặt lại xác thực 2 lớp</b> cho tài khoản của bạn (mất điện thoại và mã khôi phục).</p>
+  const html = `<p>Ban quản trị NexusZone vừa nhận yêu cầu <b>đặt lại xác thực 2 lớp</b> cho tài khoản của bạn (mất điện thoại và mã khôi phục).</p>
 <p>Việc đặt lại sẽ có hiệu lực lúc <b>${esc(when)}</b>. Khi đó xác thực 2 lớp bị tắt, mọi thiết bị bị đăng xuất và bạn cần bật lại.</p>
 <p>Nếu là bạn yêu cầu, không cần làm gì thêm.</p>
 <p><b>Nếu không phải bạn:</b> ${cancelUrl ? `<a href="${esc(cancelUrl)}">bấm vào đây để huỷ ngay</a>` : 'đăng nhập và bấm <i>Huỷ đặt lại</i> ở Hồ sơ → Bảo mật'}, rồi đổi mật khẩu.</p>`;
   return sendMail(email, '⚠️ Yêu cầu đặt lại xác thực 2 lớp', text, html);
+}
+
+// Two-step sign-in was turned off by the account itself: tell the owner of the e-mail, so a
+// stranger who got in cannot quietly lower the protection.
+function emailMfaOff(email, { at = new Date(), userAgent = '', ip = '', profileUrl = '' } = {}) {
+  const when = require('./dates').vnDateTime(at);
+  const where = [deviceLabel(userAgent), ipHint(ip)].filter(Boolean).join(' · ');
+  const text =
+    `Xác thực 2 lớp của tài khoản NexusZone của bạn vừa được TẮT lúc ${when}${where ? ` (${where})` : ''}.\n\n` +
+    `Từ giờ đăng nhập chỉ cần mật khẩu. Muốn bật lại: mở ${profileUrl || 'Hồ sơ → Bảo mật'} và bấm "Bật xác thực 2 lớp".\n\n` +
+    `Nếu KHÔNG phải bạn tắt: đổi mật khẩu ngay, bật lại xác thực 2 lớp và bấm "Đăng xuất mọi thiết bị".`;
+  const html = `<p>Xác thực 2 lớp của tài khoản NexusZone của bạn vừa được <b>tắt</b> lúc <b>${esc(when)}</b>${where ? ` (${esc(where)})` : ''}.</p>
+<p>Từ giờ đăng nhập chỉ cần mật khẩu. Muốn bật lại: ${profileUrl ? `<a href="${esc(profileUrl)}">mở Hồ sơ → Bảo mật</a>` : 'mở Hồ sơ → Bảo mật'} và bấm <i>Bật xác thực 2 lớp</i>.</p>
+<p><b>Nếu không phải bạn tắt:</b> đổi mật khẩu ngay, bật lại xác thực 2 lớp và bấm <i>Đăng xuất mọi thiết bị</i>.</p>`;
+  return sendMail(email, 'Xác thực 2 lớp đã được tắt', text, html);
 }
 
 // ---- devices ------------------------------------------------------------------------------
@@ -492,10 +507,10 @@ async function emailNewDevice(email, { userAgent, ip, webUrl }) {
   const where = ipHint(ip) || '—';
   const link = webUrl ? `${webUrl}/p/profile#security` : null;
   const text =
-    `Tài khoản Pickleball Manager của bạn vừa đăng nhập trên một thiết bị mới.\n\n` +
+    `Tài khoản NexusZone của bạn vừa đăng nhập trên một thiết bị mới.\n\n` +
     `Thời gian: ${when}\nThiết bị: ${device}\nĐịa chỉ mạng: ${where}\n\n` +
     `Nếu là bạn, không cần làm gì thêm.\nNếu KHÔNG phải bạn: đổi mật khẩu ngay và bấm "Đăng xuất khỏi mọi thiết bị" ở Hồ sơ → Bảo mật${link ? ` (${link})` : ''}, rồi bật xác thực 2 lớp.`;
-  const html = `<p>Tài khoản Pickleball Manager của bạn vừa đăng nhập trên <b>một thiết bị mới</b>.</p>
+  const html = `<p>Tài khoản NexusZone của bạn vừa đăng nhập trên <b>một thiết bị mới</b>.</p>
 <p>Thời gian: <b>${esc(when)}</b><br>Thiết bị: <b>${esc(device)}</b><br>Địa chỉ mạng: <b>${esc(where)}</b></p>
 <p>Nếu là bạn, không cần làm gì thêm.</p>
 <p><b>Nếu không phải bạn:</b> đổi mật khẩu ngay và bấm <i>Đăng xuất khỏi mọi thiết bị</i> ở Hồ sơ → Bảo mật${link ? ` (<a href="${esc(link)}">mở trang</a>)` : ''}, rồi bật xác thực 2 lớp.</p>`;
@@ -503,6 +518,7 @@ async function emailNewDevice(email, { userAgent, ip, webUrl }) {
 }
 
 module.exports = {
+  emailMfaOff,
   // pure helpers (tests)
   base32Encode,
   base32Decode,

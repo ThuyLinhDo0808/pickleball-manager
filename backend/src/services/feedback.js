@@ -15,7 +15,7 @@ const kindOf = (fb) => KIND[fb.category] || 'Khác';
 
 function summary(fb) {
   const { message, contact, page, device, userEmail } = fb;
-  return `📝 Báo lỗi / Liên hệ [${kindOf(fb)}] — Pickleball Manager\n\n${message}\n\nTừ: ${userEmail || '—'}\nLiên hệ: ${contact || '—'}\nTrang: ${page || '—'}\nThiết bị: ${device || '—'}`;
+  return `📝 Báo lỗi / Liên hệ [${kindOf(fb)}] — NexusZone\n\n${message}\n\nTừ: ${userEmail || '—'}\nLiên hệ: ${contact || '—'}\nTrang: ${page || '—'}\nThiết bị: ${device || '—'}`;
 }
 
 // Every report goes to the developer unless FEEDBACK_TO_EMAIL says otherwise.
@@ -29,10 +29,10 @@ async function sendEmail(fb) {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: process.env.FEEDBACK_FROM_EMAIL || 'Pickleball Manager <onboarding@resend.dev>',
+      from: process.env.FEEDBACK_FROM_EMAIL || 'NexusZone <onboarding@resend.dev>',
       to: to.split(',').map((s) => s.trim()).filter(Boolean),
       reply_to: fb.contact && /@/.test(fb.contact) ? fb.contact : undefined,
-      subject: `[${kindOf(fb)}] Báo lỗi / Liên hệ — Pickleball Manager`,
+      subject: `[${kindOf(fb)}] Báo lỗi / Liên hệ — NexusZone`,
       text: summary(fb),
       html: `<p style="white-space:pre-wrap">${esc(fb.message)}</p><hr><p>Từ: ${esc(fb.userEmail)}<br>Liên hệ: ${esc(fb.contact || '—')}<br>Trang: ${esc(fb.page || '—')}<br>Thiết bị: ${esc(fb.device || '—')}</p>`,
     }),

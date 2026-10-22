@@ -68,7 +68,7 @@ async function exportMyData(userId) {
   const [mfa] = await q(supabase.from('user_mfa').select('enabled_at').eq('user_id', userId));
   return {
     exported_at: new Date().toISOString(),
-    about: 'Pickleball Manager — dữ liệu cá nhân của bạn / your personal data',
+    about: 'NexusZone — dữ liệu cá nhân của bạn / your personal data',
     account: user || null,
     two_step_sign_in: { enabled: !!mfa?.enabled_at, enabled_at: mfa?.enabled_at || null },
     player_profile: profile || null,
