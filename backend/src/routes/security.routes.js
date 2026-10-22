@@ -73,6 +73,12 @@ router.post('/mfa/verify', codeTries, wrap(async (req, res) => {
 router.post('/mfa/disable', codeTries, wrap(async (req, res) => {
   if (await mustUseMfa(req)) return res.status(409).json({ error: 'Owner and support accounts must keep two-step sign-in on.', code: 'mfa_required_for_role' });
   await security.disable(req.userId, req.body?.code);
+  // Tell the account's e-mail (not waited for: the answer does not depend on it).
+  // Link back to the page's origin when it is one of ours (CORS_ORIGIN / PUBLIC_WEB_URL).
+  const ours = [...String(process.env.CORS_ORIGIN || '').split(','), process.env.PUBLIC_WEB_URL || ''].map((x) => x.trim().replace(/\/+$/, '')).filter((x) => /^https?:\/\//.test(x));
+  const asked = String(req.get('origin') || '').replace(/\/+$/, '');
+  const web = ours.includes(asked) ? asked : ours[0] || '';
+  security.emailMfaOff(req.hostEmail, { userAgent: req.get('user-agent'), ip: req.ip, profileUrl: web ? `${web}/p/profile#security` : '' }).catch(() => {});
   res.json({ ok: true });
 }));
 

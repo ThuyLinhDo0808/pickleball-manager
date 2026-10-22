@@ -51,3 +51,6 @@ export function describeEntry(r, t) {
 // Income categories the Host can add by hand on a session.
 export const EVENT_INCOME = ['other', 'ball_fund'];
 export const EVENT_EXPENSE = ['court', 'water', 'coach', 'other'];
+// Social Manager kèo: the court is already in the kèo's cost, so the only extra is more
+// court time ("Thuê thêm giờ", kept as the court category) or something else.
+export const EVENT_EXPENSE_SOCIAL = ['court', 'other'];

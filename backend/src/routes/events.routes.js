@@ -1421,6 +1421,48 @@ async function addListedMember(event, { full_name, gender, duprId, level }) {
   }
 }
 
+// Name, gender, DUPR ID, self-entered DUPR of someone without an account. Also written to
+// their member row (when that row has no account either), which DUPR exports read first.
+async function editGuestInfo(event, p, body) {
+  const bad = (msg, code) => Object.assign(new Error(msg), { status: 400, code });
+  if (p.user_id) throw Object.assign(new Error('This player has an account: they edit their own profile.'), { status: 409, code: 'has_account' });
+  const patch = {};
+  if ('full_name' in body) {
+    const name = String(body.full_name || '').trim().slice(0, 120);
+    if (!name) throw bad('full_name is required.', 'name_required');
+    patch.full_name = name;
+  }
+  if ('gender' in body) {
+    if (body.gender != null && body.gender !== '' && !['male', 'female'].includes(body.gender)) throw bad('gender must be male or female.', 'bad_gender');
+    patch.gender = body.gender || null;
+  }
+  if ('dupr_id' in body) patch.dupr_id = require('../services/dupr').cleanId(body.dupr_id);
+  if ('dupr_self' in body) {
+    const v = body.dupr_self === '' || body.dupr_self == null ? null : Number(body.dupr_self);
+    if (v != null && !(v >= 1 && v <= 8)) throw bad('DUPR must be between 1 and 8.', 'bad_dupr');
+    patch.dupr_level = v;
+  }
+  if (!Object.keys(patch).length) throw bad('Nothing to change.', 'nothing');
+  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', p.id).select().single();
+  if (error) throw error;
+  const memberId = p.source_club_member_id || p.guest_member_id;
+  if (memberId) {
+    const { data: m } = await supabase.from('club_members').select('id, user_id').eq('id', memberId).maybeSingle();
+    if (m && !m.user_id) {
+      const mp = { ...patch };
+      // A DUPR ID that changed: the old link to DUPR's file no longer applies.
+      if ('dupr_id' in mp) Object.assign(mp, { dupr_synced_at: null, dupr_verified_at: null, dupr_name: null });
+      let { error: mErr } = await supabase.from('club_members').update(mp).eq('id', m.id);
+      if (mErr && 'dupr_id' in mp) {
+        for (const k of ['dupr_id', 'dupr_synced_at', 'dupr_verified_at', 'dupr_name']) delete mp[k]; // before the DUPR migrations
+        ({ error: mErr } = await supabase.from('club_members').update(mp).eq('id', m.id));
+      }
+      if (mErr) throw mErr;
+    }
+  }
+  return data;
+}
+
 async function hostPerson(hostId) {
   const [{ data: prof }, { data: user }] = await Promise.all([
     supabase.from('player_profiles').select('full_name, phone').eq('user_id', hostId).maybeSingle(),
@@ -1595,6 +1637,9 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     if (action === 'group') return res.json(await changeGroup(req.event, prior, req.body?.group_id));
     // …and their role: organizer (Host / co-host), coach, referee.
     if (action === 'roles') return res.json(await setRoles(req.event, prior, req.body || {}));
+    // A player with no account (added by hand or booked quickly): fix name / gender / DUPR
+    // later, e.g. after they make a DUPR account, so their matches can be sent again.
+    if (action === 'info') return res.json(await editGuestInfo(req.event, prior, req.body || {}));
     // A quick booking (invite link) is paid in one transfer: confirming / rejecting one slot
     // does the same to the group's other slots still waiting.
     if (action === 'confirm-payment') return res.json(await withGroup(prior, (p) => signup.confirmPayment(req.event, p, req.hostId)));

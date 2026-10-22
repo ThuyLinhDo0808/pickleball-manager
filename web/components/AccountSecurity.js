@@ -124,6 +124,7 @@ export default function AccountSecurity() {
   const [codes, setCodes] = useState(null);
   const [mode, setMode] = useState(null); // 'disable' | 'recovery'
   const [msg, setMsg] = useState('');
+  const [done, setDone] = useState(''); // a success line (e.g. just turned off)
 
   useEffect(() => {
     if (setup && !setup.qr) QRCode.toDataURL(setup.otpauth, { margin: 1, width: 200 }).then((qr) => setSetup((s) => ({ ...s, qr }))).catch(() => {});
@@ -184,7 +185,7 @@ export default function AccountSecurity() {
         {codes && <div className="mt-4"><RecoveryCodes codes={codes} onDone={() => { setCodes(null); reload(); }} /></div>}
 
         {!mfa.enabled && !setup && (
-          <button type="button" className="btn-primary text-sm mt-4" onClick={() => begin().catch((e) => setMsg(errText(e, t)))}>{t('sec.enable')}</button>
+          <button type="button" className="btn-primary text-sm mt-4" onClick={() => { setDone(''); begin().catch((e) => setMsg(errText(e, t))); }}>{t('sec.enable')}</button>
         )}
 
         {!mfa.enabled && setup && (
@@ -220,6 +221,7 @@ export default function AccountSecurity() {
               {t('sec.onSince', { date: fmt(mfa.enabled_at) })} · {t('sec.recoveryLeft', { n: mfa.recovery_left })}
             </p>
             {mfa.recovery_left <= 2 && <p className="text-amber-200 text-xs mt-1">{t('sec.recoveryLow')}</p>}
+            {data.required && <p className="text-gray-400 text-xs mt-2">{t('sec.mustKeep')}</p>}
             <div className="flex flex-wrap gap-2 mt-3">
               <button type="button" className="btn-secondary text-sm" onClick={() => setMode(mode === 'recovery' ? null : 'recovery')}>{t('sec.newRecovery')}</button>
               {!data.required && (
@@ -240,20 +242,30 @@ export default function AccountSecurity() {
               />
             )}
             {mode === 'disable' && (
-              <CodeForm
-                danger
-                label={t('sec.confirmOff')}
-                onCancel={() => setMode(null)}
-                onSubmit={async (code) => {
-                  await api.post('/api/host/security/mfa/disable', { code });
-                  setMode(null);
-                  reload();
-                }}
-              />
+              <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/5 p-3">
+                <p className="text-red-200 font-semibold">{t('sec.offTitle')}</p>
+                <ul className="mt-1 list-disc pl-5 text-gray-300 text-sm space-y-0.5">
+                  <li>{t('sec.offPoint1')}</li>
+                  <li>{t('sec.offPoint2')}</li>
+                  <li>{t('sec.offPoint3')}</li>
+                </ul>
+                <CodeForm
+                  danger
+                  label={t('sec.confirmOff')}
+                  onCancel={() => setMode(null)}
+                  onSubmit={async (code) => {
+                    await api.post('/api/host/security/mfa/disable', { code });
+                    setMode(null);
+                    setDone(t('sec.offDone'));
+                    reload();
+                  }}
+                />
+              </div>
             )}
           </div>
         )}
         {msg && <p className="text-red-300 text-sm mt-2">{msg}</p>}
+        {done && !mfa.enabled && <p className="text-lime-300 text-sm mt-3" role="status">{done}</p>}
       </div>
 
       {/* Devices */}

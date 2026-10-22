@@ -60,13 +60,13 @@ async function recipients(a) {
 
 function mailOf(a) {
   const maint = a.kind === 'maintenance';
-  const subject = a.title || (maint ? `Bảo trì Pickleball Manager — ${fmt(a.starts_at)}` : 'Thông báo từ Ban quản trị Pickleball Manager');
+  const subject = a.title || (maint ? `Bảo trì NexusZone — ${fmt(a.starts_at)}` : 'Thông báo từ Ban quản trị NexusZone');
   const when = maint ? `Thời gian bảo trì: từ ${fmt(a.starts_at)}${a.ends_at ? ` đến ${fmt(a.ends_at)}` : ''}. Trong thời gian này không đăng nhập và sử dụng được.` : '';
-  const text = [a.title, a.message, when, '— Ban quản trị Pickleball Manager'].filter(Boolean).join('\n\n');
+  const text = [a.title, a.message, when, '— Ban quản trị NexusZone'].filter(Boolean).join('\n\n');
   const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#111">
 ${a.title ? `<h2 style="margin:0 0 12px">${esc(a.title)}</h2>` : ''}<p style="white-space:pre-line">${esc(a.message)}</p>
 ${when ? `<p style="padding:10px 12px;background:#fff7e0;border-left:4px solid #f5a623">🛠 ${esc(when)}</p>` : ''}
-<p style="color:#666">— Ban quản trị Pickleball Manager</p></div>`;
+<p style="color:#666">— Ban quản trị NexusZone</p></div>`;
   return { subject, text, html };
 }
 
