@@ -110,53 +110,166 @@
 ---
 
 ## 3. Kế hoạch theo đợt
-Quy trình chung cho mỗi đợt:
-- chụp ảnh trước và sau ở 1440px và 390px;
-- chạy `npm run build` trong `web/`;
-- cập nhật README và `docs/ui-plan.md`;
-- commit riêng cho từng đợt.
 
-**Đợt 0 – Chuẩn bị ảnh chụp.** Cần bạn chạy `npm run dev` và cung cấp một tài khoản thử (chủ CLB và người chơi). Sau đó chạy `inspect.mjs --app` cho từng nhóm, lưu ảnh vào thư mục scratchpad, không lưu trong repo.
+Quy trình chung cho mỗi đợt (theo CLAUDE.md):
+1. Chụp ảnh **trước** ở 1440px và 390px các trang của đợt.
+2. Sửa giao diện. Không đổi tính năng, API hay đường dẫn. Chữ mới phải thêm khoá vào cả `web/lib/i18n/vi.js` và `en.js`.
+3. Chạy `npm run build` trong `web/`, chụp ảnh **sau**, so sánh với ảnh trước.
+4. Cập nhật README (nếu thay đổi những gì người dùng thấy) và bảng theo dõi ở cuối file này, rồi commit riêng cho đợt.
 
-**Đợt 1 – Nền tảng (ảnh hưởng mọi trang, ít rủi ro):**
-- Thêm token màu và cỡ chữ vào `tailwind.config.js` / `globals.css`.
-- Thêm `EmptyState`, `LoadingBlock`, `ErrorBlock` vào `components/ui/`.
-- Thêm lớp `.num`: căn phải, `tabular-nums`, hiển thị "—" màu xám khi trống.
-- Thêm quy ước nút chính bên phải cho `Modal` và chân biểu mẫu.
+Thứ tự được chọn theo nguyên tắc:
+- Đợt 1–2 sửa một lần mà có tác dụng cho mọi trang, rủi ro thấp.
+- Đợt 3–4 xử lý các lỗi lặp lại nhiều nhất (emoji, cắt chữ, bảng trên điện thoại).
+- Đợt 5–8 đi theo từng nhóm trang; nhóm nào người dùng mở nhiều hơn thì làm trước.
 
-**Đợt 2 – Khung chung:**
-- Thống nhất cách đánh dấu mục đang chọn (một kiểu xanh chanh).
-- Bỏ chữ HOA và cắt chữ trong menu.
-- Thống nhất điểm thu gọn tab dưới cùng cho cả ba khung.
-- Đưa chuông và ngôn ngữ về một chỗ.
-- Owner chuyển sang màu thương hiệu.
+### Đợt 0 – Chụp ảnh hiện trạng
+- **Việc:**
+  - Chạy web bằng `npm run dev` trong `web/`, đăng nhập bằng tài khoản thử với hai vai trò: chủ CLB và người chơi.
+  - Chụp các trang tiêu biểu của mọi nhóm ở 1440px và 390px.
+  - Đo bằng `inspect.mjs --app` của taste-skill, riêng trang `/` đo theo phần page.
+  - Bổ sung vào mục 2 những vấn đề chỉ thấy được trên ảnh.
+- **Trang:** `/`, `/sign-in`, `/home`, `/p`, `/discover`, `/dashboard`, `/events`, `/events/[id]`, `/events/create`, `/club/members/all`, `/club/attendance`, `/finance`, `/finance/ledger`, `/account`, `/staff-access`, `/owner`, `/owner/hosts`.
+- **File:** không sửa file nào. Ảnh lưu ngoài repo.
 
-**Đợt 3 – Bỏ emoji làm biểu tượng.** Thay bằng `UiIcon` hoặc chữ. Làm theo file, ưu tiên các file có nhiều emoji nhất: EventForm, events/[id], MembersPage, PlanModals, account, club-request, dashboard. Kiểm tra cả emoji nằm trong `vi.js` / `en.js`.
+### Đợt 1 – Nền tảng dùng chung
+- **Việc:**
+  - Thêm token cho màu, cỡ chữ và bo góc. Tách màu trạng thái thành 3 cặp: tốt, xấu, cần chú ý.
+  - Thêm lớp `.num`: căn phải, `tabular-nums`, hiện "—" màu xám khi trống.
+  - Thêm các khối dùng chung cho trạng thái trống / đang tải / lỗi.
+  - Chân nút của hộp thoại: nút chính bên phải, nút phụ bên trái.
+  - Chọn một font cho toàn app.
+- **Trang:** chưa đổi trang nào. Các đợt sau dùng lại những thứ này.
+- **File:**
+  - `web/tailwind.config.js`, `web/app/globals.css`
+  - `web/components/Modal.js`, `web/components/ui/GuideModal.js`
+  - File mới: `web/components/ui/EmptyState.js`, `LoadingBlock.js`, `ErrorBlock.js`
+  - `web/components/ui/UiIcon.js`: bổ sung các biểu tượng còn thiếu.
 
-**Đợt 4 – Bảng thành danh sách trên điện thoại.** Áp dụng cho members, attendance, ledger, inventory, staff-access và các bảng owner. Dưới 640px, mỗi dòng bảng thành danh sách 2 dòng. Đồng thời bỏ cắt chữ ở 126 chỗ.
+### Đợt 2 – Khung chung / menu
+- **Việc:**
+  - Một kiểu đánh dấu mục đang chọn (xanh chanh) cho cả 3 khung. Owner bỏ màu hổ phách.
+  - Bỏ chữ HOA và chữ giãn trong tiêu đề nhóm menu. Bỏ cắt chữ ở tên mục và nhãn tab dưới cùng.
+  - Thống nhất độ rộng màn hình mà tại đó cả 3 khung chuyển sang tab dưới cùng.
+  - Đưa chuông, ngôn ngữ và đăng xuất về cùng một chỗ, cùng một kiểu.
+  - Trên điện thoại, bảng "Thêm" xếp một cột, chữ ≥14px, vùng bấm ≥44px.
+- **Trang:** mọi trang, vì đây là phần khung bao quanh.
+- **File:**
+  - `web/components/AppShell.js`, `PlayerShell.js`, `OwnerShell.js`
+  - `ContextSwitcher.js`, `SignupBell.js`, `PlayerBell.js`, `BackButton.js`
+  - `web/components/ui/PageHeader.js`: bỏ cắt chữ ở tiêu đề.
 
-**Đợt 5 – Lịch & kèo.** Gồm EventForm, events/[id], EventCalendar và live:
-- nút chính bên phải;
-- tách thành từng phần rõ ràng;
-- giảm số màu trên lịch.
+### Đợt 3 – Bỏ emoji làm biểu tượng
+- **Việc:**
+  - Thay emoji bằng `UiIcon` hoặc bằng chữ.
+  - Bỏ emoji trong các chuỗi i18n, giữ nghĩa câu.
+  - Làm theo từng file, bắt đầu từ file có nhiều emoji nhất.
+- **Trang:** dashboard, events, account, club-request, members, insights, owner.
+- **File (theo thứ tự ưu tiên):**
+  - `web/components/EventForm.js`, `web/app/events/[eventId]/page.js`
+  - `web/components/MembersPage.js`, `web/app/club-request/page.js`
+  - `web/components/PlanModals.js`, `web/app/club/insights/page.js`
+  - `web/app/dashboard/page.js`, `web/app/account/page.js`
+  - `web/app/owner/announcements/page.js`, `web/app/owner/hosts/[id]/page.js`
+  - `web/components/stats/CommunityBusiness.js`, `web/components/MeetingEvent.js`
+  - `web/components/AppShell.js`, `web/components/ui/StatTile.js`, `web/components/ui/PageHeader.js`
+  - `web/lib/i18n/vi.js`, `web/lib/i18n/en.js`
+  - Các file còn lại trong 147 file có emoji, xử lý dần.
 
-**Đợt 6 – Tài chính & thống kê.**
-- Sắp lại bảng điều khiển: việc cần làm, kèo sắp tới, tiền.
-- KPI chỉ gồm nhãn và số, không có biểu tượng.
-- Biểu đồ dùng một màu nhấn, lấy màu từ token.
-- Bỏ nền chuyển màu.
+### Đợt 4 – Bảng thành danh sách trên điện thoại, bỏ cắt chữ
+- **Việc:**
+  - Dưới 640px, mỗi dòng bảng thành 2 dòng:
+    - dòng 1: tên và số chính;
+    - dòng 2: các trường còn lại, chữ xám;
+    - thao tác đặt bên phải.
+  - Trên máy tính, bảng bỏ kẻ viền từng ô, chỉ giữ đường kẻ ngang mờ. Số căn phải.
+  - Bỏ 126 chỗ `truncate` / `line-clamp`, cho chữ xuống dòng.
+- **Trang:** `/club/members/*`, `/club/attendance`, `/club/roster`, `/finance/ledger`, `/finance/inventory`, `/staff-access`, `/owner/hosts`, `/owner/payments`, `/owner/audit`.
+- **File:**
+  - `web/app/globals.css`: các lớp `.grid-table` và `.table-wrap`.
+  - `web/components/MembersPage.js`, `MemberDetail.js`, `MemberModeration.js`, `DuprMembers.js`
+  - `web/app/club/attendance/page.js`, `web/app/club/roster/page.js`
+  - `web/app/finance/ledger/page.js`, `web/app/finance/inventory/page.js`
+  - `web/app/staff-access/page.js`
+  - `web/app/owner/hosts/page.js`, `web/app/owner/payments/page.js`, `web/app/owner/audit/page.js`
+  - Các file có cắt chữ: `web/app/l/[token]/page.js`, `TeamLeagueView.js`, `EventCalendar.js`, `web/app/live/[tid]/page.js`, …
 
-**Đợt 7 – Người chơi và cài đặt.**
-- Nới độ rộng nội dung ở 1440px.
-- Gom các thanh tab về `Segmented`.
-- Đặt nút Lưu cố định; tách mục nguy hiểm thành mục riêng ở cuối.
+### Đợt 5 – Lịch & kèo
+- **Việc:**
+  - Nút Lưu/Tạo đặt bên phải.
+  - Biểu mẫu tạo kèo chia thành các phần có tiêu đề rõ.
+  - Trang chi tiết kèo: thông tin chính và thao tác chính lên đầu.
+  - Lịch: giảm từ khoảng 12 họ màu xuống ít màu, và không cắt tên kèo.
+  - Trang tỉ số trực tiếp đọc được trên điện thoại.
+- **Trang:** `/events`, `/events/create`, `/events/create/weekly`, `/events/[id]`, `/events/[id]/edit`, `/e/[token]`, `/g/...`, `/t/[code]`, `/live/...`, `/staff`, `/staff/[eventId]`, `/club/matches`, `/club/tournaments/*`.
+- **File:**
+  - `web/components/EventForm.js`, `EventSignup.js`, `EventPeople.js`, `EventCalendar.js`, `MeetingEvent.js`
+  - `web/lib/clubColors.js`
+  - `web/app/events/page.js`, `web/app/events/[eventId]/page.js`
+  - `web/app/live/[tid]/page.js`, `web/app/live/[tid]/[liveId]/page.js`
+  - `web/app/club/tournaments/new/page.js`, `web/app/club/tournaments/[id]/page.js`
+  - `web/app/staff/page.js`
 
-**Đợt 8 – Trang giới thiệu.** Chạy taste-skill theo phần page cho trang `/`, bỏ chữ chuyển màu, đốm mờ, nút phát sáng và con trỏ tuỳ biến. Trang đăng nhập làm cùng đợt.
+### Đợt 6 – Tài chính & thống kê
+- **Việc:**
+  - Bảng điều khiển trả lời câu hỏi chính trước, theo thứ tự: việc cần làm, kèo sắp tới, tiền tháng này.
+  - Các số liệu chính không bị gấp vào mục "Xem thêm thống kê".
+  - KPI chỉ còn nhãn và số: không biểu tượng, không ô màu.
+  - Biểu đồ dùng một màu nhấn, màu lấy từ token, nhãn trục gọn trên điện thoại.
+  - Bỏ nền chuyển màu.
+  - Ba ô tiền trên điện thoại thành danh sách: nhãn bên trái, số bên phải.
+- **Trang:** `/dashboard`, `/finance`, `/finance/ledger`, `/finance/plans`, `/analytics`, `/club/insights`, `/club/business`, `/club/business/finance`, `/club/race`, `/club/rankings`, `/club/reviews`, `/club/featured`, `/club/dupr`.
+- **File:**
+  - `web/app/dashboard/page.js`, `web/app/finance/page.js`, `web/app/finance/plans/page.js`
+  - `web/app/club/insights/page.js`, `web/app/analytics/page.js`
+  - `web/components/stats/CommunityBusiness.js`, `ClubLeaderboard.js`
+  - `web/components/TrendBars.js`, `FormChart.js`, `DuprChart.js`
+  - `web/components/ui/KpiRow.js`, `StatTile.js`
+  - `web/lib/finance.js`
 
-Thứ tự trên được chọn vì đợt 1 và 2 sửa chung một lần mà có tác dụng cho mọi trang. Đợt 3 và 4 là các lỗi lặp lại nhiều nhất trên điện thoại. Các đợt sau đi theo từng nhóm trang, nhóm nào người dùng mở nhiều hơn thì làm trước.
+### Đợt 7 – Người chơi và cài đặt
+- **Việc:**
+  - Người chơi:
+    - nới độ rộng nội dung ở 1440px (hiện tối đa 1024px);
+    - trang chủ trả lời "kèo tiếp theo của tôi";
+    - bỏ nền chuyển màu.
+  - Cài đặt:
+    - gom 13 thanh tab tự dựng về `Segmented` / `UnderlineTabs`;
+    - mỗi trang một kiểu lưu, nút Lưu bên phải cuối mỗi phần;
+    - mục nguy hiểm (xoá) tách thành phần riêng ở cuối, có xác nhận.
+  - Hướng dẫn chuyển sang popup (i).
+- **Trang:** `/home`, `/p`, `/p/profile`, `/discover`, `/discover/[clubId]`, `/c/[clubId]`, `/rankings`, `/leaderboard`, `/onboarding`, `/welcome`, `/account`, `/clubs`, `/club/community-settings`, `/staff-access`, `/club/activity-log`, `/club-request`, `/contact`.
+- **File:**
+  - `web/components/PlayerShell.js`
+  - `web/app/home/page.js`, `web/app/p/page.js`, `web/app/p/profile/page.js`
+  - `web/app/discover/page.js`, `web/app/c/[clubId]/page.js`
+  - `web/components/HomeRankings.js`, `CommunityOverview.js`
+  - `web/app/account/page.js`, `web/components/AccountSecurity.js`
+  - `web/app/clubs/page.js`, `web/app/club/community-settings/page.js`
+  - `web/app/club-request/page.js`, `web/components/ui/Segmented.js`, `web/components/ui/Hint.js`
 
-## Nhật ký các đợt
+### Đợt 8 – Trang giới thiệu và đăng nhập
+- **Việc:**
+  - Trang `/` làm theo phần page của taste-skill.
+  - Bỏ chữ chuyển màu lấp lánh, đốm mờ phát sáng, nút phát sáng nhấp nháy và con trỏ tuỳ biến.
+  - Dùng chung font với app.
+  - Bỏ cắt chữ.
+  - Trên điện thoại, trang ngắn gọn hơn.
+- **Trang:** `/`, `/sign-in`, `/privacy`, `/terms`, `/reset-password`, `/verify-email`.
+- **File:**
+  - `web/components/Landing.js`
+  - `web/app/globals.css`: các lớp `lp-*`.
+  - `web/app/sign-in/page.js`, `web/app/privacy/page.js`, `web/app/terms/page.js`
+
+## 4. Bảng theo dõi
 
 | Đợt | Trạng thái | Ghi chú |
 | --- | --- | --- |
-| 0 – Ảnh chụp | Chưa làm | Cần chạy `npm run dev` và tài khoản thử |
+| 0 – Chụp ảnh hiện trạng | chưa làm | Cần chạy `npm run dev` và tài khoản thử (chủ CLB, người chơi) |
+| 1 – Nền tảng dùng chung | chưa làm | |
+| 2 – Khung chung / menu | chưa làm | |
+| 3 – Bỏ emoji làm biểu tượng | chưa làm | |
+| 4 – Bảng thành danh sách, bỏ cắt chữ | chưa làm | |
+| 5 – Lịch & kèo | chưa làm | |
+| 6 – Tài chính & thống kê | chưa làm | |
+| 7 – Người chơi và cài đặt | chưa làm | |
+| 8 – Trang giới thiệu và đăng nhập | chưa làm | |
