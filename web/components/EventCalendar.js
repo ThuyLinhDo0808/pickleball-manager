@@ -10,11 +10,11 @@ import UiIcon from '@/components/ui/UiIcon';
 
 // Block colours by status (dark surface). Text stays light for contrast.
 export const STATUS_STYLE = {
-  open: 'bg-lime-400/15 border-lime-400 text-lime-50',
-  draft: 'bg-slate-400/15 border-slate-400 text-slate-100',
-  closed: 'bg-amber-400/15 border-amber-400 text-amber-50',
-  completed: 'bg-sky-400/15 border-sky-400 text-sky-50',
-  cancelled: 'bg-red-500/10 border-red-400/60 text-red-200 line-through',
+  open: 'bg-lime-400/10 border-lime-400/70 text-white',
+  draft: 'bg-navy-700 border-navy-600 text-gray-300',
+  closed: 'bg-warn-bg border-warn-line text-warn-fg',
+  completed: 'bg-navy-800 border-navy-700 text-gray-400',
+  cancelled: 'bg-bad-bg border-bad-line text-bad-fg line-through',
 };
 
 // What the Host can set: upcoming (open), completed (automatic once the slot is over), cancelled.
@@ -24,9 +24,9 @@ export const LEGEND_STATUSES = ['open', 'completed', 'cancelled'];
 // Solid colour per status for small dots (phone month view, timeline).
 export const STATUS_DOT = {
   open: 'bg-lime-400',
-  draft: 'bg-slate-400',
-  closed: 'bg-amber-400',
-  completed: 'bg-sky-400',
+  draft: 'bg-gray-400',
+  closed: 'bg-amber-300',
+  completed: 'bg-gray-500',
   cancelled: 'bg-red-400',
 };
 

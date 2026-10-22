@@ -46,7 +46,7 @@ const ROLE_TONE = {
   owner: 'bg-lime-400 text-navy-950',
   co_admin: 'bg-sky-400 text-navy-950',
   finance: 'bg-emerald-400 text-navy-950',
-  operator: 'bg-violet-400 text-navy-950',
+  operator: 'bg-navy-700 text-navy-950',
   member: 'bg-navy-700 text-gray-200',
   xeve: 'bg-amber-300 text-navy-950',
   staff: 'bg-orange-400 text-navy-950',

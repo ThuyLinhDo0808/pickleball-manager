@@ -478,6 +478,10 @@ html { scroll-behavior: smooth; }
 /* ---- Readable and easy to tap, without oversized boxes ---------------------------------
    Small print never below 12px; buttons and fields 40px tall (compact ones 32px). Fields
    use 16px text on phones (so the phone does not zoom in while typing), 14px from tablets. */
+/* Phones: small print at 13px (was 12px) so labels, scores and meta stay readable. */
+@media (max-width: 639px) {
+  .text-xs { font-size: 0.8125rem; line-height: 1.35; }
+}
 .text-\[10px\] { font-size: 0.75rem !important; line-height: 1.3; }
 .text-\[11px\] { font-size: 0.75rem !important; line-height: 1.35; }
 .text-\[9px\] { font-size: 0.72rem !important; line-height: 1.3; }

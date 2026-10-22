@@ -429,7 +429,7 @@ function ClubRow({ club, onChanged }) {
   );
 }
 
-const ROLE_BADGE = { co_admin: 'bg-violet-400/20 text-violet-200', finance: 'bg-emerald-400/20 text-emerald-200', operator: 'bg-sky-400/20 text-sky-200' };
+const ROLE_BADGE = { co_admin: 'bg-navy-700 text-gray-200', finance: 'bg-emerald-400/20 text-emerald-200', operator: 'bg-sky-400/20 text-sky-200' };
 
 // Who helps run the host's clubs, by club: role + email, and seats used per role.
 function StaffRoles({ staff, clubs }) {
@@ -529,7 +529,7 @@ export default function OwnerHostPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier !== 'free' && h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
               {h.billing === 'paying' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-lime-400/15 text-lime-200" title={t('owner.billPayingHint')}>{t('owner.billPaying')}</span>}
-              {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>{t('owner.billGifted')}</span>}
+              {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-navy-700 text-gray-200" title={t('owner.billGiftedHint')}>{t('owner.billGifted')}</span>}
               {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM {String(h.sm_tier || 'basic').toUpperCase()}{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}
               {h.suspended_at ? <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-200">{t('owner.suspended')}</span> : <span className="rounded-full px-2.5 py-1 text-xs bg-lime-400/15 text-lime-200">● {t('owner.active')}</span>}
               <ViewAsButton host={h} />

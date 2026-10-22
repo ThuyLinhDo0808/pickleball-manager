@@ -307,7 +307,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {NOTE_TAGS.map((tag) => {
               const on = (row.tags || []).includes(tag);
               return (
-                <button key={tag} type="button" disabled={busy} aria-pressed={on} onClick={() => setRoles({ tags: on ? row.tags.filter((x) => x !== tag) : [...(row.tags || []), tag] })} className={`${chip} ${on ? 'border-violet-400 bg-violet-400/20 text-violet-100' : 'border-navy-600 text-gray-300'}`}>
+                <button key={tag} type="button" disabled={busy} aria-pressed={on} onClick={() => setRoles({ tags: on ? row.tags.filter((x) => x !== tag) : [...(row.tags || []), tag] })} className={`${chip} ${on ? 'border-navy-600 bg-navy-700 text-gray-200' : 'border-navy-600 text-gray-300'}`}>
                   {on ? '✓ ' : ''}{t(`people.tag_${tag}`)}
                 </button>
               );
@@ -327,7 +327,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {row.status === 'waitlisted' && <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onAction(row, 'promote'))}>{t('policy.promote')}</button>}
             {/* Money: organisers who play free, a pass, a refund to give back, or paid / not paid. */}
             {(row.tags || []).includes('free') && !cancelled ? (
-              <span className={`${chip} border-violet-400/60 text-violet-200`}>{t('people.tag_free')}</span>
+              <span className={`${chip} border-navy-600 text-gray-200`}>{t('people.tag_free')}</span>
             ) : row.is_organizer && row.fee_amount != null && Number(row.fee_amount) === 0 ? (
               <span className={`${chip} border-navy-600 text-gray-400`}>{t('people.noFee')}</span>
             ) : row.paid_by_plan && !cancelled ? (

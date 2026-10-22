@@ -247,7 +247,7 @@ function Finance({ d }) {
   );
 }
 
-const VALUE_TONE = { loyal: 'border-lime-400/40', new_paying: 'border-sky-400/40', paying: 'border-navy-600', expiring: 'border-amber-300/50', at_risk: 'border-red-400/50', gifted: 'border-violet-300/40', churned: 'border-red-400/30', trial: 'border-sky-400/30', free_active: 'border-navy-600', free_idle: 'border-navy-700' };
+const VALUE_TONE = { loyal: 'border-lime-400/40', new_paying: 'border-sky-400/40', paying: 'border-navy-600', expiring: 'border-amber-300/50', at_risk: 'border-red-400/50', gifted: 'border-navy-600', churned: 'border-red-400/30', trial: 'border-sky-400/30', free_active: 'border-navy-600', free_idle: 'border-navy-700' };
 
 function Segments({ d }) {
   const { t } = useI18n();

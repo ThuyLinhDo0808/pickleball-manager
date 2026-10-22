@@ -109,7 +109,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
                   {t(`matches.${m.match_type}`)}
                 </span>
                 {winner === 0 && <span className="text-yellow-400">{t('matches.draw')}</span>}
-                {m.is_challenge && <span className="rounded border border-violet-400/60 text-violet-200 px-1.5">{t('matches.challenge')}{m.challenge_reward ? ` · ${m.challenge_reward}` : ''}</span>}
+                {m.is_challenge && <span className="rounded border border-navy-600 text-gray-200 px-1.5">{t('matches.challenge')}{m.challenge_reward ? ` · ${m.challenge_reward}` : ''}</span>}
                 {!scored && <span className="rounded border border-amber-400/60 text-amber-300 px-1.5">{t('matches.notScored')}</span>}
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 items-center">

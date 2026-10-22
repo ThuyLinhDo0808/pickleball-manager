@@ -98,7 +98,7 @@ function HostList() {
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TIER_BADGE[r.tier]}`}>{r.tier}</span>
                   {r.on_trial && <span className="ml-1 rounded-full px-2 py-0.5 text-[11px] font-bold bg-sky-400/20 text-sky-200">{t('owner.trialShort')}</span>}
                   {r.social_manager && <span className="ml-1 rounded-full px-2 py-0.5 text-[11px] font-bold bg-amber-300/20 text-amber-200">SM</span>}
-                  {r.billing === 'gifted' && <span className="ml-1 rounded-full px-2 py-0.5 text-[11px] font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>{t('owner.billGiftedShort')}</span>}
+                  {r.billing === 'gifted' && <span className="ml-1 rounded-full px-2 py-0.5 text-[11px] font-bold bg-navy-700 text-gray-200" title={t('owner.billGiftedHint')}>{t('owner.billGiftedShort')}</span>}
                   {r.tier !== 'free' && r.tier_paid_until && <div className="text-gray-500 text-[11px] mt-0.5">→ {fmtDate(r.tier_paid_until)}</div>}
                 </td>
                 <td className="px-3 py-2 text-xs">

@@ -97,7 +97,7 @@ function DailyBars({ rows, label }) {
   );
 }
 
-const MIX = [['free', 'bg-gray-500'], ['trial', 'bg-sky-400'], ['basic', 'bg-sky-600'], ['standard', 'bg-violet-400'], ['advanced', 'bg-emerald-400'], ['pro', 'bg-amber-300']];
+const MIX = [['free', 'bg-gray-500'], ['trial', 'bg-sky-400'], ['basic', 'bg-sky-600'], ['standard', 'bg-navy-700'], ['advanced', 'bg-emerald-400'], ['pro', 'bg-amber-300']];
 
 // How hosts split across the plans: one stacked bar plus the counts.
 function TierMix({ mix }) {

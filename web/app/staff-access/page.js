@@ -28,7 +28,7 @@ const ROLE_STYLE = {
   referee: { icon: 'flag', chip: 'border-lime-400/50 text-lime-300 bg-lime-400/10' },
   co_admin: { icon: 'shield', chip: 'border-amber-400/60 text-amber-300 bg-amber-400/10' },
   finance: { icon: 'money', chip: 'border-emerald-400/50 text-emerald-300 bg-emerald-400/10' },
-  operator: { icon: 'user', chip: 'border-violet-400/50 text-violet-300 bg-violet-400/10' },
+  operator: { icon: 'user', chip: 'border-navy-600 text-gray-200 bg-navy-700' },
 };
 // What each role can do (rows) — shown as a small table.
 const CAN = [
