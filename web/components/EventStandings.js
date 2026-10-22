@@ -24,7 +24,7 @@ export default function EventStandings({ matches, onChallenge }) {
         <div className="table-wrap">
           <table className="w-full text-sm grid-table !min-w-[30rem]">
             <thead>
-              <tr className="text-gray-300 text-left bg-navy-900">
+              <tr className="text-left">
                 <th className="w-10 text-center">#</th>
                 <th>{t('common.name')}</th>
                 <th className="text-right">{t('estand.played')}</th>
@@ -51,8 +51,8 @@ export default function EventStandings({ matches, onChallenge }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border-2 border-violet-400/70 bg-violet-400/10 p-3 sm:p-4">
-        <h3 className="text-violet-100 font-bold">{t('estand.challengeTitle')} <Hint inline text={t('estand.challengeHint')} /></h3>
+      <section className="rounded-2xl border-2 border-navy-600 bg-navy-700 p-3 sm:p-4">
+        <h3 className="text-gray-200 font-bold">{t('estand.challengeTitle')} <Hint inline text={t('estand.challengeHint')} /></h3>
         {!pick ? (
           <p className="text-gray-300 text-sm mt-1">{t('estand.needMore')}</p>
         ) : (
@@ -62,7 +62,7 @@ export default function EventStandings({ matches, onChallenge }) {
                 <p className="text-xs text-gray-400">{t('estand.topLast')}</p>
                 <p className="text-white font-semibold">{names(pick.team1)}</p>
               </div>
-              <span className="text-violet-200 font-bold">VS</span>
+              <span className="text-gray-200 font-bold">VS</span>
               <div className="rounded-xl bg-navy-900/80 px-3 py-2">
                 <p className="text-xs text-gray-400">{t('estand.randomPair')}</p>
                 <p className="text-white font-semibold">{names(pick.team2)}</p>

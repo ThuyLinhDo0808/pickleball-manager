@@ -86,22 +86,22 @@ export function autoDeadline(date, start, hours) {
   return toLocalInput(d.toISOString());
 }
 
-// `more`: an optional part, folded away until the Host opens it — the form shows only what
+// A titled part of the form (no step numbers: the order is shown by position). `n` is kept
+// for old callers. `more`: an optional part, folded away until the Host opens it — the form shows only what
 // every kèo needs. Explanations sit behind a small "i" (pop-up), not as text under the fields.
 function Section({ n, title, hint, more = false, children }) {
   const head = (
     <h2 className="text-white font-semibold flex items-center gap-2">
-      <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${more ? 'bg-navy-700 text-gray-200' : 'bg-lime-400 text-navy-950'}`}>{n}</span>
       <span className="flex-1">{title}</span>
       {hint && <Hint inline text={hint} />}
-      {more && <span className="text-gray-400 text-sm group-open:rotate-180 transition-transform" aria-hidden>▾</span>}
+      {more && <UiIcon name="chevronDown" className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" />}
     </h2>
   );
   const body = <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">{children}</div>;
   if (!more) return <section className="card mb-4">{head}{body}</section>;
   return (
     <details className="card mb-4 group">
-      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">{head}</summary>
+      <summary className="cursor-pointer list-none min-h-[44px] flex items-center [&::-webkit-details-marker]:hidden [&>h2]:flex-1">{head}</summary>
       {body}
     </details>
   );
@@ -777,17 +777,18 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">{warning}</p>}
         {error && <p className="text-red-400 text-sm mb-3 lg:hidden">{error}</p>}
         {saved && <p className="text-lime-300 text-sm mb-3 lg:hidden" role="status">✓ {t('common.savedLong')}</p>}
-        <div className="flex gap-3 lg:hidden sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 px-4 py-3 bg-navy-950/95 border-t border-navy-700 backdrop-blur">
-          <button className="btn-primary flex-1" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
+        {/* Phone: cancel on the left, the main action on the right, pinned above the tab bar. */}
+        <div className="flex gap-3 lg:hidden sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 px-4 py-3 bg-navy-950 border-t border-navy-700">
           <Link href={cancelHref} className="btn-secondary">{t('common.cancel')}</Link>
+          <button className="btn-primary flex-1" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
         </div>
         </div>
 
         <aside className="hidden lg:block sticky top-4">
           <div className="card !p-0 overflow-hidden">
             <div className="px-4 py-3 border-b border-navy-700 bg-navy-900/50">
-              <p className="text-gray-400 text-[11px] font-semibold">{t('createx.preview')}</p>
-              <p className="text-white font-semibold truncate mt-0.5">
+              <p className="text-gray-400 text-xs">{t('createx.preview')}</p>
+              <p className="text-white font-semibold break-words mt-0.5">
                 {KIND_ICON[f.kind] && <UiIcon name={KIND_ICON[f.kind]} className="inline-block w-4 h-4 mr-1 -mt-0.5" />}
                 {f.title || <span className="text-gray-500">{t('createx.untitled')}</span>}
               </p>
@@ -810,7 +811,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                   : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
               </dd>
               <dt className="text-gray-400"><UiIcon name="pin" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
-              <dd className="text-gray-100 truncate">{f.location || '—'}{!meeting && !f.groups_on && Number(f.courts) > 0 ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
+              <dd className="text-gray-100 break-words">{f.location || '—'}{!meeting && !f.groups_on && Number(f.courts) > 0 ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
               {!meeting && !f.groups_on && <dt className="text-gray-400"><UiIcon name="users" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>}
               {!meeting && !f.groups_on && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
               <dt className="text-gray-400"><UiIcon name="money" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
@@ -838,7 +839,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                   <dt className="text-gray-400"><UiIcon name="link" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
                   <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('reg.open') : t('reg.closed')}</dd>
                   <dt className="text-gray-400"></dt>
-                  <dd className={f.members_only ? 'text-violet-200' : 'text-gray-100'}>{f.members_only ? (f.public_from ? t('mfirst.previewUntil', { at: fmtLocal(f.public_from) }) : t('mfirst.private')) : t('mfirst.public')}</dd>
+                  <dd className={f.members_only ? 'text-gray-200' : 'text-gray-100'}>{f.members_only ? (f.public_from ? t('mfirst.previewUntil', { at: fmtLocal(f.public_from) }) : t('mfirst.private')) : t('mfirst.public')}</dd>
                 </>
               )}
             </dl>
@@ -852,9 +853,11 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             )}
             <div className="p-4 border-t border-navy-700 flex flex-col gap-2">
               {error && <p className="text-red-400 text-sm">{error}</p>}
-              <button className="btn-primary w-full" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
-              {saved && <p className="text-lime-300 text-sm text-center" role="status">✓ {t('common.savedLong')}</p>}
-              <Link href={cancelHref} className="btn-secondary w-full text-center">{t('common.cancel')}</Link>
+              {saved && <p className="text-lime-300 text-sm" role="status">✓ {t('common.savedLong')}</p>}
+              <div className="flex gap-2">
+                <Link href={cancelHref} className="btn-secondary">{t('common.cancel')}</Link>
+                <button className="btn-primary flex-1" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
+              </div>
             </div>
           </div>
         </aside>

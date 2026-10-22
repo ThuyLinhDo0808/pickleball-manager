@@ -33,7 +33,7 @@ export default function LegalDoc({ kind, count }) {
   const title = t(kind === 'privacy' ? 'legal.privacyTitle' : 'legal.termsTitle');
   return (
     <main className="min-h-screen bg-navy-950 text-gray-200">
-      <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
+      <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12">
         <div className="flex items-center justify-between gap-3 mb-6">
           <BackButton fallback="/" className="!mb-0" />
           <div className="flex gap-1">

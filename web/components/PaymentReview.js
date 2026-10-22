@@ -124,9 +124,9 @@ export default function PaymentReview({ event, rows, onChanged }) {
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={viewing.image} alt="" className="w-full h-auto rounded-lg border border-navy-600" />
-            <div className="flex gap-2">
-              <button className="btn-primary flex-1" disabled={busy} onClick={() => act(viewing.g, 'confirm-payment')}>✓ {t('review.confirm')}</button>
+            <div className="flex justify-end gap-2">
               <button className="btn-secondary text-red-300" disabled={busy} onClick={() => reject(viewing.g)}>{t('review.reject')}</button>
+              <button className="btn-primary flex-1" disabled={busy} onClick={() => act(viewing.g, 'confirm-payment')}>✓ {t('review.confirm')}</button>
             </div>
           </div>
         )}

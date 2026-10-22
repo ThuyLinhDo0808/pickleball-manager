@@ -395,7 +395,7 @@ function ClubRow({ club, onChanged }) {
   return (
     <li className="py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-gray-200 truncate">
+        <span className="text-gray-200 break-words">
           {club.name}
           {club.kind === 'community' && <span className="ml-1.5 text-[10px] rounded-full border border-amber-300/60 text-amber-200 px-1.5 py-0.5 align-middle">{t('creq.kind_community')}</span>}
         </span>
@@ -429,7 +429,7 @@ function ClubRow({ club, onChanged }) {
   );
 }
 
-const ROLE_BADGE = { co_admin: 'bg-violet-400/20 text-violet-200', finance: 'bg-emerald-400/20 text-emerald-200', operator: 'bg-sky-400/20 text-sky-200' };
+const ROLE_BADGE = { co_admin: 'bg-navy-700 text-gray-200', finance: 'bg-emerald-400/20 text-emerald-200', operator: 'bg-sky-400/20 text-sky-200' };
 
 // Who helps run the host's clubs, by club: role + email, and seats used per role.
 function StaffRoles({ staff, clubs }) {
@@ -458,7 +458,7 @@ function StaffRoles({ staff, clubs }) {
                 <ul className="mt-1 divide-y divide-navy-800">
                   {mine.map((g) => (
                     <li key={g.id} className="py-1.5 flex items-center justify-between gap-2 text-sm">
-                      <span className="text-gray-300 truncate">{g.full_name ? `${g.full_name} · ` : ''}{g.email}</span>
+                      <span className="text-gray-300 break-words">{g.full_name ? `${g.full_name} · ` : ''}{g.email}</span>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${ROLE_BADGE[g.role] || 'bg-navy-700 text-gray-300'}`}>{t(`staff.${g.role}`)}</span>
                     </li>
                   ))}
@@ -522,14 +522,14 @@ export default function OwnerHostPage() {
         <div className="flex flex-col gap-4 mt-3">
           <div className="card !p-4 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-white truncate">{h.full_name || h.email}</h1>
+              <h1 className="text-xl font-bold text-white break-words">{h.full_name || h.email}</h1>
               <p className="text-gray-400 text-sm break-all">{h.email}{h.phone ? ` · ${h.phone}` : ''}</p>
               <p className="text-gray-500 text-xs mt-1">{t('owner.joined', { at: fmtDate(h.created_at) })} · {t('owner.lastSeen', { at: fmtTime(h.last_sign_in_at) })}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier !== 'free' && h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
               {h.billing === 'paying' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-lime-400/15 text-lime-200" title={t('owner.billPayingHint')}>{t('owner.billPaying')}</span>}
-              {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>{t('owner.billGifted')}</span>}
+              {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-navy-700 text-gray-200" title={t('owner.billGiftedHint')}>{t('owner.billGifted')}</span>}
               {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM {String(h.sm_tier || 'basic').toUpperCase()}{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}
               {h.suspended_at ? <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-200">{t('owner.suspended')}</span> : <span className="rounded-full px-2.5 py-1 text-xs bg-lime-400/15 text-lime-200">● {t('owner.active')}</span>}
               <ViewAsButton host={h} />

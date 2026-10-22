@@ -196,9 +196,9 @@ function ProofUpload({ token, reg, onChanged }) {
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview} alt="" className="max-h-72 w-auto self-center rounded-lg border border-navy-600" />
-          <div className="flex gap-2">
-            <button type="button" className="btn-primary flex-1 py-3" disabled={busy} onClick={send}>{busy ? '…' : t('signup.sendProof')}</button>
+          <div className="flex justify-end gap-2">
             <button type="button" className="btn-secondary" onClick={() => file.current?.click()}>{t('signup.otherImage')}</button>
+            <button type="button" className="btn-primary flex-1 py-3" disabled={busy} onClick={send}>{busy ? '…' : t('signup.sendProof')}</button>
           </div>
         </>
       ) : (
@@ -239,7 +239,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const quickHref = ev.id && ev.kind !== 'meeting' ? `/g/${ev.id}/p-${ev.public_token || token}` : null;
   // Riêng tư — thành viên trước: members sign up first; everyone else waits (no quick booking).
   const membersFirst = ev.members_only_now ? (
-    <p className="rounded-lg border border-violet-400/60 bg-violet-400/10 px-3 py-2 text-violet-100 text-sm mb-3">
+    <p className="rounded-lg border border-navy-600 bg-navy-700 px-3 py-2 text-gray-200 text-sm mb-3">
       {ev.public_from ? t('mfirst.noticeUntil', { when: localDate(new Date(ev.public_from), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) }) : t('mfirst.notice')}
     </p>
   ) : null;

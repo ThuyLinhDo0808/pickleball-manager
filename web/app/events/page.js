@@ -31,7 +31,7 @@ const PHASE = {
   live: { card: 'border-emerald-400 bg-emerald-400/10', dot: 'bg-emerald-400' },
   soon: { card: 'border-lime-400/70 bg-lime-400/5', dot: 'bg-lime-400' },
   open: { card: 'border-sky-400/60 bg-sky-400/5', dot: 'bg-sky-400' },
-  closed: { card: 'border-violet-400/50 bg-violet-400/5', dot: 'bg-violet-400' },
+  closed: { card: 'border-navy-600 bg-navy-700', dot: 'bg-navy-700' },
   done: { card: 'border-navy-600 bg-navy-900/60', dot: 'bg-gray-500' },
   cancelled: { card: 'border-red-400/40 bg-red-400/5', dot: 'bg-red-400' },
 };
@@ -92,8 +92,8 @@ function EventTags({ e }) {
   const women = range(e.level_min_f, e.level_max_f);
   const membersNow = e.members_only && (!e.public_from || Date.parse(e.public_from) > Date.now());
   const tags = [
-    membersNow && { k: 'm', text: `${t('mfirst.badge')}`, cls: 'border-violet-400 bg-violet-400/15 text-violet-100' },
-    e.series_label && { k: 's', text: `${e.series_label}`, cls: 'border-violet-400/60 text-violet-200' },
+    membersNow && { k: 'm', text: `${t('mfirst.badge')}`, cls: 'border-navy-600 bg-navy-700 text-gray-200' },
+    e.series_label && { k: 's', text: `${e.series_label}`, cls: 'border-navy-600 text-gray-200' },
     ...(e.level_names || []).map((n) => ({ k: `l${n}`, text: `${n}`, cls: 'border-amber-300/60 text-amber-200' })),
     women && men ? { k: 'dm', text: `${t('members.male')}\u00a0·\u00a0DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' } : men && { k: 'd', text: `DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' },
     women && { k: 'df', text: `${t('members.female')}\u00a0·\u00a0DUPR\u00a0${women}`, cls: 'border-pink-400/60 text-pink-200' },

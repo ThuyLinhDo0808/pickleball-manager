@@ -3,6 +3,8 @@ import { peekReturn } from '@/lib/returnTo';
 import { QuickProfileModal, QuickBirthModal } from '@/components/QuickProfileModal';
 import { useEffect, useMemo, useState } from 'react';
 import MyBookings from '@/components/MyBookings';
+import LoadingBlock from '@/components/ui/LoadingBlock';
+import ErrorBlock from '@/components/ui/ErrorBlock';
 import { formatVnd } from '@/lib/format';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -46,7 +48,7 @@ const ROLE_TONE = {
   owner: 'bg-lime-400 text-navy-950',
   co_admin: 'bg-sky-400 text-navy-950',
   finance: 'bg-emerald-400 text-navy-950',
-  operator: 'bg-violet-400 text-navy-950',
+  operator: 'bg-navy-700 text-navy-950',
   member: 'bg-navy-700 text-gray-200',
   xeve: 'bg-amber-300 text-navy-950',
   staff: 'bg-orange-400 text-navy-950',
@@ -56,7 +58,7 @@ const STATUS_TONE = {
   registered: 'border-lime-400/60 text-lime-300',
   checked_in: 'border-lime-400/60 text-lime-300',
   pending: 'border-yellow-400/60 text-yellow-300',
-  waitlisted: 'border-sky-400/60 text-sky-300',
+  waitlisted: 'border-navy-600 text-gray-300',
 };
 
 // Home hub: every role of the account side by side. A club you run opens its manager
@@ -91,12 +93,15 @@ export default function HomeHub() {
     return out;
   }, [data, filter]);
 
-  if (loading && !data) return <PlayerShell><p className="text-gray-400">{t('common.loading')}</p></PlayerShell>;
-  if (!data) return <PlayerShell><p className="text-gray-400">{t('public.loadError')}</p></PlayerShell>;
+  if (loading && !data) return <PlayerShell><LoadingBlock rows={4} className="card" /></PlayerShell>;
+  if (!data) return <PlayerShell><ErrorBlock message={t('public.loadError')} onRetry={reload} /></PlayerShell>;
 
   // People are called by their username when they have one (never by their email).
   const name = data.username || data.profile?.full_name || String(data.email || '').split('@')[0];
   const cr = data.club_request;
+  // The first thing a player wants to know: when and where is my next game.
+  const nextUp = (data.upcoming || [])[0];
+  const nextHref = nextUp ? (nextUp.ticket_code ? `/t/${nextUp.ticket_code}` : nextUp.link ? `/e/${nextUp.link}` : nextUp.club_id ? `/c/${nextUp.club_id}` : '/p') : null;
   const managed = data.managed_clubs;
   const member = data.member_clubs;
   const isStaff = !!staffInfo?.is_staff;
@@ -113,7 +118,7 @@ export default function HomeHub() {
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="min-w-0">
           <p className="text-gray-400 text-sm">{t(`hub.greet_${new Date().getHours() < 11 ? 'morning' : new Date().getHours() < 18 ? 'day' : 'evening'}`)}</p>
-          <h1 className="text-white text-2xl font-bold truncate">{t('hub.hello', { name })}</h1>
+          <h1 className="text-white text-2xl font-bold break-words">{t('hub.hello', { name })}</h1>
         </div>
         <Link href="/p/profile" className="shrink-0" aria-label={t('hub.navProfile')}>
           {data.profile?.avatar ? (
@@ -124,6 +129,23 @@ export default function HomeHub() {
           )}
         </Link>
       </div>
+
+      {nextUp && (
+        <section className="card mb-5" aria-labelledby="next-up">
+          <h2 id="next-up" className="text-gray-400 text-sm">{t('hub.nextUp')}</h2>
+          <div className="mt-1 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-white text-xl font-bold leading-snug break-words">{nextUp.title}</p>
+              <p className="text-gray-200 text-base mt-0.5 capitalize tabular-nums">
+                {nextUp.event_date === today ? t('hub.today') : formatDay(nextUp.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric' })}
+                {nextUp.start_time ? ` · ${hhmm(nextUp.start_time)}` : ''}
+              </p>
+              <p className="text-gray-400 text-sm break-words">{[nextUp.club_name || t('hub.oneOff'), nextUp.location].filter(Boolean).join(' · ')}</p>
+            </div>
+            <Link href={nextHref} className="btn-primary shrink-0 self-end">{nextUp.ticket_code ? t('hub.nextOpenTicket') : t('hub.nextOpen')}</Link>
+          </div>
+        </section>
+      )}
 
       {(!data.profile || !data.profile.birth_date) && (
         <button type="button" onClick={() => setFixOpen(data.profile ? 'birth' : 'profile')} className="card block w-full text-left mb-4 border-lime-400/50 text-lime-300 text-sm">
@@ -302,7 +324,7 @@ export default function HomeHub() {
                       <span className="w-14 shrink-0 text-gray-300 text-lg font-bold tabular-nums">{e.start_time ? hhmm(e.start_time) : '—'}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-white font-semibold leading-snug">{e.title}</span>
-                        <span className="block text-gray-400 text-xs truncate">{[e.club_name || t('hub.oneOff'), e.location].filter(Boolean).join(' · ')}</span>
+                        <span className="block text-gray-400 text-xs break-words">{[e.club_name || t('hub.oneOff'), e.location].filter(Boolean).join(' · ')}</span>
                         <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] ${STATUS_TONE[e.status] || 'border-navy-600 text-gray-300'}`}>
                           {t(`player.status_${e.status}`)}
                           {e.ticket_code ? ` · ${t('pp.ticket')}` : ''}

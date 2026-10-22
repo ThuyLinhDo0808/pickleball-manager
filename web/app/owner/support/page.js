@@ -106,8 +106,8 @@ export default function OwnerSupportPage() {
                 <li key={s.email} className={`card !p-3 ${s.active ? '' : 'opacity-60'}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-white font-semibold truncate">{s.full_name || s.email}</div>
-                      {s.full_name && <div className="text-gray-400 text-xs truncate">{s.email}</div>}
+                      <div className="text-white font-semibold break-words">{s.full_name || s.email}</div>
+                      {s.full_name && <div className="text-gray-400 text-xs break-words">{s.email}</div>}
                       <div className="text-gray-500 text-[11px] mt-0.5">
                         {s.has_account ? t('owner.supportLastSeen', { at: fmtTime(s.last_sign_in_at) }) : t('owner.supportNoAccount')}
                       </div>

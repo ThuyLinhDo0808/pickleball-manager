@@ -20,12 +20,9 @@ import Hint from '@/components/ui/Hint';
 function Tile({ icon, label, value, tone = 'text-white', sub }) {
   return (
     <div className="card !p-4">
-      <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
-        <span>{label}</span>
-        
-      </div>
+      <div className="text-gray-400 text-sm">{label}</div>
       <div className={`text-xl font-bold tabular-nums mt-1 whitespace-nowrap ${tone}`}>{value}</div>
-      {sub && <div className="text-gray-400 text-xs mt-0.5">{sub}</div>}
+      {sub && <div className="text-gray-400 text-sm mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -47,7 +44,7 @@ function Breakdown({ title, rows, total, color, t }) {
             return (
               <li key={r.category}>
                 <div className="flex justify-between gap-2 text-sm">
-                  <span className="text-gray-200 truncate">{categoryLabel(r.category, t)}</span>
+                  <span className="text-gray-200 break-words">{categoryLabel(r.category, t)}</span>
                   <span className="text-gray-300 tabular-nums shrink-0">{formatVnd(r.amount)} <span className="text-gray-500 text-xs">· {pct}%</span></span>
                 </div>
                 <div className="h-1.5 rounded-full bg-navy-900 mt-1 overflow-hidden">
@@ -73,9 +70,9 @@ function DailyOverview({ daily, isYear, label }) {
       {daily && daily.days.length === 0 && <p className="text-gray-400 text-sm">{t('social.dailyNone')}</p>}
       {daily && daily.days.length > 0 && (
         <div className="table-wrap">
-          <table className="w-full text-sm grid-table !min-w-[40rem]">
+          <table className="w-full text-sm grid-table mobile-list !min-w-[40rem]">
             <thead>
-              <tr className="text-gray-300 text-left bg-navy-900">
+              <tr className="text-left">
                 <th>{t('fin.date')}</th>
                 <th className="text-right">{t('social.sessions')}</th>
                 <th className="text-right">{t('fin.playersCol')}</th>
@@ -89,22 +86,22 @@ function DailyOverview({ daily, isYear, label }) {
               {daily.days.map((d) => (
                 <tr key={d.date}>
                   <td className="text-gray-200 whitespace-nowrap capitalize">{localDate(new Date(`${d.date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td>
-                  <td className="text-right tabular-nums text-gray-300">{d.sessions || '—'}</td>
-                  <td className="text-right tabular-nums text-gray-300">{d.players || '—'}</td>
-                  <td className="text-right tabular-nums text-lime-400">{formatVnd(d.income)}</td>
-                  <td className="text-right tabular-nums text-orange-300">{formatVnd(d.expense)}</td>
-                  <td className={`text-right tabular-nums font-semibold ${d.profit < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(d.profit)}</td>
-                  <td className="text-right tabular-nums text-amber-200">{d.unpaid ? formatVnd(d.unpaid) : '—'}</td>
+                  <td className="text-right tabular-nums text-gray-300" data-label={`${t('social.sessions')}:`}>{d.sessions || '—'}</td>
+                  <td className="text-right tabular-nums text-gray-300" data-label={`${t('fin.playersCol')}:`}>{d.players || '—'}</td>
+                  <td className="text-right tabular-nums text-lime-400" data-label={`${t('analytics.income')}:`}>{formatVnd(d.income)}</td>
+                  <td className="text-right tabular-nums text-orange-300" data-label={`${t('analytics.expense')}:`}>{formatVnd(d.expense)}</td>
+                  <td className={`key text-right tabular-nums font-semibold ${d.profit < 0 ? '!text-red-400' : 'text-white'}`}>{formatVnd(d.profit)}</td>
+                  <td className="text-right tabular-nums text-amber-200" data-label={`${t('social.unpaid')}:`}>{d.unpaid ? formatVnd(d.unpaid) : '—'}</td>
                 </tr>
               ))}
               <tr className="bg-navy-900/60 font-semibold">
                 <td className="text-white">{t('social.total')}</td>
-                <td className="text-right tabular-nums text-white">{daily.totals.sessions}</td>
-                <td className="text-right tabular-nums text-white">{daily.totals.players}</td>
-                <td className="text-right tabular-nums text-lime-400">{formatVnd(daily.totals.income)}</td>
-                <td className="text-right tabular-nums text-orange-300">{formatVnd(daily.totals.expense)}</td>
-                <td className={`text-right tabular-nums ${daily.totals.profit < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(daily.totals.profit)}</td>
-                <td className="text-right tabular-nums text-amber-200">{formatVnd(daily.totals.unpaid)}</td>
+                <td className="text-right tabular-nums text-white" data-label={`${t('social.sessions')}:`}>{daily.totals.sessions}</td>
+                <td className="text-right tabular-nums text-white" data-label={`${t('fin.playersCol')}:`}>{daily.totals.players}</td>
+                <td className="text-right tabular-nums text-lime-400" data-label={`${t('analytics.income')}:`}>{formatVnd(daily.totals.income)}</td>
+                <td className="text-right tabular-nums text-orange-300" data-label={`${t('analytics.expense')}:`}>{formatVnd(daily.totals.expense)}</td>
+                <td className={`key text-right tabular-nums ${daily.totals.profit < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(daily.totals.profit)}</td>
+                <td className="text-right tabular-nums text-amber-200" data-label={`${t('social.unpaid')}:`}>{formatVnd(daily.totals.unpaid)}</td>
               </tr>
             </tbody>
           </table>
@@ -192,8 +189,7 @@ export default function FinanceOverview() {
       <div className={`grid gap-4 mb-4 ${isClub || social ? 'lg:grid-cols-[1fr_2.4fr]' : ''}`}>
         {/* Social Manager: "Lợi nhuận dự kiến" = income − costs + what players still owe, for the period. */}
         {social && (
-          <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 flex flex-col justify-center">
-            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
+          <div className="rounded-2xl border border-navy-700 bg-navy-800 p-5 sm:p-6 flex flex-col justify-center">
             <p className="text-gray-400 text-xs font-semibold">{t('social.expectedProfit')} · {periodLabel}</p>
             {(() => {
               const owed = !isYear && daily ? daily.totals.unpaid : 0;
@@ -205,16 +201,15 @@ export default function FinanceOverview() {
         )}
         {/* The club fund: what is in it now, whatever the period. */}
         {isClub && !social && (
-          <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-5 sm:p-6 flex flex-col justify-center">
-            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
+          <div className="rounded-2xl border border-navy-700 bg-navy-800 p-5 sm:p-6 flex flex-col justify-center">
             <p className="text-gray-400 text-xs font-semibold">{t('fin.balance')}</p>
             <div className={`text-3xl sm:text-4xl font-bold tabular-nums mt-1 ${bal < 0 ? 'text-red-400' : 'text-lime-400'}`}>{fund ? formatVnd(bal) : '—'}</div>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3 content-start">
-          <Tile icon="trendUp" label={`${t('analytics.income')} · ${periodLabel}`} value={picked ? formatVnd(picked.income) : '—'} tone="text-lime-400" />
-          <Tile icon="trendDown" label={`${t('analytics.expense')} · ${periodLabel}`} value={picked ? formatVnd(picked.expense) : '—'} tone="text-orange-300" />
+          <Tile icon="trendUp" label={`${t('analytics.income')} · ${periodLabel}`} value={picked ? formatVnd(picked.income) : '—'} tone="text-white" />
+          <Tile icon="trendDown" label={`${t('analytics.expense')} · ${periodLabel}`} value={picked ? formatVnd(picked.expense) : '—'} tone="text-white" />
         </div>
       </div>
 
@@ -243,9 +238,9 @@ export default function FinanceOverview() {
         {Array.isArray(pnl) && pnlShown.length === 0 && <p className="text-gray-400 text-sm">{t('fin.eventPnlNone')}</p>}
         {pnlShown.length > 0 && (
           <div className="table-wrap">
-            <table className="w-full text-sm grid-table">
+            <table className="w-full text-sm grid-table mobile-list">
               <thead>
-                <tr className="text-gray-300 text-left bg-navy-900">
+                <tr className="text-left">
                   <th>{t('events.title')}</th>
                   <th>{t('events.date')}</th>
                   <th className="text-right">{t('fin.playersCol')}</th>
@@ -261,10 +256,10 @@ export default function FinanceOverview() {
                       <Link href={`/events/${e.event_id}`} className="text-white hover:text-lime-400">{e.title}</Link>
                     </td>
                     <td className="text-gray-300">{localDate(new Date(`${e.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}</td>
-                    <td className="text-right tabular-nums text-gray-300">{e.players}</td>
-                    <td className="text-right tabular-nums text-gray-300">{formatVnd(e.income)}</td>
-                    <td className="text-right tabular-nums text-gray-300">{formatVnd(e.expense)}</td>
-                    <td className={`text-right tabular-nums font-semibold ${e.net >= 0 ? 'text-lime-400' : 'text-red-400'}`}>
+                    <td className="text-right tabular-nums text-gray-300" data-label={`${t('fin.playersCol')}:`}>{e.players}</td>
+                    <td className="text-right tabular-nums text-gray-300" data-label={`${t('analytics.income')}:`}>{formatVnd(e.income)}</td>
+                    <td className="text-right tabular-nums text-gray-300" data-label={`${t('analytics.expense')}:`}>{formatVnd(e.expense)}</td>
+                    <td className={`key text-right tabular-nums font-semibold ${e.net >= 0 ? '!text-lime-400' : '!text-red-400'}`}>
                       {e.net > 0 ? '+' : ''}{formatVnd(e.net)}
                     </td>
                   </tr>

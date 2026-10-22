@@ -430,7 +430,7 @@ export default function AttendancePage() {
             <div className="overflow-x-auto -mx-4 px-4">
               <table className="text-sm grid-table compact-cells">
                 <thead>
-                  <tr className="text-gray-300 bg-navy-900">
+                  <tr className="text-gray-300">
                     <th className="w-10 text-center sticky left-0 bg-navy-900 z-10">#</th>
                     <th className="text-left min-w-[10rem] sticky left-10 bg-navy-900 z-10">{t('common.name')}</th>
                     {by === 'session'
@@ -563,9 +563,9 @@ export default function AttendancePage() {
             <p className="text-gray-400 text-sm">{t('stats.noPasses')}</p>
           ) : (
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-sm grid-table compact-cells">
+              <table className="w-full text-sm grid-table compact-cells mobile-list">
                 <thead>
-                  <tr className="text-gray-300 bg-navy-900 text-left">
+                  <tr className="text-gray-300 text-left">
                     <th>{t('common.name')}</th>
                     <th>{t('stats.periodCol')}</th>
                     <th className="text-right">{t('stats.included')}</th>
@@ -584,9 +584,9 @@ export default function AttendancePage() {
                           {/^\d{4}-\d{2}$/.test(p.period_label || '') ? monthLabel(p.period_label) : p.period_label || `${dm(p.starts_on)} – ${dm(p.ends_on)}`}
                           {p.status !== 'paid' && <span className="ml-1 text-yellow-300 text-xs">· {t('membership.pending')}</span>}
                         </td>
-                        <td className="text-right tabular-nums text-gray-300">{unlimited ? '∞' : p.sessions_included}</td>
-                        <td className="text-right tabular-nums text-gray-300">{p.sessions_used}</td>
-                        <td className={`text-right tabular-nums font-semibold ${unlimited ? 'text-gray-400' : p.sessions_remaining > 0 ? 'text-lime-400' : 'text-gray-400'}`}>
+                        <td className="text-right tabular-nums text-gray-300" data-label={`${t('stats.included')}:`}>{unlimited ? '∞' : p.sessions_included}</td>
+                        <td className="text-right tabular-nums text-gray-300" data-label={`${t('stats.used')}:`}>{p.sessions_used}</td>
+                        <td className={`key text-right tabular-nums font-semibold ${unlimited ? 'text-gray-400' : p.sessions_remaining > 0 ? 'text-lime-400' : 'text-gray-400'}`}>
                           {unlimited ? '∞' : p.sessions_remaining}
                         </td>
                         <td className="text-sm">
@@ -621,7 +621,7 @@ export default function AttendancePage() {
             <div className="overflow-x-auto -mx-4 px-4">
               <table className="text-sm grid-table compact-cells">
                 <thead>
-                  <tr className="text-gray-300 bg-navy-900">
+                  <tr className="text-gray-300">
                     <th className="w-10 text-center">#</th>
                     <th className="text-left min-w-[10rem]">{t('common.name')}</th>
                     <th className="text-left">{t('common.phone')}</th>

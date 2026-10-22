@@ -4,7 +4,7 @@ import UiIcon, { hasUiIcon } from '@/components/ui/UiIcon';
 
 // A club's round avatar: initials on a colour picked from the club id (stable across the
 // app), the sport in a corner and, optionally, the role ribbon under it.
-const PALETTE = ['#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#14b8a6', '#f97316', '#6366f1', '#ec4899', '#84cc16'];
+const PALETTE = ['#2b6a8a', '#3d7a4e', '#8a6a2a', '#8a4a3a', '#4a6488', '#5e7a32', '#2f7a72', '#7a5a3a'];
 
 function colorOf(id = '') {
   let h = 0;

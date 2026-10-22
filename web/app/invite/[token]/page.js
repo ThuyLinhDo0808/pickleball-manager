@@ -49,7 +49,7 @@ export default function InvitePage() {
     <PlayerShell requireAuth={false}>
       <div className="mx-auto max-w-lg">
         <section className="overflow-hidden rounded-2xl border border-navy-700 bg-navy-900/70">
-          <div className="relative h-32 bg-gradient-to-br from-navy-800 via-navy-900 to-lime-900/30">
+          <div className="relative h-32 bg-navy-800 ">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {cover && <img src={cover} alt="" className="h-full w-full object-cover" />}
             <span className="absolute -bottom-7 left-4">

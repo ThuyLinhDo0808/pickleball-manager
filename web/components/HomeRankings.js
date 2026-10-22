@@ -117,7 +117,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                     <span className="min-w-0 flex-1 break-words text-gray-100">
                       {r.full_name}
                       {isMe(r) && <span className="ml-1.5 text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
-                      {!club && r.clubs?.length > 0 && <span className="block text-[10px] text-gray-500 truncate">{r.clubs.join(' · ')}</span>}
+                      {!club && r.clubs?.length > 0 && <span className="block text-[10px] text-gray-500 break-words">{r.clubs.join(' · ')}</span>}
                     </span>
                     <span className={`w-10 text-right text-xs tabular-nums ${order === 'level' ? 'text-lime-300 font-semibold' : 'text-gray-400'}`}>{fmtLevel(r.level, sport) || '—'}</span>
                     <span className="text-gray-400 text-xs tabular-nums">{r.wins}-{r.losses}</span>

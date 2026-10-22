@@ -39,7 +39,7 @@ function ProfileCard({ name, card, sport, t }) {
       <div className="flex items-center gap-3">
         <Avatar src={c.avatar} name={name} size={56} />
         <div className="min-w-0">
-          <div className="text-white font-semibold truncate">{name}</div>
+          <div className="text-white font-semibold break-words">{name}</div>
           <div className="text-gray-400 text-xs flex items-center gap-1.5 mt-0.5">
             <span>{kind}</span>
           </div>
@@ -50,7 +50,7 @@ function ProfileCard({ name, card, sport, t }) {
           {rows.map(([k, v]) => (
             <div key={k} className="contents">
               <dt className="text-gray-400">{k}</dt>
-              <dd className="text-gray-100 truncate">{v}</dd>
+              <dd className="text-gray-100 break-words">{v}</dd>
             </div>
           ))}
         </dl>

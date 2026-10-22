@@ -10,9 +10,8 @@ import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
 
 // Categorical slots validated for the dark surface (CVD-safe): blue, orange, aqua.
-const C1 = '#3987e5';
-const C2 = '#d95926';
-const C3 = '#199e70';
+import { DATA as C1, DATA_2 as C2, DATA_3 as C3 } from '@/lib/chartTheme';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 const card = 'rounded-xl border border-navy-700 bg-navy-900/60 p-4';
 const mShort = (m) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 // 1.250.000 -> "1,3tr"; 450.000 -> "450k"
@@ -81,7 +80,7 @@ function HBars({ items, color = C1, fmt = (v) => v }) {
       {items.map((x) => (
         <li key={x.label} title={x.title || ''}>
           <div className="flex justify-between gap-2 text-xs mb-1">
-            <span className="text-gray-200 truncate">{x.label}</span>
+            <span className="text-gray-200 break-words">{x.label}</span>
             <span className="text-gray-300 tabular-nums shrink-0">{fmt(x.value)}{x.sub ? <span className="text-gray-500"> · {x.sub}</span> : null}</span>
           </div>
           <div className="h-2 rounded-full bg-navy-800 overflow-hidden">
@@ -247,7 +246,7 @@ function Finance({ d }) {
   );
 }
 
-const VALUE_TONE = { loyal: 'border-lime-400/40', new_paying: 'border-sky-400/40', paying: 'border-navy-600', expiring: 'border-amber-300/50', at_risk: 'border-red-400/50', gifted: 'border-violet-300/40', churned: 'border-red-400/30', trial: 'border-sky-400/30', free_active: 'border-navy-600', free_idle: 'border-navy-700' };
+const VALUE_TONE = { loyal: 'border-lime-400/40', new_paying: 'border-sky-400/40', paying: 'border-navy-600', expiring: 'border-amber-300/50', at_risk: 'border-red-400/50', gifted: 'border-navy-600', churned: 'border-red-400/30', trial: 'border-sky-400/30', free_active: 'border-navy-600', free_idle: 'border-navy-700' };
 
 function Segments({ d }) {
   const { t } = useI18n();
@@ -401,13 +400,7 @@ export default function OwnerAnalyticsPage() {
         </>
       }
     >
-      <div className="flex gap-1 border-b border-navy-800 mb-6 overflow-x-auto" role="tablist">
-        {TABS.map((k) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm ${tab === k ? 'border-amber-300 text-white font-semibold' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
-            {t(`ana.tab_${k}`)}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs value={tab} onChange={setTab} tabs={TABS.map((k) => ({ key: k, label: t(`ana.tab_${k}`) }))} />
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && tab === 'revenue' && <Revenue d={d} />}

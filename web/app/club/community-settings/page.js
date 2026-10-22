@@ -261,11 +261,12 @@ export default function CommunitySettingsPage() {
         </Card>
 
         <div className="h-2" aria-hidden="true" />
-        <div className="sticky bottom-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-navy-600 bg-navy-900/95 px-4 py-3 backdrop-blur">
-          <button type="button" className="btn-primary" onClick={save}>{busy ? t('common.loading') : t('cpanel.save')}</button>
-          <Link href="/club/members" className="text-sm text-gray-300 underline">{t('cpanel.toMembers')}</Link>
+        {/* One save for the page, pinned at the bottom: the message and links on the left, Save on the right. */}
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-navy-600 bg-navy-900 px-4 py-3">
+          <Link href="/club/members" className="text-sm text-gray-300 underline min-h-[44px] sm:min-h-0 inline-flex items-center">{t('cpanel.toMembers')}</Link>
           {msg && <span className={`text-sm ${msg.ok ? 'text-lime-300' : 'text-red-300'}`} role="status">{msg.ok ? '✓ ' : ''}{msg.text}</span>}
-          {!canEdit && <span className="text-xs text-gray-400">{t('cpanel.readOnly')}</span>}
+          {!canEdit && <span className="text-sm text-gray-400">{t('cpanel.readOnly')}</span>}
+          <button type="button" className="btn-primary ml-auto" onClick={save}>{busy ? t('common.loading') : t('cpanel.save')}</button>
         </div>
       </fieldset>
     </AppShell>

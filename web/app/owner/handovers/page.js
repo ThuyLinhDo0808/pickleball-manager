@@ -82,9 +82,9 @@ export default function OwnerHandoversPage() {
             {h.note && <p className="text-gray-300 text-sm mt-2">{h.note}</p>}
             {h.owner_note && <p className="text-gray-400 text-xs mt-1">{h.owner_note}{h.decided_by ? ` — ${h.decided_by}` : ''}</p>}
             {h.status === 'pending' && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === h.id} onClick={() => decide(h, 'approve')}>✓ {t('handover.approve')}</button>
+              <div className="mt-2 flex justify-end flex-wrap gap-2">
                 <button type="button" className="btn-secondary !py-1 text-xs text-red-300" disabled={busy === h.id} onClick={() => decide(h, 'reject')}>✕ {t('handover.reject')}</button>
+                <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === h.id} onClick={() => decide(h, 'approve')}>✓ {t('handover.approve')}</button>
               </div>
             )}
           </li>

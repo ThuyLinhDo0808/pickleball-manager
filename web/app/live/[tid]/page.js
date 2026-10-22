@@ -89,7 +89,7 @@ export default function LiveHubPage() {
           </div>
           {publicUrl && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <code className="flex-1 min-w-0 truncate rounded-lg bg-navy-950 border border-navy-700 px-3 py-2 text-sm text-lime-200">{publicUrl}</code>
+              <code className="flex-1 min-w-0 break-words rounded-lg bg-navy-950 border border-navy-700 px-3 py-2 text-sm text-lime-200">{publicUrl}</code>
               <button
                 type="button"
                 className="btn-secondary text-sm"
@@ -119,14 +119,14 @@ export default function LiveHubPage() {
                 <Link key={l.id} href={`/live/${tid}/${l.id}`} className="card !p-0 overflow-hidden hover:border-red-400 transition">
                   <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-xs">
                     <span className="text-red-200 font-semibold">● {l.court || t('live.noCourt')}</span>
-                    <span className="text-gray-300 truncate ml-2">
+                    <span className="text-gray-300 break-words ml-2">
                       {m ? matchLabel(m, matches, t) : ''} · {t('live.gameN', { n: l.state?.game_no || 1 })}
                       {l.state?.timing?.started_at && <span className="text-white tabular-nums"> · {clock(elapsed(l.state.timing, now).match)}</span>}
                     </span>
                   </div>
                   {[1, 2].map((side) => (
                     <div key={side} className="flex items-center justify-between gap-2 px-4 py-2">
-                      <span className={`truncate ${l.state?.serving === side ? 'text-white font-semibold' : 'text-gray-300'}`}>
+                      <span className={`break-words ${l.state?.serving === side ? 'text-white font-semibold' : 'text-gray-300'}`}>
                         {l.state?.serving === side && <UiIcon name={sportIcon(tour.sport)} className="inline-block w-4 h-4 mr-1 -mt-0.5 text-lime-300" />}
                         {side === 1 ? l.team1 : l.team2}
                       </span>
@@ -154,7 +154,7 @@ export default function LiveHubPage() {
           <div key={m.match_id || m.sub_match_id} className="card !p-3 flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="min-w-0 flex-1">
               <div className="text-gray-400 text-xs">{matchLabel(m, matches, t)}</div>
-              <div className="text-white text-sm truncate">{m.team1} <span className="text-gray-500">vs</span> {m.team2}</div>
+              <div className="text-white text-sm break-words">{m.team1} <span className="text-gray-500">vs</span> {m.team2}</div>
               {m.played && (
                 <div className="text-lime-300 text-xs tabular-nums">
                   {m.score?.join(' - ')}
@@ -314,7 +314,7 @@ function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, ti
             <Hint text={t('live.lineupHint')} className="mb-1" />
             {[1, 2].map((side) => (
               <div key={side} className="grid grid-cols-[5rem_1fr_1fr] gap-2 items-center mb-1.5">
-                <span className="text-gray-300 truncate">{teamName(side)}</span>
+                <span className="text-gray-300 break-words">{teamName(side)}</span>
                 {Array.from({ length: size }, (_, i) => (
                   <select
                     key={i}

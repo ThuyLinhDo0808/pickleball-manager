@@ -152,9 +152,9 @@ export default function DuprMembers({ club }) {
           </div>
         </div>
         <div className="table-wrap">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm mobile-list">
             <thead>
-              <tr className="text-gray-400 text-xs text-left border-b border-navy-700">
+              <tr className="text-gray-400 text-sm text-left border-b border-navy-600">
                 <th className="py-2 px-3">{t('dupr.col_member')}</th>
                 <th className="py-2 pr-3">{t('dupr.col_id')}</th>
                 <th className="py-2 pr-3">{t('dupr.col_duprName')}</th>
@@ -167,7 +167,7 @@ export default function DuprMembers({ club }) {
             </thead>
             <tbody>
               {list.map((m) => (
-                <tr key={m.id} className={`border-b border-navy-800 last:border-0 ${m.is_active ? '' : 'opacity-50'}`}>
+                <tr key={m.id} className={`border-b border-navy-700 last:border-0 ${m.is_active ? '' : 'opacity-50'}`}>
                   <td className="py-2 px-3 text-white">
                     {m.full_name}
                   </td>
@@ -265,7 +265,7 @@ export default function DuprMembers({ club }) {
             <ul className="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 divide-y sm:divide-y-0 divide-navy-800 text-sm max-h-96 overflow-y-auto">
               {data.unclaimed.map((r) => (
                 <li key={r.dupr_id} className="py-1.5 flex items-center gap-2">
-                  <span className="text-gray-200 truncate">{r.name || '—'}</span>
+                  <span className="text-gray-200 break-words">{r.name || '—'}</span>
                   <span className="font-mono text-gray-500 text-xs">{r.dupr_id}</span>
                   <span className="ml-auto text-gray-400 text-xs tabular-nums">{fmtRating(r.doubles)}</span>
                 </li>

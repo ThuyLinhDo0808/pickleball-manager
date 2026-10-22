@@ -107,7 +107,7 @@ export default function StaffEventPage() {
   return (
     <AppShell>
       <Link href="/staff" className="text-gray-400 text-sm hover:text-white">{t('staffView.back')}</Link>
-      <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-4 sm:p-5 mt-2 mb-4">
+      <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-navy-800 p-4 sm:p-5 mt-2 mb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-white text-2xl font-bold break-words">{ev.title}</h1>
@@ -135,14 +135,14 @@ export default function StaffEventPage() {
         <KpiRow cols={4}>
           <StatTile icon="paddle" label={t('staffX.kpiMatches')} value={ev.matches.length} tone="text-lime-300" />
           <StatTile icon="users" label={t('staffX.kpiPlayersHere')} value={`${arrived.length}/${mainList.length}`} tone="text-sky-300" />
-          <StatTile icon="trophy" label={t('staffX.kpiLeader')} value={leader ? <span className="block truncate text-base sm:text-lg">{leader.name}</span> : '—'} sub={leader ? t('staffX.kpiLeaderSub', { won: leader.won, played: leader.played }) : null} />
+          <StatTile icon="trophy" label={t('staffX.kpiLeader')} value={leader ? <span className="block break-words text-base sm:text-lg">{leader.name}</span> : '—'} sub={leader ? t('staffX.kpiLeaderSub', { won: leader.won, played: leader.played }) : null} />
           <StatTile icon="timer" label={t('staffX.kpiLastMatch')} value={lastMatch ? lastMatch.toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'} />
         </KpiRow>
       )}
 
       <div role="tablist" className="grid gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((k) => (
-          <button key={k} role="tab" aria-selected={current === k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-sm truncate ${current === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}>
+          <button key={k} role="tab" aria-selected={current === k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-sm break-words ${current === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}>
             {TAB_LABEL[k]}
           </button>
         ))}

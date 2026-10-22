@@ -99,8 +99,7 @@ export default function AccountPage() {
   return (
     <AppShell>
       {/* Profile header */}
-      <div className="relative overflow-hidden rounded-xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-4 mb-3">
-        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
+      <div className="relative overflow-hidden rounded-xl border border-navy-700 bg-navy-800 p-4 mb-3">
         <div className="relative flex flex-wrap items-center gap-3">
           <span className="h-12 w-12 shrink-0 rounded-xl bg-lime-400 text-navy-950 text-2xl font-bold flex items-center justify-center">
             {(name || '?').slice(0, 1).toUpperCase()}
@@ -123,7 +122,7 @@ export default function AccountPage() {
               [since || '—', t('acct.statSince')],
             ].map(([v, k]) => (
               <div key={k} className="rounded-lg bg-navy-950/60 border border-navy-700 px-2.5 py-1.5 text-center">
-                <div className="text-white font-bold tabular-nums truncate capitalize">{v}</div>
+                <div className="text-white font-bold tabular-nums break-words capitalize">{v}</div>
                 <div className="text-gray-400 text-[11px]">{k}</div>
               </div>
             ))}
@@ -140,7 +139,7 @@ export default function AccountPage() {
             role="tab"
             aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${tab === id ? (id === 'danger' ? 'border-red-400 bg-red-500/15 text-red-200 font-semibold' : 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold') : id === 'danger' ? 'border-red-500/40 text-red-300 hover:bg-red-500/10' : 'border-navy-600 text-gray-300 hover:border-lime-400 hover:text-lime-300'}`}
+            className={`min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm whitespace-nowrap ${tab === id ? (id === 'danger' ? 'border-bad-line bg-bad-bg text-bad-fg font-semibold' : 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold') : id === 'danger' ? 'border-bad-line text-bad-fg hover:bg-bad-bg sm:ml-auto' : 'border-navy-600 text-gray-200 hover:border-lime-400'}`}
           >
             <UiIcon name={icon} className="w-4 h-4 shrink-0" /> {id === 'login' ? t('auth.detailsTitle') : t(`acct.s_${id}`)}
           </a>
@@ -229,7 +228,7 @@ export default function AccountPage() {
         <SettingsSection id="backup" hidden={tab !== 'backup'} icon="list" tone="violet" title={t('acct.s_backup')} description={t('acct.backupHint')}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-white font-semibold truncate">{club?.name || '—'}</div>
+              <div className="text-white font-semibold break-words">{club?.name || '—'}</div>
               <div className="text-gray-400 text-xs">{t('acct.backupWhat')}</div>
             </div>
             <button className="btn-secondary" onClick={onBackup} disabled={!club || backupBusy}>{t('common.exportExcel')}</button>

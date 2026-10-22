@@ -167,25 +167,25 @@ function BallTable({ item, onEdit }) {
   if (!log.length) return <p className="text-gray-500 text-sm mb-3">{t('inventory.noLog')}</p>;
   return (
     <div className="table-wrap mb-3 rounded-xl border border-navy-700 max-h-[28rem] overflow-y-auto">
-      <table className="text-sm w-full border-collapse min-w-[34rem]">
-        <thead className="sticky top-0 z-10">
-          <tr className="bg-navy-900 text-gray-300">
-            <th className="text-left font-medium px-3 py-2">{t('inventory.date')}</th>
+      <table className="text-sm w-full border-collapse min-w-[34rem] mobile-list">
+        <thead className="sticky top-0 z-10 bg-navy-800">
+          <tr className="text-gray-300">
+            <th className="text-left font-normal text-gray-400 px-3 py-2 border-b border-navy-600">{t('inventory.date')}</th>
             {COLS.map(([k]) => (
-              <th key={k} className="px-2 py-2 text-center font-medium border-l border-navy-700 leading-tight">{t(`inventory.col_${k}`)}</th>
+              <th key={k} className="px-2 py-2 text-right font-normal text-gray-400 leading-tight border-b border-navy-600">{t(`inventory.col_${k}`)}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {log.map((r) => (
             <tr key={r.date} className="border-t border-navy-700 hover:bg-navy-800/60">
-              <td className="px-3 py-1.5 whitespace-nowrap">
+              <td className="px-3 py-2 whitespace-nowrap">
                 <button type="button" className="text-gray-100 hover:text-lime-300 underline decoration-dotted underline-offset-2" title={t('inventory.editSession', { d: dm(r.date) })} onClick={() => onEdit(r)}>
                   {dm(r.date)}
                 </button>
               </td>
               {COLS.map(([k, tone]) => (
-                <td key={k} className={`px-2 py-1.5 text-center tabular-nums border-l border-navy-700 ${tone}`}>{r[k]}</td>
+                <td key={k} className={`px-2 py-2 text-right tabular-nums ${tone}`} data-label={`${t(`inventory.col_${k}`)}:`}>{r[k]}</td>
               ))}
             </tr>
           ))}
@@ -308,9 +308,9 @@ export default function InventoryPage() {
             <Durability item={i} />
             <BallTable item={i} onEdit={(row) => setSession({ item: i, row })} />
 
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-primary text-sm" onClick={() => setSession({ item: i })}>+ {t('inventory.logSession')}</button>
+            <div className="flex justify-end flex-wrap gap-2">
               <button className="btn-secondary text-sm" onClick={() => setMove({ item: i, kind: 'purchase' })}>+ {t('inventory.purchase')}</button>
+              <button className="btn-primary text-sm" onClick={() => setSession({ item: i })}>+ {t('inventory.logSession')}</button>
               <button className="btn-secondary text-sm" onClick={() => setMove({ item: i, kind: 'adjust' })}>{t('inventory.adjust')}</button>
               <button className="text-gray-400 text-sm underline ml-auto" onClick={() => setOpenHistory(openHistory === i.id ? null : i.id)}>{t('inventory.history')}</button>
             </div>

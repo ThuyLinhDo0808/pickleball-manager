@@ -20,8 +20,8 @@ export function categoryLabel(category, t) {
 
 // Chart colours validated on the dark card surface #16223b (dataviz validator):
 // categorical slots 1-2, CVD ΔE 26.8, contrast >= 3:1.
-export const INCOME_COLOR = '#3987e5';
-export const EXPENSE_COLOR = '#d95926';
+// Income carries the data hue, expenses the neutral second series (lib/chartTheme.js).
+export { DATA as INCOME_COLOR, DATA_2 as EXPENSE_COLOR } from '@/lib/chartTheme';
 
 // "Buổi 12/10 · Chơi thứ 7" — which session an entry belongs to.
 export function sessionLabel(ev, t) {

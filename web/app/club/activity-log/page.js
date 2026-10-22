@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
 
 const GROUPS = ['', 'member', 'membership', 'plan', 'payment', 'money', 'event', 'participant', 'attendance', 'match', 'tournament', 'inventory', 'roster', 'club'];
-const ROLE_BADGE = { owner: 'bg-lime-400/15 text-lime-200', co_admin: 'bg-violet-400/20 text-violet-200', finance: 'bg-emerald-400/20 text-emerald-200', operator: 'bg-sky-400/20 text-sky-200' };
+const ROLE_BADGE = { owner: 'bg-lime-400/15 text-lime-200', co_admin: 'bg-navy-700 text-gray-200', finance: 'bg-emerald-400/20 text-emerald-200', operator: 'bg-sky-400/20 text-sky-200' };
 const when = (iso) => localDate(new Date(iso), 'vi-VN', { dateStyle: 'short', timeStyle: 'short' }, true);
 
 // Who did what in the club (Pro). Every change made in the app is written here, by

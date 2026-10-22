@@ -19,7 +19,7 @@ export default function Podium({ podium, compact = false }) {
           <li key={label} className="flex gap-2 min-w-0">
             
             <span className="text-gray-400 shrink-0">{label}:</span>
-            <span className={`font-semibold truncate ${color}`}>{teams.map((x) => x.name).join(', ')}</span>
+            <span className={`font-semibold break-words ${color}`}>{teams.map((x) => x.name).join(', ')}</span>
           </li>
         ))}
       </ul>

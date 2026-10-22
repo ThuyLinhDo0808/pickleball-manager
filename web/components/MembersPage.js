@@ -346,7 +346,7 @@ export default function MembersPage({ tab = 'fixed' }) {
               <div className="hidden md:block table-wrap">
                 <table className={`w-full text-sm grid-table ${isGuestTab ? 'wrap-head' : ''}`}>
                   <thead>
-                    <tr className="text-gray-300 text-left bg-navy-900">
+                    <tr className="text-left">
                       <th className="w-10 text-center">
                         <input type="checkbox" aria-label="Select all" checked={shownSelected} onChange={() => setSelected(shownSelected ? [] : shownRows.map((m) => m.id))} />
                       </th>

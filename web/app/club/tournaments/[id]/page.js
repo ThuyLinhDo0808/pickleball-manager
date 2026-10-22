@@ -18,6 +18,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import Segmented from '@/components/ui/Segmented';
 
 // Badminton events by format/division (Đơn nam, Đôi nữ, Đôi nam nữ...).
 const BADMINTON_CAT = { 'singles/men': 'ms', 'singles/women': 'ws', 'doubles/men': 'md', 'doubles/women': 'wd', 'mixed/open': 'xd' };
@@ -58,7 +59,7 @@ function MatchRow({ m, teamName, onOpen }) {
   const played = m.winner_id && !m.is_bye;
   const side = (id, score) => (
     <div className={`flex items-center justify-between gap-2 ${m.winner_id && m.winner_id === id ? 'text-lime-400 font-semibold' : 'text-gray-200'}`}>
-      <span className="truncate">{id ? teamName(id) : <span className="text-gray-500 italic">{m.is_bye ? t('tournaments.bye') : t('tournaments.tbd')}</span>}</span>
+      <span className="break-words">{id ? teamName(id) : <span className="text-gray-500 italic">{m.is_bye ? t('tournaments.bye') : t('tournaments.tbd')}</span>}</span>
       <span className="tabular-nums shrink-0">{played ? score : ''}</span>
     </div>
   );
@@ -206,7 +207,7 @@ export default function TournamentPage() {
                   <div className="overflow-x-auto mb-3">
                     <table className="w-full text-xs sm:text-sm grid-table compact-cells">
                       <thead>
-                        <tr className="text-gray-300 bg-navy-900">
+                        <tr className="text-gray-300">
                           <th className="w-8 text-center">#</th>
                           <th className="text-left">{t('tournaments.team')}</th>
                           <th className="text-right hidden sm:table-cell">{t('tournaments.played')}</th>
@@ -270,13 +271,7 @@ export default function TournamentPage() {
         return (
         <>
           <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="grid grid-cols-2 bg-navy-900 rounded-lg p-1 text-xs" role="tablist">
-              {['list', 'bracket'].map((v) => (
-                <button key={v} type="button" role="tab" aria-selected={koView === v} onClick={() => setKoView(v)} className={`rounded-md px-3 py-1.5 ${koView === v ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-400'}`}>
-                  {t(`bracket.${v}`)}
-                </button>
-              ))}
-            </div>
+            <Segmented items={['list', 'bracket']} value={koView} onChange={setKoView} label={(v) => t(`bracket.${v}`)} />
             {koView === 'bracket' && <span className="md:hidden text-gray-500 text-xs">{t('bracket.swipe')}</span>}
           </div>
 
@@ -398,7 +393,7 @@ function OpenPlaces({ tour, onChange }) {
           );
           return (
             <div key={tm.id} className="flex flex-wrap items-center gap-2">
-              <span className="text-white text-sm min-w-[8rem] flex-1 truncate">{mate?.full_name || tm.name} &amp; <span className="text-amber-200">?</span></span>
+              <span className="text-white text-sm min-w-[8rem] flex-1 break-words">{mate?.full_name || tm.name} &amp; <span className="text-amber-200">?</span></span>
               <select className="input text-sm flex-1 min-w-[10rem]" value={pick[tm.id] || ''} onChange={(e) => setPick({ ...pick, [tm.id]: e.target.value })}>
                 <option value="">{t('pairing.pickGuest')}</option>
                 {options.map((m) => (

@@ -227,7 +227,7 @@ export default function PlansPage() {
           const perSession = p.sessions_included ? Math.round(Number(p.price) / p.sessions_included) : null;
           return (
           <div key={p.id} className={`card !p-0 overflow-hidden flex flex-col ${p.is_active ? '' : 'opacity-50'}`}>
-            <div className={`px-5 pt-5 pb-4 bg-gradient-to-br ${p.tier === 'diamond' ? 'from-sky-300/20' : p.tier === 'gold' ? 'from-amber-400/20' : p.tier === 'silver' ? 'from-slate-300/15' : stars === 3 ? 'from-amber-400/20' : stars === 2 ? 'from-sky-400/20' : 'from-lime-400/15'} to-transparent`}>
+            <div className="px-5 pt-5 pb-4 bg-navy-800">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <VipBadge tier={p.tier} stars={stars} />

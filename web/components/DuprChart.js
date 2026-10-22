@@ -3,10 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { useI18n } from '@/context/I18nContext';
 
 // Same validated series colour as the form chart (dark surface, L 0.48–0.67, >= 3:1).
-const LINE = '#72A313';
-const SURFACE = '#16223b';
-const GRID = '#1e2f4d';
-const INK_MUTED = '#9ca3af';
+import { DATA as LINE, SURFACE, GRID, TICK, INK_MUTED } from '@/lib/chartTheme';
 
 function short(d) {
   const [y, m, day] = d.split('-');
@@ -31,8 +28,8 @@ export default function DuprChart({ data }) {
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
             <CartesianGrid vertical={false} stroke={GRID} strokeWidth={1} />
-            <XAxis dataKey="date" tickFormatter={short} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
-            <YAxis domain={[lo, hi]} tickFormatter={(v) => v.toFixed(2)} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} width={48} />
+            <XAxis dataKey="date" tickFormatter={short} tick={TICK} axisLine={false} tickLine={false} minTickGap={24} />
+            <YAxis domain={[lo, hi]} tickFormatter={(v) => v.toFixed(2)} tick={TICK} axisLine={false} tickLine={false} width={48} />
             <Tooltip
               cursor={{ stroke: INK_MUTED, strokeWidth: 1 }}
               content={({ active, payload }) =>

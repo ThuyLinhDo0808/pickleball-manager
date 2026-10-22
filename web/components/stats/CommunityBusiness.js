@@ -73,7 +73,7 @@ export default function CommunityBusiness({ view = 'players' }) {
             <StatTile icon="users" label={t('biz.dropin')} value={p.dropin} tone="text-sky-300" sub={t('biz.shareTotal', { pct: share(p.dropin) })} />
             <StatTile icon="star" label={t('biz.vip')} value={vips.length} tone="text-amber-300" />
             <StatTile icon="calendar" label={t('biz.sessionsMonth')} value={bar('sessions')?.value ?? '—'} sub={rep ? t('biz.sessionsMonthSub', { n: rep.months }) : ''} />
-            <StatTile icon="↩️" label={t('biz.returnRate')} value={p.return_rate == null ? '—' : `${p.return_rate}%`} tone="text-violet-300" sub={t('biz.returnSub', { back: p.came_back, all: p.played_once })} />
+            <StatTile icon="↩️" label={t('biz.returnRate')} value={p.return_rate == null ? '—' : `${p.return_rate}%`} tone="text-gray-200" sub={t('biz.returnSub', { back: p.came_back, all: p.played_once })} />
           </KpiRow>
           <Hint text={t('biz.playersHint')} className="mb-4" />
 
@@ -175,7 +175,7 @@ export default function CommunityBusiness({ view = 'players' }) {
               <div className="table-wrap">
                 <table className="w-full text-sm grid-table !min-w-[28rem]">
                   <thead>
-                    <tr className="text-gray-300 text-left bg-navy-900">
+                    <tr className="text-left">
                       <th>{t('common.name')}</th>
                       <th>{t('biz.kev')}</th>
                       <th className="text-right">{t('biz.amount')}</th>

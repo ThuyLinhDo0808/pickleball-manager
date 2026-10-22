@@ -343,7 +343,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
     if (v === BLANK) {
       return (
         <span className="flex-1 min-w-0 flex items-center gap-2 rounded-lg border border-dashed border-amber-300/60 bg-amber-300/5 px-3 py-2 text-amber-200 text-sm">
-          <span className="truncate flex-1">⬚ {t('pairing.blank')}</span>
+          <span className="break-words flex-1">⬚ {t('pairing.blank')}</span>
           {custom && <button type="button" aria-label={t('pairing.remove')} className="text-amber-200/80 hover:text-white" onClick={() => setSlot(ti, pi, '')}>×</button>}
         </span>
       );
@@ -352,7 +352,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
       const m = byId.get(v);
       return (
         <span className="flex-1 min-w-0 flex items-center gap-2 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm">
-          <span className="truncate flex-1 text-white">{m ? label(m) : '?'}</span>
+          <span className="break-words flex-1 text-white">{m ? label(m) : '?'}</span>
           {custom && <button type="button" aria-label={`${t('pairing.remove')} ${m?.full_name || ''}`} className="text-gray-400 hover:text-red-300 text-base leading-none" onClick={() => setSlot(ti, pi, '')}>×</button>}
         </span>
       );
@@ -408,7 +408,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
             return (
               <label key={m.id} className={`flex items-center gap-2 text-sm rounded-lg border px-2.5 py-1.5 cursor-pointer transition ${on ? 'border-lime-400/70 bg-lime-400/10 text-white' : 'border-navy-700 text-gray-300 hover:border-navy-500'}`}>
                 <input type="checkbox" checked={on} onChange={() => togglePlayer(m.id)} />
-                <span className="truncate flex-1">{label(m)}</span>
+                <span className="break-words flex-1">{label(m)}</span>
                 {levelOf(m) == null && !ranks[m.id] && <span className="text-[10px] rounded border border-amber-300/60 text-amber-200 px-1 shrink-0">{t('pairing.noLevel')}</span>}
               </label>
             );
@@ -440,7 +440,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-80 overflow-y-auto pr-1">
             {pickedPlayers.map((m) => (
               <div key={m.id} className="flex items-center gap-2 rounded-lg border border-navy-700 px-2.5 py-1.5 text-sm">
-                <span className="truncate flex-1 text-gray-200">
+                <span className="break-words flex-1 text-gray-200">
                   {m.full_name}
                   {levelOf(m) && <span className="text-gray-500 text-xs"> · {levelOf(m)}</span>}
                 </span>

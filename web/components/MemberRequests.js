@@ -16,7 +16,7 @@ const SOURCE_STYLE = {
   survey: 'border-lime-400/60 text-lime-300',
   request: 'border-sky-400/60 text-sky-300',
   link: 'border-yellow-400/60 text-yellow-300',
-  search: 'border-violet-400/60 text-violet-300',
+  search: 'border-navy-600 text-gray-200',
   invite: 'border-emerald-400/60 text-emerald-300',
   manual: 'border-gray-400/60 text-gray-300',
 };

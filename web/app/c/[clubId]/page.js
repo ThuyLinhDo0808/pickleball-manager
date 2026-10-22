@@ -97,7 +97,7 @@ export default function MemberClubPage() {
       <Link href="/home" className="text-gray-400 text-sm hover:text-white inline-block mb-3">← {t('hub.navHome')}</Link>
 
       <section className="card !p-0 overflow-hidden mb-4">
-        <div className="h-16 bg-gradient-to-r from-navy-700 via-navy-800 to-navy-900" />
+        <div className="h-16 bg-navy-800 " />
         <div className="px-4 pb-4 -mt-8 flex items-end gap-3">
           <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={72} ring="ring-4 ring-navy-800" />
           <div className="min-w-0 flex-1 pb-1">
@@ -149,7 +149,7 @@ export default function MemberClubPage() {
                 role="tab"
                 aria-selected={shownPhase === k}
                 onClick={() => setPhase(k)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold ${shownPhase === k ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+                className={`min-h-[44px] sm:min-h-0 rounded-full border px-3.5 py-2 text-sm ${shownPhase === k ? 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400'}`}
               >
                 {k === 'live' && groups.live.length ? <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-400 align-middle animate-pulse" aria-hidden="true" /> : null}
                 {t(`hub.phase_${k}`)} <span className="tabular-nums opacity-70">{groups[k].length}</span>
@@ -170,11 +170,11 @@ export default function MemberClubPage() {
                   <span className="text-[11px] text-gray-500">{e.event_date === today ? t('hub.today') : `${e.event_date.slice(5, 7)}/${e.event_date.slice(0, 4)}`}</span>
                 </div>
                 <div className="min-w-0 flex-1 p-3">
-                  <div className="text-white font-semibold truncate">
+                  <div className="text-white font-semibold break-words">
                     {shownPhase === 'live' && <span className="mr-1.5 rounded-full bg-red-500/20 px-2 py-0.5 text-[11px] font-bold text-red-200 align-middle">● {t('hub.phase_live')}</span>}
                     {e.title}
                   </div>
-                  <div className="text-gray-400 text-xs truncate">
+                  <div className="text-gray-400 text-xs break-words">
                     {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''}
                     {Number(e.fee_amount) > 0 ? ` · ${formatVnd(e.fee_amount)}` : ''}
                   </div>

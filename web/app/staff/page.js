@@ -54,10 +54,10 @@ function EventRow({ e, today }) {
       </div>
       <div className="min-w-0 flex-1 p-3">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-white font-semibold truncate">{e.title}</span>
+          <span className="text-white font-semibold break-words">{e.title}</span>
           <RoleBadge role={e.role} />
         </div>
-        <div className="text-gray-400 text-xs truncate mt-0.5">
+        <div className="text-gray-400 text-xs break-words mt-0.5">
           {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}{e.location || '—'}
           {e.club_name ? ` · ${e.club_name}` : ` · ${t('staffX.xeve')}`}
         </div>
@@ -122,10 +122,10 @@ export default function StaffEventsPage() {
           <h2 className="text-white font-semibold mb-2">{t('staffX.today')}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {todays.map((e) => (
-              <div key={e.id} className="rounded-2xl border border-lime-400/40 bg-gradient-to-br from-navy-800 to-navy-900 p-4">
+              <div key={e.id} className="rounded-2xl border border-lime-400/40 bg-navy-800 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-white text-lg font-bold truncate">{e.title}</div>
+                    <div className="text-white text-lg font-bold break-words">{e.title}</div>
                     <div className="text-gray-300 text-sm">
                       {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}{e.location || '—'}
                     </div>
@@ -137,8 +137,8 @@ export default function StaffEventsPage() {
                 <div className="grid grid-cols-3 gap-2 mt-3">
                   {e.role === 'coordinator' ? (
                     <>
-                      <Link href={`/staff/${e.id}?tab=checkin`} className="btn-primary !py-2 text-sm text-center">{t('staffView.checkInTab')}</Link>
                       <Link href={`/staff/${e.id}?tab=courts`} className="btn-secondary !py-2 text-sm text-center">{t('staffX.courtsTab')}</Link>
+                      <Link href={`/staff/${e.id}?tab=checkin`} className="btn-primary !py-2 text-sm text-center">{t('staffView.checkInTab')}</Link>
                     </>
                   ) : (
                     <Link href={`/staff/${e.id}?tab=board`} className="col-span-2 btn-secondary !py-2 text-sm text-center">{t('staffX.boardTab')}</Link>

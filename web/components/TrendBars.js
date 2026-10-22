@@ -1,10 +1,8 @@
 'use client';
 import { useState } from 'react';
-
-// Colours checked with the dataviz validator against the dark card surface (#131c31):
-// one hue for the measure, a second one only for a loss (below the zero line).
-const UP = '#65a30d';
-const DOWN = '#d0458f';
+// One hue for the measure, a second one only for a loss (below the zero line); colours from
+// lib/chartTheme.js.
+import { DATA as UP, NEGATIVE as DOWN, GRID, INK, INK_MUTED } from '@/lib/chartTheme';
 
 const monthShort = (ym) => `T${Number(ym.slice(5, 7))}`;
 
@@ -28,7 +26,7 @@ export default function TrendBars({ title, series, format = (v) => String(v), de
   const shown = hover != null ? series[hover] : null;
 
   return (
-    <div className="rounded-xl border border-navy-700 bg-[#131c31] p-4 flex flex-col">
+    <div className="rounded-xl border border-navy-700 bg-navy-800 p-4 flex flex-col">
       <p className="text-gray-400 text-xs font-semibold">{title}</p>
       <p className={`text-2xl font-bold tabular-nums mt-1 ${signed && cur.value < 0 ? 'text-pink-300' : 'text-white'}`}>{format(cur.value)}</p>
       <p className="text-xs mt-0.5 text-gray-400">
@@ -46,7 +44,7 @@ export default function TrendBars({ title, series, format = (v) => String(v), de
       </p>
       <div className="relative mt-3">
         <svg viewBox={`0 0 ${W} ${H + 18}`} className="w-full h-auto" role="img" aria-label={`${title}: ${series.map((s) => `${monthShort(s.month)} ${format(s.value)}`).join(', ')}`}>
-          <line x1="0" x2={W} y1={zero} y2={zero} stroke="#334155" strokeWidth="1" />
+          <line x1="0" x2={W} y1={zero} y2={zero} stroke={GRID} strokeWidth="1" />
           {series.map((s, i) => {
             const h = Math.max(s.value === 0 ? 0 : 2, (Math.abs(s.value) / max) * span);
             const x = i * slot + (slot - bw) / 2;
@@ -70,7 +68,7 @@ export default function TrendBars({ title, series, format = (v) => String(v), de
                   aria-label={`${monthShort(s.month)}: ${format(s.value)}`}
                 />
                 <rect x={x} y={y} width={bw} height={h} rx="4" fill={neg ? DOWN : UP} opacity={hover == null || hover === i ? 1 : 0.45} pointerEvents="none" />
-                <text x={i * slot + slot / 2} y={H + 13} textAnchor="middle" fontSize="10" fill={last ? '#e5e7eb' : '#94a3b8'} fontWeight={last ? 700 : 400} pointerEvents="none">
+                <text x={i * slot + slot / 2} y={H + 13} textAnchor="middle" fontSize="11" fill={last ? INK : INK_MUTED} fontWeight={last ? 700 : 400} pointerEvents="none">
                   {monthShort(s.month)}
                 </text>
               </g>

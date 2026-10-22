@@ -128,9 +128,9 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
             {editing ? (
               <form onSubmit={onSaveRename} className="flex flex-col gap-2">
                 <input className="input" autoFocus maxLength={80} value={editName} onChange={(e) => setEditName(e.target.value)} aria-label={t('clubs.rename')} />
-                <div className="flex gap-2">
-                  <button className="btn-primary text-sm">{t('common.save')}</button>
+                <div className="flex justify-end gap-2">
                   <button type="button" className="btn-secondary text-sm" onClick={onCancelRename}>{t('common.cancel')}</button>
+                  <button className="btn-primary text-sm">{t('common.save')}</button>
                 </div>
               </form>
             ) : (
@@ -145,7 +145,7 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
             )}
           </div>
         </div>
-        {c.description && <p className="text-gray-400 text-sm -mt-1 line-clamp-2">{c.description}</p>}
+        {c.description && <p className="text-gray-400 text-sm -mt-1 break-words">{c.description}</p>}
 
         <div className="grid grid-cols-3 gap-2 text-center">
           {[

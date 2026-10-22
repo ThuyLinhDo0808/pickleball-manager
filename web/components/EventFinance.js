@@ -168,9 +168,9 @@ export default function EventFinance({ event, finance, onChanged }) {
           <p className="text-gray-500 text-sm">{t('fin.noEntries')}</p>
         ) : (
           <div className="table-wrap">
-            <table className="w-full text-sm grid-table !min-w-[30rem]">
+            <table className="w-full text-sm grid-table mobile-list !min-w-[30rem]">
               <thead>
-                <tr className="text-gray-300 text-left bg-navy-900">
+                <tr className="text-left">
                   <th>{t('fin.date')}</th>
                   <th>{t('fin.category')}</th>
                   <th>{t('evfin.what')}</th>
@@ -182,12 +182,12 @@ export default function EventFinance({ event, finance, onChanged }) {
                 {rows.map((r) => (
                   <tr key={r.id}>
                     <td className="text-gray-300 whitespace-nowrap">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</td>
-                    <td className="text-gray-200 whitespace-nowrap">
+                    <td className="first text-gray-200 whitespace-nowrap">
                       {categoryLabel(r.category, t)}
                       {(AUTO.has(r.category) || r.event_cost) && <span className="ml-1.5 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
                     </td>
                     <td className="text-gray-300 !whitespace-normal break-words">{describeEntry(r, t) || '—'}</td>
-                    <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${r.type === 'income' ? 'text-lime-400' : 'text-orange-300'}`}>
+                    <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${r.type === 'income' ? '!text-lime-400' : '!text-orange-300'}`}>
                       {r.type === 'income' ? '+' : '−'}{formatVnd(r.amount)}
                     </td>
                     <td className="text-right whitespace-nowrap">

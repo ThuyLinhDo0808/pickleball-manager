@@ -4,9 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 
 // Validated for the dark card surface (#16223b): OKLCH L inside 0.48–0.67, contrast >= 3:1.
 // The brand lime (#B6F03B) is too light to carry data on this surface.
-const BAR = '#72A313';
-const GRID = '#1e2f4d';
-const INK_MUTED = '#9ca3af';
+import { DATA as BAR, GRID, TICK } from '@/lib/chartTheme';
 
 function monthLabel(ym) {
   const [y, m] = ym.split('-');
@@ -34,8 +32,8 @@ export default function FormChart({ data }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
             <CartesianGrid vertical={false} stroke={GRID} strokeWidth={1} />
-            <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tickFormatter={(v) => `${v}%`} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="month" tickFormatter={monthLabel} tick={TICK} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tickFormatter={(v) => `${v}%`} tick={TICK} axisLine={false} tickLine={false} />
             <Tooltip content={<Tip t={t} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
             <Bar dataKey="win_rate" fill={BAR} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
           </BarChart>

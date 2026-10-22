@@ -21,7 +21,7 @@ function ClubCard({ c }) {
   const cover = clubImage(c.id, 'cover', c.cover_version);
   return (
     <Link href={`/discover/${c.id}`} className="group overflow-hidden rounded-2xl border border-navy-700 bg-navy-900/70 hover:border-lime-400/60 transition flex flex-col">
-      <div className="relative h-24 bg-gradient-to-br from-navy-800 via-navy-900 to-lime-900/30">
+      <div className="relative h-24 bg-navy-800 ">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {cover && <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />}
         <span className="absolute -bottom-6 left-3">
@@ -32,7 +32,7 @@ function ClubCard({ c }) {
         <p className="text-white font-bold leading-snug group-hover:text-lime-300">{c.name}</p>
         <p className="text-gray-400 text-xs mt-0.5 flex items-start gap-1"><UiIcon name="pin" className="w-3.5 h-3.5 mt-px" /><span>{[c.district, c.province, c.country !== VIETNAM ? c.country : null].filter(Boolean).join(', ') || '—'}</span></p>
         {c.schedule && <p className="text-gray-300 text-xs mt-1 flex items-start gap-1"><UiIcon name="clock" className="w-3.5 h-3.5 mt-px text-gray-400" /><span>{c.schedule}</span></p>}
-        {c.description && <p className="text-gray-400 text-xs mt-1 line-clamp-2">{c.description}</p>}
+        {c.description && <p className="text-gray-400 text-xs mt-1 break-words">{c.description}</p>}
         <div className="mt-auto pt-2 flex flex-wrap gap-1.5 text-[11px]">
           <span className="rounded-full bg-navy-700 px-2 py-0.5 text-gray-200 whitespace-nowrap">{t('disc.members', { n: c.member_count ?? c.member_count_hint ?? 0 })}</span>
           {c.upcoming > 0 ? (
