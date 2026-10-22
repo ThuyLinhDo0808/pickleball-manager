@@ -14,7 +14,7 @@ export default function PlayerRankingsPage() {
   const { data, loading } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   return (
     <PlayerShell>
-      <h1 className="text-white text-2xl font-bold mb-1">🏆 {t('hub.navRankings')}</h1>
+      <h1 className="text-white text-2xl font-bold mb-1">{t('hub.navRankings')}</h1>
       <p className="text-gray-400 text-sm mb-4">{t('hub.rankingsLead')}</p>
       {loading && !data ? <p className="text-gray-400">{t('common.loading')}</p> : <HomeRankings clubs={data?.member_clubs || []} showTitle={false} />}
     </PlayerShell>

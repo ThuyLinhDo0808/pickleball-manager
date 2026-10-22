@@ -60,10 +60,10 @@ export default function InvitePage() {
             <p className="text-lime-400 text-xs font-bold">{t('invite.kicker')}</p>
             <h1 className="text-white text-2xl font-bold">{c.name}</h1>
             <p className="text-gray-400 text-sm">
-              {c.sport === 'badminton' ? '🏸' : '🏓'} {t(`onb.sport_${c.sport}`)} · 👥 {t('disc.members', { n: c.member_count ?? 0 })}
-              {[c.district, c.province].filter(Boolean).length > 0 && ` · 📍 ${[c.district, c.province].filter(Boolean).join(', ')}`}
+              {t(`onb.sport_${c.sport}`)} · {t('disc.members', { n: c.member_count ?? 0 })}
+              {[c.district, c.province].filter(Boolean).length > 0 && ` · ${[c.district, c.province].filter(Boolean).join(', ')}`}
             </p>
-            {c.schedule && <p className="text-gray-300 text-sm mt-1">🗓 {c.schedule}</p>}
+            {c.schedule && <p className="text-gray-300 text-sm mt-1">{c.schedule}</p>}
             {c.description && <p className="text-gray-300 text-sm mt-2 whitespace-pre-line">{c.description}</p>}
           </div>
         </section>
@@ -90,7 +90,7 @@ export default function InvitePage() {
                   {msg.code === 'email_verify_required' && <> <Link href={`/verify-email?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/home')}`} className="underline">{t('everify.barCta')}</Link></>}
                 </p>
               )}
-              <button className="btn-primary" disabled={busy}>🙋 {busy ? t('common.loading') : t('invite.join')}</button>
+              <button className="btn-primary" disabled={busy}>{busy ? t('common.loading') : t('invite.join')}</button>
             </form>
           )}
         </section>

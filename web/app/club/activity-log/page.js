@@ -30,7 +30,7 @@ export default function ActivityLogPage() {
   };
   return (
     <AppShell>
-      <PageHeader icon="📜" title={t('nav.activityLog')} subtitle={club?.name} />
+      <PageHeader icon="list" title={t('nav.activityLog')} subtitle={club?.name} />
       <p className="text-gray-400 text-sm mb-3">{t('clubLog.hint')}</p>
       <div className="flex flex-wrap gap-2 mb-3">
         <select className="input text-sm max-w-xs" value={actor} onChange={(e) => { setActor(e.target.value); setPage(1); }} aria-label={t('clubLog.who')}>

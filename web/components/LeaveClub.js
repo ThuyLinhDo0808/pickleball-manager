@@ -42,13 +42,13 @@ export default function LeaveClub({ club, debt = 0, t, lang }) {
     <>
       <div className="mt-8 border-t border-navy-700 pt-4 text-center">
         <button type="button" className="rounded-lg border border-red-500/50 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10" onClick={() => setOpen(true)}>
-          🚪 {t('leave.button', { kind })}
+          {t('leave.button', { kind })}
         </button>
       </div>
       <Modal open={open} title={t('leave.title', { name: club.name })} onClose={busy ? () => {} : close}>
         <div className="flex flex-col gap-3 text-sm">
           <p className="text-gray-300">{t('leave.body', { kind })}</p>
-          {debt > 0 && <p className="rounded-lg border border-yellow-400/40 bg-yellow-400/5 p-2 text-yellow-200">💸 {t('leave.debt', { amount: formatVnd(debt) })}</p>}
+          {debt > 0 && <p className="rounded-lg border border-yellow-400/40 bg-yellow-400/5 p-2 text-yellow-200">{t('leave.debt', { amount: formatVnd(debt) })}</p>}
           <label className="text-xs text-gray-400">
             {t('leave.reason')}
             <textarea className="input mt-1" rows={2} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('leave.reasonHint')} />

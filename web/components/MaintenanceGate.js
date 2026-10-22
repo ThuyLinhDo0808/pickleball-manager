@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 const fmt = (iso, lang) => (iso ? localDate(new Date(iso), lang === 'en' ? 'en-GB' : 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }, true) : '');
 function left(iso, now) {
@@ -16,7 +17,7 @@ function left(iso, now) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// Maintenance (Owner Console → Thông báo → 🛠 Bảo trì): while it runs, the whole app is covered
+// Maintenance (Owner Console → Thông báo → Bảo trì): while it runs, the whole app is covered
 // by this page — what is happening, when it is back (with a countdown) — and the API refuses
 // everyone but the Owner. The Owner keeps working, under a red bar. The sign-in page stays
 // reachable so the Owner can sign in (it says only the Ban quản trị can).
@@ -68,7 +69,7 @@ export default function MaintenanceGate() {
   if (owner) {
     return (
       <div role="status" className="sticky top-0 z-[60] bg-red-600 text-white text-xs sm:text-sm px-4 py-1.5 text-center">
-        🛠 {t('maint.ownerBar', { time: fmt(m.ends_at, lang) || '—' })}{' '}
+        {t('maint.ownerBar', { time: fmt(m.ends_at, lang) || '—' })}{' '}
         <Link href="/owner/announcements" className="underline font-semibold">{t('maint.manage')}</Link>
       </div>
     );
@@ -76,7 +77,7 @@ export default function MaintenanceGate() {
   if (pathname.startsWith('/sign-in')) {
     return (
       <div role="alert" className="sticky top-0 z-[60] bg-amber-400 text-navy-950 text-sm px-4 py-2 text-center font-medium">
-        🛠 {t('maint.signInNote', { time: fmt(m.ends_at, lang) || '—' })}
+        {t('maint.signInNote', { time: fmt(m.ends_at, lang) || '—' })}
       </div>
     );
   }
@@ -84,7 +85,7 @@ export default function MaintenanceGate() {
   return (
     <div role="alertdialog" aria-modal="true" aria-labelledby="maint-title" className="fixed inset-0 z-[70] bg-navy-950 flex items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-lg text-center">
-        <div className="text-6xl mb-4" aria-hidden="true">🛠</div>
+        <div className="text-6xl mb-4" aria-hidden="true"><UiIcon name="tool" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
         <h1 id="maint-title" className="text-2xl sm:text-3xl font-bold text-white">{m.title || t('maint.title')}</h1>
         {m.message && <p className="text-gray-200 mt-3 whitespace-pre-line">{m.message}</p>}
         {m.ends_at && (

@@ -13,6 +13,18 @@ Kiểm tra các mục liên quan trong README:
 
 README viết bằng tiếng Việt, mô tả theo góc nhìn người dùng.
 
+## Quy tắc giao diện (UI/UX)
+- Dùng taste-skill (phần app-screens; riêng trang "/" theo phần page) để thiết kế, ui-ux-pro-max để kiểm tra trải nghiệm. Ưu tiên: CLAUDE.md > taste-skill > ui-ux-pro-max.
+- Giữ màu NexusZone (navy + xanh chanh); màu nhấn chỉ cho nút chính và dữ liệu quan trọng.
+- Đẹp ở 1440px và 390px: không tràn ngang, không chồng chéo, không cắt chữ "…".
+- Điện thoại: vùng bấm ≥44px, chữ nội dung ≥14px, bảng nhiều cột thành danh sách 2 dòng.
+- Không dùng emoji làm biểu tượng (dùng `web/components/ui/UiIcon.js` hoặc chữ).
+- Số căn phải, `tabular-nums`; trống là "—" màu xám.
+- Nút chính bên phải; hướng dẫn dạng popup (i).
+- Có thiết kế cho trạng thái trống / đang tải / lỗi.
+- Chỉ sửa giao diện thì không đổi tính năng, API, đường dẫn.
+- Mỗi đợt: chạy `npm run build` trong `web/`, chụp trước/sau ở 1440px và 390px, cập nhật README và `docs/ui-plan.md`.
+
 ## Quy ước khác
 - Trả lời người dùng bằng tiếng Việt.
 - Thay đổi schema: tạo file trong `supabase/migrations/`, chép cùng nội dung vào `database/schema.sql`,

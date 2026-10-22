@@ -27,6 +27,7 @@ import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import CommunitySuggestions from '@/components/CommunitySuggestions';
 import { localDate } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 
 // Each tab of the members section has its own address (menu Thành viên ▸ …).
@@ -166,7 +167,7 @@ export default function MembersPage({ tab = 'fixed' }) {
   const incomplete = fixedRows.filter((m) => missingInfo(m).length > 0);
   const missText = (m) => missingInfo(m).map((k) => t(`members.miss_${k}`)).join(', ');
   // A missing detail is flagged in its own column (not next to the name).
-  const miss = (m, k) => (missingInfo(m).includes(k) ? <span className="text-[11px] rounded border border-amber-400/50 bg-amber-400/5 text-amber-300 px-1.5 py-0.5 whitespace-nowrap">⚠ {t('members.missCell')}</span> : '—');
+  const miss = (m, k) => (missingInfo(m).includes(k) ? <span className="text-[11px] rounded border border-amber-400/50 bg-amber-400/5 text-amber-300 px-1.5 py-0.5 whitespace-nowrap">{t('members.missCell')}</span> : '—');
   // Operations staff don't get phone numbers (GET members leaves them out).
   const showPhone = rows.some((m) => 'phone' in m);
   const bdays = all.filter((m) => m.is_active && isBirthdayMonth(m.birth_date)).sort((a, b) => a.birth_date.slice(8).localeCompare(b.birth_date.slice(8)));
@@ -185,18 +186,18 @@ export default function MembersPage({ tab = 'fixed' }) {
   return (
     <AppShell>
       <PageHeader
-        icon="👥"
+        icon="users"
         title={t('nav.members')}
         subtitle={club?.name}
         actions={
           // Members come in with their own account only (invite link / join request → Danh sách chờ),
           // so there is no manual add or Excel import: one person, one record.
           <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>⬇ {t('common.exportExcel')}</button>
+            <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>{t('common.exportExcel')}</button>
             {canManage && (
               <>
-                {isCommunity && <Link href="/club/community-settings" className="btn-secondary text-sm">🎛 {t('cpanel.short')}</Link>}
-                <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>
+                {isCommunity && <Link href="/club/community-settings" className="btn-secondary text-sm">{t('cpanel.short')}</Link>}
+                <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>{t('invite.button')}</button>
               </>
             )}
           </div>
@@ -204,11 +205,11 @@ export default function MembersPage({ tab = 'fixed' }) {
       />
 
       <KpiRow cols={5}>
-        <StatTile icon="🏠" label={t('requests.tabFixed')} value={fixedRows.length} sub={placeText(room?.fixed) || t('memx.activeN', { n: activeFixed.length })} onClick={() => pickTab('fixed')} active={tab === 'fixed'} />
-        <StatTile icon="⭐" label="VIP" value={vipCount} tone="text-amber-300" sub={t('memx.vipSub')} />
-        <StatTile icon="🤝" label={t('requests.tabGuest')} value={guestRows.length} tone="text-sky-300" sub={placeText(room?.guest) || t('memx.priorityN', { n: guestRows.filter((m) => m.guest_perk).length })} onClick={() => pickTab('guest')} active={tab === 'guest'} />
-        <StatTile icon="📝" label={t('memx.waiting')} value={pending.length} tone={pending.length ? 'text-yellow-300' : 'text-white'} sub={pending.length ? t('memx.needReview') : t('memx.nothing')} onClick={() => pickTab('waiting')} active={tab === 'waiting'} />
-        <StatTile icon="🎂" label={t('memx.birthdays')} value={bdays.length} tone="text-pink-300" sub={bdays.slice(0, 2).map((m) => `${m.full_name.split(' ').pop()} ${m.birth_date.slice(8, 10)}/${m.birth_date.slice(5, 7)}`).join(', ') || '—'} />
+        <StatTile icon="home" label={t('requests.tabFixed')} value={fixedRows.length} sub={placeText(room?.fixed) || t('memx.activeN', { n: activeFixed.length })} onClick={() => pickTab('fixed')} active={tab === 'fixed'} />
+        <StatTile icon="star" label="VIP" value={vipCount} tone="text-amber-300" sub={t('memx.vipSub')} />
+        <StatTile icon="users" label={t('requests.tabGuest')} value={guestRows.length} tone="text-sky-300" sub={placeText(room?.guest) || t('memx.priorityN', { n: guestRows.filter((m) => m.guest_perk).length })} onClick={() => pickTab('guest')} active={tab === 'guest'} />
+        <StatTile icon="edit" label={t('memx.waiting')} value={pending.length} tone={pending.length ? 'text-yellow-300' : 'text-white'} sub={pending.length ? t('memx.needReview') : t('memx.nothing')} onClick={() => pickTab('waiting')} active={tab === 'waiting'} />
+        <StatTile icon="cake" label={t('memx.birthdays')} value={bdays.length} tone="text-pink-300" sub={bdays.slice(0, 2).map((m) => `${m.full_name.split(' ').pop()} ${m.birth_date.slice(8, 10)}/${m.birth_date.slice(5, 7)}`).join(', ') || '—'} />
       </KpiRow>
       {isCommunity && <CommunitySuggestions club={club} onChanged={reload} />}
 
@@ -216,14 +217,14 @@ export default function MembersPage({ tab = 'fixed' }) {
         value={tab}
         onChange={pickTab}
         tabs={[
-          { key: 'all', label: t('nav.memAll'), icon: '📋', count: everyone.length },
-          { key: 'fixed', label: t('requests.tabFixed'), icon: '🏠', count: fixedRows.length },
-          ...(isCommunity ? [{ key: 'new', label: t('memx.newTab'), icon: '🌱', count: newRows.length }] : []),
-          { key: 'guest', label: t('requests.tabGuest'), icon: '🤝', count: guestRows.length },
-          { key: 'waiting', label: t('nav.memRequests'), icon: '📝', alert: pending.length },
-          { key: 'review', label: t('mod.tab'), icon: '⛔', count: reviewRows.length },
+          { key: 'all', label: t('nav.memAll'), icon: 'clipboard', count: everyone.length },
+          { key: 'fixed', label: t('requests.tabFixed'), icon: 'home', count: fixedRows.length },
+          ...(isCommunity ? [{ key: 'new', label: t('memx.newTab'), icon: 'userPlus', count: newRows.length }] : []),
+          { key: 'guest', label: t('requests.tabGuest'), icon: 'users', count: guestRows.length },
+          { key: 'waiting', label: t('nav.memRequests'), icon: 'edit', alert: pending.length },
+          { key: 'review', label: t('mod.tab'), icon: 'ban', count: reviewRows.length },
           // DUPR (pickleball): members' DUPR IDs and ratings, import of the DUPR Club list.
-          ...((club?.sport || 'pickleball') === 'pickleball' ? [{ key: 'dupr', label: t('nav.memDupr'), icon: '📈' }] : []),
+          ...((club?.sport || 'pickleball') === 'pickleball' ? [{ key: 'dupr', label: t('nav.memDupr'), icon: 'trendUp' }] : []),
         ]}
       />
 
@@ -232,7 +233,7 @@ export default function MembersPage({ tab = 'fixed' }) {
 
       {!['waiting', 'review', 'dupr', 'all'].includes(tab) && pending.length > 0 && (
         <button className="w-full text-left rounded-xl border border-yellow-400/40 bg-yellow-400/5 px-4 py-2.5 mb-3 text-sm" onClick={() => pickTab('waiting')}>
-          <span className="text-yellow-300 font-semibold">📝 {t('requests.banner', { n: pending.length })}</span>{' '}
+          <span className="text-yellow-300 font-semibold">{t('requests.banner', { n: pending.length })}</span>{' '}
           <span className="text-gray-300">{pending.map((m) => m.account_name || m.full_name).join(', ')}</span>
           <span className="text-lime-400 ml-1">→</span>
         </button>
@@ -245,7 +246,7 @@ export default function MembersPage({ tab = 'fixed' }) {
           onClick={() => setOnlyIncomplete((v) => !v)}
           aria-pressed={onlyIncomplete}
         >
-          <span className="text-amber-300 font-semibold">⚠️ {t('members.incompleteBanner', { n: incomplete.length })}</span>{' '}
+          <span className="text-amber-300 font-semibold">{t('members.incompleteBanner', { n: incomplete.length })}</span>{' '}
           <span className="text-gray-300">{t('members.incompleteHint')}</span>
           <span className="text-lime-400 ml-1">{onlyIncomplete ? t('members.incompleteShowAll') : t('members.incompleteFilter')}</span>
         </button>
@@ -257,7 +258,7 @@ export default function MembersPage({ tab = 'fixed' }) {
         <section className={`card !p-0 overflow-hidden ${tab === 'review' ? 'mb-4 border-amber-300/30' : ''}`}>
           <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
             <div className="relative flex-1 min-w-[12rem]">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" aria-hidden="true">🔍</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" aria-hidden="true"><UiIcon name="search" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
               <input className="input !pl-9" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
             </div>
             <Segmented items={['all', 'male', 'female']} value={gender} onChange={setGender} label={(k) => (k === 'all' ? t('memx.allGenders') : t(`members.${k}`))} />
@@ -288,7 +289,7 @@ export default function MembersPage({ tab = 'fixed' }) {
               <span className="text-red-200 font-semibold">{t('memx.selectedN', { n: selected.length })}</span>
               <button type="button" className="text-gray-300 hover:text-white underline underline-offset-2" onClick={() => setSelected([])}>{t('memx.clearSel')}</button>
               <button type="button" className="ml-auto rounded-lg px-3 py-1.5 font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/15 disabled:opacity-40" disabled={busy} onClick={deleteSelected}>
-                🗑 {t('members.deleteSelected', { count: selected.length })}
+                {t('members.deleteSelected', { count: selected.length })}
               </button>
             </div>
           )}
@@ -296,9 +297,9 @@ export default function MembersPage({ tab = 'fixed' }) {
           {loading && <p className="text-gray-400 text-sm p-4">{t('common.loading')}</p>}
           {!loading && rows.length === 0 && (
             <div className="p-8 text-center">
-              <div className="text-4xl mb-2" aria-hidden="true">{isGuestTab ? '🤝' : '👥'}</div>
+              <div className="text-4xl mb-2" aria-hidden="true"></div>
               <p className="text-gray-400 text-sm mb-3">{t(tab === 'review' ? 'mod.empty' : isGuestTab ? 'guests.empty' : 'members.empty')}</p>
-              {!isGuestTab && tab !== 'review' && canManage && <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>🔗 {t('invite.button')}</button>}
+              {!isGuestTab && tab !== 'review' && canManage && <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>{t('invite.button')}</button>}
             </div>
           )}
           {!loading && rows.length > 0 && shownRows.length === 0 && <p className="text-gray-400 text-sm p-4">{t('memx.noMatch')}</p>}
@@ -317,12 +318,12 @@ export default function MembersPage({ tab = 'fixed' }) {
                           <span className="text-white font-semibold break-words">{m.full_name}</span>
                           {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} tier={m.vip_tier} />}
                           {tab === 'all' && <span className={`text-[10px] leading-4 rounded-full border px-1.5 ${PLACE_PILL[placeOf(m)]}`}>{t(`xlsx.place_${placeOf(m)}`)}</span>}
-                          {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}>🎂</span>}
+                          {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}><UiIcon name="cake" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
                           {[m.gender ? t(`members.${m.gender}`) : null, ...(pickleball ? [m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null, m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null] : [levelText(m.dupr_level, sport, t)]), isCommunity && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null, m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null].filter(Boolean).join(' · ') || '—'}
                         </span>
-                        {missingInfo(m).length > 0 && <span className="block text-amber-300 text-xs mt-0.5">⚠ {t('members.missingList', { list: missText(m) })}</span>}
+                        {missingInfo(m).length > 0 && <span className="block text-amber-300 text-xs mt-0.5">{t('members.missingList', { list: missText(m) })}</span>}
                         <span className="block text-gray-500 text-xs mt-0.5">
                           {isGuestTab
                             ? `${t('guests.played')}: ${m.guest_stats?.played ?? 0}`
@@ -336,7 +337,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                         )}
                       </span>
                     </button>
-                    <button type="button" className="rounded-lg px-2 py-1 text-sm hover:bg-navy-700" aria-label={`${t('members.edit')}: ${m.full_name}`} onClick={() => openMember(m, true)}>✏️</button>
+                    <button type="button" className="rounded-lg px-2 py-1 text-sm hover:bg-navy-700" aria-label={`${t('members.edit')}: ${m.full_name}`} onClick={() => openMember(m, true)}><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></button>
                   </li>
                 ))}
               </ul>
@@ -433,7 +434,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                                 {m.birth_year} <span className="text-yellow-300/80 text-xs" title={t('members.noDayMonth')}>· {t('members.noDayMonthShort')}</span>
                               </>
                             ) : miss(m, 'birthday')}
-                            {isBirthdayMonth(m.birth_date) && <span className="ml-1" title={t('members.birthdayMonth')}>🎂</span>}
+                            {isBirthdayMonth(m.birth_date) && <span className="ml-1" title={t('members.birthdayMonth')}><UiIcon name="cake" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
                           </td>
                         )}
                         {showPhone && show('phone') && <td className="text-gray-300 whitespace-nowrap tabular-nums">{m.phone || miss(m, 'phone')}</td>}
@@ -521,9 +522,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                               e.stopPropagation();
                               openMember(m, true);
                             }}
-                          >
-                            ✏️
-                          </button>
+                          ><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></button>
                         </td>
                       </tr>
                     ))}
@@ -601,7 +600,7 @@ function ColumnPicker({ cols, hidden, onChange }) {
   return (
     <div className="relative">
       <button type="button" className="btn-secondary text-sm !py-2 whitespace-nowrap" aria-expanded={open} onClick={() => setOpen(!open)}>
-        ⚙️ {t('memx.cols')} ({shownN + 1}/{cols.length + 1})
+        {t('memx.cols')} ({shownN + 1}/{cols.length + 1})
       </button>
       {open && (
         <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-navy-600 bg-navy-900 p-3 shadow-xl">

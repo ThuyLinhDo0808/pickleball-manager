@@ -8,7 +8,6 @@ import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
 
 const PERIODS = ['month', 'quarter', 'year', 'all'];
-const MEDALS = ['🥇', '🥈', '🥉'];
 
 function shift(period, ymd, dir) {
   const [y, m] = ymd.split('-').map(Number);
@@ -44,7 +43,7 @@ export default function LeaderboardPage() {
       <SectionTabs group="rankings" />
       <h1 className="text-white text-2xl font-bold">{t('nav.globalRank')}</h1>
       <p className="text-gray-400 text-sm">{t('leaderboard.hint')}</p>
-      <p className="text-gray-500 text-xs mb-4">📏 {t('leaderboard.rule', { n: data?.min_matches || 3 })}</p>
+      <p className="text-gray-500 text-xs mb-4">{t('leaderboard.rule', { n: data?.min_matches || 3 })}</p>
 
       <div className="flex flex-wrap gap-3 mb-3">
         <div role="tablist" aria-label={t('leaderboard.scope')} className="grid grid-cols-2 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1">
@@ -100,7 +99,7 @@ export default function LeaderboardPage() {
                   const rank = r.rank == null ? null : r.rank - 1;
                   return (
                     <tr key={r.key} className={`hover:bg-navy-700/40 ${rank == null ? 'opacity-60' : ''} ${r.me ? 'bg-lime-400/10' : ''}`}>
-                      <td className="text-center text-gray-400">{rank == null ? '—' : rank < 3 ? MEDALS[rank] : rank + 1}</td>
+                      <td className="text-center text-gray-400">{rank == null ? '—' : <span className={rank < 3 ? 'text-lime-300 font-semibold' : ''}>{rank + 1}</span>}</td>
                       <td className="text-white whitespace-nowrap">{r.full_name}</td>
                       <td>
                         <span className="flex flex-wrap gap-1">

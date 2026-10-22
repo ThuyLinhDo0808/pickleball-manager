@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { levelText } from '@/lib/levels';
 import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Where someone stands on the list, as the sheet's buttons name it.
 export const PLACE_OF = { requested: 'requested', waitlisted: 'waitlist', not_playing: 'not_playing', registered: 'main', pending: 'main', checked_in: 'main', no_show: 'main' };
@@ -24,7 +25,7 @@ function Initial({ name, organizer }) {
   return (
     <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-navy-700 text-lg font-bold text-white">
       {(name || '?').trim().charAt(0).toUpperCase()}
-      {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden>🛡</span>}
+      {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden><UiIcon name="shield" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
     </span>
   );
 }
@@ -106,12 +107,11 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
   }
   const level = (p) => (p.dupr_level != null ? `${t('common.level')} ${Number(p.dupr_level).toFixed(2)}` : t('people.noLevel'));
   return (
-    <section className="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-3 sm:p-4 shadow-lg shadow-amber-400/10" role="alert">
+    <section className="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-3 sm:p-4" role="alert">
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-400 text-lg font-bold text-navy-950 tabular-nums">{rows.length}</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400 text-lg font-bold text-navy-950 tabular-nums">{rows.length}</span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-amber-100 text-base font-bold leading-tight">🙋 {t('people.requestsBig', { n: rows.length })}</h3>
-          <p className="text-amber-100/80 text-sm mt-0.5">{t('people.requestsHint')}</p>
+          <h3 className="text-amber-100 text-base font-bold leading-tight">{t('people.requestsBig', { n: rows.length })}</h3>
         </div>
         <Hint inline text={community ? `${t('people.commCheckTitle')}. ${t('people.commCheckHint')}` : t('people.requestsHint')} />
       </div>
@@ -120,7 +120,7 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
           const first = g.people[0];
           if (!g.booking && g.people.length === 1) {
             return (
-              <li key={g.key} className="flex flex-wrap items-center gap-2 rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
+              <li key={g.key} className="flex items-center gap-2 rounded-xl bg-navy-900/80 border border-amber-300/30 pl-3 pr-2 py-2">
                 <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(first)}>
                   <span className="block text-white font-semibold break-words">{first.full_name}</span>
                   <span className="block text-gray-400 text-xs">
@@ -129,9 +129,13 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
                   </span>
                 </button>
                 <CancelHistoryBadge name={first.full_name} history={first.cancel_history} />
-                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-                  <button type="button" className="btn-secondary text-sm justify-center" onClick={() => onPlace(first, 'waitlist')}>⏳ {t('place.waitlist')}</button>
-                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>✓ {t('place.main')}</button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button type="button" className="min-h-[2.75rem] rounded-lg px-2.5 text-sm text-gray-200 underline-offset-2 hover:underline active:bg-navy-800 sm:min-h-0 sm:py-2" onClick={() => onPlace(first, 'waitlist')} aria-label={t('place.waitlist')}>
+                    <span className="sm:hidden">{t('place.waitShort')}</span><span className="hidden sm:inline">{t('place.waitlist')}</span>
+                  </button>
+                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')} aria-label={t('place.main')}>
+                    <span className="sm:hidden">{t('place.okShort')}</span><span className="hidden sm:inline">{t('place.main')}</span>
+                  </button>
                 </div>
               </li>
             );
@@ -141,12 +145,12 @@ export function RequestsSection({ rows, community = false, onPlace, onOpen, onDe
             <li key={g.key} className="rounded-xl bg-navy-900/80 border border-amber-300/30 px-3 py-2">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-white font-semibold break-words">⚡ {t('people.quickGroup', { name: b?.contact_name || first.full_name, n: g.people.length })}</p>
-                  <p className="text-xs mt-0.5">{b?.contact_phone ? <a href={`tel:${b.contact_phone}`} className="text-sky-300">📞 {b.contact_phone}</a> : <span className="text-amber-200">📵 {t('people.quickNoPhone')}</span>}</p>
+                  <p className="text-white font-semibold break-words">{t('people.quickGroup', { name: b?.contact_name || first.full_name, n: g.people.length })}</p>
+                  <p className="text-xs mt-0.5">{b?.contact_phone ? <a href={`tel:${b.contact_phone}`} className="text-sky-300">{b.contact_phone}</a> : <span className="text-amber-200">{t('people.quickNoPhone')}</span>}</p>
                 </div>
                 <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-                  {onDecline && <button type="button" className="btn-secondary text-sm justify-center text-red-300" onClick={() => onDecline(first, g.people.length)}>✕ {t('people.decline')}</button>}
-                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>✓ {g.people.length > 1 ? t('people.approveGroup', { n: g.people.length }) : t('place.main')}</button>
+                  {onDecline && <button type="button" className="btn-secondary text-sm justify-center text-red-300" onClick={() => onDecline(first, g.people.length)}>{t('people.decline')}</button>}
+                  <button type="button" className="btn-primary text-sm justify-center" onClick={() => onPlace(first, 'main')}>{g.people.length > 1 ? t('people.approveGroup', { n: g.people.length }) : t('place.main')}</button>
                 </div>
               </div>
               <ol className="mt-2 flex flex-col gap-1">
@@ -225,18 +229,18 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
         <div className="flex items-center gap-3">
           <span className="relative shrink-0">
             <Avatar src={c.avatar} name={name} size={64} />
-            {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[11px] leading-5" aria-hidden>🛡</span>}
+            {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[11px] leading-5" aria-hidden><UiIcon name="shield" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
           </span>
           <div className="min-w-0">
             <p className="text-white text-lg font-bold truncate">{name}</p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-300">
-              {level ? <span>🎯 {level}</span> : <span className="text-gray-500">{t('people.noLevel')}</span>}
-              {c.gender && <span>{c.gender === 'male' ? '♂' : '♀'} {t(`members.${c.gender}`)}</span>}
+              {level ? <span>{level}</span> : <span className="text-gray-500">{t('people.noLevel')}</span>}
+              {c.gender && <span>{t(`members.${c.gender}`)}</span>}
               {sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600 px-1.5 text-xs font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
               {row ? t(`player.status_${row.status}`) : t('place.hostNoRow')}
-              {(c.phone || row?.phone) && <span className="ml-2">📞 {c.phone || row.phone}</span>}
+              {(c.phone || row?.phone) && <span className="ml-2">{c.phone || row.phone}</span>}
             </p>
           </div>
         </div>
@@ -248,7 +252,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {/* One button per court ("Sân 2"), its hours under it. */}
             {event.groups.map((g, i) => (
               <button key={g.id} type="button" disabled={busy} aria-pressed={row.group_id === g.id} onClick={() => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/group`, { group_id: g.id }))} className={`${chip} tabular-nums text-left leading-tight ${row.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
-                <span className="block font-semibold">🏟 {t('egroups.courtN', { n: g.courts || i + 1 })}</span>
+                <span className="block font-semibold">{t('egroups.courtN', { n: g.courts || i + 1 })}</span>
                 <span className="block text-[11px] opacity-80">{g.start_time}–{g.end_time}{g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''}</span>
               </button>
             ))}
@@ -263,7 +267,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             onClick={() => setRoles({ is_organizer: !organizer })}
             className={`${chip} ${organizer ? 'border-sky-400 bg-sky-500 text-white' : 'border-navy-600 text-gray-300'} ${isHost ? '!opacity-90' : ''}`}
           >
-            🛡 {t('people.organizer')}
+            {t('people.organizer')}
           </button>
           {row && !cancelled && TAGS.map((tag) => {
             const on = (row.tags || []).includes(tag);
@@ -287,7 +291,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                   onClick={() => go(o)}
                   className={`rounded-xl border-2 px-2 py-3 text-sm font-semibold ${place === o ? PLACE_TONE[o] : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
                 >
-                  <span className="block text-xl mb-0.5">{{ requested: '⏸', waitlist: '⏳', main: '✓', not_playing: '🧑‍💼' }[o]}</span>
+                  <UiIcon name={{ requested: 'pause', waitlist: 'hourglass', main: 'check', not_playing: 'user' }[o]} className="w-5 h-5 mx-auto mb-0.5" />
                   {t(`place.${o}`)}
                 </button>
               ))}
@@ -316,14 +320,14 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {['registered', 'checked_in', 'no_show'].includes(row.status) && (
               <>
                 {row.status !== 'checked_in' && <button type="button" disabled={busy} className={`${chip} border-lime-400/60 text-lime-200 hover:bg-lime-400/10`} onClick={() => act(() => actions.onAction(row, 'check-in'))}>✓ {t('events.checkIn')}</button>}
-                {row.status !== 'no_show' && <button type="button" disabled={busy} className={`${chip} border-yellow-400/60 text-yellow-200 hover:bg-yellow-400/10`} onClick={() => act(() => actions.onAction(row, 'no-show'))}>🚫 {t('events.noShow')}</button>}
+                {row.status !== 'no_show' && <button type="button" disabled={busy} className={`${chip} border-yellow-400/60 text-yellow-200 hover:bg-yellow-400/10`} onClick={() => act(() => actions.onAction(row, 'no-show'))}>{t('events.noShow')}</button>}
                 {row.status !== 'registered' && <button type="button" disabled={busy} className={`${chip} border-navy-500 text-gray-300`} onClick={() => act(() => actions.onAction(row, 'reset'))}>↺ {t('staffView.undo')}</button>}
               </>
             )}
-            {row.status === 'waitlisted' && <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onAction(row, 'promote'))}>⬆ {t('policy.promote')}</button>}
+            {row.status === 'waitlisted' && <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onAction(row, 'promote'))}>{t('policy.promote')}</button>}
             {/* Money: organisers who play free, a pass, a refund to give back, or paid / not paid. */}
             {(row.tags || []).includes('free') && !cancelled ? (
-              <span className={`${chip} border-violet-400/60 text-violet-200`}>🎁 {t('people.tag_free')}</span>
+              <span className={`${chip} border-violet-400/60 text-violet-200`}>{t('people.tag_free')}</span>
             ) : row.is_organizer && row.fee_amount != null && Number(row.fee_amount) === 0 ? (
               <span className={`${chip} border-navy-600 text-gray-400`}>{t('people.noFee')}</span>
             ) : row.paid_by_plan && !cancelled ? (
@@ -332,12 +336,12 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
               row.refunded_at ? (
                 <button type="button" disabled={busy} className={`${chip} border-navy-500 text-gray-300`} onClick={() => act(() => actions.onRefund(row, true))}>↺ {t('slot.refundUndo')}</button>
               ) : (
-                <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onRefund(row))}>💸 {t('slot.markRefunded')}</button>
+                <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onRefund(row))}>{t('slot.markRefunded')}</button>
               )
             ) : (!cancelled || row.late_cancel || row.fee_paid) && (
               <button type="button" disabled={busy} aria-pressed={!!row.fee_paid} className={`${chip} ${row.fee_paid ? 'border-navy-500 text-gray-200' : 'border-lime-400 bg-lime-400/15 text-lime-200'}`} onClick={() => act(() => actions.onFee(row))}>
                 {/* The button says what pressing it does: not paid yet -> "Đã thu", paid -> "Chưa thu". */}
-                {row.fee_paid ? `↺ ${t('people.markUnpaid')}` : `💰 ${t('people.markPaid')}`}
+                {row.fee_paid ? `↺ ${t('people.markUnpaid')}` : `${t('people.markPaid')}`}
               </button>
             )}
             {cancelled && row.late_cancel && (
@@ -354,7 +358,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                 className={`${chip} border-red-500/60 text-red-300 hover:bg-red-500/10`}
                 onClick={() => window.confirm(t('people.deleteHistoryAsk', { name })) && run(async () => { await api.del(`/api/events/${event.id}/participants/${row.id}`); onClose(); })}
               >
-                🗑 {t('people.deleteHistory')}
+                {t('people.deleteHistory')}
               </button>
             )}
           </div>

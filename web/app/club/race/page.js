@@ -57,7 +57,7 @@ export default function RacePage() {
   const months = d ? [d.current_month, ...d.closed_months.map((m) => m.month).filter((m) => m !== d.current_month)] : [];
   return (
     <AppShell>
-      <PageHeader icon="🏆" title={t('race.title')} subtitle={club?.name} />
+      <PageHeader icon="trophy" title={t('race.title')} subtitle={club?.name} />
       <SectionTabs group="stats" />
       {!community && <p className="card text-gray-300 text-sm mb-4">{t('race.communityOnly')}</p>}
       {error && <p className="card text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('race.needMigration') : error.message}</p>}
@@ -80,7 +80,7 @@ export default function RacePage() {
             <div className="grid sm:grid-cols-3 gap-3 mt-4">
               {['1', '2', '3'].map((r) => (
                 <label key={r} className="text-sm">
-                  <span className="text-xs text-gray-400">🏅 {t('race.prizeFor', { n: r })}</span>
+                  <span className="text-xs text-gray-400">{t('race.prizeFor', { n: r })}</span>
                   <select className="input mt-1" value={s.rewards[r]} disabled={!canEdit} onChange={(e) => save({ rewards: { ...s.rewards, [r]: e.target.value } })}>
                     {REWARDS.map((k) => <option key={k} value={k}>{t(`race.reward_${k}`)}</option>)}
                   </select>
@@ -139,7 +139,7 @@ export default function RacePage() {
                           <td className={`px-3 py-2 ${r.no_shows ? 'text-red-300' : ''}`}>{r.no_shows}</td>
                           <td className="px-3 py-2 font-bold text-amber-300">{r.points}</td>
                           <td className="px-3 py-2 text-xs">
-                            {r.prize_rank ? <span className="text-lime-300 font-semibold">🏆 Top {r.prize_rank}</span> : !r.joined_in_time ? <span className="text-gray-500">{t('race.lateJoin')}</span> : !r.eligible ? <span className="text-gray-500">{t('race.notEnough', { n: s.min_sessions })}</span> : '—'}
+                            {r.prize_rank ? <span className="text-lime-300 font-semibold">Top {r.prize_rank}</span> : !r.joined_in_time ? <span className="text-gray-500">{t('race.lateJoin')}</span> : !r.eligible ? <span className="text-gray-500">{t('race.notEnough', { n: s.min_sessions })}</span> : '—'}
                           </td>
                         </tr>
                       ))}
@@ -153,7 +153,7 @@ export default function RacePage() {
           {/* Vouchers */}
           <section className="card">
             <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-              <h2 className="text-white font-semibold">🎁 {t('race.vouchers')}</h2>
+              <h2 className="text-white font-semibold">{t('race.vouchers')}</h2>
               <span className="text-sm text-gray-300">{t('race.given', { n: d.given.used, amount: formatVnd(d.given.amount) })}</span>
             </div>
             {d.vouchers.length === 0 ? (

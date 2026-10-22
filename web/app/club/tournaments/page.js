@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { formatDay, todayYmd, localDate } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import Podium from '@/components/Podium';
+import UiIcon from '@/components/ui/UiIcon';
 
 const STATUS_STYLE = {
   groups: 'bg-navy-700 text-gray-200',
@@ -42,7 +43,7 @@ export default function TournamentsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="🏆"
+        icon="trophy"
         title={t('tournaments.title')}
         subtitle={club?.name}
         actions={<Link href="/club/tournaments/new" className="btn-primary text-sm">＋ {t('nav.createTournament')}</Link>}
@@ -50,10 +51,10 @@ export default function TournamentsPage() {
       <SectionTabs group="activities" />
 
       <KpiRow cols={4}>
-        <StatTile icon="🏆" label={t('tourx.total')} value={all.length} />
-        <StatTile icon="🔥" label={t('tourx.running')} value={running.length} tone="text-amber-300" sub={t('tourx.upcomingN', { n: running.filter((x) => (x.event_date || '') >= today).length })} />
-        <StatTile icon="🥇" label={t('tourx.completed')} value={done.length} tone="text-lime-300" />
-        <StatTile icon="👥" label={t('tourx.teams')} value={players} tone="text-sky-300" sub={t('tourx.teamsSub')} />
+        <StatTile icon="trophy" label={t('tourx.total')} value={all.length} />
+        <StatTile icon="bolt" label={t('tourx.running')} value={running.length} tone="text-amber-300" sub={t('tourx.upcomingN', { n: running.filter((x) => (x.event_date || '') >= today).length })} />
+        <StatTile icon="medal" label={t('tourx.completed')} value={done.length} tone="text-lime-300" />
+        <StatTile icon="users" label={t('tourx.teams')} value={players} tone="text-sky-300" sub={t('tourx.teamsSub')} />
       </KpiRow>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -63,7 +64,7 @@ export default function TournamentsPage() {
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {!loading && all.length === 0 && (
         <div className="card text-center py-10">
-          <div className="text-5xl mb-2" aria-hidden="true">🏆</div>
+          <div className="text-5xl mb-2" aria-hidden="true"><UiIcon name="trophy" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
           <p className="text-gray-300 mb-4">{t('tournaments.none')}</p>
           <Link href="/club/tournaments/new" className="btn-primary text-sm">＋ {t('nav.createTournament')}</Link>
         </div>
@@ -74,7 +75,7 @@ export default function TournamentsPage() {
             <div className={`h-1.5 ${x.status === 'completed' ? 'bg-lime-400' : x.status === 'knockout' ? 'bg-yellow-400' : 'bg-sky-400'}`} />
             <div className="p-4 flex-1 flex flex-col">
               <div className="flex items-start justify-between gap-2">
-                <span className="text-white font-semibold leading-snug">{x.kind === 'team' ? '👥' : x.group_count === 1 && x.advance_per_group === 0 ? '🔄' : sport === 'badminton' ? '🏸' : '🏆'} {x.name}</span>
+                <span className="text-white font-semibold leading-snug">{x.name}</span>
                 <span className={`text-xs rounded-full px-2 py-0.5 font-semibold shrink-0 ${STATUS_STYLE[x.status]}`}>
                   {x.kind === 'team' && x.status === 'groups' ? t('league.inProgress') : t(`tournaments.status_${x.status}`)}
                 </span>
@@ -85,14 +86,13 @@ export default function TournamentsPage() {
                 {x.kind !== 'team' && x.group_count > 0 && x.advance_per_group > 0 && (
                   <span className="rounded-full bg-navy-900 border border-navy-700 px-2 py-0.5 text-gray-300">{x.group_count} {t('tournaments.groupCount').toLowerCase()}</span>
                 )}
-                {Number(x.entry_fee) > 0 && <span className="rounded-full bg-lime-400/10 border border-lime-400/30 px-2 py-0.5 text-lime-200">💰 {formatVnd(x.entry_fee)}</span>}
+                {Number(x.entry_fee) > 0 && <span className="rounded-full bg-lime-400/10 border border-lime-400/30 px-2 py-0.5 text-lime-200">{formatVnd(x.entry_fee)}</span>}
               </div>
               <div className="text-gray-400 text-sm mt-2">
-                📅{' '}
                 {x.event_date
                   ? formatDay(x.event_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
                   : localDate(new Date(x.created_at), lang === 'vi' ? 'vi-VN' : 'en-GB')}
-                {x.location ? ` · 📍 ${x.location}` : ''}
+                {x.location ? ` · ${x.location}` : ''}
               </div>
               <div className="mt-auto pt-2">
                 <Podium podium={x.podium} compact />

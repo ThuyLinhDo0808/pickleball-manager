@@ -31,11 +31,11 @@ function AccountLine({ a }) {
 function PaymentLine({ r }) {
   const { t } = useI18n();
   const p = r.payment;
-  if (!p) return <p className="text-xs text-gray-400 mt-0.5">💎 {t('ownerReq.payCovered')}</p>;
+  if (!p) return <p className="text-xs text-gray-400 mt-0.5">{t('ownerReq.payCovered')}</p>;
   const tone = p.status === 'paid' ? 'text-lime-300' : p.status === 'pending' ? 'text-amber-200' : 'text-red-300';
   return (
     <p className={`text-xs mt-0.5 ${tone}`}>
-      💳 {t(`ownerReq.pay_${p.status}`)} · {formatVnd(p.amount)} · {p.upgrade_from ? t('ownerReq.payUpgrade', { from: p.upgrade_from.toUpperCase() }) : t('plan.nMonths', { n: p.months })} · <span className="font-mono">{p.ref}</span>
+      {t(`ownerReq.pay_${p.status}`)} · {formatVnd(p.amount)} · {p.upgrade_from ? t('ownerReq.payUpgrade', { from: p.upgrade_from.toUpperCase() }) : t('plan.nMonths', { n: p.months })} · <span className="font-mono">{p.ref}</span>
     </p>
   );
 }
@@ -102,7 +102,7 @@ export default function OwnerClubRequestsPage() {
           <li key={r.id} className="card !p-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-white font-semibold">{r.sport === 'badminton' ? '🏸' : '🏓'} {r.name}{r.kind === 'community' && <span className="ml-2 text-[11px] rounded-full border border-amber-300/60 text-amber-200 px-2 py-0.5 align-middle">🎟 {t('creq.kind_community')}</span>}</p>
+                <p className="text-white font-semibold">{r.name}{r.kind === 'community' && <span className="ml-2 text-[11px] rounded-full border border-amber-300/60 text-amber-200 px-2 py-0.5 align-middle">{t('creq.kind_community')}</span>}</p>
                 <p className="text-xs text-gray-400">
                   {fmtTime(r.created_at)} · <Link href={`/owner/hosts/${r.user_id}`} className="hover:text-white">{r.username ? `@${r.username}` : r.email}</Link>
                   {r.username && r.email ? ` · ${r.email}` : ''}
@@ -111,26 +111,26 @@ export default function OwnerClubRequestsPage() {
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${BADGE[r.status]}`}>{t(`creq.status_${r.status}`)}</span>
             </div>
             <div className="mt-2 grid gap-x-4 gap-y-0.5 text-sm text-gray-200 sm:grid-cols-2">
-              <span>📍 {[r.address, r.district, r.province, r.country].filter(Boolean).join(', ')}</span>
-              {r.map_url && <a href={r.map_url} target="_blank" rel="noopener noreferrer" className="text-lime-300 hover:underline">🧭 {t('map.open')}</a>}
-              <span>👥 {t('ownerReq.members', { n: r.member_count })}</span>
-              <span>🗓 {r.schedule || '—'}</span>
-              <span>✉️ {r.contact_email}</span>
-              <span>💎 {t('ownerReq.wants', { tier: String(r.plan_tier).toUpperCase(), n: r.plan_months })}</span>
+              <span>{[r.address, r.district, r.province, r.country].filter(Boolean).join(', ')}</span>
+              {r.map_url && <a href={r.map_url} target="_blank" rel="noopener noreferrer" className="text-lime-300 hover:underline">{t('map.open')}</a>}
+              <span>{t('ownerReq.members', { n: r.member_count })}</span>
+              <span>{r.schedule || '—'}</span>
+              <span>{r.contact_email}</span>
+              <span>{t('ownerReq.wants', { tier: String(r.plan_tier).toUpperCase(), n: r.plan_months })}</span>
             </div>
             {r.description && <p className="text-gray-300 text-sm mt-1 whitespace-pre-line break-words">{r.description}</p>}
             <div className="mt-1"><AccountLine a={r.account} /></div>
             <PaymentLine r={r} />
-            {r.owner_note && <p className="text-gray-400 text-xs mt-1">💬 {r.owner_note} {r.decided_by ? `— ${r.decided_by}` : ''}</p>}
+            {r.owner_note && <p className="text-gray-400 text-xs mt-1">{r.owner_note} {r.decided_by ? `— ${r.decided_by}` : ''}</p>}
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => show(r)}>🔍 {t('ownerReq.view')}</button>
+              <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => show(r)}>{t('ownerReq.view')}</button>
               {r.status === 'pending' && (
                 <>
-                  <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === r.id} onClick={() => decide(r, 'approve', r.payment?.status === 'pending')}>{r.payment?.status === 'pending' ? `💳 ${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
+                  <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === r.id} onClick={() => decide(r, 'approve', r.payment?.status === 'pending')}>{r.payment?.status === 'pending' ? `${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
                   <button type="button" className="btn-secondary !py-1 text-xs text-red-300" disabled={busy === r.id} onClick={() => decide(r, 'reject')}>✕ {t('ownerReq.reject')}</button>
                 </>
               )}
-              {r.club_id && <Link href={`/discover/${r.club_id}`} className="btn-secondary !py-1 text-xs">🏟 {t('ownerReq.openClub')}</Link>}
+              {r.club_id && <Link href={`/discover/${r.club_id}`} className="btn-secondary !py-1 text-xs">{t('ownerReq.openClub')}</Link>}
             </div>
           </li>
         ))}
@@ -153,7 +153,7 @@ export default function OwnerClubRequestsPage() {
             <p className="text-sm text-gray-200 whitespace-pre-line">{open.description || '—'}</p>
             {open.status === 'pending' && (
               <div className="flex gap-2">
-                <button type="button" className="btn-primary flex-1" disabled={busy === open.id} onClick={() => decide(open, 'approve', open.payment?.status === 'pending')}>{open.payment?.status === 'pending' ? `💳 ${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
+                <button type="button" className="btn-primary flex-1" disabled={busy === open.id} onClick={() => decide(open, 'approve', open.payment?.status === 'pending')}>{open.payment?.status === 'pending' ? `${t('ownerReq.payAndApprove')}` : `✓ ${t('ownerReq.approve')}`}</button>
                 <button type="button" className="btn-secondary flex-1 text-red-300" disabled={busy === open.id} onClick={() => decide(open, 'reject')}>✕ {t('ownerReq.reject')}</button>
               </div>
             )}

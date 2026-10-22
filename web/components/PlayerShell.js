@@ -7,6 +7,8 @@ import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import BackButton from '@/components/BackButton';
+import LangSelect from '@/components/LangSelect';
+import { NAV_ACTIVE } from '@/lib/nav';
 
 // The personal side of the app: the home hub (all clubs and roles), my activity
 // (QR, history, form) and my profile. Club management lives in AppShell; a club the
@@ -31,7 +33,7 @@ function Icon({ d, className = 'w-5 h-5' }) {
 // when there is no history. Tab pages (Trang chủ, Tìm CLB, Xếp hạng, Hoạt động, Hồ sơ) have none.
 export default function PlayerShell({ children, requireAuth = true, sport = 'pickleball', back }) {
   const { user, loading } = useAuth();
-  const { t, lang, setLang, setSport } = useI18n();
+  const { t, setSport } = useI18n();
   // Personal pages speak the sport of the club shown (member page) or the default one;
   // not whichever club was last open on the manager side.
   useEffect(() => setSport(sport), [sport, setSport]);
@@ -50,19 +52,18 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-navy-900/95 backdrop-blur border-b border-navy-700 pt-safe">
         <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 h-14">
-          <Link href="/home" className="text-lime-400 font-bold min-w-0 truncate flex-1 lg:flex-none">{t('appName')}</Link>
+          <Link href="/home" className="text-lime-400 font-bold min-w-0 flex-1 lg:flex-none">{t('appName')}</Link>
           <nav className="hidden lg:flex gap-1 flex-1 min-w-0">
             {user &&
               NAV.map((n) => (
-                <Link key={n.href} href={n.href} className={`flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm whitespace-nowrap ${n.match(pathname) ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:text-white'}`}>
+                <Link key={n.href} href={n.href} className={`flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm whitespace-nowrap ${n.match(pathname) ? NAV_ACTIVE : 'text-gray-300 hover:text-white hover:bg-navy-800'}`}>
                   <Icon d={n.icon} className="w-4 h-4" />
                   {t(n.key)}
                 </Link>
               ))}
           </nav>
-          <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-sm text-gray-200 border border-navy-700 rounded-full px-3 py-1.5 shrink-0">
-            {lang === 'vi' ? 'EN' : 'VI'}
-          </button>
+          {/* Same language box as the manager and owner shells. */}
+          <LangSelect className="shrink-0" />
           {/* Bell last, at the right edge, so its panel opens inside the screen. Sign out is
               on Hồ sơ (/p/profile). */}
           {user && <PlayerBell className="shrink-0" />}
@@ -79,9 +80,9 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
         <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900/95 backdrop-blur border-t border-navy-700 pb-safe">
           <div className="grid grid-cols-5">
             {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className={`flex flex-col items-center justify-center gap-0.5 h-16 text-xs leading-tight ${n.match(pathname) ? 'text-lime-400' : 'text-gray-400'}`}>
+              <Link key={n.href} href={n.href} className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${n.match(pathname) ? 'text-lime-300' : 'text-gray-400'}`}>
                 <Icon d={n.icon} />
-                <span>{t(n.key)}</span>
+                <span className="max-w-full px-0.5 text-center break-words">{t(n.key)}</span>
               </Link>
             ))}
           </div>

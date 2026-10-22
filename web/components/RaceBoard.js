@@ -12,7 +12,7 @@ export function VoucherChip({ v }) {
   return (
     <li className={`rounded-lg border px-3 py-2 text-sm ${v.state === 'available' ? 'border-lime-400/60 bg-lime-400/10' : 'border-navy-600 opacity-70'}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-white font-semibold">🎁 {t(`race.reward_${v.kind}`)}</span>
+        <span className="text-white font-semibold">{t(`race.reward_${v.kind}`)}</span>
         <span className="text-[11px] text-gray-300">{t(`race.state_${v.state}`)}</span>
       </div>
       <p className="text-xs text-gray-400 mt-0.5">
@@ -33,9 +33,9 @@ export default function RaceBoard({ clubId }) {
   return (
     <div className="flex flex-col gap-4">
       <section className="card">
-        <h2 className="text-white font-semibold">🏆 {t('race.tableTitle', { m: fmtMonth(data.month) })}</h2>
+        <h2 className="text-white font-semibold">{t('race.tableTitle', { m: fmtMonth(data.month) })}</h2>
         <p className="text-gray-400 text-xs mt-1">{t('race.playerRules', { c: s.points.checkin, w: s.points.win, n: Math.abs(s.points.no_show), min: s.min_sessions })}</p>
-        <p className="text-amber-200 text-xs mt-1">🎁 {['1', '2', '3'].filter((r) => s.rewards[r] !== 'none').map((r) => `Top ${r}: ${t(`race.reward_${s.rewards[r]}`)}`).join(' · ')}</p>
+        <p className="text-amber-200 text-xs mt-1">{['1', '2', '3'].filter((r) => s.rewards[r] !== 'none').map((r) => `Top ${r}: ${t(`race.reward_${s.rewards[r]}`)}`).join(' · ')}</p>
       </section>
       {data.groups.map((g) => (
         <section key={g.key || 'all'} className="card !p-0 overflow-x-auto">
@@ -50,7 +50,7 @@ export default function RaceBoard({ clubId }) {
               <tbody>
                 {g.rows.map((r) => (
                   <tr key={r.place} className={`border-b border-navy-800 last:border-0 tabular-nums ${r.me ? 'bg-lime-400/10' : ''}`}>
-                    <td className="px-3 py-2 text-gray-400">{r.prize_rank ? `🏆${r.prize_rank}` : r.place}</td>
+                    <td className="px-3 py-2 text-gray-400">{r.prize_rank ? <span className="text-lime-300 font-semibold">{r.prize_rank}</span> : r.place}</td>
                     <td className="px-3 py-2 text-white">{r.full_name}{r.me && <span className="ml-1 text-[11px] text-lime-300">({t('race.you')})</span>}</td>
                     <td className="px-3 py-2">{r.sessions}</td>
                     <td className="px-3 py-2">{r.wins}</td>
@@ -64,7 +64,7 @@ export default function RaceBoard({ clubId }) {
       ))}
       {data.vouchers?.length > 0 && (
         <section className="card">
-          <h2 className="text-white font-semibold mb-2">🎁 {t('race.myVouchers')}</h2>
+          <h2 className="text-white font-semibold mb-2">{t('race.myVouchers')}</h2>
           <ul className="flex flex-col gap-2">{data.vouchers.map((v) => <VoucherChip key={v.id} v={v} />)}</ul>
         </section>
       )}

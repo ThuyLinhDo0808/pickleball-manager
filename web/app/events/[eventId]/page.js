@@ -2,6 +2,7 @@
 import DuprExport from '@/components/DuprExport';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import EventStandings from '@/components/EventStandings';
+import UiIcon from '@/components/ui/UiIcon';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
@@ -100,7 +101,7 @@ export default function EventDetailPage() {
     reloadEvent();
   }
 
-  // "📤 Gửi link": copy the sign-up link in one tap (to paste into Zalo / Messenger).
+  // "Gửi link": copy the sign-up link in one tap (to paste into Zalo / Messenger).
   async function copyLink() {
     const link = `${window.location.origin}/e/${event.short_code || event.public_token}`;
     try {
@@ -264,27 +265,27 @@ export default function EventDetailPage() {
       <div className="mb-4">
         <h1 className="text-white text-2xl font-bold leading-tight">{event.title}</h1>
         <p className="text-gray-300 text-base mt-1">
-          📅 {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
+          {formatDay(event.event_date, lang, { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
           {event.start_time && ` · ${hhmm(event.start_time)}${event.end_time ? `–${hhmm(event.end_time)}` : ''}`}
-          {event.court_labels && !(event.groups?.length > 1) && ` · 🏟 ${t('egroups.courtsShort', { list: event.court_labels })}`}
+          {event.court_labels && !(event.groups?.length > 1) && ` · ${t('egroups.courtsShort', { list: event.court_labels })}`}
         </p>
         {/* Kèo with time groups: each group's hours, fee per slot, places and courts. */}
         {event.groups?.length > 1 && (
           <p className="text-gray-300 text-sm mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
             {event.groups.map((g, gi) => (
-              <span key={g.id} className="tabular-nums">🏟 {t('egroups.courtN', { n: g.courts || gi + 1 })}{g.play_format ? ` (${t(`fmt.${g.play_format}`)})` : ''} · {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}</span>
+              <span key={g.id} className="tabular-nums">{t('egroups.courtN', { n: g.courts || gi + 1 })}{g.play_format ? ` (${t(`fmt.${g.play_format}`)})` : ''} · {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? formatVnd(g.fee_amount) : t('public.free')} · {t('createx.slotsN', { n: g.slots })}</span>
             ))}
           </p>
         )}
         {(event.location || event.map_url || event.club_map_url) && <div className="mt-0.5"><MapLink location={event.location} mapUrl={event.map_url || event.club_map_url} /></div>}
         {event.members_only && (
           <p className="text-violet-200 text-sm mt-0.5">
-            🔒 {event.public_from && Date.parse(event.public_from) > Date.now() ? t('mfirst.badgeUntil', { at: new Date(event.public_from).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) }) : event.public_from ? t('mfirst.nowPublic') : t('mfirst.badge')}
+            {event.public_from && Date.parse(event.public_from) > Date.now() ? t('mfirst.badgeUntil', { at: new Date(event.public_from).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) }) : event.public_from ? t('mfirst.nowPublic') : t('mfirst.badge')}
           </p>
         )}
         {(event.play_format || event.services || event.series_id) && (
           <p className="text-gray-400 text-sm mt-0.5">
-            {[event.series_id && `🔁 ${t('series.badge')}`, event.play_format && `🏓 ${t(`fmt.${event.play_format}`)}`, event.services && `🎁 ${event.services}`].filter(Boolean).join(' · ')}
+            {[event.series_id && `${t('series.badge')}`, event.play_format && `${t(`fmt.${event.play_format}`)}`, event.services && `${event.services}`].filter(Boolean).join(' · ')}
           </p>
         )}
         {/* The three things a Host does all the time, as big buttons. */}
@@ -292,13 +293,13 @@ export default function EventDetailPage() {
           // Phone: three equal buttons in one row (icon above the word); wider screens: on the right.
           <div className="grid grid-cols-3 gap-2 mt-3 sm:flex sm:flex-wrap sm:justify-end">
             <button type="button" className="btn-primary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={copyLink} disabled={!event.allow_public_registration}>
-              <span aria-hidden>📤</span> <span>{linkCopied ? t('events.copied') : t('ux.sendLink')}</span>
+              <UiIcon name="send" /> <span>{linkCopied ? t('events.copied') : t('ux.sendLink')}</span>
             </button>
             <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => setShowQr(true)}>
-              <span aria-hidden>📷</span> <span>{t('ux.checkin')}</span>
+              <UiIcon name="scan" /> <span>{t('ux.checkin')}</span>
             </button>
             <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => { setTab('participants'); setShowImport(true); }}>
-              <span aria-hidden>➕</span> <span>{t('ux.addPlayer')}</span>
+              <UiIcon name="userPlus" /> <span>{t('ux.addPlayer')}</span>
             </button>
           </div>
         )}
@@ -317,10 +318,10 @@ export default function EventDetailPage() {
             role="tab"
             aria-selected={tab === tb}
             onClick={() => setTab(tb)}
-            className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:flex-row sm:gap-1.5 sm:text-sm leading-tight ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
+            className={`relative flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:min-h-0 sm:flex-row sm:gap-1.5 sm:text-sm leading-tight transition-colors ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800 active:bg-navy-700'}`}
           >
             {/* Every tab says what it is (icon + word), counts in brackets. */}
-            <span aria-hidden>{{ participants: '👥', finance: '💰', matches: '🏓', details: '⚙️' }[tb]}</span>
+            <UiIcon name={{ participants: 'users', finance: 'wallet', matches: 'paddle', details: 'settings' }[tb]} className="w-5 h-5 sm:w-4 sm:h-4" />
             <span>
               {{ participants: t('ux.tabPlayers'), finance: t('ux.tabMoney'), matches: t('ux.tabMatches'), details: t('ux.tabSettings') }[tb]}
               {tb === 'participants' && ` (${main.length})`}
@@ -336,8 +337,8 @@ export default function EventDetailPage() {
           <EventControls event={event} onChanged={(e) => setEvent({ ...event, ...e })} />
           {event.kind !== 'meeting' && <EventShareCard event={event} onSaved={(e) => setEvent({ ...event, ...e })} />}
           <div className="card !py-3 mb-4 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-gray-300 text-sm">{event.kind !== 'meeting' ? `⏰ ${policyText(t, event.cancel_deadline_hours, event.cancel_half_hours, event.no_refund)}` : ''}</span>
-            <button className="btn-secondary text-sm" onClick={onExport}>⬇ {t('common.exportExcel')}</button>
+            <span className="text-gray-300 text-sm">{event.kind !== 'meeting' ? `${policyText(t, event.cancel_deadline_hours, event.cancel_half_hours, event.no_refund)}` : ''}</span>
+            <button className="btn-secondary text-sm" onClick={onExport}>{t('common.exportExcel')}</button>
           </div>
         </>
       )}
@@ -345,7 +346,7 @@ export default function EventDetailPage() {
       {tab === 'participants' && (
         <>
           <Modal open={showImport} title={t('ux.addPlayer')} onClose={() => setShowImport(false)}>
-            <p className="text-white font-semibold mb-2">✍️ {t('ux.addByHand')}</p>
+            <p className="text-white font-semibold mb-2">{t('ux.addByHand')}</p>
             <form onSubmit={addParticipant} className="flex flex-col gap-2">
               <div className="flex-1">
                 <label className="text-xs text-gray-400">{t('common.name')}</label>
@@ -473,7 +474,7 @@ export default function EventDetailPage() {
               disabled={!(matches || []).length}
               onClick={() => exportMatchesJpg({ event, matches: matches || [], t, lang })}
             >
-              🖼 {t('matches.exportJpg')}
+              {t('matches.exportJpg')}
             </button>
             <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
           </div>
@@ -483,9 +484,9 @@ export default function EventDetailPage() {
             value={matchTab}
             onChange={setMatchTab}
             tabs={[
-              { key: 'enter', label: t('matches.tabEnter'), icon: '✏️', count: (matches || []).filter((m) => !isScored(m)).length },
-              { key: 'results', label: t('matches.tabResults'), icon: '📋', count: (matches || []).filter(isScored).length },
-              { key: 'standings', label: t('estand.title'), icon: '🏅' },
+              { key: 'enter', label: t('matches.tabEnter'), icon: 'edit', count: (matches || []).filter((m) => !isScored(m)).length },
+              { key: 'results', label: t('matches.tabResults'), icon: 'clipboard', count: (matches || []).filter(isScored).length },
+              { key: 'standings', label: t('estand.title'), icon: 'medal' },
             ]}
           />
           {matchTab === 'enter' && <MatchList matches={(matches || []).filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reloadMatches} />}
@@ -496,7 +497,7 @@ export default function EventDetailPage() {
               onChallenge={(pick, reward) => setShowMatch({ slots: { 1: pick.team1.map((r) => r.id), 2: pick.team2.map((r) => r.id) }, extra: { is_challenge: true, challenge_reward: reward } })}
             />
           )}
-          <Modal open={!!showMatch} title={showMatch?.extra ? `⚔️ ${t('matches.challenge')}` : t('matches.add')} onClose={() => setShowMatch(false)}>
+          <Modal open={!!showMatch} title={showMatch?.extra ? `${t('matches.challenge')}` : t('matches.add')} onClose={() => setShowMatch(false)}>
             {showMatch && (
               <MatchForm
                 players={main.map((p) => ({ id: p.id, name: p.full_name }))}
@@ -561,7 +562,7 @@ function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
     <div className="flex flex-col gap-3 mb-4">
       {boards.map((b) => (
         <section key={b.key} className="card !px-3 sm:!px-4">
-          <h3 className="text-white font-semibold mb-2 tabular-nums">🏟 {b.title}{b.slots ? <span className="text-gray-400 font-normal"> · {b.people.length}/{b.slots}</span> : null}</h3>
+          <h3 className="text-white font-semibold mb-2 tabular-nums">{b.title}{b.slots ? <span className="text-gray-400 font-normal"> · {b.people.length}/{b.slots}</span> : null}</h3>
           {b.people.length === 0 && !b.slots ? (
             <p className="text-gray-500 text-sm">—</p>
           ) : (
@@ -575,7 +576,7 @@ function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
                     <div role="button" tabIndex={0} onClick={() => onManage(p)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onManage(p))} className="flex h-full flex-col items-center gap-1 rounded-xl border border-navy-600 bg-navy-900/50 p-2.5 text-center cursor-pointer hover:border-navy-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400">
                       <Avatar src={c.avatar} name={p.full_name} size={48} />
                       <span className="text-white text-sm font-semibold break-words leading-tight">{p.full_name}</span>
-                      <span className="text-xs text-gray-400">{g ? `${g === 'male' ? '♂' : '♀'} ${t(`members.${g}`)}` : '—'}</span>
+                      <span className="text-xs text-gray-400">{g ? t(`members.${g}`) : '—'}</span>
                       {sport === 'pickleball' ? <DuprBadge c={c} t={t} /> : <span className="text-xs text-gray-300">{levelText(c.level ?? p.dupr_level, sport, t) || '—'}</span>}
                       <button
                         type="button"
@@ -615,7 +616,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
           const c = p.card || {};
           const level = levelText(c.level ?? p.dupr_level, sport, t);
           const money = (p.tags || []).includes('free') && kind !== 'cancelled'
-            ? [`🎁 ${t('people.tag_free')}`, 'border-violet-400/60 text-violet-200']
+            ? [`${t('people.tag_free')}`, 'border-violet-400/60 text-violet-200']
             : p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0
             ? [t('people.noFee'), 'border-navy-600 text-gray-400']
             : p.paid_by_plan && kind !== 'cancelled'
@@ -636,25 +637,25 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
               >
                 <span className="relative shrink-0">
                   <Avatar src={c.avatar} name={p.full_name} size={36} />
-                  {p.is_organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden>🛡</span>}
+                  {p.is_organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden><UiIcon name="shield" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5">
                     <span className="text-white font-semibold break-words min-w-0">{p.full_name}</span>
                     {c.member_type === 'fixed' && <span className={`${BADGE} border-lime-400/50 text-lime-300`}>{t('events.fixedMember')}</span>}
                     {!p.is_organizer && c.member_type !== 'fixed' && (p.source_club_member_id || p.user_id || c.member_type) && <span className={`${BADGE} border-navy-500 text-gray-300`}>{t('review.kind_guest')}</span>}
-                    {p.is_organizer && <span className={`${BADGE} border-sky-400/60 text-sky-300`}>🛡 {t('people.organizer')}</span>}
+                    {p.is_organizer && <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('people.organizer')}</span>}
                     {(p.tags || []).filter((tag) => tag !== 'host_guest').map((tag) => <span key={tag} className={`${BADGE} ${['invited', 'free'].includes(tag) ? 'border-violet-400/60 text-violet-200' : 'border-navy-500 text-gray-300'}`}>{t(`people.tag_${tag}`)}</span>)}
                     {/* Whose guest: the other slots of a quick booking, or someone the Host added. */}
                     {p.booking && p.full_name !== p.booking.contact_name && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: p.booking.contact_name })}</span>}
                     {(p.tags || []).includes('host_guest') && <span className={`${BADGE} border-amber-300/60 text-amber-200`}>{t('people.guestOf', { name: hostName || 'Host' })}</span>}
                     {/* Kèo with time groups: the group's hours; the court the Host put them on. */}
-                    {groups?.length > 1 && (() => { const g = groups.find((x) => x.id === p.group_id); return g ? <span className={`${BADGE} border-violet-400/60 text-violet-200 tabular-nums`}>🏟 {t('egroups.courtN', { n: g.courts || groups.indexOf(g) + 1 })} · {g.start_time}–{g.end_time}</span> : null; })()}
-                    {p.court && <span className={`${BADGE} border-lime-400/60 text-lime-200`}>🏟 {t('egroups.courtN', { n: p.court })}</span>}
-                    {p.priority && <span className={`${BADGE} border-sky-400/60 text-sky-300`} title={t('guests.priorityMeans')}>⚡ {t('guests.perk_priority')}</span>}
+                    {groups?.length > 1 && (() => { const g = groups.find((x) => x.id === p.group_id); return g ? <span className={`${BADGE} border-violet-400/60 text-violet-200 tabular-nums`}>{t('egroups.courtN', { n: g.courts || groups.indexOf(g) + 1 })} · {g.start_time}–{g.end_time}</span> : null; })()}
+                    {p.court && <span className={`${BADGE} border-lime-400/60 text-lime-200`}>{t('egroups.courtN', { n: p.court })}</span>}
+                    {p.priority && <span className={`${BADGE} border-sky-400/60 text-sky-300`} title={t('guests.priorityMeans')}>{t('guests.perk_priority')}</span>}
                     {p.late_cancel && <span className={`${BADGE} border-orange-400/60 text-orange-300`}>{shareOf(p) === 50 ? t('cancelx.badgeHalf') : t('policy.lateBadge')}</span>}
-                    {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>📬 {t('everify.hostTag')}</span>}
-                    {p.booking && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('quick.badgeHint', { name: p.booking.contact_name, phone: p.booking.contact_phone })}>⚡ {t('quick.badge')}</span>}
+                    {p.email_unverified && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('everify.hostTagHint')}>{t('everify.hostTag')}</span>}
+                    {p.booking && <span className={`${BADGE} border-amber-300/60 text-amber-200`} title={t('quick.badgeHint', { name: p.booking.contact_name, phone: p.booking.contact_phone })}>{t('quick.badge')}</span>}
                     {kind === 'cancelled' && p.fee_paid && shareOf(p) > 0 && (p.refunded_at
                       ? <span className={`${BADGE} border-lime-400/60 text-lime-300`} title={p.refunded_by || ''}>✓ {t('slot.refunded', { amount: formatVnd(p.refund_amount || 0), date: localDate(new Date(p.refunded_at), 'vi-VN') })}</span>
                       : <span className={`${BADGE} border-sky-400/60 text-sky-300`}>{t('slot.refundDue')}</span>)}
@@ -662,11 +663,11 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
                   <span className="flex flex-wrap items-center gap-x-2.5 text-xs text-gray-400 mt-0.5">
                     {/* Điểm trình (the Host's score + level), then DUPR + Uy tín. */}
                     {(c.skill_score != null || c.level_label) && (
-                      <span className="text-gray-200">🎯 {c.skill_score != null ? `${t('members.colSkill')} ${c.skill_score.toFixed(2)}` : ''}{c.level_label ? `${c.skill_score != null ? ' · ' : ''}${c.level_label}` : ''}</span>
+                      <span className="text-gray-200">{c.skill_score != null ? `${t('members.colSkill')} ${c.skill_score.toFixed(2)}` : ''}{c.level_label ? `${c.skill_score != null ? ' · ' : ''}${c.level_label}` : ''}</span>
                     )}
                     {sport !== 'pickleball' && <span>{level || '—'}</span>}
-                    {(c.gender || p.gender) && <span>{(c.gender || p.gender) === 'male' ? '♂' : '♀'} {t(`members.${c.gender || p.gender}`)}</span>}
-                    {p.booking && p.booking.contact_phone && <span>📞 {p.booking.contact_name} · {p.booking.contact_phone}</span>}
+                    {(c.gender || p.gender) && <span>{t(`members.${c.gender || p.gender}`)}</span>}
+                    {p.booking && p.booking.contact_phone && <span>{p.booking.contact_name} · {p.booking.contact_phone}</span>}
                     {/* DUPR (verified only; none yet = "DUPR NR") and its reliability as "Uy tín". */}
                     {sport === 'pickleball' && <DuprBadge c={c} t={t} />}
                     {sport === 'pickleball' && c.dupr_verified == null && c.dupr_id && <span className="text-[10px] text-gray-500">ID {c.dupr_id}</span>}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useI18n } from '@/context/I18nContext';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Where the sign-up confirmation email lands. The link signs the new account in for a
 // moment; we sign it out again so the person logs in themselves on the sign-in page.
@@ -56,7 +57,7 @@ export default function WelcomePage() {
 
         {ok && (
           <>
-            <div className="text-5xl mt-4" aria-hidden="true">🎉</div>
+            <div className="text-5xl mt-4" aria-hidden="true"></div>
             <h1 className="text-white text-2xl font-bold mt-3">{t('welcome.title')}</h1>
             <p className="text-gray-300 mt-2">{t('welcome.subtitle')}</p>
             <ol className="text-left text-sm text-gray-300 bg-navy-900 rounded-lg p-4 mt-5 flex flex-col gap-2 list-decimal list-inside">
@@ -71,7 +72,7 @@ export default function WelcomePage() {
 
         {(state === 'expired' || state === 'error') && (
           <>
-            <div className="text-5xl mt-4" aria-hidden="true">⚠️</div>
+            <div className="text-5xl mt-4" aria-hidden="true"><UiIcon name="alert" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <h1 className="text-white text-xl font-bold mt-3">{t('welcome.failTitle')}</h1>
             <p className="text-gray-300 text-sm mt-2">{state === 'expired' ? t('auth.linkExpired') : message || t('common.error')}</p>
             <Link href="/sign-in" className="btn-primary w-full block mt-5 py-3">{t('welcome.toSignIn')} →</Link>

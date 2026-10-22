@@ -64,24 +64,24 @@ export default function MeetingVotePage() {
       </header>
 
       <section className="card mb-4">
-        <p className="text-gray-400 text-xs">👥 {t('vote.kicker')}</p>
+        <p className="text-gray-400 text-xs">{t('vote.kicker')}</p>
         <h1 className="text-white text-2xl font-bold leading-tight mt-1">{ev.title}</h1>
         <p className="text-lime-400 text-sm mt-1 capitalize">
           {formatDay(ev.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
           {time && ` · ${time}`}
         </p>
         {ev.location && <p className="mt-1"><MapLink location={ev.location} mapUrl={ev.map_url} /></p>}
-        <p className="text-gray-300 text-sm mt-1">💰 {Number(ev.fee_amount) > 0 ? `${formatVnd(ev.fee_amount)} / ${t('vote.perPerson')}` : t('public.free')}</p>
+        <p className="text-gray-300 text-sm mt-1">{Number(ev.fee_amount) > 0 ? `${formatVnd(ev.fee_amount)} / ${t('vote.perPerson')}` : t('public.free')}</p>
         {ev.notice && (
           <div className="mt-3 rounded-lg bg-navy-900 px-3 py-2">
-            <div className="text-gray-400 text-xs">📋 {t('mtg.agenda')}</div>
+            <div className="text-gray-400 text-xs">{t('mtg.agenda')}</div>
             <p className="text-gray-200 text-sm whitespace-pre-line">{ev.notice}</p>
           </div>
         )}
       </section>
 
       <section className="card mb-4">
-        <h2 className="text-white font-semibold mb-3">🗳 {t('meeting.question')}</h2>
+        <h2 className="text-white font-semibold mb-3">{t('meeting.question')}</h2>
         {ev.closed ? (
           <p className="text-gray-400 text-sm">{t('vote.closed')}</p>
         ) : !user ? (

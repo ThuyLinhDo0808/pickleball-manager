@@ -81,7 +81,7 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, end
           <span className="block text-gray-500 text-xs">{t('courts.hint')}</span>
         </div>
         <button type="button" className="btn-primary" disabled={players.length < 4} onClick={deal}>
-          🔀 {state ? t('courts.next') : t('courts.deal')}
+          {state ? t('courts.next') : t('courts.deal')}
         </button>
       </div>
       {players.length < 4 && <p className="text-gray-400 text-sm mb-3">{t('courts.needFour')}</p>}
@@ -93,7 +93,7 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, end
             {state.round.map((c, i) => (
               <div key={c.court} className={`rounded-2xl border p-4 ${c.saved ? 'border-lime-400/50 bg-lime-400/5' : 'border-navy-600 bg-navy-800'}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-bold">🏟 {t('courts.court', { n: c.court })}</span>
+                  <span className="text-white font-bold">{t('courts.court', { n: c.court })}</span>
                   {c.saved && <span className="text-lime-300 text-xs">✓ {t('courts.saved')}</span>}
                 </div>
                 <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 items-center text-sm">
@@ -110,7 +110,7 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, end
           </div>
           {state.rest.length > 0 && (
             <div className="card mt-3">
-              <div className="text-gray-400 text-xs mb-1">⏸ {t('courts.resting', { n: state.rest.length })}</div>
+              <div className="text-gray-400 text-xs mb-1">{t('courts.resting', { n: state.rest.length })}</div>
               <div className="flex flex-wrap gap-1.5">
                 {state.rest.map((p) => (
                   <span key={p.id} className="rounded-full bg-navy-900 border border-navy-600 px-2.5 py-1 text-sm text-gray-200">

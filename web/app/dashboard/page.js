@@ -15,6 +15,7 @@ import { formatVnd } from '@/lib/format';
 import { todayYmd, hhmm, localDate } from '@/lib/dates';
 import { isBirthdayMonth } from '@/lib/memberDates';
 import { levelText } from '@/lib/levels';
+import UiIcon from '@/components/ui/UiIcon';
 
 const safe = (p) => p.catch(() => null);
 
@@ -31,7 +32,7 @@ function Kpi({ icon, label, value, sub, href, tone = 'text-white', lines = null 
     <div className="card h-full !p-4 flex flex-col gap-1">
       <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
         <span>{label}</span>
-        <span className="text-base" aria-hidden="true">{icon}</span>
+        
       </div>
       <div className={`text-xl sm:text-2xl font-bold tabular-nums whitespace-nowrap ${tone}`}>{value}</div>
       {sub && <div className="text-gray-400 text-xs">{sub}</div>}
@@ -154,18 +155,18 @@ function ClubHome({ community = false }) {
     next && next.slots
       ? {
           href: `/events/${next.id}`,
-          icon: free(next) > 0 ? '🎯' : '✅',
+          icon: free(next) > 0 ? 'target' : 'checkCircle',
           text: t(free(next) > 0 ? 'home.todoFill' : 'home.todoFull', { title: next.title, n: next.main_count || 0, slots: next.slots, free: free(next) }),
         }
       : null,
-    requests?.length ? { href: '/club/members', icon: '📝', text: t('home.todoRequests', { n: requests.length }) } : null,
+    requests?.length ? { href: '/club/members', icon: 'edit', text: t('home.todoRequests', { n: requests.length }) } : null,
     refunds?.length
-      ? { href: `/events/${refunds[0].event_id}`, icon: '💸', text: t('home.todoRefunds', { n: refunds.length, amount: formatVnd(refunds.reduce((s, r) => s + r.amount, 0)), names: refunds.slice(0, 3).map((r) => r.full_name).join(', ') }) }
+      ? { href: `/events/${refunds[0].event_id}`, icon: 'money', text: t('home.todoRefunds', { n: refunds.length, amount: formatVnd(refunds.reduce((s, r) => s + r.amount, 0)), names: refunds.slice(0, 3).map((r) => r.full_name).join(', ') }) }
       : null,
     debtors.length
-      ? { href: '/club/members', icon: '💸', text: t('home.todoDebtNames', { names: debtors.slice(0, 4).map((m) => m.full_name).join(', '), more: debtors.length > 4 ? ` +${debtors.length - 4}` : '' }) }
+      ? { href: '/club/members', icon: 'money', text: t('home.todoDebtNames', { names: debtors.slice(0, 4).map((m) => m.full_name).join(', '), more: debtors.length > 4 ? ` +${debtors.length - 4}` : '' }) }
       : null,
-    upcoming.some((e) => e.pending_count > 0) ? { href: `/events/${upcoming.find((e) => e.pending_count > 0).id}`, icon: '🧾', text: t('home.todoTransfers') } : null,
+    upcoming.some((e) => e.pending_count > 0) ? { href: `/events/${upcoming.find((e) => e.pending_count > 0).id}`, icon: 'receipt', text: t('home.todoTransfers') } : null,
   ].filter(Boolean);
   const top = stats?.awards;
 
@@ -180,7 +181,7 @@ function ClubHome({ community = false }) {
                 {localDate(new Date(), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
               <h1 className="text-white text-2xl sm:text-3xl font-bold mt-1 truncate">
-                {greeting(t)}{name ? `, ${name}` : ''} 👋
+                {greeting(t)}{name ? `, ${name}` : ''}
               </h1>
               {club && (
                 <p className="text-gray-300 text-sm mt-1">
@@ -192,12 +193,12 @@ function ClubHome({ community = false }) {
           {/* The three things a Host opens every day, on the right. */}
           <div className="flex flex-wrap justify-end gap-2 mt-4">
             {[
-              ['/events/create', '➕', t('nav.createGame'), true],
-              ['/events', '📅', t('nav.schedule')],
-              ['/club/members', '👥', t('nav.members')],
+              ['/events/create', 'plus', t('nav.createGame'), true],
+              ['/events', 'calendar', t('nav.schedule')],
+              ['/club/members', 'users', t('nav.members')],
             ].map(([href, icon, label, main]) => (
               <Link key={href} href={href} className={main ? 'btn-primary' : 'btn-secondary'}>
-                <span aria-hidden>{icon}</span> {label}
+                <UiIcon name={icon} className="w-4 h-4" />{label}
               </Link>
             ))}
           </div>
@@ -208,13 +209,13 @@ function ClubHome({ community = false }) {
       <div className="flex flex-col gap-4 mb-5">
         <Section title={t('home.todo')}>
             {todos.length === 0 ? (
-              <p className="text-gray-400 text-sm">✅ {t('home.allClear')}</p>
+              <p className="text-gray-400 text-sm">{t('home.allClear')}</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {todos.map((x) => (
                   <li key={x.text}>
                     <Link href={x.href} className="flex items-center gap-3 rounded-lg bg-navy-900 px-3 py-2 text-sm text-gray-100 hover:text-lime-300">
-                      <span aria-hidden="true">{x.icon}</span>
+                      <UiIcon name={x.icon} className="w-4 h-4 text-gray-400 mt-0.5" />
                       <span className="flex-1">{x.text}</span>
                       <span className="text-gray-500">›</span>
                     </Link>
@@ -288,7 +289,7 @@ function ClubHome({ community = false }) {
       </div>
 
       {/* Money this month, in three numbers */}
-      <h2 className="text-gray-300 text-sm font-semibold mb-2">💰 {t('home.rowMoney')}</h2>
+      <h2 className="text-gray-300 text-sm font-semibold mb-2">{t('home.rowMoney')}</h2>
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
         {[
           [t('home.kpiIncome'), thisMonth.income, 'text-lime-400', canStats ? '/finance' : '/finance/ledger'],
@@ -305,7 +306,7 @@ function ClubHome({ community = false }) {
       {/* Everything else stays one tap away, folded. */}
       <details className="group mb-5">
         <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden card !py-3 flex items-center justify-between text-white font-semibold">
-          <span>📊 {t('ux.moreStats')}</span>
+          <span>{t('ux.moreStats')}</span>
           <span className="text-gray-400 group-open:rotate-180 transition-transform" aria-hidden>▾</span>
         </summary>
         <div className="mt-4">
@@ -313,18 +314,18 @@ function ClubHome({ community = false }) {
       <h2 className="text-gray-400 text-xs font-semibold mb-2">{t('home.rowClub')}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <Kpi
-          icon="👥"
+          icon="users"
           label={t('home.kpiMembers')}
           value={fixed.length}
           sub={t('home.kpiMembersSub', { guests: guests.length, n: newThisMonth })}
           href="/club/members"
           lines={[
-            [`⭐ ${t('home.vip')}`, vip, 'text-amber-300'],
-            [`⚡ ${t('home.priorityGuests')}`, priority, 'text-sky-300'],
+            [`${t('home.vip')}`, vip, 'text-amber-300'],
+            [`${t('home.priorityGuests')}`, priority, 'text-sky-300'],
           ]}
         />
         <Kpi
-          icon="📅"
+          icon="calendar"
           label={t('home.kpiSessions')}
           value={monthEvents.length}
           sub={t('home.kpiSessionsSub', { done: doneThisMonth, left: monthEvents.length - doneThisMonth })}
@@ -336,7 +337,7 @@ function ClubHome({ community = false }) {
           ]}
         />
         <Kpi
-          icon="🎚️"
+          icon="settings"
           label={t('home.kpiLevels')}
           value={t('home.ratedN', { n: rated })}
           sub={t('home.rankedSub', { n: all.length })}
@@ -351,7 +352,7 @@ function ClubHome({ community = false }) {
       </>)}
 
           <div className="grid grid-cols-2 gap-3 mb-5">
-            <Kpi icon="⏳" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
+            <Kpi icon="hourglass" label={t('home.kpiOwed')} value={formatVnd(owed)} tone={owed ? 'text-amber-300' : 'text-white'} href="/club/members" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 flex flex-col gap-4">
@@ -361,18 +362,18 @@ function ClubHome({ community = false }) {
             ) : (
               <div className="grid sm:grid-cols-3 gap-3">
                 {[
-                  ['💪', t('rankings.topAttendance'), top.top_attendance, (v) => t('rankings.sessions', { n: v })],
-                  ['🏆', t('rankings.topWinRate'), top.top_win_rate, (v) => `${v}%`],
-                  ['📈', t('rankings.topDiff'), top.top_point_diff, (v) => (v > 0 ? `+${v}` : v)],
+                  ['trophy', t('rankings.topAttendance'), top.top_attendance, (v) => t('rankings.sessions', { n: v })],
+                  ['trophy', t('rankings.topWinRate'), top.top_win_rate, (v) => `${v}%`],
+                  ['trendUp', t('rankings.topDiff'), top.top_point_diff, (v) => (v > 0 ? `+${v}` : v)],
                 ].map(([icon, title, list, fmt]) => (
                   <div key={title} className="rounded-xl bg-navy-900 p-3">
-                    <div className="text-gray-400 text-xs font-semibold mb-1.5">{icon} {title}</div>
+                    <div className="text-gray-400 text-sm font-semibold mb-1.5">{title}</div>
                     {list.length === 0 ? (
                       <p className="text-gray-500 text-sm">—</p>
                     ) : (
                       list.slice(0, 3).map((r, i) => (
                         <div key={r.club_member_id} className="flex justify-between gap-2 text-sm py-0.5">
-                          <span className="truncate text-gray-100">{['🥇', '🥈', '🥉'][i]} {r.full_name}</span>
+                          <span className="text-gray-100 break-words"><span className="text-lime-300 tabular-nums mr-1.5">{i + 1}</span>{r.full_name}</span>
                           <span className="text-lime-400 font-semibold tabular-nums shrink-0">{fmt(r.value)}</span>
                         </div>
                       ))
@@ -384,7 +385,7 @@ function ClubHome({ community = false }) {
           </Section>
             </div>
             <div className="flex flex-col gap-4">
-          <Section title={`🎂 ${t('home.birthdays')}`}>
+          <Section title={`${t('home.birthdays')}`}>
             {birthdays.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('home.noBirthdays')}</p>
             ) : (

@@ -41,7 +41,7 @@ function EditEntry({ entry, onClose, onSaved }) {
     }
   }
   return (
-    <Modal open title={`✏️ ${t('fin.editTitle')}`} onClose={onClose}>
+    <Modal open title={`${t('fin.editTitle')}`} onClose={onClose}>
       <form onSubmit={save} className="grid grid-cols-2 gap-3">
         <div className="col-span-2 grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
           {['income', 'expense'].map((ty) => (
@@ -138,7 +138,7 @@ export default function EventFinance({ event, finance, onChanged }) {
         ))}
       </div>
       <p className="text-gray-400 text-xs mb-3">
-        📒 {t('evfin.linked')}{' '}
+        {t('evfin.linked')}{' '}
         <Link href="/finance/ledger" className="text-lime-400 hover:underline">{t('evfin.openLedger')} →</Link>
       </p>
 
@@ -194,9 +194,9 @@ export default function EventFinance({ event, finance, onChanged }) {
                       {!AUTO.has(r.category) && (
                         <>
                           {!r.event_cost && (
-                            <button type="button" className="text-gray-200 hover:text-white px-1.5 text-xs" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}>✏️ {t('fin.edit')}</button>
+                            <button type="button" className="text-gray-200 hover:text-white px-1.5 text-xs" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}>{t('fin.edit')}</button>
                           )}
-                          <button type="button" className="text-red-400/90 hover:text-red-300 px-1.5 text-xs" title={t('common.delete')} aria-label={t('common.delete')} onClick={() => voidEntry(r)}>🗑 {t('common.delete')}</button>
+                          <button type="button" className="text-red-400/90 hover:text-red-300 px-1.5 text-xs" title={t('common.delete')} aria-label={t('common.delete')} onClick={() => voidEntry(r)}>{t('common.delete')}</button>
                         </>
                       )}
                     </td>

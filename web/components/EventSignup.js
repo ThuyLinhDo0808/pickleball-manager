@@ -15,6 +15,7 @@ import { formatVnd } from '@/lib/format';
 import { resizeImage } from '@/lib/image';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 const ACTIVE = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
 
@@ -125,7 +126,7 @@ function MemberStanding({ me, clubName }) {
   if (m.state === 'verified') {
     return (
       <div className="rounded-lg border border-lime-400/40 bg-lime-400/5 px-3 py-2 text-sm mb-3">
-        <span className="text-lime-300 font-semibold">👤 {t('signup.youAreMember', { club: clubName })}</span>
+        <span className="text-lime-300 font-semibold">{t('signup.youAreMember', { club: clubName })}</span>
         <div className="text-gray-300 text-xs mt-0.5">
           {m.has_pass
             ? m.sessions_remaining == null
@@ -139,10 +140,10 @@ function MemberStanding({ me, clubName }) {
   if (m.state === 'guest') {
     return (
       <div className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm mb-3">
-        <span className="text-sky-200 font-semibold">🤝 {t('signup.youAreGuest', { club: clubName })}</span>
+        <span className="text-sky-200 font-semibold">{t('signup.youAreGuest', { club: clubName })}</span>
         {m.guest_perk && (
           <div className="text-gray-200 text-xs mt-0.5">
-            ⚡ {t('signup.perkPriority')}
+            {t('signup.perkPriority')}
             {m.discount_pct > 0 && <span className="text-lime-300"> {t('signup.perkDiscount', { pct: m.discount_pct })}</span>}
           </div>
         )}
@@ -150,7 +151,7 @@ function MemberStanding({ me, clubName }) {
     );
   }
   if (m.state === 'pending') {
-    return <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-200 mb-3">⏳ {t('signup.memberPending')}</p>;
+    return <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-200 mb-3">{t('signup.memberPending')}</p>;
   }
   return <p className="text-gray-500 text-xs mb-3">{t('signup.memberByPhone', { club: clubName })}</p>;
 }
@@ -202,7 +203,7 @@ function ProofUpload({ token, reg, onChanged }) {
         </>
       ) : (
         <button type="button" className="btn-primary w-full py-3" onClick={() => file.current?.click()}>
-          📎 {reg.has_proof ? t('signup.replaceProof') : t('signup.uploadProof')}
+          {reg.has_proof ? t('signup.replaceProof') : t('signup.uploadProof')}
         </button>
       )}
       {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -239,7 +240,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   // Riêng tư — thành viên trước: members sign up first; everyone else waits (no quick booking).
   const membersFirst = ev.members_only_now ? (
     <p className="rounded-lg border border-violet-400/60 bg-violet-400/10 px-3 py-2 text-violet-100 text-sm mb-3">
-      🔒 {ev.public_from ? t('mfirst.noticeUntil', { when: localDate(new Date(ev.public_from), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) }) : t('mfirst.notice')}
+      {ev.public_from ? t('mfirst.noticeUntil', { when: localDate(new Date(ev.public_from), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) }) : t('mfirst.notice')}
     </p>
   ) : null;
   const quickBox = quickHref && ev.registration_open && !ev.members_only_now && (
@@ -258,14 +259,14 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         {ev.registration_open ? (
           <>
             <div className="rounded-xl border border-navy-600 p-3">
-              <p className="text-white font-semibold text-sm">👥 {t('signup.memberTitle')}</p>
+              <p className="text-white font-semibold text-sm">{t('signup.memberTitle')}</p>
               <p className="text-gray-400 text-xs mt-0.5 mb-2">{t('signup.memberHint')}</p>
               <Link href={next} className="btn-secondary block w-full py-3 text-center">{t('signup.loginToJoin')}</Link>
             </div>
             {quickBox}
           </>
         ) : (
-          <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>
+          <p className="text-yellow-400 text-sm text-center py-2">{t(`public.closed_${ev.closed_code}`)}</p>
         )}
       </>
     );
@@ -331,11 +332,11 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if ((reg?.status === 'registered' || reg?.status === 'checked_in') && Date.now() >= endMs) {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="text-4xl">🏁</div>
+        <div className="flex justify-center text-lime-300"><UiIcon name="checkCircle" className="w-10 h-10" /></div>
         <p className="text-white font-bold text-lg mt-1">{t('quick.endedTitle')}</p>
         {me.survey ? (
           <div className="w-full rounded-xl border-2 border-lime-400 bg-lime-400/10 px-3 py-3 mt-3">
-            <p className="text-lime-300 font-bold">⭐ {t('signup.surveyTitle')}</p>
+            <p className="text-lime-300 font-bold">{t('signup.surveyTitle')}</p>
             <p className="text-gray-200 text-sm mt-0.5 mb-2">{me.survey.answered ? t('signup.surveyDone') : t('signup.surveyHint')}</p>
             <Link href={`/s/${me.survey.token}`} className={me.survey.answered ? 'btn-secondary inline-block' : 'btn-primary inline-block'}>
               {me.survey.answered ? t('signup.surveyView') : t('signup.surveyCta')}
@@ -352,7 +353,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       <div className="flex flex-col items-center text-center">
         {me.survey && (
           <div className="w-full rounded-xl border-2 border-lime-400 bg-lime-400/10 px-3 py-3 mb-4">
-            <p className="text-lime-300 font-bold">⭐ {t('signup.surveyTitle')}</p>
+            <p className="text-lime-300 font-bold">{t('signup.surveyTitle')}</p>
             <p className="text-gray-200 text-sm mt-0.5 mb-2">{me.survey.answered ? t('signup.surveyDone') : t('signup.surveyHint')}</p>
             <Link href={`/s/${me.survey.token}`} className={me.survey.answered ? 'btn-secondary inline-block' : 'btn-primary inline-block'}>
               {me.survey.answered ? t('signup.surveyView') : t('signup.surveyCta')}
@@ -360,7 +361,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
           </div>
         )}
         <Steps current="ticket" guestPays={reg.kind === 'guest' && reg.fee > 0} />
-        <div className="text-4xl">🎉</div>
+        <div className="flex justify-center text-lime-300"><UiIcon name="checkCircle" className="w-10 h-10" /></div>
         <p className="text-white font-bold text-lg mt-1">
           {reg.status === 'checked_in' ? t('signup.checkedIn') : t('signup.success')}
         </p>
@@ -386,7 +387,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <Steps current={reg.payment_status === 'proof_submitted' ? 'ticket' : 'pay'} guestPays approval={approval} />
         {reg.payment_status === 'proof_submitted' ? (
           <div className="rounded-xl border border-sky-400/50 bg-sky-400/10 px-3 py-3 text-center">
-            <div className="text-3xl">⏳</div>
+            <div className="flex justify-center text-sky-300"><UiIcon name="hourglass" className="w-10 h-10" /></div>
             <p className="text-sky-200 font-bold">{t('signup.hostChecking')}</p>
             <p className="text-gray-300 text-sm">{t('signup.hostCheckingHint')}</p>
           </div>
@@ -395,12 +396,12 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
             <h2 className="text-white font-semibold">{t('signup.payTitle', { amount: formatVnd(reg.payment.amount) })}</h2>
             {reg.payment_status === 'rejected' && (
               <p className="rounded-lg border border-red-400/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                ⚠️ {t('signup.rejected')}{reg.payment_note ? `: ${reg.payment_note}` : ''}
+                {t('signup.rejected')}{reg.payment_note ? `: ${reg.payment_note}` : ''}
               </p>
             )}
             {reg.hold_expires_at && <Countdown until={reg.hold_expires_at} labelKey={reg.pay_later ? 'countdown.payLater' : 'countdown.hold'} tone="sky" />}
             {!reg.pay_later && <p className="text-xs text-gray-400">{t('signup.holdRule')}</p>}
-            {reg.pay_later && <p className="text-sm text-sky-200">🕒 {t('signup.payLaterChosen')}</p>}
+            {reg.pay_later && <p className="text-sm text-sky-200">{t('signup.payLaterChosen')}</p>}
             {reg.pay_later_until && (
               <button type="button" className="btn-secondary text-sm" onClick={async () => {
                 try {
@@ -410,7 +411,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
                   window.alert(err.message);
                 }
               }}>
-                🕒 {t('signup.payLaterBtn', { when: fmtWhen(reg.pay_later_until) })}
+                {t('signup.payLaterBtn', { when: fmtWhen(reg.pay_later_until) })}
               </button>
             )}
           </>
@@ -429,7 +430,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     return (
       <div className="flex flex-col items-center text-center">
         <Steps current="approve" guestPays={guestPays} approval />
-        <div className="text-4xl">🙋</div>
+        <div className="flex justify-center text-amber-300"><UiIcon name="hourglass" className="w-10 h-10" /></div>
         <p className="text-white font-bold">{t('signup.requestedTitle')}</p>
         <p className="text-gray-300 text-sm mt-1 max-w-sm">{guestPays ? t('signup.requestedPay', { amount: formatVnd(reg.fee ?? myFee) }) : t('signup.requestedFree')}</p>
         <p className="text-gray-500 text-xs mt-2">{t('signup.requestedNotify')}</p>
@@ -443,7 +444,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (reg?.status === 'waitlisted') {
     return (
       <div className="text-center">
-        <div className="text-4xl">⏳</div>
+        <div className="flex justify-center text-sky-300"><UiIcon name="hourglass" className="w-10 h-10" /></div>
         <p className="text-white font-bold">{t('public.successWait')}</p>
         {guestPays && <p className="text-gray-300 text-sm mt-1">{t('signup.waitPayLater', { amount: formatVnd(reg.fee ?? myFee) })}</p>}
         <p className="text-gray-500 text-xs mt-2">{t('signup.waitNotify')}</p>
@@ -455,7 +456,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
 
   // ---- not registered yet ------------------------------------------------------
   if (!ev.registration_open) {
-    return <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>;
+    return <p className="text-yellow-400 text-sm text-center py-2">{t(`public.closed_${ev.closed_code}`)}</p>;
   }
   // Members first: someone who is not a member of this club / community waits.
   if (ev.members_only_now && me?.member?.state !== 'verified') return membersFirst;
@@ -512,7 +513,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <label className="flex items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-gray-100 mb-3 cursor-pointer">
           <input type="checkbox" className="mt-1" checked={useVoucher} onChange={(e) => setUseVoucher(e.target.checked)} />
           <span>
-            🎁 {t('race.useVoucher', { rank: v.rank, m: `${Number(v.month.slice(5))}/${v.month.slice(0, 4)}`, what: t(`race.reward_${v.kind}`) })}
+            {t('race.useVoucher', { rank: v.rank, m: `${Number(v.month.slice(5))}/${v.month.slice(0, 4)}`, what: t(`race.reward_${v.kind}`) })}
             {useVoucher && <span className="block text-xs text-amber-200 mt-0.5">{t('race.youPayNow', { amount: withVoucher > 0 ? formatVnd(withVoucher) : t('public.free') })}</span>}
           </span>
         </label>
@@ -532,11 +533,11 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       {/* Xé vé (a community's or a one-off kèo): the rules every player agrees to. */}
       {ev.xeve && (
         <section className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2.5 mb-3 text-sm" aria-labelledby="xeve-rules">
-          <p id="xeve-rules" className="font-semibold text-sky-200">📋 {t('social.rulesTitle')}</p>
+          <p id="xeve-rules" className="font-semibold text-sky-200">{t('social.rulesTitle')}</p>
           <ul className="mt-1 list-disc pl-5 text-gray-200 space-y-0.5">
-            <li>⏰ {t('social.rule1')}</li>
-            <li>🧭 {t('social.rule2')}</li>
-            <li>🔔 {t('social.rule3')}</li>
+            <li>{t('social.rule1')}</li>
+            <li>{t('social.rule2')}</li>
+            <li>{t('social.rule3')}</li>
           </ul>
         </section>
       )}
@@ -546,7 +547,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       </label>
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       <button type="button" className="btn-primary w-full py-3 text-base" disabled={!agree || busy} onClick={register}>
-        {approval ? `🙋 ${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : paysNow ? (payLater ? t('signup.confirmPayLater') : t('signup.confirmAndPay')) : t('signup.confirm')}
+        {approval ? `${t('signup.requestJoin')}` : full ? t('signup.joinWaitlist') : paysNow ? (payLater ? t('signup.confirmPayLater') : t('signup.confirmAndPay')) : t('signup.confirm')}
       </button>
       {approval && <Hint text={t('signup.approvalNote')} className="mt-2" />}
       {!approval && paysNow && !full && !payLater && <Hint text={t('signup.holdNote')} className="mt-2" />}

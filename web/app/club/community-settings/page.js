@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import UiIcon from '@/components/ui/UiIcon';
 
 // 'experience' (by Thời gian chơi) is no longer offered; a community still on it keeps working.
 const MODES = ['none', 'manual', 'score'];
@@ -28,7 +29,7 @@ function preset(mode, sport, t) {
 function Card({ icon, title, hint, children }) {
   return (
     <section className="card mb-4">
-      <h2 className="text-white font-semibold flex items-center gap-2">{icon} {title} {hint && <Hint inline text={hint} />}</h2>
+      <h2 className="text-white font-semibold flex items-center gap-2"><UiIcon name={icon} className="w-5 h-5 text-gray-400" />{title} {hint && <Hint inline text={hint} />}</h2>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -85,7 +86,7 @@ export default function CommunitySettingsPage() {
     }
   }
 
-  const header = <PageHeader icon="🎛" title={t('cpanel.title')} subtitle={club?.name} />;
+  const header = <PageHeader icon="settings" title={t('cpanel.title')} subtitle={club?.name} />;
   if (error) return <AppShell>{header}<p className="card text-red-300 text-sm">{error.message}</p></AppShell>;
   if (!s) return <AppShell>{header}<p className="text-gray-400 text-sm">{t('common.loading')}</p></AppShell>;
   if (data && !data.ready) return <AppShell>{header}<p className="card text-amber-200 text-sm">{t('cpanel.err_migration_required')}</p></AppShell>;
@@ -100,7 +101,7 @@ export default function CommunitySettingsPage() {
       {header}
       <Hint className="mb-4 -mt-2" text={t('cpanel.intro')} />
       <fieldset disabled={!canEdit || busy} className="contents">
-        <Card icon="🔁" title={t('cpanel.regularTitle')} hint={t('cpanel.regularHint')}>
+        <Card icon="repeat" title={t('cpanel.regularTitle')} hint={t('cpanel.regularHint')}>
           <label className="flex flex-wrap items-center gap-2 text-sm text-gray-200">
             {t('cpanel.regularFrom')}
             <input type="number" min={0} max={30} className="input !w-20 !py-1.5 text-center" value={s.regular.min} onChange={(e) => set({ regular: { ...s.regular, min: e.target.value } })} />
@@ -118,7 +119,7 @@ export default function CommunitySettingsPage() {
         </Card>
 
         {/* Kèo sign-ups: everyone waits for the Host's info check, unless this is on. */}
-        <Card icon="✅" title={t('cpanel.signupTitle')} hint={t('cpanel.signupHint')}>
+        <Card icon="checkCircle" title={t('cpanel.signupTitle')} hint={t('cpanel.signupHint')}>
           {(club?.sport || 'pickleball') === 'pickleball' ? (
             <label className="flex items-start gap-3 text-sm text-gray-200 cursor-pointer">
               <input type="checkbox" className="mt-1" checked={!!s.signup?.auto_dupr} onChange={(e) => set({ signup: { ...(s.signup || {}), auto_dupr: e.target.checked } })} />
@@ -133,7 +134,7 @@ export default function CommunitySettingsPage() {
         </Card>
 
         {/* Refund rule new kèo start with (players see it before signing up; each kèo can change it). */}
-        <Card icon="💸" title={t('cpanel.refundTitle')} hint={t('cpanel.refundHint')}>
+        <Card icon="money" title={t('cpanel.refundTitle')} hint={t('cpanel.refundHint')}>
           {(() => {
             const r = s.refund || { mode: 'tiers', full: 12, half: 6 };
             const setR = (patch) => set({ refund: { ...r, ...patch } });
@@ -165,7 +166,7 @@ export default function CommunitySettingsPage() {
           })()}
         </Card>
 
-        <Card icon="💤" title={t('cpanel.activeTitle')} hint={t('cpanel.activeHint')}>
+        <Card icon="pause" title={t('cpanel.activeTitle')} hint={t('cpanel.activeHint')}>
           <label className="flex flex-wrap items-center gap-2 text-sm text-gray-200">
             {t('cpanel.inactiveAfter')}
             <input type="number" min={7} max={180} className="input !w-20 !py-1.5 text-center" value={s.active_days} onChange={(e) => set({ active_days: e.target.value })} />
@@ -173,7 +174,7 @@ export default function CommunitySettingsPage() {
           </label>
         </Card>
 
-        <Card icon="📶" title={t('cpanel.levelTitle')} hint={t('cpanel.levelHint')}>
+        <Card icon="chart" title={t('cpanel.levelTitle')} hint={t('cpanel.levelHint')}>
           <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t('cpanel.levelTitle')}>
             {(mode === 'experience' ? [...MODES, 'experience'] : MODES).map((m) => (
               <button
@@ -194,7 +195,7 @@ export default function CommunitySettingsPage() {
             <label className="mt-4 flex items-start gap-3 text-sm text-gray-200 cursor-pointer rounded-lg border border-navy-600 px-3 py-2">
               <input type="checkbox" className="mt-1" checked={!!s.levels?.by_gender} onChange={(e) => setLevels({ by_gender: e.target.checked })} />
               <span>
-                👫 {t('cpanel.byGender')}
+                {t('cpanel.byGender')}
                 <span className="block text-xs text-gray-500">{t('cpanel.byGenderHint')}</span>
               </span>
             </label>

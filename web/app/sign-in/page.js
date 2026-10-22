@@ -300,7 +300,7 @@ export default function SignInPage() {
           {mode === 'forgot' && <p className="mb-5 text-sm text-gray-400">{t('auth.forgotSub')}</p>}
 
           {info && <div className="bg-lime-400/10 border border-lime-400/40 text-lime-200 text-sm rounded-lg p-3 mb-4" role="status">{info}</div>}
-          {idleOut && !error && <div className="bg-amber-900/30 border border-amber-600/60 text-amber-100 text-sm rounded-lg p-3 mb-4" role="status">🔒 {t('sec.idleOut')}</div>}
+          {idleOut && !error && <div className="bg-amber-900/30 border border-amber-600/60 text-amber-100 text-sm rounded-lg p-3 mb-4" role="status">{t('sec.idleOut')}</div>}
           {error && <div className="bg-red-900/40 border border-red-700 text-red-200 text-sm rounded-lg p-3 mb-4" role="alert">{error}</div>}
           {unconfirmed && (
             <button type="button" className="text-sm text-lime-400 underline mb-4" disabled={busy} onClick={resend}>{t('auth.resend')}</button>

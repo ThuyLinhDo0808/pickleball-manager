@@ -23,6 +23,7 @@ import { formatVnd } from '@/lib/format';
 import { VoucherChip } from '@/components/RaceBoard';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 const PAY_STYLE = { paid: 'text-lime-400', pending: 'text-yellow-300', overdue: 'text-red-300' };
 
@@ -101,7 +102,7 @@ export default function PlayerHome() {
         )}
         <div className="min-w-0">
           <h1 className="text-white text-xl font-bold truncate">{t('player.hello', { name: me.username || p?.full_name || String(me.email || '').split('@')[0] })}</h1>
-          {p?.dupr_level != null && <div className="text-gray-400 text-sm">🏓 DUPR {levelText(p.dupr_level, 'pickleball', t)}</div>}
+          {p?.dupr_level != null && <div className="text-gray-400 text-sm">DUPR {levelText(p.dupr_level, 'pickleball', t)}</div>}
         </div>
       </div>
 
@@ -130,7 +131,7 @@ export default function PlayerHome() {
       {/* Top-month prizes still to use (or used / expired lately). */}
       {me.vouchers?.some((v) => v.state === 'available') && (
         <section className="card mb-4 border-amber-300/40">
-          <h2 className="text-amber-200 font-semibold mb-2">🎁 {t('race.myVouchers')}</h2>
+          <h2 className="text-amber-200 font-semibold mb-2 flex items-center gap-2"><UiIcon name="gift" className="w-4 h-4" />{t('race.myVouchers')}</h2>
           <ul className="flex flex-col gap-2">{me.vouchers.filter((v) => v.state === 'available').map((v) => <VoucherChip key={v.id} v={v} />)}</ul>
           <p className="text-gray-500 text-xs mt-2">{t('race.autoApply')}</p>
         </section>
@@ -138,7 +139,7 @@ export default function PlayerHome() {
 
       {me.surveys_due?.length > 0 && (
         <section className="card mb-4 border-lime-400/40">
-          <h2 className="text-lime-300 font-semibold mb-1">🙏 {t('survey.portalTitle')}</h2>
+          <h2 className="text-lime-300 font-semibold mb-1">{t('survey.portalTitle')}</h2>
           {me.surveys_due.map((x) => (
             <Link key={x.token} href={`/s/${x.token}`} className="flex items-center justify-between gap-2 py-2 border-b border-navy-700 last:border-0 text-sm">
               <span className="text-white min-w-0">
@@ -185,7 +186,7 @@ export default function PlayerHome() {
         </section>
       )}
 
-      {/* Updates reach players on the 🔔 bell (no e-mail setting any more). */}
+      {/* Updates reach players on the bell (no e-mail setting any more). */}
       <MyBookings signedIn />
 
       <section className="mb-4">
@@ -198,7 +199,7 @@ export default function PlayerHome() {
                 <div>
                   <div className="text-white font-semibold">{c.club_name}</div>
                   <div className="text-gray-400 text-xs">{c.current_period ? `${t('player.period')}: ${c.current_period}` : t(`membership.state_${c.membership_state}`)}</div>
-                  {c.account_verified === false && <div className="text-yellow-300 text-xs">⏳ {t('verify.pendingPlayer')}</div>}
+                  {c.account_verified === false && <div className="text-yellow-300 text-xs">{t('verify.pendingPlayer')}</div>}
                 </div>
                 <div className="text-right">
                   <div className="text-lime-400 text-2xl font-bold tabular-nums">
@@ -295,11 +296,11 @@ export default function PlayerHome() {
                 <div className="min-w-0">
                   {h.link ? <Link href={`/e/${h.link}`}>{info}</Link> : info}
                   {h.ticket_code && (
-                    <Link href={`/t/${h.ticket_code}`} className="text-lime-400 text-xs font-semibold">🎟 {t('pp.ticket')}</Link>
+                    <Link href={`/t/${h.ticket_code}`} className="text-lime-400 text-xs font-semibold">{t('pp.ticket')}</Link>
                   )}
                   {h.status === 'pending' && h.link && (
                     <Link href={`/e/${h.link}`} className="text-yellow-300 text-xs font-semibold">
-                      {h.payment_status === 'proof_submitted' ? `⏳ ${t('signup.hostChecking')}` : `💸 ${t('pp.payNow')}`}
+                      {h.payment_status === 'proof_submitted' ? t('signup.hostChecking') : t('pp.payNow')}
                     </Link>
                   )}
                 </div>

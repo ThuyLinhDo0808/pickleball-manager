@@ -45,7 +45,7 @@ export function ClubProfileFields({ form, set, withName = false, sports = null }
                 onClick={() => set('sport', s)}
                 className={`flex-1 rounded-xl border px-3 py-2 text-sm ${form.sport === s ? 'border-lime-400 bg-lime-400/10 text-white font-semibold' : 'border-navy-600 text-gray-300'}`}
               >
-                {s === 'badminton' ? '🏸' : '🏓'} {t(`onb.sport_${s}`)}
+                {t(`onb.sport_${s}`)}
               </button>
             ))}
           </div>
@@ -140,9 +140,9 @@ export function ClubImagesPicker({ avatar, cover, onAvatar, onCover, name = '' }
         </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-2 text-sm">
-        <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => aRef.current?.click()}>🖼 {avatar ? t('creq.avatarChange') : t('creq.avatarAdd')}</button>
+        <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => aRef.current?.click()}>{avatar ? t('creq.avatarChange') : t('creq.avatarAdd')}</button>
         {avatar && <button type="button" className="text-gray-400 hover:text-white underline text-xs" onClick={() => onAvatar(null)}>{t('creq.remove')}</button>}
-        <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => cRef.current?.click()}>🌄 {cover ? t('creq.coverChange') : t('creq.coverAdd')}</button>
+        <button type="button" className="btn-secondary !py-1.5 text-sm" onClick={() => cRef.current?.click()}>{cover ? t('creq.coverChange') : t('creq.coverAdd')}</button>
         {cover && <button type="button" className="text-gray-400 hover:text-white underline text-xs" onClick={() => onCover(null)}>{t('creq.remove')}</button>}
       </div>
       <input ref={aRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0], 'avatar'); e.target.value = ''; }} />

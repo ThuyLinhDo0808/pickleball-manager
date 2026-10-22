@@ -42,7 +42,7 @@ export default function LinkRequests({ onChanged }) {
       )}
       {(data || []).map((r) => (
         <div key={r.id} className="rounded-xl border border-sky-400/40 bg-sky-400/10 px-4 py-3 text-sm">
-          <p className="text-white">🔗 {t('mlink.reqBody', { club: r.club?.name || '', name: r.member_name || '' })}</p>
+          <p className="text-white">{t('mlink.reqBody', { club: r.club?.name || '', name: r.member_name || '' })}</p>
           <p className="mt-0.5 text-xs text-gray-400">{t('mlink.reqHint')}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" className="btn-primary !py-1.5 text-sm" disabled={busy === r.id} onClick={() => answer(r, true)}>✓ {t('mlink.itsMe')}</button>

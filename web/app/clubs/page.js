@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { useLoad } from '@/lib/useLoad';
 import { clubTones } from '@/lib/clubColors';
 import { todayYmd, localDate } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 export default function ClubsPage() {
   const { t } = useI18n();
@@ -57,7 +58,7 @@ export default function ClubsPage() {
       {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
       {!loading && clubs.length === 0 && (
         <div className="card !p-8 text-center max-w-xl mx-auto">
-          <div className="text-5xl mb-2" aria-hidden="true">🏓</div>
+          <div className="text-5xl mb-2" aria-hidden="true"><UiIcon name="paddle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
           <h2 className="text-white text-lg font-semibold">{t('clubsX.emptyTitle')}</h2>
           <p className="text-gray-400 text-sm mt-1 mb-5">{t('clubs.none')}</p>
           <div className="text-left"><CreateClubForm onCreated={() => router.push('/dashboard')} autoFocus /></div>
@@ -161,13 +162,13 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
 
         <div className="text-xs text-gray-400 flex flex-col gap-1">
           <span>
-            📅 {t('clubsX.next')}:{' '}
+            {t('clubsX.next')}:{' '}
             <span className="text-gray-200">
               {next ? `${localDate(new Date(`${next.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })} · ${next.title}` : t('clubsX.noNext')}
             </span>
           </span>
           <span>
-            {owner ? `🗓 ${t('clubs.created', { date: localDate(new Date(c.created_at), lang === 'vi' ? 'vi-VN' : 'en-GB') })}` : `🤝 ${t('coadmin.sharedBy', { owner: c.owner_email || '—' })}`}
+            {owner ? `${t('clubs.created', { date: localDate(new Date(c.created_at), lang === 'vi' ? 'vi-VN' : 'en-GB') })}` : `${t('coadmin.sharedBy', { owner: c.owner_email || '—' })}`}
           </span>
         </div>
 
@@ -178,11 +179,11 @@ function ClubCard({ club: c, tone, current, editing, editName, setEditName, onSa
             <button className="btn-primary text-sm" onClick={onSelect}>{t('clubs.switchTo')}</button>
           )}
           {/* Co-admins can do everything but delete the club. */}
-          <button className="btn-secondary text-sm" onClick={onProfile}>🪪 {t('clubProfile.button')}</button>
-          <button className="btn-secondary text-sm" onClick={onSettings}>💳 {t('payments.settings')}</button>
-          <button className="btn-secondary text-sm" onClick={onRename}>✏️ {t('clubs.rename')}</button>
+          <button className="btn-secondary text-sm" onClick={onProfile}>{t('clubProfile.button')}</button>
+          <button className="btn-secondary text-sm" onClick={onSettings}>{t('payments.settings')}</button>
+          <button className="btn-secondary text-sm" onClick={onRename}>{t('clubs.rename')}</button>
           {/* Only the app owner deletes clubs / communities (Trang Owner); the Host asks for it. */}
-          {owner && <span className="text-gray-500 text-xs ml-auto self-center" title={t('clubs.deleteByOwnerHint')}>🗑 {t('clubs.deleteByOwner')}</span>}
+          {owner && <span className="text-gray-500 text-xs ml-auto self-center" title={t('clubs.deleteByOwnerHint')}>{t('clubs.deleteByOwner')}</span>}
         </div>
       </div>
     </div>

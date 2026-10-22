@@ -9,6 +9,7 @@ import { formatVnd } from '@/lib/format';
 
 import { HIGHLIGHTS } from '@/lib/planFeatures';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Fallback before the plan has loaded; the real catalog comes from GET /api/host/plan.
 // Every plan is paid ('free' only means the account has no plan).
@@ -98,7 +99,7 @@ export function PlanPaymentBox({ payment, onCancel, busy, scroll = false }) {
   return (
     <div ref={ref} className="rounded-xl border border-amber-300/40 bg-amber-300/5 p-3 scroll-mt-4">
       <p className="text-amber-200 text-sm font-semibold">
-        ⏳ {payment.upgrade_from
+        {payment.upgrade_from
           ? t('plan.payTitleUpgrade', { from: payment.upgrade_from.toUpperCase(), to: what, days: payment.upgrade_days })
           : t('plan.payTitle', { what, months: payment.months })}
       </p>
@@ -112,7 +113,7 @@ export function PlanPaymentBox({ payment, onCancel, busy, scroll = false }) {
         )}
         <div className="min-w-0">
           <CopyLine label={t('plan.payAmount')} value={formatVnd(payment.amount)} strong />
-          {payment.discount_amount > 0 && <p className="text-lime-300 text-xs -mt-1 mb-1">🎟 {t('plan.payDiscount', { v: formatVnd(payment.discount_amount) })}</p>}
+          {payment.discount_amount > 0 && <p className="text-lime-300 text-xs -mt-1 mb-1">{t('plan.payDiscount', { v: formatVnd(payment.discount_amount) })}</p>}
           <CopyLine label={t('plan.payNote')} value={payment.ref} strong />
           <CopyLine label={t('plan.payBank')} value={payment.bank.name || payment.bank.code} />
           <CopyLine label={t('plan.payAccount')} value={payment.bank.account} />
@@ -192,7 +193,7 @@ function Checkout({ kind, tier, req, onBack, scroll = false }) {
           <button type="button" className="btn-secondary !py-1.5 text-sm" disabled={!code.trim() || checking} onClick={() => applyCode()}>{t('plan.promoApply')}</button>
         )}
       </div>
-      {promo && <p className="text-lime-300 text-xs mb-2">🎟 {t('plan.promoApplied', { code: promo.code, p: promo.percent, v: formatVnd(promo.discount) })}</p>}
+      {promo && <p className="text-lime-300 text-xs mb-2">{t('plan.promoApplied', { code: promo.code, p: promo.percent, v: formatVnd(promo.discount) })}</p>}
       {promoErr && <p className="text-red-300 text-xs mb-2">{promoErr}</p>}
       <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
         <span className="text-gray-300 text-sm">
@@ -217,11 +218,11 @@ function UpgradeCheckout({ quote, req, onBack, scroll = false }) {
   const ref = useScrollIntoView(scroll);
   return (
     <div ref={ref} className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-3 scroll-mt-4">
-      <p className="text-white font-semibold text-sm">⬆️ {t('plan.upgradeTitleX', { from: quote.from.toUpperCase(), to: quote.to.toUpperCase() })}</p>
+      <p className="text-white font-semibold text-sm">{t('plan.upgradeTitleX', { from: quote.from.toUpperCase(), to: quote.to.toUpperCase() })}</p>
       <ul className="text-gray-300 text-xs mt-2 space-y-1">
-        <li>📅 {t('plan.upgradeLeft', { days: quote.days, date: fmtDate(quote.until) })}</li>
-        <li>💵 {t('plan.upgradeDiff', { to: formatVnd(quote.price_to), from: formatVnd(quote.price_from), diff: formatVnd(quote.price_to - quote.price_from) })}</li>
-        <li>🧮 {t('plan.upgradeCalc', { diff: formatVnd(quote.price_to - quote.price_from), days: quote.days, amount: formatVnd(quote.amount) })}</li>
+        <li>{t('plan.upgradeLeft', { days: quote.days, date: fmtDate(quote.until) })}</li>
+        <li>{t('plan.upgradeDiff', { to: formatVnd(quote.price_to), from: formatVnd(quote.price_from), diff: formatVnd(quote.price_to - quote.price_from) })}</li>
+        <li>{t('plan.upgradeCalc', { diff: formatVnd(quote.price_to - quote.price_from), days: quote.days, amount: formatVnd(quote.amount) })}</li>
       </ul>
       <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
         <span className="text-gray-300 text-sm">{t('plan.upgradePay')}: <b className="text-white text-base">{formatVnd(quote.amount)}</b></span>
@@ -277,10 +278,10 @@ export function UpgradeModal({ open, onClose, product = 'tier' }) {
   function downgrade(tier) {
     if (window.confirm(t('plan.downConfirm', { tier: tier.toUpperCase(), n: n(v.sm ? LIMITS[tier]?.communities : LIMITS[tier]?.clubs) }))) req.send({ tier });
   }
-  const title = v.sm ? `🎟 ${t('plan.smTitle')}` : `💎 ${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`;
+  const title = v.sm ? `${t('plan.smTitle')}` : `${limited ? t('plan.upgradeTitle') : t('plan.changeTitle')}`;
   return (
     <Modal open={open} title={title} onClose={close}>
-      {v.noPlan && (v.sm ? v.owned > 0 : true) && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">⚠️ {v.sm ? t('plan.smNoPlan') : plan?.clubs_owned ? t('plan.noPlanClubs') : t('plan.noPlanHint')}</p>}
+      {v.noPlan && (v.sm ? v.owned > 0 : true) && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">{v.sm ? t('plan.smNoPlan') : plan?.clubs_owned ? t('plan.noPlanClubs') : t('plan.noPlanHint')}</p>}
       {current !== 'free' && (
         <p className="text-gray-300 text-sm mb-3">
           {v.sm
@@ -325,13 +326,13 @@ export function UpgradeModal({ open, onClose, product = 'tier' }) {
               <ul className="text-gray-200 text-xs mt-2 space-y-0.5">
                 {v.sm ? (
                   <>
-                    <li>🎟 {t('plan.communitiesN', { n: n(lim.communities) })}</li>
-                    <li>👥 {lim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: lim.members })}</li>
+                    <li>{t('plan.communitiesN', { n: n(lim.communities) })}</li>
+                    <li>{lim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: lim.members })}</li>
                   </>
                 ) : (
                   <>
-                    <li>🏠 {lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</li>
-                    <li>👥 {lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: n(lim.fixed), guest: n(lim.guest) })}</li>
+                    <li>{lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</li>
+                    <li>{lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: n(lim.fixed), guest: n(lim.guest) })}</li>
                   </>
                 )}
                 {(HIGHLIGHTS[tier] || []).map((k) => <li key={k} className="text-gray-300">✓ {t(`plan.${k}`)}</li>)}
@@ -368,7 +369,7 @@ export function UpgradeModal({ open, onClose, product = 'tier' }) {
       </div>
       {!v.sm && !paid && plan?.upgrade_requested_at && req.done !== 'downgraded' && (
         <p className="text-amber-300 text-xs mb-2">
-          ⏳ {t('plan.requestedOn', { tier: (plan.upgrade_requested_tier || '').toUpperCase() })}{' '}
+          {t('plan.requestedOn', { tier: (plan.upgrade_requested_tier || '').toUpperCase() })}{' '}
           <button type="button" className="underline text-gray-300 hover:text-white" disabled={req.busy} onClick={() => req.cancel('upgrade_request')}>{t('plan.cancelRequest')}</button>
         </p>
       )}
@@ -408,7 +409,7 @@ function TrialCode() {
     }
   }
   if (!open) {
-    return <button type="button" className="text-gray-400 hover:text-white underline text-xs mb-3" onClick={() => setOpen(true)}>🎟 {t('plan.haveTrialCode')}</button>;
+    return <button type="button" className="text-gray-400 hover:text-white underline text-xs mb-3" onClick={() => setOpen(true)}>{t('plan.haveTrialCode')}</button>;
   }
   return (
     <form onSubmit={redeem} className="mb-3">
@@ -436,7 +437,7 @@ export function SocialManagerPanel({ compact = false }) {
   return (
     <div>
       <div className="flex items-start gap-3 mb-3">
-        <span className="h-12 w-12 shrink-0 rounded-2xl bg-amber-300/15 text-2xl flex items-center justify-center" aria-hidden="true">🎟</span>
+        <span className="h-12 w-12 shrink-0 rounded-2xl bg-amber-300/15 text-2xl flex items-center justify-center" aria-hidden="true"><UiIcon name="ticket" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-white font-bold">Social Manager</h3>
@@ -463,7 +464,7 @@ export function SocialManagerPanel({ compact = false }) {
           <p className="text-lime-300 text-sm">
             ✓ {t('plan.smOnTier', { tier: v.current.toUpperCase() })}
             {v.paidUntil && <span className="block text-gray-400 text-xs">{t('plan.paidUntil', { date: fmtDate(v.paidUntil) })}</span>}
-            <span className="block text-gray-400 text-xs">🎟 {t('plan.smUsed', { owned: v.owned, n: v.limit == null ? '∞' : v.limit })} · 👥 {lim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: lim.members })}</span>
+            <span className="block text-gray-400 text-xs">{t('plan.smUsed', { owned: v.owned, n: v.limit == null ? '∞' : v.limit })} · {lim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: lim.members })}</span>
           </p>
           <div className="flex flex-wrap gap-2">
             {!plan?.self_serve && <button type="button" className="btn-secondary !py-1 text-sm" onClick={() => setOpen(true)}>{t('plan.smRenewUpgrade')}</button>}
@@ -472,12 +473,12 @@ export function SocialManagerPanel({ compact = false }) {
         </div>
       ) : (
         <>
-          {v.owned > 0 && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">⚠️ {t('plan.smNoPlan')}</p>}
+          {v.owned > 0 && <p className="rounded-lg border border-red-400/40 bg-red-500/5 px-3 py-2 text-red-200 text-sm mb-3">{t('plan.smNoPlan')}</p>}
           <div className="flex flex-wrap gap-2">
             {v.owned > 0 ? (
-              <button type="button" className="btn-primary" onClick={() => setOpen(true)}>🎟 {t('plan.smBuy')}</button>
+              <button type="button" className="btn-primary" onClick={() => setOpen(true)}>{t('plan.smBuy')}</button>
             ) : (
-              <Link href="/club-request?kind=community" className="btn-primary">🎟 {t('plan.smStart')}</Link>
+              <Link href="/club-request?kind=community" className="btn-primary">{t('plan.smStart')}</Link>
             )}
           </div>
           {v.owned === 0 && <Hint text={t('plan.smStartHint')} className="mt-2" />}

@@ -98,7 +98,7 @@ export default function EventShareCard({ event, onSaved }) {
         </span>
       </div>
 
-      {!isOpen && <p className="text-gray-400 text-sm mb-2">🔒 {t('reg.linkClosedNote')}</p>}
+      {!isOpen && <p className="text-gray-400 text-sm mb-2">{t('reg.linkClosedNote')}</p>}
       {(
         <div className="flex flex-col sm:flex-row gap-2 mb-4">
           <input readOnly value={shown} onFocus={(e) => e.target.select()} className="input text-sm flex-1 min-w-0 font-mono" aria-label={t('events.copyLink')} />
@@ -120,7 +120,7 @@ export default function EventShareCard({ event, onSaved }) {
 
       {/* Deadline, refund rules and the note: tucked away — open / close is one button above. */}
       <details className="rounded-lg border border-navy-700 px-3 py-2">
-      <summary className="cursor-pointer text-sm text-gray-200 select-none">⚙️ {t('events.moreSettings')}</summary>
+      <summary className="cursor-pointer text-sm text-gray-200 select-none">{t('events.moreSettings')}</summary>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -160,7 +160,7 @@ export default function EventShareCard({ event, onSaved }) {
             ))}
           </select>
         </div>
-        {form.cancel_deadline_hours !== '' && <p className="sm:col-span-2 -mt-1 text-xs text-gray-400">📋 {policyText(t, form.cancel_deadline_hours, form.cancel_half_hours)}</p>}
+        {form.cancel_deadline_hours !== '' && <p className="sm:col-span-2 -mt-1 text-xs text-gray-400">{policyText(t, form.cancel_deadline_hours, form.cancel_half_hours)}</p>}
         <div className="sm:col-span-2">
           <label className="text-xs text-gray-400">{t('events.notice')}</label>
           <textarea

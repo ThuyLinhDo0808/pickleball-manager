@@ -10,7 +10,6 @@ import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import ClubLeaderboard from '@/components/ClubLeaderboard';
 import RaceBoard from '@/components/RaceBoard';
 import LeaveClub from '@/components/LeaveClub';
-import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { translate } from '@/lib/i18n/core';
 import MapLink from '@/components/MapLink';
@@ -106,9 +105,9 @@ export default function MemberClubPage() {
             <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs">
               <span className="rounded-full bg-navy-700 px-2 py-0.5 font-bold text-gray-200">{t('hub.roleMember')}</span>
               <span className="text-gray-400">{member.member_type === 'fixed' ? t('members.fixed') : t('members.guest')}</span>
-              {community && data.membership_state === 'active' && <span className="rounded-full bg-amber-300/20 px-2 py-0.5 font-bold text-amber-200">👑 {t('social.vip')}</span>}
-              {community && member.guest_perk && <span className="rounded-full bg-lime-400/15 px-2 py-0.5 font-bold text-lime-200">⚡ {t('social.priority')}</span>}
-              {member.account_verified === false && <span className="text-yellow-300">⏳ {t('verify.pendingPlayer')}</span>}
+              {community && data.membership_state === 'active' && <span className="rounded-full bg-amber-300/20 px-2 py-0.5 font-bold text-amber-200">{t('social.vip')}</span>}
+              {community && member.guest_perk && <span className="rounded-full bg-lime-400/15 px-2 py-0.5 font-bold text-lime-200">{t('social.priority')}</span>}
+              {member.account_verified === false && <span className="text-yellow-300">{t('verify.pendingPlayer')}</span>}
             </div>
           </div>
         </div>
@@ -116,27 +115,27 @@ export default function MemberClubPage() {
           <div className="px-4 pb-4 text-sm text-gray-300">
             {club.description && <p className="mb-1">{club.description}</p>}
             {(club.address || club.map_url) && <p className="mb-1"><MapLink location={club.address} mapUrl={club.map_url} /></p>}
-            {club.contact && <p className="text-gray-500 text-xs">✉️ {t('hub.contact')}: {club.contact}</p>}
+            {club.contact && <p className="text-gray-500 text-xs">{t('hub.contact')}: {club.contact}</p>}
           </div>
         )}
       </section>
 
       <KpiRow cols={4}>
-        <StatTile icon="🎫" label={t('player.sessionsLeft')} value={sessionsLeft} tone="text-lime-300" sub={data.current_period || t(`membership.state_${data.membership_state}`)} />
-        <StatTile icon="📅" label={t('hub.mySignups')} value={data.my_upcoming.length} tone="text-sky-300" sub={t('hub.upcomingShort')} />
-        <StatTile icon="✅" label={t('player.eventsPlayed')} value={data.stats.played} />
-        <StatTile icon="💸" label={t('player.debt')} value={data.debt ? formatVnd(data.debt) : t('player.noDebt')} tone={data.debt ? 'text-yellow-300' : 'text-gray-300'} />
+        <StatTile icon="ticket" label={t('player.sessionsLeft')} value={sessionsLeft} tone="text-lime-300" sub={data.current_period || t(`membership.state_${data.membership_state}`)} />
+        <StatTile icon="calendar" label={t('hub.mySignups')} value={data.my_upcoming.length} tone="text-sky-300" sub={t('hub.upcomingShort')} />
+        <StatTile icon="checkCircle" label={t('player.eventsPlayed')} value={data.stats.played} />
+        <StatTile icon="money" label={t('player.debt')} value={data.debt ? formatVnd(data.debt) : t('player.noDebt')} tone={data.debt ? 'text-yellow-300' : 'text-gray-300'} />
       </KpiRow>
 
       <UnderlineTabs
         value={tab}
         onChange={setTab}
         tabs={[
-          { key: 'schedule', label: t('hub.tabSchedule'), icon: '🗓', count: data.events.length },
-          { key: 'pass', label: t('hub.tabPass'), icon: '🎫' },
-          { key: 'history', label: t('hub.tabHistory'), icon: '🕘', count: data.history.length },
-          { key: 'rankings', label: t('hub.tabRankings'), icon: '🏅' },
-          ...(data.club.kind === 'community' ? [{ key: 'race', label: t('race.tab'), icon: '🏆' }] : []),
+          { key: 'schedule', label: t('hub.tabSchedule'), icon: 'calendar', count: data.events.length },
+          { key: 'pass', label: t('hub.tabPass'), icon: 'ticket' },
+          { key: 'history', label: t('hub.tabHistory'), icon: 'clock', count: data.history.length },
+          { key: 'rankings', label: t('hub.tabRankings'), icon: 'medal' },
+          ...(data.club.kind === 'community' ? [{ key: 'race', label: t('race.tab'), icon: 'trophy' }] : []),
         ]}
       />
 
@@ -173,10 +172,10 @@ export default function MemberClubPage() {
                 <div className="min-w-0 flex-1 p-3">
                   <div className="text-white font-semibold truncate">
                     {shownPhase === 'live' && <span className="mr-1.5 rounded-full bg-red-500/20 px-2 py-0.5 text-[11px] font-bold text-red-200 align-middle">● {t('hub.phase_live')}</span>}
-                    {KIND_ICON[e.kind] ? `${KIND_ICON[e.kind]} ` : ''}{e.title}
+                    {e.title}
                   </div>
                   <div className="text-gray-400 text-xs truncate">
-                    {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''}
+                    {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : ''}
                     {Number(e.fee_amount) > 0 ? ` · ${formatVnd(e.fee_amount)}` : ''}
                   </div>
                   {(e.location || e.map_url) && <MapLink location={e.location} mapUrl={e.map_url} className="text-gray-400 text-xs" />}
@@ -240,9 +239,9 @@ export default function MemberClubPage() {
       {tab === 'history' && (
         <section className="card">
           <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-2">
-            <span>✅ {t('hub.played', { n: data.stats.played })}</span>
-            <span>⚠️ {t('hub.lateN', { n: data.stats.late })}</span>
-            <span>🚫 {t('hub.noShowN', { n: data.stats.no_show })}</span>
+            <span>{t('hub.played', { n: data.stats.played })}</span>
+            <span>{t('hub.lateN', { n: data.stats.late })}</span>
+            <span>{t('hub.noShowN', { n: data.stats.no_show })}</span>
           </div>
           {data.history.length === 0 && <p className="text-gray-400 text-sm">{t('player.noHistory')}</p>}
           <ul className="divide-y divide-navy-700">

@@ -34,7 +34,7 @@ export default function TicketCard({ ticketCode, name, subtitle, checkedIn = fal
       {/* Once checked in, the QR has done its job: no need to shout about screenshots. */}
       {!checkedIn && (
         <div className="w-full rounded-xl border-2 border-yellow-400 bg-yellow-400/10 px-3 py-2.5 text-center">
-          <p className="text-yellow-300 font-extrabold text-base">📸 {t('ticket.screenshot')}</p>
+          <p className="text-yellow-300 font-extrabold text-base">{t('ticket.screenshot')}</p>
           <p className="text-yellow-100 text-sm font-semibold mt-0.5">{t('ticket.screenshotHint')}</p>
         </div>
       )}

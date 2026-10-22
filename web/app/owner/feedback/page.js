@@ -71,7 +71,7 @@ export default function OwnerFeedbackPage() {
                 </span>
                 <span className="flex flex-wrap items-center gap-1.5">
                   {f.category && <span className="rounded-full border border-navy-600 px-2 py-0.5 text-[11px] text-gray-200">{t(`feedback.cat_${f.category}`)}</span>}
-                  {f.sender_blocked && <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-red-500/15 text-red-300">⛔ {t('owner.fb_blocked')}</span>}
+                  {f.sender_blocked && <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-red-500/15 text-red-300">{t('owner.fb_blocked')}</span>}
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${BADGE[f.status] || BADGE.new}`}>{t(`owner.fb_${f.status || 'new'}`)}</span>
                 </span>
               </div>
@@ -88,11 +88,11 @@ export default function OwnerFeedbackPage() {
                   <button key={s} type="button" className="btn-secondary !py-1 text-xs" disabled={busy === f.id} onClick={() => move(f, s)}>→ {t(`owner.fb_${s}`)}</button>
                 ))}
                 {f.status !== 'spam' && (
-                  <button type="button" className="rounded-lg border border-red-500/40 px-2.5 py-1 text-xs text-red-300 hover:bg-red-500/10" disabled={busy === f.id} onClick={() => move(f, 'spam')}>🚫 {t('owner.fb_markSpam')}</button>
+                  <button type="button" className="rounded-lg border border-red-500/40 px-2.5 py-1 text-xs text-red-300 hover:bg-red-500/10" disabled={busy === f.id} onClick={() => move(f, 'spam')}>{t('owner.fb_markSpam')}</button>
                 )}
                 {f.host_id && (
                   <button type="button" className="ml-auto text-xs text-gray-400 hover:text-red-300 underline underline-offset-2" disabled={busy === f.id} onClick={() => block(f, !f.sender_blocked)}>
-                    {f.sender_blocked ? t('owner.fb_unblock') : `⛔ ${t('owner.fb_block')}`}
+                    {f.sender_blocked ? t('owner.fb_unblock') : `${t('owner.fb_block')}`}
                   </button>
                 )}
               </div>

@@ -44,7 +44,7 @@ export default function AnnouncementBanner({ publicOnly = false, className = '' 
             role={warn ? 'alert' : 'status'}
             className={`flex items-start gap-2 rounded-xl border px-3 py-2 text-sm ${maint ? 'border-red-400/60 bg-red-500/10 text-red-100' : warn ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-sky-400/50 bg-sky-400/10 text-sky-100'}`}
           >
-            <span aria-hidden="true">{maint ? '🛠' : warn ? '⚠️' : '📣'}</span>
+            <span aria-hidden="true"></span>
             <div className="flex-1 min-w-0">
               {maint && <p className="font-semibold">{t('maint.upcoming', { from: fmt(a.starts_at, lang), to: fmt(a.ends_at, lang) || '—' })}</p>}
               {a.title && <p className="font-semibold">{a.title}</p>}

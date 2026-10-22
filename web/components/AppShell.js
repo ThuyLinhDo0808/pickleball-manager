@@ -18,6 +18,9 @@ import LockedFeature from '@/components/LockedFeature';
 import PlanLimitNotice from '@/components/PlanLimitNotice';
 import { featureForPath, planFor, hasFeature } from '@/lib/planFeatures';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
+import LangSelect from '@/components/LangSelect';
+import UiIcon from '@/components/ui/UiIcon';
+import { NAV_ACTIVE } from '@/lib/nav';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -251,15 +254,6 @@ function Icon({ name, className = 'w-5 h-5' }) {
   );
 }
 
-function LangSelect() {
-  const { lang, setLang, t } = useI18n();
-  return (
-    <select aria-label={t('nav.language')} value={lang} onChange={(e) => setLang(e.target.value)} className="input text-sm">
-      <option value="vi">Tiếng Việt</option>
-      <option value="en">English</option>
-    </select>
-  );
-}
 
 const SIDEBAR_SCROLL_KEY = 'pickleball_sidebar_scroll';
 
@@ -271,12 +265,11 @@ function ExpiredPlan({ product, owner, until }) {
   const sm = product === 'social_manager';
   return (
     <div className="max-w-lg mx-auto card mt-4 text-center border-red-400/50" role="alert">
-      <span className="text-4xl block mb-2" aria-hidden="true">⏸️</span>
       <h1 className="text-white text-xl font-bold">{t(sm ? 'plan.expiredTitleSm' : 'plan.expiredTitle')}</h1>
       <p className="text-gray-300 text-sm mt-2">{t(sm ? 'plan.expiredBodySm' : 'plan.expiredBody', { date: until ? until.split('-').reverse().join('/') : '' })}</p>
       {owner ? (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>💎 {t('plan.renewNow')}</button>
+          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>{t('plan.renewNow')}</button>
           <Link href="/home" className="btn-secondary">{t('owner.suspendedHome')}</Link>
         </div>
       ) : (
@@ -450,25 +443,26 @@ export default function AppShell({ children, back }) {
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
 
-  // Pages the club's plan doesn't include: a 💎 in the menu, an upgrade card instead of the page.
+  // Pages the club's plan doesn't include: a in the menu, an upgrade card instead of the page.
   const clubPlan = planFor(scoped ? club : null, plan);
   const lockedHref = (href) => !hasFeature(clubPlan, featureForPath(href, scoped ? 'club' : workspace));
   const pageFeature = featureForPath(pathname, scoped ? 'club' : workspace);
   const pageLocked = !!pageFeature && !hasFeature(clubPlan, pageFeature);
   // The plan of the club / community being managed has ended (not the account / list pages).
   const spaceExpired = scoped && !!club && !!clubPlan?.no_plan && clubPlan.features_enforced !== false && !['/account', '/clubs'].some((p) => isActive(p));
-  const Gem = ({ href }) => (lockedHref(href) ? <span className="text-[11px]" title={t('plan.locked')} aria-label={t('plan.locked')}>💎</span> : null);
+  const Gem = ({ href }) => (lockedHref(href) ? <span className="text-gray-400" title={t('plan.locked')} aria-label={t('plan.locked')}><UiIcon name="lock" className="w-3.5 h-3.5" /></span> : null);
 
+  // One way to mark the current page in every shell (manager, player, owner): lime text on
+  // a faint lime fill (NAV_ACTIVE). Group titles are plain sentence case, never cut off.
   const linkClass = (active, extra = '') =>
-    `flex items-center gap-3 rounded-lg text-sm ${extra} ${active ? 'bg-navy-700 text-lime-400' : 'text-gray-300 hover:bg-navy-800'}`;
-  // Sidebar: a section (or a single page) is a big row with an icon tile; its pages are
-  // smaller, quieter rows on a guide line, the current one marked by a lime bar.
-  const tileClass = (active) => `shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${active ? 'bg-lime-400 text-navy-950' : 'bg-navy-800 text-gray-300 group-hover:text-white'}`;
-  const headClass = (active) => `group w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-[0.8125rem] font-bold uppercase tracking-wide transition-colors ${active ? 'text-white bg-navy-800/80' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
-  const subClass = (active) => `relative flex items-center gap-2 rounded-md pl-3 pr-2 py-1.5 text-[0.8125rem] transition-colors ${active ? 'text-lime-300 bg-lime-400/10 font-medium before:absolute before:-left-[13px] before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-lime-400' : 'text-gray-400 hover:text-gray-100 hover:bg-navy-800/60'}`;
+    `flex items-center gap-3 rounded-lg text-sm ${extra} ${active ? NAV_ACTIVE : 'text-gray-300 hover:bg-navy-800'}`;
+  const tileClass = (active) => `shrink-0 w-6 h-6 flex items-center justify-center transition-colors ${active ? 'text-lime-300' : 'text-gray-400 group-hover:text-white'}`;
+  const headClass = (active) => `group w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold transition-colors ${active ? 'text-white' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
+  const pageClass = (active) => `group w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold transition-colors ${active ? NAV_ACTIVE : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
+  const subClass = (active) => `flex items-center gap-2 rounded-lg pl-3 pr-2 py-1.5 text-sm leading-snug transition-colors ${active ? `${NAV_ACTIVE} font-medium` : 'text-gray-400 hover:text-gray-100 hover:bg-navy-800/60'}`;
 
   return (
-    <div className="min-h-screen md:flex">
+    <div className="min-h-screen lg:flex">
       {/* Desktop sidebar */}
       <aside
         ref={sideRef}
@@ -477,12 +471,12 @@ export default function AppShell({ children, back }) {
             sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(e.currentTarget.scrollTop));
           } catch {}
         }}
-        className={`hidden md:flex shrink-0 bg-navy-900 border-r border-navy-700 flex-col gap-1 sticky top-0 h-screen overflow-y-auto overflow-x-hidden transition-[width] duration-200 ${
+        className={`hidden lg:flex shrink-0 bg-navy-900 border-r border-navy-700 flex-col gap-1 sticky top-0 h-screen overflow-y-auto overflow-x-hidden transition-[width] duration-200 ${
           collapsed ? 'w-16 p-2' : 'w-64 p-4'
         }`}
       >
         <div className={`flex items-center mb-3 ${collapsed ? 'justify-center' : 'justify-between pl-2'}`}>
-          {!collapsed && <span className="text-lime-400 font-bold text-lg truncate">{t('appName')}</span>}
+          {!collapsed && <span className="text-lime-400 font-bold text-lg">{t('appName')}</span>}
           <button
             onClick={toggleCollapsed}
             aria-label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
@@ -516,9 +510,9 @@ export default function AppShell({ children, back }) {
           }
           if (!item.children) {
             return (
-              <Link key={item.key} href={item.href} className={headClass(itemActive(item))} aria-current={itemActive(item) ? 'page' : undefined}>
-                <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
-                <span className="flex-1 truncate">{t(item.key)}</span>
+              <Link key={item.key} href={item.href} className={pageClass(itemActive(item))} aria-current={itemActive(item) ? 'page' : undefined}>
+                <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-[18px] h-[18px]" /></span>
+                <span className="flex-1 leading-snug break-words">{t(item.key)}</span>
                 <Badge n={badges[item.badge]} />
               </Link>
             );
@@ -532,15 +526,15 @@ export default function AppShell({ children, back }) {
                 onClick={() => toggleGroup(item.key, open)}
                 className={headClass(itemActive(item))}
               >
-                <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
-                <span className="flex-1 text-left truncate">{t(item.key)}</span>
+                <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-[18px] h-[18px]" /></span>
+                <span className="flex-1 text-left leading-snug break-words">{t(item.key)}</span>
                 {!open && <Badge n={badges[item.badge]} />}
                 <svg viewBox="0 0 24 24" className={`w-4 h-4 text-gray-500 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M9 6l6 6-6 6" />
                 </svg>
               </button>
               {open && (
-                <div className="ml-[22px] pl-3 border-l border-navy-700 flex flex-col gap-0.5 mt-1 mb-2">
+                <div className="ml-[19px] pl-3 border-l border-navy-700 flex flex-col gap-0.5 mt-0.5 mb-2">
                   {item.children.map((c) => (
                     <Link key={c.href} href={c.href} className={subClass(navActive(c))} aria-current={navActive(c) ? 'page' : undefined}>
                       <span className="flex-1">{t(c.key)}</span>
@@ -554,34 +548,33 @@ export default function AppShell({ children, back }) {
           );
         })}
         <div className="mt-auto flex flex-col gap-2 pt-4">
-          {collapsed ? (
+          {/* Account corner: the bell, the language and sign out together, in one style
+              (the bell's list opens beside the sidebar). */}
+          {!collapsed && (
+            <Link href="/contact" className={`text-sm flex items-center gap-3 px-2 py-2 rounded-lg ${isActive('/contact') ? NAV_ACTIVE : 'text-gray-300 hover:bg-navy-800'}`}>
+              <Icon name="chat" className="w-[18px] h-[18px] shrink-0" />
+              {t('contact.nav')}
+            </Link>
+          )}
+          <div className={`flex gap-2 ${collapsed ? 'flex-col items-center' : 'items-center'}`}>
+            {['club', 'xeve'].includes(workspace) && <SignupBell side={collapsed ? 'rail' : 'sidebar'} className="shrink-0" />}
+            {!collapsed && <LangSelect className="flex-1 min-w-0" />}
             <button
               onClick={() => signOut()}
               title={t('nav.signOut')}
               aria-label={t('nav.signOut')}
-              className="h-10 flex items-center justify-center rounded-lg text-gray-300 hover:bg-navy-800"
+              className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-navy-800 text-gray-200 hover:bg-navy-700"
             >
               <Icon name="signOut" />
             </button>
-          ) : (
-            <>
-              <Link href="/contact" className={`text-sm flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-navy-800 ${isActive('/contact') ? 'text-lime-300 bg-navy-800' : 'text-gray-300'}`}>
-                <Icon name="chat" className="w-4 h-4 shrink-0" />
-                {t('contact.nav')}
-              </Link>
-              <LangSelect />
-              <button onClick={() => signOut()} className="btn-secondary text-sm">
-                {t('nav.signOut')}
-              </button>
-            </>
-          )}
+          </div>
         </div>
       </aside>
 
       {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 bg-navy-900/95 backdrop-blur border-b border-navy-700 pt-safe">
+      <header className="lg:hidden sticky top-0 z-30 bg-navy-900/95 backdrop-blur border-b border-navy-700 pt-safe">
         <div className="flex items-center gap-3 px-4 h-14">
-          <Link href="/home" aria-label={t('hub.backHome')} className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-lime-400 bg-navy-800">
+          <Link href="/home" aria-label={t('hub.backHome')} className="shrink-0 w-11 h-11 flex items-center justify-center rounded-lg text-lime-400 bg-navy-800">
             <Icon name="dashboard" className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">{workspace && <ContextSwitcher compact />}</div>
@@ -589,17 +582,12 @@ export default function AppShell({ children, back }) {
         </div>
       </header>
 
-      <main className="flex-1 min-w-0 p-4 md:p-6 pb-tabbar">
-        {['club', 'xeve'].includes(workspace) && (
-          <div className="hidden md:flex justify-end -mt-2 mb-2">
-            <SignupBell />
-          </div>
-        )}
+      <main className="flex-1 min-w-0 p-4 lg:p-6 pb-tabbar">
         <AnnouncementBanner className="mb-4" />
         {workspace && workspace !== 'staff' && <SchemaBanner />}
         {suspended ? (
           <div className="max-w-lg mx-auto card mt-4 border-red-400/50" role="alert">
-            <h1 className="text-white text-lg font-bold mb-1">⛔ {t('owner.suspendedTitle')}</h1>
+            <h1 className="text-white text-lg font-bold mb-1">{t('owner.suspendedTitle')}</h1>
             <p className="text-gray-300 text-sm">{t('owner.suspendedBody')}</p>
             {suspended.reason && <p className="text-red-200 text-sm mt-2">{t('owner.suspendedReason', { reason: suspended.reason })}</p>}
             <Link href="/home" className="btn-secondary text-sm mt-4 inline-block">{t('owner.suspendedHome')}</Link>
@@ -611,7 +599,7 @@ export default function AppShell({ children, back }) {
         ) : pageLocked && wsReady && mode === 'community' && pageFeature === 'advanced_analytics' ? (
           // An add-on: asked for in Báo lỗi / Liên hệ nhà phát triển, switched on by the Ban quản trị.
           <div className="max-w-lg mx-auto card mt-4 border-amber-300/50">
-            <h1 className="text-white text-lg font-bold mb-1">💎 {t('contact.addonLockedTitle')}</h1>
+            <h1 className="text-white text-lg font-bold mb-1">{t('contact.addonLockedTitle')}</h1>
             <p className="text-gray-300 text-sm">{t('contact.addonLockedBody')}</p>
             <div className="flex justify-end mt-4">
               <Link href="/contact#dev" className="btn-primary text-sm">{t('contact.addonLockedCta')}</Link>
@@ -623,9 +611,9 @@ export default function AppShell({ children, back }) {
           <div className="max-w-lg mx-auto mt-4 flex flex-col gap-3">
             {/* Social Manager now runs communities (cụm sân): open one like a club. */}
             <div className="card border-amber-300/50">
-              <h2 className="text-white font-semibold">🎟 {t('social.startTitle')}</h2>
+              <h2 className="text-white font-semibold">{t('social.startTitle')}</h2>
               <p className="text-gray-300 text-sm mt-1 mb-3">{t('social.startBody')}</p>
-              <Link href="/club-request?kind=community" className="btn-primary inline-block">＋ {t('social.newCommunity')}</Link>
+              <div className="flex justify-end"><Link href="/club-request?kind=community" className="btn-primary"><UiIcon name="plus" className="w-4 h-4" />{t('social.newCommunity')}</Link></div>
             </div>
             {!plan.social_manager && <div className="card"><SocialManagerPanel /></div>}
           </div>
@@ -638,19 +626,19 @@ export default function AppShell({ children, back }) {
         ) : (
           <>
             {coAdmin && (
-              <div className="mb-4 flex items-center gap-3 rounded-xl border border-sky-400/30 bg-sky-400/5 px-3 py-2">
-                <span className="text-lg" aria-hidden="true">🤝</span>
+              <div className="mb-4 flex items-center gap-3 rounded-card bg-navy-800 px-3 py-2">
+                <UiIcon name="users" className="w-5 h-5 text-gray-400" />
                 <div className="min-w-0 text-sm">
-                  <div className="text-sky-200 font-semibold truncate">{t(clubRole === 'finance' ? 'coadmin.bannerFinance' : clubRole === 'operator' ? 'coadmin.bannerOperator' : 'coadmin.banner', { name: club?.name || '' })}</div>
-                  <div className="text-gray-400 text-xs truncate">{t(clubRole === 'finance' ? 'coadmin.bannerHintFinance' : clubRole === 'operator' ? 'coadmin.bannerHintOperator' : 'coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
+                  <div className="text-white font-semibold break-words">{t(clubRole === 'finance' ? 'coadmin.bannerFinance' : clubRole === 'operator' ? 'coadmin.bannerOperator' : 'coadmin.banner', { name: club?.name || '' })}</div>
+                  <div className="text-gray-400 text-sm break-words">{t(clubRole === 'finance' ? 'coadmin.bannerHintFinance' : clubRole === 'operator' ? 'coadmin.bannerHintOperator' : 'coadmin.bannerHint', { owner: club?.owner_email || '—' })}</div>
                 </div>
               </div>
             )}
             {/* The plan of this club / community runs out soon: say so on every manager page,
                 with the way to renew (when it ends, the manager pages stop). */}
             {scoped && !coAdmin && clubPlan && !clubPlan.no_plan && !(mode !== 'community' && plan?.trial) && clubPlan.paid_until && daysLeft(clubPlan.paid_until) <= 7 && (
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-                <span>⏳ {t(mode === 'community' ? 'plan.expiringSoonSm' : 'plan.expiringSoon', { tier: String(clubPlan.tier).toUpperCase(), n: daysLeft(clubPlan.paid_until) })}</span>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-card bg-warn-bg px-3 py-2 text-sm text-warn-fg">
+                <span>{t(mode === 'community' ? 'plan.expiringSoonSm' : 'plan.expiringSoon', { tier: String(clubPlan.tier).toUpperCase(), n: daysLeft(clubPlan.paid_until) })}</span>
                 <button type="button" className="btn-secondary !py-1 text-sm" onClick={() => setRenewOpen(true)}>{t('plan.renew')}</button>
               </div>
             )}
@@ -665,7 +653,7 @@ export default function AppShell({ children, back }) {
 
       {/* Mobile "More" sheet */}
       {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-40" role="dialog" aria-modal="true">
+        <div className="lg:hidden fixed inset-0 z-40" role="dialog" aria-modal="true">
           <button aria-label={t('common.cancel')} className="absolute inset-0 bg-black/60" onClick={() => setMoreOpen(false)} />
           <div className="absolute bottom-0 inset-x-0 bg-navy-900 border-t border-navy-700 rounded-t-2xl p-4 pb-safe-4 flex flex-col gap-1">
             <div className="mx-auto w-10 h-1 rounded-full bg-navy-600 mb-3" />
@@ -673,19 +661,16 @@ export default function AppShell({ children, back }) {
               {NAV.map((item) =>
                 item.children ? (
                   <div key={item.key} className="mt-3">
-                    <div className="flex items-center gap-2 px-1 mb-1.5">
-                      <span className={tileClass(itemActive(item))}><Icon name={item.icon} className="w-4 h-4" /></span>
-                      <span className="text-white text-[0.8125rem] font-bold uppercase tracking-wide">{t(item.key)}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1">
+                    <p className="px-3 mb-1 text-gray-400 text-sm font-semibold">{t(item.key)}</p>
+                    <div className="flex flex-col gap-0.5">
                       {item.children.map((c) => (
                         <Link
                           key={c.href}
                           href={c.href}
-                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-[0.8125rem] ${navActive(c) ? 'bg-lime-400/15 text-lime-300 ring-1 ring-lime-400/40' : 'text-gray-300 bg-navy-800/60'}`}
+                          className={`min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-[0.9375rem] ${navActive(c) ? NAV_ACTIVE : 'text-gray-200'}`}
                         >
-                          <Icon name={c.icon} className="w-4 h-4 shrink-0" />
-                          <span className="leading-tight flex-1">{t(c.key)}</span>
+                          <Icon name={c.icon} className="w-5 h-5 shrink-0" />
+                          <span className="leading-snug flex-1">{t(c.key)}</span>
                           <Badge n={badges[c.badge]} />
                           <Gem href={c.href} />
                         </Link>
@@ -696,26 +681,27 @@ export default function AppShell({ children, back }) {
                   <Link
                     key={item.key}
                     href={item.href}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-lg ${navActive(item) ? 'bg-navy-700 text-lime-400' : 'text-gray-200'}`}
+                    className={`min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-[0.9375rem] ${navActive(item) ? NAV_ACTIVE : 'text-gray-200'}`}
                   >
                     <Icon name={item.icon} />
-                    <span className="flex-1 text-[0.8125rem] font-bold uppercase tracking-wide">{t(item.key)}</span>
+                    <span className="flex-1 leading-snug">{t(item.key)}</span>
                     <Badge n={badges[item.badge]} />
                   </Link>
                 )
               )}
             </div>
-            <Link href="/contact" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200 w-full text-left">
+            <Link href="/contact" className="min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-[0.9375rem] text-gray-200 w-full text-left">
               <Icon name="chat" />
               {t('contact.nav')}
             </Link>
-            <Link href="/home" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-200">
+            <Link href="/home" className="min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-[0.9375rem] text-gray-200">
               <Icon name="dashboard" />
               {t('hub.backHome')}
             </Link>
-            <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-navy-700">
-              <LangSelect />
-              <button onClick={() => signOut()} className="btn-secondary text-sm">
+            <div className="flex items-center gap-2 pt-3 mt-2 border-t border-navy-700">
+              <LangSelect className="flex-1 min-w-0" />
+              <button onClick={() => signOut()} className="btn-secondary shrink-0">
+                <Icon name="signOut" className="w-4 h-4" />
                 {t('nav.signOut')}
               </button>
             </div>
@@ -724,7 +710,7 @@ export default function AppShell({ children, back }) {
       )}
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900/95 backdrop-blur border-t border-navy-700 pb-safe">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900/95 backdrop-blur border-t border-navy-700 pb-safe">
         <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0, 1fr))` }}>
           {tabs.map((item) => {
             const href = item.href;
@@ -732,22 +718,22 @@ export default function AppShell({ children, back }) {
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-col items-center justify-center gap-0.5 h-16 text-xs leading-tight ${
-                  navActive(item) ? 'text-lime-400' : 'text-gray-400'
+                className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${
+                  navActive(item) ? 'text-lime-300' : 'text-gray-400'
                 }`}
               >
                 <span className="relative">
                   <Icon name={item.icon} />
                   <Badge n={badges[item.badge]} className="absolute -top-2 -right-3" />
                 </span>
-                <span className="max-w-full px-0.5 text-center line-clamp-2">{t(item.key)}</span>
+                <span className="max-w-full px-0.5 text-center break-words hyphens-auto">{t(item.key)}</span>
               </Link>
             );
           })}
           <button
             onClick={() => setMoreOpen((o) => !o)}
-            className={`flex flex-col items-center justify-center gap-0.5 h-16 text-xs leading-tight ${
-              moreOpen || moreActive ? 'text-lime-400' : 'text-gray-400'
+            className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${
+              moreOpen || moreActive ? 'text-lime-300' : 'text-gray-400'
             }`}
           >
             <Icon name="more" />

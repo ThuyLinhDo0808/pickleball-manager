@@ -33,7 +33,7 @@ function PermPicker({ value, onChange }) {
           </span>
         </label>
       ))}
-      <p className="text-gray-500 text-xs mt-1">🔒 {t('owner.supportOwnerOnly')}</p>
+      <p className="text-gray-500 text-xs mt-1">{t('owner.supportOwnerOnly')}</p>
     </div>
   );
 }
@@ -82,7 +82,7 @@ export default function OwnerSupportPage() {
     <OwnerShell title={t('owner.tabSupport')} description={t('owner.supportHint')}>
       <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4 items-start">
         <form onSubmit={add} className="card !p-4 flex flex-col gap-3">
-          <h2 className="text-white font-semibold">➕ {t('owner.supportAdd')}</h2>
+          <h2 className="text-white font-semibold">{t('owner.supportAdd')}</h2>
           <label className="text-sm text-gray-300">
             Email
             <input className="input mt-1" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="hotro@gmail.com" />
@@ -119,8 +119,8 @@ export default function OwnerSupportPage() {
                     {s.permissions.map((p) => <span key={p} className="rounded-md bg-navy-900 px-2 py-0.5 text-xs text-gray-200">{t(`owner.sp_${p}`)}</span>)}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setEditing({ ...s })}>✎ {t('owner.supportEditPerms')}</button>
-                    <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => patch(s, { active: !s.active })}>{s.active ? `⏸ ${t('owner.supportPause')}` : `▶ ${t('owner.supportResume')}`}</button>
+                    <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setEditing({ ...s })}>{t('owner.supportEditPerms')}</button>
+                    <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => patch(s, { active: !s.active })}>{s.active ? `${t('owner.supportPause')}` : `▶ ${t('owner.supportResume')}`}</button>
                     <button type="button" className="text-red-400 hover:text-red-300 text-xs px-2 ml-auto" onClick={() => remove(s)}>{t('owner.supportRemove')}</button>
                   </div>
                 </li>

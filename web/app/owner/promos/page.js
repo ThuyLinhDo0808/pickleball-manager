@@ -165,11 +165,11 @@ export default function OwnerPromosPage() {
                 {c.kind === 'percent' && <span>{t('owner.promoPaid', { n: c.paid_uses, v: formatVnd(c.discount_given) })}</span>}
                 <span>{c.expires_on ? t('owner.promoUntil', { d: fmtDate(c.expires_on) }) : t('owner.promoNoExpiry')}</span>
                 {c.first_order_only && <span>{t('owner.promoFirstOnlyShort')}</span>}
-                {c.note && <span className="text-gray-500">📝 {c.note}</span>}
+                {c.note && <span className="text-gray-500">{c.note}</span>}
               </div>
               <div className="flex gap-2 mt-2">
                 <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? '▲' : '▼'} {t('owner.promoWho')}</button>
-                <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => toggle(c)}>{c.active ? `⏸ ${t('owner.annTurnOff')}` : `▶ ${t('owner.annTurnOn')}`}</button>
+                <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => toggle(c)}>{c.active ? `${t('owner.annTurnOff')}` : `▶ ${t('owner.annTurnOn')}`}</button>
               </div>
               {open === c.id && <Uses id={c.id} />}
             </li>

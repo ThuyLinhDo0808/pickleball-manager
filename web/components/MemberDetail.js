@@ -197,11 +197,11 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
           {t('members.joined')}: <span className="text-gray-200">{member.joined_on ? `${my(member.joined_on)} · ${tenureLabel(member.joined_on, t)}` : '—'}</span>
         </span>
         <button type="button" className="btn-secondary !py-1.5 text-sm ml-auto" onClick={() => { setF(fromMember(member)); setOpen(true); }}>
-          ✏️ {t('members.edit')}
+          {t('members.edit')}
         </button>
         {missingInfo(member).length > 0 && (
           <p className="w-full text-xs text-amber-300">
-            ⚠️ {t('members.incompleteDetail', { fields: missingInfo(member).map((k) => t(`members.miss_${k}`)).join(', ') })}{' '}
+            {t('members.incompleteDetail', { fields: missingInfo(member).map((k) => t(`members.miss_${k}`)).join(', ') })}{' '}
             <button type="button" className="underline text-lime-300" onClick={() => { setF(fromMember(member)); setOpen(true); }}>{t('quickfix.add')}</button>
           </p>
         )}
@@ -237,7 +237,7 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
 
   return (
     <form onSubmit={save} className="grid grid-cols-2 gap-3 rounded-lg border border-navy-600 p-3">
-      {member.user_id && member.account_verified && <p className="col-span-2 text-[11px] text-sky-200">ℹ️ {t('members.syncsProfile')}</p>}
+      {member.user_id && member.account_verified && <p className="col-span-2 text-[11px] text-sky-200">{t('members.syncsProfile')}</p>}
       <div className="col-span-2">
         <label className="text-xs text-gray-400">{t('common.name')}</label>
         <input className="input" required value={f.full_name} onChange={(e) => set({ full_name: e.target.value })} />
@@ -291,7 +291,7 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
                 checked={!!f.guest_perk}
                 onChange={(e) => set({ guest_perk: e.target.checked ? 'priority' : '', guest_discount_pct: e.target.checked ? f.guest_discount_pct : '' })}
               />
-              <span>⚡ {t('guests.perk_priority')}</span>
+              <span>{t('guests.perk_priority')}</span>
             </label>
           </>
         )}
@@ -404,7 +404,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         {/* Bad behaviour: move to "To review" (suspended for a while, the player is told). */}
         {onReview && !member.review_started_at && (
           <button type="button" className="self-start rounded-lg px-3 py-1.5 text-sm border border-amber-300/60 text-amber-200 hover:bg-amber-300/10" onClick={() => onReview(member)}>
-            ⚠️ {t('mod.moveToReview')}
+            {t('mod.moveToReview')}
           </button>
         )}
         <div className="text-gray-400 text-sm flex flex-wrap gap-x-4 gap-y-1">

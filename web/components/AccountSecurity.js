@@ -51,7 +51,7 @@ function RecoveryCodes({ codes, onDone }) {
   };
   return (
     <div className="rounded-xl border border-amber-400/50 bg-amber-400/5 p-4">
-      <p className="text-amber-200 font-semibold text-sm">🗝 {t('sec.recoveryTitle')}</p>
+      <p className="text-amber-200 font-semibold text-sm">{t('sec.recoveryTitle')}</p>
       <p className="text-gray-300 text-xs mt-1 mb-3">{t('sec.recoveryBody')}</p>
       <ul className="grid grid-cols-2 gap-1.5 font-mono text-sm text-white mb-3">
         {codes.map((c) => <li key={c} className="rounded bg-navy-950/70 border border-navy-700 px-2 py-1 text-center tabular-nums">{c}</li>)}
@@ -66,8 +66,8 @@ function RecoveryCodes({ codes, onDone }) {
         >
           {copied ? `✓ ${t('sec.copied')}` : t('sec.copyAll')}
         </button>
-        <button type="button" className="btn-secondary text-sm" onClick={download}>⬇ {t('sec.downloadCodes')}</button>
-        <button type="button" className="btn-secondary text-sm" onClick={print}>🖨 {t('sec.printCodes')}</button>
+        <button type="button" className="btn-secondary text-sm" onClick={download}>{t('sec.downloadCodes')}</button>
+        <button type="button" className="btn-secondary text-sm" onClick={print}>{t('sec.printCodes')}</button>
       </div>
       <div className="mt-4 border-t border-amber-400/20 pt-3">
         <label htmlFor="recovery-check" className="text-xs text-gray-300">{t('sec.confirmSavedLabel')}</label>
@@ -153,16 +153,16 @@ export default function AccountSecurity() {
       <div className="rounded-xl border border-navy-700 bg-navy-900/40 p-4">
         <div className="flex flex-wrap items-center gap-2 justify-between">
           <div>
-            <p className="text-white font-semibold">🔐 {t('sec.mfaTitle')} <Hint inline text={t('sec.mfaHint')} /></p>
+            <p className="text-white font-semibold">{t('sec.mfaTitle')} <Hint inline text={t('sec.mfaHint')} /></p>
           </div>
           <span className={`text-xs font-semibold rounded-full border px-2.5 py-0.5 ${mfa.enabled ? 'border-lime-400/60 text-lime-300' : 'border-gray-500 text-gray-300'}`}>
             {mfa.enabled ? `✓ ${t('sec.on')}` : t('sec.off')}
           </span>
         </div>
-        {data.required && !mfa.enabled && <p className="mt-3 text-amber-200 text-sm">⚠️ {t('sec.requiredForRole')}</p>}
+        {data.required && !mfa.enabled && <p className="mt-3 text-amber-200 text-sm">{t('sec.requiredForRole')}</p>}
         {mfa.enabled && mfa.reset && !codes && (
           <div className="mt-3 rounded-lg border border-red-400/50 bg-red-500/10 p-3 text-sm" role="alert">
-            <p className="text-red-200 font-semibold">⚠️ {t('sec.resetPending', { at: fmt(mfa.reset.at) })}</p>
+            <p className="text-red-200 font-semibold">{t('sec.resetPending', { at: fmt(mfa.reset.at) })}</p>
             <p className="text-gray-300 text-xs mt-1">{t('sec.resetPendingHint')}</p>
             <button
               type="button"
@@ -219,9 +219,9 @@ export default function AccountSecurity() {
             <p className="text-gray-300">
               {t('sec.onSince', { date: fmt(mfa.enabled_at) })} · {t('sec.recoveryLeft', { n: mfa.recovery_left })}
             </p>
-            {mfa.recovery_left <= 2 && <p className="text-amber-200 text-xs mt-1">⚠️ {t('sec.recoveryLow')}</p>}
+            {mfa.recovery_left <= 2 && <p className="text-amber-200 text-xs mt-1">{t('sec.recoveryLow')}</p>}
             <div className="flex flex-wrap gap-2 mt-3">
-              <button type="button" className="btn-secondary text-sm" onClick={() => setMode(mode === 'recovery' ? null : 'recovery')}>🗝 {t('sec.newRecovery')}</button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => setMode(mode === 'recovery' ? null : 'recovery')}>{t('sec.newRecovery')}</button>
               {!data.required && (
                 <button type="button" className="rounded-lg px-3 py-2 text-sm border border-red-500/50 text-red-300 hover:bg-red-500/10" onClick={() => setMode(mode === 'disable' ? null : 'disable')}>
                   {t('sec.disable')}
@@ -258,7 +258,7 @@ export default function AccountSecurity() {
 
       {/* Devices */}
       <div className="rounded-xl border border-navy-700 bg-navy-900/40 p-4">
-        <p className="text-white font-semibold">💻 {t('sec.devicesTitle')} <Hint inline text={t('sec.devicesHint')} /></p>
+        <p className="text-white font-semibold">{t('sec.devicesTitle')} <Hint inline text={t('sec.devicesHint')} /></p>
         {data.devices.length === 0 ? (
           <p className="text-gray-500 text-sm">{t('sec.noDevices')}</p>
         ) : (
@@ -285,7 +285,7 @@ export default function AccountSecurity() {
         <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
           <p className="text-red-200 text-sm font-semibold">{t('sec.logoutAll')} <Hint inline text={t('sec.logoutAllHint')} /></p>
           <button type="button" className="rounded-lg px-3 py-2 text-sm font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/15" onClick={() => logoutAll().catch((e) => setMsg(errText(e, t)))}>
-            🚪 {t('sec.logoutAll')}
+            {t('sec.logoutAll')}
           </button>
         </div>
       </div>

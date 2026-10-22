@@ -20,7 +20,7 @@ export default function EventStandings({ matches, onChallenge }) {
   return (
     <div className="flex flex-col gap-4">
       <section className="card !px-2 sm:!px-4">
-        <h3 className="text-white font-semibold mb-1 px-2 sm:px-0">🏅 {t('estand.title')} <Hint inline text={t('estand.hint')} /></h3>
+        <h3 className="text-white font-semibold mb-1 px-2 sm:px-0">{t('estand.title')} <Hint inline text={t('estand.hint')} /></h3>
         <div className="table-wrap">
           <table className="w-full text-sm grid-table !min-w-[30rem]">
             <thead>
@@ -37,7 +37,7 @@ export default function EventStandings({ matches, onChallenge }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className={r.rank === 1 ? 'bg-lime-400/5' : r.rank === rows.length ? 'bg-red-400/5' : ''}>
-                  <td className="text-center font-bold">{r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank}</td>
+                  <td className="text-center font-bold"><span className={r.rank <= 3 ? 'text-lime-300' : ''}>{r.rank}</span></td>
                   <td className="text-white !whitespace-normal">{r.name}</td>
                   <td className="text-right tabular-nums">{r.played}</td>
                   <td className="text-right tabular-nums text-lime-300">{r.won}</td>
@@ -52,7 +52,7 @@ export default function EventStandings({ matches, onChallenge }) {
       </section>
 
       <section className="rounded-2xl border-2 border-violet-400/70 bg-violet-400/10 p-3 sm:p-4">
-        <h3 className="text-violet-100 font-bold">⚔️ {t('estand.challengeTitle')} <Hint inline text={t('estand.challengeHint')} /></h3>
+        <h3 className="text-violet-100 font-bold">{t('estand.challengeTitle')} <Hint inline text={t('estand.challengeHint')} /></h3>
         {!pick ? (
           <p className="text-gray-300 text-sm mt-1">{t('estand.needMore')}</p>
         ) : (
@@ -69,12 +69,12 @@ export default function EventStandings({ matches, onChallenge }) {
               </div>
             </div>
             <label className="block text-xs text-gray-300 mt-3">
-              🎁 {t('estand.reward')}
+              {t('estand.reward')}
               <input className="input mt-1" maxLength={200} placeholder={t('estand.rewardPh')} value={reward} onChange={(e) => setReward(e.target.value)} />
             </label>
             <div className="flex flex-wrap justify-end gap-2 mt-3">
-              <button type="button" className="btn-secondary text-sm" onClick={() => setSeed(seed + 1)}>🎲 {t('estand.reroll')}</button>
-              <button type="button" className="btn-primary text-sm" onClick={() => onChallenge(pick, reward)}>⚔️ {t('estand.start')}</button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => setSeed(seed + 1)}>{t('estand.reroll')}</button>
+              <button type="button" className="btn-primary text-sm" onClick={() => onChallenge(pick, reward)}>{t('estand.start')}</button>
             </div>
           </>
         )}

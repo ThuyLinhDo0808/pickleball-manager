@@ -62,7 +62,7 @@ export default function TicketPage() {
           />
         ) : (
           <div className="text-center py-4">
-            <div className="text-3xl">{tk.status === 'pending' ? '⏳' : '🚫'}</div>
+            <div className="text-3xl"></div>
             <p className="text-white font-semibold mt-1">{tk.full_name}</p>
             <p className="text-gray-300 text-sm mt-1">
               {tk.status === 'pending' ? t('signup.hostChecking') : tk.status === 'waitlisted' ? t('public.successWait') : t('ticket.invalid')}

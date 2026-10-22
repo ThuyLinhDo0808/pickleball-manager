@@ -49,7 +49,7 @@ export default function QuickLevelsModal({ open, clubId, settings: given, sport 
   }
 
   return (
-    <Modal open={open} title={`🎚 ${t('quickfix.levelsTitle')}`} onClose={onClose}>
+    <Modal open={open} title={`${t('quickfix.levelsTitle')}`} onClose={onClose}>
       <p className="text-gray-400 text-sm mb-3">{t('quickfix.levelsHint')}</p>
       {otherMode ? (
         <p className="text-amber-200 text-sm">{t('quickfix.levelsOtherMode')} <Link href="/club/community-settings" className="underline text-lime-300">{t('cpanel.title')}</Link></p>

@@ -24,7 +24,7 @@ export default function ViewAsBanner() {
   };
   return (
     <div className="sticky top-0 z-[60] bg-amber-300 text-navy-950 text-sm px-3 py-1.5 flex items-center gap-2 justify-center flex-wrap" role="status">
-      <span className="font-semibold">👁 {t('owner.viewingAs', { email: as.email })}</span>
+      <span className="font-semibold">{t('owner.viewingAs', { email: as.email })}</span>
       {flash && <span className="rounded bg-navy-950 text-amber-200 px-2 py-0.5 text-xs">{t('owner.readOnlyBlocked')}</span>}
       <button type="button" onClick={exit} className="rounded-full bg-navy-950 text-white px-3 py-0.5 text-xs font-semibold">✕ {t('owner.exitViewAs')}</button>
     </div>

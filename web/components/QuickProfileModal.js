@@ -14,7 +14,7 @@ export function QuickProfileModal({ open, onClose, onSaved, sport = 'pickleball'
     if (open) api.get('/api/player/me').then(setMe).catch(() => setMe({}));
   }, [open]);
   return (
-    <Modal open={open} title={`👤 ${t('quickfix.profileTitle')}`} onClose={onClose}>
+    <Modal open={open} title={`${t('quickfix.profileTitle')}`} onClose={onClose}>
       {me ? <ProfileForm profile={me.profile} sport={sport} onSaved={() => { onClose(); onSaved?.(); }} /> : <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
     </Modal>
   );
@@ -47,7 +47,7 @@ export function QuickDuprIdModal({ open, onClose, onSaved }) {
     }
   }
   return (
-    <Modal open={open} title={`📈 ${t('quickfix.duprIdTitle')}`} onClose={onClose}>
+    <Modal open={open} title={`${t('quickfix.duprIdTitle')}`} onClose={onClose}>
       <form onSubmit={save} className="flex flex-col gap-3">
         <p className="text-gray-400 text-sm">{t('quick.duprIdNote')}</p>
         <input className="input font-mono uppercase placeholder:normal-case" maxLength={10} placeholder={t('quick.duprIdPh')} value={id} onChange={(e) => setId(e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase())} aria-label="DUPR ID" />
@@ -88,7 +88,7 @@ export function QuickBirthModal({ open, onClose, onSaved }) {
     }
   }
   return (
-    <Modal open={open} title={`🎂 ${t('quickfix.birthTitle')}`} onClose={onClose}>
+    <Modal open={open} title={`${t('quickfix.birthTitle')}`} onClose={onClose}>
       <form onSubmit={save} className="flex flex-col gap-3">
         <label className="text-xs text-gray-400" htmlFor="qf-birth">{t('members.birthDate')}</label>
         <input id="qf-birth" className="input" type="date" required value={birth} onChange={(e) => setBirth(e.target.value)} />

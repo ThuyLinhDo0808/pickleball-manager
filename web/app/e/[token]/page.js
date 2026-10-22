@@ -134,7 +134,7 @@ export default function PublicEventPage() {
           {time && ` · ${time}`}
         </p>
         {(ev.location || ev.map_url) && <p className="mt-1"><MapLink location={ev.location} mapUrl={ev.map_url} /></p>}
-        {ev.play_format && <p className="text-gray-300 text-sm mt-1">🏓 {t(`fmt.${ev.play_format}`)}</p>}
+        {ev.play_format && <p className="text-gray-300 text-sm mt-1">{t('egroups.format')}: <span className="text-white">{t(`fmt.${ev.play_format}`)}</span></p>}
 
         <div className="grid grid-cols-2 gap-2 mt-4">
           <Info label={t('public.fee')} value={ev.groups?.length ? t('egroups.feeFrom', { amount: `${Math.min(...ev.groups.map((g) => Number(g.fee_amount) || 0)).toLocaleString('vi-VN')} ₫` }) : Number(ev.fee_amount) ? `${Number(ev.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')} />
@@ -148,21 +148,21 @@ export default function PublicEventPage() {
             {ev.groups.map((g, i) => (
               <li key={g.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-lg bg-navy-900 px-3 py-2">
                 <span className="text-white font-semibold">
-                  🏟 {t('egroups.courtN', { n: g.courts || i + 1 })}
+                  {t('egroups.courtN', { n: g.courts || i + 1 })}
                   {g.play_format && <span className="ml-1.5 rounded-full border border-sky-400/60 px-1.5 text-[11px] font-normal text-sky-200">{t(`fmt.${g.play_format}`)}</span>}
                 </span>
-                <span className="text-gray-200 tabular-nums">🕒 {g.start_time}–{g.end_time} · {Number(g.fee_amount) ? `${Number(g.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')}</span>
+                <span className="text-gray-200 tabular-nums">{g.start_time}–{g.end_time} · {Number(g.fee_amount) ? `${Number(g.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')}</span>
                 <span className={g.left > 0 ? 'text-lime-300 text-xs' : 'text-amber-300 text-xs'}>{g.left > 0 ? t('egroups.left', { n: g.left, total: g.slots }) : t('egroups.full')}</span>
               </li>
             ))}
           </ul>
         )}
-        {ev.services && <p className="text-gray-300 text-sm mt-2">🎁 {t('svc.included')}: <span className="text-white">{ev.services}</span></p>}
+        {ev.services && <p className="text-gray-300 text-sm mt-2">{t('svc.included')}: <span className="text-white">{ev.services}</span></p>}
       </section>
 
       {(ev.cancel_deadline_hours != null || ev.no_refund) && (
         <p className="card mb-4 !py-3 text-sm text-gray-300">
-          ⏰ {policyText(t, ev.cancel_deadline_hours, ev.cancel_half_hours, ev.no_refund)}.
+          {policyText(t, ev.cancel_deadline_hours, ev.cancel_half_hours, ev.no_refund)}.
           <span className="block text-xs text-gray-500 mt-1">{t('policy.publicNote')}</span>
         </p>
       )}

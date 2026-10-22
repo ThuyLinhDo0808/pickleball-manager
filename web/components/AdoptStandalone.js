@@ -46,12 +46,12 @@ export default function AdoptStandalone({ club, onMoved }) {
     <>
       <div className="card mb-4 border-amber-300/50 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-white font-semibold">📦 {t('adopt.title', { n: data.count })}</p>
+          <p className="text-white font-semibold">{t('adopt.title', { n: data.count })}</p>
           <p className="text-gray-400 text-sm">{t('adopt.hint', { name: club.name })}</p>
         </div>
         <button type="button" className="btn-primary text-sm" onClick={() => { setMsg(''); setOpen(true); }}>{t('adopt.open')}</button>
       </div>
-      <Modal open={open} title={`📦 ${t('adopt.modalTitle', { name: club.name })}`} onClose={() => !busy && setOpen(false)}>
+      <Modal open={open} title={`${t('adopt.modalTitle', { name: club.name })}`} onClose={() => !busy && setOpen(false)}>
         <div className="flex flex-col gap-3 text-sm">
           <p className="text-gray-300">{t('adopt.explain')}</p>
           <div className="flex gap-3 text-xs">

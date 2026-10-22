@@ -305,7 +305,7 @@ function ProfitCard() {
     <div className="rounded-2xl border border-white/10 bg-navy-950/95 p-3.5 shadow-2xl shadow-black/60">
       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('landing.mock_profit')}</p>
       <p className="mt-0.5 text-2xl font-black tabular-nums text-lime-300">+<CountUp to={2.4} fmt={(v) => `${v.toFixed(1).replace('.', ',')}tr`} /></p>
-      <p className="mt-1 text-[11px] text-amber-200">🏆 {t('landing.mock_top')}</p>
+      <p className="mt-1 text-[11px] text-amber-200">{t('landing.mock_top')}</p>
     </div>
   );
 }
@@ -322,7 +322,7 @@ function Bracket() {
         <div key={ri} className="flex-1 flex flex-col justify-around gap-3 min-h-[200px]">
           {r.map((p, i) => (
             <div key={i} className={`rounded-lg border px-2.5 py-2 text-xs truncate ${ri === 2 ? 'border-lime-400/60 bg-lime-400/10 text-lime-200 font-bold' : 'border-white/10 bg-navy-950/70 text-gray-200'}`}>
-              {ri === 2 && '🏆 '}{p}
+              {p}
             </div>
           ))}
         </div>

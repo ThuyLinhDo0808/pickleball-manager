@@ -2,9 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---- Tokens ---------------------------------------------------------------------------
+   Colours, sizes and radii live in tailwind.config.js (navy, lime, good/bad/warn, ink,
+   text-meta/body/title, rounded-control/card/sheet). The same values as CSS variables for
+   the few places that are not Tailwind (charts, inline styles). */
+:root {
+  --c-ground: #0B1220;
+  --c-surface: #16223b;
+  --c-line: #1e2f4d;
+  --c-ink: #e6ecf5;
+  --c-muted: #b4becd;
+  --c-faint: #97a2b5;
+  --c-accent: #B6F03B;
+  --c-good: #86efac;
+  --c-bad: #fca5a5;
+  --c-warn: #fcd34d;
+  --c-chart: #B6F03B;
+  --c-chart-2: #5b7aa8;
+}
+
 body {
   background-color: #0B1220;
   color: #e6ecf5;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Numbers: right-aligned, digits of equal width. An empty cell shows a grey "—"
+   (render <span className="num" /> with no children, or use <Num value={…} />). */
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.num:empty::before,
+.dash::before {
+  content: '—';
+  color: #97a2b5;
+}
+
+/* Status pills: pale tint, text of the same hue. One per row. */
+.pill {
+  @apply inline-flex flex-none items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium;
+}
+.pill-good { @apply pill bg-good-bg text-good-fg; }
+.pill-bad { @apply pill bg-bad-bg text-bad-fg; }
+.pill-warn { @apply pill bg-warn-bg text-warn-fg; }
+.pill-neutral { @apply pill bg-navy-700 text-gray-200; }
+
+/* Dialog / form footer: secondary on the left, primary on the right; full width on phones. */
+.dialog-actions {
+  @apply mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end;
+}
+.dialog-actions > * {
+  @apply w-full sm:w-auto;
 }
 
 /* Scrollbars: thin and dark, in the app's tone (no bright white bar / arrows). */
@@ -94,12 +146,12 @@ body {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
 }
 
-/* Leaves room for the fixed bottom tab bar on phones. */
+/* Leaves room for the fixed bottom tab bar (every shell shows it below 1024px). */
 .pb-tabbar {
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .pb-tabbar {
     padding-bottom: 1.5rem;
   }
@@ -322,9 +374,22 @@ html { scroll-behavior: smooth; }
 .input { min-height: 2.5rem; font-size: 1rem; }
 @media (min-width: 640px) { .input { font-size: 0.875rem; } }
 .input[class*='!py-1'] { min-height: 2rem; }
+/* Phones: main buttons 44px tall (easy to hit with a thumb); every button and link-button
+   darkens a little while pressed, without moving anything around it. */
+@media (max-width: 639px) {
+  .btn-primary, .btn-secondary, .btn-danger { min-height: 2.75rem; }
+}
+.btn-primary, .btn-secondary, .btn-danger { transition: filter .12s ease, background-color .12s ease; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.btn-primary:active:not(:disabled), .btn-secondary:active:not(:disabled), .btn-danger:active:not(:disabled) { filter: brightness(.88); }
 .input::placeholder { color: #8d99ad; }
 /* Keyboard users see where they are. */
 a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
   outline: 2px solid #B6F03B;
   outline-offset: 2px;
 }
+
+/* Vietnamese sentence case: "Hôm nay", "Tháng 10 năm 2026" — only the first letter goes up
+   (Tailwind's capitalize would give "Hôm Nay", "Tháng 10 Năm 2026"). */
+.capitalize { text-transform: none; }
+.capitalize::first-letter { text-transform: uppercase; }
+span.capitalize:not(.block) { display: inline-block; }

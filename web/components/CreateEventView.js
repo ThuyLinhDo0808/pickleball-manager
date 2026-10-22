@@ -66,13 +66,13 @@ export default function CreateEventView({ weekly = false }) {
   return (
     <AppShell>
       <PageHeader
-        icon={weekly ? '🔁' : '🏓'}
+        icon={weekly ? 'repeat' : 'paddle'}
         title={weekly ? t('nav.createWeekly') : t('nav.createGame')}
         subtitle={isClub && club ? t(community ? 'social.forCommunity' : 'create.forClub', { name: club.name }) : t('finX.scopeXeve')}
         hint={<Hint inline text={weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')} />}
         // Phone: the tabs below already lead to the schedule.
         actionsWide
-        actions={<Link href="/events" className="btn-secondary text-sm">🗓 {isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
+        actions={<Link href="/events" className="btn-secondary text-sm">{isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
       />
       <SectionTabs group="activities" />
       {initial && (

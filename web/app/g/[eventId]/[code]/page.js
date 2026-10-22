@@ -62,7 +62,7 @@ export default function QuickBookPage() {
     const code = openErr.payload?.code;
     return shell(
       <div className="card text-center py-8">
-        <div className="text-4xl mb-2">{code === 'link_expired' ? '⌛' : '🔒'}</div>
+        <div className="text-4xl mb-2"></div>
         <p className="text-white font-semibold">{t(code === 'link_expired' ? 'quick.expiredTitle' : code === 'not_open' || code === 'deadline' ? 'quick.closedTitle' : 'public.notFound')}</p>
         {code === 'link_expired' && <p className="text-gray-400 text-sm mt-1">{t('quick.expiredHint')}</p>}
       </div>
@@ -130,7 +130,7 @@ export default function QuickBookPage() {
           <Countdown until={opened.pass_expires_at} labelKey="quick.formLeft" tone="sky" />
           <section className="card">
             <h2 className="text-white font-semibold mb-1">1. {t('quick.contactTitle')}</h2>
-            <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-xs text-sky-200 mb-3">ℹ️ {t('quick.contactNote')}</p>
+            <p className="rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-xs text-sky-200 mb-3">{t('quick.contactNote')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <label className="text-xs text-gray-400" htmlFor="q-name">{t('quick.fullName')} *</label>
@@ -174,7 +174,7 @@ export default function QuickBookPage() {
                 <div className="sm:col-span-2">
                   <label className="text-xs text-gray-400" htmlFor="q-dupr">{t('quick.duprId')}</label>
                   <input id="q-dupr" className="input font-mono placeholder:normal-case placeholder:tracking-normal placeholder:font-sans" maxLength={10} autoCapitalize="characters" autoComplete="off" placeholder={t('quick.duprIdPh')} value={contact.dupr_id} onChange={(e) => setContact({ ...contact, dupr_id: idChars(e.target.value) })} />
-                  <p className="text-gray-400 text-xs mt-1">ℹ️ {t('quick.duprIdNote')}</p>
+                  <p className="text-gray-400 text-xs mt-1">{t('quick.duprIdNote')}</p>
                 </div>
               )}
             </div>

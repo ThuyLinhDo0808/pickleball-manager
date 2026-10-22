@@ -80,7 +80,7 @@ function Payments() {
           {t('owner.to')}
           <input type="date" className="input !py-1 text-sm mt-0.5" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <button type="button" className="btn-secondary !py-1.5 text-sm ml-auto" disabled={!data?.orders.length} onClick={exportExcel}>⬇ Excel</button>
+        <button type="button" className="btn-secondary !py-1.5 text-sm ml-auto" disabled={!data?.orders.length} onClick={exportExcel}>Excel</button>
       </div>
 
       {data && (

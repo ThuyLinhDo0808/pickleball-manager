@@ -34,7 +34,7 @@ function MergeBox({ club, m, members, busy, onMerge }) {
     <div className="mt-2 rounded-lg border border-sky-400/30 bg-sky-400/5 px-3 py-2 text-sm">
       {m.matches?.length > 0 && (
         <>
-          <p className="text-sky-200">🔗 {t('requests.maybeMember')}</p>
+          <p className="text-sky-200">{t('requests.maybeMember')}</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
             {m.matches.map((x) => (
               <button key={x.id} type="button" disabled={busy} onClick={() => merge(x)} className="rounded-full border border-sky-400/50 px-3 py-1 text-xs text-sky-100 hover:bg-sky-400/10">

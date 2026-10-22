@@ -71,30 +71,30 @@ export default function EventControls({ event, onChanged }) {
           {event.kind === 'meeting'
             ? live ? t('vote.openShort') : t('vote.closedShort')
             : takingSignups
-            ? `🟢 ${t('reg.open')}`
+            ? `${t('reg.open')}`
             : live && event.allow_public_registration && deadlinePassed
-              ? `🔒 ${t('reg.closedByTime', { at: atText(event.registration_deadline) })}`
-              : `🔒 ${t('reg.closed')}`}
+              ? `${t('reg.closedByTime', { at: atText(event.registration_deadline) })}`
+              : `${t('reg.closed')}`}
         </span>
         {/* The auto-close time stays on its own: closing / opening by hand never changes it. */}
         {event.kind !== 'meeting' && live && event.registration_deadline && !deadlinePassed && (
-          <span className="text-xs text-gray-300">⏰ {t('reg.autoAt', { at: atText(event.registration_deadline) })}</span>
+          <span className="text-xs text-gray-300">{t('reg.autoAt', { at: atText(event.registration_deadline) })}</span>
         )}
         <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto sm:ml-auto [&>*]:text-center">
           {/* One button each way: close now / open again. The auto-close time is left as it is,
               unless it has already passed (then opening again removes it, after asking). */}
           {event.kind !== 'meeting' && live && takingSignups && (
             <button className="btn-secondary !py-1.5 text-sm" disabled={busy} onClick={() => patch({ allow_public_registration: false }, t('manage.closeSignupsAsk'))}>
-              🔒 {t('manage.closeSignups')}
+              {t('manage.closeSignups')}
             </button>
           )}
           {event.kind !== 'meeting' && live && !takingSignups && (
             <button className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => patch(deadlinePassed ? { registration_deadline: null, allow_public_registration: true } : { allow_public_registration: true }, deadlinePassed ? t('reg.openPastAsk', { at: atText(event.registration_deadline) }) : null)}>
-              🔓 {t('manage.reopenSignups')}
+              {t('manage.reopenSignups')}
             </button>
           )}
           {event.status !== 'cancelled' && (
-            <Link href={`/events/${event.id}/edit`} className="btn-secondary !py-1.5 text-sm">✏️ {t('manage.edit')}</Link>
+            <Link href={`/events/${event.id}/edit`} className="btn-secondary !py-1.5 text-sm">{t('manage.edit')}</Link>
           )}
           {live && (
             <button className="btn-secondary !py-1.5 text-sm text-orange-300" disabled={busy} onClick={() => patch({ status: 'cancelled' }, t('manage.cancelAsk'))}>
@@ -102,7 +102,7 @@ export default function EventControls({ event, onChanged }) {
             </button>
           )}
           <button className="rounded-lg px-3 py-1.5 text-sm border border-red-500/60 text-red-400 hover:bg-red-500/10" disabled={busy} onClick={remove}>
-            🗑 {t('common.delete')}
+            {t('common.delete')}
           </button>
         </div>
       </div>

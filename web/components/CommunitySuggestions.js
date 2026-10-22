@@ -48,7 +48,7 @@ export default function CommunitySuggestions({ club, onChanged }) {
 
   return (
     <section className="card !py-3 mb-3 border-amber-400/40" aria-labelledby="suggest-title">
-      <h2 id="suggest-title" className="text-amber-200 font-semibold text-sm">💡 {t('suggest.title')}</h2>
+      <h2 id="suggest-title" className="text-amber-200 font-semibold text-sm">{t('suggest.title')}</h2>
       <p className="text-gray-400 text-xs mt-0.5">{t('suggest.hint', { n: data.min })}</p>
       <Group list={data.up} to="fixed" title={t('suggest.up', { n: data.min })} />
       <Group list={data.down} to="guest" title={t('suggest.down', { n: data.min })} />

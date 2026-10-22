@@ -59,7 +59,7 @@ export function CancelHistoryBadge({ name, history }) {
   return (
     <>
       <button type="button" className={`text-[10px] rounded border px-1 hover:bg-white/5 ${tone}`} title={t('cancelx.badgeHint')} onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
-        ⚠ {label}
+        {label}
       </button>
       <Modal open={open} title={t('cancelx.historyTitle', { name })} onClose={() => setOpen(false)}>
         <p className="text-gray-400 text-xs mb-3">{t('cancelx.historyHint', { days: history.days })}</p>
@@ -72,7 +72,7 @@ export function CancelHistoryBadge({ name, history }) {
           ))}
         </ul>
         {history.cancels + history.no_shows > history.items.length && <p className="text-gray-500 text-xs mt-2">{t('cancelx.more', { n: history.cancels + history.no_shows - history.items.length })}</p>}
-        <p className="text-gray-400 text-xs mt-3">💡 {t('cancelx.decideHint')}</p>
+        <p className="text-gray-400 text-xs mt-3">{t('cancelx.decideHint')}</p>
       </Modal>
     </>
   );

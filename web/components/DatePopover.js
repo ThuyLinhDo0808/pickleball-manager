@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { addMonths, formatDay, monthGrid, monthTitle, todayYmd, weekdayLabels } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 // A small month calendar: inline, or behind a button as a popover.
 // `marks` = { 'YYYY-MM-DD': count } shows a dot under days that have events.
@@ -68,7 +69,7 @@ export default function DatePopover({ value, onChange, marks, placeholder = '—
   return (
     <div className={`relative ${className}`} ref={box}>
       <button type="button" className="input text-left flex items-center gap-2 whitespace-nowrap" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <span aria-hidden>📅</span>
+        <span aria-hidden><UiIcon name="calendar" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
         <span className={value ? 'text-white' : 'text-gray-500'}>{value ? formatDay(value, lang, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) : placeholder}</span>
       </button>
       {open && (

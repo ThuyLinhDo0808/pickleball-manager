@@ -9,7 +9,7 @@ import Modal from '@/components/Modal';
 import Hint from '@/components/ui/Hint';
 import VipBadge, { PLAN_TIERS } from '@/components/VipBadge';
 
-// Hạng hội viên of a plan: 🥈 Bạc · 🥇 Vàng · 💎 Kim cương (the Host picks; e.g. Bạc ≤ 10 buổi
+// Hạng hội viên of a plan: Bạc · Vàng · Kim cương (the Host picks; e.g. Bạc ≤ 10 buổi
 // for 1 month, Vàng ≤ 30 buổi for 2 months, Kim cương ≤ 50 buổi for 5 months).
 function TierPicker({ value, onChange }) {
   const { t } = useI18n();
@@ -17,7 +17,7 @@ function TierPicker({ value, onChange }) {
     <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={t('vip.tierLabel')}>
       {PLAN_TIERS.map((k) => (
         <button key={k} type="button" role="radio" aria-checked={value === k} onClick={() => onChange(k)} className={`rounded-lg border px-2 py-2 text-sm ${value === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
-          {{ silver: '🥈', gold: '🥇', diamond: '💎' }[k]} {t(`vip.tier_${k}`)}
+          {t(`vip.tier_${k}`)}
         </button>
       ))}
     </div>
@@ -144,7 +144,7 @@ export default function PlansPage() {
       {packs ? (
         <form onSubmit={create} className="card !p-5 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
           <div className="col-span-2 md:col-span-4 -mb-1">
-            <h2 className="text-white font-semibold">✨ {t('finX.newPlan')} <Hint inline text={t('plans.packLead')} /></h2>
+            <h2 className="text-white font-semibold">{t('finX.newPlan')} <Hint inline text={t('plans.packLead')} /></h2>
           </div>
           <div className="col-span-2 md:col-span-4">
             <label htmlFor="pk-name" className="text-xs text-gray-400">1. {t('plans.name')}</label>
@@ -178,7 +178,7 @@ export default function PlansPage() {
       ) : (
         <form onSubmit={create} className="card !p-5 mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
           <div className="col-span-2 md:col-span-5 -mb-1">
-            <h2 className="text-white font-semibold">✨ {t('finX.newPlan')} <Hint inline text={t('finX.newPlanHint')} /></h2>
+            <h2 className="text-white font-semibold">{t('finX.newPlan')} <Hint inline text={t('finX.newPlanHint')} /></h2>
           </div>
           <div className="col-span-2">
             <label className="text-xs text-gray-400">{t('plans.name')}</label>
@@ -216,7 +216,7 @@ export default function PlansPage() {
       {!loading && (plans || []).length === 0 && <p className="text-gray-400 text-sm">{t('plans.none')}</p>}
       {(plans || []).length > 0 && (
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white font-semibold">🎫 {t('finX.plansList', { n: (plans || []).filter((p) => p.is_active).length })}</h2>
+          <h2 className="text-white font-semibold">{t('finX.plansList', { n: (plans || []).filter((p) => p.is_active).length })}</h2>
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -242,9 +242,9 @@ export default function PlansPage() {
               <div className="text-gray-400 text-xs">{pack ? t('plans.packValid', { m: p.validity_months }) : t('finX.perPeriod', { n: months })}</div>
             </div>
             <ul className="px-5 py-3 text-sm text-gray-200 flex flex-col gap-1.5 border-t border-navy-700">
-              <li>✅ {p.sessions_included ? t('plans.sessionsN', { n: p.sessions_included }) : t('plans.unlimited')}</li>
-              {perSession != null && <li>💵 {t('finX.perSession', { v: formatVnd(perSession) })}</li>}
-              {pack ? <li>⏳ {t('plans.packValidLine', { m: p.validity_months })}</li> : <li>📆 {t('finX.perMonth', { v: formatVnd(Math.round(Number(p.price) / months)) })}</li>}
+              <li>{p.sessions_included ? t('plans.sessionsN', { n: p.sessions_included }) : t('plans.unlimited')}</li>
+              {perSession != null && <li>{t('finX.perSession', { v: formatVnd(perSession) })}</li>}
+              {pack ? <li>{t('plans.packValidLine', { m: p.validity_months })}</li> : <li>{t('finX.perMonth', { v: formatVnd(Math.round(Number(p.price) / months)) })}</li>}
             </ul>
             <div className="grid grid-cols-2 gap-2 px-5 pb-5 mt-auto">
               <button
@@ -255,7 +255,7 @@ export default function PlansPage() {
                   setEditing({ id: p.id, name: p.name, period: p.period, price: String(Number(p.price)), sessions_included: String(p.sessions_included ?? 0), validity_months: p.validity_months ? String(p.validity_months) : '', tier: p.tier || '' });
                 }}
               >
-                ✏️ {t('plans.edit')}
+                {t('plans.edit')}
               </button>
               <button type="button" className="btn-secondary text-sm" onClick={() => toggle(p)}>
                 {p.is_active ? t('plans.stop') : t('plans.resume')}

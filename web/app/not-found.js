@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Unknown address. A confirmation link built from a bad site URL (e.g. "/**/welcome")
 // still carries the result in its hash: send it on to the real welcome page.
@@ -21,7 +22,7 @@ export default function NotFound() {
   if (!lost) return <div className="min-h-screen bg-navy-950" />;
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-navy-950 px-6 text-center">
-      <div className="text-5xl" aria-hidden="true">🏓</div>
+      <div className="text-5xl" aria-hidden="true"><UiIcon name="paddle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
       <p className="text-white text-lg font-semibold">{t('notFound.title')}</p>
       <Link href="/" className="btn-primary">{t('notFound.home')}</Link>
     </div>

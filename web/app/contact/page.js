@@ -9,12 +9,13 @@ import { useI18n } from '@/context/I18nContext';
 import { useScope } from '@/lib/useScope';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Paid features asked for here; the Ban quản trị switches them on per Host.
 const ADDONS = [
-  { kind: 'finance_pro', icon: '📊' },
-  { kind: 'coach_manager', icon: '🎓' },
-  { kind: 'tournament_manager', icon: '🏟️' },
+  { kind: 'finance_pro', icon: 'chart' },
+  { kind: 'coach_manager', icon: 'user' },
+  { kind: 'tournament_manager', icon: 'court' },
 ];
 
 // Báo lỗi / Liên hệ nhà phát triển: 1) report a problem, 2) ask for a paid feature
@@ -70,21 +71,21 @@ export default function ContactPage() {
 
   return (
     <AppShell>
-      <PageHeader icon="💬" title={t('contact.title')} subtitle={t('contact.subtitle')} />
+      <PageHeader icon="chat" title={t('contact.title')} subtitle={t('contact.subtitle')} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-start">
         <section className="card">
-          <h2 className="text-white font-semibold mb-2">1. 🐞 {t('contact.part1')}</h2>
+          <h2 className="text-white font-semibold mb-2">1. {t('contact.part1')}</h2>
           <FeedbackForm />
         </section>
 
         <section id="dev" className="card">
-          <h2 className="text-white font-semibold">2. 🛠️ {t('contact.part2')}</h2>
+          <h2 className="text-white font-semibold">2. {t('contact.part2')}</h2>
           <p className="text-gray-400 text-sm mb-3">{t('contact.part2Hint')}</p>
           <ul className="flex flex-col gap-2">
             <li className="rounded-xl border border-navy-600 p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-white font-semibold">🏆 {t('contact.top10Title')}</p>
+                  <p className="text-white font-semibold">{t('contact.top10Title')}</p>
                   <p className="text-gray-400 text-sm">{t('contact.top10Ask')}</p>
                   {cur && <p className="text-sky-300 text-xs mt-1">{t(`featured.st_${cur.status}`)}</p>}
                   {!cur && featured?.reputation && (
@@ -107,7 +108,7 @@ export default function ContactPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="text-white font-semibold">
-                        {icon} {t(`contact.a_${kind}`)} <span className="ml-1 rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] font-normal text-amber-200 whitespace-nowrap">{t('contact.soon')}</span>
+                        <UiIcon name={icon} className="inline-block w-4 h-4 mr-1.5 -mt-0.5 text-gray-400" />{t(`contact.a_${kind}`)} <span className="ml-1 rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] font-normal text-amber-200 whitespace-nowrap">{t('contact.soon')}</span>
                       </p>
                       <p className="text-gray-400 text-sm">{t(`contact.q_${kind}`)}</p>
                       {st && <p className={`text-xs mt-1 ${st.tone}`}>{st.text}</p>}
@@ -126,7 +127,7 @@ export default function ContactPage() {
         </section>
       </div>
 
-      <Modal open={top10} title={`🏆 ${t('contact.top10Title')}`} onClose={() => setTop10(false)}>
+      <Modal open={top10} title={`${t('contact.top10Title')}`} onClose={() => setTop10(false)}>
         {community && club && <Top10Register club={club} data={featured} reload={reloadFeatured} />}
       </Modal>
 

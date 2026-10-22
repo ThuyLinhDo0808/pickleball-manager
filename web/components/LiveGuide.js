@@ -4,6 +4,7 @@ import Modal from '@/components/Modal';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
+import UiIcon from '@/components/ui/UiIcon';
 
 // How to score live: for whoever holds the phone at the court (Host, co-admin, referee).
 // Tabs: using the pad, then the rules of the club's sport (the other sport stays one tap away).
@@ -26,7 +27,7 @@ function Steps({ title, icon, keys, t }) {
   return (
     <section className="mb-4">
       <h3 className="text-white font-semibold mb-1.5">
-        <span aria-hidden="true" className="mr-1.5">{icon}</span>
+        <UiIcon name={icon} className="inline-block w-4 h-4 mr-1.5 -mt-0.5 text-gray-400" />
         {t(`liveGuide.${title}`)}
       </h3>
       <ol className="flex flex-col gap-1.5 text-sm text-gray-300">
@@ -112,17 +113,17 @@ function Body({ sport, scoring, t }) {
         value={tab}
         onChange={setTab}
         tabs={[
-          { key: 'use', label: t('liveGuide.tabUse'), icon: '👆' },
-          { key: sport, label: t(`liveGuide.tab_${sport}`), icon: sport === 'badminton' ? '🏸' : '🏓' },
-          { key: other, label: t(`liveGuide.tab_${other}`), icon: other === 'badminton' ? '🏸' : '🏓' },
+          { key: 'use', label: t('liveGuide.tabUse'), icon: 'move' },
+          { key: sport, label: t(`liveGuide.tab_${sport}`), icon: sport === 'badminton' ? 'shuttle' : 'paddle' },
+          { key: other, label: t(`liveGuide.tab_${other}`), icon: other === 'badminton' ? 'shuttle' : 'paddle' },
         ]}
       />
       {tab === 'use' && (
         <>
           <Steps title="startTitle" icon="▶" keys={STEPS.start} t={t} />
-          <Steps title="tapTitle" icon="👆" keys={STEPS.tap} t={t} />
+          <Steps title="tapTitle" icon="move" keys={STEPS.tap} t={t} />
           <Steps title="fixTitle" icon="↶" keys={STEPS.fix} t={t} />
-          <Steps title="endTitle" icon="💾" keys={STEPS.end} t={t} />
+          <Steps title="endTitle" icon="save" keys={STEPS.end} t={t} />
         </>
       )}
       {tab === 'pickleball' && (
@@ -132,31 +133,31 @@ function Body({ sport, scoring, t }) {
           <CallExample t={t} three={pb === 'sideout'} />
           {pb === 'sideout' && (
             <>
-              <Steps title="pbTitle" icon="🏓" keys={STEPS.sideout} t={t} />
+              <Steps title="pbTitle" icon="paddle" keys={STEPS.sideout} t={t} />
               <Example titleKey="pbExampleTitle" textKey="pbExample" t={t} />
             </>
           )}
           {pb === 'sideout_single' && (
             <>
-              <Steps title="psTitle" icon="🏓" keys={STEPS.sideout_single} t={t} />
+              <Steps title="psTitle" icon="paddle" keys={STEPS.sideout_single} t={t} />
               <Example titleKey="pbExampleTitle" textKey="psExample" t={t} />
             </>
           )}
           {pb === 'rally' && (
             <>
-              <Steps title="prTitle" icon="🏓" keys={STEPS.rally} t={t} />
+              <Steps title="prTitle" icon="paddle" keys={STEPS.rally} t={t} />
               <Example titleKey="pbExampleTitle" textKey="prExample" t={t} />
             </>
           )}
-          <Steps title="pfTitle" icon="⚙️" keys={STEPS.pbFormats} t={t} />
+          <Steps title="pfTitle" icon="settings" keys={STEPS.pbFormats} t={t} />
         </>
       )}
       {tab === 'badminton' && (
         <>
           <CourtExample t={t} />
-          <Steps title="bmTitle" icon="🏸" keys={STEPS.badminton} t={t} />
+          <Steps title="bmTitle" icon="shuttle" keys={STEPS.badminton} t={t} />
           <Example titleKey="bmExampleTitle" textKey="bmExample" t={t} />
-          <Steps title="bfTitle" icon="⚙️" keys={STEPS.bmFormats} t={t} />
+          <Steps title="bfTitle" icon="settings" keys={STEPS.bmFormats} t={t} />
         </>
       )}
     </>
@@ -192,7 +193,7 @@ export default function LiveGuide({ sport = 'pickleball', scoring = null, varian
       <section className="card !p-0 mb-4 overflow-hidden">
         <button type="button" className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span>
-            <span className="text-white font-semibold">📖 {t('liveGuide.title')}</span>
+            <span className="text-white font-semibold">{t('liveGuide.title')}</span>
             <span className="block text-gray-400 text-xs">{t('liveGuide.cardHint')}</span>
           </span>
           <span className="text-lime-300 text-sm shrink-0">{open ? t('liveGuide.hide') : t('liveGuide.show')}</span>
@@ -209,9 +210,9 @@ export default function LiveGuide({ sport = 'pickleball', scoring = null, varian
   return (
     <>
       <button type="button" className="rounded-full border border-navy-600 px-3 py-1 text-sm text-gray-200 hover:border-lime-400 hover:text-white" onClick={() => setOpen(true)}>
-        ❓ {t('liveGuide.button')}
+        {t('liveGuide.button')}
       </button>
-      <Modal open={open} title={`📖 ${t('liveGuide.title')}`} onClose={close}>
+      <Modal open={open} title={`${t('liveGuide.title')}`} onClose={close}>
         <Body sport={sport} scoring={scoring} t={t} />
         <button type="button" className="btn-primary w-full mt-2" onClick={close}>{t('liveGuide.gotIt')}</button>
       </Modal>

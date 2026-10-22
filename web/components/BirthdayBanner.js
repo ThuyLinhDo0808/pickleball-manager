@@ -4,10 +4,11 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { todayYmd } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 const HIDE_KEY = 'pickleball_bday_hidden';
 
-// "🎂 Today is X's birthday · in 3 days: Y" — members of the current club whose
+// "Today is X's birthday · in 3 days: Y" — members of the current club whose
 // birthday is today or within the next 3 days. Can be hidden for the rest of the day.
 export default function BirthdayBanner({ clubId }) {
   const { t } = useI18n();
@@ -51,7 +52,7 @@ export default function BirthdayBanner({ clubId }) {
 
   return (
     <div role="status" className="mb-4 rounded-xl border border-pink-400/50 bg-pink-500/10 px-4 py-3 flex items-start gap-3">
-      <span className="text-2xl leading-none" aria-hidden="true">🎂</span>
+      <span className="text-2xl leading-none" aria-hidden="true"><UiIcon name="cake" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
       <div className="flex-1 min-w-0 text-sm">
         {todays.length > 0 && (
           <p className="text-pink-200">
@@ -62,7 +63,7 @@ export default function BirthdayBanner({ clubId }) {
                 <b className="text-white">{m.full_name}</b> ({t('bday.turns', { age: m.age })})
               </span>
             ))}
-            {' '}🎉
+            {' '}
           </p>
         )}
         {soon.length > 0 && (

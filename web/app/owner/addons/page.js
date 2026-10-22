@@ -37,7 +37,7 @@ export default function OwnerAddons() {
 
   return (
     <OwnerShell>
-      <h1 className="text-white text-2xl font-bold mb-1">🧩 {t('addons.title')}</h1>
+      <h1 className="text-white text-2xl font-bold mb-1">{t('addons.title')}</h1>
       <p className="text-gray-400 text-sm mb-4">{t('addons.sub')}</p>
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
 
@@ -59,8 +59,8 @@ export default function OwnerAddons() {
                       <Link href={`/owner/hosts/${r.host_id}`} className="text-sky-300 hover:text-lime-300">{r.host_email || '—'}</Link>
                       {r.club_name ? ` · ${r.club_name}` : ''} · {fmtTime(r.created_at)}
                     </p>
-                    {r.note && <p className="text-gray-200 text-sm mt-1 whitespace-pre-line">💬 {r.note}</p>}
-                    {r.owner_note && <p className="text-gray-400 text-xs mt-1">📝 {r.owner_note}</p>}
+                    {r.note && <p className="text-gray-200 text-sm mt-1 whitespace-pre-line">{r.note}</p>}
+                    {r.owner_note && <p className="text-gray-400 text-xs mt-1">{r.owner_note}</p>}
                   </div>
                   {r.status === 'open' && (
                     <div className="flex flex-wrap gap-2">
@@ -75,7 +75,7 @@ export default function OwnerAddons() {
         </section>
 
         <section className="card !p-4">
-          <h2 className="text-white font-semibold mb-1">✅ {t('addons.onTitle')}</h2>
+          <h2 className="text-white font-semibold mb-1">{t('addons.onTitle')}</h2>
           <p className="text-gray-400 text-xs mb-3">{t('addons.onHint')}</p>
           {data && data.hosts.length === 0 && <p className="text-gray-500 text-sm">{t('addons.noHosts')}</p>}
           <ul className="flex flex-col gap-4">

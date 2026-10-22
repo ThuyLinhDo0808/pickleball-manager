@@ -12,6 +12,7 @@ import { dmy } from '@/lib/memberDates';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 const ROLES = ['coordinator', 'referee', 'co_admin', 'finance', 'operator'];
 // Roles given from now on (Trọng tài and Vận hành are no longer offered; old grants keep showing).
@@ -23,11 +24,11 @@ const PLAN_ROLES = ['finance', 'operator'];
 const PERM_GROUPS = ['members', 'events', 'matches', 'rankings', 'inventory', 'finance_view', 'finance_edit'];
 const ROLE_GROUPS = { finance: ['finance_view', 'finance_edit'], operator: ['members', 'events', 'matches', 'rankings', 'inventory'] };
 const ROLE_STYLE = {
-  coordinator: { icon: '📋', chip: 'border-sky-400/50 text-sky-300 bg-sky-400/10' },
-  referee: { icon: '🏁', chip: 'border-lime-400/50 text-lime-300 bg-lime-400/10' },
-  co_admin: { icon: '🛡️', chip: 'border-amber-400/60 text-amber-300 bg-amber-400/10' },
-  finance: { icon: '💰', chip: 'border-emerald-400/50 text-emerald-300 bg-emerald-400/10' },
-  operator: { icon: '🧑‍💼', chip: 'border-violet-400/50 text-violet-300 bg-violet-400/10' },
+  coordinator: { icon: 'clipboard', chip: 'border-sky-400/50 text-sky-300 bg-sky-400/10' },
+  referee: { icon: 'flag', chip: 'border-lime-400/50 text-lime-300 bg-lime-400/10' },
+  co_admin: { icon: 'shield', chip: 'border-amber-400/60 text-amber-300 bg-amber-400/10' },
+  finance: { icon: 'money', chip: 'border-emerald-400/50 text-emerald-300 bg-emerald-400/10' },
+  operator: { icon: 'user', chip: 'border-violet-400/50 text-violet-300 bg-violet-400/10' },
 };
 // What each role can do (rows) — shown as a small table.
 const CAN = [
@@ -169,7 +170,7 @@ export default function StaffAccessPage() {
           {shown.map((r) => (
             <div key={r} className="rounded-xl border border-navy-700 bg-navy-900 px-3 py-2 text-center min-w-[5.5rem]">
               <div className="text-white font-bold tabular-nums">{counts[r]}</div>
-              <div className="text-gray-400 text-[11px]">{ROLE_STYLE[r].icon} {t(`staff.${r}`)}</div>
+              <div className="text-gray-400 text-xs">{t(`staff.${r}`)}</div>
             </div>
           ))}
         </div>
@@ -178,7 +179,7 @@ export default function StaffAccessPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_22rem] mb-6">
         {/* Grant form */}
         <form onSubmit={grant} className="card !p-5 flex flex-col gap-5">
-          <h2 className="text-white font-semibold">➕ {t('staffX.newGrant')}</h2>
+          <h2 className="text-white font-semibold">{t('staffX.newGrant')}</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label htmlFor="sg-email" className="text-xs text-gray-400">{t('staff.email')}</label>
@@ -202,7 +203,7 @@ export default function StaffAccessPage() {
                   onClick={() => pickRole(r)}
                   className={`rounded-xl border px-3 py-2.5 text-left transition disabled:opacity-40 ${form.role === r ? 'border-lime-400 bg-lime-400/10' : 'border-navy-600 hover:border-navy-500'}`}
                 >
-                  <div className={`text-sm font-semibold ${form.role === r ? 'text-lime-300' : 'text-white'}`}>{ROLE_STYLE[r].icon} {t(`staff.${r}`)}{PLAN_ROLES.includes(r) && rolesLocked && <span className="ml-1 text-[11px]" title={t('plan.locked')}>💎</span>}</div>
+                  <div className={`text-sm font-semibold ${form.role === r ? 'text-lime-300' : 'text-white'}`}><UiIcon name={ROLE_STYLE[r].icon} className="inline-block w-4 h-4 mr-1.5 -mt-0.5 text-gray-400" />{t(`staff.${r}`)}{PLAN_ROLES.includes(r) && rolesLocked && <span className="ml-1 text-[11px]" title={t('plan.locked')}><UiIcon name="gem" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}</div>
                   <div className="text-gray-400 text-xs mt-0.5">{t(`staff.${r}Desc`)}</div>
                 </button>
               ))}
@@ -210,7 +211,7 @@ export default function StaffAccessPage() {
           </fieldset>
 
           <p className="rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-200">
-            {target ? <>📍 {t('staffX.forClub', { name: target.name })}</> : <span className="text-amber-200">{t('staffX.pickClubMenu')}</span>}
+            {target ? <>{t('staffX.forClub', { name: target.name })}</> : <span className="text-amber-200">{t('staffX.pickClubMenu')}</span>}
             {isCo && <span className="block text-sky-300 text-xs mt-1">{t('coadmin.grantNote')}</span>}
           </p>
 
@@ -238,13 +239,13 @@ export default function StaffAccessPage() {
 
         {/* What each role can do */}
         <aside className="card !p-5 h-fit">
-          <h2 className="text-white font-semibold mb-3">🔐 {t('staffX.matrix')}</h2>
+          <h2 className="text-white font-semibold mb-3">{t('staffX.matrix')}</h2>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-xs">
                 <th className="text-left font-normal pb-2" />
                 {GRANT_ROLES.map((r) => (
-                  <th key={r} className="font-normal pb-2 text-center" title={t(`staff.${r}`)}>{ROLE_STYLE[r].icon}</th>
+                  <th key={r} className="font-normal pb-2 text-center" title={t(`staff.${r}`)}><UiIcon name={ROLE_STYLE[r].icon} className="w-4 h-4 mx-auto text-gray-400" /><span className="sr-only">{t(`staff.${r}`)}</span></th>
                 ))}
               </tr>
             </thead>
@@ -290,14 +291,14 @@ export default function StaffAccessPage() {
                   {g.full_name && <div className="text-gray-400 text-xs break-all">{g.email}</div>}
                 </div>
                 <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 shrink-0 ${ROLE_STYLE[g.role]?.chip}`}>
-                  {ROLE_STYLE[g.role]?.icon} {t(`staff.${g.role}`)}
+                  {t(`staff.${g.role}`)}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-lg bg-navy-900 px-2 py-1 text-gray-200">📍 {scopeLabel(g)}</span>
+                <span className="rounded-lg bg-navy-900 px-2 py-1 text-gray-200">{scopeLabel(g)}</span>
                 {PLAN_ROLES.includes(g.role) && g.permissions?.length > 0 && (
                   <span className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-2 py-1 text-amber-200" title={g.permissions.map((x) => t(`perms.g_${x}`)).join(', ')}>
-                    🛠 {t('perms.custom', { n: g.permissions.length })}
+                    {t('perms.custom', { n: g.permissions.length })}
                   </span>
                 )}
                 <span className={`rounded-lg border px-2 py-1 ${stTone}`}>
@@ -314,11 +315,11 @@ export default function StaffAccessPage() {
                   ))}
                 </select>
                 <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => setEditing({ id: g.id, email: g.email, valid_from: g.valid_from || '', valid_until: g.valid_until || '' })}>
-                  📅 {t('staffX.editDates')}
+                  {t('staffX.editDates')}
                 </button>
                 {PLAN_ROLES.includes(g.role) && (
                   <button type="button" className="btn-secondary text-sm !py-1.5" onClick={() => openPerms(g)}>
-                    🛠 {t('perms.button')}{customLocked && <span className="ml-1 text-[11px]">💎</span>}
+                    {t('perms.button')}{customLocked && <span className="ml-1 text-[11px]"><UiIcon name="gem" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
                   </button>
                 )}
                 <button type="button" className="text-red-400 text-sm px-2 ml-auto hover:text-red-300" onClick={() => revoke(g)}>{t('staff.remove')}</button>
@@ -328,7 +329,7 @@ export default function StaffAccessPage() {
         })}
       </div>
 
-      <Modal open={!!perms} title={`🛠 ${t('perms.title')}`} onClose={() => setPerms(null)}>
+      <Modal open={!!perms} title={`${t('perms.title')}`} onClose={() => setPerms(null)}>
         {perms && (
           <div className="flex flex-col gap-3">
             <p className="text-gray-300 text-sm">{perms.email} · {t(`staff.${perms.role}`)}</p>

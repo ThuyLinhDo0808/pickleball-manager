@@ -62,7 +62,7 @@ export default function ConsentGate() {
   }
 
   return (
-    <Modal open title={`📄 ${t('legal.consentTitle')}`} onClose={() => {}}>
+    <Modal open title={`${t('legal.consentTitle')}`} onClose={() => {}}>
       {need.updated && <p className="text-amber-200 text-sm mb-2">{t('legal.consentUpdated')}</p>}
       <p className="text-gray-300 text-sm">{t('legal.consentBody', { version: LEGAL_VERSION })}</p>
       <div className="flex flex-wrap gap-3 text-sm mt-3">

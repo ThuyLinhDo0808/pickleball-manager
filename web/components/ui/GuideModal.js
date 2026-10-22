@@ -24,7 +24,7 @@ export default function GuideModal({ open, title, steps = [], onClose, footer = 
           ))}
         </div>
       )}
-      {steps.length > 1 && <p className="text-xs font-bold text-lime-300">{t('guide.stepOf', { n: i + 1, total: steps.length })}</p>}
+      {steps.length > 1 && <p className="text-sm text-gray-400 tabular-nums">{t('guide.stepOf', { n: i + 1, total: steps.length })}</p>}
       {step.title && <p className="text-white font-semibold mt-1">{step.title}</p>}
       {step.image && !missing[step.image] && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -32,16 +32,16 @@ export default function GuideModal({ open, title, steps = [], onClose, footer = 
       )}
       {step.body && <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-line mt-2">{step.body}</p>}
       {last && footer}
-      <div className="grid grid-cols-2 gap-2 mt-5">
+      <div className="dialog-actions">
         {i > 0 ? (
-          <button type="button" className="btn-secondary" onClick={() => setI(i - 1)}>← {t('guide.prev')}</button>
+          <button type="button" className="btn-secondary" onClick={() => setI(i - 1)}>{t('guide.prev')}</button>
         ) : (
           <button type="button" className="btn-secondary" onClick={onClose}>{t('guide.close')}</button>
         )}
         {last ? (
           <button type="button" className="btn-primary" onClick={onClose}>{t('ui.gotIt')}</button>
         ) : (
-          <button type="button" className="btn-primary" onClick={() => setI(i + 1)}>{t('guide.next')} →</button>
+          <button type="button" className="btn-primary" onClick={() => setI(i + 1)}>{t('guide.next')}</button>
         )}
       </div>
     </Modal>

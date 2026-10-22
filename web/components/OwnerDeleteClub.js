@@ -49,7 +49,7 @@ export default function DeleteClub({ club, onDone }) {
       </label>
       <div className="flex items-center justify-between gap-2">
         <span className="text-red-300">{msg}</span>
-        <button className="rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-semibold px-3 py-1.5" disabled={busy || !ok}>🗑 {t('clubs.deleteForever')}</button>
+        <button className="rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-semibold px-3 py-1.5" disabled={busy || !ok}>{t('clubs.deleteForever')}</button>
       </div>
     </form>
   );

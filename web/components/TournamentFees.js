@@ -32,7 +32,7 @@ export default function TournamentFees({ tour }) {
   return (
     <section className="card mb-4">
       <button type="button" className="w-full flex flex-wrap items-center gap-x-4 gap-y-1 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="text-white font-semibold">💰 {t('tfee.title')}</span>
+        <span className="text-white font-semibold">{t('tfee.title')}</span>
         <span className="text-gray-300 text-sm">{t('tfee.perPlayer', { fee: formatVnd(data.entry_fee) })}</span>
         <span className="text-sm">
           <span className="text-lime-400 font-semibold">{formatVnd(data.collected)}</span>
