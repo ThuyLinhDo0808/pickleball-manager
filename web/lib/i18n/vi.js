@@ -3825,6 +3825,8 @@ export const vi = {
     fullName: "Họ và tên",
     addMemberHint: "Người này có chỗ trong kèo và được lưu vào danh sách thành viên (khách) — lần sau chọn lại nhanh ở mục bên dưới, DUPR đi theo người đó.",
     addMemberBtn: "Thêm vào kèo",
+    pickSlot: "Chọn khung giờ / sân",
+    pickSlotHint: "Người được thêm (cả thành viên mới và người chọn từ cộng đồng) vào khung giờ này, tính phí của khung giờ đó. Khung giờ hết chỗ thì vào danh sách chờ.",
     optional: "không bắt buộc",
   },
   biz: {

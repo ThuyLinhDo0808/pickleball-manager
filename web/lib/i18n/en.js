@@ -3825,6 +3825,8 @@ export const en = {
     fullName: "Full name",
     addMemberHint: "They get a place in this kèo and are saved to the member list (as a guest) — pick them below next time; their DUPR stays with them.",
     addMemberBtn: "Add to kèo",
+    pickSlot: "Pick the time slot / court",
+    pickSlotHint: "Everyone you add (new members and people picked from the community) goes into this slot at its fee. A full slot puts them on the waitlist.",
     optional: "optional",
   },
   biz: {

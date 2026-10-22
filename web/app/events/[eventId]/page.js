@@ -89,6 +89,8 @@ export default function EventDetailPage() {
   const [formError, setFormError] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  // Kèo with 2+ time groups: which group the people added by hand go into.
+  const [addGroup, setAddGroup] = useState(null);
   const [flash, setFlash] = useState('');
   const [showMatch, setShowMatch] = useState(false); // false | true | { slots, extra } (challenge)
   const [matchTab, setMatchTab] = useState('enter'); // Nhập điểm / Kết quả / Bảng xếp hạng
@@ -100,7 +102,7 @@ export default function EventDetailPage() {
     e.preventDefault();
     setFormError('');
     try {
-      await api.post(`/api/events/${eventId}/participants`, { ...form, full_name: form.full_name.trim(), as_member: true });
+      await api.post(`/api/events/${eventId}/participants`, { ...form, full_name: form.full_name.trim(), as_member: true, ...(pickGroup ? { group_id: pickGroup } : {}) });
     } catch (err) {
       setFormError(err.message);
       return;
@@ -220,7 +222,7 @@ export default function EventDetailPage() {
   async function importFromClub() {
     if (!selectedIds.length) return;
     try {
-      await api.post(`/api/events/${eventId}/participants/import`, { club_member_ids: selectedIds });
+      await api.post(`/api/events/${eventId}/participants/import`, { club_member_ids: selectedIds, ...(pickGroup ? { group_id: pickGroup } : {}) });
     } catch (err) {
       setFlash(err.payload?.code === 'already_on_event' ? t('events.alreadyOnEvent') : err.message);
     }
@@ -239,6 +241,12 @@ export default function EventDetailPage() {
   if (!event) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
 
   const main = (participants || []).filter((p) => ['registered', 'checked_in', 'no_show'].includes(p.status));
+  // Time groups to add into ("Sân 3 · 17:00–20:00 · còn 2/8 chỗ"); default: the first with room.
+  const groupChoices = (event?.groups || []).map((g, i) => {
+    const taken = (participants || []).filter((p) => p.group_id === g.id && ['registered', 'checked_in', 'no_show', 'pending'].includes(p.status)).length;
+    return { id: g.id, slots: g.slots, left: Math.max((g.slots || 0) - taken, 0), title: `${t('egroups.courtN', { n: g.courts || i + 1 })}${g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''} · ${g.start_time}–${g.end_time}` };
+  });
+  const pickGroup = groupChoices.length >= 2 ? (groupChoices.some((g) => g.id === addGroup) ? addGroup : (groupChoices.find((g) => g.left > 0) || groupChoices[0]).id) : null;
   // Members already on this kèo (any list but cancelled): not offered again in "Import from club".
   const onEvent = new Set((participants || []).filter((p) => p.status !== 'cancelled').flatMap((p) => [p.source_club_member_id, p.guest_member_id, p.card?.member_id]).filter(Boolean));
   const pending = (participants || []).filter((p) => p.status === 'pending');
@@ -356,6 +364,29 @@ export default function EventDetailPage() {
       {tab === 'participants' && (
         <>
           <Modal open={showImport} title={t('ux.addPlayer')} onClose={() => setShowImport(false)}>
+            {groupChoices.length >= 2 && (
+              <fieldset className="mb-4">
+                <legend className="text-white font-semibold mb-1">{t('ux.pickSlot')}</legend>
+                <p className="text-gray-400 text-xs mb-2">{t('ux.pickSlotHint')}</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t('ux.pickSlot')}>
+                  {groupChoices.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={pickGroup === g.id}
+                      onClick={() => setAddGroup(g.id)}
+                      className={`min-h-[2.75rem] rounded-lg border px-3 py-2 text-left text-sm transition-colors ${pickGroup === g.id ? 'border-lime-400 bg-lime-400/15' : 'border-navy-600 hover:border-navy-500'}`}
+                    >
+                      <span className={`block font-semibold tabular-nums ${pickGroup === g.id ? 'text-lime-200' : 'text-white'}`}>{g.title}</span>
+                      <span className={`block text-xs tabular-nums ${g.left > 0 ? 'text-gray-400' : 'text-amber-300'}`}>
+                        {g.left > 0 ? t('egroups.left', { n: g.left, total: g.slots }) : t('egroups.full')}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <p className="text-white font-semibold mb-1">{t('ux.addByHand')}</p>
             <p className="text-gray-400 text-xs mb-3">{t('ux.addMemberHint')}</p>
             <form onSubmit={addParticipant} className="flex flex-col gap-3">
