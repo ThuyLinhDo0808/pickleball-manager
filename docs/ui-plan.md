@@ -264,8 +264,8 @@ Thứ tự được chọn theo nguyên tắc:
 
 | Đợt | Trạng thái | Ghi chú |
 | --- | --- | --- |
-| 0 – Chụp ảnh hiện trạng | chưa làm | Cần chạy `npm run dev` và tài khoản thử (chủ CLB, người chơi) |
-| 1 – Nền tảng dùng chung | chưa làm | |
+| 0 – Chụp ảnh hiện trạng | bỏ qua | Người dùng chọn bỏ; các đợt sau không có ảnh trước/sau |
+| 1 – Nền tảng dùng chung | xong | Token màu `good/bad/warn/ink`, cỡ chữ `meta/body/title`, bo góc `control/card/sheet` (tailwind + biến CSS `--c-*`); lớp `.num`, `.dash`, `.pill-*`, `.dialog-actions`; `Modal` có `footer`, nút × 44px; `EmptyState`, `LoadingBlock`, `ErrorBlock`, `Num`; 45 biểu tượng mới trong `UiIcon`; Plus Jakarta Sans cho toàn app |
 | 2 – Khung chung / menu | chưa làm | |
 | 3 – Bỏ emoji làm biểu tượng | chưa làm | |
 | 4 – Bảng thành danh sách, bỏ cắt chữ | chưa làm | |

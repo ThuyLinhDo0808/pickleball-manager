@@ -87,7 +87,7 @@ Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **tra
 - **Con trỏ chuột:** có vòng tròn mảnh đi theo, phóng to khi rê lên nút / liên kết (chỉ máy dùng chuột).
 - Số liệu minh hoạ tự đếm, cột biểu đồ và thanh chỗ trống mọc lên, tỷ số tự chạy, đường điểm DUPR tự vẽ — khi cảnh đó hiện ra.
 - **Điện thoại / màn hình thấp** (rộng dưới 768px hoặc cao dưới 600px): 6 cảnh xếp dọc, cuộn bình thường; mỗi cảnh vẫn chạy hiệu ứng xuất hiện khi cuộn tới và sân 3D phía sau đổi góc theo cảnh đang xem.
-- **Font chữ:** trang giới thiệu và trang đăng nhập / đăng ký dùng font **Plus Jakarta Sans** (nét hiện đại, có bộ chữ tiếng Việt), tải kèm web (không gọi Google Fonts). Tiêu đề lớn có đủ chỗ cho dấu và phần chân chữ (g, p, y, ệ) khi chữ trồi lên.
+- **Font chữ:** toàn bộ web (trang giới thiệu, đăng nhập và mọi trang trong app) dùng một font **Plus Jakarta Sans** (nét hiện đại, có bộ chữ tiếng Việt), tải kèm web (không gọi Google Fonts). Tiêu đề lớn có đủ chỗ cho dấu và phần chân chữ (g, p, y, ệ) khi chữ trồi lên.
 - Máy bật chế độ *giảm chuyển động* (prefers-reduced-motion) thì tắt hiệu ứng: không màn hình đếm, không con trỏ riêng, chuyển cảnh tức thì. Mọi hình minh hoạ vẽ bằng giao diện, không dùng ảnh ngoài.
 - **Trang đăng nhập / đăng ký** (`/sign-in`) cùng kiểu: chung sân 3D phía sau, tiêu đề lớn bên trái, khung form bên phải. Chi tiết ở [8.1](#81-đăng-nhập-đăng-ký-quên-mật-khẩu-sign-in).
 - **Chuyển trang:** bấm *Đăng nhập / Đăng ký* trên trang giới thiệu (hoặc *← Về trang giới thiệu* / logo trên trang đăng nhập) thì một tấm rèm kéo lên từ dưới che màn hình rồi mở ra ở trang mới.
@@ -1256,6 +1256,13 @@ Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với
 - **Nút thao tác chính nằm bên phải**: các nút ở đầu trang (vd *Tạo kèo lẻ · Tạo lịch cố định · Thành viên* ở Tổng quan cộng đồng / CLB) nằm góc phải cạnh tiêu đề; trên điện thoại là một hàng 3 nút bằng nhau, căn phải.
 - **Lời dễ hiểu**: *slot* → **chỗ**; *check-in* → **điểm danh** (vé: **Vé vào sân**); trạng thái đăng ký ghi đúng thứ tự: **Chờ kiểm tra thông tin** (Host xem thông tin người chơi trước) → **Chờ chuyển khoản** (đã có chỗ, người chơi chuyển tiền) → ô số liệu **Chờ xác nhận tiền** (đã gửi ảnh, Host xác nhận).
 
+### 8.11. Hệ thống giao diện chung (rà soát UI theo `docs/ui-plan.md`)
+- **Một font cho cả web**: Plus Jakarta Sans (có dấu tiếng Việt), tải kèm web, không gọi Google Fonts.
+- **Màu trạng thái thống nhất**: ba cặp màu *tốt* (xanh lá), *xấu* (đỏ), *cần chú ý* (hổ phách) — nền nhạt, chữ cùng màu; màu xanh chanh chỉ cho nút chính và số liệu quan trọng.
+- **Số liệu**: số căn phải, chữ số đều nhau; ô trống hiện **—** màu xám (số 0 thật vẫn ghi 0).
+- **Trạng thái trống / đang tải / lỗi** có khối dùng chung: khung nét đứt với một câu giải thích và nút bước tiếp theo; thanh xám đúng chỗ dữ liệu sẽ hiện (không nhấp nháy); lỗi hiện ngay trong khối bị lỗi kèm nút **Thử lại**.
+- **Hộp thoại**: nút phụ bên trái, nút chính bên phải (trên điện thoại xếp dọc, nút chính ở trên); nút đóng **×** đủ lớn để bấm (44px).
+
 ### 8.y. Sau buổi chơi: hết vé, sang đánh giá
 - Khi kèo **qua giờ kết thúc**, kèo đó rời khỏi *Lịch sắp tới của tôi* (kể cả kèo trong hôm nay) và vé QR không còn hiện ở trang kèo / đơn đặt nhanh.
 - **Đánh giá buổi chơi** mở cho người đã điểm danh **và người còn trong danh sách chính khi kèo kết thúc** (Host không điểm danh vẫn được đánh giá); người vắng mặt (*không báo*) hoặc đã huỷ thì không. Trang chủ người chơi hiện thẻ *⭐ Đánh giá buổi chơi*, trang kèo hiện khung đánh giá thay cho vé.
@@ -1649,7 +1656,7 @@ pickleball-manager/
     │   └── join/[token]/  # trang tham gia CLB
     ├── components/         # AppShell (menu), EventCalendar, DatePopover, QrScanner, QrCheckinPanel,
     │   │                   # PlayerQrCard, NotifySettings, MatchForm, FinanceTrend, ...
-    │   └── ui/             # PageHeader, SectionTabs, StatTile, KpiRow, Segmented, UnderlineTabs (khung giao diện dùng chung)
+    │   └── ui/             # PageHeader, SectionTabs, StatTile, KpiRow, Segmented, UnderlineTabs, UiIcon, EmptyState, LoadingBlock, ErrorBlock, Num (khung giao diện dùng chung)
     ├── context/            # Auth, I18n, Club, Workspace
     └── lib/                # api.js, i18n/ (vi, en), dates, exportExcel, finance, format, ...
 ```

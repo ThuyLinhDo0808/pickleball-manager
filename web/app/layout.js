@@ -1,3 +1,9 @@
+// One typeface for the whole app, self-hosted (the CSP allows only our own fonts); it has
+// the Vietnamese marks.
+import '@fontsource/plus-jakarta-sans/400.css';
+import '@fontsource/plus-jakarta-sans/500.css';
+import '@fontsource/plus-jakarta-sans/600.css';
+import '@fontsource/plus-jakarta-sans/700.css';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { I18nProvider } from '@/context/I18nContext';

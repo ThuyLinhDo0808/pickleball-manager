@@ -3932,6 +3932,10 @@ export const en = {
     close: "Close",
   },
   ui: {
+    loading: "Loading…",
+    loadFailed: "Couldn't load the data.",
+    retry: "Retry",
+    nothingYet: "Nothing here yet.",
     helpTitle: "What this means",
     gotIt: "Got it",
     showHelp: "What is this?",

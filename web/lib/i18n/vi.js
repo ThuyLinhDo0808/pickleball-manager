@@ -3932,6 +3932,10 @@ export const vi = {
     close: "Đóng",
   },
   ui: {
+    loading: "Đang tải…",
+    loadFailed: "Không tải được dữ liệu.",
+    retry: "Thử lại",
+    nothingYet: "Chưa có gì ở đây.",
     helpTitle: "Giải thích",
     gotIt: "Đã hiểu",
     showHelp: "Xem giải thích",
