@@ -122,7 +122,7 @@ export default function StaffEventsPage() {
           <h2 className="text-white font-semibold mb-2">{t('staffX.today')}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {todays.map((e) => (
-              <div key={e.id} className="rounded-2xl border border-lime-400/40 bg-gradient-to-br from-navy-800 to-navy-900 p-4">
+              <div key={e.id} className="rounded-2xl border border-lime-400/40 bg-navy-800 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-white text-lg font-bold break-words">{e.title}</div>

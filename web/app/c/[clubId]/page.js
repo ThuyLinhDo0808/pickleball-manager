@@ -97,7 +97,7 @@ export default function MemberClubPage() {
       <Link href="/home" className="text-gray-400 text-sm hover:text-white inline-block mb-3">← {t('hub.navHome')}</Link>
 
       <section className="card !p-0 overflow-hidden mb-4">
-        <div className="h-16 bg-gradient-to-r from-navy-700 via-navy-800 to-navy-900" />
+        <div className="h-16 bg-navy-800 " />
         <div className="px-4 pb-4 -mt-8 flex items-end gap-3">
           <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={72} ring="ring-4 ring-navy-800" />
           <div className="min-w-0 flex-1 pb-1">

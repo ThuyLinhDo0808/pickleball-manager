@@ -99,8 +99,7 @@ export default function AccountPage() {
   return (
     <AppShell>
       {/* Profile header */}
-      <div className="relative overflow-hidden rounded-xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-4 mb-3">
-        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-lime-400/10 blur-2xl" aria-hidden="true" />
+      <div className="relative overflow-hidden rounded-xl border border-navy-700 bg-navy-800 p-4 mb-3">
         <div className="relative flex flex-wrap items-center gap-3">
           <span className="h-12 w-12 shrink-0 rounded-xl bg-lime-400 text-navy-950 text-2xl font-bold flex items-center justify-center">
             {(name || '?').slice(0, 1).toUpperCase()}

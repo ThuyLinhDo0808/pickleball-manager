@@ -107,7 +107,7 @@ export default function StaffEventPage() {
   return (
     <AppShell>
       <Link href="/staff" className="text-gray-400 text-sm hover:text-white">{t('staffView.back')}</Link>
-      <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-4 sm:p-5 mt-2 mb-4">
+      <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-navy-800 p-4 sm:p-5 mt-2 mb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-white text-2xl font-bold break-words">{ev.title}</h1>

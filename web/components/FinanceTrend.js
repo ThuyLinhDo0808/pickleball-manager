@@ -4,8 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 import { formatVnd } from '@/lib/format';
 import { categoryLabel, EXPENSE_COLOR, INCOME_COLOR } from '@/lib/finance';
 
-const GRID = '#1e2f4d';
-const INK_MUTED = '#9ca3af';
+import { GRID, TICK } from '@/lib/chartTheme';
 const monthLabel = (ym) => `${ym.slice(5, 7)}/${ym.slice(0, 4)}`;
 const kVnd = (v) => (Math.abs(v) >= 1e6 ? `${Math.round(v / 1e5) / 10}tr` : `${Math.round(v / 1000)}k`);
 
@@ -19,8 +18,8 @@ export default function FinanceTrend({ fin, compact = false }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={fin.months} margin={{ top: 8, right: 4, bottom: 0, left: -8 }} barGap={2}>
             <CartesianGrid vertical={false} stroke={GRID} strokeWidth={1} />
-            <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={kVnd} tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} width={48} />
+            <XAxis dataKey="month" tickFormatter={monthLabel} tick={TICK} minTickGap={16} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={kVnd} tick={TICK} axisLine={false} tickLine={false} width={48} />
             <Tooltip
               cursor={{ fill: 'rgba(255,255,255,0.04)' }}
               content={({ active, payload }) =>

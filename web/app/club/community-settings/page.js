@@ -261,7 +261,7 @@ export default function CommunitySettingsPage() {
         </Card>
 
         <div className="h-2" aria-hidden="true" />
-        <div className="sticky bottom-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-navy-600 bg-navy-900/95 px-4 py-3 backdrop-blur">
+        <div className="sticky bottom-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-navy-600 bg-navy-900/95 px-4 py-3">
           <button type="button" className="btn-primary" onClick={save}>{busy ? t('common.loading') : t('cpanel.save')}</button>
           <Link href="/club/members" className="text-sm text-gray-300 underline">{t('cpanel.toMembers')}</Link>
           {msg && <span className={`text-sm ${msg.ok ? 'text-lime-300' : 'text-red-300'}`} role="status">{msg.ok ? '✓ ' : ''}{msg.text}</span>}

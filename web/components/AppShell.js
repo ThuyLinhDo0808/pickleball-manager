@@ -572,7 +572,7 @@ export default function AppShell({ children, back }) {
       </aside>
 
       {/* Mobile top bar */}
-      <header className="lg:hidden sticky top-0 z-30 bg-navy-900/95 backdrop-blur border-b border-navy-700 pt-safe">
+      <header className="lg:hidden sticky top-0 z-30 bg-navy-900 border-b border-navy-700 pt-safe">
         <div className="flex items-center gap-3 px-4 h-14">
           <Link href="/home" aria-label={t('hub.backHome')} className="shrink-0 w-11 h-11 flex items-center justify-center rounded-lg text-lime-400 bg-navy-800">
             <Icon name="dashboard" className="w-5 h-5" />
@@ -710,7 +710,7 @@ export default function AppShell({ children, back }) {
       )}
 
       {/* Mobile bottom tab bar */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900/95 backdrop-blur border-t border-navy-700 pb-safe">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900 border-t border-navy-700 pb-safe">
         <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0, 1fr))` }}>
           {tabs.map((item) => {
             const href = item.href;

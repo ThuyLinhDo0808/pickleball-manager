@@ -126,7 +126,7 @@ export function ClubImagesPicker({ avatar, cover, onAvatar, onCover, name = '' }
           // eslint-disable-next-line @next/next/no-img-element
           <img src={cover} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-navy-800 via-navy-900 to-lime-900/30" />
+          <div className="h-full w-full bg-navy-800 " />
         )}
         <div className="absolute bottom-2 left-3 flex items-end gap-3">
           <span className="h-16 w-16 rounded-2xl border-2 border-navy-950 bg-navy-700 overflow-hidden flex items-center justify-center text-lime-300 text-xl font-black">

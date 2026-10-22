@@ -104,14 +104,14 @@ export default function ScorerPage() {
   const half = (side) => {
     const serving = s.serving === side;
     const pos = s.positions[side] || [];
-    const tone = side === 1 ? 'from-sky-500/20 border-sky-400/40' : 'from-amber-400/20 border-amber-400/40';
+    const tone = side === 1 ? 'border-sky-400/50' : 'border-amber-400/50';
     return (
       <button
         type="button"
         disabled={busy || s.finished || saved}
         onClick={() => send('event', { ev: `r${side}` })}
         aria-label={t('live.rallyTo', { name: teamLabel(side) })}
-        className={`relative w-full rounded-2xl border bg-gradient-to-b ${tone} to-navy-900 p-4 text-left transition active:scale-[0.99] disabled:opacity-80 ${serving ? 'ring-2 ring-lime-400' : ''}`}
+        className={`relative w-full rounded-2xl border bg-navy-800 ${tone}  p-4 text-left transition active:scale-[0.99] disabled:opacity-80 ${serving ? 'ring-2 ring-lime-400' : ''}`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

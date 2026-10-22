@@ -68,7 +68,7 @@ export default function DiscoverClubPage() {
     <PlayerShell requireAuth={false} back={false}>
       <Link href="/discover" className="text-gray-400 hover:text-white text-sm">← {t('disc.back')}</Link>
       <section className="mt-2 overflow-hidden rounded-2xl border border-navy-700 bg-navy-900/70">
-        <div className="relative h-36 sm:h-48 bg-gradient-to-br from-navy-800 via-navy-900 to-lime-900/30">
+        <div className="relative h-36 sm:h-48 bg-navy-800 ">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {cover && <img src={cover} alt="" className="h-full w-full object-cover" />}
           <span className="absolute -bottom-8 left-4">
