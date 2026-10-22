@@ -21,6 +21,7 @@ import AnnouncementBanner from '@/components/AnnouncementBanner';
 import LangSelect from '@/components/LangSelect';
 import UiIcon from '@/components/ui/UiIcon';
 import { NAV_ACTIVE } from '@/lib/nav';
+import BrandLogo from '@/components/BrandLogo';
 
 const ICONS = {
   dashboard: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -475,7 +476,7 @@ export default function AppShell({ children, back }) {
         }`}
       >
         <div className={`flex items-center mb-3 ${collapsed ? 'justify-center' : 'justify-between pl-2'}`}>
-          {!collapsed && <span className="text-lime-400 font-bold text-lg">{t('appName')}</span>}
+          {!collapsed && <BrandLogo markClass="h-7" wordClass="h-4" />}
           <button
             onClick={toggleCollapsed}
             aria-label={t(collapsed ? 'nav.expand' : 'nav.collapse')}

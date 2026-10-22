@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useI18n } from '@/context/I18nContext';
 import UiIcon from '@/components/ui/UiIcon';
+import BrandLogo from '@/components/BrandLogo';
 
 // Where the sign-up confirmation email lands. The link signs the new account in for a
 // moment; we sign it out again so the person logs in themselves on the sign-in page.
@@ -47,7 +48,7 @@ export default function WelcomePage() {
     <div className="min-h-screen flex items-center justify-center bg-navy-950 px-4 py-10">
       <div className="card w-full max-w-md text-center">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-lime-400 font-bold">{t('appName')}</span>
+          <BrandLogo markClass="h-7" wordClass="h-4" />
           <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
             {lang === 'vi' ? 'EN' : 'VI'}
           </button>

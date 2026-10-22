@@ -10,6 +10,7 @@ import '@fontsource/plus-jakarta-sans/500.css';
 import '@fontsource/plus-jakarta-sans/600.css';
 import '@fontsource/plus-jakarta-sans/700.css';
 import '@fontsource/plus-jakarta-sans/800.css';
+import BrandLogo from '@/components/BrandLogo';
 
 // The public landing page ("/") for visitors who are not signed in. Instead of one long page it
 // is a short deck of full-screen "scenes": a wheel turn, a swipe, the arrow keys or the dots move
@@ -70,11 +71,8 @@ export function Aurora({ className = '' }) {
 
 export function Logo({ className = '' }) {
   return (
-    <span className={`inline-flex items-center gap-2 font-black tracking-tight ${className}`}>
-      <span className="relative h-8 w-8 rounded-xl bg-lime-400 text-navy-950 grid place-items-center text-sm shadow-[0_0_24px_rgba(182,240,59,0.35)]" aria-hidden="true">
-        NZ
-      </span>
-      <span className="text-white whitespace-nowrap">Nexus<span className="text-lime-400">Zone</span></span>
+    <span className={`inline-flex items-center ${className}`}>
+      <BrandLogo markClass="h-8 drop-shadow-[0_0_12px_rgba(102,255,0,0.45)]" wordClass="h-[18px]" />
     </span>
   );
 }
