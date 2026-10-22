@@ -87,7 +87,7 @@ Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **tra
 - **Con trỏ chuột:** có vòng tròn mảnh đi theo, phóng to khi rê lên nút / liên kết (chỉ máy dùng chuột).
 - Số liệu minh hoạ tự đếm, cột biểu đồ và thanh chỗ trống mọc lên, tỷ số tự chạy, đường điểm DUPR tự vẽ — khi cảnh đó hiện ra.
 - **Điện thoại / màn hình thấp** (rộng dưới 768px hoặc cao dưới 600px): 6 cảnh xếp dọc, cuộn bình thường; mỗi cảnh vẫn chạy hiệu ứng xuất hiện khi cuộn tới và sân 3D phía sau đổi góc theo cảnh đang xem.
-- **Font chữ:** toàn bộ web (trang giới thiệu, đăng nhập và mọi trang trong app) dùng một font **Plus Jakarta Sans** (nét hiện đại, có bộ chữ tiếng Việt), tải kèm web (không gọi Google Fonts). Tiêu đề lớn có đủ chỗ cho dấu và phần chân chữ (g, p, y, ệ) khi chữ trồi lên.
+- **Font chữ:** trang giới thiệu, đăng nhập và mọi trang **trên điện thoại** dùng **Plus Jakarta Sans** (nét hiện đại, có bộ chữ tiếng Việt, tải kèm web — không gọi Google Fonts). Các trang trong app **trên máy tính** dùng lại font hệ thống như trước (Segoe UI trên Windows, San Francisco trên Mac). Tiêu đề lớn có đủ chỗ cho dấu và phần chân chữ (g, p, y, ệ) khi chữ trồi lên.
 - Máy bật chế độ *giảm chuyển động* (prefers-reduced-motion) thì tắt hiệu ứng: không màn hình đếm, không con trỏ riêng, chuyển cảnh tức thì. Mọi hình minh hoạ vẽ bằng giao diện, không dùng ảnh ngoài.
 - **Trang đăng nhập / đăng ký** (`/sign-in`) cùng kiểu: chung sân 3D phía sau, tiêu đề lớn bên trái, khung form bên phải. Chi tiết ở [8.1](#81-đăng-nhập-đăng-ký-quên-mật-khẩu-sign-in).
 - **Chuyển trang:** bấm *Đăng nhập / Đăng ký* trên trang giới thiệu (hoặc *← Về trang giới thiệu* / logo trên trang đăng nhập) thì một tấm rèm kéo lên từ dưới che màn hình rồi mở ra ở trang mới.
@@ -244,7 +244,7 @@ Trên điện thoại các mục nằm trong nhóm *Thành viên* của bảng *
 - Các cột: **STT · Họ tên · Hình thức** (*Cố định* / *Giao lưu*) **· Giới tính · Ngày sinh · Số điện thoại · Thời gian gia nhập · Trình độ (DUPR)**, trạng thái gói và số buổi còn lại. **Không còn cột "Hạng thực tế A–D"**: hạng A–D thay đổi liên tục khi CLB có thêm người (người hạng A hôm nay có thể thành B khi có người giỏi hơn vào), nên hạng giờ chỉ xếp **riêng cho từng giải** (xem [4.8](#48-giải-đấu-nội-bộ-clubtournaments)). Bảng xếp hạng chỉ dựa trên trình độ DUPR / trình Host chấm. **DUPR luôn hiện 2 chữ số thập phân** (vd *3.00*, *3.20*, *3.25*) ở mọi nơi.
 - Loại: *Cố định* hoặc *Vãng lai/Giao lưu*.
 - **Hạng hội viên theo gói**: người đang có gói hiệu lực hiện hạng của gói — *Hội viên Bạc*, *Hội viên Vàng*, *Hội viên Kim cương* (Host chọn hạng khi tạo gói, xem [4.4](#44-gói-hội-viên-financeplans)); có nhiều gói thì hiện hạng cao nhất. Gói cũ chưa chọn hạng vẫn hiện sao như trước. Trên máy tính hạng **chỉ hiện ở cột *Hội viên*** (không còn biểu tượng cạnh họ tên); trên điện thoại hiện trong thẻ.
-- **Chọn cột để xem**: nút **▦ Cột** cạnh ô sắp xếp — tick những cột muốn thấy (vd chỉ *Họ tên, Hình thức, SĐT*), *Hiện tất cả* để bật lại. Cột *Họ tên* luôn hiện. Lựa chọn được nhớ trên thiết bị đó.
+- **Chọn cột để xem**: nút **Cột hiển thị (x/y)** cạnh ô sắp xếp, có ở mọi tab của mục Thành viên — mở một **bảng nổi** (trên điện thoại trượt lên từ dưới, ô tick to dễ bấm; trên máy tính chia 2 cột) để tick những cột muốn thấy (vd chỉ *Họ tên, Hình thức, SĐT*); **Hiện tất cả** để bật lại, **Xong** để đóng. Cột *Họ tên* luôn hiện. Trên điện thoại, thẻ của từng người cũng chỉ hiện các thông tin đã chọn (hình thức, giới tính, ngày sinh, SĐT, DUPR, điểm trình, cấp độ, thời gian gia nhập / số buổi đã chơi, ưu đãi). Lựa chọn được nhớ trên thiết bị đó.
 - **Khách giao lưu** không có gói và không có VIP. Đặc quyền duy nhất của khách là **Ưu tiên** kèm **% giảm giá vé** (Host đặt % trong chi tiết người đó).
 - Thành viên cố định đóng theo gói hiện **"Đã thu (gói)"** ở cột thu phí của từng buổi, không bị tính phí lẻ.
 - Bấm vào avatar/tên ở bất kỳ đâu (buổi, trận, xếp hạng) mở **thẻ hồ sơ nhanh**: ảnh, trình độ, hạng, loại, số buổi.
@@ -259,7 +259,7 @@ Trên điện thoại các mục nằm trong nhóm *Thành viên* của bảng *
 - **Sửa thông tin** (nút ngay cạnh tên trong bảng, hoặc trong chi tiết): họ tên, SĐT, giới tính, DUPR, **DUPR ID** (pickleball; dạng Nxxxxxx — sửa / xoá được, ID đã thuộc người khác trong CLB thì báo lỗi; đổi ID thì liên kết điểm DUPR cũ được gỡ và tự liên kết lại theo danh sách DUPR của CLB), ngày sinh, loại, hạng, tháng vào CLB, đang hoạt động hay không.
 - **Gói hội viên** của người đó: đăng ký gói, đánh dấu đã đóng/chưa đóng, trừ hoặc hoàn buổi thủ công.
 - **Ghi chú nội bộ** (chỉ Host thấy): cờ *Chưa đóng tiền*, *Hay đi trễ*, *Ý thức kém*, cùng ghi chú tự do.
-- **Tài khoản người chơi** đã liên kết (nếu người đó tự tham gia qua link). Host có thể huỷ liên kết.
+- **Tài khoản người chơi** đã liên kết (nếu người đó tự tham gia qua link): một khung gọn — nhãn nhỏ *Tài khoản người chơi*, bên dưới là email và nhãn *đã xác thực* / *chờ xác thực* (không bị xuống dòng giữa chữ); bên phải là **Hủy liên kết** (và nút **Xác thực** nếu chưa xác thực).
 - **Lịch sử thay đổi**: DUPR, loại, hạng, trạng thái hoạt động, trạng thái thanh toán gói. Xem [4.11](#411-lịch-sử-thay-đổi-scd-type-2).
 
 **Ngày sinh & thâm niên:**
@@ -852,6 +852,7 @@ Dành cho người Host đã biết (bạn bè, khách quen nhắn riêng): bỏ
   - **Bảng của từng người** (bấm vào người tổ chức, người chờ duyệt, hoặc **bất kỳ dòng nào** trong danh sách chính / chờ / đã huỷ): đầu bảng là ảnh, tên, trình độ, giới tính, điểm DUPR, trạng thái và SĐT; tiếp theo: *Vai trò* — **Người tổ chức**, **HLV**, **Trọng tài** (bấm để bật/tắt; HLV và Trọng tài là nhãn, quyền trọng tài vẫn cấp ở *Phân quyền*) — và các nút **Tạm hoãn duyệt** · **Đặt vào danh sách chờ** · **Xác nhận tham gia** (+ **Không chơi** cho người tổ chức). *Xác nhận tham gia* đưa vào danh sách chính (khách trả phí online chuyển sang bước thanh toán; hết chỗ thì báo *danh sách chính đã đủ*); *Đặt vào danh sách chờ* rút lại chỗ của người đó — đưa họ về danh sách chờ (chỗ giữ chưa trả tiền được nhả, tiền đã trả vẫn giữ). Người tổ chức chưa chắc chơi thì để ở danh sách chờ.
 - **Bảng đếm trên sân**: *Đã đến sân* (x/y) · *Giữ chỗ / tổng* · *Chờ xác nhận thanh toán* · *Chờ chuyển khoản* · *Danh sách chờ*.
 - **Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ.
+- **Tài chính → Ảnh chuyển khoản chờ xác nhận** chỉ hiện chuyển khoản của **CLB / cộng đồng đang mở** — Host quản lý nhiều cộng đồng sẽ không thấy lẫn ảnh của cộng đồng khác (bấm vào là mở đúng kèo của cộng đồng đó).
   - Người đã gửi ảnh: bấm **Xem ảnh** để mở ảnh chụp chuyển khoản (kèm số tiền và nội dung cần khớp), rồi **Xác nhận** hoặc **Từ chối** (ghi lý do).
   - Người chưa gửi ảnh: hiện giờ hết hạn giữ chỗ. Khách trả tiền mặt tại sân thì bấm **Đã thu tiền mặt**.
   - Xác nhận xong, người chơi nhận vé QR và khoản **Phí kèo** tự ghi vào thu của kèo.
@@ -1260,7 +1261,7 @@ Chú thích và thông báo viết ngắn gọn, lịch sự, nói thẳng với
 - **Lời dễ hiểu**: *slot* → **chỗ**; *check-in* → **điểm danh** (vé: **Vé vào sân**); trạng thái đăng ký ghi đúng thứ tự: **Chờ kiểm tra thông tin** (Host xem thông tin người chơi trước) → **Chờ chuyển khoản** (đã có chỗ, người chơi chuyển tiền) → ô số liệu **Chờ xác nhận tiền** (đã gửi ảnh, Host xác nhận).
 
 ### 8.11. Hệ thống giao diện chung (rà soát UI theo `docs/ui-plan.md`)
-- **Một font cho cả web**: Plus Jakarta Sans (có dấu tiếng Việt), tải kèm web, không gọi Google Fonts.
+- **Font**: điện thoại và trang giới thiệu dùng Plus Jakarta Sans (có dấu tiếng Việt, tải kèm web, không gọi Google Fonts); app trên máy tính dùng font hệ thống.
 - **Màu trạng thái thống nhất**: ba cặp màu *tốt* (xanh lá), *xấu* (đỏ), *cần chú ý* (hổ phách) — nền nhạt, chữ cùng màu; màu xanh chanh chỉ cho nút chính và số liệu quan trọng.
 - **Số liệu**: số căn phải, chữ số đều nhau; ô trống hiện **—** màu xám (số 0 thật vẫn ghi 0).
 - **Trạng thái trống / đang tải / lỗi** có khối dùng chung: khung nét đứt với một câu giải thích và nút bước tiếp theo; thanh xám đúng chỗ dữ liệu sẽ hiện (không nhấp nháy); lỗi hiện ngay trong khối bị lỗi kèm nút **Thử lại**.

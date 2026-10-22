@@ -6,10 +6,11 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 
-// Finance overview: guests' transfer screenshots waiting for the Host, across all events.
-export default function EventPaymentsPending() {
+// Finance overview: guests' transfer screenshots waiting for the Host, for the club /
+// community whose finance page this is (never another space's).
+export default function EventPaymentsPending({ clubId }) {
   const { t, lang } = useI18n();
-  const { data } = useLoad(() => api.get('/api/events/pending-payments'), []);
+  const { data } = useLoad(() => (clubId ? api.get(`/api/events/pending-payments?club_id=${clubId}`) : Promise.resolve([])), [clubId]);
   if (!data?.length) return null;
   // Slots of one quick booking (invite link) are one transfer: one line.
   const lines = [];

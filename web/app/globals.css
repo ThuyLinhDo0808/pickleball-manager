@@ -21,10 +21,19 @@
   --c-chart-2: #5b7aa8;
 }
 
+/* App font: the system face on computers (as before), Plus Jakarta Sans on phones. The
+   landing page (.lp-root) keeps Plus Jakarta Sans at every width. */
+:root {
+  --font-app: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+@media (max-width: 639px) {
+  :root { --font-app: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+}
+
 body {
   background-color: #0B1220;
   color: #e6ecf5;
-  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-app);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
