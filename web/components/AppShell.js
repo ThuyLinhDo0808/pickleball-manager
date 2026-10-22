@@ -138,8 +138,6 @@ NAV_BY_WORKSPACE.community = [
     children: [
       { href: '/club/business', key: 'nav.bizPlayers', icon: 'members', exact: true },
       { href: '/club/business/finance', key: 'nav.bizMoney', icon: 'fund' },
-      // Phân tích tài chính: an add-on (shown with 💎 until the Ban quản trị switches it on).
-      { href: '/club/insights', key: 'nav.finAnalysis', icon: 'chart', addon: 'finance_pro', showLocked: true },
       { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },

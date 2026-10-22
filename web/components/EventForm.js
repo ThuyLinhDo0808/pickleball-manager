@@ -62,6 +62,9 @@ export const blankEvent = (date = todayYmd(), kind = 'game') => ({
   status: 'open',
   allow_public_registration: true,
   allow_pay_later: true,
+  // Riêng tư — thành viên trước: members sign up first; opens to everyone at public_from.
+  members_only: false,
+  public_from: '',
   repeat_weeks: 1,
   services: '',
   play_format: 'mixed',
@@ -214,6 +217,8 @@ export function formFromEvent(ev) {
     status: ['draft', 'closed'].includes(ev.status) ? 'open' : ev.status,
     allow_public_registration: !!ev.allow_public_registration,
     allow_pay_later: ev.allow_pay_later !== false,
+    members_only: !!ev.members_only,
+    public_from: ev.public_from ? toLocalInput(ev.public_from) : '',
     services: ev.services || '',
     level_keys: ev.level_keys || [],
     play_format: playFormatOf(ev.play_format),
@@ -295,6 +300,8 @@ export function eventPayload(f) {
     status: f.status,
     allow_public_registration: f.allow_public_registration,
     allow_pay_later: f.allow_pay_later,
+    members_only: !!f.members_only,
+    public_from: f.members_only && f.public_from ? new Date(f.public_from).toISOString() : null,
     services: f.services.trim() || null,
     play_format: f.kind === 'meeting' ? null : playFormatOf(f.play_format),
     map_url: f.map_url.trim() || null,
@@ -701,6 +708,23 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               🟢 {t('reg.open')} · {autoAt ? (sessions > 1 ? t('dl.autoEach', { h: f.cancel_deadline_hours || 0, time: autoAt.slice(11, 16) }) : t('dl.autoAt', { at: fmtLocal(autoAt), h: f.cancel_deadline_hours || 0 })) : t('dl.needStart')}
             </p>
           )}
+          {/* Who can sign up: everyone, or the club's members first (opens to everyone later). */}
+          <Field label={t('mfirst.label')} span={4} hint={t('mfirst.hint')}>
+            <div className="grid grid-cols-2 gap-1.5 mt-1" role="radiogroup" aria-label={t('mfirst.label')}>
+              {[false, true].map((v) => (
+                <button key={String(v)} type="button" role="radio" aria-checked={!!f.members_only === v} onClick={() => set({ members_only: v })} className={`rounded-lg border px-2 py-2 text-sm ${!!f.members_only === v ? 'border-lime-400 bg-lime-400/10 text-white font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                  {v ? `🔒 ${t('mfirst.private')}` : `🌐 ${t('mfirst.public')}`}
+                </button>
+              ))}
+            </div>
+            {f.members_only && (
+              <label className="block mt-2 text-xs text-gray-400">
+                {t('mfirst.openAt')}
+                <input type="datetime-local" className="input mt-1" value={f.public_from || ''} onChange={(e) => set({ public_from: e.target.value })} />
+                <span className="block mt-1 text-gray-500">{sessions > 1 ? t('mfirst.openAtEach') : t('mfirst.openAtHint')}</span>
+              </label>
+            )}
+          </Field>
           <CostItems items={f.cost_items} onChange={(cost_items) => set({ cost_items })} sessions={sessions || 1} />
         </Section>
 
@@ -812,6 +836,8 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                   <dd className="text-gray-100">{f.deadline_mode === 'none' || (!f.deadline_mode && !f.deadline_auto && !f.registration_deadline) ? t('reg.mode_none') : f.deadline_auto ? (autoAt ? (sessions > 1 ? t('dl.previewEach', { time: autoAt.slice(11, 16) }) : fmtLocal(autoAt)) : '—') : fmtLocal(f.registration_deadline)}</dd>
                   <dt className="text-gray-400">🔗</dt>
                   <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('reg.open') : t('reg.closed')}</dd>
+                  <dt className="text-gray-400">{f.members_only ? '🔒' : '🌐'}</dt>
+                  <dd className={f.members_only ? 'text-violet-200' : 'text-gray-100'}>{f.members_only ? (f.public_from ? t('mfirst.previewUntil', { at: fmtLocal(f.public_from) }) : t('mfirst.private')) : t('mfirst.public')}</dd>
                 </>
               )}
             </dl>

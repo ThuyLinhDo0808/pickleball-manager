@@ -53,7 +53,13 @@ export default function CommunityBusiness({ view = 'players' }) {
 
   return (
     <AppShell>
-      <PageHeader icon={view === 'players' ? '📈' : '💰'} title={t(view === 'players' ? 'nav.bizPlayers' : 'nav.bizMoney')} subtitle={club?.name} actions={<PeriodSelect value={period} onChange={setPeriod} t={t} />} />
+      <PageHeader icon={view === 'players' ? '📈' : '💰'} title={t(view === 'players' ? 'nav.bizPlayers' : 'nav.bizMoney')} subtitle={club?.name} actions={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* Phân tích tài chính (add-on 💎) lives here, not in the side menu. */}
+          {view === 'money' && <Link href="/club/insights" className="btn-secondary text-sm whitespace-nowrap">🔬 {t('nav.finAnalysis')} 💎</Link>}
+          <PeriodSelect value={period} onChange={setPeriod} t={t} />
+        </div>
+      } />
       <SectionTabs group="stats" />
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}

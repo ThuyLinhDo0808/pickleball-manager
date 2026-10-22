@@ -185,6 +185,18 @@ async function closeMonth(club, month) {
   return { closed: true, vouchers: vouchers.length };
 }
 
+// Top tháng is part of the top Social Manager plan: off for communities whose owner's plan
+// does not include it (the settings stay, they come back with the plan).
+async function raceIncluded(club) {
+  try {
+    await require('./plan').assertFeature(club.host_id, 'monthly_race', require('./plan').kindOf(club));
+    return true;
+  } catch (err) {
+    if (err.status === 402) return false;
+    throw err;
+  }
+}
+
 // Every community with the race on: close last month (and any month missed while the
 // server slept), from the month the race was turned on.
 async function closeDueMonths(now = new Date()) {
@@ -194,6 +206,7 @@ async function closeDueMonths(now = new Date()) {
   if (error) throw error;
   let n = 0;
   for (const club of clubs || []) {
+    if (!(await raceIncluded(club))) continue; // plan no longer has Top tháng: no vouchers
     const start = (club.race_started_on || `${current}-01`).slice(0, 7);
     const { data: done } = await supabase.from('race_results').select('month').eq('club_id', club.id);
     const closed = new Set((done || []).map((d) => d.month));
@@ -368,7 +381,7 @@ async function voucherAction(club, voucherId, body) {
 // The current month's table for a member, names and points only (no levels / ids).
 async function playerView(club, userId) {
   const settings = settingsOf(club);
-  if (!settings.enabled) return { enabled: false };
+  if (!settings.enabled || !(await raceIncluded(club))) return { enabled: false };
   const { month, groups } = await standings(club, thisMonth());
   const { data: me } = await supabase.from('club_members').select('id').eq('club_id', club.id).eq('user_id', userId).maybeSingle();
   const strip = (r, i) => ({ place: i + 1, full_name: r.full_name, points: r.points, sessions: r.sessions, wins: r.wins, eligible: r.eligible, prize_rank: r.prize_rank, me: !!me && r.club_member_id === me.id });

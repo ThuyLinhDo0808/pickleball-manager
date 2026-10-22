@@ -101,7 +101,7 @@ async function profile(clubId) {
     countsFor([club.id]),
     supabase
       .from('v_event_summary')
-      .select('id, title, event_date, start_time, end_time, location, map_url, slots, main_count, waitlist_count, fee_amount, status, kind, allow_public_registration, public_token')
+      .select('*')
       .eq('club_id', club.id)
       .gte('event_date', todayYmd())
       .lte('event_date', addDays(todayYmd(), 92)) // "7 ngày tới" + "Lịch tháng" (about 3 months)
@@ -128,6 +128,9 @@ async function profile(clubId) {
       status: e.status,
       // Only sessions the club opened to everyone carry their sign-up link.
       link: e.allow_public_registration && e.status === 'open' ? e.public_token : null,
+      // Riêng tư — thành viên trước: members sign up first (opens to everyone at public_from).
+      members_only: require('./signup').membersOnlyNow(e),
+      public_from: e.members_only ? e.public_from || null : null,
     })),
   };
 }
@@ -151,7 +154,7 @@ async function events(params = {}) {
   if (!byId.size) return { items: [], from: today, to: addDays(today, EVENT_DAYS - 1) };
   const { data, error } = await supabase
     .from('v_event_summary')
-    .select('id, club_id, title, event_date, start_time, end_time, location, slots, main_count, waitlist_count, fee_amount, status, kind, allow_public_registration, public_token')
+    .select('*')
     .in('club_id', [...byId.keys()])
     .gte('event_date', today)
     .lte('event_date', addDays(today, EVENT_DAYS - 1))
@@ -165,7 +168,7 @@ async function events(params = {}) {
   const has = (v, w) => String(v || '').toLowerCase().includes(w);
   const endMs = require('./attendance').eventEndMs;
   const items = (data || [])
-    .filter((e) => e.public_token && e.kind !== 'meeting' && endMs(e) > Date.now())
+    .filter((e) => e.public_token && e.kind !== 'meeting' && endMs(e) > Date.now() && !require('./signup').membersOnlyNow(e))
     .map((e) => ({ e, c: byId.get(e.club_id) }))
     .filter(({ e, c }) => (!q || has(e.title, q) || has(e.location, q) || has(c.name, q) || has(c.district, q) || has(c.province, q))
       && (!prov || has(c.province, prov) || has(e.location, prov))

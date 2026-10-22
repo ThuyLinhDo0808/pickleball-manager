@@ -10,6 +10,7 @@ const CLUB_PAGES = [
   ['/club/roster', 'duty_roster'],
   ['/club/activity-log', 'activity_log'],
   ['/club/insights', 'advanced_analytics'],
+  ['/club/race', 'monthly_race'], // Top tháng: Social Manager PRO
   ['/finance', 'stats', true], // the overview (charts); the ledger is in every plan
 ];
 

@@ -277,6 +277,11 @@ export default function EventDetailPage() {
           </p>
         )}
         {(event.location || event.map_url || event.club_map_url) && <div className="mt-0.5"><MapLink location={event.location} mapUrl={event.map_url || event.club_map_url} /></div>}
+        {event.members_only && (
+          <p className="text-violet-200 text-sm mt-0.5">
+            🔒 {event.public_from && Date.parse(event.public_from) > Date.now() ? t('mfirst.badgeUntil', { at: new Date(event.public_from).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) }) : event.public_from ? t('mfirst.nowPublic') : t('mfirst.badge')}
+          </p>
+        )}
         {(event.play_format || event.services || event.series_id) && (
           <p className="text-gray-400 text-sm mt-0.5">
             {[event.series_id && `🔁 ${t('series.badge')}`, event.play_format && `🏓 ${t(`fmt.${event.play_format}`)}`, event.services && `🎁 ${event.services}`].filter(Boolean).join(' · ')}
@@ -284,15 +289,16 @@ export default function EventDetailPage() {
         )}
         {/* The three things a Host does all the time, as big buttons. */}
         {event.kind !== 'meeting' && (
-          <div className="flex flex-wrap justify-end gap-2 mt-3">
-            <button type="button" className="btn-primary" onClick={copyLink} disabled={!event.allow_public_registration}>
-              <span aria-hidden>📤</span> {linkCopied ? t('events.copied') : t('ux.sendLink')}
+          // Phone: three equal buttons in one row (icon above the word); wider screens: on the right.
+          <div className="grid grid-cols-3 gap-2 mt-3 sm:flex sm:flex-wrap sm:justify-end">
+            <button type="button" className="btn-primary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={copyLink} disabled={!event.allow_public_registration}>
+              <span aria-hidden>📤</span> <span>{linkCopied ? t('events.copied') : t('ux.sendLink')}</span>
             </button>
-            <button type="button" className="btn-secondary" onClick={() => setShowQr(true)}>
-              <span aria-hidden>📷</span> {t('ux.checkin')}
+            <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => setShowQr(true)}>
+              <span aria-hidden>📷</span> <span>{t('ux.checkin')}</span>
             </button>
-            <button type="button" className="btn-secondary" onClick={() => { setTab('participants'); setShowImport(true); }}>
-              <span aria-hidden>➕</span> {t('ux.addPlayer')}
+            <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => { setTab('participants'); setShowImport(true); }}>
+              <span aria-hidden>➕</span> <span>{t('ux.addPlayer')}</span>
             </button>
           </div>
         )}

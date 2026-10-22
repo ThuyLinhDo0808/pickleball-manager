@@ -79,6 +79,32 @@ function tournamentAsEvent(tr, club) {
   };
 }
 
+// What tells sessions of the same schedule apart: series label, community levels (Series
+// A, B…), DUPR range (women's range for mixed) and what is played (Full nam / nữ / Mix).
+const dupr = (v) => (v == null || v === '' ? null : Number(v).toFixed(2));
+const range = (a, b) => (dupr(a) && dupr(b) ? `${dupr(a)}–${dupr(b)}` : dupr(a) ? `≥ ${dupr(a)}` : dupr(b) ? `≤ ${dupr(b)}` : null);
+function EventTags({ e }) {
+  const { t } = useI18n();
+  if (e.kind === 'tournament' || e.kind === 'meeting') return null;
+  const men = range(e.level_min, e.level_max);
+  const women = range(e.level_min_f, e.level_max_f);
+  const membersNow = e.members_only && (!e.public_from || Date.parse(e.public_from) > Date.now());
+  const tags = [
+    membersNow && { k: 'm', text: `🔒 ${t('mfirst.badge')}`, cls: 'border-violet-400 bg-violet-400/15 text-violet-100' },
+    e.series_label && { k: 's', text: `🏷 ${e.series_label}`, cls: 'border-violet-400/60 text-violet-200' },
+    ...(e.level_names || []).map((n) => ({ k: `l${n}`, text: `🎯 ${n}`, cls: 'border-amber-300/60 text-amber-200' })),
+    women && men ? { k: 'dm', text: `♂ DUPR ${men}`, cls: 'border-sky-400/60 text-sky-200' } : men && { k: 'd', text: `DUPR ${men}`, cls: 'border-sky-400/60 text-sky-200' },
+    women && { k: 'df', text: `♀ DUPR ${women}`, cls: 'border-pink-400/60 text-pink-200' },
+    e.play_format && { k: 'f', text: t(`fmt.${e.play_format}`), cls: 'border-lime-400/60 text-lime-200' },
+  ].filter(Boolean);
+  if (!tags.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {tags.map((x) => <span key={x.k} className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${x.cls}`}>{x.text}</span>)}
+    </div>
+  );
+}
+
 function EventCard({ e, phase = 'open' }) {
   const { t, lang } = useI18n();
   const look = PHASE[phase] || PHASE.open;
@@ -111,6 +137,7 @@ function EventCard({ e, phase = 'open' }) {
         <div className="text-gray-400 text-sm break-words">
           {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
         </div>
+        <EventTags e={e} />
         {e.club_name && (
           <div className="text-sky-300 text-xs mt-0.5 break-words">
             {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}

@@ -236,7 +236,13 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   // Not signed in: "Đăng ký nhanh" (quick booking, no account needed; the Host checks the
   // info, then the transfer) next to signing in.
   const quickHref = ev.id && ev.kind !== 'meeting' ? `/g/${ev.id}/p-${ev.public_token || token}` : null;
-  const quickBox = quickHref && ev.registration_open && (
+  // Riêng tư — thành viên trước: members sign up first; everyone else waits (no quick booking).
+  const membersFirst = ev.members_only_now ? (
+    <p className="rounded-lg border border-violet-400/60 bg-violet-400/10 px-3 py-2 text-violet-100 text-sm mb-3">
+      🔒 {ev.public_from ? t('mfirst.noticeUntil', { when: localDate(new Date(ev.public_from), lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) }) : t('mfirst.notice')}
+    </p>
+  ) : null;
+  const quickBox = quickHref && ev.registration_open && !ev.members_only_now && (
     <Link href={quickHref} className="btn-primary block w-full py-3 text-center mt-3">{t('signup.quickCta')}</Link>
   );
 
@@ -248,6 +254,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <h2 className="text-white font-semibold mb-1">{t('public.register')}</h2>
         <p className="text-gray-300 text-sm mb-3">{t('signup.loginWhy')}</p>
         {ev.registration_open && ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mb-3" />}
+        {ev.registration_open && membersFirst}
         {ev.registration_open ? (
           <>
             <div className="rounded-xl border border-navy-600 p-3">
@@ -450,6 +457,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (!ev.registration_open) {
     return <p className="text-yellow-400 text-sm text-center py-2">🔒 {t(`public.closed_${ev.closed_code}`)}</p>;
   }
+  // Members first: someone who is not a member of this club / community waits.
+  if (ev.members_only_now && me?.member?.state !== 'verified') return membersFirst;
   // Signed in: always the account sign-up (never "Đăng ký nhanh", which is for people
   // without an account), so the Host sees a normal sign-up, not a quick booking.
   if (!me.profile?.full_name || !me.profile?.phone) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} />;

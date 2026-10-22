@@ -46,6 +46,7 @@ const PUBLIC_EVENT_FIELDS = [
   'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
   'allow_public_registration', 'notice', 'club_name', 'main_count', 'waitlist_count',
   'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind', 'services', 'play_format', 'map_url', 'allow_pay_later', 'series_label',
+  'members_only', 'public_from',
 ];
 
 // The club's Google Maps link: used for an event that has no link of its own.
@@ -103,6 +104,8 @@ router.get('/public/:publicToken', async (req, res) => {
     xeve: !event.club_id || (await supabase.from('clubs').select('kind').eq('id', event.club_id).maybeSingle()).data?.kind === 'community',
     registration_open: !closedCode,
     closed_code: closedCode,
+    // Riêng tư — thành viên trước: only the club's members can sign up right now.
+    members_only_now: signup.membersOnlyNow(event),
     participants: await publicPlayerInfo(event, people).catch((err) => {
       console.error('public player info', err.message);
       return people.map((p) => ({ full_name: p.full_name, dupr_level: p.dupr_level, status: p.status, is_organizer: p.is_organizer }));
@@ -274,7 +277,7 @@ async function publicEvent(req, res) {
 
 function fail(res, err) {
   // reason / until: why and how long a player is kept out (blocked / suspended by the club).
-  return err.status ? res.status(err.status).json({ error: err.message, code: err.code, ...(err.reason ? { reason: err.reason } : {}), ...(err.until ? { until: err.until } : {}) }) : dbError(res, err);
+  return err.status ? res.status(err.status).json({ error: err.message, code: err.code, ...(err.reason ? { reason: err.reason } : {}), ...(err.until ? { until: err.until } : {}), ...(err.public_from !== undefined ? { public_from: err.public_from } : {}) }) : dbError(res, err);
 }
 
 async function playerProfile(userId) {
@@ -540,6 +543,13 @@ function cleanEventFields(fields) {
     if (keys.length > 12 || keys.some((k) => !/^[a-z0-9_-]{1,20}$/i.test(k))) return 'level_keys: up to 12 level keys.';
     fields.level_keys = keys.length ? keys : null;
   }
+  // Riêng tư — thành viên trước: members only, until public_from (empty = until made public).
+  if ('members_only' in fields) fields.members_only = fields.members_only === true;
+  if ('public_from' in fields) {
+    if (fields.public_from == null || fields.public_from === '') fields.public_from = null;
+    else if (Number.isNaN(Date.parse(fields.public_from))) return 'public_from must be a date and time.';
+    else fields.public_from = new Date(fields.public_from).toISOString();
+  }
   if ('series_label' in fields) {
     const v = fields.series_label == null ? '' : String(fields.series_label).trim();
     if (v.length > 40) return 'series_label: at most 40 characters.';
@@ -555,6 +565,7 @@ function cleanEventFields(fields) {
   return null;
 }
 const PLAY_FORMATS = ['men', 'women', 'mixed', 'open'];
+const membersFirstReady = async () => !(await require('../services/schemaCheck').schemaStatus()).missing_migrations.includes('20261215090000_members_first.sql');
 // A Social Manager community runs kèo, training and weekly play — no meetings / round robin.
 const NOT_FOR_COMMUNITY = ['meeting', 'challenge'];
 // The club row's kind ('club' / 'community') for plan checks.
@@ -572,6 +583,7 @@ async function kindAllowed(clubId, kind) {
 const SERIES_FIELDS = [
   'auto_approve', 'allow_pay_later', 'series_label', 'level_keys', 'title', 'start_time', 'end_time', 'location', 'map_url', 'courts', 'court_labels', 'groups', 'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f',
   'fee_amount', 'services', 'play_format', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'allow_public_registration', 'cost_items',
+  'members_only',
 ];
 
 function addDays(ymd, days) {
@@ -674,6 +686,17 @@ router.get('/', async (req, res) => {
   if (req.query.scope === 'standalone') query = query.is('club_id', null);
   const { data, error } = await query.order('event_date', { ascending: true });
   if (error) return dbError(res, error);
+  // Kèo marked for some community levels (Series A, B…): their names, so the schedule can
+  // tell apart sessions that look the same.
+  const clubIds = [...new Set((data || []).filter((e) => Array.isArray(e.level_keys) && e.level_keys.length && e.club_id).map((e) => e.club_id))];
+  if (clubIds.length) {
+    const { data: cl } = await supabase.from('clubs').select('id, community_settings').in('id', clubIds);
+    const cs = require('../services/communitySettings');
+    const names = new Map((cl || []).map((c) => [c.id, new Map(cs.resolve(c.community_settings).levels.items.map((it) => [String(it.key), it.name || it.label || String(it.key)]))]));
+    for (const e of data) {
+      if (Array.isArray(e.level_keys) && e.level_keys.length) e.level_names = e.level_keys.map((k) => names.get(e.club_id)?.get(String(k))).filter(Boolean);
+    }
+  }
   res.json(data);
 });
 
@@ -698,10 +721,11 @@ router.post('/', async (req, res) => {
     'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
-    'groups', 'court_labels',
+    'groups', 'court_labels', 'members_only', 'public_from',
   ]);
   const bad = cleanEventFields(fields) || (await applyGroups(fields));
   if (bad) return res.status(400).json({ error: bad });
+  if (!(await membersFirstReady())) for (const k of ['members_only', 'public_from']) delete fields[k];
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
   if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
@@ -739,6 +763,8 @@ router.post('/', async (req, res) => {
     registration_deadline: fields.registration_deadline
       ? new Date(new Date(fields.registration_deadline).getTime() + dayMs(d) - dayMs(event_date)).toISOString()
       : null,
+    // Members first: opens to everyone at the same distance before each session.
+    ...(fields.public_from ? { public_from: new Date(new Date(fields.public_from).getTime() + dayMs(d) - dayMs(event_date)).toISOString() } : {}),
   }));
   const { data, error } = await supabase.from('events').insert(rows).select();
   if (error) return dbError(res, error);
@@ -948,10 +974,11 @@ router.patch('/:eventId', async (req, res) => {
     'slots', 'level_min', 'level_max', 'level_min_f', 'level_max_f', 'fee_amount', 'status', 'registration_deadline',
     'allow_public_registration', 'notice', 'cancel_deadline_hours', 'cancel_half_hours', 'no_refund', 'kind',
     'services', 'play_format', 'map_url', 'cost_items', 'auto_approve', 'allow_pay_later', 'series_label', 'level_keys',
-    'groups', 'court_labels',
+    'groups', 'court_labels', 'members_only', 'public_from',
   ]);
   const bad = cleanEventFields(fields) || (await applyGroups(fields));
   if (bad) return res.status(400).json({ error: bad });
+  if (!(await membersFirstReady())) for (const k of ['members_only', 'public_from']) delete fields[k];
   if ('cancel_half_hours' in fields && !(await tiersReady())) delete fields.cancel_half_hours; // migration not run yet
   if ('level_keys' in fields && !(await require('../services/communitySettings').ready())) delete fields.level_keys;
   if (!(await genderLevelsReady())) for (const k of ['level_min_f', 'level_max_f']) delete fields[k];
@@ -1004,8 +1031,12 @@ async function applyToSeries(ev, fields) {
   if (error) throw error;
   const dayMs = (d) => Date.parse(`${d}T00:00:00Z`);
   const deadline = 'registration_deadline' in fields ? fields.registration_deadline : undefined;
+  const publicFrom = 'public_from' in fields ? fields.public_from : undefined;
   for (const o of others) {
     const row = { ...patch };
+    if (publicFrom !== undefined) {
+      row.public_from = publicFrom ? new Date(new Date(publicFrom).getTime() + dayMs(o.event_date) - dayMs(ev.event_date)).toISOString() : null;
+    }
     if (deadline !== undefined) {
       row.registration_deadline = deadline ? new Date(new Date(deadline).getTime() + dayMs(o.event_date) - dayMs(ev.event_date)).toISOString() : null;
     }
