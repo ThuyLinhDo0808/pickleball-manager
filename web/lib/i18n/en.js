@@ -3882,6 +3882,10 @@ export const en = {
     amount: "Amount",
   },
   pbell: {
+    clearAll: "Clear all",
+    clearSure: "Clear all?",
+    remove: "Remove this notification",
+    keep: "Notifications hide themselves after 14 days. Removed ones do not come back.",
     empty: "Nothing new in the last 14 days.",
     k_wait_check: "Signed up — the Host checks your info",
     k_pay_now: "Host confirmed you — transfer now to keep your place",

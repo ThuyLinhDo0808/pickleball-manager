@@ -3882,6 +3882,10 @@ export const vi = {
     amount: "Số tiền",
   },
   pbell: {
+    clearAll: "Xóa tất cả",
+    clearSure: "Xóa hết?",
+    remove: "Xóa thông báo này",
+    keep: "Thông báo tự ẩn sau 14 ngày. Thông báo đã xóa sẽ không hiện lại.",
     empty: "14 ngày qua chưa có cập nhật mới.",
     k_wait_check: "Đã đăng ký — chờ Host kiểm tra thông tin",
     k_pay_now: "Host đã xác nhận — hãy chuyển khoản để giữ chỗ",

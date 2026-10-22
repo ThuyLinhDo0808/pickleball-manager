@@ -3368,3 +3368,7 @@ begin
 end $$;
 
 notify pgrst, 'reload schema';
+
+-- 20261216090000_bell_dismiss.sql: player bell — removed notifications
+alter table public.users add column if not exists bell_cleared_at timestamptz;
+alter table public.users add column if not exists bell_hidden text[] not null default '{}';
