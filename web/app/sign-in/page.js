@@ -67,10 +67,10 @@ function PasswordInput({ id, value, onChange, autoComplete, minLength }) {
 
 // The court behind the form changes its camera with the form (same look as the landing page).
 const AUTH_SCENES = {
-  signIn: { cam: [58, -30, 1.25, '-12vw', '14vh'], ball: [48, 68], glow: ['#B6F03B', '#38BDF8'] },
-  signUp: { cam: [52, 36, 1.5, '-14vw', '10vh'], ball: [34, 30], glow: ['#38BDF8', '#B6F03B'] },
-  forgot: { cam: [0, 0, 0.8, '4vw', '6vh'], ball: [70, 40], glow: ['#FBBF24', '#B6F03B'] },
-  sent: { cam: [70, 90, 1.2, '-14vw', '16vh'], ball: [50, 50], glow: ['#34D399', '#B6F03B'] },
+  signIn: { cam: [58, -30, 1.25, '-12vw', '14vh'], ball: [48, 68] },
+  signUp: { cam: [52, 36, 1.5, '-14vw', '10vh'], ball: [34, 30] },
+  forgot: { cam: [0, 0, 0.8, '4vw', '6vh'], ball: [70, 40] },
+  sent: { cam: [70, 90, 1.2, '-14vw', '16vh'], ball: [50, 50] },
 };
 const ORDER = ['signIn', 'signUp', 'forgot', 'sent'];
 const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -263,7 +263,6 @@ export default function SignInPage() {
   return (
     <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/'])} className="lp-root relative flex min-h-[100svh] flex-col overflow-x-hidden bg-navy-950">
       <Stage scene={AUTH_SCENES[mode]} idx={ORDER.indexOf(mode)} />
-      {sweep.n > 0 && <span key={sweep.n} className={`lp-sweep ${sweep.dir > 0 ? 'down' : 'up'}`} aria-hidden="true" />}
       <header className="relative z-20 mx-auto flex h-20 w-full max-w-[1440px] items-center gap-3 px-5 sm:px-10 lg:px-16">
         <Link href="/" aria-label={t('auth.toLanding')}><Logo className="text-base" /></Link>
         <div className="ml-auto flex items-center gap-2">
@@ -277,9 +276,7 @@ export default function SignInPage() {
       </header>
       <main data-state={state} className="lp-snap relative z-10 mx-auto grid w-full max-w-[1440px] flex-1 content-center items-center gap-8 px-5 pb-10 sm:px-10 lg:grid-cols-[1fr_minmax(0,32rem)] lg:gap-16 lg:px-16">
         <div>
-          <F d={0} as="p" className="hidden items-center gap-3 text-xs font-bold tracking-[0.25em] text-lime-300 lg:flex">
-            <span className="tabular-nums text-gray-500">{String(ORDER.indexOf(mode) + 1).padStart(2, '0')}</span>
-            <span className="h-px w-10 bg-lime-400/60" aria-hidden="true" />
+          <F d={0} as="p" className="hidden text-sm text-gray-400 lg:block">
             {t('landing.hero_eyebrow')}
           </F>
           <h1 className="text-[clamp(2.4rem,3.4vw+2.4vh,6rem)] font-extrabold leading-[1.04] tracking-tight text-white [text-wrap:balance] lg:mt-6">
@@ -287,7 +284,7 @@ export default function SignInPage() {
           </h1>
         </div>
         <div className={`lp-v w-full justify-self-center ${mode === 'signUp' ? 'max-w-xl' : 'max-w-md'} lg:justify-self-end`}>
-        <div className="rounded-3xl border border-white/10 bg-navy-900/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
+        <div className="rounded-3xl border border-white/10 bg-navy-900 p-6 sm:p-8">
           {(mode === 'signIn' || mode === 'signUp') && (
             <div className="mb-6 grid grid-cols-2 rounded-full border border-white/10 bg-navy-950/60 p-1 text-sm font-semibold" role="tablist">
               {['signIn', 'signUp'].map((m) => (
