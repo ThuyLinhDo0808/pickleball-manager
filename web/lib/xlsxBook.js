@@ -64,7 +64,7 @@ function build(wb, name, spec, lists) {
   // Title + subtitle
   ws.getCell(1, 1).value = title || '';
   ws.getCell(1, 1).font = { name: FONT, size: 16, bold: true, color: { argb: NAVY } };
-  ws.getCell(2, 1).value = [subtitle, footer || `Pickleball Manager · ${stamp()}`].filter(Boolean).join('  ·  ');
+  ws.getCell(2, 1).value = [subtitle, footer || `NexusZone · ${stamp()}`].filter(Boolean).join('  ·  ');
   ws.getCell(2, 1).font = { name: FONT, size: 10, italic: true, color: { argb: MUTED } };
   if (n > 1) {
     ws.mergeCells(1, 1, 1, n);
@@ -154,7 +154,7 @@ function build(wb, name, spec, lists) {
 export async function book(sheets, filename) {
   const { default: ExcelJS } = await import('exceljs');
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Pickleball Manager';
+  wb.creator = 'NexusZone';
   wb.created = new Date();
   const used = new Set();
   const named = sheets.map(([name, spec]) => {

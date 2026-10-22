@@ -12,9 +12,9 @@ import NavTracker from '@/components/NavTracker';
 import MaintenanceGate from '@/components/MaintenanceGate';
 
 export const metadata = {
-  title: 'Pickleball Manager',
-  description: 'Club + event management for pickleball hosts',
-  appleWebApp: { capable: true, title: 'Pickleball', statusBarStyle: 'black-translucent' },
+  title: 'NexusZone',
+  description: 'NexusZone - Where the Pickleball Community Connects',
+  appleWebApp: { capable: true, title: 'NexusZone', statusBarStyle: 'black-translucent' },
 };
 
 export const viewport = {

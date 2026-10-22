@@ -46,9 +46,10 @@ const ActiveCtx = createContext(true);
 // sits on it (% of the court), and the colour of the glow — one set per scene.
 const SCENES = [
   { key: 'intro', cam: [60, -28, 1.15, '16vw', '4vh'], ball: [52, 70], glow: ['#B6F03B', '#38BDF8'] },
-  { key: 'players', cam: [56, 34, 1.45, '18vw', '6vh'], ball: [32, 30], glow: ['#38BDF8', '#B6F03B'] },
-  { key: 'club', cam: [0, 0, 0.85, '-20vw', '2vh'], ball: [72, 38], glow: ['#B6F03B', '#34D399'] },
+  // Xé vé communities and clubs first: what NexusZone is about; then the players they serve.
   { key: 'social', cam: [66, 90, 1.3, '16vw', '10vh'], ball: [50, 52], glow: ['#FBBF24', '#B6F03B'] },
+  { key: 'club', cam: [0, 0, 0.85, '-20vw', '2vh'], ball: [72, 38], glow: ['#B6F03B', '#34D399'] },
+  { key: 'players', cam: [56, 34, 1.45, '18vw', '6vh'], ball: [32, 30], glow: ['#38BDF8', '#B6F03B'] },
   { key: 'play', cam: [48, -52, 1.8, '18vw', '-2vh'], ball: [40, 74], glow: ['#A78BFA', '#38BDF8'] },
   { key: 'start', cam: [74, 0, 1, '4vw', '30vh'], ball: [50, 30], glow: ['#B6F03B', '#34D399'] },
 ];
@@ -71,9 +72,9 @@ export function Logo({ className = '' }) {
   return (
     <span className={`inline-flex items-center gap-2 font-black tracking-tight ${className}`}>
       <span className="relative h-8 w-8 rounded-xl bg-lime-400 text-navy-950 grid place-items-center text-sm shadow-[0_0_24px_rgba(182,240,59,0.35)]" aria-hidden="true">
-        PM
+        NZ
       </span>
-      <span className="text-white whitespace-nowrap">Pickleball<span className="text-lime-400 hidden min-[420px]:inline"> Manager</span></span>
+      <span className="text-white whitespace-nowrap">Nexus<span className="text-lime-400">Zone</span></span>
     </span>
   );
 }
@@ -458,7 +459,12 @@ function IntroScene() {
           <span className="block"><Words text={t('landing.hero_title_1')} /></span>
           <span className="block"><Words text={t('landing.hero_title_2')} base={180} className="lp-sheen-text" /></span>
         </h1>
-        <F d={250} as="p" className="mt-7 max-w-md text-xl leading-relaxed text-gray-300">{t('landing.hero_short')}</F>
+        <F d={250} as="p" className="mt-7 max-w-lg text-xl leading-relaxed text-gray-300">{t('landing.hero_short')}</F>
+        {/* Nexus (where everything meets) + Zone (your own ground) */}
+        <F d={320} as="p" className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400">
+          <span><b className="text-white">Nexus</b> · {t('landing.brand_nexus')}</span>
+          <span><b className="text-lime-300">Zone</b> · {t('landing.brand_zone')}</span>
+        </F>
         <F d={380} className="mt-9 flex flex-wrap gap-3">
           <Link href={SIGN_UP} className="lp-btn-glow group relative inline-flex h-12 items-center overflow-hidden rounded-full bg-lime-400 px-7 text-base font-bold text-navy-950">
             <span className="relative z-10">{t('landing.hero_cta')} <span className="inline-block transition-transform group-hover:translate-x-1">→</span></span>
@@ -550,7 +556,7 @@ function StartScene() {
       <F d={300} className="min-w-0">
         <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">{t('landing.faq_title')}</h3>
         <div data-lp-scroll className="lp-faq mt-4 flex max-h-[min(52vh,30rem)] flex-col overflow-y-auto overscroll-contain border-t border-white/10 pr-2">
-          {[1, 2, 3, 4].map((n) => (
+          {[0, 1, 2, 3, 4].map((n) => (
             <details key={n} className="group border-b border-white/10 py-3.5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-white">
                 {t(`landing.q${n}`)}
@@ -564,7 +570,7 @@ function StartScene() {
           <Link href="/discover" className="hover:text-white">{t('landing.footer_discover')}</Link>
           <Link href="/terms" className="hover:text-white">{t('landing.footer_terms')}</Link>
           <Link href="/privacy" className="hover:text-white">{t('landing.footer_privacy')}</Link>
-          <span>© {new Date().getFullYear()} Pickleball Manager</span>
+          <span>© {new Date().getFullYear()} NexusZone</span>
         </nav>
       </F>
     </div>
@@ -576,19 +582,18 @@ function SceneBody({ k }) {
     case 'intro':
       return <IntroScene />;
     case 'players':
-      return <RoleScene n={2} k="p" visual={<div className="relative py-6"><PhoneSignup /><div className="absolute right-[6%] bottom-0 w-28 rotate-6 [transform:translateZ(70px)]"><TicketMock className="lp-float" /></div></div>} />;
+      return <RoleScene n={4} k="p" visual={<div className="relative py-6"><PhoneSignup /><div className="absolute right-[6%] bottom-0 w-28 rotate-6 [transform:translateZ(70px)]"><TicketMock className="lp-float" /></div></div>} />;
     case 'club':
       return (
         <RoleScene
           n={3}
           k="c"
           flip
-          primary
           visual={<div className="relative pb-14 pt-4"><FinanceCard /><div className="absolute -bottom-2 -right-4 w-60 [transform:translateZ(70px)]"><RolesCard /></div></div>}
         />
       );
     case 'social':
-      return <RoleScene n={4} k="s" visual={<div className="relative pb-14 pt-4"><SeriesCard /><div className="absolute -bottom-10 -left-6 w-48 [transform:translateZ(70px)]"><ProfitCard /></div></div>} />;
+      return <RoleScene n={2} k="s" primary visual={<div className="relative pb-14 pt-4"><SeriesCard /><div className="absolute -bottom-10 -left-6 w-48 [transform:translateZ(70px)]"><ProfitCard /></div></div>} />;
     case 'play':
       return <PlayScene />;
     default:
@@ -603,7 +608,7 @@ function Header({ onMenu, menuOpen }) {
   return (
     <header className="fixed inset-x-0 top-0 z-40">
       <div className="mx-auto flex h-20 w-full max-w-[1440px] items-center gap-3 px-5 sm:px-10 lg:px-16">
-        <Link href="/" aria-label="Pickleball Manager"><Logo className="text-base" /></Link>
+        <Link href="/" aria-label="NexusZone"><Logo className="text-base" /></Link>
         <div className="ml-auto flex items-center gap-1.5 whitespace-nowrap sm:gap-2">
           <button type="button" onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="hidden h-9 items-center rounded-full px-3 text-xs font-semibold text-gray-300 hover:text-white sm:inline-flex" aria-label={t('landing.switchLang')}>
             {lang === 'vi' ? 'EN' : 'VI'}
