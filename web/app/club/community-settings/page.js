@@ -9,6 +9,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import UiIcon from '@/components/ui/UiIcon';
+import RaceSettings from '@/components/RaceSettings';
 
 // 'experience' (by Thời gian chơi) is no longer offered; a community still on it keeps working.
 const MODES = ['none', 'manual', 'score'];
@@ -260,6 +261,9 @@ export default function CommunitySettingsPage() {
           )}
         </Card>
 
+      </fieldset>
+      <RaceSettings club={club} canEdit={canEdit} />
+      <fieldset disabled={!canEdit || busy} className="contents">
         <div className="h-2" aria-hidden="true" />
         {/* One save for the page, pinned at the bottom: the message and links on the left, Save on the right. */}
         <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-navy-600 bg-navy-900 px-4 py-3">

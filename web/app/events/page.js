@@ -22,7 +22,7 @@ import { clubTones, STATUS_MOD } from '@/lib/clubColors';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 import UiIcon from '@/components/ui/UiIcon';
 
-const VIEWS = ['list', 'month', 'week', 'day'];
+const VIEWS = ['list', 'year', 'month', 'week', 'day'];
 const SOON_DAYS = 3; // "Sắp diễn ra": from now to 3 days ahead
 const LIST_GROUPS = ['live', 'soon', 'open', 'done'];
 
@@ -271,10 +271,12 @@ export default function EventsPage() {
     };
   }, [all, today]);
 
-  const step = { month: (n) => addMonths(date, n), week: (n) => addDays(date, 7 * n), day: (n) => addDays(date, n) }[view];
+  const step = { year: (n) => addMonths(date, 12 * n), month: (n) => addMonths(date, n), week: (n) => addDays(date, 7 * n), day: (n) => addDays(date, n) }[view];
   const week = weekDays(date);
   const title =
-    view === 'month'
+    view === 'year'
+      ? t('cal.yearTitle', { y: date.slice(0, 4) })
+      : view === 'month'
       ? monthTitle(date, lang)
       : view === 'week'
         ? `${formatDay(week[0], lang, { day: 'numeric', month: 'numeric' })} – ${formatDay(week[6], lang, { day: 'numeric', month: 'numeric', year: 'numeric' })}`
@@ -356,7 +358,7 @@ export default function EventsPage() {
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
 
-      {!loading && view !== 'list' && <EventCalendar view={view} date={date} events={all} onPickDay={openDay} onChanged={reload} />}
+      {!loading && view !== 'list' && <EventCalendar view={view} date={date} events={all} onPickDay={openDay} onPickMonth={(d) => { setDate(d); pickView('month'); }} onChanged={reload} />}
 
       {!loading && view !== 'list' && (
         <div className="hidden sm:flex flex-wrap gap-3 mt-3 text-xs text-gray-400">

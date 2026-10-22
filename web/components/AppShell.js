@@ -140,14 +140,13 @@ NAV_BY_WORKSPACE.community = [
     icon: 'chart',
     children: [
       { href: '/club/business', key: 'nav.bizPlayers', icon: 'members', exact: true },
-      { href: '/club/business/finance', key: 'nav.bizMoney', icon: 'fund' },
       { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
     ],
   },
-  // Bảng xếp hạng: its own menu item (community + whole web as tabs on the page).
-  { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings', also: ['/leaderboard'] },
+  // Bảng xếp hạng: its own menu item — only this community's players.
+  { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
   {
     key: 'nav.groupSettings',
     icon: 'clubs',

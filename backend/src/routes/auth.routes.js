@@ -167,15 +167,36 @@ router.post('/signup', tooMany, mails, async (req, res) => {
   }
 });
 
+// The reset link sent through our own mail sender (Resend), like the other account emails,
+// so it does not depend on Supabase's built-in sender (a few emails an hour, often only to
+// the project's own team). Returns 'sent', or why not.
+async function sendResetLink(email, origin) {
+  if (!process.env.RESEND_API_KEY) return 'off';
+  const { data, error } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: origin ? { redirectTo: `${origin}/reset-password` } : {} });
+  const link = data?.properties?.action_link;
+  if (error || !link) return 'no_account';
+  const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const text = `Bạn (hoặc ai đó) vừa yêu cầu đặt lại mật khẩu tài khoản NexusZone.\n\nMở link sau để chọn mật khẩu mới (link dùng được một lần, hết hạn sau 1 giờ):\n${link}\n\nNếu không phải bạn yêu cầu, hãy bỏ qua email này — mật khẩu của bạn không đổi.`;
+  const html = `<p>Bạn (hoặc ai đó) vừa yêu cầu <b>đặt lại mật khẩu</b> tài khoản NexusZone.</p>
+<p><a href="${esc(link)}" style="display:inline-block;padding:10px 18px;background:#B6F03B;color:#0B1220;border-radius:8px;text-decoration:none;font-weight:600">Đặt mật khẩu mới</a></p>
+<p>Link dùng được một lần, hết hạn sau 1 giờ.</p>
+<p>Nếu không phải bạn yêu cầu, hãy bỏ qua email này — mật khẩu của bạn không đổi.</p>`;
+  const r = await security.sendMail(email, 'Đặt lại mật khẩu NexusZone', text, html);
+  if (r !== 'sent') console.error('forgot mail', r);
+  return r;
+}
+
 // Forgot password: email a reset link. Always answers ok (never says whether the
 // account exists).
 router.post('/forgot', tooMany, mails, async (req, res) => {
   try {
     const email = await emailFor(cleanLogin(req.body?.login));
     const origin = webOrigin(req);
-    if (email) {
+    if (email && (await sendResetLink(email, origin)) !== 'sent') {
+      // No own mail sender (or it failed): Supabase's own email. Its built-in sender only
+      // reaches a few addresses an hour — set custom SMTP in Supabase for real use.
       const { error } = await authClient().auth.resetPasswordForEmail(email, origin ? { redirectTo: `${origin}/reset-password` } : {});
-      if (error) console.error('forgot', error.message);
+      if (error) console.error('forgot', error.status || '', error.code || '', error.message);
     }
   } catch (err) {
     console.error('forgot', err.message);

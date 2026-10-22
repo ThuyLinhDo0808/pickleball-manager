@@ -83,6 +83,11 @@ async function newcomerFields(clubId) {
   return data?.kind === 'community' ? { newcomer_until: CS.newcomerUntil() } : {};
 }
 
+async function isCommunity(clubId) {
+  const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
+  return data?.kind === 'community';
+}
+
 async function ensureGuestMember(event, p) {
   try {
     // Organizers (the Host, co-hosts) are not the club's guests.
@@ -100,6 +105,9 @@ async function ensureGuestMember(event, p) {
     if (member?.member_type === 'fixed') return null;
 
     if (!member) {
+      // Community (Social Manager): playing a kèo does not make someone a member. They join
+      // the list only by creating an account and asking to join (approved by the Host).
+      if (await isCommunity(event.club_id)) return null;
       // Nothing to recognise them by next time: skip.
       if (!p.user_id && normalizePhone(p.phone).length < 9) return null;
       // The club's plan is full of guests: they still play, just aren't added to the list.
@@ -250,4 +258,4 @@ async function ensureHostMember(club) {
   }
 }
 
-module.exports = { MIGRATION, PERKS, memberForUser, guestsReady, discountReady, discountedFee, findClubPerson, perksFor, ensureGuestMember, ensureHostMember, guestStats };
+module.exports = { MIGRATION, PERKS, memberForUser, guestsReady, discountReady, discountedFee, findClubPerson, perksFor, ensureGuestMember, ensureHostMember, guestStats, isCommunity };

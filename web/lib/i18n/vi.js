@@ -364,6 +364,7 @@ export const vi = {
     stockOk: 'Còn hàng',
   },
   memx: {
+    planTile: "Gói hội viên",
     cols: "Cột hiển thị",
     colsHint: "Tick các cột muốn xem. Lựa chọn được lưu trên máy này.",
     colsAll: "Hiện tất cả",
@@ -383,7 +384,7 @@ export const vi = {
     col_perk: "Đặc quyền",
     col_notes: "Ghi chú",
     vipF_all: "Tất cả",
-    vipF_vip: "VIP",
+    vipF_vip: "Gói hội viên",
     vipF_priority: "Ưu tiên",
     vipF_standard: "Thường",
     activeN: '{n} đang hoạt động',
@@ -462,6 +463,8 @@ export const vi = {
     carrySub: 'gói đã hết kỳ còn buổi',
   },
   rankx: {
+    podium: "Top 3",
+    onlyPodium: "Mới có 3 người trên bục, chưa có ai ở hạng 4 trở xuống.",
     rule: "Xếp hạng theo tỉ lệ thắng (thắng / tổng trận); cần ít nhất {n} trận trong kỳ để có hạng — chưa đủ thì hiện mờ, dấu —.",
     minLabel: "Số trận tối thiểu để có hạng",
     minN: "Từ {n} trận",
@@ -1627,6 +1630,10 @@ export const vi = {
     staffDesc: "Các kèo được giao cho bạn: điểm danh người chơi và nhập tỷ số.",
   },
   plans: {
+    delete: "Xóa gói",
+    deleteTitle: "Xóa gói hội viên",
+    deleteAsk: "Xóa gói \"{name}\"? Không hoàn tác được.",
+    deleteInUse: "Đã có thành viên đăng ký gói này nên không xóa được (để giữ lịch sử). Hãy bấm \"Ngừng bán\" để không bán gói này nữa.",
     packSessions: "Số buổi",
     validity: "Hạn (tháng)",
     packLead: "Gói theo số buổi: người chơi được chơi số buổi trong gói, dùng trong thời hạn tính từ ngày bắt đầu gói. VD: VIP 1 — 10 buổi trong 6 tháng, giá 300.000đ.",
@@ -2219,6 +2226,7 @@ export const vi = {
     notes: 'Ghi chú',
   },
   members: {
+    newPlayer: "Người chơi mới",
     colDuprLinked: "DUPR",
     colSkill: "Điểm trình",
     colSkillHint: "Điểm trình là điểm bạn tự chấm cho người chơi (1.00 – 8.00), khác với DUPR. Gõ số rồi bấm ra ngoài để lưu. Bảng điều khiển ở chế độ Theo Điểm trình sẽ xếp Trình độ theo số này.",
@@ -3328,6 +3336,9 @@ export const vi = {
     balance: 'Số dư',
   },
   cal: {
+    year: "Năm",
+    yearTitle: "Năm {y}",
+    yearCount: "{n} kèo",
     noneMonth: 'Tháng này chưa có lịch nào.',
     upcoming: 'Sắp diễn ra',
     allClubs: 'Tất cả CLB',
@@ -3829,6 +3840,7 @@ export const vi = {
     howItWorks: 'Cách dùng trang này',
     fullName: "Họ và tên",
     addMemberHint: "Người này có chỗ trong kèo và được lưu vào danh sách thành viên (khách) — lần sau chọn lại nhanh ở mục bên dưới, DUPR đi theo người đó.",
+    addMemberHintSm: "Người này chỉ có chỗ trong kèo này, không được thêm vào danh sách thành viên. Muốn vào cộng đồng: gửi link để họ tạo tài khoản và xin gia nhập.",
     addMemberBtn: "Thêm vào kèo",
     pickSlot: "Chọn khung giờ / sân",
     pickSlotHint: "Người được thêm (cả thành viên mới và người chọn từ cộng đồng) vào khung giờ này, tính phí của khung giờ đó. Khung giờ hết chỗ thì vào danh sách chờ.",
@@ -4191,6 +4203,7 @@ export const vi = {
   },
 
   race: {
+    offHere: "Cuộc đua Top tháng đang tắt. Bật và chỉnh giải thưởng ở",
     title: 'Cuộc đua Top tháng',
     tab: 'Top tháng',
     communityOnly: 'Cuộc đua Top tháng chỉ có ở Cộng đồng (Social Manager).',
@@ -5411,6 +5424,11 @@ export const vi = {
     fromForm: "chi phí buổi",
   },
   ledger: {
+    expenseFromEvent: "Khoản chi được nhập ở chi phí của từng kèo (khi tạo lịch). Ở đây chỉ ghi khoản thu.",
+    expandAll: "Mở hết",
+    collapseAll: "Thu gọn hết",
+    entriesN: "{n} khoản",
+    openSession: "Mở kèo",
     intro: "Mọi khoản thu và chi của bạn: quỹ CLB và tiền của từng buổi (phí người chơi, tiền thuê sân…).",
     session: "Buổi",
     noSession: "Không gắn buổi (quỹ CLB)",

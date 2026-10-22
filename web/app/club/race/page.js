@@ -14,7 +14,6 @@ import { formatVnd } from '@/lib/format';
 const fmtMonth = (m) => (m ? `${Number(m.slice(5))}/${m.slice(0, 4)}` : '');
 const fmtDay = (d) => (d ? d.split('-').reverse().join('/') : '—');
 const STATE_TONE = { available: 'border-lime-400/60 text-lime-300', used: 'border-navy-500 text-gray-300', expired: 'border-gray-600 text-gray-500', revoked: 'border-red-400/50 text-red-300' };
-const REWARDS = ['free', 'half', 'none'];
 
 // Cuộc đua Top tháng (communities): this month's live table, past months' final tables,
 // the race settings, and every voucher given (use / extend / revoke).
@@ -29,18 +28,6 @@ export default function RacePage() {
   const s = d?.settings;
   const canEdit = !club?.role || ['owner', 'co_admin'].includes(club.role);
 
-  const save = async (patch) => {
-    setBusy('settings');
-    setErr('');
-    try {
-      await api.patch(`/api/clubs/${club.id}/race`, patch);
-      await reload();
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setBusy('');
-    }
-  };
   const act = async (v, body) => {
     setBusy(v.id);
     setErr('');
@@ -65,48 +52,13 @@ export default function RacePage() {
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && (
         <div className="flex flex-col gap-5">
-          {/* Settings */}
-          <section className="card">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-white font-semibold">{t('race.settings')}</h2>
-                <p className="text-gray-400 text-xs mt-0.5">{t('race.rules', { min: s.min_sessions, day: s.join_by_day })}</p>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
-                <input type="checkbox" checked={s.enabled} disabled={!canEdit || busy === 'settings'} onChange={(e) => save({ enabled: e.target.checked })} />
-                {s.enabled ? t('race.on') : t('race.off')}
-              </label>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-3 mt-4">
-              {['1', '2', '3'].map((r) => (
-                <label key={r} className="text-sm">
-                  <span className="text-xs text-gray-400">{t('race.prizeFor', { n: r })}</span>
-                  <select className="input mt-1" value={s.rewards[r]} disabled={!canEdit} onChange={(e) => save({ rewards: { ...s.rewards, [r]: e.target.value } })}>
-                    {REWARDS.map((k) => <option key={k} value={k}>{t(`race.reward_${k}`)}</option>)}
-                  </select>
-                </label>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-end gap-4 mt-3 text-sm">
-              <label>
-                <span className="text-xs text-gray-400">{t('race.minSessions')}</span>
-                <select className="input mt-1 !w-40" value={s.min_sessions} disabled={!canEdit} onChange={(e) => save({ min_sessions: Number(e.target.value) })}>
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{t('race.minSessionsN', { n })}</option>)}
-                </select>
-              </label>
-              <label>
-                <span className="text-xs text-gray-400">{t('race.voucherDays')}</span>
-                <select className="input mt-1 !w-36" value={s.voucher_days} disabled={!canEdit} onChange={(e) => save({ voucher_days: Number(e.target.value) })}>
-                  {[7, 14, 30, 45, 60, 90].map((n) => <option key={n} value={n}>{t('race.days', { n })}</option>)}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-gray-200 cursor-pointer pb-2">
-                <input type="checkbox" checked={s.split_levels} disabled={!canEdit} onChange={(e) => save({ split_levels: e.target.checked })} />
-                {t('race.splitLevels')}
-              </label>
-            </div>
-            <p className="text-gray-500 text-xs mt-2">{t('race.pointsHint', { c: s.points.checkin, w: s.points.win, n: s.points.no_show })}</p>
-          </section>
+          {/* Settings live in Bảng điều khiển; here only a pointer while the race is off. */}
+          {!s.enabled && (
+            <p className="card text-gray-300 text-sm">
+              {t('race.offHere')}{' '}
+              <Link href="/club/community-settings" className="text-lime-300 underline">{t('nav.commPanel')}</Link>
+            </p>
+          )}
 
           {/* Table */}
           <section className="card !p-0 overflow-x-auto">

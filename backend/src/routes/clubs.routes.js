@@ -583,6 +583,13 @@ router.post('/:clubId/members/bulk', accountOnly, async (req, res) => {
 
 router.patch('/:clubId/members/:memberId', async (req, res) => {
   const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags', 'guest_perk', 'guest_discount_pct']);
+  // Community "Hình thức": Vãng lai · Thường xuyên · Người chơi mới (a drop-in for 30 days).
+  let asNewcomer = null;
+  if ((req.club.kind || 'club') === 'community' && ['new', 'guest'].includes(fields.member_type)) {
+    const CS = require('../services/communitySettings');
+    if (await CS.newcomersReady()) asNewcomer = fields.member_type === 'new' ? CS.newcomerUntil() : false;
+    if (fields.member_type === 'new') fields.member_type = 'guest';
+  }
   if ('notes' in fields) fields.notes = String(fields.notes ?? '').trim().slice(0, 2000) || null;
   if ('dupr_level' in fields) {
     try {
@@ -640,6 +647,8 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   }
   // The Host moved the person to another type by hand: no longer "Người mới".
   if (fields.member_type && fields.member_type !== req.member.member_type && req.member.newcomer_until) fields.newcomer_until = null;
+  if (asNewcomer) fields.newcomer_until = req.member.newcomer_until && req.member.newcomer_until >= asNewcomer.slice(0, 10) ? req.member.newcomer_until : asNewcomer;
+  else if (asNewcomer === false && req.member.newcomer_until) fields.newcomer_until = null;
   // Reactivating a member, or moving one to the other type, takes a place on the plan.
   {
     const nextType = fields.member_type === 'guest' ? 'guest' : fields.member_type === 'fixed' ? 'fixed' : req.member.member_type;
@@ -1025,6 +1034,17 @@ router.patch('/:clubId/plans/:planId', requireFeature('membership_plans'), async
   const { data, error } = await supabase.from('membership_plans').update(fields).eq('id', req.plan.id).select().single();
   if (error) return dbError(res, error);
   res.json(data);
+});
+
+// Delete a plan nobody has bought. A plan with registrations keeps their history: it can only
+// be stopped (Ngừng bán).
+router.delete('/:clubId/plans/:planId', requireFeature('membership_plans'), async (req, res) => {
+  const { count, error: e1 } = await supabase.from('memberships').select('id', { count: 'exact', head: true }).eq('plan_id', req.plan.id);
+  if (e1) return dbError(res, e1);
+  if (count) return res.status(409).json({ error: 'Members have registered for this plan: stop selling it instead.', code: 'plan_in_use', count });
+  const { error } = await supabase.from('membership_plans').delete().eq('id', req.plan.id);
+  if (error) return error.code === '23503' ? res.status(409).json({ error: 'This plan is in use.', code: 'plan_in_use' }) : dbError(res, error);
+  res.json({ ok: true });
 });
 
 // Register a member for `count` consecutive periods of a plan, starting at `start_month` (YYYY-MM).

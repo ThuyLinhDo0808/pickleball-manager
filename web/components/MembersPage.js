@@ -207,7 +207,7 @@ export default function MembersPage({ tab = 'fixed' }) {
 
       <KpiRow cols={5}>
         <StatTile icon="home" label={t('requests.tabFixed')} value={fixedRows.length} sub={placeText(room?.fixed) || t('memx.activeN', { n: activeFixed.length })} onClick={() => pickTab('fixed')} active={tab === 'fixed'} />
-        <StatTile icon="star" label="VIP" value={vipCount} tone="text-amber-300" sub={t('memx.vipSub')} />
+        <StatTile icon="star" label={t('memx.planTile')} value={vipCount} tone="text-amber-300" sub={t('memx.vipSub')} />
         <StatTile icon="users" label={t('requests.tabGuest')} value={guestRows.length} tone="text-sky-300" sub={placeText(room?.guest) || t('memx.priorityN', { n: guestRows.filter((m) => m.guest_perk).length })} onClick={() => pickTab('guest')} active={tab === 'guest'} />
         <StatTile icon="edit" label={t('memx.waiting')} value={pending.length} tone={pending.length ? 'text-yellow-300' : 'text-white'} sub={pending.length ? t('memx.needReview') : t('memx.nothing')} onClick={() => pickTab('waiting')} active={tab === 'waiting'} />
         <StatTile icon="cake" label={t('memx.birthdays')} value={bdays.length} tone="text-pink-300" sub={bdays.slice(0, 2).map((m) => `${m.full_name.split(' ').pop()} ${m.birth_date.slice(8, 10)}/${m.birth_date.slice(5, 7)}`).join(', ') || '—'} />

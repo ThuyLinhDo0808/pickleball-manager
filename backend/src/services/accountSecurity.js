@@ -519,6 +519,7 @@ async function emailNewDevice(email, { userAgent, ip, webUrl }) {
 
 module.exports = {
   emailMfaOff,
+  sendMail,
   // pure helpers (tests)
   base32Encode,
   base32Decode,

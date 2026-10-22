@@ -366,7 +366,54 @@ function DayView({ date, events, onPickDay, onChanged }) {
   );
 }
 
-export default function EventCalendar({ view, date, events, onPickDay, onChanged }) {
+// ---- Year: 12 small months; a day with kèo is filled (number = how many) ------
+function YearView({ date, events, onPickDay, onPickMonth }) {
+  const { t, lang } = useI18n();
+  const map = byDay(events.filter((e) => e.status !== 'cancelled'));
+  const y = date.slice(0, 4);
+  const today = todayYmd();
+  const heads = weekdayLabels(lang);
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}-01`).map((first) => {
+        const month = first.slice(0, 7);
+        const total = Object.entries(map).filter(([d]) => d.startsWith(month)).reduce((n, [, l]) => n + l.length, 0);
+        return (
+          <div key={month} className="card !p-3">
+            <button type="button" onClick={() => onPickMonth(first)} className="w-full flex items-center justify-between gap-2 min-h-[44px] -mt-1 mb-1 rounded-lg px-1 hover:bg-navy-800 text-left">
+              <span className="text-white font-semibold capitalize">{new Date(`${first}T00:00:00Z`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { month: 'long', timeZone: 'UTC' })}</span>
+              <span className={`text-xs tabular-nums ${total ? 'text-lime-300' : 'text-gray-500'}`}>{total ? t('cal.yearCount', { n: total }) : '—'}</span>
+            </button>
+            <div className="grid grid-cols-7 text-center text-[11px] text-gray-500 mb-0.5">
+              {heads.map((d) => <div key={d}>{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-0.5">
+              {monthGrid(first).map((d) => {
+                if (d.slice(0, 7) !== month) return <span key={d} />;
+                const n = (map[d] || []).length;
+                return (
+                  <button
+                    type="button"
+                    key={d}
+                    onClick={() => onPickDay(d)}
+                    title={n ? t('cal.yearCount', { n }) : undefined}
+                    className={`relative h-9 sm:h-8 rounded-md text-xs tabular-nums flex items-center justify-center ${n ? 'bg-lime-400/20 text-lime-200 font-semibold hover:bg-lime-400/30' : 'text-gray-400 hover:bg-navy-800'} ${d === today ? 'ring-1 ring-lime-400' : ''}`}
+                  >
+                    {Number(d.slice(8))}
+                    {n > 1 && <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-lime-400 text-navy-950 text-[9px] leading-[14px] font-bold">{n}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function EventCalendar({ view, date, events, onPickDay, onPickMonth, onChanged }) {
+  if (view === 'year') return <YearView date={date} events={events} onPickDay={onPickDay} onPickMonth={onPickMonth || onPickDay} />;
   if (view === 'month') return <MonthView date={date} events={events} onPickDay={onPickDay} />;
   if (view === 'week') return <TimeGrid days={weekDays(date)} events={events} onPickDay={onPickDay} />;
   return <DayView date={date} events={events} onPickDay={onPickDay} onChanged={onChanged} />;

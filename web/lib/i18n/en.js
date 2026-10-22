@@ -364,6 +364,7 @@ export const en = {
     stockOk: 'In stock',
   },
   memx: {
+    planTile: "Membership plans",
     cols: "Columns",
     colsHint: "Tick the columns to see. Kept on this device.",
     colsAll: "Show all",
@@ -383,7 +384,7 @@ export const en = {
     col_perk: "Perk",
     col_notes: "Notes",
     vipF_all: "All",
-    vipF_vip: "VIP",
+    vipF_vip: "With a plan",
     vipF_priority: "Priority",
     vipF_standard: "Standard",
     activeN: '{n} active',
@@ -462,6 +463,8 @@ export const en = {
     carrySub: 'left on ended plans',
   },
   rankx: {
+    podium: "Top 3",
+    onlyPodium: "Only the top 3 so far; nobody from 4th place down yet.",
     rule: "Ranked by win rate (wins / matches); {n} matches in the period needed for a place — fewer are greyed with —.",
     minLabel: "Minimum matches for a place",
     minN: "{n}+ matches",
@@ -1627,6 +1630,10 @@ export const en = {
     staffDesc: 'Events a host assigned to you: check players in and enter scores.',
   },
   plans: {
+    delete: "Delete plan",
+    deleteTitle: "Delete membership plan",
+    deleteAsk: "Delete the plan \"{name}\"? This cannot be undone.",
+    deleteInUse: "Members have registered for this plan, so it cannot be deleted (their history stays). Press \"Stop selling\" instead.",
     packSessions: "Sessions",
     validity: "Valid for (months)",
     packLead: "Session packs: the player gets a number of sessions to use within a time limit from the day the pack starts. E.g. VIP 1 — 10 sessions within 6 months for 300,000đ.",
@@ -2219,6 +2226,7 @@ export const en = {
     notes: 'Notes',
   },
   members: {
+    newPlayer: "New player",
     colDuprLinked: "DUPR",
     colSkill: "Skill score",
     colSkillHint: "Skill score is the score you give a player yourself (1.00 – 8.00), not DUPR. Type a number and tap outside to save. With the control panel set to By skill score, levels follow this number.",
@@ -3328,6 +3336,9 @@ export const en = {
     balance: 'Balance',
   },
   cal: {
+    year: "Year",
+    yearTitle: "Year {y}",
+    yearCount: "{n} kèo",
     noneMonth: 'Nothing scheduled this month.',
     upcoming: 'Upcoming',
     allClubs: 'All clubs',
@@ -3829,6 +3840,7 @@ export const en = {
     howItWorks: 'How this page works',
     fullName: "Full name",
     addMemberHint: "They get a place in this kèo and are saved to the member list (as a guest) — pick them below next time; their DUPR stays with them.",
+    addMemberHintSm: "They get a place in this kèo only and are not added to the member list. To join the community, send them the link to create an account and ask to join.",
     addMemberBtn: "Add to kèo",
     pickSlot: "Pick the time slot / court",
     pickSlotHint: "Everyone you add (new members and people picked from the community) goes into this slot at its fee. A full slot puts them on the waitlist.",
@@ -4191,6 +4203,7 @@ export const en = {
   },
 
   race: {
+    offHere: "The monthly Top race is off. Turn it on and set the prizes in",
     title: 'Monthly Top race',
     tab: 'Top of the month',
     communityOnly: 'The monthly Top race is only available for Communities (Social Manager).',
@@ -5411,6 +5424,11 @@ export const en = {
     fromForm: "session cost",
   },
   ledger: {
+    expenseFromEvent: "Money out is entered as each kèo's costs (when the schedule is created). Only money in is recorded here.",
+    expandAll: "Open all",
+    collapseAll: "Close all",
+    entriesN: "{n} entries",
+    openSession: "Open kèo",
     intro: "Everything you take in and pay out: the club fund and each session's money (who paid, court hire…).",
     session: "Session",
     noSession: "No session (club fund)",

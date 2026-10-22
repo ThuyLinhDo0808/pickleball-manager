@@ -1236,8 +1236,8 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
   }
   const dupr_level = selfDupr ?? req.body.dupr_level ?? null;
   let memberId = await findClubMemberByPhone(req.event.club_id, phone);
-  // A new person goes on the club's / community's member list too (Khách vãng lai), so
-  // their DUPR and level follow them to the next kèo; same name = the same person.
+  // Someone already on the list (same name) is linked, so their DUPR and level follow them.
+  // A new person goes on a club's list as a guest; in a community they only play this kèo.
   if (!memberId && req.event.club_id && req.body.as_member) {
     memberId = await addListedMember(req.event, { full_name, gender, duprId, level: dupr_level });
   }
@@ -1390,8 +1390,8 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
   res.status(201).json(data);
 });
 
-// The member row for someone the Host adds by hand: the existing row with that name, else a
-// new Khách vãng lai (when the plan has room). Their gender / DUPR fill gaps on the row.
+// The member row for someone the Host adds by hand: the existing row with that name, else (a
+// club, with room in the plan) a new guest row. Their gender / DUPR fill gaps on the row.
 async function addListedMember(event, { full_name, gender, duprId, level }) {
   try {
     const { data: same } = await supabase.from('club_members').select('*').eq('club_id', event.club_id).ilike('full_name', full_name.replace(/[%_]/g, '')).limit(1);
@@ -1406,6 +1406,9 @@ async function addListedMember(event, { full_name, gender, duprId, level }) {
       if (Object.keys(patch).length) await supabase.from('club_members').update(patch).eq('id', found.id);
       return found.id;
     }
+    // Community: someone added just for this kèo stays off the member list (they join later
+    // with their own account and a join request).
+    if (await require('../services/guests').isCommunity(event.club_id)) return null;
     if (!(await require('../services/plan').hasMemberRoom({ id: event.club_id, host_id: event.host_id }, 'guest'))) return null;
     const row = { club_id: event.club_id, full_name, member_type: 'guest', joined_on: `${String(event.event_date).slice(0, 7)}-01`, ...fill(null) };
     let { data, error } = await supabase.from('club_members').insert(row).select('id').single();

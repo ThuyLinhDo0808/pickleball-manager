@@ -29,14 +29,12 @@ const GROUPS = {
 const COMMUNITY_GROUPS = {
   stats: [
     { href: '/club/business', key: 'nav.bizPlayers', icon: 'chart', match: (p) => p === '/club/business' },
-    { href: '/club/business/finance', key: 'nav.bizMoney', icon: 'money', match: (p) => p.startsWith('/club/business/finance') },
     { href: '/club/race', key: 'nav.race', icon: 'trophy', match: (p) => p.startsWith('/club/race') },
     { href: '/club/dupr', key: 'nav.dupr', icon: 'chart', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
     { href: '/club/reviews', key: 'nav.reviews', icon: 'star', match: (p) => p.startsWith('/club/reviews') },
   ],
   rankings: [
     { href: '/club/rankings', key: 'nav.rankings', icon: 'medal', match: (p) => p.startsWith('/club/rankings') },
-    { href: '/leaderboard', key: 'nav.globalRank', icon: 'globe', match: (p) => p.startsWith('/leaderboard') },
   ],
 };
 
@@ -48,6 +46,7 @@ export default function SectionTabs({ group }) {
   const rankingsPage = pathname.startsWith('/club/rankings') || pathname.startsWith('/leaderboard');
   const tabsOf = community ? COMMUNITY_GROUPS[rankingsPage ? 'rankings' : group] || GROUPS[group] : GROUPS[group];
   const shown = tabsOf.filter((tab) => !tab.hidden && (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport));
+  if (shown.length < 2) return null; // one page alone needs no tabs
   return (
     // Phone: one row of equal cells (icon over the word), like a segmented control; up to 3
     // tabs per row, more wrap to a second row. Wider screens: pills.
