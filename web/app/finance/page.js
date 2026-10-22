@@ -222,7 +222,7 @@ export default function FinanceOverview() {
         <Breakdown title={`${t('finX.expenseByP', { p: periodLabel })}`} rows={expense} total={periodTotal('expense')} color={EXPENSE_COLOR} t={t} />
       </div>
 
-      <EventPaymentsPending />
+      <EventPaymentsPending clubId={club?.id} />
       {isClub && <PendingPayments club={club} />}
 
       <section className="card !p-5">

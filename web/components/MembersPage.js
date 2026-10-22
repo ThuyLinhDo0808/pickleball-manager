@@ -28,6 +28,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import CommunitySuggestions from '@/components/CommunitySuggestions';
 import { localDate } from '@/lib/dates';
 import UiIcon from '@/components/ui/UiIcon';
+import Modal from '@/components/Modal';
 
 
 // Each tab of the members section has its own address (menu Thành viên ▸ …).
@@ -321,17 +322,34 @@ export default function MembersPage({ tab = 'fixed' }) {
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}><UiIcon name="cake" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
                         </span>
                         <span className="block text-gray-400 text-xs mt-0.5">
-                          {[m.gender ? t(`members.${m.gender}`) : null, ...(pickleball ? [m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null, m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null] : [levelText(m.dupr_level, sport, t)]), isCommunity && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null, m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null].filter(Boolean).join(' · ') || '—'}
+                          {[
+                            show('type') ? t(`xlsx.place_${placeOf(m)}`) : null,
+                            show('gender') && m.gender ? t(`members.${m.gender}`) : null,
+                            ...(pickleball
+                              ? [
+                                  show('dupr') ? (m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null) : null,
+                                  show('duprSelf') && m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null,
+                                ]
+                              : [show('score') ? levelText(m.dupr_level, sport, t) : null]),
+                            isCommunity && show('skill') && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null,
+                            levelCfg && show('level') && m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null,
+                            !isGuestTab && show('tier') && m.tier && !(m.vip_tier || m.vip_stars > 0) ? t(`members.${m.tier}`) : null,
+                          ].filter(Boolean).join(' · ') || '—'}
                         </span>
+                        {((show('birth') && (m.birth_date || m.birth_year)) || (showPhone && show('phone') && m.phone)) && (
+                          <span className="block text-gray-400 text-xs mt-0.5 tabular-nums">
+                            {[show('birth') ? (m.birth_date ? dmy(m.birth_date) : m.birth_year || null) : null, showPhone && show('phone') ? m.phone || null : null].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
                         {missingInfo(m).length > 0 && <span className="block text-amber-300 text-xs mt-0.5">{t('members.missingList', { list: missText(m) })}</span>}
                         <span className="block text-gray-500 text-xs mt-0.5">
                           {isGuestTab
-                            ? `${t('guests.played')}: ${m.guest_stats?.played ?? 0}`
-                            : m.joined_on ? `${t('members.joined')} ${my(m.joined_on)} · ${tenureLabel(m.joined_on, t)}` : ''}
+                            ? (show('played') ? `${t('guests.played')}: ${m.guest_stats?.played ?? 0}` : '')
+                            : show('joined') && m.joined_on ? `${t('members.joined')} ${my(m.joined_on)} · ${tenureLabel(m.joined_on, t)}` : ''}
                         </span>
                         {(m.flags?.length > 0 || ((isGuestTab || isCommunity) && m.guest_perk)) && (
                           <span className="flex flex-wrap gap-1 mt-1">
-                            {(isGuestTab || isCommunity) && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
+                            {(isGuestTab || isCommunity) && (!isGuestTab || show('perk')) && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
                             {(m.flags || []).map((f) => <span key={f} className={`text-[10px] leading-4 rounded border px-1 ${FLAG_STYLE[f]}`}>{t(`flags.${f}`)}</span>)}
                           </span>
                         )}
@@ -592,34 +610,44 @@ function SkillScoreCell({ club, member, onSaved }) {
   );
 }
 
-// "Cột hiển thị": tick the columns to see (Họ tên always stays); kept on this device.
+// "Cột hiển thị": tick the columns to see (Họ tên always stays); kept on this device. A
+// popup (bottom sheet on phones) so the list is never cut off by the table card. The same
+// choice drives the computer table and the phone cards.
 function ColumnPicker({ cols, hidden, onChange }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const shownN = cols.filter((k) => !hidden.includes(k)).length;
+  const row = 'flex min-h-[2.75rem] items-center gap-3 rounded-lg px-2 text-sm sm:min-h-[2.25rem]';
   return (
-    <div className="relative">
-      <button type="button" className="btn-secondary text-sm !py-2 whitespace-nowrap" aria-expanded={open} onClick={() => setOpen(!open)}>
+    <>
+      <button type="button" className="btn-secondary text-sm !py-2 whitespace-nowrap gap-1.5" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        <UiIcon name="filter" className="w-4 h-4" />
         {t('memx.cols')} ({shownN + 1}/{cols.length + 1})
       </button>
-      {open && (
-        <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-navy-600 bg-navy-900 p-3 shadow-xl">
-          <p className="text-xs text-gray-400 mb-2">{t('memx.colsHint')}</p>
-          <label className="flex items-center gap-2 text-sm text-gray-400 py-0.5">
-            <input type="checkbox" checked disabled /> {t('common.name')}
+      <Modal
+        open={open}
+        title={t('memx.cols')}
+        onClose={() => setOpen(false)}
+        footer={(
+          <>
+            <button type="button" className="btn-secondary" onClick={() => onChange([])}>{t('memx.colsAll')}</button>
+            <button type="button" className="btn-primary" onClick={() => setOpen(false)}>{t('memx.colsDone')}</button>
+          </>
+        )}
+      >
+        <p className="text-sm text-gray-400 mb-3">{t('memx.colsHint')}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+          <label className={`${row} text-gray-500`}>
+            <input type="checkbox" className="h-5 w-5 shrink-0" checked disabled /> {t('common.name')}
           </label>
           {cols.map((k) => (
-            <label key={k} className="flex items-center gap-2 text-sm text-gray-200 py-0.5 cursor-pointer">
-              <input type="checkbox" checked={!hidden.includes(k)} onChange={(e) => onChange(e.target.checked ? hidden.filter((x) => x !== k) : [...hidden, k])} />
+            <label key={k} className={`${row} cursor-pointer text-gray-100 hover:bg-navy-800`}>
+              <input type="checkbox" className="h-5 w-5 shrink-0 accent-lime-400" checked={!hidden.includes(k)} onChange={(e) => onChange(e.target.checked ? hidden.filter((x) => x !== k) : [...hidden, k])} />
               {t(`memx.col_${k}`)}
             </label>
           ))}
-          <div className="flex justify-between gap-2 mt-2 pt-2 border-t border-navy-700">
-            <button type="button" className="text-xs text-lime-300 underline" onClick={() => onChange([])}>{t('memx.colsAll')}</button>
-            <button type="button" className="text-xs text-gray-300" onClick={() => setOpen(false)}>{t('common.close')}</button>
-          </div>
         </div>
-      )}
-    </div>
+      </Modal>
+    </>
   );
 }

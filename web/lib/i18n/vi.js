@@ -367,6 +367,7 @@ export const vi = {
     cols: "Cột hiển thị",
     colsHint: "Tick các cột muốn xem. Lựa chọn được lưu trên máy này.",
     colsAll: "Hiện tất cả",
+    colsDone: "Xong",
     col_type: "Hình thức",
     col_gender: "Giới tính",
     col_birth: "Ngày sinh",

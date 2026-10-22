@@ -3,9 +3,10 @@ module.exports = {
   content: ['./app/**/*.{js,jsx}', './components/**/*.{js,jsx}', './context/**/*.{js,jsx}'],
   theme: {
     extend: {
-      // One face for the whole app (landing page included), self-hosted from @fontsource.
+      // The app font comes from --font-app (globals.css): system face on computers, Plus
+      // Jakarta Sans (self-hosted from @fontsource) on phones.
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        sans: ['var(--font-app)'],
       },
       colors: {
         // Lighter greys than Tailwind's own: small print stays readable on the dark navy.

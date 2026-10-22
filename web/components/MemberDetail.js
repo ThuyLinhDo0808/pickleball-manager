@@ -17,6 +17,7 @@ import { formatVnd, thisMonth } from '@/lib/format';
 import { todayYmd } from '@/lib/dates';
 import MemberLink from '@/components/MemberLink';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 export const FLAGS = ['unpaid', 'late', 'attitude'];
 export const FLAG_STYLE = {
@@ -422,34 +423,38 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
         <MemberEdit community={club?.kind === 'community'} key={member.id} member={member} busy={busy} onSave={patchMember} onSaveDupr={saveDupr} autoEdit={autoEdit} />
 
         {member.account_email && (
-          <div className="flex items-center justify-between gap-3 bg-navy-900 rounded-lg px-3 py-2 text-sm">
-            <span className="min-w-0 break-words">
-              <span className="text-gray-400">{t('payments.linked')}: </span>
-              <span className="text-white">{member.account_email}</span>
-              {member.account_verified ? (
-                <span className="ml-2 text-[10px] rounded border border-lime-400/50 text-lime-300 px-1">✓ {t('verify.verified')}</span>
-              ) : (
-                <span className="ml-2 text-[10px] rounded border border-yellow-400/60 text-yellow-300 px-1">{t('verify.pending')}</span>
-              )}
-            </span>
-            {!member.account_verified && (
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg bg-navy-900 px-3 py-2.5 text-sm">
+            <div className="min-w-0">
+              <p className="text-gray-400 text-xs">{t('payments.linked')}</p>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-white break-all">{member.account_email}</span>
+                {member.account_verified ? (
+                  <span className="pill-good"><UiIcon name="check" className="w-3.5 h-3.5" />{t('verify.verified')}</span>
+                ) : (
+                  <span className="pill-warn">{t('verify.pending')}</span>
+                )}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-1">
               <button
                 type="button"
-                className="text-lime-400 text-xs font-semibold shrink-0"
+                className="min-h-[2.75rem] rounded-lg px-3 text-sm text-red-300 hover:bg-red-500/10 sm:min-h-[2.25rem]"
                 disabled={busy}
-                onClick={() => window.confirm(t('verify.ask', { email: member.account_email, name: member.full_name })) && patchMember({ account_verified: true })}
+                onClick={() => window.confirm(t('payments.unlinkConfirm', { email: member.account_email })) && patchMember({ unlink_account: true })}
               >
-                {t('verify.do')}
+                {t('payments.unlink')}
               </button>
-            )}
-            <button
-              type="button"
-              className="text-red-400 text-xs shrink-0"
-              disabled={busy}
-              onClick={() => window.confirm(t('payments.unlinkConfirm', { email: member.account_email })) && patchMember({ unlink_account: true })}
-            >
-              {t('payments.unlink')}
-            </button>
+              {!member.account_verified && (
+                <button
+                  type="button"
+                  className="btn-primary text-sm"
+                  disabled={busy}
+                  onClick={() => window.confirm(t('verify.ask', { email: member.account_email, name: member.full_name })) && patchMember({ account_verified: true })}
+                >
+                  {t('verify.do')}
+                </button>
+              )}
+            </div>
           </div>
         )}
 

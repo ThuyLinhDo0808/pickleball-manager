@@ -367,6 +367,7 @@ export const en = {
     cols: "Columns",
     colsHint: "Tick the columns to see. Kept on this device.",
     colsAll: "Show all",
+    colsDone: "Done",
     col_type: "Type",
     col_gender: "Gender",
     col_birth: "Birth date",

@@ -592,11 +592,15 @@ function addDays(ymd, days) {
   return d.toISOString().slice(0, 10);
 }
 
-// Transfer screenshots waiting for the Host, across all their upcoming events.
+// Transfer screenshots waiting for the Host on their upcoming events. ?club_id= keeps it to
+// one club / community (the finance page of that space), so spaces never mix.
 router.get('/pending-payments', async (req, res) => {
   // Payments to review: the owner's, co-admins' and Finance's clubs (not Operations).
   const shared = await coAdminClubIds(req, ['co_admin', 'finance']).catch(() => []);
-  const base = supabase.from('events').select('id, title, event_date, start_time, fee_amount, club_id');
+  const clubId = req.query.club_id;
+  if (clubId !== undefined && !isUuid(clubId)) return res.json([]);
+  let base = supabase.from('events').select('id, title, event_date, start_time, fee_amount, club_id');
+  if (clubId) base = base.eq('club_id', clubId);
   const { data: events, error } = await (shared.length ? base.or(`host_id.eq.${req.hostId},club_id.in.(${shared.join(',')})`) : base.eq('host_id', req.hostId))
     .gte('event_date', new Date(Date.now() - 86400000).toISOString().slice(0, 10));
   if (error) return dbError(res, error);

@@ -43,23 +43,35 @@ function useMedia(query) {
 const ActiveCtx = createContext(true);
 
 // Camera for the court behind the scenes (rotateX, rotateZ, scale, shift x/y), where the ball
-// sits on it (% of the court) — one set per scene.
+// sits on it (% of the court), and the colour of the glow — one set per scene.
 const SCENES = [
-  { key: 'intro', cam: [60, -28, 1.15, '16vw', '4vh'], ball: [52, 70] },
+  { key: 'intro', cam: [60, -28, 1.15, '16vw', '4vh'], ball: [52, 70], glow: ['#B6F03B', '#38BDF8'] },
   // Xé vé communities and clubs first: what NexusZone is about; then the players they serve.
-  { key: 'social', cam: [66, 90, 1.3, '16vw', '10vh'], ball: [50, 52] },
-  { key: 'club', cam: [0, 0, 0.85, '-20vw', '2vh'], ball: [72, 38] },
-  { key: 'players', cam: [56, 34, 1.45, '18vw', '6vh'], ball: [32, 30] },
-  { key: 'play', cam: [48, -52, 1.8, '18vw', '-2vh'], ball: [40, 74] },
-  { key: 'start', cam: [74, 0, 1, '4vw', '30vh'], ball: [50, 30] },
+  { key: 'social', cam: [66, 90, 1.3, '16vw', '10vh'], ball: [50, 52], glow: ['#FBBF24', '#B6F03B'] },
+  { key: 'club', cam: [0, 0, 0.85, '-20vw', '2vh'], ball: [72, 38], glow: ['#B6F03B', '#34D399'] },
+  { key: 'players', cam: [56, 34, 1.45, '18vw', '6vh'], ball: [32, 30], glow: ['#38BDF8', '#B6F03B'] },
+  { key: 'play', cam: [48, -52, 1.8, '18vw', '-2vh'], ball: [40, 74], glow: ['#A78BFA', '#38BDF8'] },
+  { key: 'start', cam: [74, 0, 1, '4vw', '30vh'], ball: [50, 30], glow: ['#B6F03B', '#34D399'] },
 ];
+const pad = (n) => String(n).padStart(2, '0');
 
 // ---- small shared pieces (also used by the sign-in page) ------------------------------------
+
+// Slow-moving glows behind a section.
+export function Aurora({ className = '' }) {
+  return (
+    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+      <span className="lp-blob lp-blob-a" />
+      <span className="lp-blob lp-blob-b" />
+      <span className="lp-blob lp-blob-c" />
+    </div>
+  );
+}
 
 export function Logo({ className = '' }) {
   return (
     <span className={`inline-flex items-center gap-2 font-black tracking-tight ${className}`}>
-      <span className="relative h-8 w-8 rounded-xl bg-lime-400 text-navy-950 grid place-items-center text-sm" aria-hidden="true">
+      <span className="relative h-8 w-8 rounded-xl bg-lime-400 text-navy-950 grid place-items-center text-sm shadow-[0_0_24px_rgba(182,240,59,0.35)]" aria-hidden="true">
         NZ
       </span>
       <span className="text-white whitespace-nowrap">Nexus<span className="text-lime-400">Zone</span></span>
@@ -116,9 +128,9 @@ function DashboardMock() {
     { time: '20:00', title: t('landing.mock_ev3'), n: '9/12', tone: 'bg-amber-300' },
   ];
   return (
-    <div className="rounded-2xl border border-white/10 bg-navy-900 p-4">
+    <div className="rounded-2xl border border-white/10 bg-navy-900/90 p-4 shadow-2xl shadow-black/50 backdrop-blur">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-400">{t('landing.mock_today')}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('landing.mock_today')}</span>
         <span className="flex gap-1" aria-hidden="true"><i className="h-2 w-2 rounded-full bg-red-400/70" /><i className="h-2 w-2 rounded-full bg-amber-300/70" /><i className="h-2 w-2 rounded-full bg-lime-400/70" /></span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
@@ -128,7 +140,7 @@ function DashboardMock() {
           [t('landing.mock_checkin'), <CountUp key="c" to={92} fmt={(v) => `${Math.round(v)}%`} />, 'text-sky-300'],
         ].map(([k, v, c]) => (
           <div key={k} className="rounded-xl border border-white/5 bg-navy-800 p-2.5">
-            <p className="text-xs text-gray-400 break-words">{k}</p>
+            <p className="text-[10px] uppercase tracking-wide text-gray-400 truncate">{k}</p>
             <p className={`text-lg font-black tabular-nums ${c}`}>{v}</p>
           </div>
         ))}
@@ -138,7 +150,7 @@ function DashboardMock() {
           <li key={r.time} className="flex items-center gap-3 rounded-xl bg-navy-800/70 px-3 py-2">
             <span className={`h-8 w-1 rounded-full ${r.tone}`} aria-hidden="true" />
             <span className="text-xs tabular-nums text-gray-400 w-10">{r.time}</span>
-            <span className="flex-1 break-words text-sm text-white">{r.title}</span>
+            <span className="flex-1 truncate text-sm text-white">{r.title}</span>
             <span className="text-xs tabular-nums text-gray-300">{r.n}</span>
           </li>
         ))}
@@ -160,7 +172,7 @@ export function LiveScoreMock({ className = '' }) {
   const [a, b] = SEQ[i];
   return (
     <div className={`rounded-2xl border border-white/10 bg-navy-950/95 p-3.5 shadow-2xl shadow-black/60 ${className}`}>
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-red-300">
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-300">
         <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" aria-hidden="true" /> {t('landing.mock_live')}
       </p>
       <div className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
@@ -178,7 +190,7 @@ export function DuprMock({ className = '' }) {
   const { t } = useI18n();
   return (
     <div className={`rounded-2xl border border-white/10 bg-navy-900/95 p-3.5 shadow-2xl shadow-black/60 ${className}`}>
-      <p className="text-xs font-semibold text-gray-400">{t('landing.mock_dupr')}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('landing.mock_dupr')}</p>
       <p className="mt-0.5 text-2xl font-black tabular-nums text-white">3.412 <span className="text-xs font-semibold text-lime-300">▲ 0.125</span></p>
       <svg viewBox="0 0 120 32" className="mt-1 h-8 w-32" aria-hidden="true">
         <polyline className="lp-draw" points="2,26 22,24 42,25 62,18 82,15 102,9 118,6" fill="none" stroke="#B6F03B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" pathLength="1" />
@@ -194,7 +206,7 @@ export function TicketMock({ className = '' }) {
   const cells = '1110111010010111011010101100111010110010011101101'.split('');
   return (
     <div className={`rounded-2xl bg-white p-3 text-navy-950 shadow-2xl shadow-black/60 ${className}`}>
-      <p className="text-xs font-semibold">{t('landing.mock_ticket')}</p>
+      <p className="text-[10px] font-black uppercase tracking-wider">{t('landing.mock_ticket')}</p>
       <div className="mt-2 grid grid-cols-7 gap-[2px] w-20" aria-hidden="true">
         {cells.map((c, i) => <span key={i} className={`aspect-square rounded-[1px] ${c === '1' ? 'bg-navy-950' : 'bg-transparent'}`} />)}
       </div>
@@ -207,7 +219,7 @@ export function TicketMock({ className = '' }) {
 function PhoneSignup() {
   const { t } = useI18n();
   return (
-    <div className="relative mx-auto w-[min(17rem,70vw)] rounded-[2.4rem] border border-white/15 bg-navy-950 p-2.5">
+    <div className="relative mx-auto w-[min(17rem,70vw)] rounded-[2.4rem] border border-white/15 bg-navy-950 p-2.5 shadow-[0_40px_90px_-30px_rgba(56,189,248,0.45)]">
       <div className="rounded-[1.9rem] bg-navy-900 px-4 pb-5 pt-7">
         <span className="absolute left-1/2 top-4 h-1.5 w-16 -translate-x-1/2 rounded-full bg-white/10" />
         <p className="text-[10px] text-gray-500">pickleball-manager.vn/e/7k2q</p>
@@ -228,7 +240,7 @@ function FinanceCard() {
   const { t } = useI18n();
   const bars = [42, 58, 51, 73, 66, 88];
   return (
-    <div className="rounded-3xl border border-white/10 bg-navy-900 p-5">
+    <div className="rounded-3xl border border-white/10 bg-navy-900/90 p-5 shadow-2xl shadow-black/50 backdrop-blur">
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-xs text-gray-400">{t('landing.mock_income')}</p>
@@ -251,7 +263,7 @@ function RolesCard() {
   const { t } = useI18n();
   return (
     <div className="rounded-2xl border border-white/10 bg-navy-950/95 p-3.5 shadow-2xl shadow-black/60">
-      <p className="text-xs font-semibold text-gray-400">{t('landing.role_title')}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('landing.role_title')}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {['role_co', 'role_fin', 'role_ops', 'role_ref'].map((k, i) => (
           <span key={k} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${i === 0 ? 'bg-lime-400 text-navy-950' : 'bg-white/5 text-gray-200 border border-white/10'}`}>{t(`landing.${k}`)}</span>
@@ -269,14 +281,14 @@ function SeriesCard() {
     { d: 'T6', title: t('landing.mock_ev2'), n: 9, of: 16 },
   ];
   return (
-    <div className="rounded-3xl border border-white/10 bg-navy-900 p-5">
-      <p className="text-sm font-semibold text-gray-400">{t('landing.mock_series')}</p>
+    <div className="rounded-3xl border border-white/10 bg-navy-900/90 p-5 shadow-2xl shadow-black/50 backdrop-blur">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('landing.mock_series')}</p>
       <ul className="mt-3 flex flex-col gap-3">
         {rows.map((r, i) => (
           <li key={r.d} className="flex items-center gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-300/15 text-xs font-bold text-amber-200">{r.d}</span>
             <span className="min-w-0 flex-1">
-              <span className="block break-words text-sm text-white">{r.title}</span>
+              <span className="block truncate text-sm text-white">{r.title}</span>
               <span className="mt-1 block h-1.5 rounded-full bg-navy-700 overflow-hidden"><span className="lp-fill block h-full bg-amber-300" style={{ '--w': `${(r.n / r.of) * 100}%`, '--d': `${700 + i * 120}ms` }} /></span>
             </span>
             <span className="text-xs tabular-nums text-gray-300">{r.n}/{r.of}</span>
@@ -291,7 +303,7 @@ function ProfitCard() {
   const { t } = useI18n();
   return (
     <div className="rounded-2xl border border-white/10 bg-navy-950/95 p-3.5 shadow-2xl shadow-black/60">
-      <p className="text-xs font-semibold text-gray-400">{t('landing.mock_profit')}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('landing.mock_profit')}</p>
       <p className="mt-0.5 text-2xl font-black tabular-nums text-lime-300">+<CountUp to={2.4} fmt={(v) => `${v.toFixed(1).replace('.', ',')}tr`} /></p>
       <p className="mt-1 text-[11px] text-amber-200">{t('landing.mock_top')}</p>
     </div>
@@ -305,11 +317,11 @@ function Bracket() {
     ['Minh / Lan'],
   ];
   return (
-    <div className="rounded-3xl border border-white/10 bg-navy-900 p-5 flex items-stretch gap-3">
+    <div className="rounded-3xl border border-white/10 bg-navy-900/90 p-5 shadow-2xl shadow-black/50 backdrop-blur flex items-stretch gap-3">
       {rounds.map((r, ri) => (
         <div key={ri} className="flex-1 flex flex-col justify-around gap-3 min-h-[200px]">
           {r.map((p, i) => (
-            <div key={i} className={`rounded-lg border px-2.5 py-2 text-xs break-words ${ri === 2 ? 'border-lime-400/60 bg-lime-400/10 text-lime-200 font-bold' : 'border-white/10 bg-navy-950/70 text-gray-200'}`}>
+            <div key={i} className={`rounded-lg border px-2.5 py-2 text-xs truncate ${ri === 2 ? 'border-lime-400/60 bg-lime-400/10 text-lime-200 font-bold' : 'border-white/10 bg-navy-950/70 text-gray-200'}`}>
               {p}
             </div>
           ))}
@@ -321,10 +333,13 @@ function Bracket() {
 
 // ---- the 3D court behind every scene ----------------------------------------------------------
 
-export function Stage({ scene: s, idx = 0 }) {
+export function Stage({ scene: s, idx = 0, ghost }) {
   const [rx, rz, cs, cx, cy] = s.cam;
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+      <span className="lp-glow" style={{ left: `${idx % 2 ? 8 : 58}%`, top: `${idx % 3 === 1 ? 50 : 4}%`, backgroundColor: s.glow[0] }} />
+      <span className="lp-glow lp-glow-2" style={{ left: `${idx % 2 ? 62 : 2}%`, top: `${idx % 2 ? 0 : 56}%`, backgroundColor: s.glow[1] }} />
+      {ghost && <span key={ghost} className="lp-ghost absolute right-[4vw] bottom-[2vh] select-none">{ghost}</span>}
       <div className="lp-par absolute inset-0 [perspective:1400px]">
         <div className="absolute left-1/2 top-1/2 h-0 w-0 [transform-style:preserve-3d]">
           <div className="lp-cam" style={{ '--rx': `${rx}deg`, '--rz': `${rz}deg`, '--cs': cs, '--cx': cx, '--cy': cy }}>
@@ -382,7 +397,9 @@ export function F({ d = 0, as: Tag = 'div', className = '', children, ...rest })
 
 function Eyebrow({ n, children }) {
   return (
-    <F d={0} as="p" className="text-sm text-gray-400">
+    <F d={0} as="p" className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.25em] text-lime-300">
+      <span className="tabular-nums text-gray-500">{pad(n)}</span>
+      <span className="h-px w-10 bg-lime-400/60" aria-hidden="true" />
       {children}
     </F>
   );
@@ -407,7 +424,7 @@ function Cta({ href, children, primary, d = 600 }) {
     <F d={d} className="mt-8">
       <Link
         href={href}
-        className={`group relative inline-flex h-12 items-center gap-3 overflow-hidden rounded-full px-7 text-base font-bold transition ${primary ? 'bg-lime-400 text-navy-950 hover:bg-lime-500' : 'border border-white/20 text-white hover:border-lime-400/60'}`}
+        className={`group relative inline-flex h-12 items-center gap-3 overflow-hidden rounded-full px-7 text-base font-bold transition ${primary ? 'lp-btn-glow bg-lime-400 text-navy-950' : 'border border-white/20 text-white hover:border-lime-400/60'}`}
       >
         <span className="relative z-10">{children}</span>
         <span className="relative z-10 inline-block transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">→</span>
@@ -434,12 +451,13 @@ function IntroScene() {
   return (
     <div className="mx-auto grid h-full w-full max-w-[1440px] content-center items-center gap-12 px-5 pb-24 pt-28 sm:px-10 lg:grid-cols-[1.45fr_1fr] lg:px-16 lg:pb-20">
       <div>
-        <F d={0} as="p" className="text-sm text-gray-400">
+        <F d={0} as="p" className="inline-flex items-center gap-2 rounded-full border border-lime-400/30 bg-lime-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-lime-300">
+          <span className="relative flex h-2 w-2" aria-hidden="true"><span className="absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-lime-400" /></span>
           {t('landing.hero_eyebrow')}
         </F>
         <h1 className="mt-7 text-[clamp(2.6rem,2.7vw+2.2vh,5.4rem)] font-extrabold leading-[1.04] [text-wrap:balance] tracking-tight text-white">
           <span className="block"><Words text={t('landing.hero_title_1')} /></span>
-          <span className="block"><Words text={t('landing.hero_title_2')} base={180} /></span>
+          <span className="block"><Words text={t('landing.hero_title_2')} base={180} className="lp-sheen-text" /></span>
         </h1>
         <F d={250} as="p" className="mt-7 max-w-lg text-xl leading-relaxed text-gray-300">{t('landing.hero_short')}</F>
         {/* Nexus (where everything meets) + Zone (your own ground) */}
@@ -448,10 +466,10 @@ function IntroScene() {
           <span><b className="text-lime-300">Zone</b> · {t('landing.brand_zone')}</span>
         </F>
         <F d={380} className="mt-9 flex flex-wrap gap-3">
-          <Link href={SIGN_UP} className="group relative inline-flex h-12 items-center overflow-hidden rounded-full bg-lime-400 px-7 text-base font-bold text-navy-950">
+          <Link href={SIGN_UP} className="lp-btn-glow group relative inline-flex h-12 items-center overflow-hidden rounded-full bg-lime-400 px-7 text-base font-bold text-navy-950">
             <span className="relative z-10">{t('landing.hero_cta')} <span className="inline-block transition-transform group-hover:translate-x-1">→</span></span>
           </Link>
-          <Link href="/discover" className="inline-flex h-12 items-center rounded-full border border-white/15 px-7 text-base font-semibold text-white transition hover:border-white/40">
+          <Link href="/discover" className="inline-flex h-12 items-center rounded-full border border-white/15 px-7 text-base font-semibold text-white backdrop-blur transition hover:border-white/40">
             {t('landing.hero_cta2')}
           </Link>
         </F>
@@ -522,20 +540,21 @@ function StartScene() {
         <ol className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-300">
           {[1, 2, 3].map((n) => (
             <F as="li" key={n} d={200 + n * 90} className="flex items-center gap-3">
+              <span className="font-bold tabular-nums text-lime-400">{pad(n)}</span>
               {t(`landing.step${n}_t`)}
               {n < 3 && <span className="text-gray-600" aria-hidden="true">→</span>}
             </F>
           ))}
         </ol>
         <F d={600} className="mt-9 flex flex-wrap gap-3">
-          <Link href={SIGN_UP} className="group relative inline-flex h-12 items-center overflow-hidden rounded-full bg-lime-400 px-7 font-bold text-navy-950">
+          <Link href={SIGN_UP} className="lp-btn-glow group relative inline-flex h-12 items-center overflow-hidden rounded-full bg-lime-400 px-7 font-bold text-navy-950">
             <span className="relative z-10">{t('landing.cta_btn')} →</span>
           </Link>
           <Link href={SIGN_IN} className="inline-flex h-12 items-center rounded-full border border-white/20 px-7 font-semibold text-white transition hover:border-white/40">{t('landing.cta_btn2')}</Link>
         </F>
       </div>
       <F d={300} className="min-w-0">
-        <h3 className="text-base font-semibold text-gray-300">{t('landing.faq_title')}</h3>
+        <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">{t('landing.faq_title')}</h3>
         <div data-lp-scroll className="lp-faq mt-4 flex max-h-[min(52vh,30rem)] flex-col overflow-y-auto overscroll-contain border-t border-white/10 pr-2">
           {[0, 1, 2, 3, 4].map((n) => (
             <details key={n} className="group border-b border-white/10 py-3.5">
@@ -582,7 +601,7 @@ function SceneBody({ k }) {
   }
 }
 
-// ---- chrome: header, menu, progress, dots, preloader ---------------------------------
+// ---- chrome: header, menu, counter, dots, cursor, preloader ---------------------------------
 
 function Header({ onMenu, menuOpen }) {
   const { t, lang, setLang } = useI18n();
@@ -601,7 +620,7 @@ function Header({ onMenu, menuOpen }) {
             onClick={onMenu}
             aria-expanded={menuOpen}
             aria-controls="lp-menu"
-            className="group ml-1 inline-flex h-9 items-center gap-2 rounded-full border border-white/15 px-3.5 text-sm font-semibold text-white transition hover:border-lime-400/60"
+            className="group ml-1 inline-flex h-9 items-center gap-2 rounded-full border border-white/15 px-3.5 text-sm font-semibold text-white backdrop-blur transition hover:border-lime-400/60"
           >
             <span className="flex w-4 flex-col gap-[3px]" aria-hidden="true">
               <span className={`h-px w-full bg-current transition ${menuOpen ? 'translate-y-[2px] rotate-45' : ''}`} />
@@ -629,7 +648,7 @@ function Menu({ open, idx, onPick, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, idx, onClose]);
   return (
-    <div id="lp-menu" className={`lp-menu fixed inset-0 z-30 bg-navy-950/95 ${open ? 'is-open' : ''}`} inert={!open} role="dialog" aria-modal="true" aria-label={t('landing.menu')}>
+    <div id="lp-menu" className={`lp-menu fixed inset-0 z-30 bg-navy-950/95 backdrop-blur-xl ${open ? 'is-open' : ''}`} inert={!open} role="dialog" aria-modal="true" aria-label={t('landing.menu')}>
       <div className="mx-auto grid h-full w-full max-w-[1440px] items-center gap-10 overflow-y-auto px-5 pb-12 pt-28 sm:px-10 lg:grid-cols-[1.4fr_1fr] lg:px-16">
         <ol className="flex flex-col">
           {SCENES.map((s, i) => (
@@ -643,6 +662,7 @@ function Menu({ open, idx, onPick, onClose }) {
                 aria-current={i === idx ? 'step' : undefined}
                 className="group flex w-full items-baseline gap-5 py-3 text-left sm:py-4"
               >
+                <span className={`w-8 text-sm tabular-nums ${i === idx ? 'text-lime-400' : 'text-gray-500'}`}>{pad(i + 1)}</span>
                 <span className={`text-[clamp(1.8rem,2.4vw+2vh,4rem)] font-black leading-none tracking-tight transition duration-500 group-hover:translate-x-3 ${hover === i ? 'text-white' : 'text-white/35'}`}>
                   {t(`landing.sc_${s.key}`)}
                 </span>
@@ -677,7 +697,11 @@ function DeckControls({ idx, go }) {
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
         <div className="mx-auto flex w-full max-w-[1440px] items-end justify-between gap-6 px-5 pb-7 sm:px-10 lg:px-16">
           <div className="flex items-end gap-4" aria-live="polite">
+            <span className="relative block h-[3.2rem] overflow-hidden text-5xl font-black leading-none tabular-nums text-white">
+              <span key={idx} className="lp-roll block">{pad(idx + 1)}</span>
+            </span>
             <span className="pb-1">
+              <span className="block text-xs tabular-nums text-gray-500">/ {pad(n)}</span>
               <span key={`l${idx}`} className="lp-fadein block text-sm font-semibold text-gray-200">{t(`landing.sc_${SCENES[idx].key}`)}</span>
             </span>
             <span className="mb-2 ml-2 hidden h-px w-32 bg-white/15 lg:block" aria-hidden="true">
@@ -703,6 +727,47 @@ function DeckControls({ idx, go }) {
   );
 }
 
+// A soft ring that trails the pointer and grows over links and buttons (mouse only).
+function Cursor() {
+  const ring = useRef(null);
+  const dot = useRef(null);
+  useEffect(() => {
+    if (!window.matchMedia('(pointer: fine)').matches || reducedMotion()) return undefined;
+    let x = -100;
+    let y = -100;
+    let rx = x;
+    let ry = y;
+    let raf;
+    const move = (e) => {
+      x = e.clientX;
+      y = e.clientY;
+      if (dot.current) dot.current.style.transform = `translate3d(${x}px,${y}px,0)`;
+    };
+    const over = (e) => ring.current?.classList.toggle('big', !!e.target.closest?.('a,button,summary'));
+    const loop = () => {
+      rx += (x - rx) * 0.18;
+      ry += (y - ry) * 0.18;
+      if (ring.current) ring.current.style.transform = `translate3d(${rx}px,${ry}px,0)`;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerover', over);
+    ring.current?.classList.add('on');
+    dot.current?.classList.add('on');
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerover', over);
+    };
+  }, []);
+  return (
+    <>
+      <span ref={ring} className="lp-cursor lp-cursor-ring" aria-hidden="true" />
+      <span ref={dot} className="lp-cursor lp-cursor-dot" aria-hidden="true" />
+    </>
+  );
+}
 
 // First visit in this tab: a counter to 100, then the curtain lifts.
 function Preloader({ onDone }) {
@@ -730,7 +795,7 @@ function Preloader({ onDone }) {
     <div className={`lp-pre fixed inset-0 z-[60] flex flex-col justify-between bg-navy-950 px-5 py-8 sm:px-10 lg:px-16 ${out ? 'out' : ''}`} aria-hidden="true">
       <Logo className="text-base" />
       <div className="flex items-end justify-between gap-6">
-        <p className="text-sm text-gray-400">{t('landing.hero_eyebrow')}</p>
+        <p className="text-sm uppercase tracking-[0.25em] text-gray-500">{t('landing.hero_eyebrow')}</p>
         <p className="text-[clamp(5rem,16vw,14rem)] font-black leading-[0.8] tabular-nums text-white">{n}</p>
       </div>
       <span className="absolute bottom-0 left-0 h-1 bg-lime-400" style={{ width: `${n}%` }} />
@@ -949,7 +1014,8 @@ export default function Landing() {
   return (
     <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/sign-in'])} className={`lp-root relative bg-navy-950 text-gray-200 ${deck ? 'lp-deck h-[100svh] overflow-hidden' : 'overflow-x-hidden'}`}>
       {preload && <Preloader onDone={preloadDone} />}
-      <Stage scene={SCENES[idx]} idx={idx} />
+      <Stage scene={SCENES[idx]} idx={idx} ghost={pad(idx + 1)} />
+      {deck && sweep > 0 && <span key={sweep} className={`lp-sweep ${dir > 0 ? 'down' : 'up'}`} aria-hidden="true" />}
       <Header onMenu={() => setMenu((v) => !v)} menuOpen={menu} />
       <Menu open={menu} idx={idx} onPick={(i) => (deck ? go(i) : (setMenu(false), rootRef.current?.querySelector(`[data-scene="${i}"]`)?.scrollIntoView({ behavior: 'smooth' })))} onClose={() => setMenu(false)} />
       <main className={`z-10 ${deck ? 'absolute inset-0' : 'relative'}`}>
@@ -972,6 +1038,7 @@ export default function Landing() {
         })}
       </main>
       {deck && <DeckControls idx={idx} go={go} />}
+      <Cursor />
       {curtain}
     </div>
   );
