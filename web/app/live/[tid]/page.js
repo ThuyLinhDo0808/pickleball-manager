@@ -16,6 +16,7 @@ import { useNow } from '@/lib/useNow';
 import ScoreEntry from '@/components/ScoreEntry';
 import LiveGuide from '@/components/LiveGuide';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Live scoring hub of one tournament: matches being played (tap to keep scoring), the
 // ones still to play (start one), and — for the club managers — the public board link.
@@ -59,17 +60,17 @@ export default function LiveHubPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="🔴"
+        icon="bolt"
         title={t('live.title')}
-        subtitle={`${sportIcon(tour.sport)} ${tour.name}`}
-        actions={role === 'manager' ? <Link href={`/club/tournaments/${tid}`} className="btn-secondary text-sm">🏆 {t('live.toTournament')}</Link> : null}
+        subtitle={tour.name}
+        actions={role === 'manager' ? <Link href={`/club/tournaments/${tid}`} className="btn-secondary text-sm">{t('live.toTournament')}</Link> : null}
       />
 
       <KpiRow cols={4}>
-        <StatTile icon="🔴" label={t('live.liveNow')} value={running.length} tone="text-red-300" />
-        <StatTile icon="⏳" label={t('live.notStarted')} value={todo.length} />
-        <StatTile icon="✅" label={t('live.played')} value={done.length} tone="text-lime-300" />
-        <StatTile icon="🏆" label={t('tournaments.champion')} value={data.champion || '—'} tone="text-amber-300" />
+        <StatTile icon="bolt" label={t('live.liveNow')} value={running.length} tone="text-red-300" />
+        <StatTile icon="hourglass" label={t('live.notStarted')} value={todo.length} />
+        <StatTile icon="checkCircle" label={t('live.played')} value={done.length} tone="text-lime-300" />
+        <StatTile icon="trophy" label={t('tournaments.champion')} value={data.champion || '—'} tone="text-amber-300" />
       </KpiRow>
 
       <LiveGuide sport={tour.sport} variant="card" />
@@ -78,7 +79,7 @@ export default function LiveHubPage() {
         <section className="card mb-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="text-white font-semibold">📺 {t('live.publicTitle')} <Hint inline text={t('live.publicHint')} /></h2>
+              <h2 className="text-white font-semibold">{t('live.publicTitle')} <Hint inline text={t('live.publicHint')} /></h2>
             </div>
             {publicUrl ? (
               <button type="button" className="text-red-300 text-sm" disabled={busy} onClick={() => togglePublic(false)}>{t('live.publicOff')}</button>
@@ -98,7 +99,7 @@ export default function LiveHubPage() {
                   setTimeout(() => setCopied(false), 1500);
                 }}
               >
-                {copied ? `✓ ${t('live.copied')}` : `📋 ${t('live.copy')}`}
+                {copied ? `✓ ${t('live.copied')}` : `${t('live.copy')}`}
               </button>
               <a href={publicUrl} target="_blank" rel="noreferrer" className="btn-secondary text-sm">↗ {t('live.openBoard')}</a>
             </div>
@@ -120,13 +121,13 @@ export default function LiveHubPage() {
                     <span className="text-red-200 font-semibold">● {l.court || t('live.noCourt')}</span>
                     <span className="text-gray-300 truncate ml-2">
                       {m ? matchLabel(m, matches, t) : ''} · {t('live.gameN', { n: l.state?.game_no || 1 })}
-                      {l.state?.timing?.started_at && <span className="text-white tabular-nums"> · ⏱ {clock(elapsed(l.state.timing, now).match)}</span>}
+                      {l.state?.timing?.started_at && <span className="text-white tabular-nums"> · {clock(elapsed(l.state.timing, now).match)}</span>}
                     </span>
                   </div>
                   {[1, 2].map((side) => (
                     <div key={side} className="flex items-center justify-between gap-2 px-4 py-2">
                       <span className={`truncate ${l.state?.serving === side ? 'text-white font-semibold' : 'text-gray-300'}`}>
-                        {l.state?.serving === side && <span className="mr-1">{sportIcon(tour.sport)}</span>}
+                        {l.state?.serving === side && <UiIcon name={sportIcon(tour.sport)} className="inline-block w-4 h-4 mr-1 -mt-0.5 text-lime-300" />}
                         {side === 1 ? l.team1 : l.team2}
                       </span>
                       <span className="flex items-center gap-2 tabular-nums">
@@ -158,7 +159,7 @@ export default function LiveHubPage() {
                 <div className="text-lime-300 text-xs tabular-nums">
                   {m.score?.join(' - ')}
                   {m.games ? ` (${m.games.map((g) => g.join('-')).join(', ')})` : ''}
-                  {m.duration_sec != null && <span className="text-gray-400"> · ⏱ {minutesText(m.duration_sec, t)}</span>}
+                  {m.duration_sec != null && <span className="text-gray-400"> · {minutesText(m.duration_sec, t)}</span>}
                 </div>
               )}
             </div>
@@ -167,7 +168,7 @@ export default function LiveHubPage() {
                 <button type="button" className="btn-primary !px-3 text-sm" onClick={() => setStarting(m)}>▶ {t('live.scoreLive')}</button>
               )}
               {!m.locked && (
-                <button type="button" className="btn-secondary !px-3 text-sm" onClick={() => setEntering(m)}>✏️ {m.played ? t('live.editResult') : t('live.enterResult')}</button>
+                <button type="button" className="btn-secondary !px-3 text-sm" onClick={() => setEntering(m)}>{m.played ? t('live.editResult') : t('live.enterResult')}</button>
               )}
             </div>
           </div>
@@ -295,7 +296,7 @@ function StartModal({ match, sport, kind, rosters, label, onClose, onStarted, ti
           </label>
         )}
         <p className="rounded-lg bg-navy-900 border border-navy-700 px-3 py-2 text-xs text-gray-300">
-          📋 {t('live.summary', {
+          {t('live.summary', {
             scoring: t(`live.scoring_${scoring}`),
             points,
             win: t(`live.winBy_${winBy}`).toLowerCase(),
@@ -368,7 +369,7 @@ function ResultModal({ match, sport, label, tid, onClose, onSaved }) {
   }
 
   return (
-    <Modal open={!!match} title={`✏️ ${match.played ? t('live.editResult') : t('live.enterResult')}`} onClose={() => !busy && onClose()}>
+    <Modal open={!!match} title={`${match.played ? t('live.editResult') : t('live.enterResult')}`} onClose={() => !busy && onClose()}>
       <form
         className="flex flex-col gap-3 text-sm"
         onSubmit={(e) => {

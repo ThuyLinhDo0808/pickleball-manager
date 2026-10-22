@@ -73,7 +73,7 @@ export function FormatPicker({ sport, value, onChange }) {
           items={[...list, 'custom']}
           value={open || isCustom ? 'custom' : value.points}
           onChange={pick}
-          label={(n) => (n === 'custom' ? (isCustom ? `${value.points} ✎` : '＋') : String(n))}
+          label={(n) => (n === 'custom' ? (isCustom ? `${value.points}` : '＋') : String(n))}
         />
         {open && (
           <label className="mt-2 flex items-center gap-2 text-sm text-gray-300">

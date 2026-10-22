@@ -443,7 +443,7 @@ export default function AppShell({ children, back }) {
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);
 
-  // Pages the club's plan doesn't include: a 💎 in the menu, an upgrade card instead of the page.
+  // Pages the club's plan doesn't include: a in the menu, an upgrade card instead of the page.
   const clubPlan = planFor(scoped ? club : null, plan);
   const lockedHref = (href) => !hasFeature(clubPlan, featureForPath(href, scoped ? 'club' : workspace));
   const pageFeature = featureForPath(pathname, scoped ? 'club' : workspace);

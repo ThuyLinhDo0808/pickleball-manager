@@ -38,12 +38,12 @@ function Clubs() {
           {data.rows.map((c) => (
             <li key={c.id} className="py-2.5 flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="text-white font-semibold truncate">{c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}</div>
+                <div className="text-white font-semibold truncate">{c.name}</div>
                 <Link href={`/owner/hosts/${c.host_id}`} className="text-gray-400 text-xs hover:text-white">{c.owner_email || '—'}</Link>
                 <span className="text-gray-500 text-xs"> · {t('owner.createdOn', { d: fmtDate(c.created_at) })}</span>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <span className="text-gray-300 tabular-nums">👥 {t('owner.fixedGuest', { f: c.members.fixed, g: c.members.guest })}</span>
+                <span className="text-gray-300 tabular-nums">{t('owner.fixedGuest', { f: c.members.fixed, g: c.members.guest })}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TIER_BADGE[c.tier] || TIER_BADGE.free}`}>{c.tier}</span>
               </div>
             </li>

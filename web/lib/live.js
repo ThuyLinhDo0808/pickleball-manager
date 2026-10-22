@@ -18,7 +18,7 @@ export function gamesLine(state) {
   return state.games.map(([a, b]) => `${a}-${b}`).join(' · ');
 }
 
-export const sportIcon = (sport) => (sport === 'badminton' ? '🏸' : '🏓');
+export const sportIcon = (sport) => (sport === 'badminton' ? 'shuttle' : 'paddle');
 
 // "12:05" / "1:02:09" from seconds.
 export function clock(sec) {

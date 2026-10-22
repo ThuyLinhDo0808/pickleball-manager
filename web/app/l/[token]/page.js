@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { clock, elapsed, matchLabel, minutesText, sportIcon } from '@/lib/live';
 import { useNow } from '@/lib/useNow';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Public live scoreboard (no login): the matches on court now, refreshed every few
 // seconds, plus just-finished results and what's next. Works on a phone or a TV at the venue.
@@ -68,7 +69,7 @@ export default function LiveBoardPage() {
       <header className="flex flex-wrap items-center justify-between gap-3 mb-5 max-w-6xl mx-auto">
         <div className="min-w-0">
           <p className="text-gray-400 text-sm truncate">{tour.club_name}</p>
-          <h1 className="text-white text-2xl sm:text-3xl font-bold truncate">{icon} {tour.name}</h1>
+          <h1 className="text-white text-2xl sm:text-3xl font-bold truncate">{tour.name}</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 rounded-full bg-red-500/15 border border-red-500/40 px-3 py-1 text-red-200 text-sm font-semibold">
@@ -81,7 +82,7 @@ export default function LiveBoardPage() {
       <main className="max-w-6xl mx-auto">
         {data.champion && (
           <div className="card mb-5 text-center border-amber-300/60 bg-amber-300/5 py-5">
-            <div className="text-4xl">🏆</div>
+            <div className="text-4xl"><UiIcon name="trophy" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <div className="text-gray-400 text-xs">{t('tournaments.champion')}</div>
             <div className="text-amber-300 text-2xl font-bold">{data.champion}</div>
           </div>
@@ -97,7 +98,7 @@ export default function LiveBoardPage() {
                   <span className="text-red-200 font-semibold">● {l.court || t('live.noCourt')}</span>
                   <span className="text-gray-300 truncate ml-2">
                     {label(l)} · {t('live.gameN', { n: s?.game_no || 1 })}
-                    {s?.timing?.started_at && <span className="text-white tabular-nums"> · ⏱ {clock(elapsed(s.timing, now).match)}</span>}
+                    {s?.timing?.started_at && <span className="text-white tabular-nums"> · {clock(elapsed(s.timing, now).match)}</span>}
                   </span>
                 </div>
                 {[1, 2].map((side) => {
@@ -110,7 +111,7 @@ export default function LiveBoardPage() {
                           {(s?.positions?.[side] || []).map((id) => (
                             <span key={id} className={s?.server_id === id ? 'text-lime-300' : ''}>
                               {l.names[id]}
-                              {s?.server_id === id ? ` ${icon}` : ''}
+                              {s?.server_id === id ? <UiIcon name={icon} className="inline-block w-4 h-4 ml-1 -mt-0.5 text-lime-300" /> : null}
                               {'  '}
                             </span>
                           ))}
@@ -130,7 +131,7 @@ export default function LiveBoardPage() {
                 {s?.point && !s.finished && (
                   <div className="px-4 py-1.5 text-center text-xs font-bold bg-red-500 text-white">{s.point.match ? t('live.matchPoint') : t('live.gamePoint')}</div>
                 )}
-                {s?.finished && <div className="px-4 py-1.5 text-center text-xs font-bold bg-lime-400 text-navy-950">🏆 {t('live.winner', { name: s.winner === 1 ? l.team1 : l.team2 })}</div>}
+                {s?.finished && <div className="px-4 py-1.5 text-center text-xs font-bold bg-lime-400 text-navy-950">{t('live.winner', { name: s.winner === 1 ? l.team1 : l.team2 })}</div>}
               </article>
             );
           })}
@@ -138,7 +139,7 @@ export default function LiveBoardPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <section className="card">
-            <h2 className="text-white font-semibold mb-2">✅ {t('live.recent')}</h2>
+            <h2 className="text-white font-semibold mb-2">{t('live.recent')}</h2>
             {recent.length === 0 && <p className="text-gray-500 text-sm">—</p>}
             <ul className="divide-y divide-navy-700">
               {recent.map((l) => (
@@ -146,7 +147,7 @@ export default function LiveBoardPage() {
                   <div className="text-gray-500 text-xs">
                     {label(l)}
                     {l.court ? ` · ${l.court}` : ''}
-                    {l.state?.timing?.started_at && l.state?.timing?.ended_at ? ` · ⏱ ${minutesText((l.state.timing.ended_at - l.state.timing.started_at) / 1000, t)}` : ''}
+                    {l.state?.timing?.started_at && l.state?.timing?.ended_at ? ` · ${minutesText((l.state.timing.ended_at - l.state.timing.started_at) / 1000, t)}` : ''}
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className={`truncate ${l.state?.winner === 1 ? 'text-white font-semibold' : 'text-gray-400'}`}>{l.team1}</span>
@@ -158,7 +159,7 @@ export default function LiveBoardPage() {
             </ul>
           </section>
           <section className="card">
-            <h2 className="text-white font-semibold mb-2">⏭ {t('live.upcoming')}</h2>
+            <h2 className="text-white font-semibold mb-2">{t('live.upcoming')}</h2>
             {next.length === 0 && <p className="text-gray-500 text-sm">—</p>}
             <ul className="divide-y divide-navy-700">
               {next.map((m) => (

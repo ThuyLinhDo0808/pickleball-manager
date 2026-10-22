@@ -397,7 +397,7 @@ export default function OwnerAnalyticsPage() {
               </button>
             ))}
           </div>
-          <button type="button" className="btn-secondary text-sm" disabled={!d} onClick={() => exportXlsx(d, t)}>⬇ Excel</button>
+          <button type="button" className="btn-secondary text-sm" disabled={!d} onClick={() => exportXlsx(d, t)}>Excel</button>
         </>
       }
     >

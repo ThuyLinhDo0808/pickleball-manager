@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { emailVerified } from '@/components/EmailVerifyBanner';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 const COOLDOWN = 60; // seconds between two "send a new code"
 
@@ -122,7 +123,7 @@ export default function VerifyEmailPage() {
 
         {st?.verified && (
           <div className="text-center py-6">
-            <div className="text-5xl" aria-hidden="true">✅</div>
+            <div className="text-5xl" aria-hidden="true"><UiIcon name="checkCircle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <h1 className="text-white text-xl font-bold mt-3">{t('everify.doneTitle')}</h1>
             <p className="text-gray-300 text-sm mt-1">{t('everify.doneBody')}</p>
           </div>
@@ -130,7 +131,7 @@ export default function VerifyEmailPage() {
 
         {st && !st.verified && (
           <>
-            <div className="text-4xl" aria-hidden="true">📬</div>
+            <div className="text-4xl" aria-hidden="true"><UiIcon name="mail" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <h1 className="text-white text-xl font-bold mt-2">{t('everify.title')}</h1>
             <p className="text-gray-300 text-sm mt-1">{t('everify.body', { email: st.email })}</p>
             <Hint text={t('everify.spamHint')} className="mt-1" />
@@ -156,7 +157,7 @@ export default function VerifyEmailPage() {
             </button>
             <div className="mt-5 rounded-lg border border-navy-700 bg-navy-900/60 p-3 text-sm">
               {st.expired ? (
-                <p className="text-amber-200">⚠️ {t('everify.expired')}</p>
+                <p className="text-amber-200">{t('everify.expired')}</p>
               ) : (
                 <>
                   <p className="text-gray-300">{t('everify.laterHint', { date: fmt(st.deadline), h: st.grace_hours })}</p>

@@ -77,13 +77,13 @@ export function AuditRow({ row, onChanged, showTarget = true }) {
           )}
         </div>
       </div>
-      {row.new_value?.club_name && <p className="text-gray-300 text-xs mt-0.5">🏠 {row.new_value.club_name}</p>}
+      {row.new_value?.club_name && <p className="text-gray-300 text-xs mt-0.5">{row.new_value.club_name}</p>}
       {row.note && (row.action === 'undo'
         ? <p className="text-gray-400 text-xs mt-0.5">↩ {actionLabel(t, row.note)}</p>
         : <p className="text-gray-400 text-xs mt-0.5 italic">“{row.note}”</p>)}
       {row.action === 'note.add' ? <p className="text-gray-300 text-xs mt-1">{row.new_value?.body}</p> : <Diff from={row.old_value} to={row.new_value} />}
       {(row.new_value?.paid || []).map((o) => (
-        <p key={o.ref} className="text-lime-300 text-xs mt-0.5">💵 {t('owner.paidRecorded', { amount: Number(o.amount).toLocaleString('vi-VN'), kind: o.kind === 'social_manager' ? 'Social Manager' : t('owner.planShort'), months: o.months, ref: o.ref })}</p>
+        <p key={o.ref} className="text-lime-300 text-xs mt-0.5">{t('owner.paidRecorded', { amount: Number(o.amount).toLocaleString('vi-VN'), kind: o.kind === 'social_manager' ? 'Social Manager' : t('owner.planShort'), months: o.months, ref: o.ref })}</p>
       ))}
       {msg && <p className="text-red-300 text-xs mt-1">{msg}</p>}
     </li>

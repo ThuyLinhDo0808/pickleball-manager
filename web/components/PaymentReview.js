@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Host: guests holding a place while their payment is checked.
 //   proof_submitted       -> view the transfer screenshot, then Confirm / Reject
@@ -66,7 +67,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
 
   return (
     <div className="card mb-4 border-sky-400/40">
-      <h3 className="text-sky-200 font-semibold mb-1">💸 {t('review.title')} ({groups.length}) <Hint inline text={t('review.hint')} /></h3>
+      <h3 className="text-sky-200 font-semibold mb-1">{t('review.title')} ({groups.length}) <Hint inline text={t('review.hint')} /></h3>
       <div className="flex flex-col divide-y divide-navy-700">
         {sorted.map((g) => {
           const p = g.p;
@@ -76,15 +77,14 @@ export default function PaymentReview({ event, rows, onChanged }) {
               <div className="text-white">
                 {nameOf(g)}
                 {g.booking ? (
-                  <span className="ml-2 text-[10px] rounded border border-amber-300/60 text-amber-200 px-1">⚡ {t('quick.badge')}</span>
+                  <span className="ml-2 text-[10px] rounded border border-amber-300/60 text-amber-200 px-1">{t('quick.badge')}</span>
                 ) : (
                   <span className="ml-2 text-[10px] rounded border border-navy-500 text-gray-300 px-1">{t(`review.kind_${p.kind}`)}</span>
                 )}
-                {p.pay_later && <span className="ml-1 text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">🕒 {t('payLater.badge')}</span>}
+                {p.pay_later && <span className="ml-1 text-[10px] rounded border border-sky-400/60 text-sky-300 px-1">{t('payLater.badge')}</span>}
               </div>
               {g.booking && (
-                <div className="text-gray-300 text-xs">
-                  📞 <a href={`tel:${g.booking.contact_phone}`} className="text-sky-300">{g.booking.contact_phone}</a> · {g.rows.map((r) => r.full_name).join(', ')}
+                <div className="text-gray-300 text-xs"><UiIcon name="phone" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /><a href={`tel:${g.booking.contact_phone}`} className="text-sky-300">{g.booking.contact_phone}</a> · {g.rows.map((r) => r.full_name).join(', ')}
                 </div>
               )}
               <div className="text-gray-400 text-xs">
@@ -104,7 +104,7 @@ export default function PaymentReview({ event, rows, onChanged }) {
                 {p.has_proof ? t('review.confirm') : t('review.cash')}
               </button>
               <button className="text-sky-300 text-xs" disabled={busy} title={t('review.toWaitlistHint')} onClick={() => window.confirm(t('review.toWaitlistAsk', { name: nameOf(g) })) && act(g, 'place', { to: 'waitlist' })}>
-                ⏳ {t('review.toWaitlist')}
+                {t('review.toWaitlist')}
               </button>
               <button className="text-red-400 text-xs" disabled={busy} onClick={() => window.confirm(t('policy.cancelAsk', { name: nameOf(g) })) && act(g, 'cancel')}>
                 {t('events.cancel')}

@@ -8,12 +8,13 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Only pickleball is offered for now: no sport step (badminton is hidden everywhere).
 const STEPS = ['role', 'info'];
 const ROLES = [
-  ['player', '🙋'],
-  ['manager', '🧑‍💼'],
+  ['player', 'user'],
+  ['manager', 'user'],
 ];
 
 function Choice({ on, onClick, icon, title, body, role = 'checkbox' }) {
@@ -25,7 +26,7 @@ function Choice({ on, onClick, icon, title, body, role = 'checkbox' }) {
       onClick={onClick}
       className={`w-full text-left rounded-2xl border p-4 flex items-start gap-3 transition ${on ? 'border-lime-400 bg-lime-400/10 ring-1 ring-lime-400' : 'border-navy-600 hover:border-navy-500'}`}
     >
-      <span className="text-3xl" aria-hidden="true">{icon}</span>
+      <UiIcon name={icon} className="w-7 h-7 text-gray-300" />
       <span className="min-w-0 flex-1">
         <span className="block text-white font-bold">{title}</span>
         <span className="block text-gray-400 text-sm mt-0.5">{body}</span>
@@ -107,7 +108,7 @@ export default function OnboardingPage() {
             {ROLES.map(([r, icon]) => (
               <Choice key={r} role="radio" on={role === r} onClick={() => setRole(r)} icon={icon} title={t(`onb.role_${r}`)} body={t(`onb.roleHint_${r}`)} />
             ))}
-            {role === 'manager' && <p className="rounded-xl border border-amber-300/40 bg-amber-300/5 px-3 py-2 text-amber-100 text-sm">ℹ️ {t('onb.managerNote')}</p>}
+            {role === 'manager' && <p className="rounded-xl border border-amber-300/40 bg-amber-300/5 px-3 py-2 text-amber-100 text-sm">{t('onb.managerNote')}</p>}
             {role === 'player' && <Hint text={t('onb.playerNote')} />}
           </div>
         )}
@@ -142,7 +143,7 @@ export default function OnboardingPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {sports.includes('pickleball') && (
                   <label className="block">
-                    <span className="text-xs text-gray-300">🏓 {t('onb.levelPickleball')}</span>
+                    <span className="text-xs text-gray-300">{t('onb.levelPickleball')}</span>
                     <LevelInput sport="pickleball" className="input mt-1" value={f.dupr_level} onChange={set('dupr_level')} placeholder="3.25" />
                   </label>
                 )}

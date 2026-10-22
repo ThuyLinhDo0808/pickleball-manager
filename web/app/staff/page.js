@@ -6,12 +6,12 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
-import { KIND_ICON } from '@/components/EventCalendar';
 import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { addDays, formatDay, hhmm, todayYmd, localDate } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 const ROLE_TONE = {
   coordinator: 'bg-lime-400/15 text-lime-300 border-lime-400/40',
@@ -20,7 +20,7 @@ const ROLE_TONE = {
 
 function RoleBadge({ role }) {
   const { t } = useI18n();
-  return <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 shrink-0 ${ROLE_TONE[role]}`}>{role === 'coordinator' ? '🦺' : '🏁'} {t(`staff.${role}`)}</span>;
+  return <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 shrink-0 ${ROLE_TONE[role]}`}>{t(`staff.${role}`)}</span>;
 }
 
 // Check-in progress: who arrived out of who is on the list.
@@ -54,11 +54,11 @@ function EventRow({ e, today }) {
       </div>
       <div className="min-w-0 flex-1 p-3">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-white font-semibold truncate">{KIND_ICON[e.kind] ? `${KIND_ICON[e.kind]} ` : ''}{e.title}</span>
+          <span className="text-white font-semibold truncate">{e.title}</span>
           <RoleBadge role={e.role} />
         </div>
         <div className="text-gray-400 text-xs truncate mt-0.5">
-          {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
+          {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}{e.location || '—'}
           {e.club_name ? ` · ${e.club_name}` : ` · ${t('staffX.xeve')}`}
         </div>
         <Progress e={e} />
@@ -95,23 +95,23 @@ export default function StaffEventsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="🦺"
+        icon="shield"
         title={t('staffView.title')}
         subtitle={staffInfo?.role ? t(`staffX.youAre_${staffInfo.role}`) : null}
       />
       {staffInfo && staffInfo.email_verified === false && <p className="card text-yellow-300 text-sm mb-4">{t('staffView.unverified')}</p>}
 
       <KpiRow cols={4}>
-        <StatTile icon="📍" label={t('staffX.kpiToday')} value={todays.length} tone="text-lime-300" sub={todays[0] ? todays[0].title : t('staffX.nothingToday')} />
-        <StatTile icon="📅" label={t('staffX.kpiWeek')} value={list.filter((e) => e.event_date > today && e.event_date <= week).length} tone="text-sky-300" sub={t('staffX.kpiWeekSub')} />
-        <StatTile icon="✅" label={t('staffX.kpiDone')} value={past.length} sub={t('staffX.kpiDoneSub')} />
-        <StatTile icon="🏆" label={t('staffX.kpiLive')} value={(tours || []).length} tone="text-red-300" sub={t('staffX.kpiLiveSub')} />
+        <StatTile icon="pin" label={t('staffX.kpiToday')} value={todays.length} tone="text-lime-300" sub={todays[0] ? todays[0].title : t('staffX.nothingToday')} />
+        <StatTile icon="calendar" label={t('staffX.kpiWeek')} value={list.filter((e) => e.event_date > today && e.event_date <= week).length} tone="text-sky-300" sub={t('staffX.kpiWeekSub')} />
+        <StatTile icon="checkCircle" label={t('staffX.kpiDone')} value={past.length} sub={t('staffX.kpiDoneSub')} />
+        <StatTile icon="trophy" label={t('staffX.kpiLive')} value={(tours || []).length} tone="text-red-300" sub={t('staffX.kpiLiveSub')} />
       </KpiRow>
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {!loading && (events || []).length === 0 && !(tours || []).length && (
         <div className="card text-center py-8">
-          <div className="text-4xl mb-2">🦺</div>
+          <div className="text-4xl mb-2"><UiIcon name="shield" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
           <p className="text-gray-300">{t('staffView.none')}</p>
           <p className="text-gray-500 text-sm mt-1">{t('staffX.noneHint')}</p>
         </div>
@@ -119,15 +119,15 @@ export default function StaffEventsPage() {
 
       {todays.length > 0 && (
         <section className="mb-6">
-          <h2 className="text-white font-semibold mb-2">📍 {t('staffX.today')}</h2>
+          <h2 className="text-white font-semibold mb-2">{t('staffX.today')}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {todays.map((e) => (
               <div key={e.id} className="rounded-2xl border border-lime-400/40 bg-gradient-to-br from-navy-800 to-navy-900 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-white text-lg font-bold truncate">{KIND_ICON[e.kind] ? `${KIND_ICON[e.kind]} ` : ''}{e.title}</div>
+                    <div className="text-white text-lg font-bold truncate">{e.title}</div>
                     <div className="text-gray-300 text-sm">
-                      {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
+                      {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}{e.location || '—'}
                     </div>
                     <div className="text-gray-500 text-xs">{e.club_name || t('staffX.xeve')}</div>
                   </div>
@@ -137,13 +137,13 @@ export default function StaffEventsPage() {
                 <div className="grid grid-cols-3 gap-2 mt-3">
                   {e.role === 'coordinator' ? (
                     <>
-                      <Link href={`/staff/${e.id}?tab=checkin`} className="btn-primary !py-2 text-sm text-center">✅ {t('staffView.checkInTab')}</Link>
-                      <Link href={`/staff/${e.id}?tab=courts`} className="btn-secondary !py-2 text-sm text-center">🏟 {t('staffX.courtsTab')}</Link>
+                      <Link href={`/staff/${e.id}?tab=checkin`} className="btn-primary !py-2 text-sm text-center">{t('staffView.checkInTab')}</Link>
+                      <Link href={`/staff/${e.id}?tab=courts`} className="btn-secondary !py-2 text-sm text-center">{t('staffX.courtsTab')}</Link>
                     </>
                   ) : (
-                    <Link href={`/staff/${e.id}?tab=board`} className="col-span-2 btn-secondary !py-2 text-sm text-center">📊 {t('staffX.boardTab')}</Link>
+                    <Link href={`/staff/${e.id}?tab=board`} className="col-span-2 btn-secondary !py-2 text-sm text-center">{t('staffX.boardTab')}</Link>
                   )}
-                  <Link href={`/staff/${e.id}?tab=scores`} className={`${e.role === 'coordinator' ? 'btn-secondary' : 'btn-primary'} !py-2 text-sm text-center`}>🎾 {t('staffView.scoresTab')}</Link>
+                  <Link href={`/staff/${e.id}?tab=scores`} className={`${e.role === 'coordinator' ? 'btn-secondary' : 'btn-primary'} !py-2 text-sm text-center`}>{t('staffView.scoresTab')}</Link>
                 </div>
               </div>
             ))}
@@ -176,12 +176,12 @@ export default function StaffEventsPage() {
 
       {(tours || []).length > 0 && (
         <section className="mt-2">
-          <h2 className="text-white font-semibold mb-2">🔴 {t('live.staffTitle')}</h2>
+          <h2 className="text-white font-semibold mb-2">{t('live.staffTitle')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {tours.map((tr) => (
               <Link key={tr.id} href={`/live/${tr.id}`} className="card hover:border-red-400 transition">
                 <div className="flex justify-between gap-2">
-                  <span className="text-white font-semibold">🏆 {tr.name}</span>
+                  <span className="text-white font-semibold">{tr.name}</span>
                   <span className="text-xs rounded-full px-2 py-0.5 bg-red-500/20 text-red-200 shrink-0">● {t('live.score')}</span>
                 </div>
                 <div className="text-gray-400 text-sm">

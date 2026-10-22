@@ -21,7 +21,7 @@ export default function CreateClubForm(props) {
     const waiting = (data?.items || []).find((r) => r.status === 'pending');
     return (
       <div className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-4">
-        <p className="text-white font-semibold">🏟 {waiting ? t('creq.waitingTitle', { name: waiting.name }) : t('creq.ctaTitle')}</p>
+        <p className="text-white font-semibold">{waiting ? t('creq.waitingTitle', { name: waiting.name }) : t('creq.ctaTitle')}</p>
         <p className="text-gray-300 text-sm mt-1">{waiting ? t('creq.waitingBody') : t('creq.ctaBody')}</p>
         <Link href={community && !waiting ? '/club-request?kind=community' : '/club-request'} className="btn-primary inline-block mt-3">{waiting ? t('creq.seeRequest') : t('creq.ctaButton')}</Link>
       </div>

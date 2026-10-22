@@ -53,10 +53,10 @@ export default function CommunityBusiness({ view = 'players' }) {
 
   return (
     <AppShell>
-      <PageHeader icon={view === 'players' ? '📈' : '💰'} title={t(view === 'players' ? 'nav.bizPlayers' : 'nav.bizMoney')} subtitle={club?.name} actions={
+      <PageHeader icon={view === 'players' ? 'chart' : 'money'} title={t(view === 'players' ? 'nav.bizPlayers' : 'nav.bizMoney')} subtitle={club?.name} actions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {/* Phân tích tài chính (add-on 💎) lives here, not in the side menu. */}
-          {view === 'money' && <Link href="/club/insights" className="btn-secondary text-sm whitespace-nowrap">🔬 {t('nav.finAnalysis')} 💎</Link>}
+          {/* Phân tích tài chính (add-on) lives here, not in the side menu. */}
+          {view === 'money' && <Link href="/club/insights" className="btn-secondary text-sm whitespace-nowrap">{t('nav.finAnalysis')}</Link>}
           <PeriodSelect value={period} onChange={setPeriod} t={t} />
         </div>
       } />
@@ -67,12 +67,12 @@ export default function CommunityBusiness({ view = 'players' }) {
       {view === 'players' && p && (
         <>
           <KpiRow cols={4}>
-            <StatTile icon="👥" label={t('biz.total')} value={rep ? `${p.total}/${rep.thresholds.members}` : p.total} sub={rep ? t('biz.totalProgress', { pct: Math.round(bar('members').progress) }) : t('biz.totalSub')} />
-            <StatTile icon="🌱" label={t('biz.newMonth')} value={newest?.n ?? 0} tone="text-emerald-300" sub={t('biz.shareSub', { pct: share(newest?.n || 0), month: newest ? fmtMonth(newest.month) : '' })} />
-            <StatTile icon="🏠" label={t('biz.regular')} value={p.regular} tone="text-lime-300" sub={t('biz.shareTotal', { pct: share(p.regular) })} />
-            <StatTile icon="🤝" label={t('biz.dropin')} value={p.dropin} tone="text-sky-300" sub={t('biz.shareTotal', { pct: share(p.dropin) })} />
-            <StatTile icon="⭐" label={t('biz.vip')} value={vips.length} tone="text-amber-300" />
-            <StatTile icon="📅" label={t('biz.sessionsMonth')} value={bar('sessions')?.value ?? '—'} sub={rep ? t('biz.sessionsMonthSub', { n: rep.months }) : ''} />
+            <StatTile icon="users" label={t('biz.total')} value={rep ? `${p.total}/${rep.thresholds.members}` : p.total} sub={rep ? t('biz.totalProgress', { pct: Math.round(bar('members').progress) }) : t('biz.totalSub')} />
+            <StatTile icon="userPlus" label={t('biz.newMonth')} value={newest?.n ?? 0} tone="text-emerald-300" sub={t('biz.shareSub', { pct: share(newest?.n || 0), month: newest ? fmtMonth(newest.month) : '' })} />
+            <StatTile icon="home" label={t('biz.regular')} value={p.regular} tone="text-lime-300" sub={t('biz.shareTotal', { pct: share(p.regular) })} />
+            <StatTile icon="users" label={t('biz.dropin')} value={p.dropin} tone="text-sky-300" sub={t('biz.shareTotal', { pct: share(p.dropin) })} />
+            <StatTile icon="star" label={t('biz.vip')} value={vips.length} tone="text-amber-300" />
+            <StatTile icon="calendar" label={t('biz.sessionsMonth')} value={bar('sessions')?.value ?? '—'} sub={rep ? t('biz.sessionsMonthSub', { n: rep.months }) : ''} />
             <StatTile icon="↩️" label={t('biz.returnRate')} value={p.return_rate == null ? '—' : `${p.return_rate}%`} tone="text-violet-300" sub={t('biz.returnSub', { back: p.came_back, all: p.played_once })} />
           </KpiRow>
           <Hint text={t('biz.playersHint')} className="mb-4" />
@@ -80,7 +80,7 @@ export default function CommunityBusiness({ view = 'players' }) {
           {rep && (
             <section className="card mb-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h2 className="text-white font-semibold">🏆 {t('top10.cardTitle')}</h2>
+                <h2 className="text-white font-semibold">{t('top10.cardTitle')}</h2>
                 <Link href="/contact?top10=1" onClick={(e) => { if (!rep.eligible) { e.preventDefault(); setMissing(true); } }} className="btn-primary text-sm max-sm:w-full text-center">{t('top10.registerBtn')}</Link>
               </div>
               <Top10Checks reputation={rep} />
@@ -96,7 +96,7 @@ export default function CommunityBusiness({ view = 'players' }) {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="card">
-              <h2 className="text-white font-semibold mb-3">🌱 {t('biz.newByMonth')}</h2>
+              <h2 className="text-white font-semibold mb-3">{t('biz.newByMonth')}</h2>
               <div className="flex items-end gap-2 h-36" role="img" aria-label={(p.new_by_month || []).map((x) => `${fmtMonth(x.month)}: ${x.n}`).join(', ')}>
                 {p.new_by_month.map((x) => (
                   <div key={x.month} className="flex-1 h-full flex flex-col justify-end items-center gap-1" title={`${fmtMonth(x.month)}: ${x.n}`}>
@@ -109,14 +109,14 @@ export default function CommunityBusiness({ view = 'players' }) {
             </section>
 
             <section className="card">
-              <h2 className="text-white font-semibold mb-2">⭐ {t('biz.vipList')} ({vips.length})</h2>
+              <h2 className="text-white font-semibold mb-2">{t('biz.vipList')} ({vips.length})</h2>
               {vips.length === 0 ? (
                 <p className="text-gray-500 text-sm">{t('biz.noVip')}</p>
               ) : (
                 <ul className="divide-y divide-navy-700 text-sm">
                   {vips.map((v) => (
                     <li key={v.id} className="flex items-center justify-between gap-2 py-1.5">
-                      <span className="text-white break-words min-w-0">{v.full_name} <span className="text-amber-300">{'⭐'.repeat(v.vip_stars || 1)}</span></span>
+                      <span className="text-white break-words min-w-0">{v.full_name} <span className="text-amber-300">{'★'.repeat(v.vip_stars || 1)}</span></span>
                       <span className="text-gray-400 text-xs shrink-0">{v.sessions_unlimited ? t('biz.unlimited') : v.sessions_remaining != null ? t('biz.left', { n: v.sessions_remaining }) : ''}</span>
                     </li>
                   ))}
@@ -130,14 +130,14 @@ export default function CommunityBusiness({ view = 'players' }) {
       {view === 'money' && m && (
         <>
           <KpiRow cols={4}>
-            <StatTile icon="📊" label={t('biz.revenue')} value={formatVnd(m.revenue)} sub={t('biz.revenueSub')} />
-            <StatTile icon="💚" label={t('biz.income')} value={formatVnd(m.income)} tone="text-lime-400" />
-            <StatTile icon="🧾" label={t('biz.expense')} value={formatVnd(m.expense)} tone="text-orange-300" />
-            <StatTile icon="⚖️" label={t('biz.profit')} value={formatVnd(m.profit)} tone={m.profit < 0 ? 'text-red-400' : 'text-white'} sub={t('biz.profitSub')} />
+            <StatTile icon="chart" label={t('biz.revenue')} value={formatVnd(m.revenue)} sub={t('biz.revenueSub')} />
+            <StatTile icon="trendUp" label={t('biz.income')} value={formatVnd(m.income)} tone="text-lime-400" />
+            <StatTile icon="receipt" label={t('biz.expense')} value={formatVnd(m.expense)} tone="text-orange-300" />
+            <StatTile icon="chart" label={t('biz.profit')} value={formatVnd(m.profit)} tone={m.profit < 0 ? 'text-red-400' : 'text-white'} sub={t('biz.profitSub')} />
           </KpiRow>
           <div className="grid gap-4 lg:grid-cols-2 mb-4">
             <section className="card">
-              <h2 className="text-white font-semibold mb-2">🧾 {t('biz.expenseBy')}</h2>
+              <h2 className="text-white font-semibold mb-2">{t('biz.expenseBy')}</h2>
               <ul className="text-sm divide-y divide-navy-700">
                 {['court', 'water', 'balls', 'other'].map((k) => (
                   <li key={k} className="flex justify-between py-1.5">
@@ -148,7 +148,7 @@ export default function CommunityBusiness({ view = 'players' }) {
               </ul>
             </section>
             <section className="card">
-              <h2 className="text-white font-semibold mb-2">🎾 {t('biz.balls')}</h2>
+              <h2 className="text-white font-semibold mb-2">{t('biz.balls')}</h2>
               {(data.balls || []).length === 0 ? (
                 <p className="text-gray-500 text-sm">{t('biz.noBalls')} <Link href="/finance/inventory" className="text-lime-300 underline">{t('biz.toInventory')}</Link></p>
               ) : (
@@ -167,7 +167,7 @@ export default function CommunityBusiness({ view = 'players' }) {
             </section>
           </div>
           <section className="card">
-            <h2 className="text-white font-semibold mb-1">💳 {t('biz.debts')} · <span className="text-yellow-300">{formatVnd(m.owed)}</span> <span className="text-gray-400 font-normal text-sm">({m.debt_count})</span></h2>
+            <h2 className="text-white font-semibold mb-1">{t('biz.debts')} · <span className="text-yellow-300">{formatVnd(m.owed)}</span> <span className="text-gray-400 font-normal text-sm">({m.debt_count})</span></h2>
             <Hint text={t('biz.debtsHint')} className="mb-2" />
             {m.debts.length === 0 ? (
               <p className="text-gray-500 text-sm">{t('biz.noDebts')}</p>

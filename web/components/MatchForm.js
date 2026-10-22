@@ -117,9 +117,9 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
 
       {repeats.map((x) => (
         <div key={x.team} className="rounded-xl border-2 border-amber-400 bg-amber-400/10 p-3 text-sm" role="alert">
-          <p className="text-amber-100 font-semibold">⚠️ {t('matches.pairAgain', { a: nameOf(slots[x.team][0]), b: nameOf(slots[x.team][1]), n: x.n })}</p>
+          <p className="text-amber-100 font-semibold">{t('matches.pairAgain', { a: nameOf(slots[x.team][0]), b: nameOf(slots[x.team][1]), n: x.n })}</p>
           <div className="grid grid-cols-2 gap-2 mt-2">
-            <button type="button" className="btn-secondary text-sm justify-center" onClick={() => setSlot(x.team, 1, '')}>🔄 {t('matches.pairRepick')}</button>
+            <button type="button" className="btn-secondary text-sm justify-center" onClick={() => setSlot(x.team, 1, '')}>{t('matches.pairRepick')}</button>
             <button type="button" className="btn-primary text-sm justify-center" onClick={() => setKept({ ...kept, [pairKey(x.team)]: true })}>✓ {t('matches.pairKeep')}</button>
           </div>
         </div>

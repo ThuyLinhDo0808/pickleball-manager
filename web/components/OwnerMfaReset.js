@@ -22,7 +22,7 @@ export default function OwnerMfaReset({ host, onChanged }) {
   if (error) {
     return (
       <div className="card !p-4">
-        <h2 className="text-white font-semibold mb-1">🔐 {t('owner.mfaTitle')}</h2>
+        <h2 className="text-white font-semibold mb-1">{t('owner.mfaTitle')}</h2>
         <p className="text-gray-400 text-sm">{error.payload?.code === 'migration_required' ? error.message : t('common.error')}</p>
       </div>
     );
@@ -58,13 +58,13 @@ export default function OwnerMfaReset({ host, onChanged }) {
 
   return (
     <div className={`card !p-4 ${data.reset ? 'border-amber-400/50' : ''}`}>
-      <h2 className="text-white font-semibold mb-1">🔐 {t('owner.mfaTitle')}</h2>
+      <h2 className="text-white font-semibold mb-1">{t('owner.mfaTitle')}</h2>
       <p className="text-gray-300 text-sm">
         {data.enabled ? `✓ ${t('owner.mfaOn', { at: fmtTime(data.enabled_at), n: data.recovery_left })}` : t('owner.mfaOff')}
       </p>
       {data.reset ? (
         <div className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/5 p-3 text-sm">
-          <p className="text-amber-200 font-semibold">⏳ {t('owner.mfaPending', { at: fmtTime(data.reset.at) })}</p>
+          <p className="text-amber-200 font-semibold">{t('owner.mfaPending', { at: fmtTime(data.reset.at) })}</p>
           <p className="text-gray-400 text-xs mt-1">{t('owner.mfaPendingBy', { by: data.reset.by || '—', at: fmtTime(data.reset.requested_at) })}</p>
           {data.reset.reason && <p className="text-gray-300 text-xs mt-1 italic">“{data.reset.reason}”</p>}
           <button type="button" className="btn-secondary text-sm mt-2" disabled={busy} onClick={stop}>{t('owner.mfaStop')}</button>

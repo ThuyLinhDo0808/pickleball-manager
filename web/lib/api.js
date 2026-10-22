@@ -13,7 +13,7 @@ async function authHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// The owner viewing the app as one Host (Owner Console → Host → 👁): read-only.
+// The owner viewing the app as one Host (Owner Console → Host →): read-only.
 const VIEW_AS_KEY = 'pb_view_as';
 export function viewingAs() {
   if (typeof window === 'undefined') return null;
@@ -81,7 +81,7 @@ async function request(path, { method = 'GET', body, isPublic = false, withAuth 
     } catch {
       /* ignore */
     }
-    data.error = `💎 ${translate(lang, 'plan.limitTitle')}`;
+    data.error = `${translate(lang, 'plan.limitTitle')}`;
   }
   // Two-step sign-in: this session still needs the code (or the account must turn it on
   // first, for the owner console). components/MfaGate asks for it.

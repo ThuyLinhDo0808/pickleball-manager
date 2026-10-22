@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Opened from the "reset two-step sign-in" email: the account holder stops a reset they
 // did not ask for. No sign-in needed (they may have neither the phone nor the password).
@@ -31,10 +32,10 @@ export default function MfaResetCancelPage() {
     <div className="min-h-screen flex items-center justify-center bg-navy-950 px-4">
       <div className="card w-full max-w-sm !p-6">
         <div className="flex items-center gap-2 mb-5">
-          <span className="h-9 w-9 rounded-lg bg-lime-400 text-navy-950 flex items-center justify-center text-xl" aria-hidden="true">🏓</span>
+          <span className="h-9 w-9 rounded-lg bg-lime-400 text-navy-950 flex items-center justify-center text-xl" aria-hidden="true"><UiIcon name="paddle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
           <span className="text-lime-400 font-bold text-lg">{t('appName')}</span>
         </div>
-        <h1 className="text-white text-xl font-bold mb-2">🔐 {t('sec.resetCancelTitle')}</h1>
+        <h1 className="text-white text-xl font-bold mb-2">{t('sec.resetCancelTitle')}</h1>
         {done ? (
           <>
             <div className="bg-lime-400/10 border border-lime-400/40 text-lime-200 text-sm rounded-lg p-3 my-3" role="status">✓ {t('sec.resetCancelled')}</div>

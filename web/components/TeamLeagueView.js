@@ -223,7 +223,7 @@ export default function TeamLeagueView({ tour, onChange }) {
             <ul className="text-sm text-gray-300">
               {tm.players.map((p) => (
                 <li key={p.id} className="flex justify-between gap-2">
-                  <span className="truncate">{p.full_name} {p.gender === 'male' ? '♂' : p.gender === 'female' ? '♀' : ''}</span>
+                  <span className="truncate">{p.full_name}</span>
                   <span className="text-gray-500 tabular-nums">{levelText(p.dupr_level, sport, t) ?? '—'}</span>
                 </li>
               ))}

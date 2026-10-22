@@ -35,11 +35,11 @@ export default function PlanLimitNotice() {
         : hit?.error || '';
   return (
     <>
-      <Modal open={!!hit} title={`💎 ${t('plan.limitTitle')}`} onClose={() => setHit(null)}>
+      <Modal open={!!hit} title={`${t('plan.limitTitle')}`} onClose={() => setHit(null)}>
         <p className="text-gray-200 text-sm mb-4">{body}</p>
         <div className="flex gap-2 justify-end">
           <button type="button" className="btn-secondary text-sm" onClick={() => setHit(null)}>{t('plan.close')}</button>
-          <button type="button" className="btn-primary text-sm" onClick={() => { setHit(null); setUpgrading(true); }}>💎 {t('plan.seePlans')}</button>
+          <button type="button" className="btn-primary text-sm" onClick={() => { setHit(null); setUpgrading(true); }}>{t('plan.seePlans')}</button>
         </div>
       </Modal>
       <UpgradeModal open={upgrading} onClose={() => setUpgrading(false)} product={product} />

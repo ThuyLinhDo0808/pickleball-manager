@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { levelText } from '@/lib/levels';
 import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Where someone stands on the list, as the sheet's buttons name it.
 export const PLACE_OF = { requested: 'requested', waitlisted: 'waitlist', not_playing: 'not_playing', registered: 'main', pending: 'main', checked_in: 'main', no_show: 'main' };
@@ -24,7 +25,7 @@ function Initial({ name, organizer }) {
   return (
     <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-navy-700 text-lg font-bold text-white">
       {(name || '?').trim().charAt(0).toUpperCase()}
-      {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden>🛡</span>}
+      {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[10px] leading-4" aria-hidden><UiIcon name="shield" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
     </span>
   );
 }
@@ -228,18 +229,18 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
         <div className="flex items-center gap-3">
           <span className="relative shrink-0">
             <Avatar src={c.avatar} name={name} size={64} />
-            {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[11px] leading-5" aria-hidden>🛡</span>}
+            {organizer && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 px-1 text-[11px] leading-5" aria-hidden><UiIcon name="shield" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
           </span>
           <div className="min-w-0">
             <p className="text-white text-lg font-bold truncate">{name}</p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-300">
-              {level ? <span>🎯 {level}</span> : <span className="text-gray-500">{t('people.noLevel')}</span>}
-              {c.gender && <span>{c.gender === 'male' ? '♂' : '♀'} {t(`members.${c.gender}`)}</span>}
+              {level ? <span>{level}</span> : <span className="text-gray-500">{t('people.noLevel')}</span>}
+              {c.gender && <span>{t(`members.${c.gender}`)}</span>}
               {sport === 'pickleball' && c.dupr != null && <span className="rounded bg-sky-600 px-1.5 text-xs font-bold text-white">DUPR {Number(c.dupr).toFixed(2)}</span>}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
               {row ? t(`player.status_${row.status}`) : t('place.hostNoRow')}
-              {(c.phone || row?.phone) && <span className="ml-2">📞 {c.phone || row.phone}</span>}
+              {(c.phone || row?.phone) && <span className="ml-2">{c.phone || row.phone}</span>}
             </p>
           </div>
         </div>
@@ -251,7 +252,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {/* One button per court ("Sân 2"), its hours under it. */}
             {event.groups.map((g, i) => (
               <button key={g.id} type="button" disabled={busy} aria-pressed={row.group_id === g.id} onClick={() => run(() => api.post(`/api/events/${event.id}/participants/${row.id}/group`, { group_id: g.id }))} className={`${chip} tabular-nums text-left leading-tight ${row.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300'}`}>
-                <span className="block font-semibold">🏟 {t('egroups.courtN', { n: g.courts || i + 1 })}</span>
+                <span className="block font-semibold">{t('egroups.courtN', { n: g.courts || i + 1 })}</span>
                 <span className="block text-[11px] opacity-80">{g.start_time}–{g.end_time}{g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''}</span>
               </button>
             ))}
@@ -266,7 +267,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             onClick={() => setRoles({ is_organizer: !organizer })}
             className={`${chip} ${organizer ? 'border-sky-400 bg-sky-500 text-white' : 'border-navy-600 text-gray-300'} ${isHost ? '!opacity-90' : ''}`}
           >
-            🛡 {t('people.organizer')}
+            {t('people.organizer')}
           </button>
           {row && !cancelled && TAGS.map((tag) => {
             const on = (row.tags || []).includes(tag);
@@ -290,7 +291,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                   onClick={() => go(o)}
                   className={`rounded-xl border-2 px-2 py-3 text-sm font-semibold ${place === o ? PLACE_TONE[o] : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
                 >
-                  <span className="block text-xl mb-0.5">{{ requested: '⏸', waitlist: '⏳', main: '✓', not_playing: '🧑‍💼' }[o]}</span>
+                  <UiIcon name={{ requested: 'pause', waitlist: 'hourglass', main: 'check', not_playing: 'user' }[o]} className="w-5 h-5 mx-auto mb-0.5" />
                   {t(`place.${o}`)}
                 </button>
               ))}
@@ -319,14 +320,14 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {['registered', 'checked_in', 'no_show'].includes(row.status) && (
               <>
                 {row.status !== 'checked_in' && <button type="button" disabled={busy} className={`${chip} border-lime-400/60 text-lime-200 hover:bg-lime-400/10`} onClick={() => act(() => actions.onAction(row, 'check-in'))}>✓ {t('events.checkIn')}</button>}
-                {row.status !== 'no_show' && <button type="button" disabled={busy} className={`${chip} border-yellow-400/60 text-yellow-200 hover:bg-yellow-400/10`} onClick={() => act(() => actions.onAction(row, 'no-show'))}>🚫 {t('events.noShow')}</button>}
+                {row.status !== 'no_show' && <button type="button" disabled={busy} className={`${chip} border-yellow-400/60 text-yellow-200 hover:bg-yellow-400/10`} onClick={() => act(() => actions.onAction(row, 'no-show'))}>{t('events.noShow')}</button>}
                 {row.status !== 'registered' && <button type="button" disabled={busy} className={`${chip} border-navy-500 text-gray-300`} onClick={() => act(() => actions.onAction(row, 'reset'))}>↺ {t('staffView.undo')}</button>}
               </>
             )}
-            {row.status === 'waitlisted' && <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onAction(row, 'promote'))}>⬆ {t('policy.promote')}</button>}
+            {row.status === 'waitlisted' && <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onAction(row, 'promote'))}>{t('policy.promote')}</button>}
             {/* Money: organisers who play free, a pass, a refund to give back, or paid / not paid. */}
             {(row.tags || []).includes('free') && !cancelled ? (
-              <span className={`${chip} border-violet-400/60 text-violet-200`}>🎁 {t('people.tag_free')}</span>
+              <span className={`${chip} border-violet-400/60 text-violet-200`}>{t('people.tag_free')}</span>
             ) : row.is_organizer && row.fee_amount != null && Number(row.fee_amount) === 0 ? (
               <span className={`${chip} border-navy-600 text-gray-400`}>{t('people.noFee')}</span>
             ) : row.paid_by_plan && !cancelled ? (
@@ -335,12 +336,12 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
               row.refunded_at ? (
                 <button type="button" disabled={busy} className={`${chip} border-navy-500 text-gray-300`} onClick={() => act(() => actions.onRefund(row, true))}>↺ {t('slot.refundUndo')}</button>
               ) : (
-                <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onRefund(row))}>💸 {t('slot.markRefunded')}</button>
+                <button type="button" disabled={busy} className={`${chip} border-sky-400/60 text-sky-200 hover:bg-sky-400/10`} onClick={() => act(() => actions.onRefund(row))}>{t('slot.markRefunded')}</button>
               )
             ) : (!cancelled || row.late_cancel || row.fee_paid) && (
               <button type="button" disabled={busy} aria-pressed={!!row.fee_paid} className={`${chip} ${row.fee_paid ? 'border-navy-500 text-gray-200' : 'border-lime-400 bg-lime-400/15 text-lime-200'}`} onClick={() => act(() => actions.onFee(row))}>
                 {/* The button says what pressing it does: not paid yet -> "Đã thu", paid -> "Chưa thu". */}
-                {row.fee_paid ? `↺ ${t('people.markUnpaid')}` : `💰 ${t('people.markPaid')}`}
+                {row.fee_paid ? `↺ ${t('people.markUnpaid')}` : `${t('people.markPaid')}`}
               </button>
             )}
             {cancelled && row.late_cancel && (
@@ -357,7 +358,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                 className={`${chip} border-red-500/60 text-red-300 hover:bg-red-500/10`}
                 onClick={() => window.confirm(t('people.deleteHistoryAsk', { name })) && run(async () => { await api.del(`/api/events/${event.id}/participants/${row.id}`); onClose(); })}
               >
-                🗑 {t('people.deleteHistory')}
+                {t('people.deleteHistory')}
               </button>
             )}
           </div>

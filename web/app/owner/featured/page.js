@@ -38,7 +38,7 @@ export default function OwnerFeatured() {
 
   return (
     <OwnerShell>
-      <h1 className="text-white text-2xl font-bold mb-1">🏆 {t('featured.ownerTitle')}</h1>
+      <h1 className="text-white text-2xl font-bold mb-1">{t('featured.ownerTitle')}</h1>
       <p className="text-gray-400 text-sm mb-4">{data ? t('featured.ownerSub', { n: data.active, slots: data.slots, price: formatVnd(data.price_month) }) : ''}</p>
       {error && <p className="text-red-400 text-sm">{error.message}</p>}
       <div className="flex gap-2 mb-3">
@@ -55,9 +55,9 @@ export default function OwnerFeatured() {
                 <p className="text-white font-semibold">{r.club.name} <span className={`ml-1 text-[11px] rounded-full px-2 py-0.5 ${TONE[r.status]}`}>{t(`featured.st_${r.status}`)}</span></p>
                 <p className="text-gray-400 text-xs">{[r.club.district, r.club.province].filter(Boolean).join(', ')} · {r.host_email || '—'}</p>
                 <p className="text-gray-300 text-xs mt-1">{t('plan.nMonths', { n: r.months })} · {formatVnd(r.amount)} · <span className="font-mono">{r.ref}</span> · {fmtTime(r.created_at)}</p>
-                {r.status === 'active' && <p className="text-lime-300 text-xs mt-1">#{r.position} · ⭐ {r.trust_score} · {day(r.starts_on)} – {day(r.ends_on)}</p>}
-                {r.owner_note && <p className="text-gray-400 text-xs mt-1">📝 {r.owner_note}</p>}
-                {r.host_note && <p className="text-gray-200 text-sm mt-1 whitespace-pre-line">💬 {r.host_note}</p>}
+                {r.status === 'active' && <p className="text-lime-300 text-xs mt-1">#{r.position} · {r.trust_score} · {day(r.starts_on)} – {day(r.ends_on)}</p>}
+                {r.owner_note && <p className="text-gray-400 text-xs mt-1">{r.owner_note}</p>}
+                {r.host_note && <p className="text-gray-200 text-sm mt-1 whitespace-pre-line">{r.host_note}</p>}
                 {r.host_info && (
                   <p className="text-gray-400 text-xs mt-1">
                     {t('featured.hostInfo', { members: r.host_info.members, sessions: r.host_info.sessions_held, active: r.host_info.active_pct, newAvg: r.host_info.new_month_avg })}
@@ -65,7 +65,7 @@ export default function OwnerFeatured() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                {r.status === 'awaiting_payment' && <button type="button" className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => window.confirm(t('featured.paidAsk', { amount: formatVnd(r.amount), ref: r.ref })) && act(r, 'paid')}>💰 {t('featured.markPaid')}</button>}
+                {r.status === 'awaiting_payment' && <button type="button" className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => window.confirm(t('featured.paidAsk', { amount: formatVnd(r.amount), ref: r.ref })) && act(r, 'paid')}>{t('featured.markPaid')}</button>}
                 {['in_review', 'active'].includes(r.status) && <button type="button" className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => setReview({ row: r, trust_score: r.trust_score ?? 80, position: r.position || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].find((n) => !taken.has(n)) || 10, note: r.owner_note || '' })}>{r.status === 'active' ? t('featured.edit') : `✓ ${t('featured.approve')}`}</button>}
                 {['awaiting_payment', 'in_review'].includes(r.status) && <button type="button" className="btn-secondary !py-1.5 text-sm text-red-300" disabled={busy} onClick={() => { const note = window.prompt(t('featured.rejectAsk')); if (note !== null) act(r, 'reject', { note }); }}>{t('featured.reject')}</button>}
                 {r.status === 'active' && <button type="button" className="btn-secondary !py-1.5 text-sm text-red-300" disabled={busy} onClick={() => { const note = window.prompt(t('featured.removeAsk')); if (note !== null) act(r, 'remove', { note }); }}>{t('featured.remove')}</button>}

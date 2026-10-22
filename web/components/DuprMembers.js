@@ -108,10 +108,10 @@ export default function DuprMembers({ club }) {
         <h2 className="text-white font-semibold">{t('duprm.importTitle')}</h2>
         {/* The how-to is in pop-ups (pictures, video); the page keeps only the actions. */}
         <div className="flex flex-wrap gap-2 mt-2">
-          <button type="button" className="btn-secondary text-sm" onClick={() => setGuide('image')}>📷 {t('duprm.guideImage')}</button>
-          <button type="button" className="btn-secondary text-sm" onClick={() => setGuide('video')}>🎬 {t('duprm.guideVideo')}</button>
+          <button type="button" className="btn-secondary text-sm" onClick={() => setGuide('image')}>{t('duprm.guideImage')}</button>
+          <button type="button" className="btn-secondary text-sm" onClick={() => setGuide('video')}>{t('duprm.guideVideo')}</button>
           <label className={`btn-primary text-sm cursor-pointer ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
-            📂 {busy ? t('common.loading') : t('duprm.chooseFile')}
+            {busy ? t('common.loading') : t('duprm.chooseFile')}
             <input type="file" accept=".csv,text/csv" className="hidden" onChange={pick} />
           </label>
         </div>
@@ -187,7 +187,7 @@ export default function DuprMembers({ club }) {
                   </td>
                   <td className="py-2 pr-3">
                     <span className="text-gray-300">{m.dupr_name || '—'}</span>
-                    {m.name_fits === false && <span className="block text-[11px] text-amber-200" title={t('duprm.nameDiffHint')}>⚠ {t('dupr.nameMismatch')}</span>}
+                    {m.name_fits === false && <span className="block text-[11px] text-amber-200" title={t('duprm.nameDiffHint')}>{t('dupr.nameMismatch')}</span>}
                   </td>
                   {score?.id === m.id ? (
                     <>
@@ -289,8 +289,8 @@ function ImportResult({ r }) {
         <li>{t('duprm.rLinked', { n: r.linked_new.length })}{r.linked_new.length > 0 && <span className="text-gray-400">: {r.linked_new.map((x) => x.full_name).join(', ')}</span>}</li>
         <li>{t('duprm.rUpdated', { n: r.updated, same: r.unchanged })}</li>
       </ul>
-      {r.linked_new.some((x) => !x.name_fits) && <p className="text-amber-200 text-xs mt-2">⚠ {t('duprm.rNameCheck', { names: r.linked_new.filter((x) => !x.name_fits).map((x) => `${x.full_name} ↔ ${x.dupr_name}`).join(' · ') })}</p>}
-      {r.conflicts.length > 0 && <p className="text-red-300 text-xs mt-2">⚠ {t('duprm.rConflict', { list: r.conflicts.map((c) => `${c.dupr_id}: ${c.names.join(', ')}`).join(' · ') })}</p>}
+      {r.linked_new.some((x) => !x.name_fits) && <p className="text-amber-200 text-xs mt-2">{t('duprm.rNameCheck', { names: r.linked_new.filter((x) => !x.name_fits).map((x) => `${x.full_name} ↔ ${x.dupr_name}`).join(' · ') })}</p>}
+      {r.conflicts.length > 0 && <p className="text-red-300 text-xs mt-2">{t('duprm.rConflict', { list: r.conflicts.map((c) => `${c.dupr_id}: ${c.names.join(', ')}`).join(' · ') })}</p>}
       {r.not_in_club.length > 0 && <p className="text-gray-400 text-xs mt-2">{t('duprm.rNotIn', { names: r.not_in_club.map((x) => x.full_name).join(', ') })}</p>}
     </div>
   );

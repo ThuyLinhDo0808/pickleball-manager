@@ -125,7 +125,7 @@ export function Top10Register({ club, data, reload }) {
         {cur.status === 'active' && (
           <p className="text-gray-200">
             {t('featured.activeLine', { pos: cur.position, from: day(cur.starts_on), to: day(cur.ends_on) })}
-            {cur.trust_score != null && <span className="block text-sm text-lime-300 mt-1">⭐ {t('featured.trust', { n: cur.trust_score })}</span>}
+            {cur.trust_score != null && <span className="block text-sm text-lime-300 mt-1">{t('featured.trust', { n: cur.trust_score })}</span>}
           </p>
         )}
         {err && <p className="text-red-400 text-sm">{err}</p>}
@@ -142,10 +142,10 @@ export function Top10Register({ club, data, reload }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {data.dropped_not_eligible && <p className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">⚠️ {t('top10.dropped')}</p>}
+      {data.dropped_not_eligible && <p className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">{t('top10.dropped')}</p>}
       {/* The conditions first: a community that does not reach them cannot register. */}
       <section className={`rounded-xl border px-3 py-3 ${rep?.eligible ? 'border-lime-400/50 bg-lime-400/5' : 'border-amber-300/50 bg-amber-300/5'}`}>
-        <h3 className="text-white font-semibold text-sm">📋 {t('top10.rulesTitle')}</h3>
+        <h3 className="text-white font-semibold text-sm">{t('top10.rulesTitle')}</h3>
         <ol className="list-decimal pl-5 mt-1 text-sm text-gray-200 space-y-0.5">
           {(rep?.checks || []).map((c) => (
             <li key={c.key}>
@@ -162,7 +162,7 @@ export function Top10Register({ club, data, reload }) {
       <section>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h3 className="text-white font-semibold text-sm">{t('top10.infoTitle')}</h3>
-          <button type="button" className="btn-secondary text-sm !py-1.5" onClick={autofill}>⚡ {t('top10.autofill')}</button>
+          <button type="button" className="btn-secondary text-sm !py-1.5" onClick={autofill}>{t('top10.autofill')}</button>
         </div>
         <div className="grid grid-cols-2 gap-2">
           {field('name', 'text')}

@@ -139,7 +139,7 @@ export default function RosterPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="🗓"
+        icon="calendar"
         title={t('nav.roster')}
         subtitle={club?.name}
         actions={data?.can_manage && editing !== 'new' ? <button type="button" className="btn-primary text-sm" onClick={() => { setErr(''); setEditing('new'); }}>＋ {t('roster.add')}</button> : null}
@@ -176,15 +176,15 @@ export default function RosterPage() {
                         </span>
                         {data.can_manage && (
                           <span className="flex gap-1">
-                            <button type="button" className="text-gray-400 hover:text-white text-xs px-1" onClick={() => { setErr(''); setEditing(s); }}>✎ {t('common.edit')}</button>
+                            <button type="button" className="text-gray-400 hover:text-white text-xs px-1" onClick={() => { setErr(''); setEditing(s); }}>{t('common.edit')}</button>
                             <button type="button" className="text-gray-400 hover:text-red-300 text-xs px-1" onClick={() => remove(s)}>✕</button>
                           </span>
                         )}
                       </div>
                       <div className="text-gray-300 text-xs mt-1">
-                        👥 {s.people.length ? s.people.map((p) => p.full_name || p.email).join(', ') : <span className="text-amber-200">{t('roster.nobody')}</span>}
+                        {s.people.length ? s.people.map((p) => p.full_name || p.email).join(', ') : <span className="text-amber-200">{t('roster.nobody')}</span>}
                       </div>
-                      {s.notes && <div className="text-gray-500 text-xs mt-0.5">📝 {s.notes}</div>}
+                      {s.notes && <div className="text-gray-500 text-xs mt-0.5">{s.notes}</div>}
                     </li>
                   );
                 })}

@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatDay, hhmm } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 // After-session review everyone checked in gets by email / the player portal (no login).
 // Overall stars, stars for the court and the organisation, did the level suit you, would
@@ -67,7 +68,7 @@ export default function SurveyPage() {
 
       {data.answer && (
         <section className="card mb-4 text-center">
-          <div className="text-3xl">💚</div>
+          <div className="text-3xl"></div>
           <p className="text-white font-semibold mt-1">{t('survey.received')}</p>
           <p className="text-amber-300 text-lg tracking-widest mt-1" aria-label={`${data.answer.rating}/5`}>
             {'★'.repeat(data.answer.rating)}
@@ -83,7 +84,7 @@ export default function SurveyPage() {
               <p className="text-white font-semibold">{joinQ(data)}</p>
               {data.community && (
                 <button type="button" className="text-lime-300 text-sm underline underline-offset-2 mt-1" onClick={() => setWhy(true)}>
-                  💡 {t('survey.whyCta')}
+                  {t('survey.whyCta')}
                 </button>
               )}
               <button type="button" className="btn-primary w-full mt-3 py-3" onClick={() => setShowJoin(true)}>
@@ -116,17 +117,17 @@ function JoinWhy({ data, onClose, onJoin }) {
   const r = data.race;
   const prizes = r ? ['1', '2', '3'].filter((k) => r.rewards[k] !== 'none').map((k) => `Top ${k}: ${t(`race.reward_${r.rewards[k]}`)}`).join(' · ') : '';
   const items = [
-    ...(r ? [['🏆', t('survey.why_race_t'), t('survey.why_race', { min: r.min_sessions })], ['🎁', t('survey.why_prize_t'), prizes]] : []),
-    ['📅', t('survey.why_page_t'), t('survey.why_page')],
-    ['🎫', t('survey.why_plan_t'), t('survey.why_plan')],
-    ['⚡', t('survey.why_perk_t'), t('survey.why_perk')],
+    ...(r ? [['trophy', t('survey.why_race_t'), t('survey.why_race', { min: r.min_sessions })], ['gift', t('survey.why_prize_t'), prizes]] : []),
+    ['calendar', t('survey.why_page_t'), t('survey.why_page')],
+    ['ticket', t('survey.why_plan_t'), t('survey.why_plan')],
+    ['bolt', t('survey.why_perk_t'), t('survey.why_perk')],
   ];
   return (
     <Modal open title={t('survey.whyTitle', { club: data.club_name || '' })} onClose={onClose}>
       <ul className="flex flex-col gap-3">
         {items.map(([icon, title, body]) => (
           <li key={title} className="flex gap-3">
-            <span className="text-2xl leading-none" aria-hidden="true">{icon}</span>
+            <UiIcon name={icon} className="w-6 h-6 text-gray-300 shrink-0" />
             <span className="text-sm">
               <b className="text-white block">{title}</b>
               <span className="text-gray-300">{body}</span>
@@ -212,11 +213,11 @@ function SurveyForm({ token, data, onDone }) {
         <p className="text-white font-semibold">2. {t('survey.qDetail')}</p>
         <div className="mt-2 flex flex-col gap-2 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-gray-300">🏟 {t('survey.qCourt')}</span>
+            <span className="text-gray-300">{t('survey.qCourt')}</span>
             <Stars value={court} onChange={setCourt} size="text-2xl" label={t('survey.qCourt')} optional />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-gray-300">📋 {t('survey.qOrg')} <span className="text-gray-500 text-xs">({t('survey.qOrgHint')})</span></span>
+            <span className="text-gray-300">{t('survey.qOrg')} <span className="text-gray-500 text-xs">({t('survey.qOrgHint')})</span></span>
             <Stars value={org} onChange={setOrg} size="text-2xl" label={t('survey.qOrg')} optional />
           </div>
         </div>
@@ -243,7 +244,7 @@ function SurveyForm({ token, data, onDone }) {
       </div>
       <div>
         <label htmlFor="survey-comment" className="text-white font-semibold">5. {t('survey.qComment')}</label>
-        <p className="text-gray-500 text-xs mt-0.5">🔒 {t('survey.commentHint')}</p>
+        <p className="text-gray-500 text-xs mt-0.5">{t('survey.commentHint')}</p>
         <textarea id="survey-comment" className="input mt-2 min-h-[5rem]" maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t('survey.commentPlaceholder')} />
       </div>
       {!data.is_fixed && (

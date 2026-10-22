@@ -16,6 +16,7 @@ import { PlanPaymentBox, productView } from '@/components/PlanModals';
 import { useEnter } from '@/lib/useEnter';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 const PAID = ['basic', 'standard', 'advanced', 'pro'];
 const FALLBACK_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
@@ -39,22 +40,22 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
     <div className={`rounded-2xl border p-4 ${STATUS_TONE[r.status]}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-white font-bold">{r.sport === 'badminton' ? '🏸' : '🏓'} {r.name}{r.kind === 'community' && <span className="ml-2 text-[11px] rounded-full border border-amber-300/60 text-amber-200 px-2 py-0.5 align-middle">🎟 {t('creq.kind_community')}</span>}</p>
+          <p className="text-white font-bold">{r.name}{r.kind === 'community' && <span className="ml-2 text-[11px] rounded-full border border-amber-300/60 text-amber-200 px-2 py-0.5 align-middle">{t('creq.kind_community')}</span>}</p>
           <p className="text-gray-400 text-xs">{[r.district, r.province, r.country].filter(Boolean).join(', ')} · {t('creq.sentOn', { date: fmtDate(r.created_at) })}</p>
         </div>
         <span className="rounded-full border border-current px-2 py-0.5 text-[11px] font-bold">{t(`creq.status_${r.status}`)}</span>
       </div>
       <p className="text-sm mt-2">{t(r.kind === 'community' && r.status === 'approved' ? 'creq.statusHint_approvedCommunity' : `creq.statusHint_${r.status}`, { tier: String(r.plan_tier || '').toUpperCase() })}</p>
-      {r.owner_note && <p className="text-sm mt-1 text-gray-200">💬 {t('creq.ownerNote')}: {r.owner_note}</p>}
+      {r.owner_note && <p className="text-sm mt-1 text-gray-200">{t('creq.ownerNote')}: {r.owner_note}</p>}
       {/* The plan is paid with the request: transfer details until the money arrives. */}
       {r.status === 'pending' && pay?.status === 'pending' && (
         <div className="mt-3"><PlanPaymentBox payment={pay} /></div>
       )}
       {r.status === 'pending' && pay?.status === 'paid' && <p className="mt-2 text-lime-300 text-sm">✓ {t('creq.paid')}</p>}
-      {r.status === 'pending' && !pay && r.payment_id === null && <p className="mt-2 text-gray-300 text-sm">ℹ️ {t('creq.planCovers', { tier: String(r.plan_tier || '').toUpperCase() })}</p>}
+      {r.status === 'pending' && !pay && r.payment_id === null && <p className="mt-2 text-gray-300 text-sm">{t('creq.planCovers', { tier: String(r.plan_tier || '').toUpperCase() })}</p>}
       {r.status === 'pending' && pay?.status === 'cancelled' && (
         <p className="mt-2 text-red-300 text-sm">
-          ⚠️ {t('creq.payCancelled')}{' '}
+          {t('creq.payCancelled')}{' '}
           <button type="button" className="underline" disabled={busy} onClick={() => onRenew(r.id)}>{t('creq.payRenew')}</button>
         </p>
       )}
@@ -79,11 +80,11 @@ function KindChooser({ onPick }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {[
-        ['club', '🏟', 'border-lime-400/50 hover:border-lime-400'],
-        ['community', '🎟', 'border-amber-300/50 hover:border-amber-300'],
+        ['club', 'court', 'border-lime-400/50 hover:border-lime-400'],
+        ['community', 'ticket', 'border-amber-300/50 hover:border-amber-300'],
       ].map(([k, icon, tone]) => (
         <button key={k} type="button" onClick={() => onPick(k)} className={`card text-left border-2 ${tone} transition`}>
-          <span className="text-3xl" aria-hidden="true">{icon}</span>
+          <UiIcon name={icon} className="w-7 h-7 text-gray-300" />
           <span className="block text-white text-lg font-bold mt-2">{t(`creq.pick_${k}`)}</span>
           <span className="block text-gray-300 text-sm mt-1">{t(`creq.pickHint_${k}`)}</span>
           <span className="block text-lime-300 text-sm font-semibold mt-3">{t('creq.pickCta')} →</span>
@@ -204,7 +205,7 @@ export default function ClubRequestPage() {
         <p className="text-gray-400 text-sm mt-1 mb-4">{t(kind === 'community' ? 'creq.introCommunity' : kind === 'club' ? 'creq.intro' : 'creq.introPick')}</p>
 
         {data?.approval === false && (
-          <p className="card mb-4 text-sm text-gray-300">ℹ️ {t('creq.approvalOff')} <Link href="/clubs" className="text-lime-300 underline">{t('creq.createDirect')}</Link></p>
+          <p className="card mb-4 text-sm text-gray-300">{t('creq.approvalOff')} <Link href="/clubs" className="text-lime-300 underline">{t('creq.createDirect')}</Link></p>
         )}
 
         {sent || waiting ? (
@@ -223,14 +224,14 @@ export default function ClubRequestPage() {
           </div>
         ) : (
           <>
-            {fromOnboarding && <p className="rounded-xl border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sky-100 text-sm mb-4">👋 {t('creq.welcome')}</p>}
+            {fromOnboarding && <p className="rounded-xl border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sky-100 text-sm mb-4">{t('creq.welcome')}</p>}
             {!kind ? (
               <KindChooser onPick={(k) => { setKind(k); setStep(0); }} />
             ) : (
             <>
             <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
               <span className={`rounded-full border px-3 py-1 font-semibold ${kind === 'community' ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-lime-400/60 bg-lime-400/10 text-lime-100'}`}>
-                {kind === 'community' ? '🎟' : '🏟'} {t(`creq.kind_${kind}`)}
+                {t(`creq.kind_${kind}`)}
               </span>
               <button type="button" className="text-gray-400 text-xs underline" onClick={() => setKind(null)}>{t('creq.kindChange')}</button>
             </div>
@@ -262,9 +263,9 @@ export default function ClubRequestPage() {
                 <div className="card border-lime-400/50">
                   <p className="text-white font-semibold">✓ {t(product === 'social_manager' ? 'creq.coveredNoteSm' : 'creq.coveredNote', { tier: pv.current.toUpperCase() })}</p>
                   <p className="text-gray-300 text-sm mt-1">
-                    {product === 'social_manager' ? '🎟 ' : '🏠 '}
+                    
                     {pv.limit == null ? t(product === 'social_manager' ? 'plan.communitiesN' : 'plan.clubsUnlimited', { n: '∞' }) : t(product === 'social_manager' ? 'creq.coveredCommunities' : 'creq.coveredClubs', { used: pv.owned, limit: pv.limit })}
-                    {' · '}👥 {capOf(pv.current) == null ? t('plan.membersUnlimited') : product === 'social_manager' ? t('plan.smMembersN', { n: capOf(pv.current) }) : t('plan.membersN', { fixed: limits[pv.current].fixed, guest: limits[pv.current].guest })}
+                    {' · '}{capOf(pv.current) == null ? t('plan.membersUnlimited') : product === 'social_manager' ? t('plan.smMembersN', { n: capOf(pv.current) }) : t('plan.membersN', { fixed: limits[pv.current].fixed, guest: limits[pv.current].guest })}
                   </p>
                 </div>
                 <div className="flex justify-between">
@@ -280,11 +281,11 @@ export default function ClubRequestPage() {
                   // The running plan is too small (members or number of clubs / communities):
                   // creating it needs a bigger plan, paid now.
                   <p className="rounded-xl border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-100" role="alert">
-                    ⛔ {t(product === 'social_manager' ? 'creq.mustUpgradeSm' : 'creq.mustUpgrade', { tier: pv.current.toUpperCase(), n: form.member_count, min: suggested.toUpperCase() })}
+                    {t(product === 'social_manager' ? 'creq.mustUpgradeSm' : 'creq.mustUpgrade', { tier: pv.current.toUpperCase(), n: form.member_count, min: suggested.toUpperCase() })}
                   </p>
                 ) : (
                   <p className="rounded-xl border border-lime-400/40 bg-lime-400/5 px-3 py-2 text-sm text-lime-100">
-                    💡 {tk(product === 'social_manager' ? 'creq.suggestionSm' : 'creq.suggestion', { n: form.member_count, tier: suggested.toUpperCase() })}
+                    {tk(product === 'social_manager' ? 'creq.suggestionSm' : 'creq.suggestion', { n: form.member_count, tier: suggested.toUpperCase() })}
                   </p>
                 )}
                 <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t('creq.step_plan')}>
@@ -311,17 +312,17 @@ export default function ClubRequestPage() {
                         <span className="block text-gray-400 text-xs mt-0.5">{t(product === 'social_manager' ? `plan.smFor_${k}` : `plan.for_${k}`)}</span>
                         {product === 'social_manager' ? (
                           <>
-                            <span className="block text-gray-200 text-xs mt-2">🎟 {t('plan.communitiesN', { n: slim.communities == null ? '∞' : slim.communities })}</span>
-                            <span className="block text-gray-200 text-xs">👥 {slim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: slim.members })}</span>
+                            <span className="block text-gray-200 text-xs mt-2">{t('plan.communitiesN', { n: slim.communities == null ? '∞' : slim.communities })}</span>
+                            <span className="block text-gray-200 text-xs">{slim.members == null ? t('plan.membersUnlimited') : t('plan.smMembersN', { n: slim.members })}</span>
                           </>
                         ) : (
                           <>
-                            <span className="block text-gray-200 text-xs mt-2">🏠 {lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</span>
-                            <span className="block text-gray-200 text-xs">👥 {lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: lim.fixed, guest: lim.guest })}</span>
+                            <span className="block text-gray-200 text-xs mt-2">{lim.clubs == null ? t('plan.clubsUnlimited') : t('plan.clubsN', { n: lim.clubs })}</span>
+                            <span className="block text-gray-200 text-xs">{lim.fixed == null ? t('plan.membersUnlimited') : t('plan.membersN', { fixed: lim.fixed, guest: lim.guest })}</span>
                           </>
                         )}
                         {(HIGHLIGHTS[k] || []).slice(0, 4).map((h) => <span key={h} className="block text-gray-400 text-xs">✓ {t(`plan.${h}`)}</span>)}
-                        {capOf(k) != null && Number(form.member_count) > capOf(k) && <span className="block text-amber-300 text-[11px] mt-1">⚠ {t(product === 'social_manager' ? 'creq.tooSmallSm' : 'creq.tooSmall', { n: capOf(k) })}</span>}
+                        {capOf(k) != null && Number(form.member_count) > capOf(k) && <span className="block text-amber-300 text-[11px] mt-1">{t(product === 'social_manager' ? 'creq.tooSmallSm' : 'creq.tooSmall', { n: capOf(k) })}</span>}
                         {running && k === pv.current && <span className="block text-gray-400 text-[11px] mt-1">{t('plan.current')}</span>}
                       </button>
                     );
@@ -330,8 +331,8 @@ export default function ClubRequestPage() {
                 {quote ? (
                   // Upgrading the running plan: the difference for the days left, same end date.
                   <div className="card">
-                    <p className="text-white text-sm font-semibold">⬆️ {t('plan.upgradeTitleX', { from: quote.from.toUpperCase(), to: quote.to.toUpperCase() })}</p>
-                    <p className="text-gray-300 text-xs mt-1">📅 {t('plan.upgradeLeft', { days: quote.days, date: String(quote.until).split('-').reverse().join('/') })}</p>
+                    <p className="text-white text-sm font-semibold">{t('plan.upgradeTitleX', { from: quote.from.toUpperCase(), to: quote.to.toUpperCase() })}</p>
+                    <p className="text-gray-300 text-xs mt-1">{t('plan.upgradeLeft', { days: quote.days, date: String(quote.until).split('-').reverse().join('/') })}</p>
                     <p className="text-gray-300 text-sm mt-2">{t('plan.upgradePay')}: <b className="text-white">{formatVnd(quote.amount)}</b></p>
                   </div>
                 ) : (
@@ -347,7 +348,7 @@ export default function ClubRequestPage() {
                   <p className="text-gray-300 text-sm mt-2">{t('plan.total')}: <b className="text-white">{formatVnd(amount)}</b></p>
                 </div>
                 )}
-                <p className="rounded-xl border px-3 py-2 text-sm border-amber-300/50 bg-amber-300/10 text-amber-100">💳 {t('creq.payNote')}</p>
+                <p className="rounded-xl border px-3 py-2 text-sm border-amber-300/50 bg-amber-300/10 text-amber-100">{t('creq.payNote')}</p>
                 <Hint text={t('creq.approvalNote')} />
                 <div className="flex justify-between">
                   <button type="button" className="btn-secondary" onClick={() => setStep(0)}>← {t('onb.back')}</button>
@@ -383,7 +384,7 @@ export default function ClubRequestPage() {
                 {err && <p className="text-red-300 text-sm">{err}</p>}
                 <div className="flex justify-between">
                   <button type="button" className="btn-secondary" onClick={() => setStep(1)} disabled={busy}>← {t('onb.back')}</button>
-                  <button type="button" className="btn-primary" onClick={submit} disabled={busy}>{busy ? t('common.loading') : covered ? `📨 ${t('creq.submit')}` : `💳 ${t('creq.submitPay')}`}</button>
+                  <button type="button" className="btn-primary" onClick={submit} disabled={busy}>{busy ? t('common.loading') : covered ? `${t('creq.submit')}` : `${t('creq.submitPay')}`}</button>
                 </div>
               </div>
             )}

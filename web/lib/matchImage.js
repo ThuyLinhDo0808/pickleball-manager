@@ -40,7 +40,7 @@ export function drawMatches(canvas, { event, matches, t, lang }) {
 
   ctx.fillStyle = C.lime;
   ctx.font = font(26, 700);
-  ctx.fillText(`🏓 ${t('matches.title').toUpperCase()}`, PAD, 70);
+  ctx.fillText(`${t('matches.title').toUpperCase()}`, PAD, 70);
   ctx.fillStyle = C.text;
   ctx.font = font(44, 700);
   ctx.fillText(fit(ctx, event.title || '', W - PAD * 2), PAD, 124);
@@ -80,7 +80,7 @@ export function drawMatches(canvas, { event, matches, t, lang }) {
       const players = (m.match_players || []).filter((p) => p.team === n).map(name).join(' & ');
       ctx.fillStyle = winner === n ? C.lime : C.text;
       ctx.font = font(30, winner === n ? 700 : 500);
-      ctx.fillText(fit(ctx, `${winner === n ? '🏆 ' : ''}${players}`, W - PAD * 2 - 200), PAD + 28, ty);
+      ctx.fillText(fit(ctx, `${winner === n ? '★ ' : ''}${players}`, W - PAD * 2 - 200), PAD + 28, ty);
       ctx.textAlign = 'right';
       ctx.font = font(36, 800);
       ctx.fillStyle = winner === n ? C.lime : scored ? C.text : C.dim;

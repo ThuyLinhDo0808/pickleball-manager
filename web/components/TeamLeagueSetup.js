@@ -152,8 +152,8 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
             <label className="text-xs text-gray-400">{t('league.teamCount')}</label>
             <input className="input" type="number" inputMode="numeric" min="2" max="16" value={teamCount} onChange={(e) => setTeamCount(e.target.value)} />
           </div>
-          <button type="button" className="btn-primary text-sm" disabled={picked.length < 4} onClick={() => build('balanced')}>⚖️ {t('league.buildBalanced')}</button>
-          <button type="button" className="btn-secondary text-sm" disabled={picked.length < 4} onClick={() => build('random')}>🎲 {t('tournaments.pairRandom')}</button>
+          <button type="button" className="btn-primary text-sm" disabled={picked.length < 4} onClick={() => build('balanced')}>{t('league.buildBalanced')}</button>
+          <button type="button" className="btn-secondary text-sm" disabled={picked.length < 4} onClick={() => build('random')}>{t('tournaments.pairRandom')}</button>
         </div>
         {picked.length >= 4 && Number(teamCount) !== suggested && (
           <p className="text-gray-500 text-xs mb-3">
@@ -178,7 +178,7 @@ export default function TeamLeagueSetup({ club, active, base, ready, onCreated, 
               <div className="flex flex-wrap gap-x-3 text-xs mb-2">
                 <span className="text-lime-400 font-semibold">Σ {t('level.sumLabel')} {info[ti].total}</span>
                 <span className={sizeOk(info[ti].players.length) ? 'text-gray-400' : 'text-yellow-300'}>{t('league.size', { n: info[ti].players.length })}</span>
-                <span className="text-gray-400">♂ {info[ti].men} · ♀ {info[ti].women}</span>
+                <span className="text-gray-400">{info[ti].men} · {info[ti].women}</span>
               </div>
               <ul className="flex flex-col gap-1">
                 {info[ti].players.map((p) => (

@@ -20,6 +20,7 @@ import { useScope } from '@/lib/useScope';
 import { useClubs } from '@/context/ClubContext';
 import { clubTones, STATUS_MOD } from '@/lib/clubColors';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 const VIEWS = ['list', 'month', 'week', 'day'];
 const SOON_DAYS = 3; // "Sắp diễn ra": from now to 3 days ahead
@@ -91,11 +92,11 @@ function EventTags({ e }) {
   const women = range(e.level_min_f, e.level_max_f);
   const membersNow = e.members_only && (!e.public_from || Date.parse(e.public_from) > Date.now());
   const tags = [
-    membersNow && { k: 'm', text: `🔒 ${t('mfirst.badge')}`, cls: 'border-violet-400 bg-violet-400/15 text-violet-100' },
-    e.series_label && { k: 's', text: `🏷 ${e.series_label}`, cls: 'border-violet-400/60 text-violet-200' },
-    ...(e.level_names || []).map((n) => ({ k: `l${n}`, text: `🎯 ${n}`, cls: 'border-amber-300/60 text-amber-200' })),
-    women && men ? { k: 'dm', text: `♂\u00a0DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' } : men && { k: 'd', text: `DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' },
-    women && { k: 'df', text: `♀\u00a0DUPR\u00a0${women}`, cls: 'border-pink-400/60 text-pink-200' },
+    membersNow && { k: 'm', text: `${t('mfirst.badge')}`, cls: 'border-violet-400 bg-violet-400/15 text-violet-100' },
+    e.series_label && { k: 's', text: `${e.series_label}`, cls: 'border-violet-400/60 text-violet-200' },
+    ...(e.level_names || []).map((n) => ({ k: `l${n}`, text: `${n}`, cls: 'border-amber-300/60 text-amber-200' })),
+    women && men ? { k: 'dm', text: `${t('members.male')}\u00a0·\u00a0DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' } : men && { k: 'd', text: `DUPR\u00a0${men}`, cls: 'border-sky-400/60 text-sky-200' },
+    women && { k: 'df', text: `${t('members.female')}\u00a0·\u00a0DUPR\u00a0${women}`, cls: 'border-pink-400/60 text-pink-200' },
     e.play_format && { k: 'f', text: t(`fmt.${e.play_format}`), cls: 'border-lime-400/60 text-lime-200' },
   ].filter(Boolean);
   if (!tags.length) return null;
@@ -125,7 +126,7 @@ function EventCard({ e, phase = 'open' }) {
           <div className="min-w-0 flex-1">
             <div className="flex justify-between gap-2">
               <span className={`text-white font-semibold break-words min-w-0 ${e.status === 'cancelled' ? 'line-through' : ''}`}>
-                {KIND_ICON[e.kind] && `${e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]} `}
+                {KIND_ICON[e.kind] && <UiIcon name={e.kind === 'game' && e.sport === 'badminton' ? 'shuttle' : KIND_ICON[e.kind]} className="inline-block w-4 h-4 mr-1 -mt-0.5 text-gray-400" />}
                 {e.title}
               </span>
               {/* Kèo show their state on the line below (colour + words); tournaments keep their stage here. */}
@@ -140,11 +141,11 @@ function EventCard({ e, phase = 'open' }) {
               {t(`evlist.ph_${phase}`)}
             </div>
             <div className="text-gray-400 text-sm break-words">
-              {e.start_time ? `🕒 ${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}📍 {e.location || '—'}
+              {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''} · ` : ''}{e.location || '—'}
             </div>
             {e.club_name && (
               <div className="text-sky-300 text-xs mt-0.5 break-words">
-                {e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}
+                {e.club_name}
                 {e.kind && <span className="text-gray-500"> · {t(`kind.${e.kind}`)}</span>}
               </div>
             )}
@@ -159,7 +160,7 @@ function EventCard({ e, phase = 'open' }) {
             <span className="text-gray-300 tabular-nums whitespace-nowrap">
               {e.main_count || 0}/{e.slots}
               {e.waitlist_count > 0 && <span className="text-gray-500"> · +{e.waitlist_count} {t('events.waitlist').toLowerCase()}</span>}
-              {e.requested_count > 0 && <span className="text-amber-300"> · 🙋 {t('evlist.requests', { n: e.requested_count })}</span>}
+              {e.requested_count > 0 && <span className="text-amber-300"> · {t('evlist.requests', { n: e.requested_count })}</span>}
             </span>
           </div>
         ) : (
@@ -295,7 +296,7 @@ export default function EventsPage() {
         actions={
           isClub ? (
             <>
-              <Link href="/events/create/weekly" className="btn-secondary text-sm">🔁 {t('nav.createWeekly')}</Link>
+              <Link href="/events/create/weekly" className="btn-secondary text-sm">{t('nav.createWeekly')}</Link>
               <Link href={`/events/create${view === 'day' ? `?date=${date}` : ''}`} className="btn-primary text-sm">＋ {t('nav.createGame')}</Link>
             </>
           ) : (
@@ -309,12 +310,12 @@ export default function EventsPage() {
       {/* On a phone the list comes first: the numbers are for bigger screens. */}
       <div className="hidden sm:block">
       <KpiRow cols={3}>
-        <StatTile icon="📅" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
-        <StatTile icon="⏭" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
+        <StatTile icon="calendar" label={t('calx.thisMonth')} value={kpi.month} sub={t('calx.thisMonthSub', { done: kpi.monthDone })} />
+        <StatTile icon="calendar" label={t('calx.next7')} value={kpi.week} tone="text-lime-300" sub={kpi.next ? `${formatDay(kpi.next.event_date, lang, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${kpi.next.title}` : t('cal.noUpcoming')} />
         {isClub && !community && SHOW_TOURNAMENTS ? (
-          <StatTile icon="🏆" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
+          <StatTile icon="trophy" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
         ) : (
-          <StatTile icon="👥" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
+          <StatTile icon="users" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
         )}
       </KpiRow>
       </div>
@@ -346,7 +347,7 @@ export default function EventsPage() {
               className={`rounded-full border px-3 py-1 ${clubFilter === c.id ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
             >
               {c.id !== 'all' && <span className={`inline-block h-2.5 w-2.5 rounded-full mr-1.5 align-middle ${tones[c.id]?.dot || ''}`} />}
-              {c.id !== 'all' && (c.sport === 'badminton' ? '🏸 ' : '🏓 ')}
+              
               {c.name}
             </button>
           ))}
@@ -364,7 +365,7 @@ export default function EventsPage() {
                 ...(clubs || []).map((c) => (
                   <span key={c.id} className="flex items-center gap-1.5">
                     <span className={`h-3 w-3 rounded-sm border-l-4 ${tones[c.id]?.chip || ''}`} />
-                    {c.sport === 'badminton' ? '🏸' : '🏓'} {c.name}
+                    {c.name}
                   </span>
                 )),
                 <span key="status" className="flex items-center gap-1.5">
@@ -381,7 +382,7 @@ export default function EventsPage() {
           {isClub && (
             <span className="flex flex-wrap gap-3 basis-full sm:basis-auto sm:ml-auto">
               {Object.entries(KIND_ICON).map(([k, icon]) => (
-                <span key={k}>{icon} {t(`kind.${k}`)}</span>
+                <span key={k} className="inline-flex items-center gap-1"><UiIcon name={icon} className="w-3.5 h-3.5" />{t(`kind.${k}`)}</span>
               ))}
             </span>
           )}
@@ -394,7 +395,7 @@ export default function EventsPage() {
             <input className="input !w-auto flex-1 min-w-[12rem] text-sm" placeholder={t('evlist.searchPh')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('evlist.search')} />
             <select className="input !w-auto text-sm" value={kindF} onChange={(e) => setKindF(e.target.value)} aria-label={t('kind.label')}>
               <option value="all">{t('evlist.allKinds')}</option>
-              {kindsPresent.map((k) => <option key={k} value={k}>{KIND_ICON[k] ? `${KIND_ICON[k]} ` : ''}{t(`kind.${k}`)}</option>)}
+              {kindsPresent.map((k) => <option key={k} value={k}>{t(`kind.${k}`)}</option>)}
             </select>
             <div className="flex flex-wrap gap-1.5" role="tablist">
               {['all', ...LIST_GROUPS].map((g) => (

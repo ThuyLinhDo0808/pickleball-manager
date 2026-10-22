@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 import { resizeImage } from '@/lib/image';
+import UiIcon from '@/components/ui/UiIcon';
 
 // A quick booking (invite link, no account): the Host checks the players' info, then pay the
 // total, send the screenshot, then the tickets. This page's link is the only way back to the booking — the guest keeps it.
@@ -106,40 +107,40 @@ export default function QuickBookingPage() {
       </section>
 
       <section className="card mb-4 !py-3">
-        <p className="text-sm text-amber-200">🔖 {t('quick.keepLinkHint')}</p>
+        <p className="text-sm text-amber-200">{t('quick.keepLinkHint')}</p>
         <button type="button" className="btn-secondary text-sm mt-2" onClick={copyLink}>{copied ? t('events.copied') : t('quick.keepLink')}</button>
       </section>
 
       <section className="card mb-4">
         {b.state === 'confirmed' && (
           <div className="text-center mb-3">
-            <div className="text-4xl">🎉</div>
+            <div className="text-4xl"></div>
             <p className="text-white font-bold text-lg">{t('quick.doneTitle')}</p>
             <p className="text-gray-300 text-sm">{t('quick.doneHint')}</p>
           </div>
         )}
         {b.state === 'proof_submitted' && (
           <div className="rounded-xl border border-sky-400/50 bg-sky-400/10 px-3 py-3 text-center mb-3">
-            <div className="text-3xl">⏳</div>
+            <div className="text-3xl"><UiIcon name="hourglass" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <p className="text-sky-200 font-bold">{t('signup.hostChecking')}</p>
             <p className="text-gray-300 text-sm">{t('quick.checkingHint')}</p>
           </div>
         )}
         {b.state === 'requested' && (
           <div className="rounded-xl border border-amber-300/50 bg-amber-300/10 px-3 py-3 text-center mb-1">
-            <div className="text-3xl">🔎</div>
+            <div className="text-3xl"><UiIcon name="search" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <p className="text-amber-100 font-bold">{t('quick.requestedTitle')}</p>
             <p className="text-gray-300 text-sm">{t('quick.requestedHint')}</p>
           </div>
         )}
         {b.state === 'declined' && <p className="text-center text-red-300 mb-1">✕ {t('quick.declined')}</p>}
-        {b.state === 'cancelled' && <p className="text-center text-yellow-300 mb-3">⌛ {t('quick.cancelled')}</p>}
+        {b.state === 'cancelled' && <p className="text-center text-yellow-300 mb-3">{t('quick.cancelled')}</p>}
         {b.state === 'ended' && (
           <div className="text-center">
-            <div className="text-4xl">🏁</div>
+            <div className="text-4xl"><UiIcon name="flag" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <p className="text-white font-bold text-lg">{t('quick.endedTitle')}</p>
             <p className="text-gray-300 text-sm">{t('quick.endedHint')}</p>
-            {b.review && !b.review.answered && <Link href={`/s/${b.review.token}`} className="btn-primary inline-block mt-3 px-8">⭐ {t('mybook.review')}</Link>}
+            {b.review && !b.review.answered && <Link href={`/s/${b.review.token}`} className="btn-primary inline-block mt-3 px-8">{t('mybook.review')}</Link>}
             {b.review?.answered && <p className="text-lime-300 text-sm mt-2">✓ {t('mybook.reviewed')}</p>}
           </div>
         )}
@@ -148,7 +149,7 @@ export default function QuickBookingPage() {
             <h2 className="text-white font-semibold">{t('signup.payTitle', { amount: formatVnd(b.amount) })}</h2>
             {b.state === 'rejected' && (
               <p className="rounded-lg border border-red-400/60 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                ⚠️ {t('signup.rejected')}{b.payment_note ? `: ${b.payment_note}` : ''}
+                {t('signup.rejected')}{b.payment_note ? `: ${b.payment_note}` : ''}
               </p>
             )}
             {b.hold_expires_at && <Countdown until={b.hold_expires_at} labelKey="countdown.hold" tone="sky" />}
@@ -171,7 +172,7 @@ export default function QuickBookingPage() {
               </>
             ) : (
               <button type="button" className={`${b.state === 'proof_submitted' ? 'btn-secondary' : 'btn-primary'} w-full py-3`} onClick={() => file.current?.click()}>
-                📎 {b.state === 'proof_submitted' ? t('signup.replaceProof') : t('signup.uploadProof')}
+                {b.state === 'proof_submitted' ? t('signup.replaceProof') : t('signup.uploadProof')}
               </button>
             )}
             {err && <p className="text-red-400 text-sm">{err}</p>}
@@ -182,7 +183,7 @@ export default function QuickBookingPage() {
       <section className="card mb-4">
         <h2 className="text-white font-semibold mb-1">{t('quick.yourBooking')}</h2>
         <p className="text-gray-400 text-xs mb-2">
-          📞 {b.contact.full_name} · {b.contact.phone || t('quick.noPhoneShort')}
+          {b.contact.full_name} · {b.contact.phone || t('quick.noPhoneShort')}
           {b.contact.dupr_level != null ? ` · ${t('quick.duprShort')} ${Number(b.contact.dupr_level).toFixed(2)}` : ''}
         </p>
         <ol className="flex flex-col divide-y divide-navy-700">
@@ -203,16 +204,16 @@ export default function QuickBookingPage() {
           <span className="text-gray-400 text-sm">{t('quick.total')}</span>
           <b className="text-white tabular-nums">{formatVnd(b.amount)}</b>
         </div>
-        <p className="text-sky-200 text-xs mt-2">📞 {t('quick.contactNote')}</p>
+        <p className="text-sky-200 text-xs mt-2">{t('quick.contactNote')}</p>
       </section>
 
       {b.host_contact && (
         <section className="card mb-4">
-          <h2 className="text-white font-semibold">☎️ {t('quick.hostContactTitle')}</h2>
+          <h2 className="text-white font-semibold">{t('quick.hostContactTitle')}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t('quick.hostContactHint')}</p>
           <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
             <span className="text-gray-100 font-semibold">{b.host_contact.name || t('quick.theHost')} · <span className="tabular-nums">{b.host_contact.phone}</span></span>
-            <a href={`tel:${b.host_contact.phone}`} className="btn-primary text-sm max-sm:w-full text-center">📞 {t('quick.callHost')}</a>
+            <a href={`tel:${b.host_contact.phone}`} className="btn-primary text-sm max-sm:w-full text-center">{t('quick.callHost')}</a>
           </div>
         </section>
       )}

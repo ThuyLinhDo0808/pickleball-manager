@@ -5,14 +5,14 @@ import { api } from '@/lib/api';
 import { dmy } from '@/lib/memberDates';
 import Hint from '@/components/ui/Hint';
 
-// ⚡ Ưu tiên chip for a guest, with their ticket discount (— when none). Guests have
+// Ưu tiên chip for a guest, with their ticket discount (— when none). Guests have
 // no VIP: that comes with a membership plan, for fixed members.
 export function GuestPerkBadge({ perk, pct }) {
   const { t } = useI18n();
   if (!perk) return <span className="text-gray-500">—</span>;
   return (
     <span className="inline-block whitespace-nowrap text-xs font-semibold rounded border px-1.5 py-0.5 border-sky-400/70 text-sky-300 bg-sky-400/10">
-      ⚡ {t('guests.perk_priority')}
+      {t('guests.perk_priority')}
       {pct > 0 && <span className="text-lime-300"> −{pct}%</span>}
     </span>
   );

@@ -42,7 +42,7 @@ export default function EventShuttles({ event }) {
 
   return (
     <section className="card mb-4">
-      <h2 className="text-white font-semibold mb-2">🏸 {t('shuttles.title')}</h2>
+      <h2 className="text-white font-semibold mb-2">{t('shuttles.title')}</h2>
       {data.items.length === 0 ? (
         <p className="text-gray-400 text-sm">{t('shuttles.noItems')}</p>
       ) : (

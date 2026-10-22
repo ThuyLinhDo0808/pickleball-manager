@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { todayYmd, localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // At or below this many left in the box, an item shows as running low.
 const LOW = 6;
@@ -256,7 +257,7 @@ export default function InventoryPage() {
   }
 
   const list = items || [];
-  const icon = badminton ? '🏸' : '🎾';
+  const icon = badminton ? 'shuttle' : 'paddle';
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
@@ -268,15 +269,12 @@ export default function InventoryPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {[
             [icon, t('inventory.row_left'), list.reduce((s, i) => s + (i.stock || 0), 0), 'text-lime-400'],
-            ['🏃', t('inventory.inPlay'), list.reduce((s, i) => s + (i.in_play || 0), 0), 'text-white'],
-            ['💥', t('inventory.row_broken'), list.reduce((s, i) => s + (i.broken || 0), 0), 'text-red-300'],
-            ['💸', t('inventory.spent'), formatVnd(list.reduce((s, i) => s + Number(i.total_spent || 0), 0)), 'text-orange-300'],
+            ['users', t('inventory.inPlay'), list.reduce((s, i) => s + (i.in_play || 0), 0), 'text-white'],
+            ['alert', t('inventory.row_broken'), list.reduce((s, i) => s + (i.broken || 0), 0), 'text-red-300'],
+            ['money', t('inventory.spent'), formatVnd(list.reduce((s, i) => s + Number(i.total_spent || 0), 0)), 'text-orange-300'],
           ].map(([ic, k, v, tone]) => (
             <div key={k} className="card !p-4">
-              <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
-                <span>{k}</span>
-                <span aria-hidden="true">{ic}</span>
-              </div>
+              <div className="text-gray-400 text-sm">{k}</div>
               <div className={`text-xl font-bold tabular-nums mt-1 ${tone}`}>{v}</div>
             </div>
           ))}
@@ -291,7 +289,7 @@ export default function InventoryPage() {
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="min-w-0">
                 <div className="text-white font-semibold">
-                  {icon} {i.name}
+                  <UiIcon name={icon} className="inline-block w-4 h-4 mr-1.5 -mt-0.5 text-gray-400" />{i.name}
                   {!badminton && i.holes && <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-navy-700 text-gray-300">{i.holes} {t('inventory.holes').toLowerCase()}</span>}
                   <span className={`ml-2 text-[11px] font-semibold rounded-full border px-2 py-0.5 ${(i.stock || 0) <= 0 ? 'border-red-500/50 text-red-300' : i.stock <= LOW ? 'border-amber-400/50 text-amber-300' : 'border-lime-400/50 text-lime-300'}`}>
                     {(i.stock || 0) <= 0 ? t('finX.stockOut') : i.stock <= LOW ? t('finX.stockLow') : t('finX.stockOk')}

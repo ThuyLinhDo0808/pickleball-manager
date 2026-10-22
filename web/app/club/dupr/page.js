@@ -44,10 +44,10 @@ export default function DuprStatsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="📈"
+        icon="trendUp"
         title={t('dupr.title')}
         subtitle={club?.name}
-        actions={<Link href="/club/members/dupr" className="btn-secondary text-sm">👥 {t('dupr.manageIds')}</Link>}
+        actions={<Link href="/club/members/dupr" className="btn-secondary text-sm">{t('dupr.manageIds')}</Link>}
       />
       <SectionTabs group="stats" />
       {notPickleball ? (
@@ -64,10 +64,10 @@ export default function DuprStatsPage() {
           </div>
 
           <KpiRow cols={4}>
-            <StatTile icon="🔗" label={t('dupr.statLinked')} value={`${d.members.linked}/${d.members.total}`} sub={t('dupr.withId', { n: d.members.with_id })} />
-            <StatTile icon="🎯" label={t('dupr.avgDoubles')} value={d.ratings.avg_doubles != null ? d.ratings.avg_doubles.toFixed(3) : '—'} tone="text-lime-300" sub={d.imports[0] ? t('dupr.updatedOn', { date: localDate(new Date(d.imports[0].created_at), 'vi-VN') }) : t('dupr.neverImported')} />
-            <StatTile icon="📊" label={t('dupr.upDown')} value={<><span className="text-lime-300">▲{d.ratings.up}</span> <span className="text-red-300">▼{d.ratings.down}</span></>} sub={t('dupr.sameN', { n: d.ratings.same })} />
-            <StatTile icon="📤" label={t('dupr.sentLabel')} value={`${m.exported}/${scored}`} tone="text-sky-300" sub={m.blocked ? t('dupr.blockedN', { n: m.blocked }) : t('dupr.readyN', { n: m.ready })} />
+            <StatTile icon="link" label={t('dupr.statLinked')} value={`${d.members.linked}/${d.members.total}`} sub={t('dupr.withId', { n: d.members.with_id })} />
+            <StatTile icon="target" label={t('dupr.avgDoubles')} value={d.ratings.avg_doubles != null ? d.ratings.avg_doubles.toFixed(3) : '—'} tone="text-lime-300" sub={d.imports[0] ? t('dupr.updatedOn', { date: localDate(new Date(d.imports[0].created_at), 'vi-VN') }) : t('dupr.neverImported')} />
+            <StatTile icon="chart" label={t('dupr.upDown')} value={<><span className="text-lime-300">▲{d.ratings.up}</span> <span className="text-red-300">▼{d.ratings.down}</span></>} sub={t('dupr.sameN', { n: d.ratings.same })} />
+            <StatTile icon="upload" label={t('dupr.sentLabel')} value={`${m.exported}/${scored}`} tone="text-sky-300" sub={m.blocked ? t('dupr.blockedN', { n: m.blocked }) : t('dupr.readyN', { n: m.ready })} />
           </KpiRow>
 
           {/* Ratings per member */}
@@ -153,7 +153,7 @@ export default function DuprStatsPage() {
             )}
             {m.blockers.length > 0 && (
               <div className="mt-4 rounded-xl border border-amber-300/40 bg-amber-300/5 p-3">
-                <p className="text-amber-200 text-sm font-semibold">⚠ {t('dupr.blockersTitle')} <Hint inline text={t('dupr.blockersHint')} /></p>
+                <p className="text-amber-200 text-sm font-semibold">{t('dupr.blockersTitle')} <Hint inline text={t('dupr.blockersHint')} /></p>
                 <ul className="mt-2 flex flex-wrap gap-2 text-sm">
                   {m.blockers.map((b) => (
                     <li key={b.name} className="rounded-full border border-navy-600 px-2.5 py-0.5 text-gray-200">

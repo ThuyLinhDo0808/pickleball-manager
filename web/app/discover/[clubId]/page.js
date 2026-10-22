@@ -79,7 +79,7 @@ export default function DiscoverClubPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-white text-2xl font-bold leading-tight">{c.name}</h1>
-              <p className="text-gray-400 text-sm mt-0.5">{c.sport === 'badminton' ? '🏸' : '🏓'} {t(`onb.sport_${c.sport}`)} · 👥 {t('disc.members', { n: c.member_count ?? 0 })}</p>
+              <p className="text-gray-400 text-sm mt-0.5">{t(`onb.sport_${c.sport}`)} · {t('disc.members', { n: c.member_count ?? 0 })}</p>
             </div>
             <div className="shrink-0">
               {!user ? (
@@ -89,11 +89,11 @@ export default function DiscoverClubPage() {
               ) : state === 'member' ? (
                 <Link href={`/c/${c.id}`} className="btn-secondary">✓ {t('disc.isMember')}</Link>
               ) : state === 'review' ? (
-                <span className="rounded-full border border-red-400/60 text-red-200 text-xs font-semibold px-3 py-1">⚠️ {t('disc.inReview')}</span>
+                <span className="rounded-full border border-red-400/60 text-red-200 text-xs font-semibold px-3 py-1">{t('disc.inReview')}</span>
               ) : state === 'requested' ? (
-                <span className="rounded-full border border-amber-300/60 text-amber-200 text-xs font-semibold px-3 py-1">⏳ {t('disc.requested')}</span>
+                <span className="rounded-full border border-amber-300/60 text-amber-200 text-xs font-semibold px-3 py-1">{t('disc.requested')}</span>
               ) : (
-                <button type="button" className="btn-primary" onClick={() => { setMsg(null); setAsking(true); }}>🙋 {t('disc.askToJoin')}</button>
+                <button type="button" className="btn-primary" onClick={() => { setMsg(null); setAsking(true); }}>{t('disc.askToJoin')}</button>
               )}
             </div>
           </div>
@@ -107,7 +107,7 @@ export default function DiscoverClubPage() {
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
             <div><dt className="text-gray-500 text-xs">{t('creq.address')}</dt><dd className="text-gray-100">{c.address || c.map_url ? <MapLink location={c.address} mapUrl={c.map_url} className="text-gray-100" /> : '—'}</dd></div>
             <div><dt className="text-gray-500 text-xs">{t('creq.where')}</dt><dd className="text-gray-100">{[c.district, c.province, c.country].filter(Boolean).join(', ') || '—'}</dd></div>
-            <div className="sm:col-span-2"><dt className="text-gray-500 text-xs">{t('creq.schedule')}</dt><dd className="text-gray-100">🗓 {c.schedule || t('disc.noSchedule')}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-gray-500 text-xs">{t('creq.schedule')}</dt><dd className="text-gray-100">{c.schedule || t('disc.noSchedule')}</dd></div>
           </dl>
           {c.description && <p className="mt-3 text-gray-300 text-sm whitespace-pre-line">{c.description}</p>}
         </div>

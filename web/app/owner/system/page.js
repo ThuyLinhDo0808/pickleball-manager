@@ -52,7 +52,7 @@ export default function OwnerSystemPage() {
       {data && (
         <div className="grid lg:grid-cols-2 gap-4 items-start">
           <section className="card !p-4">
-            <h2 className="text-white font-semibold mb-1">🔌 {t('owner.sysIntegrations')}</h2>
+            <h2 className="text-white font-semibold mb-1">{t('owner.sysIntegrations')}</h2>
             <p className="text-gray-500 text-xs mb-3">{t('owner.sysNoKeys')}</p>
             <ul className="divide-y divide-navy-700">
               {data.integrations.map((i) => (
@@ -63,13 +63,13 @@ export default function OwnerSystemPage() {
               ))}
             </ul>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={testEmail}>✉️ {t('owner.testEmail')}</button>
+              <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={testEmail}>{t('owner.testEmail')}</button>
               {mail && <span className={`text-xs ${mail.ok ? 'text-lime-300' : 'text-red-300'}`}>{mail.text}</span>}
             </div>
           </section>
 
           <section className="card !p-4">
-            <h2 className="text-white font-semibold mb-1">⚙️ {t('owner.sysSettings')}</h2>
+            <h2 className="text-white font-semibold mb-1">{t('owner.sysSettings')}</h2>
             {SWITCHES.map(([key, tone]) => {
               const sw = data.settings?.[key];
               if (!sw) return null;
@@ -96,9 +96,9 @@ export default function OwnerSystemPage() {
               );
             })}
 
-            <h2 className="text-white font-semibold mt-4 mb-1">🗄 {t('owner.sysMigrations')}</h2>
+            <h2 className="text-white font-semibold mt-4 mb-1">{t('owner.sysMigrations')}</h2>
             <p className={`text-sm mb-2 ${data.migrations.ok ? 'text-lime-300' : 'text-amber-200'}`}>
-              {data.migrations.ok ? `✓ ${t('owner.migOk')}` : `⚠️ ${t('owner.migMissing', { n: data.migrations.missing.length })}`}
+              {data.migrations.ok ? `✓ ${t('owner.migOk')}` : `${t('owner.migMissing', { n: data.migrations.missing.length })}`}
             </p>
             <ul className="text-xs font-mono max-h-64 overflow-y-auto">
               {data.migrations.all.map((m) => (
@@ -115,12 +115,12 @@ export default function OwnerSystemPage() {
             {confirm.key === 'club_approval' ? (
               <>
                 <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.approvalOnQ' : 'owner.approvalOffQ')}</p>
-                {!confirm.value && <p className="text-amber-200 text-xs mb-3">⚠️ {t('owner.approvalWarn')}</p>}
+                {!confirm.value && <p className="text-amber-200 text-xs mb-3">{t('owner.approvalWarn')}</p>}
               </>
             ) : (
               <>
                 <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.selfServeOnQ' : 'owner.selfServeOffQ')}</p>
-                {confirm.value && <p className="text-amber-200 text-xs mb-3">⚠️ {t('owner.selfServeWarn')}</p>}
+                {confirm.value && <p className="text-amber-200 text-xs mb-3">{t('owner.selfServeWarn')}</p>}
               </>
             )}
             {confirm.error && <p className="text-red-300 text-sm mb-2">{confirm.error}</p>}

@@ -43,7 +43,7 @@ export function ReviewModal({ club, member, open, onClose, onDone }) {
     }
   }
   return (
-    <Modal open={open} title={`⚠️ ${t('mod.reviewTitle', { name: member.full_name })}`} onClose={onClose}>
+    <Modal open={open} title={`${t('mod.reviewTitle', { name: member.full_name })}`} onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <p className="text-gray-300 text-sm">{t('mod.reviewIntro')}</p>
         <label className="block">
@@ -103,7 +103,7 @@ function RemoveModal({ club, member, open, onClose, onDone }) {
     }
   }
   return (
-    <Modal open={open} title={`⛔ ${t('mod.removeTitle', { name: member.full_name })}`} onClose={onClose}>
+    <Modal open={open} title={`${t('mod.removeTitle', { name: member.full_name })}`} onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <label className="block">
           <span className="text-xs text-gray-300">{t('mod.reason')} *</span>
@@ -123,7 +123,7 @@ function RemoveModal({ club, member, open, onClose, onDone }) {
         {error && <p className="text-red-300 text-sm">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
-          <button className="rounded-lg px-3 py-2 font-semibold bg-red-500 text-white disabled:opacity-40" disabled={busy}>⛔ {t('mod.removeSubmit')}</button>
+          <button className="rounded-lg px-3 py-2 font-semibold bg-red-500 text-white disabled:opacity-40" disabled={busy}>{t('mod.removeSubmit')}</button>
         </div>
       </form>
     </Modal>
@@ -139,7 +139,7 @@ function HistoryLine({ r }) {
       <span className="text-white font-medium">{r.full_name || '—'}</span>{' '}
       <span className="text-gray-300">{t(`mod.act_${r.action}`, { to: r.to_type ? t(`mod.place_${r.to_type}`) : '' })}</span>
       {r.until && r.action === 'review' && <span className="text-gray-400"> · {t('mod.until', { date: fmtDate(r.until) })}</span>}
-      {r.blocked && <span className="text-red-300"> · 🚫 {t(`mod.blocked_${r.block_scope || 'club'}`)}</span>}
+      {r.blocked && <span className="text-red-300"> · {t(`mod.blocked_${r.block_scope || 'club'}`)}</span>}
       {r.reason && <span className="block text-gray-400 text-xs">“{r.reason}”</span>}
       {r.actor_email && <span className="block text-gray-600 text-[11px]">{t('mod.by', { who: r.actor_email })}</span>}
     </li>
@@ -206,7 +206,7 @@ export function ReviewTab({ club, members, onChanged }) {
                   </select>
                 </label>
                 <button className="btn-primary !py-1.5 text-sm" disabled={busy === m.id} onClick={() => restore(m)}>↩ {t('mod.restore')}</button>
-                <button className="rounded-lg px-3 py-1.5 text-sm border border-red-500/60 text-red-300 hover:bg-red-500/10" onClick={() => setRemoving(m)}>⛔ {t('mod.remove')}</button>
+                <button className="rounded-lg px-3 py-1.5 text-sm border border-red-500/60 text-red-300 hover:bg-red-500/10" onClick={() => setRemoving(m)}>{t('mod.remove')}</button>
               </div>
             </div>
           </div>
@@ -215,7 +215,7 @@ export function ReviewTab({ club, members, onChanged }) {
 
       {mod?.blocks?.length > 0 && (
         <section className="card">
-          <h3 className="text-white font-semibold mb-1">🚫 {t('mod.blocksTitle')}</h3>
+          <h3 className="text-white font-semibold mb-1">{t('mod.blocksTitle')}</h3>
           <ul className="divide-y divide-navy-700">
             {mod.blocks.map((b) => (
               <li key={b.id} className="py-2 flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -232,7 +232,7 @@ export function ReviewTab({ club, members, onChanged }) {
       )}
 
       <section className="card">
-        <h3 className="text-white font-semibold">📜 {t('mod.historyTitle')} <Hint inline text={t('mod.historyHint')} /></h3>
+        <h3 className="text-white font-semibold">{t('mod.historyTitle')} <Hint inline text={t('mod.historyHint')} /></h3>
         {!mod?.rows?.length && <p className="text-gray-500 text-sm">{t('mod.historyEmpty')}</p>}
         <ul className="divide-y divide-navy-700">{(mod?.rows || []).map((r) => <HistoryLine key={r.id} r={r} />)}</ul>
         {mod?.pages > 1 && (
@@ -256,7 +256,7 @@ export function PastWarning({ past }) {
   const last = past.history?.[0];
   return (
     <div className="mt-1.5 rounded-lg border border-red-500/50 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-100">
-      <p className="font-semibold">⚠️ {past.blocked ? t('mod.pastBlocked', { scope: t(`mod.blocked_${past.blocked.scope}`) }) : t('mod.pastTitle')}</p>
+      <p className="font-semibold">{past.blocked ? t('mod.pastBlocked', { scope: t(`mod.blocked_${past.blocked.scope}`) }) : t('mod.pastTitle')}</p>
       {(past.history || []).slice(0, 3).map((h, i) => (
         <p key={i}>
           {fmtDate(h.created_at)} · {t(`mod.act_${h.action}`, { to: '' })}
@@ -304,7 +304,7 @@ export function InviteModal({ club, open, onClose }) {
     }
   }
   return (
-    <Modal open={open} title={`🔗 ${t('invite.title')}`} onClose={onClose}>
+    <Modal open={open} title={`${t('invite.title')}`} onClose={onClose}>
       <div className="flex flex-col gap-3">
         <p className="text-gray-300 text-sm">{t('invite.intro')}</p>
         <label className="flex items-center gap-2 text-sm text-gray-200">

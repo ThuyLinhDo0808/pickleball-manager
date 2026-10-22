@@ -17,6 +17,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Badminton events by format/division (Đơn nam, Đôi nữ, Đôi nam nữ...).
 const BADMINTON_CAT = { 'singles/men': 'ms', 'singles/women': 'ws', 'doubles/men': 'md', 'doubles/women': 'wd', 'mixed/open': 'xd' };
@@ -67,7 +68,7 @@ function MatchRow({ m, teamName, onOpen }) {
       {side(m.team1_id, m.team1_score)}
       {side(m.team2_id, m.team2_score)}
       {played && gamesText(m.games) && <span className="text-gray-500 text-[11px] tabular-nums">{gamesText(m.games)}</span>}
-      {played && m.duration_sec != null && <span className="text-gray-500 text-[11px] tabular-nums">⏱ {minutesText(m.duration_sec, t)}</span>}
+      {played && m.duration_sec != null && <span className="text-gray-500 text-[11px] tabular-nums">{minutesText(m.duration_sec, t)}</span>}
     </button>
   );
 }
@@ -133,7 +134,7 @@ export default function TournamentPage() {
       <Link href="/club/tournaments" className="text-gray-400 text-sm hover:text-white inline-block mb-2">← {t('tournaments.allList')}</Link>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0">
-          <h1 className="text-white text-2xl font-bold">🏆 {tour.name}</h1>
+          <h1 className="text-white text-2xl font-bold">{tour.name}</h1>
           <p className="text-gray-400 text-sm">
             {tour.round_robin ? `${t('tournaments.kind_rr')} · ` : ''}
             {tour.kind === 'team'
@@ -149,7 +150,7 @@ export default function TournamentPage() {
             <p className="text-lime-400 text-sm capitalize">
               {formatDay(tour.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
               {tour.start_time && ` · ${hhmm(tour.start_time)}${tour.end_time ? `–${hhmm(tour.end_time)}` : ''}`}
-              {tour.location && <span className="text-gray-300 normal-case"> · 📍 {tour.location}</span>}
+              {tour.location && <span className="text-gray-300 normal-case"> · {tour.location}</span>}
             </p>
           )}
           {Number(tour.entry_fee) > 0 && <p className="text-gray-300 text-sm">{t('tournaments.entryFeeShow', { fee: formatVnd(tour.entry_fee) })}</p>}
@@ -160,7 +161,7 @@ export default function TournamentPage() {
               ● {t('live.open')}
             </Link>
           )}
-          <button className="btn-secondary !py-1.5 text-sm" onClick={edit}>✏️ {t('tournaments.edit')}</button>
+          <button className="btn-secondary !py-1.5 text-sm" onClick={edit}>{t('tournaments.edit')}</button>
           <button className="text-red-400 text-sm" onClick={remove}>{t('common.delete')}</button>
         </div>
       </div>
@@ -170,7 +171,7 @@ export default function TournamentPage() {
           <Podium podium={tour.podium} />
         ) : (
           <div className="card mb-4 border-lime-400 text-center py-5">
-            <div className="text-4xl mb-1">🏆</div>
+            <div className="text-4xl mb-1"><UiIcon name="trophy" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
             <div className="text-gray-400 text-xs">{t('tournaments.champion')}</div>
             <div className="text-lime-400 text-2xl font-bold">{teamName(tour.champion_id)}</div>
           </div>

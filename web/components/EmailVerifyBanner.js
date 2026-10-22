@@ -49,7 +49,7 @@ export default function EmailVerifyBanner() {
   const here = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/home';
   return (
     <div className={`sticky top-0 z-[55] text-sm px-3 py-1.5 flex items-center gap-2 justify-center flex-wrap ${st.expired ? 'bg-red-400 text-navy-950' : 'bg-amber-200 text-navy-950'}`} role="status">
-      <span>📬 {st.expired ? t('everify.barExpired') : t('everify.bar', { date: fmt(st.deadline) })}</span>
+      <span>{st.expired ? t('everify.barExpired') : t('everify.bar', { date: fmt(st.deadline) })}</span>
       <Link href={`/verify-email?next=${encodeURIComponent(here)}`} className="rounded-full bg-navy-950 text-white px-3 py-0.5 text-xs font-semibold">{t('everify.barCta')}</Link>
     </div>
   );

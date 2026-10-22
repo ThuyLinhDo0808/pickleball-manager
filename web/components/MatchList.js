@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import GamesInput, { gamesPayload, gamesText, inferFormat } from '@/components/GamesInput';
 import { localDate } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 function playerName(mp) {
   return mp.club_members?.full_name || mp.event_participants?.full_name || '?';
@@ -108,14 +109,14 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
                   {t(`matches.${m.match_type}`)}
                 </span>
                 {winner === 0 && <span className="text-yellow-400">{t('matches.draw')}</span>}
-                {m.is_challenge && <span className="rounded border border-violet-400/60 text-violet-200 px-1.5">⚔️ {t('matches.challenge')}{m.challenge_reward ? ` · 🎁 ${m.challenge_reward}` : ''}</span>}
+                {m.is_challenge && <span className="rounded border border-violet-400/60 text-violet-200 px-1.5">{t('matches.challenge')}{m.challenge_reward ? ` · ${m.challenge_reward}` : ''}</span>}
                 {!scored && <span className="rounded border border-amber-400/60 text-amber-300 px-1.5">{t('matches.notScored')}</span>}
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 items-center">
                 {[1, 2].map((n) => (
                   <div key={n} className="contents">
                     <span className={`truncate ${winner === n ? 'text-lime-400 font-semibold' : 'text-gray-200'}`}>
-                      {winner === n && '🏆 '}
+                      {winner === n && <UiIcon name="trophy" className="inline-block w-4 h-4 mr-1 -mt-0.5 text-lime-300" />}
                       {team(n)}
                     </span>
                     <span className={`text-xl font-bold tabular-nums text-right ${winner === n ? 'text-lime-400' : 'text-gray-300'}`}>
@@ -127,7 +128,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
               {gamesText(m.games) && <p className="text-gray-400 text-xs mt-1 tabular-nums">{gamesText(m.games)}</p>}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm">
                 <button className={scored ? 'text-gray-300' : 'text-lime-400 font-semibold'} onClick={() => setEditing(m)}>
-                  {scored ? t('matches.edit') : `✏️ ${t('matches.enterScore')}`}
+                  {scored ? t('matches.edit') : `${t('matches.enterScore')}`}
                 </button>
                 {allowDelete && (
                   <button className="text-red-400/80 ml-auto" onClick={() => remove(m)}>{t('common.delete')}</button>

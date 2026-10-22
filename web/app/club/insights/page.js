@@ -170,7 +170,7 @@ export default function InsightsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="🔬"
+        icon="chart"
         title={t('nav.insights')}
         subtitle={club?.name}
         actions={
@@ -184,7 +184,7 @@ export default function InsightsPage() {
         }
       />
       <SectionTabs group="stats" />
-      <UnderlineTabs value={tab} onChange={setTab} tabs={TABS.map((k) => ({ key: k, label: t(`insights.tab_${k}`), icon: { overview: '📊', time: '🕒', people: '👥', activities: '🏓', money: '💰' }[k] }))} />
+      <UnderlineTabs value={tab} onChange={setTab} tabs={TABS.map((k) => ({ key: k, label: t(`insights.tab_${k}`), icon: { overview: 'chart', time: 'clock', people: 'users', activities: 'paddle', money: 'money' }[k] }))} />
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && (
@@ -192,7 +192,7 @@ export default function InsightsPage() {
           {tab === 'overview' && (
             <>
           <section>
-            <h2 className="text-gray-300 text-sm font-semibold mb-2">👥 {t('insights.members')}</h2>
+            <h2 className="text-gray-300 text-sm font-semibold mb-2">{t('insights.members')}</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Tile label={t('insights.active')} value={s.active} tone="text-lime-300" sub={t('insights.activeHint')} />
               <Tile label={t('insights.atRisk')} value={s.at_risk} tone="text-amber-200" sub={t('insights.atRiskHint')} />
@@ -202,7 +202,7 @@ export default function InsightsPage() {
           </section>
 
           <section>
-            <h2 className="text-gray-300 text-sm font-semibold mb-2">📈 {t('insights.health')}</h2>
+            <h2 className="text-gray-300 text-sm font-semibold mb-2">{t('insights.health')}</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Tile label={t('insights.retention')} value={pctText(s.retention)} sub={t('insights.retentionHint')} />
               <Tile label={t('insights.renewal')} value={pctText(s.renewal)} sub={t('insights.renewalHint', { r: s.renewal_counts.renewed, e: s.renewal_counts.ended })} />
@@ -219,8 +219,8 @@ export default function InsightsPage() {
 
               {pt && (
                 <div className="grid md:grid-cols-2 gap-3">
-                  <SlotList title={`🔥 ${t('insights.bestSlots')}`} rows={pt.best_slots} t={t} tone="text-lime-300" />
-                  <SlotList title={`🧊 ${t('insights.worstSlots')}`} rows={pt.worst_slots} t={t} tone="text-gray-400" />
+                  <SlotList title={`${t('insights.bestSlots')}`} rows={pt.best_slots} t={t} tone="text-lime-300" />
+                  <SlotList title={`${t('insights.worstSlots')}`} rows={pt.worst_slots} t={t} tone="text-gray-400" />
                 </div>
               )}
             </>
@@ -229,29 +229,29 @@ export default function InsightsPage() {
           {tab === 'time' && pt && (
             <>
               <section className="card !p-4">
-                <h2 className="text-white font-semibold text-sm mb-1">🗓 {t('insights.heatTitle')} <Hint inline text={t('insights.heatHint')} /></h2>
+                <h2 className="text-white font-semibold text-sm mb-1">{t('insights.heatTitle')} <Hint inline text={t('insights.heatHint')} /></h2>
                 <Heatmap data={pt.heatmap} t={t} />
               </section>
               <div className="grid md:grid-cols-2 gap-3">
-                <SlotList title={`🔥 ${t('insights.bestSlots')}`} rows={pt.best_slots} t={t} tone="text-lime-300" />
-                <SlotList title={`🧊 ${t('insights.worstSlots')}`} rows={pt.worst_slots} t={t} tone="text-gray-400" />
+                <SlotList title={`${t('insights.bestSlots')}`} rows={pt.best_slots} t={t} tone="text-lime-300" />
+                <SlotList title={`${t('insights.worstSlots')}`} rows={pt.worst_slots} t={t} tone="text-gray-400" />
               </div>
               <div className="grid lg:grid-cols-2 gap-3 items-start">
                 <Table
-                  title={`📅 ${t('insights.byWeekday')}`}
+                  title={`${t('insights.byWeekday')}`}
                   head={[t('insights.col_weekday'), t('insights.col_sessions'), t('insights.col_avgPlayers'), t('insights.col_avgFill'), t('insights.col_profitPerSession')]}
                   rows={pt.by_weekday.map((r) => [{ key: r.key, v: t(`insights.dow_${r.key}`) }, { v: r.sessions }, { v: r.avg_players }, { v: pctText(r.avg_fill) }, money(r.profit_per_session)])}
                   empty={t('insights.noData')}
                 />
                 <Table
-                  title={`⏰ ${t('insights.byStartHour')}`}
+                  title={`${t('insights.byStartHour')}`}
                   head={[t('insights.col_startHour'), t('insights.col_sessions'), t('insights.col_avgPlayers'), t('insights.col_avgFill'), t('insights.col_profitPerSession')]}
                   rows={pt.by_start_hour.map((r) => [{ key: r.key, v: hh(r.key) }, { v: r.sessions }, { v: r.avg_players }, { v: pctText(r.avg_fill) }, money(r.profit_per_session)])}
                   empty={t('insights.noTimes')}
                 />
               </div>
               <section className="card !p-4">
-                <h2 className="text-white font-semibold text-sm mb-1">📦 {t('insights.fillTitle')} <Hint inline text={t('insights.fillHint')} /></h2>
+                <h2 className="text-white font-semibold text-sm mb-1">{t('insights.fillTitle')} <Hint inline text={t('insights.fillHint')} /></h2>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {['full', 'high', 'mid', 'low', 'open'].map((k) => (
                     <div key={k} className="rounded-lg bg-navy-900 px-2 py-2 text-center">
@@ -268,7 +268,7 @@ export default function InsightsPage() {
             <>
               {pt && (
                 <section>
-                  <h2 className="text-gray-300 text-sm font-semibold mb-2">🧑‍🤝‍🧑 {t('insights.peopleTitle')}</h2>
+                  <h2 className="text-gray-300 text-sm font-semibold mb-2">{t('insights.peopleTitle')}</h2>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <Tile label={t('insights.unique')} value={pt.people.unique} sub={t('insights.uniqueHint', { avg: pt.people.avg_sessions ?? 0 })} />
                     <Tile label={t('insights.returning')} value={pt.people.returning} tone="text-lime-300" sub={t('insights.returningHint')} />
@@ -283,7 +283,7 @@ export default function InsightsPage() {
               )}
               <div className="grid lg:grid-cols-2 gap-3 items-start">
                 <section className="card !p-4">
-              <h2 className="text-white font-semibold text-sm mb-1">🎯 {t('insights.frequency')} <Hint inline text={t('insights.frequencyHint')} /></h2>
+              <h2 className="text-white font-semibold text-sm mb-1">{t('insights.frequency')} <Hint inline text={t('insights.frequencyHint')} /></h2>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {['high', 'mid', 'low', 'none'].map((b) => (
                   <div key={b} className="rounded-lg bg-navy-900 px-2 py-2 text-center">
@@ -317,7 +317,7 @@ export default function InsightsPage() {
 
                 {pt && (
                   <Table
-                    title={`🏆 ${t('insights.topPlayers')}`}
+                    title={`${t('insights.topPlayers')}`}
                     head={['#', t('common.name'), t('insights.col_type'), t('insights.col_sessions'), t('insights.col_last')]}
                     rows={pt.people.top.map((r, i) => [{ key: `${i}`, v: i + 1 }, { v: r.name }, { v: t(`insights.type_${r.type}`) }, { v: r.sessions }, { v: fmtDay(r.last) }])}
                     empty={t('insights.noData')}
@@ -326,7 +326,7 @@ export default function InsightsPage() {
               </div>
               {pt && (
                 <Table
-                  title={`🚫 ${t('insights.reliability')}`}
+                  title={`${t('insights.reliability')}`}
                   head={[t('insights.col_month'), t('insights.col_signups'), t('insights.col_newPlayers'), t('insights.col_noShow'), t('insights.col_cancelled')]}
                   rows={pt.reliability.by_month.map((r) => [{ key: r.month, v: fmtMonth(r.month) }, { v: r.signups }, { v: r.new_players }, { v: `${r.no_show} (${pctText(r.no_show_rate)})`, tone: r.no_show ? 'text-red-300' : '' }, { v: `${r.cancelled} (${pctText(r.cancel_rate)})` }])}
                   empty={t('insights.noData')}
@@ -338,7 +338,7 @@ export default function InsightsPage() {
           {tab === 'activities' && (
             <>
               <section className="card !p-0 overflow-x-auto">
-                <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">🏓 {t('insights.byActivity')}</h2>
+                <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">{t('insights.byActivity')}</h2>
                 {d.by_activity.length === 0 ? <p className="text-gray-500 text-sm px-4 pb-4">{t('insights.noData')}</p> : (
                   <table className="w-full text-sm">
                     <thead className="text-gray-400 text-xs text-left">
@@ -362,7 +362,7 @@ export default function InsightsPage() {
                 )}
               </section>
           <section className="card !p-0 overflow-x-auto">
-            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">📋 {t('insights.sessions')}</h2>
+            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">{t('insights.sessions')}</h2>
             {d.sessions.length === 0 ? <p className="text-gray-500 text-sm px-4 pb-4">{t('insights.noData')}</p> : (
               <table className="w-full text-sm">
                 <thead className="text-gray-400 text-xs text-left">
@@ -392,7 +392,7 @@ export default function InsightsPage() {
           {tab === 'money' && (
             <>
           <section className="card !p-0 overflow-x-auto">
-            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">🗓 {t('insights.byMonth')}</h2>
+            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">{t('insights.byMonth')}</h2>
             <table className="w-full text-sm">
               <thead className="text-gray-400 text-xs text-left">
                 <tr className="border-b border-navy-700">
@@ -419,7 +419,7 @@ export default function InsightsPage() {
           </section>
 
               <section className="card !p-0 overflow-x-auto">
-                <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">💳 {t('insights.byPlan')}</h2>
+                <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">{t('insights.byPlan')}</h2>
                 {d.by_plan.length === 0 ? <p className="text-gray-500 text-sm px-4 pb-4">{t('insights.noPlans')}</p> : (
                   <table className="w-full text-sm">
                     <thead className="text-gray-400 text-xs text-left">

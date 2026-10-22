@@ -101,7 +101,7 @@ export default function FundCalculator({ club, onUse }) {
         <table className="w-full text-sm">
           <tbody className="divide-y divide-navy-700">
             <tr className="bg-navy-900">
-              <td colSpan={2} className="px-3 py-2 text-lime-300 font-semibold">🏠 {t('calc.fixed')}</td>
+              <td colSpan={2} className="px-3 py-2 text-lime-300 font-semibold">{t('calc.fixed')}</td>
             </tr>
             <Row label={t('calc.rate')}><NumIn value={c.rate_per_hour} onChange={set('rate_per_hour')} suffix="đ" /></Row>
             <Row label={t('calc.hours')}><NumIn value={c.hours_per_session} onChange={set('hours_per_session')} step="0.5" /></Row>
@@ -139,7 +139,7 @@ export default function FundCalculator({ club, onUse }) {
             )}
 
             <tr className="bg-navy-900">
-              <td colSpan={2} className="px-3 py-2 text-orange-300 font-semibold">🎾 {t('calc.ballsTitle')}</td>
+              <td colSpan={2} className="px-3 py-2 text-orange-300 font-semibold">{t('calc.ballsTitle')}</td>
             </tr>
             <Row label={t('calc.sessions')}><span className="text-gray-300">{num(c.sessions_per_month) || '—'}</span></Row>
             <Row label={t('calc.ballsPerSession')}><NumIn value={c.balls_per_session} onChange={set('balls_per_session')} /></Row>
@@ -162,7 +162,7 @@ export default function FundCalculator({ club, onUse }) {
             )}
 
             <tr className="bg-navy-900">
-              <td colSpan={2} className="px-3 py-2 text-sky-300 font-semibold">🤝 {t('calc.guests')}</td>
+              <td colSpan={2} className="px-3 py-2 text-sky-300 font-semibold">{t('calc.guests')}</td>
             </tr>
             {slots.map((g, i) => (
               <tr key={i}>
@@ -192,7 +192,7 @@ export default function FundCalculator({ club, onUse }) {
 
       <Hint text={t('calc.hint')} className="mt-2" />
       <div className="flex flex-wrap items-center gap-2 mt-3">
-        <button type="button" className="btn-secondary text-sm" disabled={saving} onClick={save}>💾 {t('calc.save')}</button>
+        <button type="button" className="btn-secondary text-sm" disabled={saving} onClick={save}>{t('calc.save')}</button>
         <Link href="/finance/plans" className="text-lime-400 text-sm ml-auto">{t('calc.toPlans')} →</Link>
       </div>
       {msg && <p className="text-sm text-lime-300 mt-2">{msg}</p>}

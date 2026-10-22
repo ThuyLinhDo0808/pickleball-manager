@@ -16,7 +16,7 @@ const readSeen = () => {
 };
 const ICON = { wait_check: 'hourglass', pay_now: 'card', proof_wait: 'list', pay_rejected: 'alert', confirmed: 'checkCircle', waitlisted: 'hourglass', cancelled: 'x', cancelled_host: 'x', notice_warning: 'alert', notice_restored: 'checkCircle', notice_removed: 'x', link_request: 'link', court_moved: 'court' };
 
-// 🔔 for players, like the Host's: where each sign-up stands, messages from clubs, link
+// for players, like the Host's: where each sign-up stands, messages from clubs, link
 // requests (last 14 days). Red number = new since the bell was last opened; checked every minute.
 export default function PlayerBell({ className = '' }) {
   const { t, lang } = useI18n();

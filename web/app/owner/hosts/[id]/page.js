@@ -12,6 +12,7 @@ import { api, startViewAs } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
 import AddonSwitches from '@/components/owner/AddonSwitches';
+import UiIcon from '@/components/ui/UiIcon';
 
 const TIERS = ['free', 'basic', 'standard', 'advanced', 'pro'];
 
@@ -80,7 +81,7 @@ function ProductBlock({ icon, title, on, current, tier, tierOptions, onTier, unt
   return (
     <section className="rounded-xl border border-navy-700 bg-navy-900/40">
       <header className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-navy-700">
-        <span className="text-lg" aria-hidden="true">{icon}</span>
+        <UiIcon name={icon} className="w-5 h-5 text-gray-400" />
         <h3 className="text-white font-semibold">{title}</h3>
         <StatusPill on={current.on} until={current.until} />
         {toggle && <span className="ml-auto">{toggle}</span>}
@@ -207,11 +208,11 @@ function PlanEditor({ host, onSaved }) {
   return (
     <form onSubmit={save} className="card !p-4 flex flex-col gap-4">
       <div>
-        <h2 className="text-white font-semibold">💎 {t('owner.planTitle')} <Hint inline text={t('owner.planHint')} /></h2>
+        <h2 className="text-white font-semibold">{t('owner.planTitle')} <Hint inline text={t('owner.planHint')} /></h2>
       </div>
 
       <ProductBlock
-        icon="🏟"
+        icon="court"
         title="Club Manager"
         on
         current={{ on: host.tier !== 'free', until: host.tier_paid_until }}
@@ -228,7 +229,7 @@ function PlanEditor({ host, onSaved }) {
         disabled={f.tier === 'free'}
       />
       <ProductBlock
-        icon="🎟"
+        icon="ticket"
         title="Social Manager"
         on={f.social_manager}
         current={{ on: host.social_manager, until: host.social_manager_paid_until }}
@@ -246,7 +247,7 @@ function PlanEditor({ host, onSaved }) {
         offHint={t('owner.smOffHint')}
       />
 
-      <p className="text-gray-500 text-xs flex gap-2"><span aria-hidden="true">ℹ️</span><span>{t('owner.paidAmountHint')}</span></p>
+      <p className="text-gray-500 text-xs flex gap-2"><span aria-hidden="true"><UiIcon name="info" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span><span>{t('owner.paidAmountHint')}</span></p>
 
       <div className="rounded-xl border border-navy-700 bg-navy-900/40 p-4 flex flex-col gap-3">
         <div>
@@ -298,7 +299,7 @@ function SuspendBox({ host, onChanged }) {
   }
   return (
     <div className={`card !p-4 ${host.suspended_at ? 'border-red-400/50' : ''}`}>
-      <h2 className="text-white font-semibold mb-1">⛔ {t('owner.suspendTitle')}</h2>
+      <h2 className="text-white font-semibold mb-1">{t('owner.suspendTitle')}</h2>
       {host.suspended_at ? (
         <p className="text-red-200 text-sm mb-3">{t('owner.suspendedSince', { at: fmtTime(host.suspended_at) })}<br /><i>“{host.suspended_reason}”</i></p>
       ) : (
@@ -336,7 +337,7 @@ function Notes({ host, notes, onChanged }) {
   }
   return (
     <div className="card !p-4">
-      <h2 className="text-white font-semibold mb-2">📝 {t('owner.notesTitle')}</h2>
+      <h2 className="text-white font-semibold mb-2">{t('owner.notesTitle')}</h2>
       <form onSubmit={add} className="flex flex-col gap-2 mb-3">
         <textarea className="input text-sm min-h-[70px]" value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} placeholder={t('owner.notePh')} />
         <button className="btn-secondary text-sm self-end" disabled={busy || !body.trim()}>{t('owner.addNote')}</button>
@@ -395,15 +396,15 @@ function ClubRow({ club, onChanged }) {
     <li className="py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-gray-200 truncate">
-          {club.sport === 'badminton' ? '🏸' : '🏓'} {club.name}
-          {club.kind === 'community' && <span className="ml-1.5 text-[10px] rounded-full border border-amber-300/60 text-amber-200 px-1.5 py-0.5 align-middle">🎟 {t('creq.kind_community')}</span>}
+          {club.name}
+          {club.kind === 'community' && <span className="ml-1.5 text-[10px] rounded-full border border-amber-300/60 text-amber-200 px-1.5 py-0.5 align-middle">{t('creq.kind_community')}</span>}
         </span>
         <span className="text-gray-400 text-xs">{t('owner.placesLine', { fixed: place(r?.fixed), guest: place(r?.guest) })} · {fmtDate(club.created_at)}</span>
       </div>
       <div className="flex gap-3 mt-1 text-xs">
-        {consoleCan(me, 'plans') && <button type="button" className="text-sky-300 hover:underline" onClick={() => setMode(mode === 'addon' ? null : 'addon')}>➕ {t('owner.addonBtn')}</button>}
-        {me?.owner && <button type="button" className="text-amber-300 hover:underline" onClick={() => setMode(mode === 'transfer' ? null : 'transfer')}>🔁 {t('owner.transferBtn')}</button>}
-        {me?.owner && <button type="button" className="text-red-300 hover:underline ml-auto" onClick={() => setMode(mode === 'delete' ? null : 'delete')}>🗑 {t('owner.delClubBtn')}</button>}
+        {consoleCan(me, 'plans') && <button type="button" className="text-sky-300 hover:underline" onClick={() => setMode(mode === 'addon' ? null : 'addon')}>{t('owner.addonBtn')}</button>}
+        {me?.owner && <button type="button" className="text-amber-300 hover:underline" onClick={() => setMode(mode === 'transfer' ? null : 'transfer')}>{t('owner.transferBtn')}</button>}
+        {me?.owner && <button type="button" className="text-red-300 hover:underline ml-auto" onClick={() => setMode(mode === 'delete' ? null : 'delete')}>{t('owner.delClubBtn')}</button>}
       </div>
       {mode === 'delete' && <DeleteClub club={club} onDone={() => { setMode(null); onChanged(); }} />}
       {mode && mode !== 'delete' && (
@@ -437,7 +438,7 @@ function StaffRoles({ staff, clubs }) {
   const other = staff.length - clubStaff.length;
   return (
     <div className="card !p-4">
-      <h2 className="text-white font-semibold mb-1">🧑‍💼 {t('owner.rolesTitle')}</h2>
+      <h2 className="text-white font-semibold mb-1">{t('owner.rolesTitle')}</h2>
       <p className="text-gray-500 text-xs mb-3">{t('owner.rolesHint')}{other > 0 ? ` · ${t('owner.eventStaffN', { n: other })}` : ''}</p>
       {clubStaff.length === 0 ? (
         <p className="text-gray-500 text-sm">{t('owner.noRoles')}</p>
@@ -483,7 +484,7 @@ function ViewAsButton({ host }) {
       title={t('owner.viewAsHint')}
       onClick={() => { if (window.confirm(t('owner.viewAsAsk', { email: host.email }))) { startViewAs(host); window.location.href = '/home'; } }}
     >
-      👁 {t('owner.viewAs')}
+      {t('owner.viewAs')}
     </button>
   );
 }
@@ -494,7 +495,7 @@ function HostAddons({ hostId }) {
   const { data, error, reload } = useLoad(() => api.get(`/api/owner/hosts/${hostId}/addons`), [hostId]);
   return (
     <div className="card !p-4">
-      <h2 className="text-white font-semibold mb-1">🧩 {t('addons.hostTitle')}</h2>
+      <h2 className="text-white font-semibold mb-1">{t('addons.hostTitle')}</h2>
       <p className="text-gray-400 text-xs mb-2">{t('addons.hostHint')}</p>
       {error ? <p className="text-amber-200 text-xs">{error.message}</p> : data ? <AddonSwitches hostId={hostId} value={data} onChanged={reload} /> : <p className="text-gray-500 text-sm">{t('common.loading')}</p>}
     </div>
@@ -527,10 +528,10 @@ export default function OwnerHostPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${TIER_BADGE[h.tier]}`}>{h.tier}{h.tier !== 'free' && h.tier_paid_until ? ` → ${fmtDate(h.tier_paid_until)}` : ''}</span>
-              {h.billing === 'paying' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-lime-400/15 text-lime-200" title={t('owner.billPayingHint')}>💵 {t('owner.billPaying')}</span>}
-              {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>🎁 {t('owner.billGifted')}</span>}
+              {h.billing === 'paying' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-lime-400/15 text-lime-200" title={t('owner.billPayingHint')}>{t('owner.billPaying')}</span>}
+              {h.billing === 'gifted' && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-violet-300/20 text-violet-200" title={t('owner.billGiftedHint')}>{t('owner.billGifted')}</span>}
               {h.social_manager && <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-amber-300/20 text-amber-200">SM {String(h.sm_tier || 'basic').toUpperCase()}{h.social_manager_paid_until ? ` → ${fmtDate(h.social_manager_paid_until)}` : ''}</span>}
-              {h.suspended_at ? <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-200">⛔ {t('owner.suspended')}</span> : <span className="rounded-full px-2.5 py-1 text-xs bg-lime-400/15 text-lime-200">● {t('owner.active')}</span>}
+              {h.suspended_at ? <span className="rounded-full px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-200">{t('owner.suspended')}</span> : <span className="rounded-full px-2.5 py-1 text-xs bg-lime-400/15 text-lime-200">● {t('owner.active')}</span>}
               <ViewAsButton host={h} />
             </div>
           </div>
@@ -553,7 +554,7 @@ export default function OwnerHostPage() {
           <div className="grid lg:grid-cols-2 gap-4 items-start">
             <Notes host={h} notes={data.notes} onChanged={reload} />
             <div className="card !p-4">
-              <h2 className="text-white font-semibold mb-2">🏠 {t('owner.clubsTitle')}</h2>
+              <h2 className="text-white font-semibold mb-2">{t('owner.clubsTitle')}</h2>
               {data.clubs.length === 0 ? (
                 <p className="text-gray-500 text-sm">{t('owner.noClubs')}</p>
               ) : (
@@ -561,7 +562,7 @@ export default function OwnerHostPage() {
                   {data.clubs.map((c) => <ClubRow key={c.id} club={c} onChanged={reload} />)}
                 </ul>
               )}
-              <h2 className="text-white font-semibold mt-4 mb-2">💳 {t('owner.ordersTitle')}</h2>
+              <h2 className="text-white font-semibold mt-4 mb-2">{t('owner.ordersTitle')}</h2>
               {data.orders.length === 0 ? (
                 <p className="text-gray-500 text-sm">{t('owner.noOrders')}</p>
               ) : (
@@ -580,7 +581,7 @@ export default function OwnerHostPage() {
           <StaffRoles staff={data.staff || []} clubs={data.clubs} />
 
           <div className="card !p-4">
-            <h2 className="text-white font-semibold mb-1">📜 {t('owner.tabAudit')}</h2>
+            <h2 className="text-white font-semibold mb-1">{t('owner.tabAudit')}</h2>
             {data.audit.length === 0 ? (
               <p className="text-gray-500 text-sm">{t('owner.noAudit')}</p>
             ) : (

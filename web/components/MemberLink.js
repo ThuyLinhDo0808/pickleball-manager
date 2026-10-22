@@ -66,7 +66,7 @@ export default function MemberLink({ club, member, onChanged }) {
 
   return (
     <section className="rounded-xl border border-lime-400/25 bg-lime-400/5 p-3 text-sm" aria-labelledby="mlink-title">
-      <h3 id="mlink-title" className="font-semibold text-white">🔗 {t('mlink.title')}</h3>
+      <h3 id="mlink-title" className="font-semibold text-white">{t('mlink.title')}</h3>
       <p className="mt-0.5 text-xs text-gray-400">{t(member.phone ? 'mlink.hintPhone' : 'mlink.hintNoPhone')}</p>
 
       <div className="mt-3">

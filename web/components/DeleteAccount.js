@@ -102,7 +102,7 @@ export default function DeleteAccount({ bare = false } = {}) {
       )}
       {bare && <p className="text-gray-300 text-sm mb-3">{t('deleteAccount.bareHint')}</p>}
       <button type="button" className="rounded-lg px-3 py-2 text-sm font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/10" onClick={start}>
-        🗑 {t('deleteAccount.button')}
+        {t('deleteAccount.button')}
       </button>
 
       <Modal open={open} title={t('deleteAccount.title')} onClose={() => !busy && setOpen(false)}>
@@ -110,14 +110,14 @@ export default function DeleteAccount({ bare = false } = {}) {
           {!preview && !error && <p className="text-gray-400">{t('common.loading')}</p>}
           {preview && owns && (
             <>
-              <p className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-amber-100">🔒 {t('handover.why')}</p>
+              <p className="rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-amber-100">{t('handover.why')}</p>
               <ul className="rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-gray-200 list-disc list-inside">
                 {preview.clubs.length > 0 && <li>{t('handover.clubs', { n: preview.clubs.length })}: <span className="text-white">{preview.clubs.map((c) => c.name).join(', ')}</span></li>}
                 {preview.xeve_events > 0 && <li>{t('handover.xeve', { n: preview.xeve_events })}</li>}
               </ul>
               {h?.status === 'pending' ? (
                 <div className="rounded-lg border border-sky-400/50 bg-sky-400/10 px-3 py-3 text-sky-100">
-                  <p className="font-semibold">⏳ {t('handover.pending', { to: h.to_email })}</p>
+                  <p className="font-semibold">{t('handover.pending', { to: h.to_email })}</p>
                   <p className="text-xs text-sky-200/80 mt-1">{t('handover.pendingHint')}</p>
                   <button type="button" className="mt-2 text-red-300 text-xs underline" disabled={busy} onClick={cancelHandover}>{t('handover.cancel')}</button>
                 </div>
@@ -131,7 +131,7 @@ export default function DeleteAccount({ bare = false } = {}) {
                   <label className="text-gray-300" htmlFor="handover-note">{t('handover.noteLabel')}</label>
                   <textarea id="handover-note" className="input" rows={2} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('handover.notePh')} />
                   <p className="text-gray-500 text-xs">{t('handover.steps')}</p>
-                  <button className="btn-primary" disabled={busy || !to.trim()}>📨 {t('handover.submit')}</button>
+                  <button className="btn-primary" disabled={busy || !to.trim()}>{t('handover.submit')}</button>
                 </form>
               )}
               {error && <p className="text-red-400">{error}</p>}
@@ -153,7 +153,7 @@ export default function DeleteAccount({ bare = false } = {}) {
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" className="btn-secondary" disabled={busy} onClick={() => setOpen(false)}>{t('common.cancel')}</button>
                 <button type="button" className="rounded-lg px-3 py-2 font-semibold bg-red-500 text-white disabled:opacity-40" disabled={busy || !matches} onClick={confirm}>
-                  🗑 {t('deleteAccount.confirm')}
+                  {t('deleteAccount.confirm')}
                 </button>
               </div>
             </>

@@ -22,7 +22,7 @@ function Tile({ icon, label, value, tone = 'text-white', sub }) {
     <div className="card !p-4">
       <div className="flex items-center justify-between text-gray-400 text-xs font-semibold">
         <span>{label}</span>
-        <span aria-hidden="true">{icon}</span>
+        
       </div>
       <div className={`text-xl font-bold tabular-nums mt-1 whitespace-nowrap ${tone}`}>{value}</div>
       {sub && <div className="text-gray-400 text-xs mt-0.5">{sub}</div>}
@@ -67,7 +67,7 @@ function DailyOverview({ daily, isYear, label }) {
   const { t, lang } = useI18n();
   return (
     <section className="card !p-5 mb-4">
-      <h2 className="text-white font-semibold mb-1">📅 {t('social.daily')} · {label}</h2>
+      <h2 className="text-white font-semibold mb-1">{t('social.daily')} · {label}</h2>
       {isYear && <Hint text={t('social.dailyYearHint')} className="mb-2" />}
       {!daily && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {daily && daily.days.length === 0 && <p className="text-gray-400 text-sm">{t('social.dailyNone')}</p>}
@@ -213,8 +213,8 @@ export default function FinanceOverview() {
         )}
 
         <div className="grid grid-cols-2 gap-3 content-start">
-          <Tile icon="📈" label={`${t('analytics.income')} · ${periodLabel}`} value={picked ? formatVnd(picked.income) : '—'} tone="text-lime-400" />
-          <Tile icon="📉" label={`${t('analytics.expense')} · ${periodLabel}`} value={picked ? formatVnd(picked.expense) : '—'} tone="text-orange-300" />
+          <Tile icon="trendUp" label={`${t('analytics.income')} · ${periodLabel}`} value={picked ? formatVnd(picked.income) : '—'} tone="text-lime-400" />
+          <Tile icon="trendDown" label={`${t('analytics.expense')} · ${periodLabel}`} value={picked ? formatVnd(picked.expense) : '—'} tone="text-orange-300" />
         </div>
       </div>
 
@@ -223,8 +223,8 @@ export default function FinanceOverview() {
       {social && <DailyOverview daily={daily} isYear={isYear} label={`${Number(ymPick.slice(5))}/${ymPick.slice(0, 4)}`} />}
 
       <div className="grid gap-4 md:grid-cols-2 mb-4">
-        <Breakdown title={`💚 ${t('finX.incomeByP', { p: periodLabel })}`} rows={income} total={periodTotal('income')} color={INCOME_COLOR} t={t} />
-        <Breakdown title={`🧾 ${t('finX.expenseByP', { p: periodLabel })}`} rows={expense} total={periodTotal('expense')} color={EXPENSE_COLOR} t={t} />
+        <Breakdown title={`${t('finX.incomeByP', { p: periodLabel })}`} rows={income} total={periodTotal('income')} color={INCOME_COLOR} t={t} />
+        <Breakdown title={`${t('finX.expenseByP', { p: periodLabel })}`} rows={expense} total={periodTotal('expense')} color={EXPENSE_COLOR} t={t} />
       </div>
 
       <EventPaymentsPending />
@@ -232,7 +232,7 @@ export default function FinanceOverview() {
 
       <section className="card !p-5">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h2 className="text-white font-semibold">🏓 {t('fin.eventPnl')} · {periodLabel}</h2>
+          <h2 className="text-white font-semibold">{t('fin.eventPnl')} · {periodLabel}</h2>
           {pnlShown.length > 0 && (
             <span className="text-xs text-gray-400">
               {t('finX.pnlSummary', { win: pnlShown.filter((e) => e.net >= 0).length, lose: pnlShown.filter((e) => e.net < 0).length })}

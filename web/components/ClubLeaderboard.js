@@ -8,9 +8,9 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { exportRankings } from '@/lib/exportExcel';
 import { localDate } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 const PERIODS = ['day', 'month', 'quarter', 'year', 'all'];
-const MEDALS = ['🥇', '🥈', '🥉'];
 const pad = (n) => String(n).padStart(2, '0');
 
 function todayYmd() {
@@ -52,14 +52,14 @@ function AwardCard({ title, icon, rows, fmt, hint }) {
   return (
     <div className="card !p-4">
       <div className="text-gray-300 text-xs font-semibold mb-2">
-        {icon} {title}
+        <UiIcon name={icon} className="w-4 h-4 text-gray-400" />{title}
       </div>
       {rows.length === 0 && <p className="text-gray-500 text-sm">—</p>}
       <ol className="flex flex-col gap-1">
         {rows.map((r, i) => (
           <li key={r.club_member_id} className="flex items-center justify-between gap-2 text-sm">
             <span className="truncate text-white">
-              {rows.length > 1 ? MEDALS[i] : ''} {r.full_name}
+              {rows.length > 1 ? <span className="text-lime-300 tabular-nums mr-1.5">{i + 1}</span> : null}{r.full_name}
             </span>
             <span className="text-lime-400 font-semibold tabular-nums shrink-0">{fmt(r.value)}</span>
           </li>
@@ -101,7 +101,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
     await api.put(settingsUrl, { rank_min_matches: n });
     reload();
   };
-  const groupIcon = { all: '🌐', club: '🏠', guest: '🤝' };
+  const groupIcon = { all: 'globe', club: 'home', guest: 'users' };
 
   return (
     <>
@@ -117,15 +117,14 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
             {stats && <div className="text-gray-400 text-xs">{t('rankings.matchesCount', { n: stats.match_count })}</div>}
           </div>
           {period !== 'all' && <button className="btn-secondary !px-3" aria-label={t('rankings.next')} onClick={() => setDate(shift(period, date, 1))}>›</button>}
-          <button className="btn-secondary text-sm !px-3 ml-1" disabled={!stats?.rankings?.length} title={t('common.exportExcel')} onClick={() => exportRankings(clubName, label, stats, t)}>
-            ⬇<span className="hidden sm:inline"> Excel</span>
+          <button className="btn-secondary text-sm !px-3 ml-1" disabled={!stats?.rankings?.length} title={t('common.exportExcel')} onClick={() => exportRankings(clubName, label, stats, t)}><UiIcon name="download" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /><span className="hidden sm:inline"> Excel</span>
           </button>
         </div>
       </div>
 
       {stats && (
         <p className="text-gray-400 text-xs -mt-2 mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span>📏 {t('rankx.rule', { n: stats.min_matches })}</span>
+          <span>{t('rankx.rule', { n: stats.min_matches })}</span>
           {settingsUrl && (
             <label className="inline-flex items-center gap-1">
               <span className="sr-only">{t('rankx.minLabel')}</span>
@@ -138,7 +137,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
         </p>
       )}
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
-      {error?.status === 402 && <p className="card text-gray-300 text-sm">💎 {t('plan.rankingsOff')}</p>}
+      {error?.status === 402 && <p className="card text-gray-300 text-sm">{t('plan.rankingsOff')}</p>}
 
       {!loading && top3.length > 0 && (
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 items-end">
@@ -151,7 +150,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
               <div key={r.club_member_id} className={`card !p-3 text-center flex flex-col items-center ${idx === 0 ? 'border-amber-300/60 bg-amber-300/5' : ''}`}>
                 <div className={h} />
                 <div className={`rounded-full ring-2 ${ring}`}><Avatar name={r.full_name} size={idx === 0 ? 52 : 42} /></div>
-                <div className="text-2xl -mt-2" aria-hidden="true">{MEDALS[idx]}</div>
+                <div className="text-lime-300 text-lg font-bold tabular-nums -mt-1">{idx + 1}</div>
                 <div className="text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
                 <div className="text-lime-300 text-sm font-bold tabular-nums">{r.win_rate}%</div>
                 <div className="text-gray-400 text-[11px] tabular-nums">{r.wins}-{r.losses} · {r.point_diff > 0 ? `+${r.point_diff}` : r.point_diff}</div>
@@ -164,10 +163,10 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
       {!loading && a && (stats.rankings.length > 0 || a.top_attendance.length > 0) && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-2">
-            <AwardCard title={t('rankings.topWinRate')} icon="🏆" rows={a.top_win_rate} fmt={(v) => `${v}%`} />
-            <AwardCard title={t('rankings.topDiff')} icon="📈" rows={a.top_point_diff} fmt={(v) => (v > 0 ? `+${v}` : v)} />
-            <AwardCard title={t('rankings.topAttendance')} icon="💪" rows={a.top_attendance} fmt={(v) => t('rankings.sessions', { n: v })} />
-            <AwardCard title={t('rankings.lowest')} icon="🍚" rows={a.lowest_win_rate ? [a.lowest_win_rate] : []} fmt={(v) => `${v}%`} hint={t('rankings.lowestHint')} />
+            <AwardCard title={t('rankings.topWinRate')} icon="trophy" rows={a.top_win_rate} fmt={(v) => `${v}%`} />
+            <AwardCard title={t('rankings.topDiff')} icon="trendUp" rows={a.top_point_diff} fmt={(v) => (v > 0 ? `+${v}` : v)} />
+            <AwardCard title={t('rankings.topAttendance')} icon="trophy" rows={a.top_attendance} fmt={(v) => t('rankings.sessions', { n: v })} />
+            <AwardCard title={t('rankings.lowest')} icon="trendDown" rows={a.lowest_win_rate ? [a.lowest_win_rate] : []} fmt={(v) => `${v}%`} hint={t('rankings.lowestHint')} />
           </div>
           <p className="text-gray-500 text-xs mb-4">{t('rankings.minNote', { n: a.min_matches })}</p>
         </>
@@ -176,13 +175,13 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
       {!loading && weeksAtTop.length > 0 && (
         <section className="card mb-4 border-amber-300/30">
           <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-            <h2 className="text-white font-semibold">👑 {t('rankings.weeksTitle')}</h2>
+            <h2 className="text-white font-semibold">{t('rankings.weeksTitle')}</h2>
             <span className="text-gray-500 text-xs">{t('rankings.weeksHint', { group: t(`rankings.group_${group}`) })}</span>
           </div>
           <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {weeksAtTop.slice(0, 6).map((w, i) => (
               <li key={w.club_member_id} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${i === 0 ? 'border-amber-300/50 bg-amber-300/5' : 'border-navy-700 bg-navy-900'}`}>
-                <span className="w-6 text-center">{i < 3 ? MEDALS[i] : <span className="text-gray-400 text-sm">{i + 1}</span>}</span>
+                <span className={`w-6 text-center text-sm tabular-nums ${i < 3 ? 'text-lime-300 font-semibold' : 'text-gray-400'}`}>{i + 1}</span>
                 <Avatar name={w.full_name} size={30} />
                 <div className="min-w-0 flex-1">
                   <div className="text-white text-sm font-semibold truncate">
@@ -201,12 +200,12 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
       {!loading && stats && (
         <section className="card !p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-navy-700 flex items-center justify-between gap-2">
-            <h2 className="text-white font-semibold">{groupIcon[group]} {t(`rankings.group_${group}`)}</h2>
+            <h2 className="text-white font-semibold">{t(`rankings.group_${group}`)}</h2>
             <span className="text-gray-400 text-xs">{t('rankx.players', { n: rows.length })}</span>
           </div>
           {rows.length === 0 ? (
             <div className="p-8 text-center">
-              <div className="text-4xl mb-2" aria-hidden="true">🏓</div>
+              <div className="text-4xl mb-2" aria-hidden="true"><UiIcon name="paddle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
               <p className="text-gray-400 text-sm">{t('rankings.noData')}</p>
             </div>
           ) : (
@@ -224,7 +223,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
                         </button>
                       </th>
                     ))}
-                    <th className="text-right whitespace-nowrap" title={t('rankings.weeksTitle')}>👑 {t('rankings.weeksCol')}</th>
+                    <th className="text-right whitespace-nowrap" title={t('rankings.weeksTitle')}>{t('rankings.weeksCol')}</th>
                   </tr>
                 </thead>
                 <tbody>

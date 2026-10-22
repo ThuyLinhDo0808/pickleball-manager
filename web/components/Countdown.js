@@ -22,7 +22,7 @@ export function formatLeft(ms, t) {
   return d > 0 ? `${t('countdown.days', { n: d })} ${hms}` : hms;
 }
 
-// A big live countdown, e.g. "⏳ Còn 1 ngày 02:10:05 để đăng ký".
+// A big live countdown, e.g. "Còn 1 ngày 02:10:05 để đăng ký".
 export default function Countdown({ until, labelKey = 'countdown.signup', tone = 'amber', className = '' }) {
   const { t, lang } = useI18n();
   const left = useCountdown(until);

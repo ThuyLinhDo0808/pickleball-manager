@@ -95,10 +95,10 @@ export default function StaffEventPage() {
 
   const time = [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join('–');
   const TAB_LABEL = {
-    checkin: `✅ ${t('staffView.checkInTab')}`,
-    courts: `🏟 ${t('staffX.courtsTab')}`,
-    scores: `🎾 ${t('staffView.scoresTab')} (${ev.matches.length})`,
-    board: `📊 ${t('staffX.boardTab')}`,
+    checkin: `${t('staffView.checkInTab')}`,
+    courts: `${t('staffX.courtsTab')}`,
+    scores: `${t('staffView.scoresTab')} (${ev.matches.length})`,
+    board: `${t('staffX.boardTab')}`,
   };
   const isCoord = ev.role === 'coordinator';
   const leader = isCoord ? null : standings(ev.participants, ev.matches)[0];
@@ -115,28 +115,28 @@ export default function StaffEventPage() {
               {formatDay(ev.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
               {time && ` · ${time}`}
             </p>
-            <p className="text-gray-400 text-sm">📍 {ev.location || '—'}{ev.club_name ? ` · ${ev.club_name}` : ''}{ev.courts ? ` · ${t('createx.courtsN', { n: ev.courts })}` : ''}</p>
+            <p className="text-gray-400 text-sm">{ev.location || '—'}{ev.club_name ? ` · ${ev.club_name}` : ''}{ev.courts ? ` · ${t('createx.courtsN', { n: ev.courts })}` : ''}</p>
           </div>
           <span className={`text-xs font-semibold rounded-full border px-2.5 py-1 shrink-0 ${ev.role === 'coordinator' ? 'border-lime-400/40 bg-lime-400/15 text-lime-300' : 'border-sky-400/40 bg-sky-400/15 text-sky-300'}`}>
-            {ev.role === 'coordinator' ? '🦺' : '🏁'} {t(`staff.${ev.role}`)}
+            {t(`staff.${ev.role}`)}
           </span>
         </div>
       </div>
 
       {isCoord ? (
         <KpiRow cols={4}>
-          <StatTile icon="✅" label={t('staffX.kpiArrived')} value={`${arrived.length}/${mainList.length}`} tone="text-lime-300" sub={t('staffX.kpiArrivedSub', { n: todo.length })} />
-          <StatTile icon="🚫" label={t('staffX.kpiAbsent')} value={absent.length} tone={absent.length ? 'text-yellow-300' : 'text-white'} />
-          <StatTile icon="⏳" label={t('staffX.kpiWaitlist')} value={waiting.length} tone="text-sky-300" />
-          <StatTile icon="🎾" label={t('staffX.kpiMatches')} value={ev.matches.length} />
+          <StatTile icon="checkCircle" label={t('staffX.kpiArrived')} value={`${arrived.length}/${mainList.length}`} tone="text-lime-300" sub={t('staffX.kpiArrivedSub', { n: todo.length })} />
+          <StatTile icon="ban" label={t('staffX.kpiAbsent')} value={absent.length} tone={absent.length ? 'text-yellow-300' : 'text-white'} />
+          <StatTile icon="hourglass" label={t('staffX.kpiWaitlist')} value={waiting.length} tone="text-sky-300" />
+          <StatTile icon="paddle" label={t('staffX.kpiMatches')} value={ev.matches.length} />
         </KpiRow>
       ) : (
         // Referee: the match side of the session.
         <KpiRow cols={4}>
-          <StatTile icon="🎾" label={t('staffX.kpiMatches')} value={ev.matches.length} tone="text-lime-300" />
-          <StatTile icon="👥" label={t('staffX.kpiPlayersHere')} value={`${arrived.length}/${mainList.length}`} tone="text-sky-300" />
-          <StatTile icon="🏆" label={t('staffX.kpiLeader')} value={leader ? <span className="block truncate text-base sm:text-lg">{leader.name}</span> : '—'} sub={leader ? t('staffX.kpiLeaderSub', { won: leader.won, played: leader.played }) : null} />
-          <StatTile icon="⏱" label={t('staffX.kpiLastMatch')} value={lastMatch ? lastMatch.toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'} />
+          <StatTile icon="paddle" label={t('staffX.kpiMatches')} value={ev.matches.length} tone="text-lime-300" />
+          <StatTile icon="users" label={t('staffX.kpiPlayersHere')} value={`${arrived.length}/${mainList.length}`} tone="text-sky-300" />
+          <StatTile icon="trophy" label={t('staffX.kpiLeader')} value={leader ? <span className="block truncate text-base sm:text-lg">{leader.name}</span> : '—'} sub={leader ? t('staffX.kpiLeaderSub', { won: leader.won, played: leader.played }) : null} />
+          <StatTile icon="timer" label={t('staffX.kpiLastMatch')} value={lastMatch ? lastMatch.toLocaleTimeString(lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'} />
         </KpiRow>
       )}
 
@@ -160,7 +160,7 @@ export default function StaffEventPage() {
         <>
           <div className="flex flex-col sm:flex-row gap-2 mb-3">
             <input className="input flex-1" type="search" placeholder={t('staffView.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
-            <button className="btn-primary shrink-0 text-sm" onClick={() => setShowQr(true)}>📷 {t('qr.scan')}</button>
+            <button className="btn-primary shrink-0 text-sm" onClick={() => setShowQr(true)}>{t('qr.scan')}</button>
           </div>
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <Segmented
@@ -180,12 +180,12 @@ export default function StaffEventPage() {
                 <div className="min-w-0 flex-1">
                   <div className={`break-words ${p.status === 'waitlisted' ? 'text-gray-400' : 'text-white'}`}>{p.full_name}</div>
                   <div className="text-gray-500 text-xs">
-                    {p.status === 'waitlisted' ? `⏳ ${t('events.waitlist')}` : p.status === 'pending' ? t('signup.pendingShort') : p.dupr_level != null ? levelTag(p.dupr_level, ev?.sport || sport, t) : ''}
+                    {p.status === 'waitlisted' ? `${t('events.waitlist')}` : p.status === 'pending' ? t('signup.pendingShort') : p.dupr_level != null ? levelTag(p.dupr_level, ev?.sport || sport, t) : ''}
                   </div>
                 </div>
                 {p.status === 'waitlisted' ? (
                   ev.can.promote && (
-                    <button className="btn-secondary text-sm" disabled={busyId === p.id} onClick={() => act(p, 'promote')}>⬆ {t('staffX.promote')}</button>
+                    <button className="btn-secondary text-sm" disabled={busyId === p.id} onClick={() => act(p, 'promote')}>{t('staffX.promote')}</button>
                   )
                 ) : p.status === 'checked_in' || p.status === 'no_show' ? (
                   <>
@@ -206,7 +206,7 @@ export default function StaffEventPage() {
           {ev.can.walkIn && (
             <form onSubmit={addWalkIn} className="card flex flex-col sm:flex-row gap-2 sm:items-end">
               <div className="flex-1">
-                <label className="text-xs text-gray-400">➕ {t('staffX.walkIn')}</label>
+                <label className="text-xs text-gray-400">{t('staffX.walkIn')}</label>
                 <input className="input" required maxLength={120} placeholder={t('staffX.walkInPh')} value={walkIn} onChange={(e) => setWalkIn(e.target.value)} />
                 <Hint text={t('staffX.walkInHint')} className="mt-1" />
               </div>

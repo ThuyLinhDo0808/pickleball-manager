@@ -72,7 +72,7 @@ export default function CreateEventView({ weekly = false }) {
         hint={<Hint inline text={weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')} />}
         // Phone: the tabs below already lead to the schedule.
         actionsWide
-        actions={<Link href="/events" className="btn-secondary text-sm">🗓 {isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
+        actions={<Link href="/events" className="btn-secondary text-sm">{isClub ? t('nav.schedule') : t('nav.kevents')}</Link>}
       />
       <SectionTabs group="activities" />
       {initial && (

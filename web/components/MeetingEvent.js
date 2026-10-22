@@ -63,7 +63,7 @@ export default function MeetingEvent({ event, onChanged }) {
   return (
     <>
       <div className="mb-4">
-        <p className="text-gray-400 text-xs">👥 {t('vote.kicker')}</p>
+        <p className="text-gray-400 text-xs">{t('vote.kicker')}</p>
         <h1 className="text-white text-2xl font-bold">{event.title}</h1>
       </div>
 
@@ -88,11 +88,11 @@ export default function MeetingEvent({ event, onChanged }) {
       {tab === 'details' && (
         <>
           <section className="card mb-4 grid gap-3 sm:grid-cols-3">
-            <Tile label={`🕒 ${t('mtg.when')}`} value={`${formatDay(event.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}${time ? ` · ${time}` : ''}`} />
-            <Tile label={`📍 ${t('mtg.where')}`} value={event.location || '—'} />
-            <Tile label={`💰 ${t('mtg.fee')}`} value={Number(event.fee_amount) > 0 ? `${formatVnd(event.fee_amount)} / ${t('vote.perPerson')}` : t('public.free')} tone="text-lime-300" />
+            <Tile label={`${t('mtg.when')}`} value={`${formatDay(event.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}${time ? ` · ${time}` : ''}`} />
+            <Tile label={`${t('mtg.where')}`} value={event.location || '—'} />
+            <Tile label={`${t('mtg.fee')}`} value={Number(event.fee_amount) > 0 ? `${formatVnd(event.fee_amount)} / ${t('vote.perPerson')}` : t('public.free')} tone="text-lime-300" />
             <div className="sm:col-span-3 rounded-xl border border-navy-700 bg-navy-900/60 px-3 py-2">
-              <div className="text-gray-400 text-xs">📋 {t('mtg.agenda')}</div>
+              <div className="text-gray-400 text-xs">{t('mtg.agenda')}</div>
               <p className="text-gray-100 text-sm whitespace-pre-line mt-0.5">{event.notice || <span className="text-gray-500">{t('mtg.noAgenda')}</span>}</p>
             </div>
           </section>
@@ -140,7 +140,7 @@ function People({ event, m, coming, run }) {
       </section>
 
       <section className="card mb-4">
-        <h2 className="text-white font-semibold">🎟 {t('mtg.guestsTitle', { n: m.guests.length })}</h2>
+        <h2 className="text-white font-semibold">{t('mtg.guestsTitle', { n: m.guests.length })}</h2>
         <p className="text-gray-400 text-xs mb-3">{t('mtg.guestsHint', { fee: formatVnd(m.fee + m.extra_per_person) })}</p>
         <form onSubmit={add} className="flex flex-col sm:flex-row gap-2 mb-3">
           <input className="input flex-1" required maxLength={120} placeholder={t('mtg.guestName')} value={name} onChange={(e) => setName(e.target.value)} />
@@ -211,7 +211,7 @@ function Finance({ event, m, run }) {
     <>
       <section className="card !p-0 overflow-hidden mb-4">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-navy-700">
-          <h2 className="text-white font-semibold flex-1">💳 {t('mtg.moneyTitle')}</h2>
+          <h2 className="text-white font-semibold flex-1">{t('mtg.moneyTitle')}</h2>
           <label className="flex items-center gap-2 text-xs text-gray-300">
             <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
             {t('mtg.showAll')}
@@ -258,11 +258,11 @@ function Finance({ event, m, run }) {
             </tfoot>
           </table>
         </div>
-        {tt.outstanding > 0 && <p className="px-4 py-2 text-amber-300 text-xs border-t border-navy-700">⏳ {t('mtg.outstanding', { v: formatVnd(tt.outstanding) })}</p>}
+        {tt.outstanding > 0 && <p className="px-4 py-2 text-amber-300 text-xs border-t border-navy-700">{t('mtg.outstanding', { v: formatVnd(tt.outstanding) })}</p>}
       </section>
 
       <section className="card mb-4">
-        <h2 className="text-white font-semibold mb-2">🧾 {t('mtg.expensesTitle')}</h2>
+        <h2 className="text-white font-semibold mb-2">{t('mtg.expensesTitle')}</h2>
         <form onSubmit={addExpense} className="flex flex-col sm:flex-row gap-2 mb-3">
           <input className="input flex-1" required maxLength={200} placeholder={t('mtg.expenseLabel')} value={exp.label} onChange={(e) => setExp({ ...exp, label: e.target.value })} />
           <input className="input sm:w-40" required type="number" inputMode="numeric" min="0" step="1000" placeholder={t('mtg.amount')} value={exp.amount} onChange={(e) => setExp({ ...exp, amount: e.target.value })} />
@@ -284,7 +284,7 @@ function Finance({ event, m, run }) {
                 <li key={e.id} className="flex items-center gap-3 py-2 text-sm">
                   <span className="flex-1 min-w-0 truncate text-gray-100">{e.label}</span>
                   <span className="tabular-nums text-orange-300">−{formatVnd(e.amount)}</span>
-                  <button type="button" className="text-gray-400 hover:text-white text-xs" onClick={() => setEditing({ id: e.id, label: e.label, amount: e.amount })}>✏️ {t('mtg.edit')}</button>
+                  <button type="button" className="text-gray-400 hover:text-white text-xs" onClick={() => setEditing({ id: e.id, label: e.label, amount: e.amount })}>{t('mtg.edit')}</button>
                   <button type="button" className="text-red-400 text-xs" onClick={() => run(() => api.del(`/api/events/${event.id}/meeting/expenses/${e.id}`))}>{t('common.delete')}</button>
                 </li>
               )
@@ -294,7 +294,7 @@ function Finance({ event, m, run }) {
       </section>
 
       <section className="card mb-4">
-        <h2 className="text-white font-semibold mb-3">⚖️ {t('mtg.resultTitle')}</h2>
+        <h2 className="text-white font-semibold mb-3">{t('mtg.resultTitle')}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
           <Tile label={t('mtg.totalPaid')} value={formatVnd(tt.paid)} tone="text-lime-300" />
           <Tile label={t('mtg.totalSponsor')} value={formatVnd(tt.sponsor)} tone="text-sky-300" />
@@ -314,15 +314,15 @@ function Finance({ event, m, run }) {
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-gray-300 text-sm flex-1">{t('mtg.surplus', { v: formatVnd(tt.balance) })}</p>
             <button type="button" className="btn-primary text-sm" onClick={() => window.confirm(t('mtg.toFundAsk', { v: formatVnd(tt.balance) })) && settle('to_fund')}>
-              🏦 {t('mtg.toFund', { v: formatVnd(tt.balance) })}
+              {t('mtg.toFund', { v: formatVnd(tt.balance) })}
             </button>
           </div>
         ) : tt.balance < 0 ? (
           <div>
-            <p className="text-red-300 text-sm font-semibold mb-2">⚠️ {t('mtg.deficit', { v: formatVnd(-tt.balance) })}</p>
+            <p className="text-red-300 text-sm font-semibold mb-2">{t('mtg.deficit', { v: formatVnd(-tt.balance) })}</p>
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-lg border border-navy-600 p-3">
-                <div className="text-white text-sm font-semibold mb-1">🤝 {t('mtg.optSponsor')}</div>
+                <div className="text-white text-sm font-semibold mb-1">{t('mtg.optSponsor')}</div>
                 <select className="input text-sm mb-2" value={sponsor} onChange={(e) => setSponsor(e.target.value)} aria-label={t('mtg.optSponsor')}>
                   <option value="">{t('mtg.pickSponsor')}</option>
                   {m.rows.map((r) => <option key={r.club_member_id} value={r.club_member_id}>{r.full_name}</option>)}
@@ -330,12 +330,12 @@ function Finance({ event, m, run }) {
                 <button type="button" className="btn-secondary w-full !py-1.5 text-sm" disabled={!sponsor} onClick={() => settle('sponsor', { member_id: sponsor })}>{t('mtg.apply')}</button>
               </div>
               <div className="rounded-lg border border-navy-600 p-3">
-                <div className="text-white text-sm font-semibold mb-1">🏦 {t('mtg.optFund')}</div>
+                <div className="text-white text-sm font-semibold mb-1">{t('mtg.optFund')}</div>
                 <p className="text-gray-400 text-xs mb-2">{t('mtg.optFundHint', { v: formatVnd(-tt.balance) })}</p>
                 <button type="button" className="btn-secondary w-full !py-1.5 text-sm" onClick={() => window.confirm(t('mtg.fromFundAsk', { v: formatVnd(-tt.balance) })) && settle('from_fund')}>{t('mtg.apply')}</button>
               </div>
               <div className="rounded-lg border border-navy-600 p-3">
-                <div className="text-white text-sm font-semibold mb-1">➗ {t('mtg.optSplit')}</div>
+                <div className="text-white text-sm font-semibold mb-1">{t('mtg.optSplit')}</div>
                 <p className="text-gray-400 text-xs mb-2">
                   {tt.headcount ? t('mtg.optSplitHint', { n: tt.headcount, v: formatVnd(Math.ceil(-tt.balance / tt.headcount / 1000) * 1000) }) : t('mtg.noAttendees')}
                 </p>
@@ -348,7 +348,7 @@ function Finance({ event, m, run }) {
         )}
         {s?.mode === 'split' && (
           <p className="mt-3 rounded-lg border border-amber-300/40 bg-amber-300/5 px-3 py-2 text-amber-100 text-sm flex flex-wrap items-center gap-2">
-            <span className="flex-1">➗ {t('mtg.splitOn', { v: formatVnd(s.per_person) })}</span>
+            <span className="flex-1">{t('mtg.splitOn', { v: formatVnd(s.per_person) })}</span>
             <button type="button" className="text-gray-300 underline text-xs" onClick={undo}>{t('mtg.undo')}</button>
           </p>
         )}

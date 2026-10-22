@@ -89,17 +89,17 @@ export default function NewTournamentPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="🏆"
+        icon="trophy"
         title={from ? t('tournaments.editTitle') : t('nav.createTournament')}
         subtitle={club?.name}
         actions={
           <Link href={from ? `/club/tournaments/${from.id}` : '/club/tournaments'} className="btn-secondary text-sm">
-            {from ? `← ${from.name}` : `📋 ${t('tournaments.allList')}`}
+            {from ? `← ${from.name}` : `${t('tournaments.allList')}`}
           </Link>
         }
       />
       <SectionTabs group="activities" />
-      {from && <p className="card !py-3 mb-4 border-yellow-400/50 text-yellow-200 text-sm">✏️ {t('tournaments.editHint')}</p>}
+      {from && <p className="card !py-3 mb-4 border-yellow-400/50 text-yellow-200 text-sm">{t('tournaments.editHint')}</p>}
       {loadingFrom && <p className="text-gray-400 text-sm mb-4">{t('common.loading')}</p>}
 
       <Section n={1} title={t('tournaments.kindTitle')}>
@@ -113,7 +113,7 @@ export default function NewTournamentPage() {
               className={`rounded-xl border p-4 text-left transition flex gap-3 items-start ${kind === k ? 'border-lime-400 bg-lime-400/10 ring-1 ring-lime-400/40' : 'border-navy-600 hover:border-navy-500'}`}
             >
               <span className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center text-xl ${kind === k ? 'bg-lime-400/20' : 'bg-navy-900'}`} aria-hidden="true">
-                {k === 'pairs' ? (sport === 'badminton' ? '🏸' : '🏓') : k === 'rr' ? '🔄' : '👥'}
+                
               </span>
               <span className="min-w-0">
                 <span className="block text-white font-semibold">{t(`tournaments.kind_${k}`)}</span>
@@ -145,7 +145,7 @@ export default function NewTournamentPage() {
           </div>
           <div className="col-span-2 md:col-span-4 rounded-lg border border-lime-400/30 bg-lime-400/5 p-3 grid grid-cols-1 sm:grid-cols-[14rem_1fr] gap-x-4 gap-y-1 items-center">
             <div className="min-w-0">
-              <label className="text-xs text-lime-300 font-semibold">💰 {t('tournaments.entryFee')}</label>
+              <label className="text-xs text-lime-300 font-semibold">{t('tournaments.entryFee')}</label>
               <input className="input" type="number" inputMode="numeric" min="0" step="1" placeholder="0" value={info.entry_fee} onChange={(e) => setI({ entry_fee: e.target.value })} />
             </div>
             <Hint text={t('tournaments.entryFeeHint')} />
@@ -415,11 +415,11 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
           })}
         </div>
         {noGender.length > 0 && (
-          <p className="text-amber-200 text-xs mt-2">⚠️ {t('pairing.noGender', { names: noGender.map((m) => m.full_name).join(', ') })}</p>
+          <p className="text-amber-200 text-xs mt-2">{t('pairing.noGender', { names: noGender.map((m) => m.full_name).join(', ') })}</p>
         )}
         {shortage && (
           <div className="mt-3 rounded-lg border border-amber-300/50 bg-amber-300/5 px-3 py-2 text-sm">
-            <p className="text-amber-200 font-semibold">⚠️ {t('pairing.short', { cat: t(`tournaments.cat_${cat}`), n: shortage.n, g: genderWord(shortage.g) })}</p>
+            <p className="text-amber-200 font-semibold">{t('pairing.short', { cat: t(`tournaments.cat_${cat}`), n: shortage.n, g: genderWord(shortage.g) })}</p>
             <p className="text-gray-300 text-xs mt-0.5">{t('pairing.shortHint')}</p>
           </div>
         )}
@@ -429,7 +429,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
         <Section n={n++} title={t('tourRank.title')}>
           <Hint text={t('tourRank.hint')} className="mb-2" />
           <div className="flex flex-wrap items-center gap-3 mb-3 text-sm">
-            <button type="button" className="btn-secondary !py-1 text-sm" onClick={suggestRanks}>✨ {t('tourRank.suggest')}</button>
+            <button type="button" className="btn-secondary !py-1 text-sm" onClick={suggestRanks}>{t('tourRank.suggest')}</button>
             {Object.keys(pickedRanks).length > 0 && (
               <button type="button" className="text-gray-400 hover:text-white" onClick={() => setRanks({})}>{t('tourRank.clear')}</button>
             )}
@@ -464,15 +464,15 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
       <Section n={n++} title={t('tournaments.teams', { n: complete.length })}>
         <div className="flex flex-wrap gap-2 mb-2">
           <button type="button" className="btn-primary text-sm" disabled={picked.length < 2 || unrated.length > 0} onClick={balanced}>
-            ⚖️ {t('tournaments.pairBalanced')}
+            {t('tournaments.pairBalanced')}
           </button>
           <button type="button" className={`text-sm ${custom ? 'btn-primary' : 'btn-secondary'}`} disabled={picked.length < 1} onClick={() => (custom ? setCustom(false) : startCustom())}>
-            ✏️ {custom ? t('pairing.customDone') : t('pairing.custom')}
+            {custom ? t('pairing.customDone') : t('pairing.custom')}
           </button>
         </div>
         {unrated.length > 0 && (
           <div className="mb-3 rounded-lg border border-red-500/50 bg-red-500/5 px-3 py-2 text-sm">
-            <p className="text-red-300 font-semibold">⚠️ {t('pairing.unrated', { n: unrated.length })}</p>
+            <p className="text-red-300 font-semibold">{t('pairing.unrated', { n: unrated.length })}</p>
             <p className="text-gray-300 text-xs mt-0.5">{unrated.map((m) => m.full_name).join(', ')}</p>
             <Hint text={t('pairing.unratedHint')} className="mt-1" />
           </div>
@@ -496,7 +496,7 @@ function PairsSetup({ club, active: allActive, base, ready, onCreated, initial, 
             {t('tournaments.addTeam')}
           </button>
         )}
-        {incomplete > 0 && <p className="text-red-400 text-sm mt-2">⚠️ {t('pairing.incomplete', { n: incomplete })}</p>}
+        {incomplete > 0 && <p className="text-red-400 text-sm mt-2">{t('pairing.incomplete', { n: incomplete })}</p>}
         {blanks > 0 && <p className="text-amber-200 text-sm mt-1">⬚ {t('pairing.blanksNote', { n: blanks })}</p>}
         {teams.length > 0 && unpaired.length > 0 && <p className="text-yellow-300 text-sm mt-1">{t('tournaments.unpaired', { names: unpaired.map((m) => m.full_name).join(', ') })}</p>}
       </Section>

@@ -57,7 +57,7 @@ export function FeedbackForm({ onClose = null }) {
   if (sent) {
     return (
       <div className="text-center py-6">
-        <div className="text-5xl mb-3">💚</div>
+        <div className="text-5xl mb-3"></div>
         <p className="text-white text-lg font-semibold">{t('feedback.thanksTitle')}</p>
         <p className="text-gray-300 text-sm mt-1">{t('feedback.thanks')}</p>
         {onClose ? (

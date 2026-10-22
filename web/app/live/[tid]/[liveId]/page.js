@@ -9,6 +9,7 @@ import { clock, elapsed, sportIcon } from '@/lib/live';
 import { useNow } from '@/lib/useNow';
 import LiveGuide from '@/components/LiveGuide';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 // The scorer's pad: tap the side that won the rally. The server keeps the rules (who
 // serves, from which side, game / match end); this page shows them and the call to read
@@ -120,7 +121,7 @@ export default function ScorerPage() {
                 <li key={id} className={`flex items-center gap-1.5 ${s.server_id === id ? 'text-lime-300 font-semibold' : 'text-gray-300'}`}>
                   <span className="text-[10px] rounded bg-navy-950/70 px-1.5 py-0.5 text-gray-400 w-12 text-center">{cfg.doubles ? (i === 0 ? t('live.right') : t('live.left')) : '—'}</span>
                   <span className="truncate">{name(id)}</span>
-                  {s.server_id === id && <span aria-label={t('live.serving')}>{icon}</span>}
+                  {s.server_id === id && <span aria-label={t('live.serving')}><UiIcon name={icon} className="inline-block w-4 h-4 text-lime-300" /></span>}
                 </li>
               ))}
             </ul>
@@ -139,7 +140,7 @@ export default function ScorerPage() {
         {!s.finished && !saved && <div className="mt-3 text-center text-xs text-gray-400">{t('live.tapWon')}</div>}
         {serving && !s.finished && (
           <span className="absolute -top-2.5 left-4 rounded-full bg-lime-400 text-navy-950 text-[11px] font-bold px-2 py-0.5">
-            {icon} {t('live.serving')}{s.server_side ? ` · ${t(`live.${s.server_side}`)}` : ''}
+            <UiIcon name={icon} className="inline-block w-4 h-4 mr-1 -mt-0.5" />{t('live.serving')}{s.server_side ? ` · ${t(`live.${s.server_side}`)}` : ''}
             {s.two_servers ? ` · ${t('live.serverNo', { n: s.server_no })}` : ''}
           </span>
         )}
@@ -172,11 +173,11 @@ export default function ScorerPage() {
             </form>
           ) : (
             <button type="button" className="text-white font-semibold" onClick={() => setEditingCourt(true)}>
-              <span className="text-red-400">●</span> {live.court || t('live.noCourt')} <span className="text-gray-500 text-sm">✏️</span>
+              <span className="text-red-400">●</span> {live.court || t('live.noCourt')} <span className="text-gray-500 text-sm"><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
             </button>
           )}
           <span className="text-gray-300 text-sm">
-            {t('live.gameN', { n: s?.game_no || 1 })} · {t(`live.scoring_${scoring}`)} · {t('live.pointsN', { n: cfg.points })}{cfg.win_by === 1 ? ` · ${t('live.winBy_1').toLowerCase()}` : ''} · {t(`live.bo${cfg.best_of}`)}{cfg.freeze ? ' · ❄️' : ''}
+            {t('live.gameN', { n: s?.game_no || 1 })} · {t(`live.scoring_${scoring}`)} · {t('live.pointsN', { n: cfg.points })}{cfg.win_by === 1 ? ` · ${t('live.winBy_1').toLowerCase()}` : ''} · {t(`live.bo${cfg.best_of}`)}{cfg.freeze ? ' ·' : ''}
           </span>
         </div>
 
@@ -185,7 +186,7 @@ export default function ScorerPage() {
         ) : (
           <>
             <div className="flex items-center justify-between gap-2 mb-3 rounded-xl border border-navy-700 bg-navy-900/60 px-3 py-2">
-              <span className="text-gray-400 text-xs">⏱ {s.finished ? t('timer.total') : t('timer.match')}</span>
+              <span className="text-gray-400 text-xs">{s.finished ? t('timer.total') : t('timer.match')}</span>
               <span className={`font-mono text-xl font-bold tabular-nums ${s.finished ? 'text-lime-300' : 'text-white'}`}>{times.match == null ? '—' : clock(times.match)}</span>
               {!s.finished && (
                 <span className="text-gray-400 text-xs tabular-nums">
@@ -214,7 +215,7 @@ export default function ScorerPage() {
 
             <div className="my-3 rounded-xl border border-navy-700 bg-navy-950 py-3 text-center">
               {s.finished ? (
-                <div className="text-lime-300 text-xl font-bold">🏆 {t('live.winner', { name: teamLabel(s.winner) })}</div>
+                <div className="text-lime-300 text-xl font-bold">{t('live.winner', { name: teamLabel(s.winner) })}</div>
               ) : (
                 <>
                   <div className="text-gray-400 text-[11px]">{t('live.call')}</div>
@@ -222,7 +223,7 @@ export default function ScorerPage() {
                   {s.point && <div className="mt-1 inline-block rounded-full bg-red-500 text-white text-xs font-bold px-3 py-0.5">{s.point.match ? t('live.matchPoint') : t('live.gamePoint')} · {teamLabel(s.point.team)}</div>}
                 </>
               )}
-              {noteKey && <div className={`mt-2 text-sm font-semibold ${s.note === 'switch_ends' || s.note === 'game_over' ? 'text-amber-300' : 'text-sky-300'}`}>📣 {t(noteKey)}</div>}
+              {noteKey && <div className={`mt-2 text-sm font-semibold ${s.note === 'switch_ends' || s.note === 'game_over' ? 'text-amber-300' : 'text-sky-300'}`}>{t(noteKey)}</div>}
             </div>
 
             {half(2)}
@@ -233,7 +234,7 @@ export default function ScorerPage() {
                 <div className="flex flex-wrap gap-2">
                   {[1, 2].map((side) => (
                     <button key={`s${side}`} type="button" disabled={busy || s.serving === side} className="btn-secondary !py-1.5 text-sm disabled:opacity-40" onClick={() => send('event', { ev: `s${side}` })}>
-                      {icon} {t('live.setServer', { name: teamLabel(side) })}
+                      <UiIcon name={icon} className="inline-block w-4 h-4 mr-1 -mt-0.5" />{t('live.setServer', { name: teamLabel(side) })}
                     </button>
                   ))}
                   {cfg.doubles &&
@@ -253,7 +254,7 @@ export default function ScorerPage() {
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button type="button" className="btn-secondary" disabled={busy || saved || !live.events} onClick={() => send('undo')}>↶ {t('live.undo')}</button>
           {s?.finished && !saved ? (
-            <button type="button" className="btn-primary" disabled={busy} onClick={() => send('save')}>💾 {t('live.save')}</button>
+            <button type="button" className="btn-primary" disabled={busy} onClick={() => send('save')}>{t('live.save')}</button>
           ) : saved ? (
             <Link href={`/live/${tid}`} className="btn-primary text-center">✓ {t('live.saved')}</Link>
           ) : (

@@ -44,7 +44,7 @@ export default function MyBookings({ signedIn = false }) {
   if (!rows || !rows.length) return null;
   return (
     <section className="mb-4">
-      <h2 className="text-white font-semibold mb-2">🎟 {t('mybook.title')}</h2>
+      <h2 className="text-white font-semibold mb-2">{t('mybook.title')}</h2>
       <div className="flex flex-col gap-2">
         {rows.map((b) => (
           <div key={`${b.event.id}:${b.token || b.id}`} className="card !p-3">
@@ -57,12 +57,12 @@ export default function MyBookings({ signedIn = false }) {
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {(b.slots || []).filter((s) => s.ticket_code).map((s) => (
-                <Link key={s.ticket_code} href={`/t/${s.ticket_code}`} className="btn-secondary text-sm">📱 {t('mybook.qr', { name: s.full_name })}</Link>
+                <Link key={s.ticket_code} href={`/t/${s.ticket_code}`} className="btn-secondary text-sm">{t('mybook.qr', { name: s.full_name })}</Link>
               ))}
               {/* Play is over: no more QR tickets — the session review instead. */}
               {b.state === 'ended' ? (
                 b.review && !b.review.answered ? (
-                  <Link href={`/s/${b.review.token}`} className="btn-primary text-sm">⭐ {t('mybook.review')}</Link>
+                  <Link href={`/s/${b.review.token}`} className="btn-primary text-sm">{t('mybook.review')}</Link>
                 ) : b.review?.answered ? (
                   <span className="text-lime-300 text-sm">✓ {t('mybook.reviewed')}</span>
                 ) : null

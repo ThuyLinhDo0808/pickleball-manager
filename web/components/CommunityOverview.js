@@ -16,13 +16,14 @@ import { hasFeature, planFor } from '@/lib/planFeatures';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import UiIcon from '@/components/ui/UiIcon';
 
 function Section({ icon, title, hint, href, children }) {
   const { t } = useI18n();
   return (
     <section className="card !p-0 overflow-hidden mb-4">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-navy-700">
-        <h2 className="text-white font-semibold min-w-0 flex items-center gap-2">{icon} {title} {hint && <Hint inline text={hint} />}</h2>
+        <h2 className="text-white font-semibold min-w-0 flex items-center gap-2"><UiIcon name={icon} className="w-5 h-5 text-gray-400" />{title} {hint && <Hint inline text={hint} />}</h2>
         {href && <Link href={href} className="text-lime-400 text-xs hover:underline">{t('home.details')} →</Link>}
       </div>
       <div className="p-4">{children}</div>
@@ -60,19 +61,19 @@ export default function CommunityOverview({ children }) {
   return (
     <AppShell>
       <PageHeader
-        icon="🎟"
+        icon="ticket"
         title={t('social.overviewTitle')}
         subtitle={t('social.overviewSub', { n: clubs.length })}
         actions={
           // The things a Host opens every day, on the right of the title.
           <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             {[
-              ['/events/create', '➕', t('nav.createGame'), true],
-              [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? '🔁' : '📅', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
-              ['/club/members', '👥', t('nav.members')],
+              ['/events/create', 'plus', t('nav.createGame'), true],
+              [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? 'repeat' : 'calendar', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
+              ['/club/members', 'users', t('nav.members')],
             ].map(([href, icon, label, main]) => (
               <Link key={href} href={href} className={`${main ? 'btn-primary' : 'btn-secondary'} justify-center text-center text-xs sm:text-sm !px-2 sm:!px-3.5`}>
-                <span aria-hidden>{icon}</span> {label}
+                <UiIcon name={icon} className="w-4 h-4" />{label}
               </Link>
             ))}
           </div>
@@ -110,16 +111,16 @@ export default function CommunityOverview({ children }) {
       {data && (
         <details className="group mb-5">
           <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden card !py-3 flex items-center justify-between text-white font-semibold">
-            <span>👥 {t('ux.communityStats')}</span>
+            <span>{t('ux.communityStats')}</span>
             <span className="text-gray-400 group-open:rotate-180 transition-transform" aria-hidden>▾</span>
           </summary>
           <div className="mt-4">
-          <Section icon="👥" title={t('social.secMembers')} hint={t('social.secMembersHint', { d: rules.active_days })} href="/club/members">
+          <Section icon="users" title={t('social.secMembers')} hint={t('social.secMembersHint', { d: rules.active_days })} href="/club/members">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <StatTile icon="👥" label={t('social.totalMembers')} value={m.total} sub={t('social.typeSplit', { v: m.vip ?? 0, p: m.priority ?? 0, f: m.fixed, g: m.guest })} />
+              <StatTile icon="users" label={t('social.totalMembers')} value={m.total} sub={t('social.typeSplit', { v: m.vip ?? 0, p: m.priority ?? 0, f: m.fixed, g: m.guest })} />
               <StatTile icon="🆕" label={t('social.newMembers')} value={m.new_30d ?? 0} tone="text-sky-300" sub={t('social.newMembersSub')} />
-              <StatTile icon="🟢" label={t('social.active')} value={m.active} tone="text-lime-300" sub={t('social.activeSub', { d: rules.active_days })} />
-              <StatTile icon="💤" label={t('social.inactive')} value={m.inactive} tone="text-gray-300" sub={t('social.inactiveSub', { d: rules.active_days })} />
+              <StatTile icon="checkCircle" label={t('social.active')} value={m.active} tone="text-lime-300" sub={t('social.activeSub', { d: rules.active_days })} />
+              <StatTile icon="pause" label={t('social.inactive')} value={m.inactive} tone="text-gray-300" sub={t('social.inactiveSub', { d: rules.active_days })} />
             </div>
             <Split parts={[{ key: 'a', value: m.active, color: 'bg-lime-400' }, { key: 'i', value: m.inactive, color: 'bg-navy-600' }]} />
             <h3 className="text-gray-300 text-sm font-semibold mt-4 mb-2">{t('social.byLevel')}</h3>
@@ -162,26 +163,26 @@ export default function CommunityOverview({ children }) {
             )}
           </Section>
 
-          <Section icon="💰" title={t('social.secFinance')} hint={t('social.secFinanceHint')} href="/finance">
+          <Section icon="money" title={t('social.secFinance')} hint={t('social.secFinanceHint')} href="/finance">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatTile icon="📈" label={t('analytics.income')} value={formatVnd(f.income)} tone="text-lime-400" />
-              <StatTile icon="📉" label={t('analytics.expense')} value={formatVnd(f.expense)} tone="text-orange-300" />
-              <StatTile icon="🏦" label={t('fin.balance')} value={formatVnd(f.balance)} tone={f.balance < 0 ? 'text-red-400' : 'text-white'} />
-              <StatTile icon="⏳" label={t('social.unpaid')} value={formatVnd(f.unpaid)} tone="text-amber-200" sub={t('social.unpaidSub', { n: f.unpaid_fee_count, fees: formatVnd(f.unpaid_fees), plans: formatVnd(f.unpaid_plans) })} />
+              <StatTile icon="trendUp" label={t('analytics.income')} value={formatVnd(f.income)} tone="text-lime-400" />
+              <StatTile icon="trendDown" label={t('analytics.expense')} value={formatVnd(f.expense)} tone="text-orange-300" />
+              <StatTile icon="bank" label={t('fin.balance')} value={formatVnd(f.balance)} tone={f.balance < 0 ? 'text-red-400' : 'text-white'} />
+              <StatTile icon="hourglass" label={t('social.unpaid')} value={formatVnd(f.unpaid)} tone="text-amber-200" sub={t('social.unpaidSub', { n: f.unpaid_fee_count, fees: formatVnd(f.unpaid_fees), plans: formatVnd(f.unpaid_plans) })} />
             </div>
           </Section>
 
-          <Section icon="🔁" title={t('social.secRegular')} hint={t('social.secRegularHint', { n: rules.regular_min, d: 30 })} href="/club/attendance">
+          <Section icon="repeat" title={t('social.secRegular')} hint={t('social.secRegularHint', { n: rules.regular_min, d: 30 })} href="/club/attendance">
             <div className="grid grid-cols-3 gap-3 mb-3">
-              <StatTile icon="⭐" label={t('social.regular')} value={r.regular} tone="text-lime-300" sub={t('social.regularSub', { n: rules.regular_min })} />
-              <StatTile icon="🙂" label={t('social.notRegular')} value={r.not_regular ?? m.total - r.regular} tone="text-sky-300" sub={t('social.notRegularSub', { n: rules.regular_min })} />
-              <StatTile icon="📈" label={t('social.activeRate')} value={`${r.active_rate ?? (m.total ? Math.round((1000 * r.regular) / m.total) / 10 : 0)}%`} tone={(r.active_rate ?? 0) >= 50 ? 'text-lime-300' : (r.active_rate ?? 0) >= 25 ? 'text-amber-200' : 'text-pink-300'} sub={t('social.activeRateSub')} />
+              <StatTile icon="star" label={t('social.regular')} value={r.regular} tone="text-lime-300" sub={t('social.regularSub', { n: rules.regular_min })} />
+              <StatTile icon="user" label={t('social.notRegular')} value={r.not_regular ?? m.total - r.regular} tone="text-sky-300" sub={t('social.notRegularSub', { n: rules.regular_min })} />
+              <StatTile icon="trendUp" label={t('social.activeRate')} value={`${r.active_rate ?? (m.total ? Math.round((1000 * r.regular) / m.total) / 10 : 0)}%`} tone={(r.active_rate ?? 0) >= 50 ? 'text-lime-300' : (r.active_rate ?? 0) >= 25 ? 'text-amber-200' : 'text-pink-300'} sub={t('social.activeRateSub')} />
             </div>
             <Split parts={[{ key: 'r', value: r.regular, color: 'bg-lime-400' }, { key: 'n', value: r.not_regular ?? m.total - r.regular, color: 'bg-navy-600' }]} />
           </Section>
 
           {data.monthly?.length > 0 && (
-            <Section icon="📊" title={t('social.secTrend')} hint={t('social.secTrendHint')} href="/finance">
+            <Section icon="chart" title={t('social.secTrend')} hint={t('social.secTrendHint')} href="/finance">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <TrendBars title={t('social.trSessions')} series={data.monthly.map((x) => ({ month: x.month, value: x.sessions }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
                 <TrendBars title={t('social.trPlayers')} series={data.monthly.map((x) => ({ month: x.month, value: x.players, extra: t('social.trTurns', { n: x.turns }) }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />

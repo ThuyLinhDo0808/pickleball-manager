@@ -136,7 +136,7 @@ export default function PlayerProfile() {
             value={form.dupr_id}
             onChange={(e) => setForm({ ...form, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })}
           />
-          <p className="text-sky-200 text-xs mt-1">ℹ️ {t('dupr.idOptional')}</p>
+          <p className="text-sky-200 text-xs mt-1">{t('dupr.idOptional')}</p>
           <Hint text={t('dupr.idHow')} className="mt-1" />
           {dupr && (dupr.linked || dupr.dupr_id) && (
             <div className="mt-2">
@@ -166,23 +166,23 @@ export default function PlayerProfile() {
 
       {/* Two-step sign-in, devices, sign out everywhere — for every account (players too). */}
       <section id="security" className="card mt-6 scroll-mt-20">
-        <h2 className="text-white font-bold text-lg mb-1">🔐 {t('acct.s_security')}</h2>
+        <h2 className="text-white font-bold text-lg mb-1">{t('acct.s_security')}</h2>
         <p className="text-gray-400 text-sm mb-4">{t('sec.sectionHint')}</p>
         <AccountSecurity />
       </section>
 
       {/* Download my data (personal data rights) + Terms / Privacy links. */}
       <section id="my-data" className="card mt-6 scroll-mt-20">
-        <h2 className="text-white font-bold text-lg mb-1">🗂️ {t('legal.myDataTitle')}</h2>
+        <h2 className="text-white font-bold text-lg mb-1">{t('legal.myDataTitle')}</h2>
         <MyData />
       </section>
 
       {/* Players reach the app team from here (no button on every page: the after-session
           review is where they rate a session). */}
       <section id="help" className="card mt-6 scroll-mt-20">
-        <h2 className="text-white font-bold text-lg mb-1">🛟 {t('feedback.helpTitle')}</h2>
+        <h2 className="text-white font-bold text-lg mb-1">{t('feedback.helpTitle')}</h2>
         <p className="text-gray-400 text-sm mb-3">{t('feedback.helpHint')}</p>
-        <FeedbackButton className="btn-secondary text-sm">💬 {t('feedback.button')}</FeedbackButton>
+        <FeedbackButton className="btn-secondary text-sm">{t('feedback.button')}</FeedbackButton>
       </section>
 
       {/* Sign out lives here (not in the top bar). */}

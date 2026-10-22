@@ -40,7 +40,7 @@ function ClubPicker({ value, name, onPick }) {
   if (value) {
     return (
       <div className="flex items-center gap-2 mt-1">
-        <span className="rounded-full border border-lime-400/50 bg-lime-400/10 px-3 py-1 text-sm text-lime-100">🏠 {name || value}</span>
+        <span className="rounded-full border border-lime-400/50 bg-lime-400/10 px-3 py-1 text-sm text-lime-100">{name || value}</span>
         <button type="button" className="text-xs text-gray-400 hover:text-white" onClick={() => onPick(null, null)}>✕ {t('ann2.anyClub')}</button>
       </div>
     );
@@ -53,7 +53,7 @@ function ClubPicker({ value, name, onPick }) {
           {data.rows.slice(0, 20).map((c) => (
             <li key={c.id}>
               <button type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-navy-700" onClick={() => { onPick(c.id, c.name); setQ(''); setOpen(false); }}>
-                {c.kind === 'community' ? '🎟' : '🏠'} {c.name} <span className="text-gray-500 text-xs">· {c.owner_email || ''}</span>
+                {c.name} <span className="text-gray-500 text-xs">· {c.owner_email || ''}</span>
               </button>
             </li>
           ))}
@@ -129,7 +129,7 @@ function Form({ initial, onDone, onCancel }) {
             onClick={() => setF({ ...f, kind: k, ...(k === 'maintenance' && !f.message ? { message: t('ann2.maintTemplate') } : {}) })}
             className={`rounded-xl border px-3 py-2 text-sm text-left disabled:opacity-40 ${f.kind === k ? (k === 'maintenance' ? 'border-red-400 bg-red-500/15 text-red-100' : 'border-lime-400 bg-lime-400/10 text-lime-100') : 'border-navy-600 text-gray-300'}`}
           >
-            <span className="font-semibold block">{k === 'maintenance' ? '🛠 ' : '📣 '}{t(`ann2.kind_${k}`)}</span>
+            <span className="font-semibold block">{t(`ann2.kind_${k}`)}</span>
             <span className="text-xs opacity-80">{t(`ann2.kindHint_${k}`)}</span>
           </button>
         ))}
@@ -148,7 +148,7 @@ function Form({ initial, onDone, onCancel }) {
 
       {maint ? (
         <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 flex flex-col gap-3">
-          <p className="text-red-100 text-sm">🔒 {t('ann2.maintRule')}</p>
+          <p className="text-red-100 text-sm">{t('ann2.maintRule')}</p>
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="text-sm text-gray-300">
               {t('ann2.maintStart')}
@@ -169,7 +169,7 @@ function Form({ initial, onDone, onCancel }) {
           </div>
           <div className="rounded-lg bg-navy-900/70 p-3 text-sm">
             <p className="text-gray-400 text-xs mb-1">{t('ann2.preview')}</p>
-            <p className="text-white font-semibold">🛠 {f.title.trim() || t('maint.title')}</p>
+            <p className="text-white font-semibold">{f.title.trim() || t('maint.title')}</p>
             <p className="text-gray-200 whitespace-pre-line">{f.message}</p>
             {f.ends_at && <p className="text-amber-200 mt-1">{t('maint.backAt', { time: fmtTime(fromLocal(f.ends_at)) })}</p>}
           </div>
@@ -180,8 +180,8 @@ function Form({ initial, onDone, onCancel }) {
             <label className="text-sm text-gray-300">
               {t('owner.annLevel')}
               <select className="input mt-1" value={f.level} onChange={set('level')}>
-                <option value="info">📣 {t('owner.annInfo')}</option>
-                <option value="warning">⚠️ {t('owner.annWarning')}</option>
+                <option value="info">{t('owner.annInfo')}</option>
+                <option value="warning">{t('owner.annWarning')}</option>
               </select>
             </label>
             <label className="text-sm text-gray-300">
@@ -216,7 +216,7 @@ function Form({ initial, onDone, onCancel }) {
       <label className="flex items-start gap-2 text-sm text-gray-300">
         <input type="checkbox" className="mt-1" checked={f.send_email || emailed} disabled={emailed} onChange={set('send_email')} />
         <span>
-          📧 {t('ann2.sendEmail')}
+          {t('ann2.sendEmail')}
           {emailed && <span className="block text-xs text-lime-300">{t('ann2.emailedN', { n: initial.emailed_count ?? 0, at: fmtTime(initial.emailed_at) })}</span>}
           {!emailed && f.send_email && reach && (reach.email_ready ? <span className="block text-xs text-gray-400">{t('ann2.reach', { n: reach.count })}</span> : <span className="block text-xs text-amber-200">{t('ann2.emailOff')}</span>)}
         </span>
@@ -225,7 +225,7 @@ function Form({ initial, onDone, onCancel }) {
       {err && <p className="text-red-300 text-sm">{err}</p>}
       <div className="flex gap-2 justify-end">
         {onCancel && <button type="button" className="btn-secondary text-sm" onClick={onCancel}>{t('common.cancel')}</button>}
-        <button type="submit" className={`${maint ? 'btn-danger' : 'btn-primary'} text-sm`} disabled={busy}>{initial ? t('common.save') : maint ? `🛠 ${t('ann2.scheduleMaint')}` : t('owner.annCreate')}</button>
+        <button type="submit" className={`${maint ? 'btn-danger' : 'btn-primary'} text-sm`} disabled={busy}>{initial ? t('common.save') : maint ? `${t('ann2.scheduleMaint')}` : t('owner.annCreate')}</button>
       </div>
     </form>
   );
@@ -265,24 +265,24 @@ function Board() {
               <li key={a.id} className={`card !p-3 ${a.kind === 'maintenance' && st === 'down' ? 'border border-red-400/60' : ''}`}>
                 <div className="flex flex-wrap items-center gap-2 mb-1 text-xs">
                   <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_BADGE[st]}`}>{t(`ann2.state_${st}`)}</span>
-                  <span className="text-gray-300">{a.kind === 'maintenance' ? `🛠 ${t('ann2.kind_maintenance')}` : `${a.level === 'warning' ? '⚠️' : '📣'} ${t('ann2.kind_notice')}`}</span>
+                  <span className="text-gray-300">{a.kind === 'maintenance' ? `${t('ann2.kind_maintenance')}` : t('ann2.kind_notice')}</span>
                   <span className="text-gray-400">{fmtTime(a.starts_at)} → {a.ends_at ? fmtTime(a.ends_at) : t('owner.annNoEnd')}</span>
-                  {a.kind !== 'maintenance' && <span className="text-gray-300">👥 {t(`ann2.aud_${a.audience || 'all'}`)}</span>}
-                  {a.club_id && <span className="text-gray-300">🏠 {a.club_name || '—'}</span>}
-                  {a.show_public && a.kind !== 'maintenance' && <span className="text-sky-200">🌐 {t('owner.annPublicShort')}</span>}
-                  {a.emailed_at ? <span className="text-lime-300">📧 {t('ann2.emailedShort', { n: a.emailed_count ?? 0 })}</span> : a.send_email ? <span className="text-amber-200">📧 {t('ann2.emailPending')}</span> : null}
+                  {a.kind !== 'maintenance' && <span className="text-gray-300">{t(`ann2.aud_${a.audience || 'all'}`)}</span>}
+                  {a.club_id && <span className="text-gray-300">{a.club_name || '—'}</span>}
+                  {a.show_public && a.kind !== 'maintenance' && <span className="text-sky-200">{t('owner.annPublicShort')}</span>}
+                  {a.emailed_at ? <span className="text-lime-300">{t('ann2.emailedShort', { n: a.emailed_count ?? 0 })}</span> : a.send_email ? <span className="text-amber-200">{t('ann2.emailPending')}</span> : null}
                 </div>
                 {a.title && <p className="text-white font-semibold text-sm">{a.title}</p>}
                 <p className="text-gray-100 text-sm whitespace-pre-line break-words">{a.message}</p>
                 {!locked(a) && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setEditing(a.id)}>✎ {t('common.edit')}</button>
+                    <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => setEditing(a.id)}>{t('common.edit')}</button>
                     {a.kind === 'maintenance' && st === 'down' ? (
                       <button type="button" className="btn-danger !py-1 text-xs" onClick={() => endNow(a)}>✓ {t('ann2.endNow')}</button>
                     ) : (
-                      <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => toggle(a)}>{a.active ? `⏸ ${t('owner.annTurnOff')}` : `▶ ${t('owner.annTurnOn')}`}</button>
+                      <button type="button" className="btn-secondary !py-1 text-xs" onClick={() => toggle(a)}>{a.active ? `${t('owner.annTurnOff')}` : `▶ ${t('owner.annTurnOn')}`}</button>
                     )}
-                    <button type="button" className="btn-secondary !py-1 text-xs text-red-300" onClick={() => remove(a)}>🗑 {t('common.delete')}</button>
+                    <button type="button" className="btn-secondary !py-1 text-xs text-red-300" onClick={() => remove(a)}>{t('common.delete')}</button>
                   </div>
                 )}
               </li>

@@ -63,7 +63,7 @@ export default function ScoreEntry({ sport, labels, initial = {}, onChange, with
       {withDuration && (
         <div className="flex items-center gap-3">
           <label htmlFor="score-minutes" className="flex-1 text-sm text-gray-300">
-            ⏱ {t('scoreEntry.duration')}
+            {t('scoreEntry.duration')}
             <span className="block text-gray-500 text-xs">{t('scoreEntry.durationHint')}</span>
           </label>
           <div className="w-24 shrink-0 relative">

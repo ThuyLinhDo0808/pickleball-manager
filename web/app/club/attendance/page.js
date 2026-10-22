@@ -16,6 +16,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { addDays, addMonths, todayYmd } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Month = detail (one column per session), year = overview (one column per month).
 const PERIODS = ['month', 'year', 'custom'];
@@ -127,7 +128,7 @@ function GenderCard({ g }) {
   const pct = (n, total) => (total ? Math.round((100 * n) / total) : 0);
   return (
     <section className="card !py-3 mb-4" aria-labelledby="gender-title">
-      <h2 id="gender-title" className="text-white font-semibold text-sm">🚻 {t('gender.title')}</h2>
+      <h2 id="gender-title" className="text-white font-semibold text-sm">{t('gender.title')}</h2>
       <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
         {rows.map((r) => (
           <div key={r.k}>
@@ -340,10 +341,10 @@ export default function AttendancePage() {
   return (
     <AppShell>
       <PageHeader
-        icon="📋"
+        icon="clipboard"
         title={t('nav.memberStats')}
         subtitle={club?.name}
-        actions={tab === 'attendance' && view ? <button type="button" className="btn-secondary text-sm" onClick={exportCsv}>⬇ {t('stats.exportCsv')}</button> : null}
+        actions={tab === 'attendance' && view ? <button type="button" className="btn-secondary text-sm" onClick={exportCsv}>{t('stats.exportCsv')}</button> : null}
       />
       <SectionTabs group="stats" />
 
@@ -366,11 +367,11 @@ export default function AttendancePage() {
 
       {view && (
         <KpiRow cols={5}>
-          <StatTile icon="📅" label={t('statx.sessions')} value={data.events.length} sub={t('statx.sessionsSub', { n: summary.past })} />
-          <StatTile icon="✅" label={t('statx.checkins')} value={summary.checkins} tone="text-lime-300" sub={summary.past ? t('statx.perSession', { n: summary.avg }) : t('statx.noneYet')} />
-          <StatTile icon="🔥" label={t('statx.regulars')} value={summary.regulars} tone="text-amber-300" sub={t('statx.regularsSub')} />
-          <StatTile icon="🤝" label={t('statx.guests')} value={view.guests.length} tone="text-sky-300" sub={t('statx.guestVisits', { n: summary.guestVisits })} />
-          <StatTile icon="🎫" label={t('statx.carry')} value={view.carry} tone="text-pink-300" sub={t('statx.carrySub')} />
+          <StatTile icon="calendar" label={t('statx.sessions')} value={data.events.length} sub={t('statx.sessionsSub', { n: summary.past })} />
+          <StatTile icon="checkCircle" label={t('statx.checkins')} value={summary.checkins} tone="text-lime-300" sub={summary.past ? t('statx.perSession', { n: summary.avg }) : t('statx.noneYet')} />
+          <StatTile icon="bolt" label={t('statx.regulars')} value={summary.regulars} tone="text-amber-300" sub={t('statx.regularsSub')} />
+          <StatTile icon="users" label={t('statx.guests')} value={view.guests.length} tone="text-sky-300" sub={t('statx.guestVisits', { n: summary.guestVisits })} />
+          <StatTile icon="ticket" label={t('statx.carry')} value={view.carry} tone="text-pink-300" sub={t('statx.carrySub')} />
         </KpiRow>
       )}
 
@@ -379,7 +380,7 @@ export default function AttendancePage() {
       <UnderlineTabs
         value={tab}
         onChange={setTab}
-        tabs={TABS.map((k) => ({ key: k, label: t(`stats.tab_${k}`), icon: { attendance: '✅', passes: '🎫', guests: '🤝' }[k] }))}
+        tabs={TABS.map((k) => ({ key: k, label: t(`stats.tab_${k}`), icon: { attendance: 'checkCircle', passes: 'ticket', guests: 'users' }[k] }))}
       />
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
@@ -395,7 +396,7 @@ export default function AttendancePage() {
             </label>
             <div className="flex gap-2 sm:ml-auto">
               {by === 'session' && !editing && (
-                <button type="button" className="btn-secondary text-sm" onClick={() => setEditing(true)}>✏️ {t('stats.editGrid')}</button>
+                <button type="button" className="btn-secondary text-sm" onClick={() => setEditing(true)}>{t('stats.editGrid')}</button>
               )}
             </div>
           </div>
@@ -408,7 +409,7 @@ export default function AttendancePage() {
                 }
                 setEditing(true);
               }}>
-              <span className="text-amber-300 font-semibold">⚠️ {t('stats.missed', { n: view.missed })}</span>{' '}
+              <span className="text-amber-300 font-semibold">{t('stats.missed', { n: view.missed })}</span>{' '}
               <span className="text-lime-400">{t('stats.missedCta')} →</span>
             </button>
           )}
@@ -435,7 +436,7 @@ export default function AttendancePage() {
                     {by === 'session'
                       ? data.events.map((e) => (
                           <th key={e.id} className="text-center whitespace-nowrap font-normal" title={e.title}>
-                            <div className="text-[10px] leading-none">{KIND_ICON[e.kind] || ''}</div>
+                            {KIND_ICON[e.kind] && <UiIcon name={KIND_ICON[e.kind]} className="w-3 h-3 mx-auto text-gray-400" />}
                             {dm(e.event_date)}
                           </th>
                         ))
@@ -491,7 +492,7 @@ export default function AttendancePage() {
                       <td className="text-center text-gray-500 sticky left-0 bg-navy-800">{i + 1}</td>
                       <td className="text-sky-100 whitespace-nowrap sticky left-10 bg-navy-800">
                         {g.full_name}
-                        {g.guest_perk && <span className="ml-1 text-xs">⚡</span>}
+                        {g.guest_perk && <span className="ml-1 text-xs"><UiIcon name="bolt" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
                       </td>
                       {by === 'session'
                         ? data.events.map((e) => {
@@ -636,7 +637,7 @@ export default function AttendancePage() {
                       <td className="text-center text-gray-400">{i + 1}</td>
                       <td className="text-white whitespace-nowrap">
                         {g.full_name}
-                        {g.guest_perk && <span className="ml-1 text-xs">⚡ {t('guests.perk_priority')}</span>}
+                        {g.guest_perk && <span className="ml-1 text-xs">{t('guests.perk_priority')}</span>}
                       </td>
                       <td className="text-gray-400 whitespace-nowrap">{g.phone || '—'}</td>
                       <td className="text-right tabular-nums text-white font-semibold">{g.sessions}</td>

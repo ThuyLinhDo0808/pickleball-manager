@@ -97,7 +97,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
     <section className="card mt-4" aria-labelledby="dupr-export-title">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 id="dupr-export-title" className="text-white font-semibold">📈 {t('duprx.title')} <Hint inline text={t('duprx.hint')} /></h3>
+          <h3 id="dupr-export-title" className="text-white font-semibold">{t('duprx.title')} <Hint inline text={t('duprx.hint')} /></h3>
         </div>
         <button type="button" className="text-xs text-gray-300 underline underline-offset-2" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           {open ? t('duprx.hideList') : t('duprx.showList', { n: list.length })}
@@ -112,11 +112,11 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       </div>
       {missingNames.length > 0 && (
         <p className="text-amber-200 text-xs mt-2">
-          ⚠ {t('duprx.missing', { names: missingNames.join(', ') })}{' '}
+          {t('duprx.missing', { names: missingNames.join(', ') })}{' '}
           {missingPeople.some((p) => p.member_id) && <button type="button" className="underline text-lime-300" onClick={() => setFixOpen(true)}>{t('quickfix.addDupr')}</button>}
         </p>
       )}
-      <Modal open={fixOpen} title={`📈 ${t('quickfix.duprTitle')}`} onClose={() => setFixOpen(false)}>
+      <Modal open={fixOpen} title={`${t('quickfix.duprTitle')}`} onClose={() => setFixOpen(false)}>
         <p className="text-gray-400 text-sm mb-3">{t('quickfix.duprHint')}</p>
         <ul className="flex flex-col gap-2">
           {missingPeople.map((p) => (
@@ -146,7 +146,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
             </select>
           </label>
         )}
-        <button type="button" className="btn-primary text-sm" disabled={busy || !ready.length} onClick={download}>⬇ {t('dupr.downloadN', { n: ready.length })}</button>
+        <button type="button" className="btn-primary text-sm" disabled={busy || !ready.length} onClick={download}>{t('dupr.downloadN', { n: ready.length })}</button>
         {lastExport?.count > 0 && (
           <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => mark(lastExport.items, true)}>✓ {t('dupr.markN', { n: lastExport.count })}</button>
         )}

@@ -46,14 +46,14 @@ export default function EventVotes({ event }) {
   return (
     <section className="card mb-4">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <h2 className="text-white font-semibold">🗳 {t('meeting.votesTitle')}</h2>
+        <h2 className="text-white font-semibold">{t('meeting.votesTitle')}</h2>
         <span className="text-gray-400 text-xs">{t('meeting.votesHint')}</span>
       </div>
       {link && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-lime-400/30 bg-lime-400/5 px-3 py-2 mb-3">
           <span className="text-gray-300 text-xs flex-1 min-w-[12rem]">{t('vote.linkHint')}</span>
           <code className="text-lime-200 text-xs truncate max-w-full">{link}</code>
-          <button type="button" className="btn-primary !py-1 text-sm" onClick={copy}>{copied ? `✓ ${t('vote.copied')}` : `🔗 ${t('vote.copy')}`}</button>
+          <button type="button" className="btn-primary !py-1 text-sm" onClick={copy}>{copied ? `✓ ${t('vote.copied')}` : `${t('vote.copy')}`}</button>
           <a href={link} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white text-xs underline">{t('vote.open')}</a>
         </div>
       )}

@@ -60,7 +60,7 @@ export default function MfaGate() {
   if (need === 'mfa_enroll_required' && scope === 'manager') {
     if (playerPage) return null;
     return (
-      <Modal open title={`🔐 ${t('sec.enrollTitle')}`} onClose={() => {}}>
+      <Modal open title={`${t('sec.enrollTitle')}`} onClose={() => {}}>
         <p className="text-gray-300 text-sm mb-2">{t('sec.enrollManagerBody')}</p>
         <Hint text={t('sec.enrollManagerHint')} className="mb-4" />
         <div className="flex flex-wrap gap-2 justify-end">
@@ -73,7 +73,7 @@ export default function MfaGate() {
 
   if (need === 'mfa_enroll_required') {
     return (
-      <Modal open title={`🔐 ${t('sec.enrollTitle')}`} onClose={() => setNeed(null)}>
+      <Modal open title={`${t('sec.enrollTitle')}`} onClose={() => setNeed(null)}>
         <p className="text-gray-300 text-sm mb-4">{t('sec.enrollBody')}</p>
         <div className="flex flex-wrap gap-2 justify-end">
           <button type="button" className="btn-secondary text-sm" onClick={() => setNeed(null)}>{t('common.close')}</button>
@@ -84,7 +84,7 @@ export default function MfaGate() {
   }
 
   return (
-    <Modal open title={`🔐 ${t('sec.verifyTitle')}`} onClose={() => {}}>
+    <Modal open title={`${t('sec.verifyTitle')}`} onClose={() => {}}>
       <form onSubmit={verify}>
         <p className="text-gray-300 text-sm mb-3">{t('sec.verifyBody')}</p>
         <label htmlFor="mfa-code" className="text-xs text-gray-400">{t('sec.codeLabel')}</label>
@@ -102,7 +102,7 @@ export default function MfaGate() {
         />
         <p className="text-[11px] text-gray-500 mt-1">{t('sec.recoveryHint')}</p>
         {resetAt ? (
-          <p className="text-[11px] text-amber-200 mt-2">⏳ {t('sec.resetWaiting', { at: localDate(new Date(resetAt), 'vi-VN', { dateStyle: 'short', timeStyle: 'short' }, true) })}</p>
+          <p className="text-[11px] text-amber-200 mt-2">{t('sec.resetWaiting', { at: localDate(new Date(resetAt), 'vi-VN', { dateStyle: 'short', timeStyle: 'short' }, true) })}</p>
         ) : (
           <p className="text-[11px] text-gray-500 mt-2">{t('sec.lostAll')}</p>
         )}

@@ -19,7 +19,7 @@ function Person({ p, label }) {
       <Link href={`/owner/hosts/${p.id}`} className="text-white font-semibold hover:text-lime-300">{p.full_name || p.email}</Link>
       <p className="text-gray-300 text-xs break-all">{p.email}{p.username ? ` · @${p.username}` : ''}</p>
       <p className="text-gray-400 text-xs">
-        📞 {p.phone || '—'} · 🎂 {p.birth_date || '—'} · {t('handover.since', { date: p.joined_at ? p.joined_at.slice(0, 10) : '—' })}
+        {p.phone || '—'} · {p.birth_date || '—'} · {t('handover.since', { date: p.joined_at ? p.joined_at.slice(0, 10) : '—' })}
       </p>
       <p className="text-gray-400 text-xs">{t('handover.plan', { tier: (p.tier || 'free').toUpperCase(), n: p.clubs_owned })}</p>
     </div>
@@ -70,7 +70,7 @@ export default function OwnerHandoversPage() {
           <li key={h.id} className="card !p-3">
             <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
               <p className="text-white font-semibold">
-                🔁 {t('handover.what', { n: (h.clubs || []).length, x: h.xeve_events })}
+                {t('handover.what', { n: (h.clubs || []).length, x: h.xeve_events })}
                 <span className="block text-gray-400 text-xs font-normal">{fmtTime(h.created_at)} · {(h.clubs || []).map((c) => c.name).join(', ') || '—'}</span>
               </p>
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${BADGE[h.status]}`}>{t(`handover.s_${h.status}`)}</span>
@@ -79,8 +79,8 @@ export default function OwnerHandoversPage() {
               <Person p={h.from} label={t('handover.from')} />
               <Person p={h.to} label={t('handover.to')} />
             </div>
-            {h.note && <p className="text-gray-300 text-sm mt-2">💬 {h.note}</p>}
-            {h.owner_note && <p className="text-gray-400 text-xs mt-1">🛡 {h.owner_note}{h.decided_by ? ` — ${h.decided_by}` : ''}</p>}
+            {h.note && <p className="text-gray-300 text-sm mt-2">{h.note}</p>}
+            {h.owner_note && <p className="text-gray-400 text-xs mt-1">{h.owner_note}{h.decided_by ? ` — ${h.decided_by}` : ''}</p>}
             {h.status === 'pending' && (
               <div className="mt-2 flex flex-wrap gap-2">
                 <button type="button" className="btn-primary !py-1 text-xs" disabled={busy === h.id} onClick={() => decide(h, 'approve')}>✓ {t('handover.approve')}</button>

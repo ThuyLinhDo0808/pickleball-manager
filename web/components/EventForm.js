@@ -15,6 +15,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { halfHours, policyText } from '@/lib/cancelPolicy';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 
 export const GAME_KINDS = ['game', 'training', 'meeting', 'challenge'];
 // open = upcoming; completed is also set automatically once the slot is over.
@@ -120,7 +121,7 @@ function CourtCards({ f, set }) {
     <div className="col-span-2 md:col-span-4 grid gap-3 md:grid-cols-2">
       {groups.map((g, i) => (
         <section key={g.id} className="rounded-xl border border-navy-600 bg-navy-900/40 p-3" aria-label={t('egroups.courtN', { n: i + 1 })}>
-          <p className="text-lime-300 font-semibold text-sm mb-2">🏟 {t('egroups.courtN', { n: i + 1 })}</p>
+          <p className="text-lime-300 font-semibold text-sm mb-2">{t('egroups.courtN', { n: i + 1 })}</p>
           <div className="grid grid-cols-2 gap-2">
             <label className="min-w-0 text-[11px] text-gray-400">{t('egroups.courtNo')}
               <input className="input" maxLength={20} required value={g.courts} onChange={(e) => put(i, { courts: e.target.value })} />
@@ -335,7 +336,7 @@ function LocationField({ f, set, meeting }) {
             <iframe title={t('map.preview')} src={embed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="w-full h-48 rounded-lg border border-navy-700 bg-navy-900" />
           )}
           {href && (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 text-xs text-lime-400 hover:underline">🗺 {t('map.check')} →</a>
+            <a href={href} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 text-xs text-lime-400 hover:underline">{t('map.check')} →</a>
           )}
         </div>
       )}
@@ -351,7 +352,7 @@ function CostItems({ items, onChange, sessions }) {
   const total = costTotal(items);
   return (
     <div className="col-span-2 md:col-span-4 rounded-xl border border-orange-400/30 bg-orange-400/5 p-3">
-      <p className="text-orange-100 text-sm font-semibold">💸 {t('cost.title')} <Hint inline text={t('cost.hint')} /></p>
+      <p className="text-orange-100 text-sm font-semibold">{t('cost.title')} <Hint inline text={t('cost.hint')} /></p>
       {items.length > 0 && (
         <div className="hidden sm:flex gap-2 mt-2 text-[11px] text-gray-400">
           <span className="w-36 shrink-0">{t('cost.colWhat')}</span>
@@ -511,7 +512,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                     onClick={() => set({ kind: k })}
                     className={`rounded-lg border px-3 py-2 text-sm text-left ${f.kind === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
                   >
-                    <span className="mr-1">{KIND_ICON[k]}</span>
+                    <UiIcon name={KIND_ICON[k]} className="inline-block w-4 h-4 mr-1 -mt-0.5" />
                     {t(`kind.${k}`)}
                   </button>
                 ))}
@@ -573,7 +574,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               <Field label={t('meeting.details')} span={4}>
                 <textarea className="input" rows={3} placeholder={t('meeting.detailsPh')} value={f.notice} onChange={(e) => set({ notice: e.target.value })} />
               </Field>
-              <p className="col-span-2 md:col-span-4 rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-100">🗳 {t('meeting.voteNote')}</p>
+              <p className="col-span-2 md:col-span-4 rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-sky-100">{t('meeting.voteNote')}</p>
             </>
           )}
           {!meeting && (
@@ -606,7 +607,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           {!meeting && f.groups_on && <CourtCards f={f} set={set} />}
           {!meeting && noPayout && (
             <p className="col-span-2 md:col-span-4 -mt-1 text-[11px] text-amber-300">
-              ⚠️ {t('create.noPayout')} <button type="button" className="underline text-lime-300" onClick={() => setPayoutOpen(true)}>{t('quickfix.add')}</button>
+              {t('create.noPayout')} <button type="button" className="underline text-lime-300" onClick={() => setPayoutOpen(true)}>{t('quickfix.add')}</button>
             </p>
           )}
           {showRepeat && (
@@ -666,7 +667,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
               </select>
             </Field>
           )}
-          {!f.no_refund && f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">📋 {policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
+          {!f.no_refund && f.cancel_deadline_hours !== '' && <p className="col-span-2 md:col-span-4 -mt-2 text-xs text-gray-400">{policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}. {t('policy.memberNote')}</p>}
           {/* Sign-ups: one state (taking sign-ups / closed) and, apart from it, an optional
               time at which they close by themselves. */}
           {/* Create: always taking sign-ups, closing at the cancel deadline (one line). Edit: both choices. */}
@@ -674,7 +675,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <>
           <Field label={t('reg.label')} span={4} hint={t('reg.hint')}>
             <div className="grid grid-cols-2 gap-1.5 mt-1 max-w-md" role="radiogroup" aria-label={t('reg.label')}>
-              {[[true, `🟢 ${t('reg.open')}`], [false, `🔒 ${t('reg.closed')}`]].map(([v, label]) => (
+              {[[true, `${t('reg.open')}`], [false, `${t('reg.closed')}`]].map(([v, label]) => (
                 <button key={String(v)} type="button" role="radio" aria-checked={f.allow_public_registration === v} onClick={() => set({ allow_public_registration: v })} className={`rounded-lg border px-3 py-2 text-sm ${f.allow_public_registration === v ? 'border-lime-400 bg-lime-400/10 text-white font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
                   {label}
                 </button>
@@ -705,7 +706,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
           )}
           {!showStatus && (
             <p className="col-span-2 md:col-span-4 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-sm text-gray-100">
-              🟢 {t('reg.open')} · {autoAt ? (sessions > 1 ? t('dl.autoEach', { h: f.cancel_deadline_hours || 0, time: autoAt.slice(11, 16) }) : t('dl.autoAt', { at: fmtLocal(autoAt), h: f.cancel_deadline_hours || 0 })) : t('dl.needStart')}
+              {t('reg.open')} · {autoAt ? (sessions > 1 ? t('dl.autoEach', { h: f.cancel_deadline_hours || 0, time: autoAt.slice(11, 16) }) : t('dl.autoAt', { at: fmtLocal(autoAt), h: f.cancel_deadline_hours || 0 })) : t('dl.needStart')}
             </p>
           )}
           {/* Who can sign up: everyone, or the club's members first (opens to everyone later). */}
@@ -713,7 +714,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <div className="grid grid-cols-2 gap-1.5 mt-1" role="radiogroup" aria-label={t('mfirst.label')}>
               {[false, true].map((v) => (
                 <button key={String(v)} type="button" role="radio" aria-checked={!!f.members_only === v} onClick={() => set({ members_only: v })} className={`rounded-lg border px-2 py-2 text-sm ${!!f.members_only === v ? 'border-lime-400 bg-lime-400/10 text-white font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
-                  {v ? `🔒 ${t('mfirst.private')}` : `🌐 ${t('mfirst.public')}`}
+                  {v ? `${t('mfirst.private')}` : `${t('mfirst.public')}`}
                 </button>
               ))}
             </div>
@@ -762,7 +763,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
 
         {seriesCount > 0 && (
           <section className="card mb-4 border-sky-400/40">
-            <h2 className="text-white font-semibold">🔁 {t('series.title')} <Hint inline text={t('series.hint')} /></h2>
+            <h2 className="text-white font-semibold">{t('series.title')} <Hint inline text={t('series.hint')} /></h2>
             <div className="mt-2 flex flex-col gap-2">
               {[['series', t('series.all', { n: seriesCount + 1 })], ['one', t('series.one')]].map(([v, label]) => (
                 <label key={v} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${f.apply_to === v ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300'}`}>
@@ -773,7 +774,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             </div>
           </section>
         )}
-        {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">⚠️ {warning}</p>}
+        {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">{warning}</p>}
         {error && <p className="text-red-400 text-sm mb-3 lg:hidden">{error}</p>}
         {saved && <p className="text-lime-300 text-sm mb-3 lg:hidden" role="status">✓ {t('common.savedLong')}</p>}
         <div className="flex gap-3 lg:hidden sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 px-4 py-3 bg-navy-950/95 border-t border-navy-700 backdrop-blur">
@@ -787,12 +788,12 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
             <div className="px-4 py-3 border-b border-navy-700 bg-navy-900/50">
               <p className="text-gray-400 text-[11px] font-semibold">{t('createx.preview')}</p>
               <p className="text-white font-semibold truncate mt-0.5">
-                {KIND_ICON[f.kind] && <span className="mr-1">{KIND_ICON[f.kind]}</span>}
+                {KIND_ICON[f.kind] && <UiIcon name={KIND_ICON[f.kind]} className="inline-block w-4 h-4 mr-1 -mt-0.5" />}
                 {f.title || <span className="text-gray-500">{t('createx.untitled')}</span>}
               </p>
             </div>
             <dl className="px-4 py-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
-              <dt className="text-gray-400">📅</dt>
+              <dt className="text-gray-400"><UiIcon name="calendar" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
               <dd className="text-gray-100">
                 {sessions != null
                   ? t('createx.sessionsN', { n: sessions })
@@ -800,7 +801,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                     ? localDate(new Date(`${f.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })
                     : '—'}
               </dd>
-              <dt className="text-gray-400">🕒</dt>
+              <dt className="text-gray-400"><UiIcon name="clock" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
               <dd className="text-gray-100 tabular-nums">
                 {f.groups_on && !meeting
                   ? (f.groups || []).map((g) => (
@@ -808,35 +809,35 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
                     ))
                   : `${f.start_time || '—'}${f.end_time ? ` – ${f.end_time}` : ''}`}
               </dd>
-              <dt className="text-gray-400">📍</dt>
+              <dt className="text-gray-400"><UiIcon name="pin" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
               <dd className="text-gray-100 truncate">{f.location || '—'}{!meeting && !f.groups_on && Number(f.courts) > 0 ? ` · ${t('createx.courtsN', { n: f.courts })}` : ''}</dd>
-              {!meeting && !f.groups_on && <dt className="text-gray-400">👥</dt>}
+              {!meeting && !f.groups_on && <dt className="text-gray-400"><UiIcon name="users" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>}
               {!meeting && !f.groups_on && <dd className="text-gray-100">{t('createx.slotsN', { n: f.slots || 0 })}</dd>}
-              <dt className="text-gray-400">💰</dt>
+              <dt className="text-gray-400"><UiIcon name="money" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
               <dd className="text-gray-100 tabular-nums">
                 {f.groups_on && !meeting ? t('egroups.perGroup') : Number(f.fee_amount) > 0 ? `${Number(f.fee_amount).toLocaleString('vi-VN')}đ / ${t('createx.perPerson')}` : t('createx.free')}
-                {f.services.trim() && <span className="block text-gray-400 text-xs">🎁 {f.services}</span>}
+                {f.services.trim() && <span className="block text-gray-400 text-xs">{f.services}</span>}
               </dd>
               {!meeting && (
                 <>
-                  <dt className="text-gray-400">🏓</dt>
+                  <dt className="text-gray-400"><UiIcon name="paddle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
                   <dd className="text-gray-100">{t(`fmt.${playFormatOf(f.play_format)}`)}</dd>
                 </>
               )}
               {meeting ? (
                 <>
-                  <dt className="text-gray-400">🗳</dt>
+                  <dt className="text-gray-400"><UiIcon name="list" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
                   <dd className="text-sky-200">{t('meeting.votePreview')}</dd>
                 </>
               ) : (
                 <>
-                  <dt className="text-gray-400">⏳</dt>
+                  <dt className="text-gray-400"><UiIcon name="hourglass" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
                   <dd className="text-gray-100">{f.no_refund ? t('policy.noRefund') : f.cancel_deadline_hours === '' ? t('policy.none') : policyText(t, f.cancel_deadline_hours, f.cancel_half_hours)}</dd>
-                  <dt className="text-gray-400">📝</dt>
+                  <dt className="text-gray-400"><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
                   <dd className="text-gray-100">{f.deadline_mode === 'none' || (!f.deadline_mode && !f.deadline_auto && !f.registration_deadline) ? t('reg.mode_none') : f.deadline_auto ? (autoAt ? (sessions > 1 ? t('dl.previewEach', { time: autoAt.slice(11, 16) }) : fmtLocal(autoAt)) : '—') : fmtLocal(f.registration_deadline)}</dd>
-                  <dt className="text-gray-400">🔗</dt>
+                  <dt className="text-gray-400"><UiIcon name="link" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></dt>
                   <dd className={f.allow_public_registration ? 'text-lime-300' : 'text-gray-400'}>{f.allow_public_registration ? t('reg.open') : t('reg.closed')}</dd>
-                  <dt className="text-gray-400">{f.members_only ? '🔒' : '🌐'}</dt>
+                  <dt className="text-gray-400"></dt>
                   <dd className={f.members_only ? 'text-violet-200' : 'text-gray-100'}>{f.members_only ? (f.public_from ? t('mfirst.previewUntil', { at: fmtLocal(f.public_from) }) : t('mfirst.private')) : t('mfirst.public')}</dd>
                 </>
               )}
@@ -859,7 +860,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         </aside>
     </form>
       {/* Outside the event form: the pop-up's own form must not submit this one. */}
-      <Modal open={payoutOpen} title={`🏦 ${t('paySet.title')}`} onClose={() => setPayoutOpen(false)}>
+      <Modal open={payoutOpen} title={`${t('paySet.title')}`} onClose={() => setPayoutOpen(false)}>
         <p className="text-gray-400 text-sm mb-3">{t('quickfix.payoutHint')}</p>
         <HostPaymentSettings bare onSaved={() => { reloadPayTo(); setPayoutOpen(false); }} />
       </Modal>

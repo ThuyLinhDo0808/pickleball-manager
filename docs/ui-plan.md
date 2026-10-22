@@ -267,7 +267,7 @@ Thứ tự được chọn theo nguyên tắc:
 | 0 – Chụp ảnh hiện trạng | bỏ qua | Người dùng chọn bỏ; các đợt sau không có ảnh trước/sau |
 | 1 – Nền tảng dùng chung | xong | Token màu `good/bad/warn/ink`, cỡ chữ `meta/body/title`, bo góc `control/card/sheet` (tailwind + biến CSS `--c-*`); lớp `.num`, `.dash`, `.pill-*`, `.dialog-actions`; `Modal` có `footer`, nút × 44px; `EmptyState`, `LoadingBlock`, `ErrorBlock`, `Num`; 45 biểu tượng mới trong `UiIcon`; Plus Jakarta Sans cho toàn app |
 | 2 – Khung chung / menu | xong | `NAV_ACTIVE` (`lib/nav.js`) = một kiểu đánh dấu cho 3 khung; Owner bỏ hổ phách, điện thoại dùng tab dưới + bảng *Thêm* thay ngăn kéo; cả 3 khung chuyển tab dưới ở <1024px; tiêu đề nhóm bỏ IN HOA, bỏ cắt chữ tên mục / nhãn tab; chuông + ngôn ngữ + đăng xuất cùng một hàng cuối thanh bên (`SignupBell side`), `LangSelect` dùng chung; bảng *Thêm* một cột, 15px, ≥44px; `PageHeader` bỏ ô biểu tượng tô màu và cắt chữ; `ClubAvatar`/`ContextSwitcher` bỏ emoji |
-| 3 – Bỏ emoji làm biểu tượng | chưa làm | |
+| 3 – Bỏ emoji làm biểu tượng | xong | ~1.000 emoji trong 140+ file và i18n: emoji đứng riêng → `UiIcon`, emoji kèm chữ → bỏ; prop `icon` truyền tên `UiIcon`; `StatTile` bỏ biểu tượng, `SettingsSection`/`UnderlineTabs` vẽ `UiIcon`; huy chương → số hạng; chỉ còn ký hiệu chữ ✓ ✕ ★. README bỏ emoji theo |
 | 4 – Bảng thành danh sách, bỏ cắt chữ | chưa làm | |
 | 5 – Lịch & kèo | chưa làm | |
 | 6 – Tài chính & thống kê | chưa làm | |

@@ -78,7 +78,7 @@ export default function ReviewsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon="⭐"
+        icon="star"
         title={t('reviews.title')}
         subtitle={club?.name}
         actions={
@@ -101,8 +101,8 @@ export default function ReviewsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             <Tile label={t('reviews.answers')} value={s.count} />
             <Tile label={t('reviews.overall')} value={`★ ${num(s.average)}`} tone="text-amber-300" />
-            <Tile label={`🏟 ${t('reviews.court')}`} value={num(s.court)} />
-            <Tile label={`📋 ${t('reviews.org')}`} value={num(s.organization)} />
+            <Tile label={`${t('reviews.court')}`} value={num(s.court)} />
+            <Tile label={`${t('reviews.org')}`} value={num(s.organization)} />
             <Tile label={`↩︎ ${t('reviews.comeBack')}`} value={pct(s.come_back_rate)} tone="text-lime-300" sub={t('reviews.comeBackHint', s.come_back)} />
           </div>
 
@@ -127,7 +127,7 @@ export default function ReviewsPage() {
           </div>
 
           <section className="card !p-0 overflow-x-auto">
-            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">🗓 {t('reviews.byMonth')}</h2>
+            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">{t('reviews.byMonth')}</h2>
             <table className="w-full text-sm">
               <thead className="text-gray-400 text-xs text-left">
                 <tr className="border-b border-navy-700">
@@ -151,7 +151,7 @@ export default function ReviewsPage() {
           </section>
 
           <section className="card !p-0 overflow-x-auto">
-            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">📋 {t('reviews.bySession')}</h2>
+            <h2 className="text-white font-semibold text-sm px-4 pt-4 pb-2">{t('reviews.bySession')}</h2>
             <table className="w-full text-sm">
               <thead className="text-gray-400 text-xs text-left">
                 <tr className="border-b border-navy-700">
@@ -176,7 +176,7 @@ export default function ReviewsPage() {
 
           <div className="grid lg:grid-cols-2 gap-3">
             <section className="card !p-4">
-              <h2 className="text-white font-semibold text-sm mb-2">🔒 {t('reviews.notes')}</h2>
+              <h2 className="text-white font-semibold text-sm mb-2">{t('reviews.notes')}</h2>
               {d.notes.length === 0 ? <p className="text-gray-500 text-sm">{t('reviews.notesEmpty')}</p> : (
                 <ul className="flex flex-col divide-y divide-navy-700 text-sm">
                   {d.notes.map((n, i) => (
@@ -191,7 +191,7 @@ export default function ReviewsPage() {
               )}
             </section>
             <section className="card !p-4">
-              <h2 className="text-white font-semibold text-sm mb-2">🤝 {t('reviews.wantJoin')}</h2>
+              <h2 className="text-white font-semibold text-sm mb-2">{t('reviews.wantJoin')}</h2>
               {d.want_join.length === 0 ? <p className="text-gray-500 text-sm">{t('reviews.wantJoinEmpty')}</p> : (
                 <ul className="flex flex-col divide-y divide-navy-700 text-sm">
                   {d.want_join.map((w, i) => (

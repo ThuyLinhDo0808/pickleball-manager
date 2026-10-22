@@ -6,6 +6,7 @@ import { formatVnd } from '@/lib/format';
 import { api } from '@/lib/api';
 import { STATUS_MOD } from '@/lib/clubColors';
 import { formatDay, hhmm, layoutLanes, monthGrid, span, todayYmd, weekDays, weekdayLabels } from '@/lib/dates';
+import UiIcon from '@/components/ui/UiIcon';
 
 // Block colours by status (dark surface). Text stays light for contrast.
 export const STATUS_STYLE = {
@@ -34,11 +35,11 @@ const chipOf = (e) => (e.tone ? `${e.tone.chip} ${STATUS_MOD[e.status] || ''}` :
 const dotOf = (e) => (e.tone ? `${e.tone.dot} ${STATUS_MOD[e.status] || ''}` : STATUS_DOT[e.status]);
 
 // Icon per kind of activity (tournaments come from their own table).
-export const KIND_ICON = { weekly: '🗓', game: '🏓', training: '🎯', meeting: '👥', challenge: '🔄', tournament: '🏆' };
+export const KIND_ICON = { weekly: 'calendar', game: 'paddle', training: 'target', meeting: 'users', challenge: 'refresh', tournament: 'trophy' };
 export const hrefOf = (e) => e.href || `/events/${e.id}`;
 // A badminton club's games show a shuttlecock instead of the paddle.
-const kindIcon = (e) => (e.kind === 'game' && e.sport === 'badminton' ? '🏸' : KIND_ICON[e.kind]);
-const Kind = ({ e }) => (kindIcon(e) ? <span aria-hidden="true">{kindIcon(e)} </span> : null);
+const kindIcon = (e) => (e.kind === 'game' && e.sport === 'badminton' ? 'shuttle' : KIND_ICON[e.kind]);
+const Kind = ({ e }) => (kindIcon(e) ? <UiIcon name={kindIcon(e)} className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 opacity-80" /> : null);
 
 const HOUR_PX = 48; // height of one hour in week/day views
 
@@ -301,7 +302,7 @@ function DayActions({ e, onChanged }) {
   return (
     <div className="flex flex-wrap gap-2 mt-1.5">
       {e.status !== 'cancelled' && (
-        <Link href={`/events/${e.id}/edit`} className="rounded-md border border-navy-600 px-2 py-0.5 text-xs text-gray-200 hover:border-lime-400">✏️ {t('common.edit')}</Link>
+        <Link href={`/events/${e.id}/edit`} className="rounded-md border border-navy-600 px-2 py-0.5 text-xs text-gray-200 hover:border-lime-400">{t('common.edit')}</Link>
       )}
       {canDelete && (
         <button
@@ -310,7 +311,7 @@ function DayActions({ e, onChanged }) {
           className="rounded-md border border-red-500/60 px-2 py-0.5 text-xs text-red-400 hover:bg-red-500/10"
           onClick={() => run(() => api.del(`/api/events/${e.id}`), t('manage.deleteAsk', { title: e.title }))}
         >
-          🗑 {t('common.delete')}
+          {t('common.delete')}
         </button>
       )}
       {canCancel && (
@@ -346,7 +347,7 @@ function DayView({ date, events, onPickDay, onChanged }) {
                 {e.start_time ? `${hhmm(e.start_time)}${e.end_time ? `–${hhmm(e.end_time)}` : ''}` : t('cal.allDay')}
               </div>
               <Link href={hrefOf(e)} className="text-white font-medium hover:text-lime-400"><Kind e={e} />{e.title}</Link>
-              {e.club_name && <div className="text-sky-300 text-xs">{e.sport === 'badminton' ? '🏸' : '🏓'} {e.club_name}</div>}
+              {e.club_name && <div className="text-sky-300 text-xs">{e.club_name}</div>}
               <div className="text-gray-400 text-xs">
                 {[e.location || '—', e.courts && `${e.courts} ${t('events.courts').toLowerCase()}`, e.kind && t(`kind.${e.kind}`), t(`events.status_${e.status}`)].filter(Boolean).join(' · ')}
               </div>

@@ -38,9 +38,9 @@ export default function HostContactPhone({ bare = false, onSaved = null } = {}) 
   if (v == null) return null;
   return (
     <form onSubmit={save} className={bare ? '' : 'rounded-xl border border-navy-600 p-3 mt-4'}>
-      {!bare && <h3 className="text-white font-semibold">☎️ {t('hostContact.title')}</h3>}
+      {!bare && <h3 className="text-white font-semibold">{t('hostContact.title')}</h3>}
       <p className="text-gray-400 text-sm mt-0.5">{t('hostContact.hint')}</p>
-      {!saved && <p className="text-amber-200 text-xs mt-1">⚠️ {t('hostContact.missing')}</p>}
+      {!saved && <p className="text-amber-200 text-xs mt-1">{t('hostContact.missing')}</p>}
       <div className="flex flex-wrap items-end gap-2 mt-2">
         <div className="min-w-0 flex-1">
           <label className="text-xs text-gray-400" htmlFor="host-contact-phone">{t('hostContact.label')}</label>
