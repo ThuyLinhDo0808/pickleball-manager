@@ -14,7 +14,9 @@ Kiểm tra các mục liên quan trong README:
 README viết bằng tiếng Việt, mô tả theo góc nhìn người dùng.
 
 ## Quy tắc giao diện (UI/UX)
-- Dùng taste-skill (phần app-screens; riêng trang "/" theo phần page) để thiết kế, ui-ux-pro-max để kiểm tra trải nghiệm. Ưu tiên: CLAUDE.md > taste-skill > ui-ux-pro-max.
+- Dùng taste-skill (phần app-screens) để thiết kế, ui-ux-pro-max để kiểm tra trải nghiệm. Ưu tiên: CLAUDE.md > taste-skill > ui-ux-pro-max.
+- **Trang giới thiệu "/" và trang đăng nhập giữ nguyên hiệu ứng đặc trưng** (chữ lấp lánh, đốm sáng, nút phát sáng, con trỏ riêng, dải sáng quét, số cảnh lớn, nhãn IN HOA đánh số, bóng, kính mờ). Không áp dụng các quy tắc "bỏ trang trí" của skill cho 2 trang này.
+- **Font:** máy tính dùng font hệ thống (Segoe UI…), điện thoại (<640px) dùng Plus Jakarta Sans — qua biến `--font-app` trong `web/app/globals.css`. Trang giới thiệu dùng Plus Jakarta Sans ở mọi khổ.
 - Giữ màu NexusZone (navy + xanh chanh); màu nhấn chỉ cho nút chính và dữ liệu quan trọng.
 - Đẹp ở 1440px và 390px: không tràn ngang, không chồng chéo, không cắt chữ "…".
 - Điện thoại: vùng bấm ≥44px, chữ nội dung ≥14px, bảng nhiều cột thành danh sách 2 dòng.
