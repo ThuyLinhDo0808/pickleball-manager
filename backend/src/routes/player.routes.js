@@ -1024,12 +1024,12 @@ player.get('/clubs/:clubId', async (req, res) => {
     const mineIds = new Map(mine.map((x) => [x.event_id, x.status]));
     const { data: hist } = await supabase
       .from('event_participants')
-      .select('status, late_cancel, events!inner(id, title, event_date, club_id)')
+      .select('status, late_cancel, events!inner(id, title, kind, event_date, club_id, public_token)')
       .eq('source_club_member_id', me.id)
       .lt('events.event_date', today)
       .limit(200);
     const history = (hist || [])
-      .map((h) => ({ event_id: h.events.id, title: h.events.title, event_date: h.events.event_date, status: h.status, late_cancel: h.late_cancel }))
+      .map((h) => ({ event_id: h.events.id, title: h.events.title, kind: h.events.kind, event_date: h.events.event_date, status: h.status, late_cancel: h.late_cancel, public_token: h.events.public_token || null }))
       .sort((a, b) => b.event_date.localeCompare(a.event_date));
     res.json({
       club: { id: me.clubs.id, name: me.clubs.name, sport: me.clubs.sport || 'pickleball', kind: me.clubs.kind || 'club', description: me.clubs.description || null, address: me.clubs.address || null, map_url: me.clubs.map_url || null, contact: owner?.email || null },
@@ -1047,7 +1047,8 @@ player.get('/clubs/:clubId', async (req, res) => {
             }
           : {}),
       })),
-      past_events: (pastEvents || []).map((e) => ({ ...e, public_token: null, my_status: history.find((h) => h.event_id === e.id)?.status || null })),
+      // Past sessions keep their link: the kèo page shows the results / Lịch chơi (sign-up is closed there).
+      past_events: (pastEvents || []).map((e) => ({ ...e, my_status: history.find((h) => h.event_id === e.id)?.status || null })),
       my_upcoming: mine,
       history: history.slice(0, 30),
       stats: {
