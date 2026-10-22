@@ -322,6 +322,13 @@ html { scroll-behavior: smooth; }
 .input { min-height: 2.5rem; font-size: 1rem; }
 @media (min-width: 640px) { .input { font-size: 0.875rem; } }
 .input[class*='!py-1'] { min-height: 2rem; }
+/* Phones: main buttons 44px tall (easy to hit with a thumb); every button and link-button
+   darkens a little while pressed, without moving anything around it. */
+@media (max-width: 639px) {
+  .btn-primary, .btn-secondary, .btn-danger { min-height: 2.75rem; }
+}
+.btn-primary, .btn-secondary, .btn-danger { transition: filter .12s ease, background-color .12s ease; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.btn-primary:active:not(:disabled), .btn-secondary:active:not(:disabled), .btn-danger:active:not(:disabled) { filter: brightness(.88); }
 .input::placeholder { color: #8d99ad; }
 /* Keyboard users see where they are. */
 a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {

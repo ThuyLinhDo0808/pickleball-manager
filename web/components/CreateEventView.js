@@ -66,7 +66,7 @@ export default function CreateEventView({ weekly = false }) {
   return (
     <AppShell>
       <PageHeader
-        icon={weekly ? '🔁' : '🏓'}
+        icon={weekly ? 'repeat' : 'paddle'}
         title={weekly ? t('nav.createWeekly') : t('nav.createGame')}
         subtitle={isClub && club ? t(community ? 'social.forCommunity' : 'create.forClub', { name: club.name }) : t('finX.scopeXeve')}
         hint={<Hint inline text={weekly ? t('weekly.intro') : community ? t('social.gameIntro') : t('create.gameIntro')} />}

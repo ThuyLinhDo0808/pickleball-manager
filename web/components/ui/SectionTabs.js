@@ -4,38 +4,39 @@ import { usePathname } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
 import { useScope } from '@/lib/useScope';
 import { SHOW_TOURNAMENTS } from '@/lib/hidden';
+import UiIcon from '@/components/ui/UiIcon';
 
 // The pages of one menu group as tabs, so the Host can move between them in one tap.
 // Club and community (Social Manager) only: in one-off Xé Vé these pages stand alone.
 const GROUPS = {
   activities: [
-    { href: '/events', key: 'nav.schedule', icon: '🗓', match: (p) => p === '/events' },
-    { href: '/events/create/weekly', key: 'nav.createWeekly', icon: '🔁', match: (p) => p === '/events/create/weekly' },
-    { href: '/club/tournaments', key: 'nav.tournaments', icon: '🏆', match: (p) => p.startsWith('/club/tournaments') , hidden: !SHOW_TOURNAMENTS },
-    { href: '/events/create', key: 'nav.createGame', icon: '🏓', match: (p) => p === '/events/create' },
+    { href: '/events', key: 'nav.schedule', icon: 'calendar', match: (p) => p === '/events' },
+    { href: '/events/create/weekly', key: 'nav.createWeekly', icon: 'repeat', match: (p) => p === '/events/create/weekly' },
+    { href: '/club/tournaments', key: 'nav.tournaments', icon: 'trophy', match: (p) => p.startsWith('/club/tournaments') , hidden: !SHOW_TOURNAMENTS },
+    { href: '/events/create', key: 'nav.createGame', icon: 'paddle', match: (p) => p === '/events/create' },
   ],
   stats: [
-    { href: '/club/attendance', key: 'nav.memberStats', icon: '📋', match: (p) => p.startsWith('/club/attendance') },
-    { href: '/club/rankings', key: 'nav.rankings', icon: '🏅', match: (p) => p.startsWith('/club/rankings') },
-    { href: '/club/race', key: 'nav.race', icon: '🏆', match: (p) => p.startsWith('/club/race'), community: true },
-    { href: '/club/dupr', key: 'nav.dupr', icon: '📈', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
-    { href: '/club/reviews', key: 'nav.reviews', icon: '⭐', match: (p) => p.startsWith('/club/reviews') },
-    { href: '/club/insights', key: 'nav.insights', icon: '🔬', match: (p) => p.startsWith('/club/insights') },
+    { href: '/club/attendance', key: 'nav.memberStats', icon: 'members', match: (p) => p.startsWith('/club/attendance') },
+    { href: '/club/rankings', key: 'nav.rankings', icon: 'medal', match: (p) => p.startsWith('/club/rankings') },
+    { href: '/club/race', key: 'nav.race', icon: 'trophy', match: (p) => p.startsWith('/club/race'), community: true },
+    { href: '/club/dupr', key: 'nav.dupr', icon: 'chart', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
+    { href: '/club/reviews', key: 'nav.reviews', icon: 'star', match: (p) => p.startsWith('/club/reviews') },
+    { href: '/club/insights', key: 'nav.insights', icon: 'chart', match: (p) => p.startsWith('/club/insights') },
   ],
 };
 
 // Social Manager: Thống kê is business numbers; Bảng xếp hạng stands on its own.
 const COMMUNITY_GROUPS = {
   stats: [
-    { href: '/club/business', key: 'nav.bizPlayers', icon: '📈', match: (p) => p === '/club/business' },
-    { href: '/club/business/finance', key: 'nav.bizMoney', icon: '💰', match: (p) => p.startsWith('/club/business/finance') },
-    { href: '/club/race', key: 'nav.race', icon: '🏆', match: (p) => p.startsWith('/club/race') },
-    { href: '/club/dupr', key: 'nav.dupr', icon: '📈', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
-    { href: '/club/reviews', key: 'nav.reviews', icon: '⭐', match: (p) => p.startsWith('/club/reviews') },
+    { href: '/club/business', key: 'nav.bizPlayers', icon: 'chart', match: (p) => p === '/club/business' },
+    { href: '/club/business/finance', key: 'nav.bizMoney', icon: 'money', match: (p) => p.startsWith('/club/business/finance') },
+    { href: '/club/race', key: 'nav.race', icon: 'trophy', match: (p) => p.startsWith('/club/race') },
+    { href: '/club/dupr', key: 'nav.dupr', icon: 'chart', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
+    { href: '/club/reviews', key: 'nav.reviews', icon: 'star', match: (p) => p.startsWith('/club/reviews') },
   ],
   rankings: [
-    { href: '/club/rankings', key: 'nav.rankings', icon: '🏅', match: (p) => p.startsWith('/club/rankings') },
-    { href: '/leaderboard', key: 'nav.globalRank', icon: '🌏', match: (p) => p.startsWith('/leaderboard') },
+    { href: '/club/rankings', key: 'nav.rankings', icon: 'medal', match: (p) => p.startsWith('/club/rankings') },
+    { href: '/leaderboard', key: 'nav.globalRank', icon: 'globe', match: (p) => p.startsWith('/leaderboard') },
   ],
 };
 
@@ -61,9 +62,9 @@ export default function SectionTabs({ group }) {
               key={tab.href}
               href={tab.href}
               aria-current={active ? 'page' : undefined}
-              className={`flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-center text-xs leading-tight transition sm:flex-row sm:gap-0 sm:rounded-full sm:border sm:px-3.5 sm:py-2 sm:text-sm sm:whitespace-nowrap ${active ? 'bg-lime-400 text-navy-950 font-semibold sm:border-lime-400 sm:bg-lime-400/15 sm:text-lime-200' : 'text-gray-300 sm:border-navy-600 sm:text-gray-200 hover:text-white sm:hover:border-lime-400'}`}
+              className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-center text-xs leading-tight transition-colors active:bg-navy-700 sm:min-h-0 sm:flex-row sm:gap-0 sm:rounded-full sm:border sm:px-3.5 sm:py-2 sm:text-sm sm:whitespace-nowrap ${active ? 'bg-lime-400 text-navy-950 font-semibold sm:border-lime-400 sm:bg-lime-400/15 sm:text-lime-200' : 'text-gray-300 sm:border-navy-600 sm:text-gray-200 hover:text-white sm:hover:border-lime-400'}`}
             >
-              <span aria-hidden="true" className="sm:mr-1.5">{tab.icon}</span>
+              <UiIcon name={tab.icon} className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-1.5" />
               <span>{t(key)}</span>
             </Link>
           );

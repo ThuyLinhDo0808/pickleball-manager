@@ -142,6 +142,8 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 
 **Bộ chuyển ngữ cảnh** mở thành một bảng nổi ngay dưới nút (không bị thanh menu cắt mép, kể cả khi menu thu gọn); menu bên trái chỉ cuộn dọc, không cuộn ngang. **Thanh cuộn:** thanh cuộn của menu và bảng mảnh, màu tối theo nền (không còn thanh trắng có mũi tên); các hàng tab (*Thống kê thành viên · Bảng xếp hạng*, *Số buổi chơi · Buổi còn lại…*, tab Thành viên…) và hàng thẻ số liệu không hiện thanh cuộn — trên điện thoại vẫn vuốt ngang được.
 
+**Giao diện điện thoại (biểu tượng & nút bấm):** tiêu đề trang, các tab (*Lịch hoạt động · Tạo lịch cố định · Tạo kèo lẻ*, tab trong trang kèo *Người chơi · Tài chính · Trận đấu · Cài đặt*…) và các nút chính của trang kèo (*Gửi link · Điểm danh · Thêm người*) dùng **biểu tượng nét mảnh** cùng kiểu với menu, thay cho emoji (emoji hiện khác nhau trên mỗi điện thoại). Trên điện thoại, mọi nút chính và ô tab cao tối thiểu **44px** cho dễ bấm, có **hiệu ứng khi chạm** (nút tối đi một chút) và không bị phóng to khi bấm đúp. Khung báo *Cơ sở dữ liệu cần cập nhật* tự xuống dòng tên file migration nên không làm trang tràn ngang.
+
 **Menu:**
 - Trên máy tính, menu bên trái chia theo **nhóm (segment)**. Mỗi nhóm thu gọn/mở rộng được, app nhớ trạng thái. Nhóm chứa trang đang mở tự bung ra.
 - Nút mũi tên thu menu lại thành dải icon.

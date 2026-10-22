@@ -288,7 +288,7 @@ export default function EventsPage() {
   return (
     <AppShell>
       <PageHeader
-        icon={isClub && !community ? '🗓' : '🎟'}
+        icon={isClub && !community ? 'calendar' : 'ticket'}
         title={isClub && !community ? t('nav.schedule') : t('nav.kevents')}
         subtitle={isClub ? (manyClubs && clubFilter === 'all' ? t(community ? 'social.allCommunities' : 'calx.allYourClubs', { n: clubs.length }) : (clubs || []).find((c) => c.id === clubFilter)?.name || club?.name) : t('finX.scopeXeve')}
         actionsWide={isClub} // phone: the tabs below lead to the create pages

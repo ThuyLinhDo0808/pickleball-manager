@@ -1,3 +1,5 @@
+import UiIcon, { hasUiIcon } from '@/components/ui/UiIcon';
+
 // Page title row shared by the redesigned sections: icon tile, title, a sub-line
 // (usually the current club) and actions on the right.
 // `hint`: a short guide shown as an (i) next to the title (instead of a separate line).
@@ -6,7 +8,7 @@ export default function PageHeader({ icon, title, subtitle, actions, actionsWide
   return (
     <div className="flex flex-wrap items-end justify-between gap-3 mb-3 sm:mb-4">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-        <span className="h-9 w-9 sm:h-11 sm:w-11 shrink-0 rounded-xl bg-lime-400/15 text-lime-300 flex items-center justify-center text-lg sm:text-xl" aria-hidden="true">{icon}</span>
+        <span className="h-9 w-9 sm:h-11 sm:w-11 shrink-0 rounded-xl bg-lime-400/15 text-lime-300 flex items-center justify-center text-lg sm:text-xl" aria-hidden="true">{hasUiIcon(icon) ? <UiIcon name={icon} className="w-5 h-5 sm:w-6 sm:h-6" /> : icon}</span>
         <div className="min-w-0">
           <h1 className="text-white text-xl sm:text-2xl font-bold leading-tight flex items-center gap-2 min-w-0"><span className="truncate">{title}</span>{hint}</h1>
           {subtitle && <p className="text-gray-400 text-sm truncate">{subtitle}</p>}

@@ -16,7 +16,7 @@ export default function SchemaBanner() {
     <div className="mb-4 rounded-xl border-2 border-red-400/70 bg-red-500/10 px-4 py-3 text-sm">
       <p className="text-red-200 font-bold">⚠️ {t('schema.title')}</p>
       <p className="text-gray-200 mt-1">{t('schema.hint')}</p>
-      <ul className="mt-1 font-mono text-xs text-red-100">
+      <ul className="mt-1 font-mono text-xs text-red-100 break-all">
         {missing.map((m) => <li key={m}>supabase/migrations/{m}</li>)}
       </ul>
     </div>

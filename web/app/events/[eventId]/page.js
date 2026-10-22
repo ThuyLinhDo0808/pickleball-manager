@@ -2,6 +2,7 @@
 import DuprExport from '@/components/DuprExport';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import EventStandings from '@/components/EventStandings';
+import UiIcon from '@/components/ui/UiIcon';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
@@ -292,13 +293,13 @@ export default function EventDetailPage() {
           // Phone: three equal buttons in one row (icon above the word); wider screens: on the right.
           <div className="grid grid-cols-3 gap-2 mt-3 sm:flex sm:flex-wrap sm:justify-end">
             <button type="button" className="btn-primary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={copyLink} disabled={!event.allow_public_registration}>
-              <span aria-hidden>📤</span> <span>{linkCopied ? t('events.copied') : t('ux.sendLink')}</span>
+              <UiIcon name="send" /> <span>{linkCopied ? t('events.copied') : t('ux.sendLink')}</span>
             </button>
             <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => setShowQr(true)}>
-              <span aria-hidden>📷</span> <span>{t('ux.checkin')}</span>
+              <UiIcon name="scan" /> <span>{t('ux.checkin')}</span>
             </button>
             <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => { setTab('participants'); setShowImport(true); }}>
-              <span aria-hidden>➕</span> <span>{t('ux.addPlayer')}</span>
+              <UiIcon name="userPlus" /> <span>{t('ux.addPlayer')}</span>
             </button>
           </div>
         )}
@@ -317,10 +318,10 @@ export default function EventDetailPage() {
             role="tab"
             aria-selected={tab === tb}
             onClick={() => setTab(tb)}
-            className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:flex-row sm:gap-1.5 sm:text-sm leading-tight ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800'}`}
+            className={`relative flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:min-h-0 sm:flex-row sm:gap-1.5 sm:text-sm leading-tight transition-colors ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800 active:bg-navy-700'}`}
           >
             {/* Every tab says what it is (icon + word), counts in brackets. */}
-            <span aria-hidden>{{ participants: '👥', finance: '💰', matches: '🏓', details: '⚙️' }[tb]}</span>
+            <UiIcon name={{ participants: 'users', finance: 'wallet', matches: 'paddle', details: 'settings' }[tb]} className="w-5 h-5 sm:w-4 sm:h-4" />
             <span>
               {{ participants: t('ux.tabPlayers'), finance: t('ux.tabMoney'), matches: t('ux.tabMatches'), details: t('ux.tabSettings') }[tb]}
               {tb === 'participants' && ` (${main.length})`}
