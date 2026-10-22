@@ -1,6 +1,10 @@
-# 🏓 Quản Lý Pickleball — Pickleball Manager
+# 🏓 NexusZone — Where the Pickleball Community Connects
 
-Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** cho người tổ chức (Host). Người chơi dùng chung app để tự đăng ký kèo, tham gia CLB và thanh toán. Trọng tài và điều phối viên cũng dùng chung app để check-in và nhập tỷ số.
+**NexusZone** là nền tảng vận hành chuyên cho **cộng đồng xé vé** và **câu lạc bộ** môn **Pickleball** (trước mắt chỉ Pickleball). Host quản lý vé, quỹ, lịch chơi và thành viên; người chơi tìm kèo, đăng ký, chuyển khoản và vào sân — tất cả trên cùng một nền tảng.
+
+**Ý nghĩa tên:** *Nexus* là điểm giao thoa, trung tâm kết nối nơi mọi thứ hội tụ; *Zone* là vùng không gian, lãnh địa, sân chơi riêng. Ghép lại: **"vùng đất trung tâm của sự kết nối"** — mỗi thành phần trong hệ sinh thái Pickleball (Host quản lý quỹ / vé, HLV tìm học viên, ban tổ chức lập giải, người chơi tìm trận) có một "lãnh địa" riêng để vận hành trơn tru. Thương hiệu hướng tới sự chuyên nghiệp, uy tín, có hệ thống (B2B / B2C), tự động hoá từ tài chính đến lịch trình.
+
+**Slogan:** *NexusZone - Where the Pickleball Community Connects*
 
 - Giao diện tiếng Việt (có tiếng Anh), tông navy/xanh chanh.
 - Chạy tốt trên điện thoại (thanh menu dưới) và máy tính (menu bên trái).
@@ -73,7 +77,8 @@ Web app quản lý **câu lạc bộ pickleball** và **kèo lẻ (Xé Vé)** ch
 ### 3.0. Trang giới thiệu (`/`)
 Người chưa đăng nhập mở địa chỉ gốc của web sẽ thấy **trang giới thiệu** (đã đăng nhập thì vào thẳng *Trang chủ* `/home`). Trang không phải cuộn dài: nội dung chia thành **6 cảnh toàn màn hình**, mỗi lần chỉ hiện một cảnh.
 - **Chuyển cảnh:** lăn chuột một nấc, vuốt lên / xuống, phím **↑ ↓ / PageUp / PageDown / Space**, hai nút **↑ ↓** ở góc phải dưới hoặc các vạch bên phải màn hình (rê chuột để thấy tên cảnh). **Home / End** về cảnh đầu / cuối.
-- **6 cảnh, ít chữ:** mỗi cảnh chỉ có tiêu đề, một câu ngắn và 3 nhãn (ví dụ *Đăng ký qua link · VietQR · Vé QR check-in*) cùng một nút, bên cạnh là hình minh hoạ. *01 Mở đầu* (**Tạo tài khoản miễn phí**, **Tìm CLB gần bạn**) · *02 Người chơi* · *03 Club Manager* · *04 Social Manager* · *05 Thi đấu & DUPR* · *06 Bắt đầu* (3 bước một dòng *Tạo tài khoản → Mở CLB hoặc cộng đồng → Gửi link, bắt đầu chơi*, nút **Bắt đầu ngay / Tôi đã có tài khoản**, 4 **câu hỏi thường gặp** bấm để mở, liên kết Tìm CLB · Điều khoản · Chính sách bảo mật).
+- **Thương hiệu NexusZone:** logo **NZ** + chữ *NexusZone*; tiêu đề trình duyệt *NexusZone*. Cảnh mở đầu lấy **slogan** làm tiêu đề lớn *Where the Pickleball / Community Connects.*, câu giới thiệu *Trạm điều hành cho cộng đồng xé vé và câu lạc bộ Pickleball — vé, quỹ, lịch chơi và người chơi hội tụ về một nơi.* và một dòng giải nghĩa tên (*Nexus · điểm hội tụ…*, *Zone · lãnh địa riêng…*).
+- **6 cảnh, ít chữ:** mỗi cảnh chỉ có tiêu đề, một câu ngắn và 3 nhãn cùng một nút, bên cạnh là hình minh hoạ. Thứ tự đặt trọng tâm vào xé vé và CLB: *01 Mở đầu* (**Tạo tài khoản miễn phí**, **Tìm kèo / CLB gần bạn**) · *02 Cộng đồng xé vé* (Social Manager) · *03 Câu lạc bộ* (Club Manager) · *04 Người chơi* · *05 Thi đấu & DUPR* · *06 Bắt đầu* (tiêu đề *Vào lãnh địa của bạn.*, 3 bước *Tạo tài khoản → Mở cộng đồng xé vé hoặc CLB → Gửi link, bắt đầu chơi*, nút **Bắt đầu ngay / Tôi đã có tài khoản**, 5 **câu hỏi thường gặp** — câu đầu *NexusZone là gì?* — liên kết Tìm kèo / CLB · Điều khoản · Chính sách bảo mật, *© NexusZone*).
 - **Thanh trên cùng:** logo, **EN / VI**, **Đăng nhập**, **Đăng ký** và nút **Mục lục** — mở màn hình mục lục liệt kê 6 cảnh bằng chữ lớn (bấm để nhảy tới), kèm mô tả ngắn từng cảnh, nút đăng ký / đăng nhập và các liên kết. **Esc** để đóng.
 - **Góc trái dưới:** số cảnh lớn (*02 / 06*) cùng tên cảnh và thanh tiến độ.
 - **Hiệu ứng chuyển cảnh:** chữ tiêu đề trồi lên từng từ khỏi mặt nạ, cảnh cũ trượt lên rồi biến mất; hình minh hoạ xoay vào từ dưới, mờ dần thành rõ; một dải sáng quét ngang màn hình theo hướng di chuyển; số cảnh lăn đổi; số lớn viền mờ ở nền đổi theo cảnh.
