@@ -172,7 +172,8 @@ const fromMember = (m) => ({
   gender: m.gender || '',
   dupr_level: m.dupr_level ?? '',
   dupr_id: m.dupr_id || '',
-  member_type: m.member_type || 'fixed',
+  // Community: someone still in their first 30 days shows as "Người chơi mới".
+  member_type: m.member_type === 'guest' && m.newcomer_until && m.newcomer_until >= new Date().toISOString().slice(0, 10) ? 'new' : m.member_type || 'fixed',
   tier: m.tier || '',
   guest_perk: m.guest_perk ? 'priority' : '',
   guest_discount_pct: m.guest_discount_pct ?? '',
@@ -222,10 +223,11 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
       phone: f.phone.trim() || null,
       gender: f.gender || null,
       dupr_level: f.dupr_level === '' ? null : Number(f.dupr_level),
-      member_type: f.member_type,
+      // 'new' (community): a drop-in in their first 30 days; the server keeps the date.
+      member_type: f.member_type === 'new' && !community ? 'guest' : f.member_type,
       tier: f.member_type === 'fixed' && !community ? f.tier || null : null,
       // Community: anyone can be "khách ưu tiên" (VIP = holding a pass, not a field).
-      ...(f.member_type === 'guest' || community
+      ...(f.member_type !== 'fixed' || community
         ? { guest_perk: f.guest_perk || null, guest_discount_pct: f.guest_perk && f.guest_discount_pct !== '' ? Number(f.guest_discount_pct) : null }
         : {}),
       ...birthPayload(f.birth),
@@ -269,8 +271,18 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
       <div className="min-w-0">
         <label className="text-xs text-gray-400">{t('members.type')}</label>
         <select className="input" value={f.member_type} onChange={(e) => set({ member_type: e.target.value })}>
-          <option value="fixed">{t('members.fixed')}</option>
-          <option value="guest">{t('members.guest')}</option>
+          {community ? (
+            <>
+              <option value="guest">{t('members.guest')}</option>
+              <option value="fixed">{t('members.fixed')}</option>
+              <option value="new">{t('members.newPlayer')}</option>
+            </>
+          ) : (
+            <>
+              <option value="fixed">{t('members.fixed')}</option>
+              <option value="guest">{t('members.guest')}</option>
+            </>
+          )}
         </select>
       </div>
       <div className="min-w-0">

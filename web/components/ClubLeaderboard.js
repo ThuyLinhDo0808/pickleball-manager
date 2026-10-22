@@ -97,6 +97,8 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
 
   // Podium: only players with a place (enough matches), by win rate.
   const top3 = !sort.key ? rows.filter((r) => r.eligible !== false).slice(0, 3) : [];
+  const onPodium = new Set(top3.map((r) => r.club_member_id));
+  const listRows = rows.filter((r) => !onPodium.has(r.club_member_id));
   const saveMin = async (n) => {
     await api.put(settingsUrl, { rank_min_matches: n });
     reload();
@@ -139,25 +141,30 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {error?.status === 402 && <p className="card text-gray-300 text-sm">{t('plan.rankingsOff')}</p>}
 
+      {/* Podium as steps: 2 · 1 · 3, the step's height by place; the list below goes on from 4. */}
       {!loading && top3.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 items-end">
-          {[1, 0, 2].map((idx) => {
-            const r = top3[idx];
-            if (!r) return <div key={idx} />;
-            const h = ['pt-8 sm:pt-10', 'pt-4 sm:pt-6', 'pt-1 sm:pt-2'][idx];
-            const ring = ['ring-amber-300', 'ring-gray-300', 'ring-orange-400'][idx];
-            return (
-              <div key={r.club_member_id} className={`card !p-3 text-center flex flex-col items-center ${idx === 0 ? 'border-amber-300/60 bg-amber-300/5' : ''}`}>
-                <div className={h} />
-                <div className={`rounded-full ring-2 ${ring}`}><Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={idx === 0 ? 52 : 42} /></div>
-                <div className="text-lime-300 text-lg font-bold tabular-nums -mt-1">{idx + 1}</div>
-                <div className="text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
-                <div className="text-lime-300 text-sm font-bold tabular-nums">{r.win_rate}%</div>
-                <div className="text-gray-400 text-[11px] tabular-nums">{r.wins}-{r.losses} · {r.point_diff > 0 ? `+${r.point_diff}` : r.point_diff}</div>
-              </div>
-            );
-          })}
-        </div>
+        <section className="card !pb-0 mb-4 overflow-hidden" aria-label={t('rankx.podium')}>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 items-end max-w-xl mx-auto">
+            {[1, 0, 2].map((idx) => {
+              const r = top3[idx];
+              if (!r) return <div key={idx} />;
+              const step = ['h-28 sm:h-32', 'h-20 sm:h-24', 'h-14 sm:h-16'][idx];
+              const ring = ['ring-amber-300', 'ring-gray-300', 'ring-orange-400'][idx];
+              const tone = ['bg-amber-300/20 border-amber-300/50 text-amber-200', 'bg-gray-300/10 border-gray-300/40 text-gray-200', 'bg-orange-400/10 border-orange-400/40 text-orange-200'][idx];
+              return (
+                <div key={r.club_member_id} className="flex flex-col items-center text-center min-w-0">
+                  <div className={`rounded-full ring-2 ${ring}`}><Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={idx === 0 ? 56 : 44} /></div>
+                  <div className="mt-1.5 text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
+                  <div className="text-lime-300 text-sm font-bold tabular-nums">{r.win_rate}%</div>
+                  <div className="text-gray-400 text-[11px] tabular-nums mb-2">{r.wins}-{r.losses} · {r.point_diff > 0 ? `+${r.point_diff}` : r.point_diff}</div>
+                  <div className={`w-full ${step} rounded-t-xl border border-b-0 flex items-start justify-center pt-2 ${tone}`}>
+                    <span className="text-2xl sm:text-3xl font-extrabold tabular-nums">{idx + 1}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {!loading && a && (stats.rankings.length > 0 || a.top_attendance.length > 0) && (
@@ -203,7 +210,9 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
             <h2 className="text-white font-semibold">{t(`rankings.group_${group}`)}</h2>
             <span className="text-gray-400 text-xs">{t('rankx.players', { n: rows.length })}</span>
           </div>
-          {rows.length === 0 ? (
+          {rows.length > 0 && listRows.length === 0 ? (
+            <p className="p-4 text-gray-500 text-sm">{t('rankx.onlyPodium')}</p>
+          ) : rows.length === 0 ? (
             <div className="p-8 text-center">
               <div className="text-4xl mb-2" aria-hidden="true"><UiIcon name="paddle" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></div>
               <p className="text-gray-400 text-sm">{t('rankings.noData')}</p>
@@ -227,9 +236,9 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r, i) => (
+                  {listRows.map((r, i) => (
                     <tr key={r.club_member_id} className={`${r.club_member_id === meId ? 'bg-lime-400/10' : !sort.key && r.rank && r.rank <= 3 ? 'bg-amber-300/[0.04]' : ''} ${r.eligible === false ? 'opacity-60' : ''}`}>
-                      <td className="text-center text-gray-400" title={r.eligible === false ? t('rankx.notEnough', { n: stats.min_matches }) : undefined}>{sort.key ? i + 1 : r.eligible === false ? '—' : r.rank <= 3 ? MEDALS[r.rank - 1] : r.rank ?? i + 1}</td>
+                      <td className="text-center text-gray-400" title={r.eligible === false ? t('rankx.notEnough', { n: stats.min_matches }) : undefined}>{sort.key ? i + 1 : r.eligible === false ? '—' : r.rank ?? i + 1 + top3.length}</td>
                       <td>
                         <span className="flex items-center gap-2">
                           <Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={26} />

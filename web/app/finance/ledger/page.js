@@ -1,6 +1,6 @@
 'use client';
 import Hint from '@/components/ui/Hint';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
 import FundCalculator from '@/components/FundCalculator';
@@ -40,7 +40,13 @@ function todayYmd() {
 function AddEntry({ club, events = [], onDone, community = false }) {
   const { t } = useI18n();
   const incomeCat = community ? 'ticket' : 'monthly_fund';
-  const [f, setF] = useState({ type: 'expense', category: 'court', amount: '', occurred_on: todayYmd(), note: '', event_id: '' });
+  const [f, setF] = useState(() => ({ type: community ? 'income' : 'expense', category: community ? 'ticket' : 'court', amount: '', occurred_on: todayYmd(), note: '', event_id: '' }));
+  // Community: only money in is entered here (Tiền xé vé / Khác).
+  const types = community ? ['income'] : ['income', 'expense'];
+  // The space (club / community) is known after the first render: start from its defaults.
+  useEffect(() => {
+    setF((x) => ({ ...x, type: community ? 'income' : 'expense', category: community ? 'ticket' : 'court' }));
+  }, [community]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [calc, setCalc] = useState(false);
@@ -81,8 +87,8 @@ function AddEntry({ club, events = [], onDone, community = false }) {
       <div className="grid grid-cols-2 md:grid-cols-12 gap-3 px-5 py-4 items-end">
         <div className="col-span-2 md:col-span-2">
           <label className={LABEL}>{t('fin.type')}</label>
-          <div className="grid grid-cols-2 bg-navy-900 border border-navy-700 rounded-lg p-1 text-sm h-[42px]">
-            {['income', 'expense'].map((ty) => (
+          <div className={`grid ${types.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} bg-navy-900 border border-navy-700 rounded-lg p-1 text-sm h-[42px]`}>
+            {types.map((ty) => (
               <button
                 key={ty}
                 type="button"
@@ -139,7 +145,8 @@ function AddEntry({ club, events = [], onDone, community = false }) {
               {f.type === 'income' ? '+' : '−'}{formatVnd(Number(f.amount))} · {categoryLabel(f.category, t)}
             </span>
           )}
-          {f.type === 'expense' && !buyingBalls && (
+          {community && <span className="block mb-1">{t('ledger.expenseFromEvent')}</span>}
+          {(f.type === 'expense' || community) && !buyingBalls && (
             <Link href="/finance/inventory" className="inline-flex items-center gap-1 rounded-full border border-navy-600 px-2.5 py-1 text-gray-300 hover:border-lime-400 hover:text-lime-300">
               {t('fin.ballsLink')} →
             </Link>
@@ -239,11 +246,14 @@ export default function LedgerPage() {
     const to = new Date(now.getFullYear(), now.getMonth() + 2, 28).toISOString().slice(0, 10);
     return (evList || []).filter((e) => e.kind !== 'meeting' && e.event_date >= from && e.event_date <= to).sort((a, b) => b.event_date.localeCompare(a.event_date));
   }, [evList]);
-  const [view, setView] = useState('entries');
+  // Community: "Theo buổi" first (one box per kèo, opens to its entries).
+  const [pickedView, setView] = useState(null);
+  const view = pickedView || (community ? 'sessions' : 'entries');
   const [source, setSource] = useState('all');
   const [month, setMonth] = useState('all');
   const [category, setCategory] = useState('all');
   const [showVoided, setShowVoided] = useState(false);
+  const [openAll, setOpenAll] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
 
@@ -265,7 +275,8 @@ export default function LedgerPage() {
     const m = new Map();
     for (const r of live) {
       if (!r.event_id) continue;
-      const x = m.get(r.event_id) || { id: r.event_id, ev: r.events, income: 0, expense: 0, payers: 0 };
+      const x = m.get(r.event_id) || { id: r.event_id, ev: r.events, income: 0, expense: 0, payers: 0, rows: [] };
+      x.rows.push(r);
       if (r.type === 'income') x.income += Number(r.amount);
       else x.expense += Number(r.amount);
       if (r.category === 'event_fee') x.payers += 1;
@@ -454,37 +465,54 @@ export default function LedgerPage() {
           )}
         </div>
       ) : (
-        <div className="card !p-4">
-          <h2 className="text-white font-semibold mb-3">{t('ledger.bySession')} <span className="text-gray-500 font-normal text-sm">({bySession.length})</span></h2>
-          {bySession.length === 0 ? (
-            <p className="text-gray-500 text-sm">{t('fin.eventPnlNone')}</p>
-          ) : (
-            <div className="table-wrap">
-              <table className="w-full text-sm grid-table mobile-list !min-w-[32rem]">
-                <thead>
-                  <tr className="text-left">
-                    <th>{t('ledger.session')}</th>
-                    <th className="text-right">{t('finance.income')}</th>
-                    <th className="text-right">{t('finance.expense')}</th>
-                    <th className="text-right">{t('finance.net')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bySession.map((x) => (
-                    <tr key={x.id}>
-                      <td className="!whitespace-normal">
-                        <Link href={`/events/${x.id}`} className="text-gray-100 hover:text-lime-400">{sessionLabel(x.ev, t)}</Link>
-                        {x.payers > 0 && <span className="block text-gray-500 text-xs">{t('ledger.payers', { n: x.payers })}</span>}
-                      </td>
-                      <td className="text-right tabular-nums text-lime-400" data-label={`${t('finance.income')}:`}>{formatVnd(x.income)}</td>
-                      <td className="text-right tabular-nums text-orange-300" data-label={`${t('finance.expense')}:`}>{formatVnd(x.expense)}</td>
-                      <td className={`key text-right tabular-nums font-semibold ${x.income - x.expense < 0 ? '!text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</td>
-                    </tr>
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h2 className="text-white font-semibold">{t('ledger.bySession')} <span className="text-gray-500 font-normal text-sm">({bySession.length})</span></h2>
+            {bySession.length > 0 && (
+              <button type="button" className="min-h-[44px] px-3 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-navy-800" onClick={() => setOpenAll((v) => !v)}>
+                {openAll ? t('ledger.collapseAll') : t('ledger.expandAll')}
+              </button>
+            )}
+          </div>
+          {loading && <p className="card text-gray-400 text-sm">{t('common.loading')}</p>}
+          {!loading && bySession.length === 0 && <p className="card text-gray-500 text-sm">{t('fin.eventPnlNone')}</p>}
+          <div className="grid gap-3 xl:grid-cols-2 items-start">
+            {bySession.map((x) => (
+              <details key={`${x.id}:${openAll}`} open={openAll} className="card !p-0 overflow-hidden group">
+                <summary className="list-none cursor-pointer px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 hover:bg-navy-800/60 [&::-webkit-details-marker]:hidden">
+                  <UiIcon name="chevronRight" className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" />
+                  <span className="min-w-0 flex-1 basis-40">
+                    <span className="block text-gray-100 font-medium break-words">{sessionLabel(x.ev, t)}</span>
+                    <span className="block text-gray-500 text-xs">
+                      {t('ledger.entriesN', { n: x.rows.length })}
+                      {x.payers > 0 && ` · ${t('ledger.payers', { n: x.payers })}`}
+                    </span>
+                  </span>
+                  <span className="grid grid-cols-3 gap-3 text-right text-sm tabular-nums ml-auto">
+                    <span><span className="block text-gray-500 text-[11px]">{t('finance.income')}</span><span className="text-lime-400">{formatVnd(x.income)}</span></span>
+                    <span><span className="block text-gray-500 text-[11px]">{t('finance.expense')}</span><span className="text-orange-300">{formatVnd(x.expense)}</span></span>
+                    <span><span className="block text-gray-500 text-[11px]">{t('finance.net')}</span><span className={`font-semibold ${x.income - x.expense < 0 ? 'text-red-400' : 'text-white'}`}>{formatVnd(x.income - x.expense)}</span></span>
+                  </span>
+                </summary>
+                <ul className="divide-y divide-navy-700 border-t border-navy-700">
+                  {x.rows.map((r) => (
+                    <li key={r.id} className="flex items-start gap-3 px-4 py-2.5 text-sm">
+                      <span className="w-12 shrink-0 text-gray-400 tabular-nums">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-gray-100">{categoryLabel(r.category, t)}</span>
+                        {describeEntry(r, t) && <span className="block text-gray-500 text-xs break-words">{describeEntry(r, t)}</span>}
+                      </span>
+                      <span className={`shrink-0 tabular-nums text-right ${r.type === 'income' ? 'text-lime-400' : 'text-orange-300'}`}>{r.type === 'income' ? '+' : '−'}{formatVnd(Number(r.amount))}</span>
+                      {ROW_ACTIONS(r)}
+                    </li>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </ul>
+                <div className="px-4 py-2 border-t border-navy-700 text-right">
+                  <Link href={`/events/${x.id}`} className="inline-flex items-center min-h-[44px] text-sm text-lime-400 hover:underline">{t('ledger.openSession')} →</Link>
+                </div>
+              </details>
+            ))}
+          </div>
         </div>
       )}
       {editing && <EditEntry entry={editing} community={community} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}

@@ -72,17 +72,9 @@ function monthStart(ymd) {
   return `${String(ymd).slice(0, 7)}-01`;
 }
 
-// Put a participant with a confirmed place on the club's guest list (or link them to the
-// record that's already there). Fixed members are left alone. Never throws: the sign-up,
-// payment or check-in that called this must not fail because of the guest list.
-// Someone new to a community (Social Manager) starts as "Người mới" for 30 days.
-async function newcomerFields(clubId) {
-  const CS = require('./communitySettings');
-  if (!(await CS.newcomersReady())) return {};
-  const { data } = await supabase.from('clubs').select('kind').eq('id', clubId).maybeSingle();
-  return data?.kind === 'community' ? { newcomer_until: CS.newcomerUntil() } : {};
-}
-
+// Link a participant with a confirmed place to the club's record of them when there is one
+// (same account / phone); nobody new is added to the list. Fixed members are left alone.
+// Never throws: the sign-up, payment or check-in that called this must not fail because of it.
 async function ensureGuestMember(event, p) {
   try {
     // Organizers (the Host, co-hosts) are not the club's guests.
@@ -100,38 +92,9 @@ async function ensureGuestMember(event, p) {
     if (member?.member_type === 'fixed') return null;
 
     if (!member) {
-      // Nothing to recognise them by next time: skip.
-      if (!p.user_id && normalizePhone(p.phone).length < 9) return null;
-      // The club's plan is full of guests: they still play, just aren't added to the list.
-      if (!(await plan().hasMemberRoom({ id: event.club_id, host_id: event.host_id }, 'guest'))) return null;
-      const { data: profile } = p.user_id
-        ? await supabase.from('player_profiles').select('*').eq('user_id', p.user_id).maybeSingle()
-        : { data: null };
-      const { data, error } = await supabase
-        .from('club_members')
-        .insert({
-          club_id: event.club_id,
-          user_id: p.user_id || null,
-          account_verified: !!p.user_id,
-          full_name: profile?.full_name || p.full_name,
-          phone: profile?.phone || p.phone || null,
-          dupr_level: (profile && profileLevel(profile, await clubSport(event.club_id))) ?? p.dupr_level ?? null,
-          gender: profile?.gender ?? null,
-          birth_date: profile?.birth_date ?? null,
-          birth_year: profile?.birth_year ?? null,
-          member_type: 'guest',
-          joined_on: monthStart(event.event_date),
-          ...(await newcomerFields(event.club_id)),
-        })
-        .select()
-        .single();
-      if (error) {
-        if (error.code !== '23505') throw error; // created meanwhile by another request: use it
-        member = await findClubPerson(event.club_id, { userId: p.user_id, phone: p.phone });
-        if (!member) return null;
-      } else {
-        member = data;
-      }
+      // Playing a kèo never makes someone a member (club or community): they only get a place
+      // in that kèo. They join the list with their own account and a join request.
+      return null;
     } else if (p.user_id && !member.user_id) {
       // The Host's record of this person: link the account and fill what the Host left blank.
       const { data: profile } = await supabase.from('player_profiles').select('*').eq('user_id', p.user_id).maybeSingle();

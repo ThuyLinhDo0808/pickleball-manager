@@ -140,14 +140,13 @@ NAV_BY_WORKSPACE.community = [
     icon: 'chart',
     children: [
       { href: '/club/business', key: 'nav.bizPlayers', icon: 'members', exact: true },
-      { href: '/club/business/finance', key: 'nav.bizMoney', icon: 'fund' },
       { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
     ],
   },
-  // Bảng xếp hạng: its own menu item (community + whole web as tabs on the page).
-  { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings', also: ['/leaderboard'] },
+  // Bảng xếp hạng: its own menu item — only this community's players.
+  { href: '/club/rankings', key: 'nav.rankings', icon: 'rankings' },
   {
     key: 'nav.groupSettings',
     icon: 'clubs',
@@ -609,13 +608,16 @@ export default function AppShell({ children, back }) {
           <LockedFeature feature={pageFeature} owner={!coAdmin} product={mode === 'community' ? 'social_manager' : 'tier'} />
         ) : !wsReady || !workspace ? null : mode === 'xeve' && !clubsLoading && plan && !NO_CLUB_OK.some((p) => isActive(p)) ? (
           <div className="max-w-lg mx-auto mt-4 flex flex-col gap-3">
-            {/* Social Manager now runs communities (cụm sân): open one like a club. */}
-            <div className="card border-amber-300/50">
-              <h2 className="text-white font-semibold">{t('social.startTitle')}</h2>
-              <p className="text-gray-300 text-sm mt-1 mb-3">{t('social.startBody')}</p>
-              <div className="flex justify-end"><Link href="/club-request?kind=community" className="btn-primary"><UiIcon name="plus" className="w-4 h-4" />{t('social.newCommunity')}</Link></div>
-            </div>
-            {!plan.social_manager && <div className="card"><SocialManagerPanel /></div>}
+            {/* No Social Manager yet: one card to buy it. Bought, no community yet: open one. */}
+            {!plan.social_manager ? (
+              <div className="card"><SocialManagerPanel /></div>
+            ) : (
+              <div className="card border-amber-300/50">
+                <h2 className="text-white font-semibold">{t('social.startTitle')}</h2>
+                <p className="text-gray-300 text-sm mt-1 mb-3">{t('social.startBody')}</p>
+                <div className="flex justify-end"><Link href="/club-request?kind=community" className="btn-primary"><UiIcon name="plus" className="w-4 h-4" />{t('social.newCommunity')}</Link></div>
+              </div>
+            )}
           </div>
         ) : needsClub ? (
           <div className="max-w-md mx-auto card mt-4">

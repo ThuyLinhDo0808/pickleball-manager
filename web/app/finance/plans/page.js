@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import Modal from '@/components/Modal';
 import Hint from '@/components/ui/Hint';
+import UiIcon from '@/components/ui/UiIcon';
 import VipBadge, { PLAN_TIERS } from '@/components/VipBadge';
 
 // Hạng hội viên of a plan: Bạc · Vàng · Kim cương (the Host picks; e.g. Bạc ≤ 10 buổi
@@ -88,6 +89,23 @@ export default function PlansPage() {
     }
   }
 
+  // Delete asks once more; a plan someone bought cannot be deleted, only stopped.
+  const [removing, setRemoving] = useState(null);
+  const [removeErr, setRemoveErr] = useState('');
+  async function remove() {
+    setBusy(true);
+    setRemoveErr('');
+    try {
+      await api.del(`/api/clubs/${club.id}/plans/${removing.id}`);
+      setRemoving(null);
+      reload();
+    } catch (err) {
+      setRemoveErr(err.payload?.code === 'plan_in_use' ? t('plans.deleteInUse') : err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function toggle(p) {
     await api.patch(`/api/clubs/${club.id}/plans/${p.id}`, { is_active: !p.is_active });
     reload();
@@ -95,6 +113,18 @@ export default function PlansPage() {
 
   return (
     <>
+      <Modal open={!!removing} title={t('plans.deleteTitle')} onClose={() => setRemoving(null)}>
+        {removing && (
+          <div className="flex flex-col gap-3">
+            <p className="text-gray-200 text-sm">{t('plans.deleteAsk', { name: removing.name })}</p>
+            {removeErr && <p className="text-red-400 text-sm" role="alert">{removeErr}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setRemoving(null)}>{t('common.cancel')}</button>
+              <button type="button" className="btn-danger" disabled={busy} onClick={remove}>{t('plans.delete')}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
       <Modal open={!!editing} title={t('plans.editTitle')} onClose={() => setEditing(null)}>
         {editing && (
           <form onSubmit={saveEdit} className="flex flex-col gap-3">
@@ -166,10 +196,6 @@ export default function PlansPage() {
             <label htmlFor="pk-valid" className="text-xs text-gray-400">4. {t('plans.validity')}</label>
             <input id="pk-valid" className="input" required type="number" inputMode="numeric" min="1" max="36" value={f.validity_months} onChange={(e) => setForm({ ...f, validity_months: e.target.value })} />
           </div>
-          <p className="col-span-2 md:col-span-4 text-sm text-lime-200">
-            {f.name || t('plans.packNamePh')}: {t('plans.packSummary', { n: f.sessions_included || 0, m: f.validity_months || 0, price: formatVnd(Number(f.price || 0)) })}
-            {Number(f.sessions_included) > 0 && Number(f.price) > 0 && <span className="text-gray-400"> · {t('finX.perSession', { v: formatVnd(Math.round(Number(f.price) / Number(f.sessions_included))) })}</span>}
-          </p>
           <div className="col-span-2 flex flex-col sm:flex-row sm:items-center gap-3">
             <button className="btn-primary w-full sm:w-auto" disabled={busy || !club}>{t('plans.add')}</button>
             {error && <span className="text-red-400 text-sm">{error}</span>}
@@ -259,6 +285,17 @@ export default function PlansPage() {
               </button>
               <button type="button" className="btn-secondary text-sm" onClick={() => toggle(p)}>
                 {p.is_active ? t('plans.stop') : t('plans.resume')}
+              </button>
+              <button
+                type="button"
+                className="col-span-2 min-h-[44px] rounded-lg text-sm text-red-300 hover:bg-red-500/10 inline-flex items-center justify-center gap-1.5"
+                onClick={() => {
+                  setRemoveErr('');
+                  setRemoving(p);
+                }}
+              >
+                <UiIcon name="trash" className="w-4 h-4" />
+                {t('plans.delete')}
               </button>
             </div>
           </div>

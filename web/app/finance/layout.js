@@ -53,9 +53,9 @@ export default function FinanceLayout({ children }) {
                 key={tab.href}
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
-                className={`rounded-full border px-3.5 py-2 text-sm whitespace-nowrap transition ${active ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400 hover:text-white'}`}
+                className={`inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 rounded-full border px-3.5 py-2 text-sm whitespace-nowrap transition ${active ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400 hover:text-white'}`}
               >
-                <UiIcon name={tab.icon} className="w-4 h-4 mr-1.5" />
+                <UiIcon name={tab.icon} className="w-4 h-4" />
                 {t(tab.key)}
               </Link>
             );

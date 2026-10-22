@@ -461,8 +461,38 @@ player.get('/updates', async (req, res) => {
     for (const r of await require('../services/memberLink').pendingFor(uid).catch(() => [])) {
       items.push({ id: `l:${r.id}`, kind: 'link_request', at: r.created_at, title: r.club?.name || '', href: '/home' });
     }
-    items.sort((a, b) => String(b.at).localeCompare(String(a.at)));
-    res.json(items.slice(0, 50));
+    // Notifications the player removed (× on one, or "Xóa tất cả") — before the migration, none.
+    const { data: me } = await supabase.from('users').select('bell_cleared_at, bell_hidden').eq('id', uid).maybeSingle().then((r) => r, () => ({}));
+    const hidden = new Set(me?.bell_hidden || []);
+    const cleared = me?.bell_cleared_at ? new Date(me.bell_cleared_at).getTime() : 0;
+    const shown = items.filter((i) => !hidden.has(i.id) && !(cleared && new Date(i.at).getTime() <= cleared));
+    shown.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    res.json(shown.slice(0, 50));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Remove one notification from the bell (× on the row) or all of them ("Xóa tất cả").
+player.post('/updates/dismiss', async (req, res) => {
+  const id = typeof req.body?.id === 'string' ? req.body.id.trim() : '';
+  if (!id || id.length > 200) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const { data: me, error } = await supabase.from('users').select('bell_hidden').eq('id', req.hostId).maybeSingle();
+    if (error) throw error;
+    const list = [id, ...(me?.bell_hidden || []).filter((x) => x !== id)].slice(0, 200);
+    const { error: e2 } = await supabase.from('users').update({ bell_hidden: list }).eq('id', req.hostId);
+    if (e2) throw e2;
+    res.json({ ok: true });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+player.post('/updates/clear', async (req, res) => {
+  try {
+    const { error } = await supabase.from('users').update({ bell_cleared_at: new Date().toISOString(), bell_hidden: [] }).eq('id', req.hostId);
+    if (error) throw error;
+    res.json({ ok: true });
   } catch (err) {
     fail(res, err);
   }
