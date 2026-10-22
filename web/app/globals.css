@@ -146,12 +146,12 @@ body {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
 }
 
-/* Leaves room for the fixed bottom tab bar on phones. */
+/* Leaves room for the fixed bottom tab bar (every shell shows it below 1024px). */
 .pb-tabbar {
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .pb-tabbar {
     padding-bottom: 1.5rem;
   }

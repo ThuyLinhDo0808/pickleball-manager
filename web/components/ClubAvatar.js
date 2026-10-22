@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import UiIcon, { hasUiIcon } from '@/components/ui/UiIcon';
 
 // A club's round avatar: initials on a colour picked from the club id (stable across the
 // app), the sport in a corner and, optionally, the role ribbon under it.
@@ -31,12 +32,12 @@ export default function ClubAvatar({ id, name, sport, size = 56, icon = null, ri
         style={{ background: bg, fontSize: Math.round(size * (icon ? 0.45 : 0.34)) }}
         aria-hidden="true"
       >
-        {icon || initials(name)}
+        {icon ? (hasUiIcon(icon) ? <UiIcon name={icon} className="w-1/2 h-1/2 text-gray-200" /> : icon) : initials(name)}
       </span>
       )}
       {sport && !icon && (
-        <span className="absolute -bottom-1 -right-1 flex items-center justify-center rounded-full bg-navy-900 border border-navy-700" style={{ width: size * 0.42, height: size * 0.42, fontSize: size * 0.24 }} aria-hidden="true">
-          {sport === 'badminton' ? '🏸' : '🏓'}
+        <span className="absolute -bottom-1 -right-1 flex items-center justify-center rounded-full bg-navy-900 border border-navy-700 text-gray-300" style={{ width: size * 0.42, height: size * 0.42 }} aria-hidden="true">
+          <UiIcon name={sport === 'badminton' ? 'shuttle' : 'paddle'} className="w-3/5 h-3/5" />
         </span>
       )}
     </span>

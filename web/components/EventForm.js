@@ -776,7 +776,7 @@ export default function EventForm({ initial, onSubmit, submitLabel, cancelHref =
         {warning && <p className="card !py-3 mb-3 border-yellow-400/50 text-yellow-200 text-sm">⚠️ {warning}</p>}
         {error && <p className="text-red-400 text-sm mb-3 lg:hidden">{error}</p>}
         {saved && <p className="text-lime-300 text-sm mb-3 lg:hidden" role="status">✓ {t('common.savedLong')}</p>}
-        <div className="flex gap-3 lg:hidden sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 z-20 -mx-4 px-4 py-3 bg-navy-950/95 border-t border-navy-700 backdrop-blur">
+        <div className="flex gap-3 lg:hidden sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 px-4 py-3 bg-navy-950/95 border-t border-navy-700 backdrop-blur">
           <button className="btn-primary flex-1" disabled={busy || disabled}>{busy ? '…' : saved ? `✓ ${t('common.saved')}` : submitLabel}</button>
           <Link href={cancelHref} className="btn-secondary">{t('common.cancel')}</Link>
         </div>
