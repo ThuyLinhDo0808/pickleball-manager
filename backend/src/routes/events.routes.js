@@ -154,8 +154,12 @@ async function publicPlayerInfo(event, people) {
     for (const [k, v] of seen) duprCount.set(k, v.size);
   }
   const shared = await require('../services/dupr').latestRatings(people.filter((p) => !memberOf(p)?.dupr_synced_at).map((p) => memberOf(p)?.dupr_id || p.dupr_id)).catch(() => new Map());
+  // Player photos: the account and the photo's version, only for those who have one.
+  const accountOf = (p) => p.user_id || memberOf(p)?.user_id || null;
+  const photoV = await require('../services/playerAvatars').versions(people.map(accountOf)).catch(() => new Map());
   return people.map((p) => {
     const m = memberOf(p);
+    const uid = accountOf(p);
     const g = m?.gender || genderOf.get(p.user_id) || p.gender || null;
     const sh = m?.dupr_synced_at ? null : shared.get(m?.dupr_id || p.dupr_id);
     return {
@@ -167,6 +171,7 @@ async function publicPlayerInfo(event, people) {
       dupr: sh?.doubles ?? (m?.dupr_doubles != null ? Number(m.dupr_doubles) : null),
       dupr_rel: sh ? sh.doubles_rel ?? null : m?.dupr_doubles_rel ?? null,
       dupr_matches: m ? duprCount.get(m.id) || 0 : null,
+      ...(uid && photoV.has(uid) ? { avatar_uid: uid, avatar_v: photoV.get(uid) } : {}),
     };
   });
 }

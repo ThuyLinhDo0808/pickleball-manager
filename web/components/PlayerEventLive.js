@@ -4,6 +4,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import Segmented from '@/components/ui/Segmented';
 import UiIcon from '@/components/ui/UiIcon';
+import { Avatar } from '@/components/PlayerChip';
 import { api } from '@/lib/api';
 import { eventStandings } from '@/lib/eventStandings';
 
@@ -100,7 +101,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                 <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {b.people.map((p) => (
                     <li key={p.id} className={`rounded-lg px-2 py-2 text-center ${p.id === myId ? 'bg-lime-400/15 ring-1 ring-lime-400/60' : 'bg-navy-900'}`}>
-                      <span className="mx-auto mb-1 flex h-9 w-9 items-center justify-center rounded-full bg-navy-700 text-lime-300 font-bold">{String(p.full_name || '?').trim().split(/\s+/).pop().slice(0, 1).toUpperCase()}</span>
+                      <span className="mb-1 flex justify-center"><Avatar uid={p.avatar_uid} v={p.avatar_v} name={p.full_name} size={36} /></span>
                       <span className="block text-white text-xs font-semibold break-words">{p.full_name}{p.id === myId ? ` (${t('elive.you')})` : ''}</span>
                       <span className="block text-gray-400 text-[11px]">
                         {p.gender ? `${t(`members.${p.gender}`)} · ` : ''}

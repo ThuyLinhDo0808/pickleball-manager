@@ -401,9 +401,11 @@ router.get('/:clubId/members', async (req, res) => {
     ...(m.member_type === 'guest' ? { guest_stats: stats[m.id] || { played: 0, last_played: null, paid_cancels: 0, last_cancel: null } } : {}),
     ...(settings && settings.levels.mode !== 'none' ? { level: CS.levelOf(m, settings) } : {}),
   }));
+  // The player's own photo (latest), for the avatar in the list and the member's card.
+  await require('../services/playerAvatars').attach(rows);
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
   if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
-    const BASIC = ['id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'vip_tier', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score', 'newcomer_until'];
+    const BASIC = ['avatar_v', 'id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'vip_tier', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score', 'newcomer_until'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
   res.json(rows);

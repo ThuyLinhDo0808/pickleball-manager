@@ -149,7 +149,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
             return (
               <div key={r.club_member_id} className={`card !p-3 text-center flex flex-col items-center ${idx === 0 ? 'border-amber-300/60 bg-amber-300/5' : ''}`}>
                 <div className={h} />
-                <div className={`rounded-full ring-2 ${ring}`}><Avatar name={r.full_name} size={idx === 0 ? 52 : 42} /></div>
+                <div className={`rounded-full ring-2 ${ring}`}><Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={idx === 0 ? 52 : 42} /></div>
                 <div className="text-lime-300 text-lg font-bold tabular-nums -mt-1">{idx + 1}</div>
                 <div className="text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
                 <div className="text-lime-300 text-sm font-bold tabular-nums">{r.win_rate}%</div>
@@ -182,7 +182,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
             {weeksAtTop.slice(0, 6).map((w, i) => (
               <li key={w.club_member_id} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${i === 0 ? 'border-amber-300/50 bg-amber-300/5' : 'border-navy-700 bg-navy-900'}`}>
                 <span className={`w-6 text-center text-sm tabular-nums ${i < 3 ? 'text-lime-300 font-semibold' : 'text-gray-400'}`}>{i + 1}</span>
-                <Avatar name={w.full_name} size={30} />
+                <Avatar uid={w.avatar_uid} v={w.avatar_v} name={w.full_name} size={30} />
                 <div className="min-w-0 flex-1">
                   <div className="text-white text-sm font-semibold break-words">
                     {w.full_name}
@@ -232,7 +232,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
                       <td className="text-center text-gray-400" title={r.eligible === false ? t('rankx.notEnough', { n: stats.min_matches }) : undefined}>{sort.key ? i + 1 : r.eligible === false ? '—' : r.rank <= 3 ? MEDALS[r.rank - 1] : r.rank ?? i + 1}</td>
                       <td>
                         <span className="flex items-center gap-2">
-                          <Avatar name={r.full_name} size={26} />
+                          <Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={26} />
                           <span className="text-white">{r.full_name}</span>
                           {r.club_member_id === meId && <span className="text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
                         </span>

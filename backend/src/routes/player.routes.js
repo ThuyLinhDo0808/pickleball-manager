@@ -166,6 +166,22 @@ publicRoutes.get('/discover/clubs/:clubId/:kind(avatar|cover)', async (req, res)
   }
 });
 
+// A player's photo. Lists give each player a version (avatar_v) and the page asks for
+// ?v=<version>: a new photo is a new URL, so the old one can be cached for long.
+publicRoutes.get('/players/:userId/avatar', async (req, res) => {
+  if (!isUuid(req.params.userId)) return notFound(res, 'Player');
+  try {
+    const img = await require('../services/playerAvatars').image(req.params.userId);
+    if (!img) return notFound(res, 'Avatar');
+    res.set('Content-Type', img.type);
+    res.set('Cache-Control', req.query.v ? 'public, max-age=31536000, immutable' : 'public, max-age=300');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.send(img.body);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // A member's personal link (no login to see it): which club and which member it is for.
 publicRoutes.get('/member-link/:token', async (req, res) => {
   try {

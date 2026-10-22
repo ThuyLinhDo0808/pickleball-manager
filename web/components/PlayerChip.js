@@ -5,15 +5,20 @@ import { useI18n } from '@/context/I18nContext';
 import { levelTag } from '@/lib/levels';
 import { dmy, my } from '@/lib/memberDates';
 import Hint from '@/components/ui/Hint';
+import { playerPhoto } from '@/lib/api';
 
 function initials(name) {
   const parts = String(name || '?').trim().split(/\s+/);
   return (parts.length > 1 ? parts[parts.length - 1][0] : parts[0][0] || '?').toUpperCase();
 }
 
-export function Avatar({ src, name, size = 36 }) {
+// The player's photo, else their initial. `uid` + `v` (avatar_uid / avatar_v, or user_id +
+// avatar_v, from the lists) load the latest photo; `src` is a photo already in hand.
+export function Avatar({ src, uid, v, name, size = 36 }) {
+  const [broken, setBroken] = useState(false);
   const style = { width: size, height: size, fontSize: Math.round(size * 0.42) };
-  if (src) return <img src={src} alt="" style={style} className="rounded-full object-cover shrink-0 bg-navy-700" />;
+  const url = src || playerPhoto(uid, v);
+  if (url && !broken) return <img src={url} alt="" style={style} loading="lazy" onError={() => setBroken(true)} className="rounded-full object-cover shrink-0 bg-navy-700" />;
   return (
     <span style={style} aria-hidden="true" className="rounded-full shrink-0 bg-navy-700 text-lime-300 font-bold flex items-center justify-center">
       {initials(name)}
