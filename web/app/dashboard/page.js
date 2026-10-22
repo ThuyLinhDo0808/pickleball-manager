@@ -192,7 +192,7 @@ function ClubHome({ community = false }) {
             {[
               ['/events/create', 'plus', t('nav.createGame'), true],
               ['/events', 'calendar', t('nav.schedule')],
-              ['/club/members', 'users', t('nav.members')],
+              ['/club/members/all', 'users', t('nav.members')],
             ].map(([href, icon, label, main]) => (
               <Link key={href} href={href} className={main ? 'btn-primary' : 'btn-secondary'}>
                 <UiIcon name={icon} className="w-4 h-4" />{label}

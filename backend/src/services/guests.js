@@ -210,4 +210,44 @@ async function guestStats(memberIds) {
   return out;
 }
 
-module.exports = { MIGRATION, PERKS, memberForUser, guestsReady, discountReady, discountedFee, findClubPerson, perksFor, ensureGuestMember, guestStats };
+// The Host plays too: their own row in the club's / community's member list, linked to their
+// account, so their DUPR and level show like everyone else's when they join a kèo (and they
+// can set their DUPR ID / score like any member). Made the first time it is needed; a row
+// already there with their phone is linked instead. Never throws.
+async function ensureHostMember(club) {
+  try {
+    if (!club?.id || !club.host_id) return null;
+    const { data: profile } = await supabase.from('player_profiles').select('*').eq('user_id', club.host_id).maybeSingle();
+    const found = await findClubPerson(club.id, { userId: club.host_id, phone: profile?.phone });
+    if (found) {
+      if (found.user_id === club.host_id) return found;
+      const { data } = await supabase.from('club_members').update({ user_id: club.host_id, account_verified: true }).eq('id', found.id).select().single();
+      return data || found;
+    }
+    const { data: user } = await supabase.from('users').select('full_name, username, email').eq('id', club.host_id).maybeSingle();
+    const name = profile?.full_name || user?.full_name || user?.username || (user?.email || 'Host').split('@')[0];
+    const today = new Date().toISOString().slice(0, 10);
+    const row = {
+      club_id: club.id,
+      user_id: club.host_id,
+      account_verified: true,
+      full_name: name,
+      phone: profile?.phone || null,
+      gender: profile?.gender ?? null,
+      birth_date: profile?.birth_date ?? null,
+      birth_year: profile?.birth_year ?? null,
+      dupr_level: (profile && profileLevel(profile, await clubSport(club.id))) ?? null,
+      member_type: 'fixed',
+      joined_on: monthStart(today),
+    };
+    let { data, error } = await supabase.from('club_members').insert({ ...row, ...(profile?.dupr_id ? { dupr_id: profile.dupr_id } : {}) }).select().single();
+    if (error && profile?.dupr_id) ({ data, error } = await supabase.from('club_members').insert(row).select().single()); // before the DUPR migration
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('host member', err.message);
+    return null;
+  }
+}
+
+module.exports = { MIGRATION, PERKS, memberForUser, guestsReady, discountReady, discountedFee, findClubPerson, perksFor, ensureGuestMember, ensureHostMember, guestStats };

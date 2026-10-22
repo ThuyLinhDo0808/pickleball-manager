@@ -37,6 +37,9 @@ import { CancelDialog, CancelHistoryBadge, CancelLine } from '@/components/Cance
 import { deadlinesOf, eventStartMs, policyText, refundIfCancelNow } from '@/lib/cancelPolicy';
 import Hint from '@/components/ui/Hint';
 
+// "Thêm thành viên": họ tên, giới tính, DUPR ID và DUPR tự nhập (2 ô cuối không bắt buộc).
+const EMPTY_MEMBER = { full_name: '', gender: '', dupr_id: '', dupr_self: '' };
+
 export default function EventDetailPage() {
   const { eventId } = useParams();
   const { t, lang, sport } = useI18n();
@@ -82,7 +85,8 @@ export default function EventDetailPage() {
     [importClubId]
   );
 
-  const [form, setForm] = useState({ full_name: '', phone: '' });
+  const [form, setForm] = useState(EMPTY_MEMBER);
+  const [formError, setFormError] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [flash, setFlash] = useState('');
@@ -94,8 +98,14 @@ export default function EventDetailPage() {
 
   async function addParticipant(e) {
     e.preventDefault();
-    await api.post(`/api/events/${eventId}/participants`, form);
-    setForm({ full_name: '', phone: '' });
+    setFormError('');
+    try {
+      await api.post(`/api/events/${eventId}/participants`, { ...form, full_name: form.full_name.trim(), as_member: true });
+    } catch (err) {
+      setFormError(err.message);
+      return;
+    }
+    setForm(EMPTY_MEMBER);
     setShowImport(false);
     reloadParticipants();
     reloadEvent();
@@ -346,17 +356,46 @@ export default function EventDetailPage() {
       {tab === 'participants' && (
         <>
           <Modal open={showImport} title={t('ux.addPlayer')} onClose={() => setShowImport(false)}>
-            <p className="text-white font-semibold mb-2">{t('ux.addByHand')}</p>
-            <form onSubmit={addParticipant} className="flex flex-col gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-gray-400">{t('common.name')}</label>
-                <input className="input" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            <p className="text-white font-semibold mb-1">{t('ux.addByHand')}</p>
+            <p className="text-gray-400 text-xs mb-3">{t('ux.addMemberHint')}</p>
+            <form onSubmit={addParticipant} className="flex flex-col gap-3">
+              <div>
+                <label className="text-sm text-gray-300" htmlFor="am-name">{t('ux.fullName')}</label>
+                <input id="am-name" className="input" required maxLength={120} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
               </div>
-              <div className="flex-1">
-                <label className="text-xs text-gray-400">{t('common.phone')}</label>
-                <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <div>
+                <span className="text-sm text-gray-300">{t('members.gender')}</span>
+                <div className="mt-1 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('members.gender')}>
+                  {['male', 'female'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      role="radio"
+                      aria-checked={form.gender === g}
+                      onClick={() => setForm({ ...form, gender: g })}
+                      className={`min-h-[2.75rem] rounded-lg border px-3 text-sm font-semibold transition-colors ${form.gender === g ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-200 hover:border-navy-500'}`}
+                    >
+                      {t(`members.${g}`)}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <button className="btn-primary">{t('common.add')}</button>
+              {sport === 'pickleball' && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-gray-300" htmlFor="am-dupr-id">{t('quick.duprId')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
+                    <input id="am-dupr-id" className="input uppercase" maxLength={10} autoCapitalize="characters" placeholder="VD: YN9N0G" value={form.dupr_id} onChange={(e) => setForm({ ...form, dupr_id: e.target.value.toUpperCase() })} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-300" htmlFor="am-dupr">{t('members.colDuprSelf')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
+                    <input id="am-dupr" className="input tabular-nums" type="number" inputMode="decimal" min="1" max="8" step="0.01" placeholder="VD: 3.25" value={form.dupr_self} onChange={(e) => setForm({ ...form, dupr_self: e.target.value })} />
+                  </div>
+                </div>
+              )}
+              {formError && <p className="text-red-300 text-sm" role="alert">{formError}</p>}
+              <div className="flex justify-end">
+                <button className="btn-primary" disabled={!form.full_name.trim() || !form.gender}>{t('ux.addMemberBtn')}</button>
+              </div>
             </form>
             {(clubMembers || []).length > 0 && (
               <div className="mt-5 pt-4 border-t border-navy-700">

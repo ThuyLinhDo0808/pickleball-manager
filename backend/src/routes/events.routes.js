@@ -1221,9 +1221,26 @@ router.get('/:eventId/participants/:participantId/proof', (req, res) => {
 });
 
 router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
-  const { full_name, phone, dupr_level, fee_amount } = req.body;
+  const { phone, fee_amount } = req.body;
+  const full_name = String(req.body.full_name || '').trim().slice(0, 120);
   if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
-  const memberId = await findClubMemberByPhone(req.event.club_id, phone);
+  // "Thêm thành viên": name, gender, DUPR ID and self-entered DUPR (all but the name optional).
+  const gender = ['male', 'female'].includes(req.body.gender) ? req.body.gender : null;
+  const selfDupr = req.body.dupr_self === '' || req.body.dupr_self == null ? null : Number(req.body.dupr_self);
+  if (selfDupr != null && !(selfDupr >= 1 && selfDupr <= 8)) return res.status(400).json({ error: 'DUPR must be between 1 and 8.', code: 'bad_dupr' });
+  let duprId = null;
+  try {
+    duprId = require('../services/dupr').cleanId(req.body.dupr_id);
+  } catch (err) {
+    return res.status(400).json({ error: err.message, code: err.code });
+  }
+  const dupr_level = selfDupr ?? req.body.dupr_level ?? null;
+  let memberId = await findClubMemberByPhone(req.event.club_id, phone);
+  // A new person goes on the club's / community's member list too (Khách vãng lai), so
+  // their DUPR and level follow them to the next kèo; same name = the same person.
+  if (!memberId && req.event.club_id && req.body.as_member) {
+    memberId = await addListedMember(req.event, { full_name, gender, duprId, level: dupr_level });
+  }
 
   const { count } = await supabase
     .from('event_participants')
@@ -1245,6 +1262,8 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
       full_name,
       phone: phone || null,
       dupr_level: dupr_level ?? null,
+      ...(gender ? { gender } : {}),
+      ...(duprId ? { dupr_id: duprId } : {}),
       fee_amount: fee_amount ?? (tg ? tg.fee_amount : null),
       ...(tg ? { group_id: tg.id } : {}),
       status,
@@ -1371,6 +1390,37 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
   res.status(201).json(data);
 });
 
+// The member row for someone the Host adds by hand: the existing row with that name, else a
+// new Khách vãng lai (when the plan has room). Their gender / DUPR fill gaps on the row.
+async function addListedMember(event, { full_name, gender, duprId, level }) {
+  try {
+    const { data: same } = await supabase.from('club_members').select('*').eq('club_id', event.club_id).ilike('full_name', full_name.replace(/[%_]/g, '')).limit(1);
+    const found = same?.[0];
+    const fill = (m) => ({
+      ...(gender && !m?.gender ? { gender } : {}),
+      ...(duprId && !m?.dupr_id ? { dupr_id: duprId } : {}),
+      ...(level != null && m?.dupr_level == null ? { dupr_level: level } : {}),
+    });
+    if (found) {
+      const patch = fill(found);
+      if (Object.keys(patch).length) await supabase.from('club_members').update(patch).eq('id', found.id);
+      return found.id;
+    }
+    if (!(await require('../services/plan').hasMemberRoom({ id: event.club_id, host_id: event.host_id }, 'guest'))) return null;
+    const row = { club_id: event.club_id, full_name, member_type: 'guest', joined_on: `${String(event.event_date).slice(0, 7)}-01`, ...fill(null) };
+    let { data, error } = await supabase.from('club_members').insert(row).select('id').single();
+    if (error && row.dupr_id) {
+      delete row.dupr_id; // before the DUPR migration
+      ({ data, error } = await supabase.from('club_members').insert(row).select('id').single());
+    }
+    if (error) throw error;
+    return data.id;
+  } catch (err) {
+    console.error('add listed member', err.message);
+    return null;
+  }
+}
+
 async function hostPerson(hostId) {
   const [{ data: prof }, { data: user }] = await Promise.all([
     supabase.from('player_profiles').select('full_name, phone').eq('user_id', hostId).maybeSingle(),
@@ -1388,18 +1438,22 @@ router.post('/:eventId/host-play', async (req, res) => {
     const { data: rows, error } = await supabase.from('event_participants').select('*').eq('event_id', req.event.id).eq('user_id', req.event.host_id).neq('status', 'cancelled').limit(1);
     if (error) throw error;
     let row = rows[0];
+    // The Host's own member row (made if missing): their DUPR / level show on the list.
+    const hostMember = to === 'not_playing' || !req.event.club_id
+      ? null
+      : await require('../services/guests').ensureHostMember({ id: req.event.club_id, host_id: req.event.host_id });
     if (!row) {
       if (to === 'not_playing') return res.json(null);
       const host = await hostPerson(req.event.host_id);
       const { data, error: iErr } = await supabase
         .from('event_participants')
-        .insert({ event_id: req.event.id, user_id: req.event.host_id, full_name: host.full_name, phone: host.phone, kind: 'member', status: 'not_playing', is_organizer: true, fee_amount: 0 })
+        .insert({ event_id: req.event.id, user_id: req.event.host_id, full_name: hostMember?.full_name || host.full_name, phone: host.phone, kind: 'member', status: 'not_playing', is_organizer: true, fee_amount: 0, source_club_member_id: hostMember?.id || null, dupr_level: hostMember?.dupr_level ?? null })
         .select()
         .single();
       if (iErr) throw iErr;
       row = data;
-    } else if (!row.is_organizer) {
-      const { data } = await supabase.from('event_participants').update({ is_organizer: true }).eq('id', row.id).select().single();
+    } else if (!row.is_organizer || (hostMember && !row.source_club_member_id)) {
+      const { data } = await supabase.from('event_participants').update({ is_organizer: true, ...(hostMember && !row.source_club_member_id ? { source_club_member_id: hostMember.id } : {}) }).eq('id', row.id).select().single();
       row = data;
     }
     res.json(await setPlace(req.event, row, to));

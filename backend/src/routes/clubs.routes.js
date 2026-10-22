@@ -353,6 +353,8 @@ router.get('/:clubId/members', async (req, res) => {
   // 10 minutes); its level (trình độ) is worked out from the Host's settings.
   const CS = require('../services/communitySettings');
   const community = (req.club.kind || 'club') === 'community';
+  // The Host is a player of their own club / community too: their row is always there.
+  await require('../services/guests').ensureHostMember(req.club);
   // One person, one row: same-name duplicates are merged first (at most once a minute).
   await dedupe(req.club);
   if (community) await CS.reclassify(req.club).catch((err) => console.error('reclassify failed', err));
