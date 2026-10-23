@@ -8,7 +8,7 @@ import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
-import CourtRotation from '@/components/CourtRotation';
+import CourtsPlanner from '@/components/CourtsPlanner';
 import SessionStandings, { standings } from '@/components/SessionStandings';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
@@ -115,7 +115,15 @@ export default function StaffEventPage() {
               {formatDay(ev.event_date, lang, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
               {time && ` · ${time}`}
             </p>
-            <p className="text-gray-400 text-sm">{ev.location || '—'}{ev.club_name ? ` · ${ev.club_name}` : ''}{ev.courts ? ` · ${t('createx.courtsN', { n: ev.courts })}` : ''}</p>
+            <p className="text-gray-400 text-sm">{ev.location || '—'}{ev.club_name ? ` · ${ev.club_name}` : ''}{ev.courts ? ` · ${t('createx.courtsN', { n: ev.courts })}` : ''}{ev.court_labels && !(ev.groups?.length > 1) ? ` · ${t('egroups.courtsShort', { list: ev.court_labels })}` : ''}{ev.play_format ? ` · ${t(`fmt.${ev.play_format}`)}` : ''}</p>
+            {/* Kèo with several courts / time groups: each one's hours and places. */}
+            {ev.groups?.length > 1 && (
+              <p className="text-gray-300 text-sm mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                {ev.groups.map((g, gi) => (
+                  <span key={g.id} className="tabular-nums">{t('egroups.courtN', { n: g.courts || gi + 1 })}{g.play_format ? ` (${t(`fmt.${g.play_format}`)})` : ''} · {g.start_time}–{g.end_time} · {t('createx.slotsN', { n: g.slots })}</span>
+                ))}
+              </p>
+            )}
           </div>
           <span className={`text-xs font-semibold rounded-full border px-2.5 py-1 shrink-0 ${ev.role === 'coordinator' ? 'border-lime-400/40 bg-lime-400/15 text-lime-300' : 'border-sky-400/40 bg-sky-400/15 text-sky-300'}`}>
             {t(`staff.${ev.role}`)}
@@ -217,7 +225,14 @@ export default function StaffEventPage() {
       )}
 
       {current === 'courts' && ev.can.courts && (
-        <CourtRotation players={arrived} matches={ev.matches} defaultCourts={ev.courts} endpoint={`${base}/matches`} sport={ev.sport} onSaved={reload} />
+        <CourtsPlanner
+          ev={ev}
+          people={ev.participants}
+          endpoint={`${base}/matches`}
+          moveUrl={(p) => `${base}/participants/${p.id}/group`}
+          onMoved={(id, groupId) => setData({ ...ev, participants: ev.participants.map((x) => (x.id === id ? { ...x, group_id: groupId } : x)) })}
+          onSaved={reload}
+        />
       )}
 
       {current === 'board' && <SessionStandings participants={ev.participants} matches={ev.matches} />}
@@ -249,3 +264,4 @@ export default function StaffEventPage() {
     </AppShell>
   );
 }
+

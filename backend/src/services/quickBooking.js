@@ -137,6 +137,7 @@ const summary = async (event) => ({
   level_min_f: event.level_min_f ?? null,
   level_max_f: event.level_max_f ?? null,
   free_places: await freePlaces(event),
+  slots: event.slots || 0,
   groups: await require('./eventGroups').publicGroups(event).catch(() => null),
   max_slots: MAX_SLOTS,
 });
@@ -400,7 +401,7 @@ async function pendingSiblings(participant) {
 
 // Host approves a quick booking's info check: the whole group gets places together (or none
 // when there is not room for all), with one payment note for the one transfer.
-async function approveGroup(event, prior) {
+async function approveGroup(event, prior, opts = {}) {
   const others = await pendingSiblings(prior);
   const group = [prior, ...others];
   await require('./signup').expireHolds(event);
@@ -409,7 +410,8 @@ async function approveGroup(event, prior) {
   // Paid kèo: the group waits for its one transfer (until 12 hours before the start, like an approved sign-up);
   // a free kèo: straight on the list.
   const fee = Number(prior.fee_amount ?? event.fee_amount ?? 0);
-  const patch = fee > 0
+  // unpaid: the Host puts the group on the list now and collects the money later.
+  const patch = fee > 0 && !opts.unpaid
     ? { status: 'pending', payment_status: 'awaiting_proof', payment_ref: newPaymentRef(), hold_expires_at: new Date(Date.now() + require('./attendance').approvedHoldMs(event)).toISOString() }
     : { status: 'registered', hold_expires_at: null };
   const { data: rows, error } = await supabase.from('event_participants').update(patch).in('id', group.map((p) => p.id)).eq('status', 'requested').select();

@@ -152,7 +152,7 @@ export default function PublicEventPage() {
                   {g.play_format && <span className="ml-1.5 rounded-full border border-sky-400/60 px-1.5 text-[11px] font-normal text-sky-200">{t(`fmt.${g.play_format}`)}</span>}
                 </span>
                 <span className="text-gray-200 tabular-nums">{g.start_time}–{g.end_time} · {Number(g.fee_amount) ? `${Number(g.fee_amount).toLocaleString('vi-VN')} ₫` : t('public.free')}</span>
-                <span className={g.left > 0 ? 'text-lime-300 text-xs' : 'text-amber-300 text-xs'}>{g.left > 0 ? t('egroups.left', { n: g.left, total: g.slots }) : t('egroups.full')}</span>
+                <span className={g.left > 0 ? 'text-lime-300 text-xs' : 'text-amber-300 text-xs'}>{g.left > 0 ? t('egroups.left', { n: Math.max(g.slots - g.left, 0), total: g.slots }) : t('egroups.full')}</span>
               </li>
             ))}
           </ul>

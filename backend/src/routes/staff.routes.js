@@ -283,6 +283,10 @@ const STAFF_EVENT_FIELDS = (e) => ({
   club_name: e.club_name,
   main_count: e.main_count,
   waitlist_count: e.waitlist_count,
+  // The kèo as the Host set it up: courts / time groups, court numbers, how it is played.
+  groups: require('../services/eventGroups').groupsOf(e).map((g) => ({ id: g.id, start_time: g.start_time, end_time: g.end_time, slots: g.slots, courts: g.courts || null, play_format: g.play_format || null })),
+  court_labels: e.court_labels || null,
+  play_format: e.play_format || null,
 });
 
 // Does this account have any staff access at all? (drives the "Staff" workspace)
@@ -338,7 +342,7 @@ staff.get('/events/:eventId', async (req, res) => {
     const [{ data: people, error: pErr }, { data: matches, error: mErr }] = await Promise.all([
       supabase
         .from('event_participants')
-        .select('id, full_name, dupr_level, status, checked_in_at')
+        .select(`id, full_name, dupr_level, status, checked_in_at, gender${(await require('../services/eventGroups').ready()) ? ', group_id' : ''}`)
         .eq('event_id', req.event.id)
         .in('status', ['registered', 'checked_in', 'no_show', 'waitlisted', 'pending'])
         .order('joined_at', { ascending: true }),
@@ -385,10 +389,9 @@ staff.post('/events/:eventId/participants', async (req, res) => {
 
 staff.post('/events/:eventId/participants/:participantId/:action', async (req, res) => {
   const action = req.params.action;
-  if (action === 'promote' ? !CAN[req.staffRole].promote : !CAN[req.staffRole].checkIn) {
-    return res.status(403).json({ error: 'Referees cannot check players in.' });
-  }
-  if (!['check-in', 'no-show', 'reset', 'promote'].includes(action)) return res.status(400).json({ error: 'Unknown action.' });
+  const allowed = action === 'promote' ? CAN[req.staffRole].promote : action === 'group' ? CAN[req.staffRole].courts : CAN[req.staffRole].checkIn;
+  if (!allowed) return res.status(403).json({ error: 'Referees cannot check players in.' });
+  if (!['check-in', 'no-show', 'reset', 'promote', 'group'].includes(action)) return res.status(400).json({ error: 'Unknown action.' });
   if (!isUuid(req.params.participantId)) return notFound(res, 'Participant');
   try {
     const { data: prior, error } = await supabase
@@ -401,6 +404,12 @@ staff.post('/events/:eventId/participants/:participantId/:action', async (req, r
     if (!prior) return notFound(res, 'Participant');
     if (prior.status === 'pending' && req.params.action === 'check-in') {
       return res.status(409).json({ error: "This player's payment hasn't been confirmed by the host yet.", code: 'unpaid' });
+    }
+    // Chia sân: move a player to another court / time group (kèo with several groups).
+    if (action === 'group') {
+      const { data: ev } = await supabase.from('events').select('*').eq('id', req.event.id).single();
+      const r = await require('../services/eventGroups').moveToGroup(ev, prior, req.body?.group_id);
+      return res.json({ id: r.id, full_name: r.full_name, status: r.status, group_id: r.group_id });
     }
     if (action === 'promote') {
       // Waitlist -> main list (e.g. someone on the list didn't come).

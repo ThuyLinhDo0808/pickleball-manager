@@ -14,6 +14,7 @@ import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 import { resizeImage } from '@/lib/image';
 import UiIcon from '@/components/ui/UiIcon';
+import { rememberBooking } from '@/components/MyBookings';
 
 // A quick booking (invite link, no account): the Host checks the players' info, then pay the
 // total, send the screenshot, then the tickets. This page's link is the only way back to the booking — the guest keeps it.
@@ -26,6 +27,35 @@ export default function QuickBookingPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
+  // The screenshot picked but not sent yet survives a reload / closed tab on this device.
+  const proofKey = `pb_quick_proof_${token}`;
+  useEffect(() => {
+    try {
+      const kept = window.localStorage.getItem(proofKey);
+      if (kept) setPreview(kept);
+    } catch {
+      /* private mode */
+    }
+  }, [proofKey]);
+  const keepProof = (v) => {
+    setPreview(v);
+    try {
+      if (v) window.localStorage.setItem(proofKey, v);
+      else window.localStorage.removeItem(proofKey);
+    } catch {
+      /* too big or private mode: only this page keeps it */
+    }
+  };
+  // Opened from a copied link: remember the booking on this device (Lịch đã đăng ký).
+  useEffect(() => {
+    if (!b?.event) return;
+    try {
+      rememberBooking({ token, title: b.event.title, event_date: b.event.event_date });
+      window.localStorage.setItem(`pb_quick_${b.event.id}`, token);
+    } catch {
+      /* private mode */
+    }
+  }, [b?.event, token]);
 
   // While the Host checks the info or the transfer, look again now and then.
   useEffect(() => {
@@ -59,7 +89,7 @@ export default function QuickBookingPage() {
     if (!f) return;
     setErr('');
     try {
-      setPreview(await resizeImage(f));
+      keepProof(await resizeImage(f));
     } catch {
       setErr(t('signup.badImage'));
     }
@@ -69,7 +99,7 @@ export default function QuickBookingPage() {
     setErr('');
     try {
       await api.publicPost(`/api/public/quick/booking/${token}/proof`, { image: preview });
-      setPreview('');
+      keepProof('');
       reload();
     } catch (x) {
       setErr(x.message);

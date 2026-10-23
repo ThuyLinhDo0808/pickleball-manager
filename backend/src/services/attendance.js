@@ -17,6 +17,12 @@ function approvedHoldMs(event, now = Date.now()) {
   return Number.isFinite(until) && until - now > LATE_HOLD_MS ? until - now : LATE_HOLD_MS;
 }
 
+// Every unpaid hold ends 12 hours before the start at the latest (a 2-hour hold for someone
+// promoted at 7:00 for a 17:00 kèo still ends at 5:00). Later than that: LATE_HOLD_MS.
+function capHoldMs(event, ms, now = Date.now()) {
+  return Math.min(ms, approvedHoldMs(event, now));
+}
+
 const ATTENDANCE_ACTIONS = ['check-in', 'no-show', 'reset'];
 
 // Check-in / no-show / reset (back to registered) for one participant.
@@ -142,24 +148,33 @@ async function placePatch(event, participant, holdMs = PROMOTED_HOLD_MS) {
     status: 'pending',
     payment_status: participant.payment_status === 'proof_submitted' ? 'proof_submitted' : 'awaiting_proof',
     payment_ref: participant.payment_ref || newPaymentRef(),
-    hold_expires_at: new Date(Date.now() + holdMs).toISOString(),
+    hold_expires_at: new Date(Date.now() + capHoldMs(event, holdMs)).toISOString(),
   };
 }
 
+// "Vào danh sách chính, thu tiền sau": the Host gives the place now and collects the fee
+// later (cash at the court, a late transfer). A screenshot already sent stays to check.
+const UNPAID_MAIN = (prior) => ({ status: 'registered', hold_expires_at: null, ...(prior.payment_status === 'proof_submitted' ? {} : { payment_status: 'none' }) });
+
 // Where the Host puts someone on the participant list (the sheet on a name):
-//   main        = "Xác nhận tham gia": a place (pays first if they owe online)
+//   main        = "Xác nhận tham gia": a place (pays first if they owe online; with
+//                 opts.unpaid the Host puts them straight on the list, fee still owed)
 //   waitlist    = "Đặt vào danh sách chờ"
 //   requested   = "Tạm hoãn duyệt": back to the requests waiting for a decision
 //   not_playing = an organizer who runs the event without playing
 const PLACES = ['main', 'waitlist', 'requested', 'not_playing'];
-async function setPlace(event, prior, to) {
+async function setPlace(event, prior, to, opts = {}) {
   if (!PLACES.includes(to)) throw httpError(`to must be one of ${PLACES.join(', ')}.`, 400, 'bad_place');
   if (['cancelled', 'checked_in', 'no_show'].includes(prior.status)) throw httpError('This person already played or cancelled.', 409, 'locked');
   if (to === 'not_playing' && !prior.is_organizer) throw httpError('Only organizers can be "not playing".', 400, 'not_organizer');
   const target = { main: null, waitlist: 'waitlisted', requested: 'requested', not_playing: 'not_playing' }[to];
   let patch;
   if (to === 'main') {
-    if (HOLDS_PLACE.includes(prior.status)) return prior;
+    // Holding a place while paying: straight onto the list, the fee stays to collect.
+    if (prior.status === 'pending' && opts.unpaid) patch = UNPAID_MAIN(prior);
+    else if (HOLDS_PLACE.includes(prior.status)) return prior;
+  }
+  if (to === 'main' && !patch) {
     const { count, error } = await supabase
       .from('event_participants')
       .select('id', { count: 'exact', head: true })
@@ -172,8 +187,8 @@ async function setPlace(event, prior, to) {
     if (group && ((await require('./eventGroups').takenByGroup(event))[group.id] || 0) >= group.slots) {
       throw httpError(`The ${group.start_time}–${group.end_time} group is full: move them to another group or add places.`, 409, 'group_full');
     }
-    patch = await placePatch(event, prior, prior.status === 'requested' ? approvedHoldMs(event) : PROMOTED_HOLD_MS);
-  } else {
+    patch = opts.unpaid ? UNPAID_MAIN(prior) : await placePatch(event, prior, prior.status === 'requested' ? approvedHoldMs(event) : PROMOTED_HOLD_MS);
+  } else if (to !== 'main') {
     if (prior.status === target) return prior;
     // Out of the main list: an unpaid hold is dropped (a paid fee stays paid).
     patch = { status: target, hold_expires_at: null };
@@ -336,8 +351,10 @@ async function checkInByCode(event, code) {
 module.exports = {
   eventStartMs,
   approvedHoldMs,
+  PAY_BEFORE_START_MS,
   PLACES,
   setPlace,
+  capHoldMs,
   ATTENDANCE_ACTIONS,
   eventEndMs,
   MAIN_LIST,

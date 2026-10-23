@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
@@ -15,6 +16,27 @@ import GroupPicker, { firstOpenGroup } from '@/components/GroupPicker';
 
 const blankSlot = () => ({ full_name: '', gender: '', dupr_level: '', dupr_id: '' });
 const idChars = (v) => v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
+// What was typed is kept on this device (2 days), so a reload, a closed tab or a new form
+// pass never loses it; the booking already sent (its token) leads back to the payment.
+const DRAFT_MS = 2 * 86400000;
+const draftKey = (eventId) => `pb_quick_draft_${eventId}`;
+const store = {
+  get(k) {
+    try {
+      return window.localStorage.getItem(k);
+    } catch {
+      return null;
+    }
+  },
+  set(k, v) {
+    try {
+      if (v == null) window.localStorage.removeItem(k);
+      else window.localStorage.setItem(k, v);
+    } catch {
+      /* private mode: nothing kept, the form still works */
+    }
+  },
+};
 
 // Quick booking from the Host's invite link (it changes every 30 s): no account. Contact
 // details (phone, or "I'll contact the Host"), then how many players and who they are. The
@@ -23,6 +45,8 @@ const idChars = (v) => v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 10);
 export default function QuickBookPage() {
   const { eventId, code } = useParams();
   const router = useRouter();
+  // ?friends=N: a signed-in player books N more places for friends (not themselves).
+  const [friends, setFriends] = useState(0);
   const { t, lang, setLang } = useI18n();
   const [opened, setOpened] = useState(null); // { pass, pass_expires_at, event }
   const [openErr, setOpenErr] = useState(null);
@@ -32,6 +56,8 @@ export default function QuickBookPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [groupId, setGroupId] = useState(null); // kèo with time groups: the one booked
+  const [sent, setSent] = useState(null); // a booking already made for this kèo on this device
+  const restored = useRef(false);
 
   useEffect(() => {
     api
@@ -39,6 +65,50 @@ export default function QuickBookPage() {
       .then(setOpened)
       .catch(setOpenErr);
   }, [eventId, code]);
+
+  // Bring back the draft (or set up the friends' slots), once.
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const friends = Math.min(Math.max(Number(params.get('friends')) || 0, 0), 9);
+    setFriends(friends);
+    setSent(store.get(`pb_quick_${eventId}`));
+    let draft = null;
+    try {
+      draft = JSON.parse(store.get(draftKey(eventId)) || 'null');
+    } catch {
+      draft = null;
+    }
+    if (draft && Date.now() - (draft.at || 0) < DRAFT_MS && !friends) {
+      if (draft.contact) setContact((c) => ({ ...c, ...draft.contact }));
+      if (Array.isArray(draft.slots) && draft.slots.length) setSlots(draft.slots.map((x) => ({ ...blankSlot(), ...x })));
+      if (typeof draft.meFirst === 'boolean') setMeFirst(draft.meFirst);
+      if (draft.groupId) setGroupId(draft.groupId);
+      return;
+    }
+    if (friends) {
+      setMeFirst(false);
+      setSlots(Array.from({ length: friends }, blankSlot));
+      if (params.get('group')) setGroupId(params.get('group'));
+    }
+    // Signed in: the contact is the account's name / phone / gender.
+    if (String(code).startsWith('p-')) {
+      api
+        .get(`/api/events/public/${String(code).slice(2)}/me`)
+        .then((me) => {
+          const pr = me?.profile;
+          if (!pr?.full_name) return;
+          setContact((c) => ({ ...c, full_name: c.full_name || pr.full_name, phone: c.phone || pr.phone || '', gender: c.gender || pr.gender || me.account_gender || '' }));
+        })
+        .catch(() => {});
+    }
+  }, [eventId, code]);
+
+  useEffect(() => {
+    if (!restored.current || !opened) return;
+    store.set(draftKey(eventId), JSON.stringify({ at: Date.now(), contact, slots, meFirst, groupId }));
+  }, [eventId, opened, contact, slots, meFirst, groupId]);
 
   const langToggle = (
     <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
@@ -91,6 +161,7 @@ export default function QuickBookPage() {
     setError('');
     try {
       const r = await api.optionalPost(`/api/public/quick/${eventId}/book`, { pass: opened.pass, contact: { ...contact, phone: contact.no_phone ? '' : contact.phone, no_phone: contact.no_phone || !contact.phone.trim() }, slots: rows, me_first: meFirst, ...(gSel ? { group_id: gSel.id } : {}) });
+      store.set(draftKey(eventId), null);
       try {
         window.localStorage.setItem(`pb_quick_${eventId}`, r.token);
         rememberBooking({ token: r.token, title: ev.title, event_date: ev.event_date });
@@ -118,10 +189,22 @@ export default function QuickBookPage() {
         <div className="grid grid-cols-3 gap-2 mt-3 text-center">
           <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('public.fee')}</div><div className="text-white font-semibold text-sm">{fee ? formatVnd(fee) : t('public.free')}</div></div>
           <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('public.level')}</div><div className="text-white font-semibold text-sm">{level}</div></div>
-          <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('quick.freePlaces')}</div><div className="text-white font-semibold text-sm">{gSel ? gSel.left : ev.free_places}</div></div>
+          <div className="bg-navy-900 rounded-lg px-2 py-2"><div className="text-gray-400 text-xs">{t('quick.takenPlaces')}</div><div className="text-white font-semibold text-sm tabular-nums">{gSel ? `${Math.max(gSel.slots - gSel.left, 0)}/${gSel.slots}` : ev.slots ? `${Math.max(ev.slots - ev.free_places, 0)}/${ev.slots}` : '—'}</div></div>
         </div>
         {groups && <div className="mt-3"><GroupPicker groups={groups} value={gSel.id} onChange={(id) => { setGroupId(id); setSlots([blankSlot()]); }} /></div>}
       </section>
+
+      {/* Already sent from this device: go back to it to pay / send the screenshot / get the QR. */}
+      {sent && (
+        <section className="card mb-4 border-sky-400/50 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sky-100 font-semibold">{t('quick.resumeTitle')}</p>
+            <p className="text-gray-300 text-sm">{t('quick.resumeHint')}</p>
+          </div>
+          <Link href={`/g/b/${sent}`} className="btn-primary text-sm">{t('quick.resumeCta')}</Link>
+        </section>
+      )}
+      {friends > 0 && <p className="card mb-4 text-sm text-gray-200">{t('quick.friendsNote')}</p>}
 
       {max === 0 ? (
         <p className="card text-center text-yellow-300">{t('quick.full')}</p>
