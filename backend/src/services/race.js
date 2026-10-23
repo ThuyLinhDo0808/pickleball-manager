@@ -149,7 +149,7 @@ async function standings(club, month) {
   return { month, sport, groups };
 }
 
-// ---- closing a month: final table + vouchers ---------------------------------------
+// ---- closing a month: the final table is kept -------------------------------------------
 
 async function closeMonth(club, month) {
   const table = await standings(club, month);
@@ -158,31 +158,8 @@ async function closeMonth(club, month) {
     if (claimErr.code === '23505') return { closed: false }; // someone else closed it
     throw claimErr;
   }
-  const rewards = cleanRewards(club.race_rewards);
-  const expires = new Date(Date.now() + (club.race_voucher_days || 30) * 86400000);
-  const vouchers = [];
-  for (const g of table.groups) {
-    for (const r of g.rows) {
-      if (!r.prize_rank || rewards[r.prize_rank] === 'none') continue;
-      vouchers.push({
-        club_id: club.id,
-        club_member_id: r.club_member_id,
-        user_id: r.user_id || null,
-        full_name: r.full_name,
-        month,
-        level_group: g.key,
-        rank: r.prize_rank,
-        kind: rewards[r.prize_rank],
-        expires_on: localYmd(expires),
-      });
-    }
-  }
-  if (vouchers.length) {
-    const { error } = await supabase.from('race_vouchers').insert(vouchers);
-    if (error) throw error;
-    for (const v of vouchers) emailWinner(club, v).catch(() => {});
-  }
-  return { closed: true, vouchers: vouchers.length };
+  // Top tháng is statistics only: no prizes / vouchers are given any more.
+  return { closed: true, vouchers: 0 };
 }
 
 // Top tháng is part of the top Social Manager plan: off for communities whose owner's plan
@@ -224,23 +201,6 @@ function startRaceSweeper(everyMs = 60 * 60 * 1000) {
   setTimeout(run, 45 * 1000).unref();
   setInterval(run, everyMs).unref();
 }
-
-async function emailWinner(club, v) {
-  const { emailSender, emailPlayer } = require('./notify');
-  if (!v.user_id) return;
-  const sender = await emailSender({ host_id: club.host_id, club_id: club.id });
-  if (!sender) return;
-  const what = v.kind === 'free' ? '1 kèo miễn phí' : 'giảm 50% một kèo';
-  const [y, m] = v.month.split('-');
-  const exp = v.expires_on.split('-').reverse().join('/');
-  const text = `🏆 Chúc mừng ${v.full_name}! Bạn đứng Top ${v.rank} tháng ${Number(m)}/${y} của ${club.name}. Quà của bạn: ${what}, dùng trước ${exp}. Voucher tự áp dụng khi bạn đăng ký kèo của ${club.name}.`;
-  await emailPlayer([v.user_id], {
-    subject: `🏆 Top ${v.rank} tháng ${Number(m)}/${y} — quà của bạn: ${what}`,
-    text,
-    html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5"><h2 style="color:#65a30d">🏆 Chúc mừng ${escapeHtml(v.full_name)}!</h2><p>Bạn đứng <b>Top ${v.rank}</b> tháng ${Number(m)}/${y} của <b>${escapeHtml(club.name)}</b>.</p><p>Quà của bạn: <b>${what}</b>, dùng trước <b>${exp}</b>. Voucher tự áp dụng khi bạn đăng ký kèo của cộng đồng.</p></div>`,
-  }, sender);
-}
-const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // ---- vouchers ---------------------------------------------------------------------
 

@@ -6,7 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-// "Xếp hạng" (player menu): this month's rankings — xé vé across the web, and each club /
+// "Xếp hạng" (player menu): this month's rankings of each club /
 // community I play in. Moved off the home page so it has a page of its own.
 export default function PlayerRankingsPage() {
   const { t } = useI18n();

@@ -22,27 +22,30 @@ const BANDS = {
 const bandOf = (level, sport) => (level == null ? null : (BANDS[sport] || BANDS.pickleball).find((b) => Number(level) <= b.max)?.key || null);
 const fmtLevel = (v, sport) => (v == null ? '' : sport === 'badminton' ? String(v) : Number(v).toFixed(2));
 
-// Home page rankings, two views:
-// - "Xé vé · toàn web": every xé vé game on the web (Xé Vé, community kèo, club kèo outside its
-//   weekly schedule), one row per player.
-// - Each club / community I play in: its own monthly ranking (clubs: weekly sessions only).
-// Both: my place first, then everyone; filter by level group; order by win rate or by level.
+// Rankings of each club / community I am a member of (no web-wide board): its own monthly
+// ranking (clubs: weekly sessions only). My place first, then everyone; order by win rate
+// or by level. Communities: "Toàn cộng đồng" plus the tabs the Host set up in Bảng điều khiển
+// (levels or named DUPR bands); clubs: the fixed level bands.
 export default function HomeRankings({ clubs = [], showTitle = true }) {
   const { t } = useI18n();
-  const [pick, setPick] = useState('xeve');
+  const [pick, setPick] = useState(null);
   const [band, setBand] = useState('all');
   const [order, setOrder] = useState('rate');
-  const club = pick === 'xeve' ? null : clubs.find((c) => c.club_id === pick) || null;
-  const sport = club?.sport || clubs[0]?.sport || 'pickleball';
+  const club = clubs.find((c) => c.club_id === pick) || clubs[0] || null;
+  const sport = club?.sport || 'pickleball';
   const { data, error, loading } = useLoad(
-    () => (club ? api.get(`/api/player/clubs/${club.club_id}/rankings?period=month`) : api.get(`/api/leaderboard?scope=xeve&period=month&sport=${sport}`)),
-    [club?.club_id, sport]
+    () => (club ? api.get(`/api/player/clubs/${club.club_id}/rankings?period=month`) : Promise.resolve(null)),
+    [club?.club_id]
   );
-  const isMe = (r) => (club ? r.club_member_id === data?.me : !!r.me);
-  const keyOf = (r) => r.club_member_id || r.key;
+  const isMe = (r) => r.club_member_id === data?.me;
+  const keyOf = (r) => r.club_member_id;
+  // The Host's ranking tabs (communities); clubs use the fixed level bands.
+  const groups = data?.rank_groups || [];
+  const useGroups = !!data?.community;
+  const inBand = (r) => band === 'all' || (useGroups ? r.rank_group === band : bandOf(r.level, sport) === band);
 
   const rows = useMemo(() => {
-    let list = (data?.rankings || []).filter((r) => band === 'all' || bandOf(r.level, sport) === band);
+    let list = (data?.rankings || []).filter(inBand);
     if (order === 'level') {
       list = [...list].sort((a, b) => (b.level ?? -1) - (a.level ?? -1) || b.win_rate - a.win_rate || a.full_name.localeCompare(b.full_name, 'vi'));
       let n = 0;
@@ -50,10 +53,14 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
     }
     let n = 0; // rows come ranked by win rate; re-number inside the level group
     return list.map((r) => ({ ...r, place: r.eligible === false ? null : ++n }));
-  }, [data, band, order, sport]);
+  }, [data, band, order, sport]); // eslint-disable-line react-hooks/exhaustive-deps
   const placed = rows.filter((r) => r.place != null).length;
   const mine = rows.find(isMe);
-  const scopeLabel = club ? (club.kind === 'community' ? t('homeRank.community') : t('homeRank.club')) : t('homeRank.xeveAll');
+  const scopeLabel = club?.kind === 'community' ? t('homeRank.community') : t('homeRank.club');
+  const choose = (id) => {
+    setPick(id);
+    setBand('all');
+  };
   const chip = (on) => `inline-flex items-center min-h-[2.75rem] sm:min-h-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`;
   const small = (on) => `rounded-md px-2.5 py-2 sm:px-2 sm:py-0.5 text-xs sm:text-[11px] transition-colors ${on ? 'bg-navy-600 text-white' : 'text-gray-400 hover:text-gray-200'}`;
 
@@ -64,21 +71,33 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
         {club && <Link href={`/c/${club.club_id}`} className="text-lime-400 text-xs hover:underline">{t('homeRank.full')} →</Link>}
       </div>
       <div className="flex flex-wrap gap-1.5 mb-2" role="tablist" aria-label={t('homeRank.title')}>
-        <button type="button" role="tab" aria-selected={pick === 'xeve'} onClick={() => setPick('xeve')} className={chip(pick === 'xeve')}>{t('homeRank.xeveTab')}</button>
         {clubs.map((c) => (
-          <button key={c.club_id} type="button" role="tab" aria-selected={c.club_id === pick} onClick={() => setPick(c.club_id)} className={chip(c.club_id === pick)}>
+          <button key={c.club_id} type="button" role="tab" aria-selected={c.club_id === club?.club_id} onClick={() => choose(c.club_id)} className={chip(c.club_id === club?.club_id)}>
             {c.name}
           </button>
         ))}
       </div>
+      {!club ? (
+        <p className="card text-gray-400 text-sm">{t('homeRank.noClubs')}</p>
+      ) : (
       <div className="card !p-0 overflow-hidden">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 border-b border-navy-700 text-[11px] text-gray-400">
-          <span className="flex items-center gap-0.5" role="group" aria-label={t('homeRank.levelLabel')}>
-            <span className="mr-1">{t('homeRank.levelLabel')}:</span>
-            {['all', 'low', 'mid', 'high'].map((k) => (
-              <button key={k} type="button" aria-pressed={band === k} onClick={() => setBand(k)} className={small(band === k)}>{t(`homeRank.band_${sport === 'badminton' ? 'b_' : ''}${k}`)}</button>
-            ))}
-          </span>
+          {useGroups ? (
+            groups.length > 0 && (
+              <span className="flex flex-wrap items-center gap-0.5" role="group" aria-label={t('homeRank.groupLabel')}>
+                {[{ key: 'all', label: t('homeRank.wholeCommunity') }, ...groups].map((g) => (
+                  <button key={g.key} type="button" aria-pressed={band === g.key} onClick={() => setBand(g.key)} className={small(band === g.key)}>{g.label}</button>
+                ))}
+              </span>
+            )
+          ) : (
+            <span className="flex items-center gap-0.5" role="group" aria-label={t('homeRank.levelLabel')}>
+              <span className="mr-1">{t('homeRank.levelLabel')}:</span>
+              {['all', 'low', 'mid', 'high'].map((k) => (
+                <button key={k} type="button" aria-pressed={band === k} onClick={() => setBand(k)} className={small(band === k)}>{t(`homeRank.band_${sport === 'badminton' ? 'b_' : ''}${k}`)}</button>
+              ))}
+            </span>
+          )}
           <span className="flex items-center gap-0.5" role="group" aria-label={t('homeRank.orderLabel')}>
             <span className="mr-1">{t('homeRank.orderLabel')}:</span>
             <button type="button" aria-pressed={order === 'rate'} onClick={() => setOrder('rate')} className={small(order === 'rate')}>{t('homeRank.byRate')}</button>
@@ -117,7 +136,6 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                     <span className="min-w-0 flex-1 break-words text-gray-100">
                       {r.full_name}
                       {isMe(r) && <span className="ml-1.5 text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
-                      {!club && r.clubs?.length > 0 && <span className="block text-[10px] text-gray-500 break-words">{r.clubs.join(' · ')}</span>}
                     </span>
                     <span className={`w-10 text-right text-xs tabular-nums ${order === 'level' ? 'text-lime-300 font-semibold' : 'text-gray-400'}`}>{fmtLevel(r.level, sport) || '—'}</span>
                     <span className="text-gray-400 text-xs tabular-nums">{r.wins}-{r.losses}</span>
@@ -127,11 +145,12 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
               </ol>
             )}
             <div className="px-4 py-2 border-t border-navy-700">
-              <Hint text={order === 'level' ? t('homeRank.ruleLevel') : club ? t('homeRank.rule', { n: data.min_matches }) : t('homeRank.ruleXeve', { n: data.min_matches })} />
+              <Hint text={order === 'level' ? t('homeRank.ruleLevel') : t('homeRank.rule', { n: data.min_matches })} />
             </div>
           </>
         )}
       </div>
+      )}
     </section>
   );
 }

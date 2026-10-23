@@ -36,7 +36,12 @@ const MAX_LEVELS = 12;
 //   tiers — 100% back if cancelled `full` hours before, 50% if `half` hours before, else 0%
 //   free  — cancel any time, everything back · none — "Không hoàn tiền", nothing back.
 const REFUND_MODES = ['tiers', 'free', 'none'];
-const DEFAULTS = { regular: { auto: false, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] }, signup: { auto_dupr: false }, refund: { mode: 'tiers', full: 12, half: 6 } };
+// rankings: how the community's leaderboard is split (always plus "Toàn cộng đồng"):
+//   none   — one board for everyone,
+//   levels — one tab per level above (Series A, B, C…),
+//   dupr   — the Host's own named DUPR bands ("3.5++", "3.0 – 3.5", "< 3.0").
+const RANK_SPLITS = ['none', 'levels', 'dupr'];
+const DEFAULTS = { regular: { auto: false, min: 3 }, active_days: 30, levels: { mode: 'none', items: [] }, signup: { auto_dupr: false }, refund: { mode: 'tiers', full: 12, half: 6 }, rankings: { split: 'none', groups: [] } };
 
 function cleanRefund(r) {
   const mode = REFUND_MODES.includes(r?.mode) ? r.mode : DEFAULTS.refund.mode;
@@ -79,7 +84,62 @@ function resolve(raw) {
   } catch {
     /* a broken stored rule falls back to the default */
   }
-  return { regular, active_days: Number(s.active_days) || DEFAULTS.active_days, levels, signup: { auto_dupr: s.signup?.auto_dupr === true }, refund };
+  const split = RANK_SPLITS.includes(s.rankings?.split) ? s.rankings.split : 'none';
+  const rankings = { split, groups: split === 'dupr' && Array.isArray(s.rankings?.groups) ? s.rankings.groups : [] };
+  return { regular, active_days: Number(s.active_days) || DEFAULTS.active_days, levels, signup: { auto_dupr: s.signup?.auto_dupr === true }, refund, rankings };
+}
+
+// The leaderboard's DUPR bands: label + from / to (either may be empty).
+function cleanRankings(r, levels, sport) {
+  const split = r?.split ?? 'none';
+  if (!RANK_SPLITS.includes(split)) throw fail('Unknown ranking split.', 'bad_rank_split');
+  if (split === 'levels' && levels.mode === 'none') throw fail('Set up the levels first to rank by level.', 'rank_levels_none');
+  if (split !== 'dupr') return { split, groups: [] };
+  const raw = Array.isArray(r?.groups) ? r.groups : [];
+  if (!raw.length) throw fail('Add at least one ranking group.', 'no_rank_groups');
+  if (raw.length > MAX_LEVELS) throw fail(`At most ${MAX_LEVELS} groups.`, 'too_many_rank_groups');
+  const top = sport === 'badminton' ? 6 : 8;
+  const seen = new Set();
+  const keys = new Set();
+  return {
+    split,
+    groups: raw.map((g) => {
+      const label = String(g?.label || '').trim().slice(0, 30);
+      if (!label) throw fail('Every ranking group needs a name.', 'rank_label_required');
+      if (seen.has(label.toLowerCase())) throw fail(`Two ranking groups are called "${label}".`, 'rank_label_taken');
+      seen.add(label.toLowerCase());
+      const num = (v) => (v === '' || v == null ? null : Number(v));
+      const min = num(g?.min);
+      const max = num(g?.max);
+      for (const v of [min, max]) if (v != null && !(Number.isFinite(v) && v >= 0 && v <= top)) throw fail(`Score must be from 0 to ${top}.`, 'bad_rank_range');
+      if (min == null && max == null) throw fail(`Give "${label}" a lower or an upper score.`, 'bad_rank_range');
+      if (min != null && max != null && max < min) throw fail('The upper score is below the lower one.', 'bad_rank_range');
+      let key = /^[a-z0-9_-]{1,20}$/i.test(String(g?.key || '')) ? String(g.key) : newKey();
+      while (keys.has(key)) key = newKey();
+      keys.add(key);
+      return { key, label, min: min == null ? null : Math.round(min * 100) / 100, max: max == null ? null : Math.round(max * 100) / 100 };
+    }),
+  };
+}
+
+// The ranking tabs after "Toàn cộng đồng" ([] = one board).
+function rankGroups(settings) {
+  const r = settings.rankings || DEFAULTS.rankings;
+  if (r.split === 'levels') return settings.levels.items.map((i) => ({ key: i.key, label: i.label }));
+  if (r.split === 'dupr') return r.groups.map((g) => ({ key: g.key, label: g.label }));
+  return [];
+}
+
+// Which ranking tab a member belongs to: their level, or the first DUPR band that fits.
+function rankGroupOf(member, dupr, settings) {
+  const r = settings.rankings || DEFAULTS.rankings;
+  if (r.split === 'levels') return levelOf(member, settings)?.key || null;
+  if (r.split === 'dupr') {
+    if (dupr == null) return null;
+    const v = Number(dupr);
+    return r.groups.find((g) => (g.min == null || v >= g.min) && (g.max == null || v <= g.max))?.key || null;
+  }
+  return null;
 }
 
 const intIn = (v, lo, hi, code) => {
@@ -161,7 +221,8 @@ function clean(body, sport) {
     for (let i = 1; i < items.length; i += 1) if (items[i].min === items[i - 1].min) throw fail('Two levels start at the same score.', 'bad_level_min');
   }
   if (mode === 'none') items = [];
-  return { regular, active_days, levels: { mode, items, by_gender: byGender }, signup: { auto_dupr: body?.signup?.auto_dupr === true }, refund: cleanRefund(body?.refund) };
+  const levels = { mode, items, by_gender: byGender };
+  return { regular, active_days, levels, signup: { auto_dupr: body?.signup?.auto_dupr === true }, refund: cleanRefund(body?.refund), rankings: cleanRankings(body?.rankings, levels, sport) };
 }
 
 // The level a member is in under these settings (null = none).
@@ -309,4 +370,4 @@ async function reclassify(club, { force = false } = {}) {
   return { checked: roster.length, to_regular: up.length, to_dropin: down.length, min: settings.regular.min };
 }
 
-module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, NEWCOMER_DAYS, newcomersReady, newcomerUntil, ready, resolve, clean, levelOf, forClub, save, reclassify, proposals, recentCounts, forget };
+module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, RANK_SPLITS, NEWCOMER_DAYS, newcomersReady, newcomerUntil, ready, resolve, clean, levelOf, rankGroups, rankGroupOf, forClub, save, reclassify, proposals, recentCounts, forget };
