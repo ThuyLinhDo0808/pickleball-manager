@@ -116,4 +116,4 @@ async function moveToGroup(event, prior, groupId) {
   return data;
 }
 
-module.exports = { moveToGroup, MIGRATION, ready, courtList, groupsOf, groupOf, forGroup, cleanGroups, takenByGroup, publicGroups, pickGroup };
+module.exports = { moveToGroup, movesReady, MIGRATION, ready, courtList, groupsOf, groupOf, forGroup, cleanGroups, takenByGroup, publicGroups, pickGroup };

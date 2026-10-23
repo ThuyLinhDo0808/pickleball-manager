@@ -1575,7 +1575,7 @@ async function undoRefund(req, p) {
   return data;
 }
 
-const { moveToGroup: changeGroup } = require('../services/eventGroups');
+const { moveToGroup: changeGroup, movesReady } = require('../services/eventGroups');
 
 // Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles / group
 async function withGroup(prior, act) {
