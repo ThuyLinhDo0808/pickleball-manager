@@ -9,7 +9,12 @@ import MatchForm from '@/components/MatchForm';
 import MatchList from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
 import CourtsPlanner from '@/components/CourtsPlanner';
-import SessionStandings, { standings } from '@/components/SessionStandings';
+import CourtBoards from '@/components/CourtBoards';
+import EventStandings from '@/components/EventStandings';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import { isScored } from '@/components/MatchList';
+import { exportMatchesJpg } from '@/lib/matchImage';
+import { standings } from '@/components/SessionStandings';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
@@ -38,15 +43,18 @@ export default function StaffEventPage() {
   const [showMatch, setShowMatch] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [walkIn, setWalkIn] = useState('');
+  const [matchTab, setMatchTab] = useState('enter');
+  const [moving, setMoving] = useState(null); // coordinator: the player whose court is changed
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get('tab');
-    if (q) setTab(q);
+    if (q) setTab(q === 'board' ? 'scores' : q);
   }, []);
 
   if (loading && !ev) return <AppShell><p className="text-gray-400">{t('common.loading')}</p></AppShell>;
   if (!ev) return <AppShell><p className="text-gray-400">{t('staffView.none')}</p></AppShell>;
 
-  const tabs = [...(ev.can.checkIn ? ['checkin'] : []), ...(ev.can.courts ? ['courts'] : []), 'scores', 'board'];
+  // Like the Host's kèo page: Xếp sân = the court boards, Tỷ số = the Trận đấu tab.
+  const tabs = [...(ev.can.checkIn ? ['checkin'] : []), ...(ev.can.courts ? ['courts'] : []), 'scores'];
   const current = tabs.includes(tab) ? tab : tabs[0];
   const mainList = ev.participants.filter((p) => p.status !== 'waitlisted');
   const arrived = mainList.filter((p) => p.status === 'checked_in');
@@ -93,12 +101,25 @@ export default function StaffEventPage() {
     }
   }
 
+  async function moveCourt(p, groupId) {
+    if (p.group_id === groupId) return setMoving(null);
+    setBusyId(p.id);
+    try {
+      await api.post(`${base}/participants/${p.id}/group`, { group_id: groupId });
+      setData({ ...ev, participants: ev.participants.map((x) => (x.id === p.id ? { ...x, group_id: groupId } : x)) });
+      setMoving(null);
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const time = [hhmm(ev.start_time), hhmm(ev.end_time)].filter(Boolean).join('–');
   const TAB_LABEL = {
     checkin: `${t('staffView.checkInTab')}`,
     courts: `${t('staffX.courtsTab')}`,
     scores: `${t('staffView.scoresTab')} (${ev.matches.length})`,
-    board: `${t('staffX.boardTab')}`,
   };
   const isCoord = ev.role === 'coordinator';
   const leader = isCoord ? null : standings(ev.participants, ev.matches)[0];
@@ -225,35 +246,69 @@ export default function StaffEventPage() {
       )}
 
       {current === 'courts' && ev.can.courts && (
-        <CourtsPlanner
-          ev={ev}
-          people={ev.participants}
-          endpoint={`${base}/matches`}
-          moveUrl={(p) => `${base}/participants/${p.id}/group`}
-          onMoved={(id, groupId) => setData({ ...ev, participants: ev.participants.map((x) => (x.id === id ? { ...x, group_id: groupId } : x)) })}
-          onSaved={reload}
-        />
+        <>
+          {ev.groups?.length > 1 && <p className="text-gray-400 text-xs mb-2">{t('courts.tapToMove')}</p>}
+          <CourtBoards
+            event={ev}
+            rows={ev.participants.filter((p) => ['registered', 'pending', 'checked_in', 'no_show'].includes(p.status))}
+            sport={ev.sport}
+            onManage={(p) => ev.groups?.length > 1 && setMoving(p)}
+            onAction={act}
+          />
+          <Modal open={!!moving} title={moving ? `${t('egroups.group')} · ${moving.full_name}` : ''} onClose={() => setMoving(null)}>
+            {moving && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {ev.groups.map((g, i) => (
+                  <button key={g.id} type="button" disabled={busyId === moving.id} aria-pressed={moving.group_id === g.id} onClick={() => moveCourt(moving, g.id)} className={`min-h-[2.75rem] rounded-xl border px-3 py-2 text-left leading-tight tabular-nums disabled:opacity-40 ${moving.group_id === g.id ? 'border-lime-400 bg-lime-400/20 text-lime-100' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
+                    <span className="block text-sm font-semibold">{t('egroups.courtN', { n: g.courts || i + 1 })}</span>
+                    <span className="block text-xs opacity-80">{g.start_time}–{g.end_time}{g.play_format ? ` · ${t(`fmt.${g.play_format}`)}` : ''}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Modal>
+        </>
       )}
 
-      {current === 'board' && <SessionStandings participants={ev.participants} matches={ev.matches} />}
 
       {current === 'scores' && (
         <>
-          <div className="flex justify-end mb-3">
+          <div className="flex flex-wrap justify-end gap-2 mb-3">
+            <button className="btn-secondary text-sm" disabled={!ev.matches.length} onClick={() => exportMatchesJpg({ event: ev, matches: ev.matches, t, lang })}>{t('matches.exportJpg')}</button>
             <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
           </div>
-          <MatchList matches={ev.matches} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} />
-          <Modal open={showMatch} title={t('matches.add')} onClose={() => setShowMatch(false)}>
+          {/* The same as the Host's Trận đấu tab: Nhập điểm · Kết quả · Xếp trận · Bảng xếp hạng. */}
+          <UnderlineTabs
+            value={matchTab}
+            onChange={setMatchTab}
+            tabs={[
+              { key: 'enter', label: t('matches.tabEnter'), icon: 'edit', count: ev.matches.filter((m) => !isScored(m)).length },
+              { key: 'results', label: t('matches.tabResults'), icon: 'clipboard', count: ev.matches.filter(isScored).length },
+              ...(ev.can.courts ? [{ key: 'auto', label: t('courts.autoTab'), icon: 'court' }] : []),
+              { key: 'standings', label: t('estand.title'), icon: 'medal' },
+            ]}
+          />
+          {matchTab === 'enter' && <MatchList matches={ev.matches.filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} />}
+          {matchTab === 'results' && <MatchList matches={ev.matches.filter(isScored)} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} />}
+          {matchTab === 'auto' && ev.can.courts && <CourtsPlanner ev={ev} people={ev.participants} endpoint={`${base}/matches`} onSaved={reload} />}
+          {matchTab === 'standings' && (
+            <EventStandings matches={ev.matches} onChallenge={(pick, reward) => setShowMatch({ slots: { 1: pick.team1.map((r) => r.id), 2: pick.team2.map((r) => r.id) }, extra: { is_challenge: true, challenge_reward: reward } })} />
+          )}
+          <Modal open={!!showMatch} title={showMatch?.extra ? t('matches.challenge') : t('matches.add')} onClose={() => setShowMatch(false)}>
             {showMatch && (
               <MatchForm
                 sport={ev?.sport}
                 players={mainList.map((p) => ({ id: p.id, name: p.full_name }))}
+                pastMatches={ev.matches}
+                initialSlots={showMatch?.slots || null}
+                extra={showMatch?.extra || {}}
                 idField="event_participant_id"
                 parent={{}}
                 endpoint={`${base}/matches`}
                 onCancel={() => setShowMatch(false)}
                 onSaved={() => {
                   setShowMatch(false);
+                  setMatchTab('enter');
                   reload();
                 }}
               />

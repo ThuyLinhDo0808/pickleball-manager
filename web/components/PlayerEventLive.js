@@ -64,7 +64,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
         ...groups.map((g, i) => ({ key: g.id, title: t('egroups.courtN', { n: g.courts || i + 1 }), sub: [g.play_format ? t(`fmt.${g.play_format}`) : null, `${g.start_time}–${g.end_time}`].filter(Boolean).join(' · '), slots: g.slots, people: data.players.filter((p) => p.group_id === g.id) })),
         ...(data.players.some((p) => !groups.some((g) => g.id === p.group_id)) ? [{ key: 'none', title: t('egroups.noCourt'), people: data.players.filter((p) => !groups.some((g) => g.id === p.group_id)) }] : []),
       ]
-    : [{ key: 'all', title: t('elive.allPlayers'), people: data.players }];
+    : [{ key: 'all', title: t('elive.allPlayers'), slots: data.event?.slots || null, people: data.players }];
   const results = matches.filter(scored);
   const challenges = matches.filter((m) => m.is_challenge);
   const myId = data.me?.id;
@@ -102,6 +102,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                         {p.gender ? `${t(`members.${p.gender}`)} · ` : ''}
                         {sport === 'pickleball' ? (p.dupr != null ? `DUPR ${Number(p.dupr).toFixed(2)}` : 'DUPR NR') : ''}
                       </span>
+                      {sport === 'pickleball' && p.dupr != null && p.dupr_rel != null && <span className="block text-gray-300 text-[11px]">{t('public.reliability')} {Math.round(Number(p.dupr_rel))}%</span>}
                     </li>
                   ))}
                   {/* Places nobody has taken yet on this court. */}

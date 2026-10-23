@@ -367,7 +367,7 @@ router.get('/public/:publicToken/live', requireAuth, async (req, res) => {
     }
     const since = Date.now() - 24 * 3600000;
     res.json({
-      event: { id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, status: event.status, schedule_changed_at: event.schedule_changed_at || null },
+      event: { id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, slots: event.slots || null, status: event.status, schedule_changed_at: event.schedule_changed_at || null },
       groups: await eg.publicGroups(event).catch(() => null),
       me: participant ? { id: participant.id, group_id: participant.group_id || null } : null,
       players: people.map((p, i) => ({ ...cards[i], id: p.id, group_id: p.group_id || null, me: participant?.id === p.id })),
@@ -1816,3 +1816,4 @@ router.get('/reliability/:clubMemberId', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.publicPlayerInfo = publicPlayerInfo;

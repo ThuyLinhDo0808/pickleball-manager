@@ -342,7 +342,7 @@ staff.get('/events/:eventId', async (req, res) => {
     const [{ data: people, error: pErr }, { data: matches, error: mErr }] = await Promise.all([
       supabase
         .from('event_participants')
-        .select(`id, full_name, dupr_level, status, checked_in_at, gender, user_id${(await require('../services/eventGroups').ready()) ? ', group_id' : ''}`)
+        .select(`id, full_name, dupr_level, status, checked_in_at, gender, user_id, source_club_member_id, guest_member_id, dupr_id, is_organizer${(await require('../services/eventGroups').ready()) ? ', group_id' : ''}`)
         .eq('event_id', req.event.id)
         .in('status', ['registered', 'checked_in', 'no_show', 'waitlisted', 'pending'])
         .order('joined_at', { ascending: true }),
@@ -350,18 +350,24 @@ staff.get('/events/:eventId', async (req, res) => {
     ]);
     if (pErr) throw pErr;
     if (mErr) throw mErr;
-    // Player photos on the court boards (avatar link only; no account details).
-    await require('../services/playerAvatars').attach(people);
-    for (const p of people) {
-      if (p.avatar_v) p.avatar_uid = p.user_id;
-      delete p.user_id;
-    }
+    // The court-board card of each player, as the Host sees it: photo, gender, DUPR and its
+    // reliability (Uy tín). Never phones, money or account details.
+    const { data: ev } = await supabase.from('events').select('*').eq('id', req.event.id).single();
+    const cards = await require('./events.routes').publicPlayerInfo(ev, people).catch(() => people.map(() => ({})));
+    const participants = people.map((p, i) => {
+      const c = cards[i] || {};
+      return {
+        id: p.id, full_name: p.full_name, dupr_level: p.dupr_level, status: p.status, checked_in_at: p.checked_in_at, group_id: p.group_id || null,
+        gender: c.gender || p.gender || null,
+        card: { gender: c.gender || p.gender || null, dupr: c.dupr ?? null, dupr_rel: c.dupr_rel ?? null, avatar_uid: c.avatar_uid, avatar_v: c.avatar_v },
+      };
+    });
     res.json({
       ...STAFF_EVENT_FIELDS(req.event),
       sport: await clubSport(req.event.club_id), // levels / scoring follow the club's sport
       role: req.staffRole,
       can: CAN[req.staffRole],
-      participants: people,
+      participants,
       matches,
     });
   } catch (err) {
