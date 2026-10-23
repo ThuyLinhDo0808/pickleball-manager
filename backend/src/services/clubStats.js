@@ -122,14 +122,36 @@ async function clubStats(club, query = {}) {
     const uid = userOf.get(r.club_member_id);
     return uid && photoV.has(uid) ? { ...r, avatar_uid: uid, avatar_v: photoV.get(uid) } : r;
   };
+  // Community: the Host's ranking tabs (Bảng điều khiển → Bảng xếp hạng); each row says which.
+  const community = (cfg?.kind || 'club') === 'community';
+  let rankGroups = [];
+  let groupOf = () => null;
+  if (community) {
+    const CS = require('./communitySettings');
+    const settings = CS.resolve(cfg?.community_settings);
+    rankGroups = CS.rankGroups(settings);
+    if (rankGroups.length) {
+      // Level fields arrive with later migrations: without them nobody has a level yet.
+      const pick = (cols) => supabase.from('club_members').select(cols).eq('club_id', club.id).then((r) => (r.error ? null : r.data), () => null);
+      const extra = (await pick('id, level_key, skill_score, play_duration, gender, dupr_doubles')) || (await pick('id, level_key, skill_score, play_duration, gender'));
+      const byId = new Map((extra || allMembers).map((m) => [m.id, m]));
+      // DUPR bands: the verified DUPR (club list / DUPR app) first, else the level on the row.
+      groupOf = (r) => {
+        const m = byId.get(r.club_member_id) || {};
+        return CS.rankGroupOf(m, m.dupr_doubles ?? r.level, settings);
+      };
+    }
+  }
   return {
     period,
     date,
     group,
+    community,
+    rank_groups: rankGroups,
     range: bounds,
     // matches with a score that someone of this leaderboard played
     match_count: matches.filter((m) => isScored(m) && m.match_players.some((p) => ids.has(p.club_member_id))).length,
-    rankings: rankings.map(withPhoto),
+    rankings: rankings.map((r) => ({ ...withPhoto(r), rank_group: groupOf(r) })),
     awards: awards(rankings, attendance, members, minMatches),
     // Weeks at No. 1 of this leaderboard, since the club's first match.
     weeks_at_top: weeks.map(withPhoto),

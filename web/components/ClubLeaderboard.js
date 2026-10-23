@@ -87,8 +87,16 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
   );
 
   const periodText = periodLabel(period, date, t, lang);
-  const label = `${periodText} · ${t(`rankings.group_${group}`)}`; // for the Excel file
-  const rows = [...(stats?.rankings || [])];
+  // Communities: "Toàn cộng đồng" + the Host's ranking tabs (Bảng điều khiển → Bảng xếp hạng);
+  // a tab shows its players only, numbered again from 1.
+  const community = !!stats?.community;
+  const rankGroups = stats?.rank_groups || [];
+  const [rg, setRg] = useState('all');
+  const inGroup = (r) => rg === 'all' || r.rank_group === rg;
+  let n = 0;
+  const rows = (stats?.rankings || []).filter(inGroup).map((r) => (rg === 'all' ? r : { ...r, rank: r.eligible === false ? null : ++n }));
+  const boardLabel = community ? (rg === 'all' ? t('homeRank.wholeCommunity') : rankGroups.find((g) => g.key === rg)?.label || '') : t(`rankings.group_${group}`);
+  const label = `${periodText} · ${boardLabel}`; // for the Excel file
   if (sort.key) rows.sort((a, b) => sort.dir * (a[sort.key] - b[sort.key]) || a.full_name.localeCompare(b.full_name));
   const a = stats?.awards;
   const meId = me ?? stats?.me ?? null; // the members' endpoint says who I am
@@ -108,7 +116,11 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
   return (
     <>
 
-      <UnderlineTabs value={group} onChange={setGroup} tabs={['all', 'club', 'guest'].map((g) => ({ key: g, label: t(`rankings.group_${g}`), icon: groupIcon[g] }))} />
+      {community ? (
+        rankGroups.length > 0 && <UnderlineTabs value={rg} onChange={setRg} tabs={[{ key: 'all', label: t('homeRank.wholeCommunity'), icon: 'globe' }, ...rankGroups.map((g) => ({ key: g.key, label: g.label, icon: 'medal' }))]} />
+      ) : (
+        <UnderlineTabs value={group} onChange={setGroup} tabs={['all', 'club', 'guest'].map((g) => ({ key: g, label: t(`rankings.group_${g}`), icon: groupIcon[g] }))} />
+      )}
 
       <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
         <Segmented items={PERIODS} value={period} onChange={setPeriod} label={(p) => t(`rankings.${p}`)} />
@@ -119,7 +131,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
             {stats && <div className="text-gray-400 text-xs">{t('rankings.matchesCount', { n: stats.match_count })}</div>}
           </div>
           {period !== 'all' && <button className="btn-secondary !px-3" aria-label={t('rankings.next')} onClick={() => setDate(shift(period, date, 1))}>›</button>}
-          <button className="btn-secondary text-sm !px-3 ml-1" disabled={!stats?.rankings?.length} title={t('common.exportExcel')} onClick={() => exportRankings(clubName, label, stats, t)}><UiIcon name="download" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /><span className="hidden sm:inline"> Excel</span>
+          <button className="btn-secondary text-sm !px-3 ml-1" disabled={!stats?.rankings?.length} title={t('common.exportExcel')} onClick={() => exportRankings(clubName, label, { ...stats, rankings: rows }, t)}><UiIcon name="download" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /><span className="hidden sm:inline"> Excel</span>
           </button>
         </div>
       </div>
@@ -167,7 +179,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
         </section>
       )}
 
-      {!loading && a && (stats.rankings.length > 0 || a.top_attendance.length > 0) && (
+      {!loading && a && rg === 'all' && (stats.rankings.length > 0 || a.top_attendance.length > 0) && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-2">
             <AwardCard title={t('rankings.topWinRate')} icon="trophy" rows={a.top_win_rate} fmt={(v) => `${v}%`} />
@@ -179,11 +191,11 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
         </>
       )}
 
-      {!loading && weeksAtTop.length > 0 && (
+      {!loading && rg === 'all' && weeksAtTop.length > 0 && (
         <section className="card mb-4 border-amber-300/30">
           <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
             <h2 className="text-white font-semibold">{t('rankings.weeksTitle')}</h2>
-            <span className="text-gray-500 text-xs">{t('rankings.weeksHint', { group: t(`rankings.group_${group}`) })}</span>
+            <span className="text-gray-500 text-xs">{t('rankings.weeksHint', { group: boardLabel })}</span>
           </div>
           <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {weeksAtTop.slice(0, 6).map((w, i) => (
@@ -207,7 +219,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
       {!loading && stats && (
         <section className="card !p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-navy-700 flex items-center justify-between gap-2">
-            <h2 className="text-white font-semibold">{t(`rankings.group_${group}`)}</h2>
+            <h2 className="text-white font-semibold">{boardLabel}</h2>
             <span className="text-gray-400 text-xs">{t('rankx.players', { n: rows.length })}</span>
           </div>
           {rows.length > 0 && listRows.length === 0 ? (

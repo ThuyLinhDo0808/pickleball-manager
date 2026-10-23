@@ -22,7 +22,7 @@ export function VoucherChip({ v }) {
   );
 }
 
-// "Top tháng" tab of a community page: this month's race (names, points) and my vouchers.
+// "Top tháng" tab of a community page: this month's race (names, points). Statistics only.
 export default function RaceBoard({ clubId }) {
   const { t } = useI18n();
   const { data, error } = useLoad(() => api.get(`/api/player/clubs/${clubId}/race`), [clubId]);
@@ -35,7 +35,6 @@ export default function RaceBoard({ clubId }) {
       <section className="card">
         <h2 className="text-white font-semibold">{t('race.tableTitle', { m: fmtMonth(data.month) })}</h2>
         <p className="text-gray-400 text-xs mt-1">{t('race.playerRules', { c: s.points.checkin, w: s.points.win, n: Math.abs(s.points.no_show), min: s.min_sessions })}</p>
-        <p className="text-amber-200 text-xs mt-1">{['1', '2', '3'].filter((r) => s.rewards[r] !== 'none').map((r) => `Top ${r}: ${t(`race.reward_${s.rewards[r]}`)}`).join(' · ')}</p>
       </section>
       {data.groups.map((g) => (
         <section key={g.key || 'all'} className="card !p-0 overflow-x-auto">
@@ -50,7 +49,7 @@ export default function RaceBoard({ clubId }) {
               <tbody>
                 {g.rows.map((r) => (
                   <tr key={r.place} className={`border-b border-navy-800 last:border-0 tabular-nums ${r.me ? 'bg-lime-400/10' : ''}`}>
-                    <td className="px-3 py-2 text-gray-400">{r.prize_rank ? <span className="text-lime-300 font-semibold">{r.prize_rank}</span> : r.place}</td>
+                    <td className="px-3 py-2 text-gray-400">{r.place}</td>
                     <td className="px-3 py-2 text-white">{r.full_name}{r.me && <span className="ml-1 text-[11px] text-lime-300">({t('race.you')})</span>}</td>
                     <td className="px-3 py-2">{r.sessions}</td>
                     <td className="px-3 py-2">{r.wins}</td>
@@ -62,12 +61,6 @@ export default function RaceBoard({ clubId }) {
           )}
         </section>
       ))}
-      {data.vouchers?.length > 0 && (
-        <section className="card">
-          <h2 className="text-white font-semibold mb-2">{t('race.myVouchers')}</h2>
-          <ul className="flex flex-col gap-2">{data.vouchers.map((v) => <VoucherChip key={v.id} v={v} />)}</ul>
-        </section>
-      )}
     </div>
   );
 }

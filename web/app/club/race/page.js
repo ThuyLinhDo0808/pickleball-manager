@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
 import SectionTabs from '@/components/ui/SectionTabs';
@@ -9,14 +8,11 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useScope } from '@/lib/useScope';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import { formatVnd } from '@/lib/format';
 
 const fmtMonth = (m) => (m ? `${Number(m.slice(5))}/${m.slice(0, 4)}` : '');
-const fmtDay = (d) => (d ? d.split('-').reverse().join('/') : '—');
-const STATE_TONE = { available: 'border-lime-400/60 text-lime-300', used: 'border-navy-500 text-gray-300', expired: 'border-gray-600 text-gray-500', revoked: 'border-red-400/50 text-red-300' };
 
 // Cuộc đua Top tháng (communities): this month's live table, past months' final tables,
-// the race settings, and every voucher given (use / extend / revoke).
+// and the on / off switch. Statistics only: no prizes or vouchers.
 export default function RacePage() {
   const { t } = useI18n();
   const { club } = useDefaultClub();
@@ -40,18 +36,6 @@ export default function RacePage() {
       setBusy('');
     }
   };
-  const act = async (v, body) => {
-    setBusy(v.id);
-    setErr('');
-    try {
-      await api.post(`/api/clubs/${club.id}/race/vouchers/${v.id}`, body);
-      await reload();
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setBusy('');
-    }
-  };
 
   const months = d ? [d.current_month, ...d.closed_months.map((m) => m.month).filter((m) => m !== d.current_month)] : [];
   return (
@@ -64,7 +48,7 @@ export default function RacePage() {
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && (
         <div className="flex flex-col gap-5">
-          {/* Only on / off here; prizes and rules keep their defaults. */}
+          {/* On / off: whether players see the table on their community page. */}
           <section className="card flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-white font-semibold">{t('race.title')}</h2>
@@ -95,7 +79,7 @@ export default function RacePage() {
                   {g.key && <p className="px-4 pt-2 text-xs font-semibold text-gray-300">{t(`race.group_${g.key}_${d.table.sport === 'badminton' ? 'b' : 'p'}`)}</p>}
                   <table className="w-full text-sm">
                     <thead className="text-gray-400 text-xs text-left">
-                      <tr className="border-b border-navy-700">{['place', 'name', 'sessions', 'wins', 'noShows', 'points', 'prize'].map((k) => <th key={k} className="px-3 py-2 font-medium whitespace-nowrap">{t(`race.col_${k}`)}</th>)}</tr>
+                      <tr className="border-b border-navy-700">{['place', 'name', 'sessions', 'wins', 'noShows', 'points', 'note'].map((k) => <th key={k} className="px-3 py-2 font-medium whitespace-nowrap">{t(`race.col_${k}`)}</th>)}</tr>
                     </thead>
                     <tbody>
                       {g.rows.map((r, i) => (
@@ -107,7 +91,7 @@ export default function RacePage() {
                           <td className={`px-3 py-2 ${r.no_shows ? 'text-red-300' : ''}`}>{r.no_shows}</td>
                           <td className="px-3 py-2 font-bold text-amber-300">{r.points}</td>
                           <td className="px-3 py-2 text-xs">
-                            {r.prize_rank ? <span className="text-lime-300 font-semibold">Top {r.prize_rank}</span> : !r.joined_in_time ? <span className="text-gray-500">{t('race.lateJoin')}</span> : !r.eligible ? <span className="text-gray-500">{t('race.notEnough', { n: s.min_sessions })}</span> : '—'}
+                            {!r.joined_in_time ? <span className="text-gray-500">{t('race.lateJoin')}</span> : !r.eligible ? <span className="text-gray-500">{t('race.notEnough', { n: s.min_sessions })}</span> : '—'}
                           </td>
                         </tr>
                       ))}
@@ -116,37 +100,6 @@ export default function RacePage() {
                 </div>
               ))
             )}
-          </section>
-
-          {/* Vouchers */}
-          <section className="card">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-              <h2 className="text-white font-semibold">{t('race.vouchers')}</h2>
-              <span className="text-sm text-gray-300">{t('race.given', { n: d.given.used, amount: formatVnd(d.given.amount) })}</span>
-            </div>
-            {d.vouchers.length === 0 ? (
-              <p className="text-gray-500 text-sm">{t('race.noVouchers')}</p>
-            ) : (
-              <ul className="flex flex-col divide-y divide-navy-700 text-sm">
-                {d.vouchers.map((v) => (
-                  <li key={v.id} className="py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="text-white">{v.full_name || '—'}</span>
-                    <span className="text-xs text-gray-400">Top {v.rank} · {fmtMonth(v.month)}{v.level_group ? ` · ${t(`race.groupShort_${v.level_group}`)}` : ''}</span>
-                    <span className="text-xs text-amber-200">{t(`race.reward_${v.kind}`)}</span>
-                    <span className={`text-[11px] rounded border px-1.5 ${STATE_TONE[v.state]}`}>{t(`race.state_${v.state}`)}</span>
-                    <span className="text-xs text-gray-500">{v.used_for ? t('race.usedFor', { title: v.used_for.title, date: fmtDay(v.used_for.event_date) }) : t('race.until', { date: fmtDay(v.expires_on) })}</span>
-                    {canEdit && (
-                      <span className="ml-auto flex gap-2">
-                        {['available', 'expired'].includes(v.state) && <button type="button" className="text-xs text-lime-300 hover:underline" disabled={busy === v.id} onClick={() => act(v, { action: 'extend', days: 30 })}>{t('race.extend')}</button>}
-                        {v.state === 'available' && <button type="button" className="text-xs text-red-300 hover:underline" disabled={busy === v.id} onClick={() => window.confirm(t('race.revokeAsk', { name: v.full_name })) && act(v, { action: 'revoke' })}>{t('race.revoke')}</button>}
-                        {v.state === 'revoked' && <button type="button" className="text-xs text-gray-300 hover:underline" disabled={busy === v.id} onClick={() => act(v, { action: 'restore' })}>{t('race.restore')}</button>}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="text-gray-500 text-xs mt-3">{t('race.vouchersHint')} <Link href="/finance" className="underline">{t('nav.groupFinance')}</Link></p>
           </section>
         </div>
       )}
