@@ -367,7 +367,7 @@ router.get('/public/:publicToken/live', requireAuth, async (req, res) => {
     }
     const since = Date.now() - 24 * 3600000;
     res.json({
-      event: { id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time },
+      event: { id: event.id, title: event.title, event_date: event.event_date, start_time: event.start_time, end_time: event.end_time, slots: event.slots || null, status: event.status, schedule_changed_at: event.schedule_changed_at || null },
       groups: await eg.publicGroups(event).catch(() => null),
       me: participant ? { id: participant.id, group_id: participant.group_id || null } : null,
       players: people.map((p, i) => ({ ...cards[i], id: p.id, group_id: p.group_id || null, me: participant?.id === p.id })),
@@ -1003,6 +1003,8 @@ router.patch('/:eventId', async (req, res) => {
   if ('kind' in fields && fields.kind !== req.event.kind && !(await kindAllowed(fields.club_id ?? req.event.club_id, fields.kind))) {
     return res.status(400).json({ error: 'Communities do not have meetings or round robin.', code: 'kind_not_for_community' });
   }
+  // Date / time changed or cancelled: the only changes players are told about.
+  if ((schedChanged(req.event, fields) || (fields.status === 'cancelled' && req.event.status !== 'cancelled')) && (await schedReady())) fields.schedule_changed_at = nowIso();
   const { data, error } = await supabase
     .from('events')
     .update(fields)
@@ -1025,6 +1027,16 @@ router.patch('/:eventId', async (req, res) => {
   res.json(req.body.apply_to === 'series' ? { ...data, series_updated: updated } : data);
 });
 
+const schedReady = async () => !(await require('../services/schemaCheck').schemaStatus()).missing_migrations.includes('20261217090000_event_schedule_changed.sql');
+const hm5 = (v) => (v ? String(v).slice(0, 5) : null);
+const groupTimes = (g) => JSON.stringify((Array.isArray(g) ? g : []).map((x) => [x.id, hm5(x.start_time), hm5(x.end_time)]));
+// Did this edit move the kèo in time (day, start, end, or a court's hours)?
+function schedChanged(before, fields) {
+  if ('event_date' in fields && fields.event_date !== before.event_date) return true;
+  for (const k of ['start_time', 'end_time']) if (k in fields && hm5(fields[k]) !== hm5(before[k])) return true;
+  return 'groups' in fields && groupTimes(fields.groups) !== groupTimes(before.groups);
+}
+
 // Copy an edit to the other sessions of the same weekly schedule that haven't happened
 // yet (not completed / cancelled, today or later). Each keeps its own day; a registration
 // deadline keeps the same distance to its session as on the edited one.
@@ -1032,7 +1044,7 @@ async function applyToSeries(ev, fields) {
   const patch = pick(fields, SERIES_FIELDS);
   const { data: others, error } = await supabase
     .from('events')
-    .select('id, event_date, cost_items, host_id')
+    .select('id, event_date, start_time, end_time, groups, cost_items, host_id')
     .eq('series_id', ev.series_id)
     .neq('id', ev.id)
     .gte('event_date', todayYmd())
@@ -1050,6 +1062,7 @@ async function applyToSeries(ev, fields) {
       row.registration_deadline = deadline ? new Date(new Date(deadline).getTime() + dayMs(o.event_date) - dayMs(ev.event_date)).toISOString() : null;
     }
     if (!Object.keys(row).length) continue;
+    if (schedChanged(o, row) && (await schedReady())) row.schedule_changed_at = new Date().toISOString();
     const { data: next, error: uErr } = await supabase.from('events').update(row).eq('id', o.id).select().single();
     if (uErr) throw uErr;
     if ('cost_items' in row && !sameItems(row.cost_items, o.cost_items)) await syncEventCosts(next);
@@ -1575,7 +1588,7 @@ async function undoRefund(req, p) {
   return data;
 }
 
-const { moveToGroup: changeGroup } = require('../services/eventGroups');
+const { moveToGroup: changeGroup, movesReady } = require('../services/eventGroups');
 
 // Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles / group
 async function withGroup(prior, act) {
@@ -1803,3 +1816,4 @@ router.get('/reliability/:clubMemberId', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.publicPlayerInfo = publicPlayerInfo;

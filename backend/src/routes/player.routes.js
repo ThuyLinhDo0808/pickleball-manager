@@ -442,17 +442,21 @@ player.get('/updates', async (req, res) => {
       const ev = p.events;
       items.push({ id: `p:${p.id}:${kind}`, kind, at, title: ev.title, event_date: ev.event_date, href: kind === 'confirmed' && p.ticket_code ? `/t/${p.ticket_code}` : ev.public_token ? `/e/${ev.public_token}` : '/p' });
     }
-    // The Host moved me to another court ("Bạn đã được chuyển sang sân …").
-    const { data: moved } = await supabase
+    // A kèo I have a place in changed its date / time, or was cancelled by the Host. (Court
+    // moves before the kèo are the Host's arranging: no notification.)
+    const { data: changed } = await supabase
       .from('event_participants')
-      .select('id, group_id, group_moved_at, events!inner(title, event_date, public_token, groups)')
+      .select('id, events!inner(id, title, event_date, start_time, end_time, public_token, status, schedule_changed_at)')
       .eq('user_id', uid)
-      .gte('group_moved_at', since)
-      .limit(50);
-    for (const p of moved || []) {
-      const groups = Array.isArray(p.events.groups) ? p.events.groups : [];
-      const i = groups.findIndex((g) => g.id === p.group_id);
-      items.push({ id: `m:${p.id}:${p.group_moved_at}`, kind: 'court_moved', at: p.group_moved_at, title: p.events.title, event_date: p.events.event_date, court: i < 0 ? null : groups[i].courts || String(i + 1), href: p.events.public_token ? `/e/${p.events.public_token}` : '/p' });
+      .in('status', ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'])
+      .gte('events.schedule_changed_at', since)
+      .limit(50)
+      .then((r) => r, () => ({ data: [] })); // before the migration: none
+    for (const p of changed || []) {
+      const e = p.events;
+      const kind = e.status === 'cancelled' ? 'event_cancelled' : 'event_changed';
+      const time = [e.start_time, e.end_time].filter(Boolean).map((x) => String(x).slice(0, 5)).join('–');
+      items.push({ id: `c:${e.id}:${e.schedule_changed_at}`, kind, at: e.schedule_changed_at, title: e.title, event_date: e.event_date, time, href: e.public_token ? `/e/${e.public_token}` : '/p' });
     }
     for (const n of await moderation.noticesFor(uid).catch(() => [])) {
       if (n.created_at < since && n.read_at) continue;
