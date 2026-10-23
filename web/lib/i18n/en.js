@@ -1597,6 +1597,7 @@ export const en = {
   },
   courts: {
     autoTab: "Auto pairing",
+    tapToMove: "Tap a player to move them to another court.",
     onlyHere: "Only players who have checked in",
     allMain: "{n} on the main list",
     nobody: "Nobody on this court yet.",
@@ -3959,6 +3960,8 @@ export const en = {
     k_notice_restored: "You are back in a club / community",
     k_notice_removed: "You were removed from a club / community",
     k_court_moved: "You were moved to court {court}",
+    k_event_changed: "The session's time changed: {time}",
+    k_event_cancelled: "The host cancelled the session",
     k_link_request: "A club wants to link your account",
   },
   estand: {
@@ -5125,6 +5128,7 @@ export const en = {
     noticeUntil: "Members sign up first. Opens to everyone at {when}.",
   },
   elive: {
+    timeChanged: "The host changed the session time: {time}. Check your playing time.",
     title: "Game schedule",
     tabPlayers: "Players",
     tabMatches: "Matches",
@@ -5326,6 +5330,7 @@ export const en = {
   xlsx: {
     paidPlan: "Membership plan",
     participants: "Participants",
+    playersCount: "{n} players",
     status: "Status",
     fee: "Fee",
     paid: "Paid",
@@ -5519,6 +5524,7 @@ export const en = {
     requests: "{n} to approve",
   },
   people: {
+    exportList: "Export player list",
     markPaid: "Paid",
     markUnpaid: "Not paid",
     deleteHistory: "Delete from history",

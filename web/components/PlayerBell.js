@@ -14,7 +14,7 @@ const readSeen = () => {
     return '';
   }
 };
-const ICON = { wait_check: 'hourglass', pay_now: 'card', proof_wait: 'list', pay_rejected: 'alert', confirmed: 'checkCircle', waitlisted: 'hourglass', cancelled: 'x', cancelled_host: 'x', notice_warning: 'alert', notice_restored: 'checkCircle', notice_removed: 'x', link_request: 'link', court_moved: 'court' };
+const ICON = { wait_check: 'hourglass', pay_now: 'card', proof_wait: 'list', pay_rejected: 'alert', confirmed: 'checkCircle', waitlisted: 'hourglass', cancelled: 'x', cancelled_host: 'x', notice_warning: 'alert', notice_restored: 'checkCircle', notice_removed: 'x', link_request: 'link', court_moved: 'court', event_changed: 'clock', event_cancelled: 'ban' };
 
 // for players, like the Host's: where each sign-up stands, messages from clubs, link
 // requests (last 14 days). Red number = new since the bell was last opened; checked every minute.
@@ -114,7 +114,7 @@ export default function PlayerBell({ className = '' }) {
                     <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${isNew(r) ? 'bg-red-500' : 'bg-transparent'}`} aria-hidden />
                     <span className="shrink-0 mt-0.5 text-gray-400"><UiIcon className="w-4 h-4" name={ICON[r.kind] || 'bell'} /></span>
                     <span className="min-w-0">
-                      <span className="block text-white text-sm">{t(`pbell.k_${r.kind}`, { court: r.court || '?' })}</span>
+                      <span className="block text-white text-sm">{t(`pbell.k_${r.kind}`, { court: r.court || '?', time: r.time || '' })}</span>
                       <span className="block text-gray-400 text-xs break-words">
                         {r.title}
                         {r.event_date ? ` · ${localDate(`${r.event_date}T00:00:00`, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit' })}` : ''}

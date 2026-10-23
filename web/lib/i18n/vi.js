@@ -1597,6 +1597,7 @@ export const vi = {
   },
   courts: {
     autoTab: "Xếp trận",
+    tapToMove: "Bấm vào một người chơi để chuyển sang sân khác.",
     onlyHere: "Chỉ xếp người đã đến (đã điểm danh)",
     allMain: "{n} người trong danh sách chính",
     nobody: "Chưa có ai ở sân này.",
@@ -3959,6 +3960,8 @@ export const vi = {
     k_notice_restored: "Bạn được cho quay lại CLB / cộng đồng",
     k_notice_removed: "Bạn đã bị xoá khỏi CLB / cộng đồng",
     k_court_moved: "Bạn đã được chuyển sang chơi Sân {court}",
+    k_event_changed: "Kèo đã đổi giờ: {time}",
+    k_event_cancelled: "Host đã huỷ kèo",
     k_link_request: "CLB muốn liên kết tài khoản của bạn",
   },
   estand: {
@@ -5125,6 +5128,7 @@ export const vi = {
     noticeUntil: "Kèo đang dành cho thành viên đăng ký trước. Mở công khai cho mọi người lúc {when}.",
   },
   elive: {
+    timeChanged: "Host đã đổi giờ kèo: {time}. Kiểm tra lại giờ chơi của bạn.",
     title: "Lịch chơi",
     tabPlayers: "Danh sách người chơi",
     tabMatches: "Trận đấu",
@@ -5326,6 +5330,7 @@ export const vi = {
   xlsx: {
     paidPlan: "Gói hội viên",
     participants: "Người tham gia",
+    playersCount: "{n} người",
     status: "Trạng thái",
     fee: "Phí",
     paid: "Đã trả",
@@ -5519,6 +5524,7 @@ export const vi = {
     requests: "{n} chờ duyệt",
   },
   people: {
+    exportList: "Xuất DS người chơi",
     markPaid: "Đã thu",
     markUnpaid: "Chưa thu",
     deleteHistory: "Xoá khỏi lịch sử",

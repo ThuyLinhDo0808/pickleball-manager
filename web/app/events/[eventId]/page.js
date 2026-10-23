@@ -32,7 +32,7 @@ import { api } from '@/lib/api';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useClubs } from '@/context/ClubContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { exportEventFinance } from '@/lib/exportExcel';
+import { exportEventFinance, exportEventPlayers } from '@/lib/exportExcel';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import { CancelDialog, CancelHistoryBadge, CancelLine } from '@/components/CancelHistory';
 import { deadlinesOf, eventStartMs, policyText, refundIfCancelNow } from '@/lib/cancelPolicy';
@@ -231,6 +231,12 @@ export default function EventDetailPage() {
     setShowImport(false);
     reloadParticipants();
     reloadEvent();
+  }
+
+  function onExportPlayers() {
+    if (!event || !participants) return;
+    if (event.club_id && !hasFeature(planFor(club, plan), 'excel_export')) return lockedNotice('excel_export');
+    exportEventPlayers(event, participants, t, (p) => levelText(p.card?.level ?? p.dupr_level, sport, t) || (p.card?.dupr != null ? `DUPR ${Number(p.card.dupr).toFixed(2)}` : ''));
   }
 
   function onExport() {
@@ -479,6 +485,12 @@ export default function EventDetailPage() {
               <button className="text-gray-400 text-lg leading-none" aria-label="Close" onClick={() => setFlash('')}>×</button>
             </div>
           )}
+          {/* Xuất danh sách người chơi (Excel): sân, tên, giới tính, trình độ, SĐT, trạng thái, tiền. */}
+          <div className="flex justify-end mb-2">
+            <button type="button" className="btn-secondary text-sm inline-flex items-center gap-1.5 min-h-[2.75rem]" disabled={!(participants || []).length} onClick={onExportPlayers}>
+              <UiIcon name="download" className="w-4 h-4" /> {t('people.exportList')}
+            </button>
+          </div>
           {/* The numbers of the kèo: four equal tiles, the word first, then the number. One
               "Chờ thanh toán" for everyone still paying (sent a screenshot or not). */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
@@ -565,7 +577,7 @@ export default function EventDetailPage() {
           {matchTab === 'auto' && (
             <CourtsPlanner
               ev={{ ...event, sport }}
-              people={(participants || []).map((p) => ({ id: p.id, full_name: p.full_name, status: p.status, gender: p.card?.gender || p.gender, dupr_level: p.card?.level ?? p.dupr_level, group_id: p.group_id }))}
+              people={(participants || []).map((p) => ({ id: p.id, full_name: p.full_name, status: p.status, gender: p.card?.gender || p.gender, dupr_level: p.card?.level ?? p.dupr_level, group_id: p.group_id, avatar: p.card?.avatar }))}
               endpoint="/api/matches"
               extraBody={{ event_id: eventId }}
               moveUrl={(p) => `/api/events/${eventId}/participants/${p.id}/group`}

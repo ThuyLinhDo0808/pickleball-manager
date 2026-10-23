@@ -84,6 +84,7 @@ const PROBES = [
   { table: 'event_participants', column: 'group_moved_at', migration: '20261214090000_court_moves.sql' },
   { table: 'events', column: 'members_only', migration: '20261215090000_members_first.sql' },
   { table: 'users', column: 'bell_hidden', migration: '20261216090000_bell_dismiss.sql' },
+  { table: 'events', column: 'schedule_changed_at', migration: '20261217090000_event_schedule_changed.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },

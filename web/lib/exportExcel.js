@@ -59,6 +59,54 @@ export function exportEventFinance(event, participants, transactions, t) {
   book([[t('xlsx.summary'), summary], [t('xlsx.participants'), people], [t('xlsx.finance'), money]], fileName(event.title, dmy(event.event_date), t('xlsx.finance')));
 }
 
+// One kèo's player list: court / time group, name, gender, level, phone, status and money.
+// Main list first, then those paying, the waitlist and requests (cancelled left out).
+export function exportEventPlayers(event, participants, t, levelOf) {
+  const ORDER = { checked_in: 0, registered: 0, no_show: 1, pending: 2, waitlisted: 3, requested: 4 };
+  const groups = event.groups?.length > 1 ? event.groups : null;
+  const court = (p) => {
+    const i = groups ? groups.findIndex((g) => g.id === p.group_id) : -1;
+    return i < 0 ? '' : `${t('egroups.courtN', { n: groups[i].courts || i + 1 })} · ${groups[i].start_time}–${groups[i].end_time}`;
+  };
+  const fee = (p) => Number(p.fee_amount ?? event.fee_amount ?? 0);
+  const rows = participants
+    .filter((p) => p.status in ORDER)
+    .sort((a, b) => ORDER[a.status] - ORDER[b.status] || court(a).localeCompare(court(b)) || String(a.joined_at).localeCompare(String(b.joined_at)))
+    .map((p, i) => [
+      i + 1,
+      ...(groups ? [court(p)] : []),
+      p.full_name,
+      (p.card?.gender || p.gender) ? t(`members.${p.card?.gender || p.gender}`) : '',
+      levelOf(p) || '',
+      p.card?.phone || p.phone || p.booking?.contact_phone || '',
+      t(`xlsx.st_${p.status}`),
+      fee(p),
+      p.paid_by_plan ? t('xlsx.paidPlan') : p.fee_paid ? t('xlsx.yes') : fee(p) > 0 ? t('xlsx.no') : '',
+      [...(p.tags || []).filter((x) => x !== 'host_guest').map((x) => t(`people.tag_${x}`)), p.is_organizer ? t('people.organizer') : null, p.booking && p.full_name !== p.booking.contact_name ? t('people.guestOf', { name: p.booking.contact_name }) : null].filter(Boolean).join(', '),
+    ]);
+  const columns = [
+    { header: '#', type: 'int', width: 5 },
+    ...(groups ? [{ header: t('egroups.group'), width: 24 }] : []),
+    { header: t('common.name'), width: 26 },
+    { header: t('members.gender'), width: 10 },
+    { header: t('common.level'), width: 14 },
+    { header: t('common.phone'), width: 14 },
+    { header: t('xlsx.status'), width: 16 },
+    { header: t('xlsx.fee'), type: 'money' },
+    { header: t('xlsx.paid'), width: 10 },
+    { header: t('xlsx.notes'), width: 30, wrap: true },
+  ];
+  const feeCol = columns.findIndex((c) => c.type === 'money');
+  const people = sheet({
+    title: `${event.title} — ${t('xlsx.participants')}`,
+    subtitle: [dmy(event.event_date), [event.start_time?.slice(0, 5), event.end_time?.slice(0, 5)].filter(Boolean).join('–'), event.location, t('xlsx.playersCount', { n: rows.length })].filter(Boolean).join(' · '),
+    columns,
+    rows,
+    totals: rows.length ? { label: t('xlsx.total'), cols: { [feeCol]: 'sum' } } : null,
+  });
+  book([[t('xlsx.participants'), people]], fileName(event.title, dmy(event.event_date), t('xlsx.participants')));
+}
+
 // Whole club backup: members, schedule, rankings.
 export function exportClubBackup(club, members, events, rankings, t) {
   const m = sheet({

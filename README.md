@@ -380,6 +380,7 @@ Trang chi tiết buổi:
 Tab *Trận đấu* của kèo chia 3 phần:
 - **Nhập điểm**: các trận đã xếp nhưng chưa có tỉ số (bấm *Nhập điểm*) và nút **+ Nhập trận**. Khi chọn 2 người cùng đội mà **đã đứng cùng nhau** trong buổi này, form hiện cảnh báo vàng *"A và B đã đứng cùng nhau N trận… Muốn xếp cặp khác không?"* với **Chọn lại** (bỏ người thứ hai để chọn người khác) / **✓ Giữ nguyên**; phải chọn một trong hai mới lưu được.
 - **Kết quả**: toàn bộ trận đã có tỉ số của buổi.
+- **Xuất DS người chơi** (nút ở tab *Người chơi* của kèo, trên các ô số liệu): file Excel gồm sân / khung giờ (kèo nhiều sân), tên, giới tính, trình độ, SĐT, trạng thái, phí, đã thu và ghi chú (HLV, Khách mời, Khách của …); danh sách chính trước, rồi chờ thanh toán, danh sách chờ, chờ duyệt (không gồm người đã huỷ). Cần gói có *Xuất Excel*.
 - **Xếp trận** (tab mới, giống tab *Xếp sân* của điều phối viên): kèo nhiều sân thì mỗi sân một khung với người chơi của sân đó (đổi sân ngay tại đây) và phần **xếp trận tự động** cho sân đó; kèo một sân thì một phần chung. Ô *Chỉ xếp người đã đến* (bật = chỉ người đã check-in, tắt = cả danh sách chính). Bấm *Xếp lượt đầu / Xếp lượt mới*, nhập tỷ số từng sân, *Lưu tỷ số* là thành trận của buổi (hiện ở *Kết quả* và bảng xếp hạng buổi).
 - **Bảng xếp hạng buổi**: chỉ tính trận của buổi này — mỗi người *số trận, thắng, thua, hiệu số, tỉ lệ thắng*, xếp theo tỉ lệ thắng → hiệu số → số trận (). Bên dưới là **Thách thức gợi ý**: người có tỉ lệ thắng **cao nhất ghép cặp với người thấp nhất**, đấu với **một cặp ngẫu nhiên trong hạng 2–5** (nút *Đổi cặp khác*). Host ghi **phần thưởng cho cặp thắng** rồi bấm **Bắt đầu thách thức** → trận được tạo sẵn (nhãn *Thách thức · phần thưởng*), nhập điểm ở *Nhập điểm*. Cần ít nhất 4 người có kết quả.
 Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trận nhập trong tab **Trận đấu** của từng buổi; danh sách mọi trận Xé Vé nằm ở **Xé Vé → Trận đấu** (`/xeve/matches`). Link cũ `/club/matches` vẫn mở được.
@@ -818,7 +819,8 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 Người đã có chỗ trong kèo (đã đăng ký, đã check-in hoặc đang chờ chuyển khoản) — và Host — thấy thêm khung **Lịch chơi** (giống Reclub), tự cập nhật mỗi 20 giây:
 - Dòng **Bạn đang chơi: Sân 3**.
 - **Danh sách người chơi**: mỗi sân một bảng (*Sân 3 · Full nam · 17:00–20:00 · 4/8*) với ảnh chữ cái, tên, giới tính, DUPR (chưa có thì *DUPR NR*); ô của bạn được tô xanh; ai chưa xếp sân nằm ở *Chưa chọn sân*. Không hiện SĐT / email.
-- **Khi Host chuyển người sang sân khác**: danh sách đổi ngay ở lần cập nhật sau, hiện thông báo *"Người chơi A đã được điều chuyển sang chơi Sân 2"* (hoặc *"Bạn đã được điều chuyển…"*); các lượt chuyển trong 24 giờ qua liệt kê ở đầu tab. Người bị chuyển còn nhận thông báo ở (*Bạn đã được chuyển sang chơi Sân …*).
+- **Khi Host chuyển người sang sân khác**: danh sách đổi ngay ở lần cập nhật sau, **không có thông báo** (trước giờ chơi Host sắp xếp thoải mái). Mỗi sân hiện đủ số ô: người đã có chỗ + ô nét đứt **Slot trống** cho chỗ còn lại (VD Sân 2 · 6/8 → 6 ô người + 2 ô trống).
+- **Chỉ báo khi kèo đổi giờ hoặc bị huỷ**: Host đổi ngày / giờ bắt đầu / giờ kết thúc (hoặc giờ của một sân) → chuông người chơi có *"Kèo đã đổi giờ: 19:00–21:00"* và trang kèo hiện khung vàng *"Host đã đổi giờ kèo…"* (3 ngày); Host huỷ kèo → chuông có *"Host đã huỷ kèo"*. Đổi tên, ghi chú, chuyển sân… không báo.
 - **Trận đấu**: **Bảng tỉ số** (các trận đã có kết quả, đội thắng tô xanh, = kèo thách thức) · **Bảng xếp hạng buổi** tính đến hiện tại — số trận, thắng, thua, **tỉ lệ thắng**, **hệ số** (điểm thắng − điểm thua), xếp theo tỉ lệ thắng (bằng nhau xét hệ số) · **Kèo thách thức** (hai đội, phần thưởng, kết quả hoặc *Đang chờ kết quả*).
 
 ### 5.3b. Link mời đặt nhanh — không cần tài khoản (`/g/<kèo>/<mã>`)
@@ -965,7 +967,7 @@ Nhập **email** của người đó, tên (để dễ nhận ra), chọn **vai 
 4. Trong từng sự kiện: đầu trang có 4 ô *Đã đến x/y · Vắng · Danh sách chờ · Số trận*, và các tab:
    - **Check-in** (điều phối viên): tìm tên, quét QR, lọc *Chưa đến / Đã đến / Vắng / Tất cả*, bấm *Đã đến* hoặc *Vắng*, hoàn tác được. Người trong danh sách chờ có nút **Đôn vào**. Ô **Thêm khách vãng lai** để thêm người đến không đăng ký và check-in luôn (hết chỗ thì vào danh sách chờ; vẫn tính giới hạn gói của Host).
    - **Xếp sân** (điều phối viên): đầu trang sự kiện hiện đủ thông tin kèo như Host thấy — sân số, nội dung chơi, và với kèo nhiều sân: từng sân + khung giờ + số chỗ. Tab Xếp sân:
-     - Kèo **nhiều sân / khung giờ**: mỗi sân một khung *Sân 3 · Full nam · 17:00–20:00 · 3/4* với danh sách người chơi của sân đó (đã đến / chưa đến, giới tính, trình độ) và ô **Đổi sân** cho từng người (chuyển sang sân khác như Host làm). Dưới mỗi sân là phần **xếp trận tự động** riêng cho sân đó (số sân lấy theo *sân số* Host đặt, tên sân đúng số thật, VD *Sân 3*, *Sân 4*).
+     - Kèo **nhiều sân / khung giờ**: mỗi sân một khung *Sân 3 · Full nam · 17:00–20:00 · 3/4*, **mỗi người chơi một ô** giống bảng của Host và người chơi (ảnh, tên, giới tính · trình độ, *Đã đến / Chưa đến*), chỗ còn trống hiện ô nét đứt **Slot trống**. **Bấm vào ô một người** để mở bảng *Đổi sân* và chọn sân khác (như Host làm). Dưới mỗi sân là phần **xếp trận tự động** riêng cho sân đó (số sân lấy theo *sân số* Host đặt, tên sân đúng số thật, VD *Sân 3*, *Sân 4*).
      - Kèo một sân: một phần xếp trận chung.
      - Ô **Chỉ xếp người đã đến (đã điểm danh)**: bật = chỉ người đã check-in; tắt = mọi người trong danh sách chính (xếp trước khi mọi người tới). Mặc định bật khi đã có người check-in.
      - Bấm *Xếp lượt đầu / Xếp lượt mới* — app ưu tiên người chơi ít trận nhất, ghép người cùng trình độ chung sân (mạnh nhất + yếu nhất đấu hai người giữa), hiện danh sách nghỉ kèm số trận đã chơi. Nhập tỷ số từng sân rồi *Lưu tỷ số* là thành trận của buổi.
@@ -1516,7 +1518,8 @@ supabase/migrations/
 ├── 20261211090000_event_groups_courts.sql        # Kèo nhiều nhóm giờ (events.groups: giờ / phí / số chỗ / sân mỗi nhóm), sân số (events.court_labels), event_participants.group_id + court (xếp sân); dựng lại v_event_summary
 ├── 20261212090000_membership_partial.sql         # Gói kỳ mua giữa kỳ: memberships.sessions_included (số buổi của lần mua, null = theo gói); v_membership_status dùng số này
 ├── 20261213090000_plan_tiers.sql                 # Hạng hội viên của gói: membership_plans.tier (silver / gold / diamond — Bạc / Vàng / Kim cương)
-├── 20261214090000_court_moves.sql                # Host chuyển sân: event_participants.group_moved_at + group_moved_from (thông báo cho người chơi)
+├── 20261214090000_court_moves.sql                # Host chuyển sân: event_participants.group_moved_at + group_moved_from
+├── 20261217090000_event_schedule_changed.sql     # events.schedule_changed_at: lúc kèo đổi ngày / giờ hoặc bị huỷ (chuông + trang kèo của người chơi)
 ├── 20261215090000_members_first.sql              # Kèo riêng tư — thành viên trước: events.members_only + public_from; dựng lại v_event_summary
 └── 20261216090000_bell_dismiss.sql               # Chuông người chơi: xoá từng tin / xoá tất cả — users.bell_hidden + bell_cleared_at
 ```

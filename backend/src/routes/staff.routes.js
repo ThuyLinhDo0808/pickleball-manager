@@ -342,7 +342,7 @@ staff.get('/events/:eventId', async (req, res) => {
     const [{ data: people, error: pErr }, { data: matches, error: mErr }] = await Promise.all([
       supabase
         .from('event_participants')
-        .select(`id, full_name, dupr_level, status, checked_in_at, gender${(await require('../services/eventGroups').ready()) ? ', group_id' : ''}`)
+        .select(`id, full_name, dupr_level, status, checked_in_at, gender, user_id${(await require('../services/eventGroups').ready()) ? ', group_id' : ''}`)
         .eq('event_id', req.event.id)
         .in('status', ['registered', 'checked_in', 'no_show', 'waitlisted', 'pending'])
         .order('joined_at', { ascending: true }),
@@ -350,6 +350,12 @@ staff.get('/events/:eventId', async (req, res) => {
     ]);
     if (pErr) throw pErr;
     if (mErr) throw mErr;
+    // Player photos on the court boards (avatar link only; no account details).
+    await require('../services/playerAvatars').attach(people);
+    for (const p of people) {
+      if (p.avatar_v) p.avatar_uid = p.user_id;
+      delete p.user_id;
+    }
     res.json({
       ...STAFF_EVENT_FIELDS(req.event),
       sport: await clubSport(req.event.club_id), // levels / scoring follow the club's sport

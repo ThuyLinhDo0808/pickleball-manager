@@ -33,16 +33,15 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
     try {
       const r = await api.get(`/api/events/public/${token}/live`);
       setData(r);
-      // A new court move since the last look: say so (the newest one).
-      const top = r.moves?.[0];
-      if (top && lastMove.current && top.at > lastMove.current) {
-        setToast(top.me ? t('elive.movedMe', { court: courtName(r.groups, top.to) }) : t('elive.moved', { name: top.full_name, court: courtName(r.groups, top.to) }));
-      }
-      lastMove.current = top?.at || lastMove.current || '0';
+      // The Host changed the kèo's time since the last look: say so. (Court moves before
+      // the kèo are the Host arranging people — no notice.)
+      const at = r.event?.schedule_changed_at || null;
+      if (at && lastMove.current && at > lastMove.current) setToast(t('elive.timeChanged', { time: [r.event.start_time, r.event.end_time].filter(Boolean).map((x) => String(x).slice(0, 5)).join('–') }));
+      lastMove.current = at || lastMove.current || '0';
     } catch {
       setData(null); // not playing in this kèo (or signed out): nothing to show
     }
-  }, [token, t, courtName]);
+  }, [token, t]);
   useEffect(() => {
     if (!user) return undefined;
     load();
@@ -76,18 +75,14 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
       {groups.length > 0 && data.me && (
         <p className="text-lime-300 text-sm mb-2 flex items-center gap-2"><UiIcon name="court" className="w-4 h-4" />{t('elive.myCourt', { court: courtName(groups, data.me.group_id) })}</p>
       )}
+      {data.event?.schedule_changed_at && data.event.status !== 'cancelled' && Date.now() - Date.parse(data.event.schedule_changed_at) < 3 * 86400000 && !toast && (
+        <p className="mb-2 rounded-lg border border-amber-300/60 bg-amber-300/10 px-3 py-2 text-amber-100 text-sm flex items-start gap-2"><UiIcon name="clock" className="w-4 h-4 mt-0.5" /><span>{t('elive.timeChanged', { time: [data.event.start_time, data.event.end_time].filter(Boolean).map((x) => String(x).slice(0, 5)).join('–') })}</span></p>
+      )}
       {toast && <p role="status" className="mb-2 rounded-lg border border-amber-300/60 bg-amber-300/10 px-3 py-2 text-amber-100 text-sm flex items-start gap-2"><UiIcon name="bell" className="w-4 h-4 mt-0.5" /><span>{toast}</span></p>}
       <Segmented full items={['players', 'matches']} value={tab} onChange={setTab} label={(k) => (k === 'players' ? t('elive.tabPlayers') : `${t('elive.tabMatches')} (${results.length})`)} className="mb-3 w-full" />
 
       {tab === 'players' && (
         <div className="flex flex-col gap-3">
-          {data.moves?.length > 0 && (
-            <ul className="flex flex-col gap-1 text-xs text-amber-100">
-              {data.moves.slice(0, 5).map((mv) => (
-                <li key={`${mv.id}${mv.at}`} className="rounded-md bg-amber-300/10 px-2 py-1 flex items-start gap-1.5"><UiIcon name="move" className="w-3.5 h-3.5 mt-px" />{mv.me ? t('elive.movedMe', { court: courtName(groups, mv.to) }) : t('elive.moved', { name: mv.full_name, court: courtName(groups, mv.to) })}</li>
-              ))}
-            </ul>
-          )}
           {boards.map((b) => (
             <div key={b.key} className={`rounded-xl border p-2.5 ${b.people.some((p) => p.id === myId) ? 'border-lime-400/60' : 'border-navy-700'}`}>
               <p className="text-white text-sm font-semibold mb-2">
@@ -95,7 +90,7 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                 {b.sub && <span className="text-gray-400 font-normal"> · {b.sub}</span>}
                 {b.slots ? <span className="text-gray-400 font-normal tabular-nums"> · {b.people.length}/{b.slots}</span> : null}
               </p>
-              {b.people.length === 0 ? (
+              {b.people.length === 0 && !b.slots ? (
                 <p className="text-gray-500 text-xs">{t('elive.empty')}</p>
               ) : (
                 <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -107,6 +102,13 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
                         {p.gender ? `${t(`members.${p.gender}`)} · ` : ''}
                         {sport === 'pickleball' ? (p.dupr != null ? `DUPR ${Number(p.dupr).toFixed(2)}` : 'DUPR NR') : ''}
                       </span>
+                    </li>
+                  ))}
+                  {/* Places nobody has taken yet on this court. */}
+                  {Array.from({ length: Math.max((b.slots || 0) - b.people.length, 0) }, (_, i) => (
+                    <li key={`free-${i}`} aria-label={t('egroups.freeSlot')} className="flex min-h-[6.5rem] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-navy-600 px-2 py-2 text-center text-gray-500">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-navy-500" aria-hidden>+</span>
+                      <span className="text-[11px]">{t('egroups.freeSlot')}</span>
                     </li>
                   ))}
                 </ul>
