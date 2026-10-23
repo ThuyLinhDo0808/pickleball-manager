@@ -98,7 +98,7 @@ export default function HomeFind({ eventsOnly = false }) {
                             <span className="block text-gray-400 text-xs break-words">{[e.club?.name, e.location || [e.club?.district, e.club?.province].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}</span>
                             <span className="block text-xs mt-0.5">
                               <span className="text-lime-300">{Number(e.fee_amount) > 0 ? formatVnd(e.fee_amount) : t('public.free')}</span>
-                              {e.slots ? <span className={full ? 'text-amber-300' : 'text-gray-300'}> · {full ? t('findx.fullWait') : t('findx.left', { n: e.slots - e.main_count, total: e.slots })}</span> : null}
+                              {e.slots ? <span className={full ? 'text-amber-300' : 'text-gray-300'}> · {full ? t('findx.fullWait') : t('findx.left', { n: e.main_count, total: e.slots })}</span> : null}
                             </span>
                           </span>
                           <span className="shrink-0 flex flex-col items-end gap-1">

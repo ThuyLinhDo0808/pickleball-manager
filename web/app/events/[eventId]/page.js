@@ -11,6 +11,7 @@ import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
 import MatchList, { isScored } from '@/components/MatchList';
 import QrCheckinPanel from '@/components/QrCheckinPanel';
+import CourtsPlanner from '@/components/CourtsPlanner';
 import PaymentReview from '@/components/PaymentReview';
 import { HostTicketPasses } from '@/components/TicketPass';
 import EventControls from '@/components/EventControls';
@@ -380,7 +381,7 @@ export default function EventDetailPage() {
                     >
                       <span className={`block font-semibold tabular-nums ${pickGroup === g.id ? 'text-lime-200' : 'text-white'}`}>{g.title}</span>
                       <span className={`block text-xs tabular-nums ${g.left > 0 ? 'text-gray-400' : 'text-amber-300'}`}>
-                        {g.left > 0 ? t('egroups.left', { n: g.left, total: g.slots }) : t('egroups.full')}
+                        {g.left > 0 ? t('egroups.left', { n: Math.max(g.slots - g.left, 0), total: g.slots }) : t('egroups.full')}
                       </span>
                     </button>
                   ))}
@@ -556,9 +557,22 @@ export default function EventDetailPage() {
             tabs={[
               { key: 'enter', label: t('matches.tabEnter'), icon: 'edit', count: (matches || []).filter((m) => !isScored(m)).length },
               { key: 'results', label: t('matches.tabResults'), icon: 'clipboard', count: (matches || []).filter(isScored).length },
+              { key: 'auto', label: t('courts.autoTab'), icon: 'court' },
               { key: 'standings', label: t('estand.title'), icon: 'medal' },
             ]}
           />
+          {/* Xếp trận tự động: rounds per court, fair turns (the same board as coordinators). */}
+          {matchTab === 'auto' && (
+            <CourtsPlanner
+              ev={{ ...event, sport }}
+              people={(participants || []).map((p) => ({ id: p.id, full_name: p.full_name, status: p.status, gender: p.card?.gender || p.gender, dupr_level: p.card?.level ?? p.dupr_level, group_id: p.group_id }))}
+              endpoint="/api/matches"
+              extraBody={{ event_id: eventId }}
+              moveUrl={(p) => `/api/events/${eventId}/participants/${p.id}/group`}
+              onMoved={() => reloadParticipants()}
+              onSaved={reloadMatches}
+            />
+          )}
           {matchTab === 'enter' && <MatchList matches={(matches || []).filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reloadMatches} />}
           {matchTab === 'results' && <MatchList matches={(matches || []).filter(isScored)} onChanged={reloadMatches} />}
           {matchTab === 'standings' && (
@@ -648,6 +662,7 @@ function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
                       <span className="text-white text-sm font-semibold break-words leading-tight">{p.full_name}</span>
                       <span className="text-xs text-gray-400">{g ? t(`members.${g}`) : '—'}</span>
                       {sport === 'pickleball' ? <DuprBadge c={c} t={t} /> : <span className="text-xs text-gray-300">{levelText(c.level ?? p.dupr_level, sport, t) || '—'}</span>}
+                      {(() => { const m = moneyOf(p, 'main', groups.find((x) => x.id === p.group_id)?.fee_amount ?? event.fee_amount, t); return m ? <span className={`rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap ${m[1]}`}>{m[0]}</span> : null; })()}
                       <button
                         type="button"
                         aria-label={`${here ? t('staffView.undo') : t('events.checkIn')}: ${p.full_name}`}
@@ -675,6 +690,19 @@ function CourtBoards({ event, rows, t, sport, onManage, onAction }) {
   );
 }
 
+// Money on a player: Miễn phí / no fee / uses a pass / Đã thu / Chưa thu (+ the amount owed).
+function moneyOf(p, kind, fee, t) {
+  const c = p.card || {};
+  const owed = Number(p.fee_amount ?? fee ?? 0);
+  if ((p.tags || []).includes('free') && kind !== 'cancelled') return [`${t('people.tag_free')}`, 'border-navy-600 text-gray-200'];
+  if (p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0) return [t('people.noFee'), 'border-navy-600 text-gray-400'];
+  if (p.paid_by_plan && kind !== 'cancelled') return [c.vip ? t(`events.usesPass_${c.vip_period || 'any'}`) : t('events.paidByPlan'), 'border-lime-400/40 text-lime-300'];
+  if (p.fee_paid) return [`✓ ${t('common.paid')}`, 'border-lime-400/60 text-lime-300'];
+  if (owed <= 0 && kind !== 'cancelled') return [t('people.noFee'), 'border-navy-600 text-gray-400'];
+  if (kind !== 'cancelled' || p.late_cancel) return [`${t('common.unpaid')}${owed > 0 ? ` · ${formatVnd(owed)}` : ''}`, 'border-yellow-400/50 text-yellow-200'];
+  return null;
+}
+
 function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, onManage, onAction }) {
   return (
     <section className="card mb-4 !px-2 sm:!px-4">
@@ -685,17 +713,7 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
         {rows.map((p, idx) => {
           const c = p.card || {};
           const level = levelText(c.level ?? p.dupr_level, sport, t);
-          const money = (p.tags || []).includes('free') && kind !== 'cancelled'
-            ? [`${t('people.tag_free')}`, 'border-navy-600 text-gray-200']
-            : p.is_organizer && p.fee_amount != null && Number(p.fee_amount) === 0
-            ? [t('people.noFee'), 'border-navy-600 text-gray-400']
-            : p.paid_by_plan && kind !== 'cancelled'
-              ? [c.vip ? t(`events.usesPass_${c.vip_period || 'any'}`) : t('events.paidByPlan'), 'border-lime-400/40 text-lime-300']
-              : p.fee_paid
-                ? [t('common.paid'), 'border-lime-400/60 text-lime-300']
-                : kind !== 'cancelled' || p.late_cancel
-                  ? [`${t('common.unpaid')}${kind === 'cancelled' && Number(p.fee_amount ?? fee) > 0 ? ` · ${formatVnd(p.fee_amount ?? fee)}` : ''}`, 'border-yellow-400/50 text-yellow-200']
-                  : null;
+          const money = moneyOf(p, kind, fee, t);
           return (
             <li key={p.id}>
               <div

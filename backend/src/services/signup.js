@@ -74,15 +74,16 @@ function httpError(message, status, code) {
   return Object.assign(new Error(message), { status, code });
 }
 
-// "Đăng ký, chuyển khoản sau": the place is held until the sign-up deadline, or until the
-// event starts when there is none. null = not offered (the event turned it off, or there
-// is no more time than a normal hold).
+// "Đăng ký, chuyển khoản sau": the place is held until the sign-up deadline, or until
+// 12 hours before the start (when the deadline is later or there is none). null = not
+// offered (the event turned it off, or there is no more time than a normal hold).
 function payLaterUntil(event, now = Date.now()) {
   if (event.allow_pay_later === false) return null;
-  const { eventStartMs } = require('./attendance');
+  const { eventStartMs, PAY_BEFORE_START_MS } = require('./attendance');
   const start = eventStartMs(event);
+  const last = Number.isFinite(start) ? start - PAY_BEFORE_START_MS : null;
   const deadline = event.registration_deadline ? Date.parse(event.registration_deadline) : null;
-  const until = deadline && (!start || deadline < start) ? deadline : start;
+  const until = deadline && (!last || deadline < last) ? deadline : last;
   if (!until || until - now <= MIN_PAY_LATER_MS) return null;
   return new Date(until).toISOString();
 }
@@ -141,6 +142,13 @@ async function registrationView(event, p) {
     // The ticket only exists for players who actually have a confirmed place.
     ticket_code: ['registered', 'checked_in'].includes(p.status) ? p.ticket_code : null,
   };
+  // On the list but the fee not collected yet (the Host placed them, "thu tiền sau"): what
+  // is still owed and where to transfer it (or pay the Host at the court).
+  if (['registered', 'checked_in'].includes(p.status) && amount > 0 && (await needsOnlinePayment(event, p))) {
+    const { bank, qr_image } = await payeeFor(event);
+    const ref = p.payment_ref || null;
+    view.owed = { ref, amount, bank, qr_url: bank && ref ? vietqrUrl({ bank_code: bank.code, bank_account: bank.account, bank_holder: bank.holder }, amount, ref) : null, qr_image };
+  }
   if (p.status === 'pending') {
     const { bank, qr_image } = await payeeFor(event);
     view.payment = {
@@ -259,7 +267,7 @@ async function registerOnline(event, userId, profile, opts = {}) {
       status: 'pending',
       payment_status: 'awaiting_proof',
       payment_ref: newPaymentRef(),
-      hold_expires_at: new Date(Date.now() + NEW_HOLD_MS).toISOString(),
+      hold_expires_at: new Date(Date.now() + require('./attendance').capHoldMs(event, NEW_HOLD_MS)).toISOString(),
     });
     const later = opts.payLater ? payLaterUntil(event) : null;
     if (later) Object.assign(row, { hold_expires_at: later, pay_later: true });
@@ -368,7 +376,7 @@ async function rejectPayment(event, participant, note) {
   if (participant.status !== 'pending') throw httpError('Only registrations waiting for payment can be rejected.', 409, 'not_pending');
   const { data, error } = await supabase
     .from('event_participants')
-    .update({ payment_status: 'rejected', payment_note: String(note || '').slice(0, 300) || null, hold_expires_at: new Date(Date.now() + REJECTED_HOLD_MS).toISOString() })
+    .update({ payment_status: 'rejected', payment_note: String(note || '').slice(0, 300) || null, hold_expires_at: new Date(Date.now() + require('./attendance').capHoldMs(event, REJECTED_HOLD_MS)).toISOString() })
     .eq('id', participant.id)
     .select()
     .single();

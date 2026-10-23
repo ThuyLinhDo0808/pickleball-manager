@@ -29,9 +29,12 @@ function makeRound(players, matches, courts) {
 
 // Coordinator's court board: set up a round across the courts (balanced, fair turns),
 // then type each court's score as it finishes — it is saved as a match of the session.
-export default function CourtRotation({ players, matches, defaultCourts = 2, endpoint, sport, onSaved }) {
+// labels: the real court numbers ("3", "5") when the Host set them; poolText: who is in
+// the pool (default: "n checked in"); extraBody: e.g. { event_id } for the Host's API.
+export default function CourtRotation({ players, matches, defaultCourts = 2, labels = null, poolText = null, endpoint, extraBody = {}, sport, onSaved }) {
   const { t } = useI18n();
-  const [courts, setCourts] = useState(Math.max(1, defaultCourts || 2));
+  const [courts, setCourts] = useState(Math.max(1, labels?.length || defaultCourts || 2));
+  const courtName = (n) => t('courts.court', { n: labels?.[n - 1] || n });
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
@@ -52,7 +55,7 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, end
     setError('');
     try {
       const players4 = [...c.team1.map((p) => ({ team: 1, event_participant_id: p.id })), ...c.team2.map((p) => ({ team: 2, event_participant_id: p.id }))];
-      await api.post(endpoint, sport === 'badminton' ? { players: players4, games: [[s1, s2]] } : { players: players4, team1_score: s1, team2_score: s2 });
+      await api.post(endpoint, { ...extraBody, ...(sport === 'badminton' ? { players: players4, games: [[s1, s2]] } : { players: players4, team1_score: s1, team2_score: s2 }) });
       setState((s) => ({ ...s, round: s.round.map((x, j) => (j === i ? { ...x, saved: true } : x)) }));
       onSaved?.();
     } catch (err) {
@@ -77,7 +80,7 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, end
           <input className="input !w-24" type="number" min="1" max="20" value={courts} onChange={(e) => setCourts(Math.max(1, Number(e.target.value) || 1))} />
         </div>
         <div className="text-sm text-gray-300 flex-1 min-w-[12rem]">
-          {t('courts.here', { n: players.length })}
+          {poolText || t('courts.here', { n: players.length })}
           <span className="block text-gray-500 text-xs">{t('courts.hint')}</span>
         </div>
         <button type="button" className="btn-primary" disabled={players.length < 4} onClick={deal}>
@@ -93,14 +96,14 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, end
             {state.round.map((c, i) => (
               <div key={c.court} className={`rounded-2xl border p-4 ${c.saved ? 'border-lime-400/50 bg-lime-400/5' : 'border-navy-600 bg-navy-800'}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-bold">{t('courts.court', { n: c.court })}</span>
+                  <span className="text-white font-bold">{courtName(c.court)}</span>
                   {c.saved && <span className="text-lime-300 text-xs">✓ {t('courts.saved')}</span>}
                 </div>
                 <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 items-center text-sm">
                   <div className="rounded-lg bg-navy-900 px-3 py-2 text-gray-100">{c.team1.map((p) => <span key={p.id}>{name(p)}</span>)}</div>
-                  <input className="input !w-16 text-center font-bold" type="number" min="0" inputMode="numeric" aria-label={`${t('courts.court', { n: c.court })} · 1`} disabled={c.saved} value={c.s1} onChange={(e) => setScore(i, 's1', e.target.value)} />
+                  <input className="input !w-16 text-center font-bold" type="number" min="0" inputMode="numeric" aria-label={`${courtName(c.court)} · 1`} disabled={c.saved} value={c.s1} onChange={(e) => setScore(i, 's1', e.target.value)} />
                   <div className="rounded-lg bg-navy-900 px-3 py-2 text-gray-100">{c.team2.map((p) => <span key={p.id}>{name(p)}</span>)}</div>
-                  <input className="input !w-16 text-center font-bold" type="number" min="0" inputMode="numeric" aria-label={`${t('courts.court', { n: c.court })} · 2`} disabled={c.saved} value={c.s2} onChange={(e) => setScore(i, 's2', e.target.value)} />
+                  <input className="input !w-16 text-center font-bold" type="number" min="0" inputMode="numeric" aria-label={`${courtName(c.court)} · 2`} disabled={c.saved} value={c.s2} onChange={(e) => setScore(i, 's2', e.target.value)} />
                 </div>
                 {!c.saved && (
                   <button type="button" className="btn-secondary w-full mt-3 !py-1.5 text-sm" disabled={busy === i} onClick={() => save(i)}>{t('courts.saveScore')}</button>

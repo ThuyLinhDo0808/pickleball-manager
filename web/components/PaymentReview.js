@@ -98,10 +98,13 @@ export default function PaymentReview({ event, rows, onChanged }) {
                 )}
               </div>
             </div>
-            <div className="flex gap-3 shrink-0">
+            <div className="flex flex-wrap justify-end gap-3 shrink-0">
               {p.has_proof && <button className="text-sky-300 text-xs font-semibold" onClick={() => open(g)}>{t('review.view')}</button>}
               <button className="text-lime-400 text-xs" disabled={busy} onClick={() => window.confirm(t('review.confirmAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'confirm-payment')}>
                 {p.has_proof ? t('review.confirm') : t('review.cash')}
+              </button>
+              <button className="text-lime-300 text-xs" disabled={busy} title={t('place.unpaidHint')} onClick={() => window.confirm(t('review.mainUnpaidAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'place', { to: 'main', unpaid: true })}>
+                {t('place.mainUnpaid')}
               </button>
               <button className="text-sky-300 text-xs" disabled={busy} title={t('review.toWaitlistHint')} onClick={() => window.confirm(t('review.toWaitlistAsk', { name: nameOf(g) })) && act(g, 'place', { to: 'waitlist' })}>
                 {t('review.toWaitlist')}

@@ -1575,22 +1575,7 @@ async function undoRefund(req, p) {
   return data;
 }
 
-const movesReady = async () => !(await require('../services/schemaCheck').schemaStatus()).missing_migrations.includes('20261214090000_court_moves.sql');
-
-async function changeGroup(event, prior, groupId) {
-  const eg = require('../services/eventGroups');
-  const group = eg.groupOf(event, groupId);
-  if (!group) throw Object.assign(new Error('Unknown group.'), { status: 400, code: 'bad_group' });
-  if (prior.group_id === group.id) return prior;
-  // The Host moves people between courts freely, even into a court that is already full.
-  const patch = { group_id: group.id, court: null };
-  // Remember the move so the player sees "Bạn đã được chuyển sang sân …" (after its migration).
-  if (await movesReady()) Object.assign(patch, { group_moved_at: new Date().toISOString(), group_moved_from: prior.group_id || null });
-  if (!prior.fee_paid && prior.payment_status !== 'proof_submitted') patch.fee_amount = group.fee_amount;
-  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
-  if (error) throw error;
-  return data;
-}
+const { moveToGroup: changeGroup } = require('../services/eventGroups');
 
 // Actions: check-in / no-show / reset / promote / cancel / waive / fee / place / roles / group
 async function withGroup(prior, act) {
@@ -1624,7 +1609,10 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
     // The sheet on a name: where they are (main / waitlist / waiting for approval / not playing)…
-    if (action === 'place' && req.body.to === 'main' && prior.status === 'requested' && prior.guest_booking_id) return res.json(await require('../services/quickBooking').approveGroup(req.event, prior));
+    // unpaid: "Vào danh sách chính, thu tiền sau" — the place now, the fee collected later.
+    const unpaid = req.body?.unpaid === true;
+    if (action === 'place' && req.body.to === 'main' && prior.status === 'requested' && prior.guest_booking_id) return res.json(await require('../services/quickBooking').approveGroup(req.event, prior, { unpaid }));
+    if (action === 'place' && req.body.to === 'main' && unpaid) return res.json(await withGroup(prior, (p) => setPlace(req.event, p, 'main', { unpaid })));
     if (action === 'place') return res.json(await setPlace(req.event, prior, req.body.to));
     // Kèo with time groups: move them to another group (its fee if not paid yet).
     if (action === 'group') return res.json(await changeGroup(req.event, prior, req.body?.group_id));

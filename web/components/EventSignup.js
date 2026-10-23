@@ -246,6 +246,19 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const quickBox = quickHref && ev.registration_open && !ev.members_only_now && (
     <Link href={quickHref} className="btn-primary block w-full py-3 text-center mt-3">{t('signup.quickCta')}</Link>
   );
+  // Signed in and already on the kèo: book places for friends too (the quick booking form,
+  // kept on this account; the Host checks them and they pay one transfer for the group).
+  const friendsOk = quickHref && ev.registration_open && !ev.members_only_now;
+  const friendsBox = friendsOk && (
+    <div className="w-full rounded-xl border border-navy-600 px-3 py-3 mt-4 text-left">
+      <p className="text-white font-semibold text-sm">{t('signup.friendsTitle')}</p>
+      <p className="text-gray-400 text-xs mt-0.5 mb-2">{t('signup.friendsHint')}</p>
+      <div className="flex justify-end">
+        <Link href={`${quickHref}?friends=1`} className="btn-secondary text-sm">+ {t('signup.friendsCta')}</Link>
+      </div>
+    </div>
+  );
+  const [extra, setExtra] = useState(0); // friends to book right after this sign-up
 
 
   if (!user || meError?.status === 401) {
@@ -369,6 +382,19 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
           {reg.kind === 'member' ? t('signup.asMember') : t('signup.asGuest')}
           {reg.fee_paid && reg.fee > 0 ? ` · ${t('signup.paid', { amount: formatVnd(reg.fee) })}` : ''}
         </p>
+        {/* The Host put them on the list before the money came in ("thu tiền sau"). */}
+        {reg.owed && (
+          <div className="w-full rounded-xl border border-amber-300/60 bg-amber-300/10 px-3 py-3 mb-3 text-left">
+            <p className="text-amber-100 font-semibold">{t('signup.owedTitle', { amount: formatVnd(reg.owed.amount) })}</p>
+            <p className="text-gray-200 text-sm mt-0.5">{t('signup.owedHint')}</p>
+            {reg.owed.bank && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm text-lime-300 min-h-[2.75rem] flex items-center">{t('signup.owedTransfer')}</summary>
+                <PaymentCard payment={reg.owed} />
+              </details>
+            )}
+          </div>
+        )}
         <TicketCard ticketCode={reg.ticket_code} name={reg.full_name} checkedIn={reg.status === 'checked_in'} />
         {reg.status === 'registered' && (
           <div className="flex flex-col items-center gap-2 mt-4">
@@ -377,6 +403,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
             {cancelUi}
           </div>
         )}
+        {friendsBox}
       </div>
     );
   }
@@ -421,6 +448,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         <ProofUpload token={token} reg={reg} onChanged={onChanged} />
         <button type="button" className="text-red-400 text-sm self-center" onClick={cancel}>{t('events.cancel')}</button>
             {cancelUi}
+        {friendsBox}
       </div>
     );
   }
@@ -437,6 +465,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         {ev.registration_deadline && <Countdown until={ev.registration_deadline} className="mt-3 w-full" />}
         <button type="button" className="text-red-400 text-sm mt-3" onClick={cancel}>{t('signup.cancelRequest')}</button>
         {cancelUi}
+        {friendsBox}
       </div>
     );
   }
@@ -469,6 +498,8 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     setError('');
     try {
       await api.post(`/api/events/public/${token}/register`, { ...(payLater && paysNow ? { pay_later: true } : {}), ...(me.voucher ? { use_voucher: useVoucher } : {}), ...(gSel ? { group_id: gSel.id } : {}) });
+      // Friends too: straight on to their slots (same time group), one transfer for them.
+      if (extra > 0 && friendsOk) return window.location.assign(`${quickHref}?friends=${extra}${gSel ? `&group=${gSel.id}` : ''}`);
       onChanged();
     } catch (err) {
       // Kept out by the club: suspended ("to review") until a date, or blocked.
@@ -509,6 +540,23 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
         </div>
         {full && <p className="text-yellow-300 text-xs mt-2">{t('public.full')}</p>}
       </div>
+      {/* Số slots: me + friends. Friends go through the quick booking form right after. */}
+      {friendsOk && !full && (
+        <div className="rounded-lg border border-navy-600 px-3 py-2 mb-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-white text-sm font-semibold">{t('signup.slotsTitle')}</p>
+              <p className="text-gray-400 text-xs">{extra > 0 ? t('signup.slotsMeFriends', { n: extra }) : t('signup.slotsOnlyMe')}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0" role="group" aria-label={t('signup.slotsTitle')}>
+              <button type="button" className="btn-secondary !px-3 min-h-[2.75rem]" disabled={extra <= 0} onClick={() => setExtra(extra - 1)} aria-label="−">−</button>
+              <span className="text-white font-bold tabular-nums w-6 text-center">{extra + 1}</span>
+              <button type="button" className="btn-secondary !px-3 min-h-[2.75rem]" disabled={extra >= 9 || extra + 1 >= Math.max(1, (gSel ? gSel.left : ev.slots - ev.main_count) || 1)} onClick={() => setExtra(extra + 1)} aria-label="+">+</button>
+            </div>
+          </div>
+          {extra > 0 && <p className="text-sky-200 text-xs mt-2">{t('signup.slotsNext', { n: extra })}</p>}
+        </div>
+      )}
       {v && (
         <label className="flex items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-gray-100 mb-3 cursor-pointer">
           <input type="checkbox" className="mt-1" checked={useVoucher} onChange={(e) => setUseVoucher(e.target.checked)} />

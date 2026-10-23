@@ -378,6 +378,16 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
               ))}
             </div>
             {place === 'waitlist' && !locked && <Hint text={t('place.hint_waitlist')} className="mt-2" />}
+            {/* Still owes the transfer (or waits for the info check): the Host can give the
+                place now and collect the fee later — cash at the court, a late transfer. */}
+            {row && !isHost && ['pending', 'requested', 'waitlisted'].includes(row.status) && fee > 0 && !row.fee_paid && !(row.tags || []).includes('free') && (
+              <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                <Hint inline text={t('place.unpaidHint')} />
+                <button type="button" disabled={busy} className="btn-secondary text-sm" onClick={() => run(async () => { await api.post(`/api/events/${event.id}/participants/${row.id}/place`, { to: 'main', unpaid: true }); onClose(); })}>
+                  {t('place.mainUnpaid')}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

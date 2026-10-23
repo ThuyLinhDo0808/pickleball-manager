@@ -99,4 +99,21 @@ function pickGroup(event, groupId) {
   return g;
 }
 
-module.exports = { MIGRATION, ready, courtList, groupsOf, groupOf, forGroup, cleanGroups, takenByGroup, publicGroups, pickGroup };
+const movesReady = async () => !(await require('./schemaCheck').schemaStatus()).missing_migrations.includes('20261214090000_court_moves.sql');
+
+// Move a player to another time group / court (Host or coordinator).
+async function moveToGroup(event, prior, groupId) {
+  const group = groupOf(event, groupId);
+  if (!group) throw Object.assign(new Error('Unknown group.'), { status: 400, code: 'bad_group' });
+  if (prior.group_id === group.id) return prior;
+  // The Host moves people between courts freely, even into a court that is already full.
+  const patch = { group_id: group.id, court: null };
+  // Remember the move so the player sees "Bạn đã được chuyển sang sân …" (after its migration).
+  if (await movesReady()) Object.assign(patch, { group_moved_at: new Date().toISOString(), group_moved_from: prior.group_id || null });
+  if (!prior.fee_paid && prior.payment_status !== 'proof_submitted') patch.fee_amount = group.fee_amount;
+  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+module.exports = { moveToGroup, MIGRATION, ready, courtList, groupsOf, groupOf, forGroup, cleanGroups, takenByGroup, publicGroups, pickGroup };
