@@ -5,6 +5,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import Modal from '@/components/Modal';
 import GuideModal from '@/components/ui/GuideModal';
 
@@ -21,6 +22,10 @@ const STATUS_TONE = {
   manual: 'border-sky-400/60 text-sky-300',
 };
 const FILTERS = ['all', 'linked', 'manual', 'not_in_club', 'none', 'conflict'];
+// Who the player is in the club / community: thường xuyên · vãng lai · người mới, and the
+// people of quick bookings (no account, not on the member list).
+const kindOf = (m) => (m.member_type === 'fixed' ? 'regular' : m.member_type === 'new' ? 'new' : 'dropin');
+const KIND_TONE = { regular: 'border-lime-400/50 text-lime-200', dropin: 'border-sky-400/50 text-sky-200', new: 'border-amber-300/50 text-amber-100' };
 
 export function Change({ v, className = '' }) {
   if (v == null || v === 0) return null;
@@ -40,6 +45,8 @@ export default function DuprMembers({ club }) {
   const { data, error, reload } = useLoad(() => api.get(`/api/clubs/${club.id}/dupr/members`), [club.id]);
   const { data: info, reload: reloadInfo } = useLoad(() => api.get(`/api/clubs/${club.id}/dupr`).catch(() => null), [club.id]);
   const [filter, setFilter] = useState('all');
+  const [group, setGroup] = useState('all'); // all | regular | dropin | new | quick
+  const [qEdit, setQEdit] = useState(null); // quick player: { key, ids, value }
   const [query, setQuery] = useState('');
   const [edit, setEdit] = useState(null); // { id, value }
   const [err, setErr] = useState('');
@@ -55,9 +62,15 @@ export default function DuprMembers({ club }) {
 
   const members = data.members;
   // Same name twice: probably one person with two records (e.g. added by hand + signed up).
-  const counts = members.reduce((c, m) => ({ ...c, [m.status]: (c[m.status] || 0) + 1 }), {});
   const q = query.trim().toLowerCase();
-  const list = members
+  const community = club?.kind === 'community';
+  const groups = ['all', 'regular', 'dropin', ...(community ? ['new'] : []), 'quick'];
+  const groupLabel = (g) => (g === 'all' ? t('duprm.filter_all') : g === 'quick' ? t('duprm.g_quick') : t(`cpeople.${community ? 'c' : 'k'}_${g}`));
+  const kindCount = members.reduce((c, m) => ({ ...c, [kindOf(m)]: (c[kindOf(m)] || 0) + 1 }), {});
+  const quick = (data.quick || []).filter((g) => !query.trim() || g.full_name.toLowerCase().includes(query.trim().toLowerCase()) || String(g.dupr_id || '').toLowerCase().includes(query.trim().toLowerCase()));
+  const inGroup = members.filter((m) => group === 'all' || kindOf(m) === group);
+  const counts = inGroup.reduce((c, m) => ({ ...c, [m.status]: (c[m.status] || 0) + 1 }), {});
+  const list = inGroup
     .filter((m) => filter === 'all' || m.status === filter)
     .filter((m) => !q || m.full_name.toLowerCase().includes(q) || String(m.dupr_id || '').toLowerCase().includes(q) || String(m.dupr_name || '').toLowerCase().includes(q))
     .sort((a, b) => (b.doubles ?? -1) - (a.doubles ?? -1) || a.full_name.localeCompare(b.full_name));
@@ -87,6 +100,17 @@ export default function DuprMembers({ club }) {
       await Promise.all([reload(), reloadInfo()]);
     } catch (e) {
       setErr(e.message);
+    }
+  };
+
+  const saveQuick = async () => {
+    setErr('');
+    try {
+      await api.patch(`/api/clubs/${club.id}/dupr/quick`, { ids: qEdit.ids, dupr_id: qEdit.value });
+      setQEdit(null);
+      await reload();
+    } catch (e) {
+      setErr(e.payload?.code === 'bad_dupr_id' ? t('onb.errDuprId') : e.message);
     }
   };
 
@@ -143,14 +167,20 @@ export default function DuprMembers({ club }) {
       <section className="card !p-0 overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
           <input className="input sm:!w-56 text-sm" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
-          <div className="flex flex-wrap gap-1.5">
+          {/* Groups: thường xuyên · vãng lai · người mới · đặt nhanh */}
+          <UnderlineTabs className="w-full" value={group} onChange={(g) => { setGroup(g); setFilter('all'); }} tabs={groups.map((g) => ({ key: g, label: groupLabel(g), count: g === 'all' ? members.length : g === 'quick' ? (data.quick || []).length : kindCount[g] || 0 }))} />
+          {group !== 'quick' && <div className="flex flex-wrap gap-1.5">
             {FILTERS.filter((f) => f !== 'conflict' || counts.conflict).map((f) => (
               <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={`text-xs rounded-full border px-3 py-1 ${filter === f ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300'}`}>
-                {t(`duprm.filter_${f}`)} <span className="tabular-nums">{f === 'all' ? members.length : counts[f] || 0}</span>
+                {t(`duprm.filter_${f}`)} <span className="tabular-nums">{f === 'all' ? inGroup.length : counts[f] || 0}</span>
               </button>
             ))}
-          </div>
+          </div>}
         </div>
+        {group === 'quick' ? (
+          <QuickTable rows={quick} edit={qEdit} setEdit={setQEdit} onSave={saveQuick} />
+        ) : (
+        <>
         <div className="table-wrap">
           <table className="w-full text-sm mobile-list">
             <thead>
@@ -170,6 +200,7 @@ export default function DuprMembers({ club }) {
                 <tr key={m.id} className={`border-b border-navy-700 last:border-0 ${m.is_active ? '' : 'opacity-50'}`}>
                   <td className="py-2 px-3 text-white">
                     {m.full_name}
+                    {group === 'all' && <span className={`ml-1.5 align-middle whitespace-nowrap text-[11px] rounded border px-1 ${KIND_TONE[kindOf(m)]}`}>{groupLabel(kindOf(m))}</span>}
                   </td>
                   <td className="py-2 pr-3">
                     {edit?.id === m.id ? (
@@ -249,6 +280,8 @@ export default function DuprMembers({ club }) {
         </div>
         {!list.length && <p className="text-gray-500 text-sm p-4">{t('memx.noMatch')}</p>}
         <Hint text={t('duprm.statusHint')} />
+        </>
+        )}
       </section>
 
       {/* On DUPR, nobody in the club yet */}
@@ -275,6 +308,68 @@ export default function DuprMembers({ club }) {
         </section>
       )}
     </div>
+  );
+}
+
+// Quick-booking players: name, the DUPR ID (typed at the booking or here), the rating that
+// ID has, and how many kèo they played. The ID goes on all their kèo rows.
+function QuickTable({ rows, edit, setEdit, onSave }) {
+  const { t, lang } = useI18n();
+  if (!rows.length) return <p className="text-gray-500 text-sm p-4">{t('duprm.quickEmpty')}</p>;
+  return (
+    <>
+      <div className="table-wrap">
+        <table className="w-full text-sm mobile-list">
+          <thead>
+            <tr className="text-gray-400 text-sm text-left border-b border-navy-600">
+              <th className="py-2 px-3">{t('dupr.col_member')}</th>
+              <th className="py-2 pr-3">{t('dupr.col_id')}</th>
+              <th className="py-2 pr-3 text-right w-24">{t('dupr.col_doubles')}</th>
+              <th className="py-2 pr-3 text-right w-24">{t('dupr.col_singles')}</th>
+              <th className="py-2 pr-3">{t('duprm.col_info')}</th>
+              <th className="py-2 pr-3">{t('duprm.col_played')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((g) => (
+              <tr key={g.key} className="border-b border-navy-700 last:border-0">
+                <td className="py-2 px-3 text-white">
+                  {g.full_name}
+                  <span className="ml-1.5 align-middle whitespace-nowrap text-[11px] rounded border px-1 border-navy-500 text-gray-300">{t('duprm.g_quick')}</span>
+                </td>
+                <td className="py-2 pr-3">
+                  {edit?.key === g.key ? (
+                    <span className="flex items-center gap-1">
+                      <input className="input !py-1 !w-28 font-mono" autoFocus maxLength={10} value={edit.value} aria-label={t('dupr.col_id')} onChange={(e) => setEdit({ ...edit, value: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} onKeyDown={(e) => e.key === 'Enter' && onSave()} />
+                      <button type="button" className="text-lime-300 text-xs min-h-[2.75rem] px-1" onClick={onSave}>{t('common.save')}</button>
+                      <button type="button" className="text-gray-400 text-xs min-h-[2.75rem] px-1" onClick={() => setEdit(null)} aria-label={t('common.cancel')}>✕</button>
+                    </span>
+                  ) : (
+                    <button type="button" className="font-mono text-gray-200 hover:underline text-left" onClick={() => setEdit({ key: g.key, ids: g.ids, value: g.dupr_id || '' })}>
+                      {g.dupr_id || <span className="text-gray-500 font-sans">+ {t('dupr.addId')}</span>}
+                    </button>
+                  )}
+                </td>
+                {['doubles', 'singles'].map((k) => (
+                  <td key={k} className="py-2 pr-3 text-right tabular-nums align-top">
+                    <span className={g[k] != null ? 'text-white font-semibold' : 'text-gray-500'}>{g.dupr_id ? fmtRating(g[k]) : '—'}</span>
+                  </td>
+                ))}
+                <td className="py-2 pr-3 text-xs text-gray-400 align-top">
+                  {g.doubles_rel != null && <span className="block whitespace-nowrap">{t('dupr.rel', { n: g.doubles_rel })}</span>}
+                  {g.synced_at && <span className="block whitespace-nowrap">{t('dupr.updatedOn', { date: fmtDate(g.synced_at) })}</span>}
+                  {g.doubles_rel == null && !g.synced_at && '—'}
+                </td>
+                <td className="py-2 pr-3 text-xs text-gray-300 align-top tabular-nums">
+                  {t('duprm.quickPlayed', { n: g.count, date: g.last_date ? localDate(`${g.last_date}T00:00:00`, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—' })}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Hint text={t('duprm.quickHint')} />
+    </>
   );
 }
 

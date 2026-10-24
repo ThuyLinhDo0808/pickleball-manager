@@ -448,14 +448,6 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
               </p>
             </div>
             <div className="flex shrink-0 items-center justify-end gap-1">
-              <button
-                type="button"
-                className="min-h-[2.75rem] rounded-lg px-3 text-sm text-red-300 hover:bg-red-500/10 sm:min-h-[2.25rem]"
-                disabled={busy}
-                onClick={() => window.confirm(t('payments.unlinkConfirm', { email: member.account_email })) && patchMember({ unlink_account: true })}
-              >
-                {t('payments.unlink')}
-              </button>
               {!member.account_verified && (
                 <button
                   type="button"

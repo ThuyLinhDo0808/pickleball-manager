@@ -355,10 +355,17 @@ async function accountName(userId, fallback) {
 async function adoptRows(rows, member, userId) {
   if (!rows.length) return 0;
   const name = await accountName(userId, member.full_name);
-  const { data: mine } = await supabase.from('event_participants').select('event_id').eq('user_id', userId).in('event_id', [...new Set(rows.map((r) => r.event_id))]);
-  const taken = new Set((mine || []).map((r) => r.event_id));
+  const { data: mine } = await supabase.from('event_participants').select('id, event_id').eq('user_id', userId).in('event_id', [...new Set(rows.map((r) => r.event_id))]);
+  const ownRow = new Map((mine || []).map((r) => [r.event_id, r.id]));
+  const taken = new Set(ownRow.keys());
   let n = 0;
   for (const r of rows) {
+    // Two places for one person in a kèo (signed up with the account, and also added by
+    // the Host / booked quickly): the matches of the second go to the account's place.
+    if (ownRow.has(r.event_id)) {
+      if (r.id !== ownRow.get(r.event_id)) n += await foldInto(r, ownRow.get(r.event_id), member);
+      continue;
+    }
     if (taken.has(r.event_id)) continue;
     const patch = { user_id: userId, ...(name ? { full_name: name } : {}) };
     if (!r.source_club_member_id && !r.guest_member_id) patch.guest_member_id = member.id;
@@ -369,6 +376,32 @@ async function adoptRows(rows, member, userId) {
     n += 1;
   }
   return n;
+}
+
+// The duplicate row's matches move to the account's row (a match both rows played stays as
+// it is). The duplicate is then removed — unless it carries money (paid, or a transfer
+// screenshot), then it stays, tied to the member, and the Host settles it by hand.
+async function foldInto(dup, ownId, member) {
+  const [{ data: mps, error }, { data: ownMps }] = await Promise.all([
+    supabase.from('match_players').select('id, match_id').eq('event_participant_id', dup.id),
+    supabase.from('match_players').select('match_id').eq('event_participant_id', ownId),
+  ]);
+  if (error) throw error;
+  const both = new Set((ownMps || []).map((m) => m.match_id));
+  const move = (mps || []).filter((m) => !both.has(m.match_id)).map((m) => m.id);
+  if (move.length) {
+    const { error: mErr } = await supabase.from('match_players').update({ event_participant_id: ownId }).in('id', move);
+    if (mErr) throw mErr;
+  }
+  const { data: row } = await supabase.from('event_participants').select('id, fee_paid, payment_proof').eq('id', dup.id).maybeSingle();
+  if (!row) return 0;
+  if (!row.fee_paid && !row.payment_proof && move.length === (mps || []).length) {
+    const { error: dErr } = await supabase.from('event_participants').delete().eq('id', dup.id).is('user_id', null);
+    if (dErr) throw dErr;
+  } else if (!dup.source_club_member_id && !dup.guest_member_id) {
+    await supabase.from('event_participants').update({ guest_member_id: member.id }).eq('id', dup.id).is('user_id', null);
+  }
+  return 1;
 }
 
 // Host: "Gộp vào người chơi đặt nhanh / Host thêm" — a waiting request (with an account)
@@ -410,4 +443,21 @@ async function adoptMemberRows(member) {
   return adoptRows(rows || [], member, member.user_id);
 }
 
-module.exports = { guestCandidates, mergeGuests, adoptMemberRows, ready, MIGRATION, status, createLink, cancel, requestByLogin, peek, claim, pendingFor, answer, matchesFor, mergeInto, nameKey, looksLike };
+// Rows of a kèo that point at a club member with a confirmed account but carry no account
+// themselves (the Host added the member with "Thêm thành viên", or before the account was
+// linked): they go to that account, so the player sees the kèo and is shown as having one.
+async function linkEventAccounts(rows) {
+  const need = (rows || []).filter((r) => !r.user_id && (r.source_club_member_id || r.guest_member_id));
+  if (!need.length) return 0;
+  const ids = [...new Set(need.map((r) => r.source_club_member_id || r.guest_member_id))];
+  const { data: ms, error } = await supabase.from('club_members').select('*').in('id', ids).not('user_id', 'is', null);
+  if (error) throw error;
+  let n = 0;
+  for (const m of ms || []) {
+    if (m.account_verified === false || m.join_requested) continue; // a request still waiting
+    n += await adoptRows(need.filter((r) => (r.source_club_member_id || r.guest_member_id) === m.id), m, m.user_id);
+  }
+  return n;
+}
+
+module.exports = { guestCandidates, mergeGuests, adoptMemberRows, linkEventAccounts, ready, MIGRATION, status, createLink, cancel, requestByLogin, peek, claim, pendingFor, answer, matchesFor, mergeInto, nameKey, looksLike };

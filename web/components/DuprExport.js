@@ -12,7 +12,8 @@ import Modal from '@/components/Modal';
 // template, and marking the matches as uploaded. Pickleball clubs only — renders nothing when
 // DUPR is not available here (badminton, migration not run, no permission).
 // scope: { event } | { tournament } | { scope: 'club' }
-export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', reloadKey }) {
+// bare: inside a pop-up (no card), and says so when there is nothing to send.
+export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', reloadKey, bare = false }) {
   const { t } = useI18n();
   const qs = new URLSearchParams({ ...scope, all: '1' }).toString();
   const { data, error, reload } = useLoad(() => (clubId ? api.get(`/api/clubs/${clubId}/dupr/matches?${qs}`) : Promise.resolve(null)), [clubId, qs, reloadKey]);
@@ -25,23 +26,29 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const [fixOpen, setFixOpen] = useState(false);
   const [ids, setIds] = useState({});
   const [fixErr, setFixErr] = useState('');
+  if (bare && error) return <p className="text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
+  if (bare && !data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
   if (!clubId || error || !data) return null;
 
   const list = data.matches || [];
-  if (!list.length) return null;
+  if (!list.length) return bare ? <p className="text-gray-400 text-sm">{t('duprx.none')}</p> : null;
   const sent = list.filter((m) => m.exported_at);
   const ready = list.filter((m) => m.ready && !m.exported_at);
   const blocked = list.filter((m) => !m.exported_at && !m.ready && !m.no_score);
   const noScore = list.filter((m) => !m.exported_at && m.no_score);
   const missingNames = [...new Set(blocked.flatMap((m) => m.missing))];
-  const missingPeople = [...new Map(blocked.flatMap((m) => [...m.a, ...m.b]).filter((p) => !p.dupr_id).map((p) => [p.member_id || `n:${p.name}`, p])).values()];
+  // A member's ID is saved on the member; a quick-booking player's on their kèo row.
+  const keyOf = (p) => p.member_id || (p.part_id ? `p:${p.part_id}` : null);
+  const missingPeople = [...new Map(blocked.flatMap((m) => [...m.a, ...m.b]).filter((p) => !p.dupr_id).map((p) => [keyOf(p) || `n:${p.name}`, p])).values()];
   async function saveIds() {
     setBusy(true);
     setFixErr('');
     try {
       for (const p of missingPeople) {
-        const v = String(ids[p.member_id] || '').trim();
-        if (p.member_id && v) await api.patch(`/api/clubs/${clubId}/members/${p.member_id}/dupr`, { dupr_id: v });
+        const v = String(ids[keyOf(p)] || '').trim();
+        if (!v) continue;
+        if (p.member_id) await api.patch(`/api/clubs/${clubId}/members/${p.member_id}/dupr`, { dupr_id: v });
+        else if (p.part_id) await api.patch(`/api/clubs/${clubId}/dupr/quick`, { ids: [p.part_id], dupr_id: v });
       }
       setIds({});
       setFixOpen(false);
@@ -52,13 +59,18 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       setBusy(false);
     }
   }
-  const needsScoring = ready.some((m) => !m.scoring);
+  const needsScoring = [...ready, ...blocked].some((m) => !m.scoring);
 
+  // Matches with someone missing a DUPR ID can still go in the file: the Host is told who
+  // first and decides (their ID cell stays empty).
+  const sendable = [...ready, ...blocked];
   const download = async () => {
+    const withMissing = blocked.length > 0;
+    if (withMissing && !window.confirm(t('duprx.askMissing', { names: missingNames.join(', '), n: blocked.length }))) return;
     setBusy(true);
     setErr('');
     try {
-      const r = await api.post(`/api/clubs/${clubId}/dupr/matches/csv`, { ...scope, score_type: scoreType, items: ready.map((m) => ({ kind: m.kind, id: m.id })) });
+      const r = await api.post(`/api/clubs/${clubId}/dupr/matches/csv`, { ...scope, score_type: scoreType, allow_missing: withMissing, items: sendable.map((m) => ({ kind: m.kind, id: m.id })) });
       const blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -94,7 +106,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   );
 
   return (
-    <section className="card mt-4" aria-labelledby="dupr-export-title">
+    <section className={bare ? '' : 'card mt-4'} aria-labelledby="dupr-export-title">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 id="dupr-export-title" className="text-white font-semibold">{t('duprx.title')} <Hint inline text={t('duprx.hint')} /></h3>
@@ -113,17 +125,17 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       {missingNames.length > 0 && (
         <p className="text-amber-200 text-xs mt-2">
           {t('duprx.missing', { names: missingNames.join(', ') })}{' '}
-          {missingPeople.some((p) => p.member_id) && <button type="button" className="underline text-lime-300" onClick={() => setFixOpen(true)}>{t('quickfix.addDupr')}</button>}
+          {missingPeople.some(keyOf) && <button type="button" className="underline text-lime-300" onClick={() => setFixOpen(true)}>{t('quickfix.addDupr')}</button>}
         </p>
       )}
       <Modal open={fixOpen} title={`${t('quickfix.duprTitle')}`} onClose={() => setFixOpen(false)}>
         <p className="text-gray-400 text-sm mb-3">{t('quickfix.duprHint')}</p>
         <ul className="flex flex-col gap-2">
           {missingPeople.map((p) => (
-            <li key={p.member_id || p.name} className="flex flex-wrap items-center gap-2">
+            <li key={keyOf(p) || p.name} className="flex flex-wrap items-center gap-2">
               <span className="text-gray-100 text-sm min-w-0 flex-1">{p.name}</span>
-              {p.member_id ? (
-                <input className="input !w-40 font-mono uppercase" maxLength={10} placeholder="Nxxxxxx" value={ids[p.member_id] || ''} onChange={(e) => setIds({ ...ids, [p.member_id]: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} aria-label={`DUPR ID ${p.name}`} />
+              {keyOf(p) ? (
+                <input className="input !w-40 font-mono uppercase" maxLength={10} placeholder="Nxxxxxx" value={ids[keyOf(p)] || ''} onChange={(e) => setIds({ ...ids, [keyOf(p)]: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} aria-label={`DUPR ID ${p.name}`} />
               ) : (
                 <span className="text-gray-500 text-xs">{t('quickfix.duprNoMember')}</span>
               )}
@@ -137,7 +149,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       </Modal>
 
       <div className="flex flex-wrap items-end gap-2 mt-3">
-        {needsScoring && ready.length > 0 && (
+        {needsScoring && ready.length + blocked.length > 0 && (
           <label className="text-xs text-gray-400">
             {t('dupr.scoreType')}
             <select className="input !py-1.5 mt-1 !w-auto" value={scoreType} onChange={(e) => setScoreType(e.target.value)}>
@@ -146,7 +158,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
             </select>
           </label>
         )}
-        <button type="button" className="btn-primary text-sm" disabled={busy || !ready.length} onClick={download}>{t('dupr.downloadN', { n: ready.length })}</button>
+        <button type="button" className="btn-primary text-sm" disabled={busy || !sendable.length} onClick={download}>{t('dupr.downloadN', { n: sendable.length })}</button>
         {lastExport?.count > 0 && (
           <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => mark(lastExport.items, true)}>✓ {t('dupr.markN', { n: lastExport.count })}</button>
         )}

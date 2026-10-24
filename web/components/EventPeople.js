@@ -370,7 +370,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                   disabled={busy || locked}
                   aria-pressed={place === o}
                   onClick={() => go(o)}
-                  className={`rounded-xl border-2 px-2 py-3 text-sm font-semibold ${place === o ? PLACE_TONE[o] : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+                  className={`rounded-xl border-2 px-2 py-3 text-sm font-semibold disabled:cursor-not-allowed ${locked && place !== o ? 'opacity-40' : ''} ${place === o ? PLACE_TONE[o] : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
                 >
                   <UiIcon name={{ requested: 'pause', waitlist: 'hourglass', main: 'check', not_playing: 'user' }[o]} className="w-5 h-5 mx-auto mb-0.5" />
                   {t(`place.${o}`)}
@@ -378,6 +378,8 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
               ))}
             </div>
             {place === 'waitlist' && !locked && <Hint text={t('place.hint_waitlist')} className="mt-2" />}
+            {/* Checked in / no-show: the place is fixed until "Hoàn tác" puts them back. */}
+            {locked && <p className="text-gray-400 text-sm mt-2">{t(row.status === 'no_show' ? 'place.lockedNoShow' : 'place.lockedCheckedIn')}</p>}
             {/* Still owes the transfer (or waits for the info check): the Host can give the
                 place now and collect the fee later — cash at the court, a late transfer. */}
             {row && !isHost && ['pending', 'requested', 'waitlisted'].includes(row.status) && fee > 0 && !row.fee_paid && !(row.tags || []).includes('free') && (

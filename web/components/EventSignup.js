@@ -63,7 +63,7 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
   const [f, setF] = useState({
     full_name: profile?.full_name || '',
     phone: profile?.phone || '',
-    [levelKey]: profile?.[levelKey] ?? '',
+    ...(sport === 'badminton' ? { [levelKey]: profile?.[levelKey] ?? '' } : { dupr_id: profile?.dupr_id || '' }),
     gender: profile?.gender || (['male', 'female'].includes(accountGender) ? accountGender : ''),
   });
   const [busy, setBusy] = useState(false);
@@ -74,7 +74,9 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
     setError('');
     try {
       // Keep the rest of the profile (e.g. avatar) as it is.
-      await api.put('/api/player/profile', { ...(profile || {}), ...f, [levelKey]: f[levelKey] === '' ? null : Number(f[levelKey]) });
+      // Pickleball: the DUPR ID (optional) instead of a self-rated level.
+      const level = sport === 'badminton' ? { [levelKey]: f[levelKey] === '' ? null : Number(f[levelKey]) } : { dupr_id: f.dupr_id || null };
+      await api.put('/api/player/profile', { ...(profile || {}), ...f, ...level });
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -105,11 +107,19 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
           ))}
         </div>
       </fieldset>
-      <div>
-        <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
-        <LevelInput sport={sport} value={f[levelKey]} onChange={(v) => setF({ ...f, [levelKey]: v })} />
-        <Hint text={t('signup.levelHint')} className="mt-1" />
-      </div>
+      {sport === 'badminton' ? (
+        <div>
+          <label className="text-xs text-gray-400">{t('public.yourLevel')}</label>
+          <LevelInput sport={sport} value={f[levelKey]} onChange={(v) => setF({ ...f, [levelKey]: v })} />
+          <Hint text={t('signup.levelHint')} className="mt-1" />
+        </div>
+      ) : (
+        <div>
+          <label className="text-xs text-gray-400" htmlFor="pf-dupr-id">{t('onb.duprId')}</label>
+          <input id="pf-dupr-id" className="input font-mono uppercase placeholder:normal-case" maxLength={10} autoComplete="off" value={f.dupr_id} onChange={(e) => setF({ ...f, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} placeholder={t('onb.duprIdPh')} />
+          <Hint text={t('onb.duprIdHint')} className="mt-1" />
+        </div>
+      )}
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <button className="btn-primary w-full py-3" disabled={busy}>{t('common.save')}</button>
     </form>

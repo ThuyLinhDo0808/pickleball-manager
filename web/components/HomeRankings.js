@@ -1,4 +1,5 @@
 'use client';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import Hint from '@/components/ui/Hint';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -61,7 +62,6 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
     setPick(id);
     setBand('all');
   };
-  const chip = (on) => `inline-flex items-center min-h-[2.75rem] sm:min-h-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${on ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`;
   const small = (on) => `rounded-md px-2.5 py-2 sm:px-2 sm:py-0.5 text-xs sm:text-[11px] transition-colors ${on ? 'bg-navy-600 text-white' : 'text-gray-400 hover:text-gray-200'}`;
 
   return (
@@ -70,13 +70,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
         <h2 id="home-rank-title" className={showTitle ? 'text-white font-semibold' : 'sr-only'}>{t('homeRank.title')}</h2>
         {club && <Link href={`/c/${club.club_id}`} className="text-lime-400 text-xs hover:underline">{t('homeRank.full')} →</Link>}
       </div>
-      <div className="flex flex-wrap gap-1.5 mb-2" role="tablist" aria-label={t('homeRank.title')}>
-        {clubs.map((c) => (
-          <button key={c.club_id} type="button" role="tab" aria-selected={c.club_id === club?.club_id} onClick={() => choose(c.club_id)} className={chip(c.club_id === club?.club_id)}>
-            {c.name}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs className="mb-2" value={club?.club_id} onChange={choose} tabs={clubs.map((c) => ({ key: c.club_id, label: c.name }))} />
       {!club ? (
         <p className="card text-gray-400 text-sm">{t('homeRank.noClubs')}</p>
       ) : (

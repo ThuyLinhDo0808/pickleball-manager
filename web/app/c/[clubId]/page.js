@@ -6,6 +6,7 @@ import PlayerShell from '@/components/PlayerShell';
 import ClubAvatar from '@/components/ClubAvatar';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
+import Segmented from '@/components/ui/Segmented';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import ClubLeaderboard from '@/components/ClubLeaderboard';
 import RaceBoard from '@/components/RaceBoard';
@@ -143,21 +144,20 @@ export default function MemberClubPage() {
 
       {tab === 'schedule' && (
         <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap gap-1.5 mb-1" role="tablist" aria-label={t('hub.tabSchedule')}>
-            {PHASES.map((k) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={shownPhase === k}
-                onClick={() => setPhase(k)}
-                className={`min-h-[44px] sm:min-h-0 rounded-full border px-3.5 py-2 text-sm ${shownPhase === k ? 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold' : 'border-navy-600 text-gray-200 hover:border-lime-400'}`}
-              >
+          {/* Sắp tới / Đang diễn ra / Đã qua: one segmented row of equal cells. */}
+          <Segmented
+            full
+            className="mb-1 w-full"
+            items={PHASES}
+            value={shownPhase}
+            onChange={setPhase}
+            label={(k) => (
+              <>
                 {k === 'live' && groups.live.length ? <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-400 align-middle animate-pulse" aria-hidden="true" /> : null}
                 {t(`hub.phase_${k}`)} <span className="tabular-nums opacity-70">{groups[k].length}</span>
-              </button>
-            ))}
-          </div>
+              </>
+            )}
+          />
           <p className="text-gray-500 text-xs -mt-1 mb-1">{t(`hub.phaseHint_${shownPhase}`, { n: SOON_DAYS })}</p>
           {shown.length === 0 && <p className="card text-gray-400 text-sm">{t(`hub.phaseEmpty_${shownPhase}`)}</p>}
           {voteError && <p className="text-red-400 text-sm">{voteError}</p>}

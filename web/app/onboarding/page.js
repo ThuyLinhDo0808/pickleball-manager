@@ -3,7 +3,6 @@ import { peekReturn } from '@/lib/returnTo';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
-import LevelInput from '@/components/LevelInput';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -45,7 +44,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const sports = ['pickleball'];
   const [role, setRole] = useState('player');
-  const [f, setF] = useState({ full_name: '', phone: '', gender: '', birth_date: '', dupr_level: '', badminton_level: '' });
+  const [f, setF] = useState({ full_name: '', phone: '', gender: '', birth_date: '', dupr_id: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -61,8 +60,7 @@ export default function OnboardingPage() {
         phone: p.phone || x.phone,
         gender: p.gender || me?.gender || x.gender,
         birth_date: p.birth_date || me?.birth_date || x.birth_date,
-        dupr_level: p.dupr_level ?? x.dupr_level,
-        badminton_level: p.badminton_level ?? x.badminton_level,
+        dupr_id: p.dupr_id || x.dupr_id,
       }));
     });
   }, [user]);
@@ -75,14 +73,14 @@ export default function OnboardingPage() {
     setBusy(true);
     setError('');
     try {
-      await api.post('/api/player/onboarding', { sports, role, ...f, gender: f.gender || null });
+      await api.post('/api/player/onboarding', { sports, role, ...f, gender: f.gender || null, dupr_id: f.dupr_id || null });
       // Came from a link (club invite, kèo…): back to it; else managers go on to ask for
       // their club / community.
       const next = new URLSearchParams(window.location.search).get('next') || '';
       const safe = next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/onboarding') ? next : null;
       router.replace(safe || peekReturn() || (role === 'manager' ? '/club-request?from=onboarding' : '/home'));
     } catch (err) {
-      setError(err.payload?.code === 'birth_date_required' ? t('onb.errBirth') : err.message);
+      setError(err.payload?.code === 'birth_date_required' ? t('onb.errBirth') : err.payload?.code === 'bad_dupr_id' ? t('onb.errDuprId') : err.message);
       setBusy(false);
     }
   }
@@ -138,17 +136,12 @@ export default function OnboardingPage() {
                 </select>
               </label>
             </div>
-            <div className="border-t border-navy-700 pt-3">
-              <p className="text-white font-semibold text-sm">{t('onb.levels')} <Hint inline text={t('onb.levelsHint')} /></p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {sports.includes('pickleball') && (
-                  <label className="block">
-                    <span className="text-xs text-gray-300">{t('onb.levelPickleball')}</span>
-                    <LevelInput sport="pickleball" className="input mt-1" value={f.dupr_level} onChange={set('dupr_level')} placeholder="3.25" />
-                  </label>
-                )}
-              </div>
-            </div>
+            {/* DUPR ID (optional): the club links the verified DUPR rating with it. No
+                self-rated level here — the rating comes from DUPR. */}
+            <label className="block border-t border-navy-700 pt-3">
+              <span className="text-xs text-gray-300">{t('onb.duprId')} <Hint inline text={t('onb.duprIdHint')} /></span>
+              <input className="input mt-1 font-mono uppercase placeholder:normal-case" maxLength={10} autoComplete="off" value={f.dupr_id} onChange={(e) => setF((x) => ({ ...x, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() }))} placeholder={t('onb.duprIdPh')} />
+            </label>
             {error && <p className="text-red-300 text-sm">{error}</p>}
           </form>
         )}
@@ -160,9 +153,11 @@ export default function OnboardingPage() {
             <span />
           )}
           {step < STEPS.length - 1 ? (
-            <button type="button" className="btn-primary" disabled={!canNext} onClick={() => setStep(step + 1)}>{t('onb.next')} →</button>
+            // Separate keys: reusing one button that turns into "submit" during the click would
+            // send the form at once and skip the info step.
+            <button key="next" type="button" className="btn-primary" disabled={!canNext} onClick={() => setStep(step + 1)}>{t('onb.next')} →</button>
           ) : (
-            <button type="submit" form="onb-info" className="btn-primary" disabled={busy}>
+            <button key="finish" type="submit" form="onb-info" className="btn-primary" disabled={busy}>
               {busy ? t('common.loading') : role === 'manager' ? t('onb.finishManager') : t('onb.finish')}
             </button>
           )}
