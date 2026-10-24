@@ -4257,6 +4257,7 @@ export const vi = {
     freeHint: "Khi người chơi khai DUPR ID trong hồ sơ (hoặc bạn nhập ID cho thành viên), tài khoản được liên kết ngay.",
   },
   duprx: {
+    askMissing: "{n} trận có người chưa có DUPR ID: {names}.\n\nÔ DUPR ID của họ sẽ để trống trong file — DUPR có thể không nhận các trận này hoặc không tính điểm cho người đó. Bạn vẫn muốn tải file không?",
     exportBtn: "Xuất file DUPR (.csv)",
     none: "Kèo này chưa có trận nào để gửi lên DUPR.",
     title: "Gửi trận lên DUPR",

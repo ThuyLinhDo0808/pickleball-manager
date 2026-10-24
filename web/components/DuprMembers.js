@@ -5,6 +5,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import Modal from '@/components/Modal';
 import GuideModal from '@/components/ui/GuideModal';
 
@@ -167,13 +168,7 @@ export default function DuprMembers({ club }) {
         <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
           <input className="input sm:!w-56 text-sm" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
           {/* Groups: thường xuyên · vãng lai · người mới · đặt nhanh */}
-          <div className="flex flex-wrap gap-1.5 w-full" role="tablist" aria-label={t('duprm.groups')}>
-            {groups.map((g) => (
-              <button key={g} type="button" role="tab" aria-selected={group === g} onClick={() => { setGroup(g); setFilter('all'); }} className={`min-h-[2.25rem] text-sm rounded-lg border px-3 py-1 ${group === g ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
-                {groupLabel(g)} <span className="tabular-nums text-gray-400">{g === 'all' ? members.length : g === 'quick' ? (data.quick || []).length : kindCount[g] || 0}</span>
-              </button>
-            ))}
-          </div>
+          <UnderlineTabs className="w-full" value={group} onChange={(g) => { setGroup(g); setFilter('all'); }} tabs={groups.map((g) => ({ key: g, label: groupLabel(g), count: g === 'all' ? members.length : g === 'quick' ? (data.quick || []).length : kindCount[g] || 0 }))} />
           {group !== 'quick' && <div className="flex flex-wrap gap-1.5">
             {FILTERS.filter((f) => f !== 'conflict' || counts.conflict).map((f) => (
               <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={`text-xs rounded-full border px-3 py-1 ${filter === f ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300'}`}>

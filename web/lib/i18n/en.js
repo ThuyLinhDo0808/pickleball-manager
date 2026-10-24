@@ -4257,6 +4257,7 @@ export const en = {
     freeHint: "When a player adds their DUPR ID to their profile (or you add it for a member), they are linked at once.",
   },
   duprx: {
+    askMissing: "{n} matches have players without a DUPR ID: {names}.\n\nTheir DUPR ID cell will be empty in the file — DUPR may not accept these matches or rate those players. Download the file anyway?",
     exportBtn: "Export DUPR file (.csv)",
     none: "This kèo has no matches to send to DUPR yet.",
     title: "Send matches to DUPR",

@@ -678,11 +678,48 @@ router.get('/recent-signups', async (req, res) => {
     console.error('bell: join requests', err);
   }
   // Everything that needs the Host or tells them what changed, newest first.
+  // Removed by the Host (× / "Xóa tất cả", migration 20261218090000): hidden on every device.
+  const { data: me } = await supabase.from('users').select('host_bell_hidden, host_bell_cleared_at').eq('id', req.hostId).maybeSingle().then((r) => r, () => ({ data: null }));
+  const hidden = new Set(me?.host_bell_hidden || []);
+  const cleared = me?.host_bell_cleared_at ? new Date(me.host_bell_cleared_at).getTime() : 0;
   res.json(
     [...rows.map((r) => ({ ...r, event: byId.get(r.event_id) })), ...passes, ...proofItems, ...cancelItems, ...joins]
+      .map((r) => ({ ...r, key: bellKey(r) }))
+      .filter((r) => !hidden.has(r.key) && !(cleared && new Date(r.joined_at).getTime() <= cleared))
       .sort((a, b) => String(b.joined_at).localeCompare(String(a.joined_at)))
       .slice(0, 60)
   );
+});
+
+// One bell item: the row and what it says (a sign-up and its later cancel are two items).
+const bellKey = (r) => `${r.id}|${r.status}|${r.payment_status || ''}`.slice(0, 200);
+const hostBellReady = () => require('../services/schemaCheck').schemaStatus().then((s) => !s.missing_migrations.includes('20261218090000_host_bell_dismiss.sql'));
+
+// Remove one item from the Host's bell (×), or all of them ("Xóa tất cả").
+router.post('/recent-signups/dismiss', async (req, res) => {
+  const key = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
+  if (!key || key.length > 200) return res.status(400).json({ error: 'bad_key' });
+  try {
+    if (!(await hostBellReady())) return res.status(409).json({ error: 'Run migration 20261218090000_host_bell_dismiss.sql first.', code: 'migration_required' });
+    const { data: me, error } = await supabase.from('users').select('host_bell_hidden').eq('id', req.hostId).maybeSingle();
+    if (error) throw error;
+    const list = [key, ...(me?.host_bell_hidden || []).filter((x) => x !== key)].slice(0, 300);
+    const { error: e2 } = await supabase.from('users').update({ host_bell_hidden: list }).eq('id', req.hostId);
+    if (e2) throw e2;
+    res.json({ ok: true });
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+router.post('/recent-signups/clear', async (req, res) => {
+  try {
+    if (!(await hostBellReady())) return res.status(409).json({ error: 'Run migration 20261218090000_host_bell_dismiss.sql first.', code: 'migration_required' });
+    const { error } = await supabase.from('users').update({ host_bell_cleared_at: new Date().toISOString(), host_bell_hidden: [] }).eq('id', req.hostId);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    dbError(res, err);
+  }
 });
 
 // ?scope=standalone -> only events not tied to a club (Xé Vé workspace).

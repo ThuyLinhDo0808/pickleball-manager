@@ -59,13 +59,18 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       setBusy(false);
     }
   }
-  const needsScoring = ready.some((m) => !m.scoring);
+  const needsScoring = [...ready, ...blocked].some((m) => !m.scoring);
 
+  // Matches with someone missing a DUPR ID can still go in the file: the Host is told who
+  // first and decides (their ID cell stays empty).
+  const sendable = [...ready, ...blocked];
   const download = async () => {
+    const withMissing = blocked.length > 0;
+    if (withMissing && !window.confirm(t('duprx.askMissing', { names: missingNames.join(', '), n: blocked.length }))) return;
     setBusy(true);
     setErr('');
     try {
-      const r = await api.post(`/api/clubs/${clubId}/dupr/matches/csv`, { ...scope, score_type: scoreType, items: ready.map((m) => ({ kind: m.kind, id: m.id })) });
+      const r = await api.post(`/api/clubs/${clubId}/dupr/matches/csv`, { ...scope, score_type: scoreType, allow_missing: withMissing, items: sendable.map((m) => ({ kind: m.kind, id: m.id })) });
       const blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -144,7 +149,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       </Modal>
 
       <div className="flex flex-wrap items-end gap-2 mt-3">
-        {needsScoring && ready.length > 0 && (
+        {needsScoring && ready.length + blocked.length > 0 && (
           <label className="text-xs text-gray-400">
             {t('dupr.scoreType')}
             <select className="input !py-1.5 mt-1 !w-auto" value={scoreType} onChange={(e) => setScoreType(e.target.value)}>
@@ -153,7 +158,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
             </select>
           </label>
         )}
-        <button type="button" className="btn-primary text-sm" disabled={busy || !ready.length} onClick={download}>{t('dupr.downloadN', { n: ready.length })}</button>
+        <button type="button" className="btn-primary text-sm" disabled={busy || !sendable.length} onClick={download}>{t('dupr.downloadN', { n: sendable.length })}</button>
         {lastExport?.count > 0 && (
           <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => mark(lastExport.items, true)}>✓ {t('dupr.markN', { n: lastExport.count })}</button>
         )}

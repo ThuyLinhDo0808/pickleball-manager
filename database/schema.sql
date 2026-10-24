@@ -3377,3 +3377,7 @@ alter table public.users add column if not exists bell_hidden text[] not null de
 -- cancelled — the only event changes players are told about (bell + kèo page).
 alter table public.events add column if not exists schedule_changed_at timestamptz;
 notify pgrst, 'reload schema';
+
+-- 20261218090000_host_bell_dismiss.sql
+alter table public.users add column if not exists host_bell_cleared_at timestamptz;
+alter table public.users add column if not exists host_bell_hidden text[] not null default '{}';

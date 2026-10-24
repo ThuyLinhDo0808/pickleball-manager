@@ -680,11 +680,8 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   }
   if (fields.member_type === 'guest') fields.tier = null; // clear tier if downgraded to guest
   if (fields.member_type === 'fixed' && req.member.guest_perk && (req.club.kind || 'club') !== 'community' && !('guest_perk' in req.body)) fields.guest_perk = null; // club perks are for guests
-  if (req.body.unlink_account === true) {
-    fields.user_id = null; // detach the player's login
-    fields.account_verified = false;
-    if (req.member.user_id && (await phoneLinkReady())) fields.unlinked_user_id = req.member.user_id; // don't auto-link it again
-  }
+  // The player's login belongs to the player: a Host cannot detach it from the member.
+  if (req.body.unlink_account === true) return res.status(403).json({ error: 'The Host cannot unlink a player account.', code: 'unlink_not_allowed' });
   // Host confirms the linked player account really is this member.
   if (req.body.account_verified === true && req.member.user_id) fields.account_verified = true;
 
@@ -1851,8 +1848,10 @@ router.post('/:clubId/dupr/matches/csv', async (req, res) => {
       const want = new Set(b.items.map((i) => `${i?.kind}:${i?.id}`));
       list = list.filter((m) => want.has(`${m.kind}:${m.id}`));
     }
-    const ready = list.filter((m) => m.ready);
-    res.json({ csv: dupr.matchesCsv(req.club, ready, b.score_type === 'RALLY' ? 'RALLY' : 'SIDEOUT'), count: ready.length, items: ready.map((m) => ({ kind: m.kind, id: m.id })) });
+    // allow_missing: the Host was told who has no DUPR ID and downloads anyway.
+    const allowMissing = b.allow_missing === true;
+    const ready = list.filter((m) => m.ready || (allowMissing && !m.no_score));
+    res.json({ csv: dupr.matchesCsv(req.club, ready, b.score_type === 'RALLY' ? 'RALLY' : 'SIDEOUT', allowMissing), count: ready.length, items: ready.map((m) => ({ kind: m.kind, id: m.id })) });
   } catch (err) {
     duprErr(res, err);
   }

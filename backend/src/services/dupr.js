@@ -630,9 +630,11 @@ async function clubMatches(club, opts = {}) {
 
 // One CSV line per ready match, in DUPR's template. scoreType: the live scorer's setting
 // when there was one, else the Host's choice (SIDEOUT / RALLY).
-function matchesCsv(club, list, defaultScoring = 'SIDEOUT') {
+// allowMissing: also scored matches where someone has no DUPR ID (their ID cell stays
+// empty) — the Host chose to download anyway.
+function matchesCsv(club, list, defaultScoring = 'SIDEOUT', allowMissing = false) {
   const rows = [TEMPLATE];
-  for (const m of list.filter((x) => x.ready)) {
+  for (const m of list.filter((x) => x.ready || (allowMissing && !x.no_score))) {
     const p = (team, i) => team[i] || { name: '', dupr_id: '', member_id: '' };
     const games = [...m.games, ...Array(5).fill(['', ''])].slice(0, 5);
     const scoring = m.scoring ? (m.scoring === 'rally' ? 'RALLY' : 'SIDEOUT') : defaultScoring;

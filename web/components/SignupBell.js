@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
@@ -26,7 +27,10 @@ export default function SignupBell({ className = '', side = null }) {
   const [rows, setRows] = useState([]);
   const [seen, setSeen] = useState('');
   const [open, setOpen] = useState(false);
+  const [asking, setAsking] = useState(false); // "Xóa tất cả" asks once more
+  const [pos, setPos] = useState(null); // where the drop-down opens (under the bell)
   const box = useRef(null);
+  const panel = useRef(null);
 
   const load = useCallback(() => api.get('/api/events/recent-signups').then((r) => setRows(Array.isArray(r) ? r : [])).catch(() => {}), []);
   useEffect(() => {
@@ -37,14 +41,35 @@ export default function SignupBell({ className = '', side = null }) {
   }, [load]);
   useEffect(() => {
     if (!open) return undefined;
-    const close = (e) => box.current && !box.current.contains(e.target) && setOpen(false);
+    const close = (e) => box.current && !box.current.contains(e.target) && !(panel.current && panel.current.contains(e.target)) && setOpen(false);
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) setAsking(false);
+  }, [open]);
+
+  // Removing only hides the item for this account (kept on the server, so it stays gone on
+  // every device); the list updates at once and reloads if the server says no.
+  function dismiss(key) {
+    setRows((list) => list.filter((r) => r.key !== key));
+    api.post('/api/events/recent-signups/dismiss', { key }).catch(load);
+  }
+  function clearAll() {
+    if (!asking) return setAsking(true);
+    setAsking(false);
+    setRows([]);
+    api.post('/api/events/recent-signups/clear', {}).catch(load);
+  }
+
   const fresh = rows.filter((r) => !seen || r.joined_at > seen).length;
   function toggle() {
     const next = !open;
+    if (next && box.current) {
+      const b = box.current.getBoundingClientRect();
+      setPos({ top: b.bottom + 8, right: Math.max(12, window.innerWidth - b.right) });
+    }
     setOpen(next);
     if (next && rows[0]) {
       try {
@@ -65,30 +90,70 @@ export default function SignupBell({ className = '', side = null }) {
         <UiIcon name="bell" className="w-5 h-5" />
         {fresh > 0 && <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">{fresh > 9 ? '9+' : fresh}</span>}
       </button>
-      {open && (
-        <div className={`${side ? `fixed bottom-4 ${side === 'rail' ? 'left-[4.5rem]' : 'left-[16.5rem]'}` : 'absolute right-0 mt-2'} w-[min(22rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto rounded-xl border border-navy-600 bg-navy-900 shadow-2xl z-50`}>
-          <p className="px-4 pt-3 pb-2 text-white font-semibold">{t('bell.title')}</p>
-          {rows.length === 0 && <p className="px-4 pb-4 text-gray-400 text-sm">{t('bell.empty')}</p>}
-          <ul className="divide-y divide-navy-700">
-            {rows.map((r) => (
-              <li key={r.id}>
-                <Link href={r.href || `/events/${r.event_id}`} onClick={() => setOpen(false)} className="flex gap-2.5 px-4 py-3 hover:bg-navy-800">
-                  <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${!seen || r.joined_at > seen ? 'bg-red-500' : 'bg-transparent'}`} aria-hidden />
-                  <span className="shrink-0 mt-0.5 text-gray-400"><UiIcon className="w-4 h-4" name={ICON[state(r)]} /></span>
-                  <span className="min-w-0">
-                    <span className="block text-white text-sm">
-                      <b>{r.full_name}</b> · {t(`bell.st_${state(r)}`)}
-                      {r.guest_booking_id ? <UiIcon name="bolt" className="inline w-3.5 h-3.5 ml-1 -mt-0.5 text-gray-400" /> : null}
-                    </span>
-                    <span className="block text-gray-400 text-xs break-words">{r.event?.title}{r.event?.event_date ? ` · ${localDate(`${r.event.event_date}T00:00:00`, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit' })}` : ''}</span>
-                    <span className="block text-gray-400 text-xs tabular-nums">{localDate(r.joined_at, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Drawn on the page body (not inside the sidebar), so nothing on the page covers it. */}
+      {open &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={panel}
+            style={side ? undefined : { top: pos?.top ?? 64, right: pos?.right ?? 12 }}
+            className={`fixed ${side ? `bottom-4 ${side === 'rail' ? 'left-[4.5rem]' : 'left-[16.5rem]'}` : ''} z-[100] w-[min(24rem,calc(100vw-1.5rem))] max-h-[min(36rem,calc(100dvh-6rem))] flex flex-col rounded-xl border border-navy-600 bg-navy-900 shadow-2xl`}
+          >
+            <div className="flex items-center gap-2 pl-4 pr-2 py-1.5 border-b border-navy-700 shrink-0">
+              <p className="flex-1 min-w-0 text-white font-semibold">
+                {t('bell.title')}
+                {rows.length > 0 && <span className="ml-1.5 text-gray-400 font-normal text-sm tabular-nums">({rows.length})</span>}
+              </p>
+              {rows.length > 0 &&
+                (asking ? (
+                  <>
+                    <button type="button" onClick={() => setAsking(false)} className="min-h-[44px] px-2.5 rounded-lg text-sm text-gray-300 hover:bg-navy-800">
+                      {t('common.cancel')}
+                    </button>
+                    <button type="button" onClick={clearAll} className="min-h-[44px] px-3 rounded-lg text-sm font-semibold text-red-300 bg-red-500/15 hover:bg-red-500/25">
+                      {t('pbell.clearSure')}
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" onClick={clearAll} className="min-h-[44px] px-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-navy-800">
+                    {t('pbell.clearAll')}
+                  </button>
+                ))}
+            </div>
+            {rows.length === 0 && (
+              <div className="px-4 py-8 text-center">
+                <UiIcon name="bell" className="w-6 h-6 mx-auto text-gray-500" />
+                <p className="mt-2 text-gray-400 text-sm">{t('bell.empty')}</p>
+              </div>
+            )}
+            {rows.length > 0 && (
+              <ul className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-navy-700">
+                {rows.map((r) => (
+                  <li key={r.key || r.id} className="flex items-stretch hover:bg-navy-800">
+                    <Link href={r.href || `/events/${r.event_id}`} onClick={() => setOpen(false)} className="flex-1 min-w-0 flex gap-2.5 pl-4 pr-1 py-3">
+                      <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${!seen || r.joined_at > seen ? 'bg-red-500' : 'bg-transparent'}`} aria-hidden />
+                      <span className="shrink-0 mt-0.5 text-gray-400"><UiIcon className="w-4 h-4" name={ICON[state(r)]} /></span>
+                      <span className="min-w-0">
+                        <span className="block text-white text-sm break-words">
+                          <b>{r.full_name}</b> · {t(`bell.st_${state(r)}`)}
+                          {r.guest_booking_id ? <UiIcon name="bolt" className="inline w-3.5 h-3.5 ml-1 -mt-0.5 text-gray-400" /> : null}
+                        </span>
+                        <span className="block text-gray-400 text-xs break-words">{r.event?.title}{r.event?.event_date ? ` · ${localDate(`${r.event.event_date}T00:00:00`, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit' })}` : ''}</span>
+                        <span className="block text-gray-400 text-xs tabular-nums">{localDate(r.joined_at, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                      </span>
+                    </Link>
+                    {r.key && (
+                      <button type="button" onClick={() => dismiss(r.key)} aria-label={t('pbell.remove')} title={t('pbell.remove')} className="shrink-0 w-11 flex items-center justify-center text-gray-500 hover:text-white">
+                        <UiIcon name="x" className="w-4 h-4" />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
