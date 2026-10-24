@@ -47,8 +47,9 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
       {badminton ? <GamesInput value={games} onChange={setGames} labels={names} format={format} onFormatChange={setFormat} /> : (
       <div className="grid grid-cols-2 gap-3">
         {[1, 2].map((team) => (
-          <div key={team} className="min-w-0">
-            <label htmlFor={`edit-score-${team}`} className="text-xs text-gray-400 block break-words" title={names[team - 1]}>
+          // Names on top, the boxes always on one line even when one name takes two lines.
+          <div key={team} className="min-w-0 flex flex-col justify-end gap-1">
+            <label htmlFor={`edit-score-${team}`} className="text-sm text-gray-300 block break-words leading-snug" title={names[team - 1]}>
               {names[team - 1]}
             </label>
             <input

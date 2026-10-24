@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
-import Segmented from '@/components/ui/Segmented';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import Podium from '@/components/Podium';
 import UiIcon from '@/components/ui/UiIcon';
 import { Avatar } from '@/components/PlayerChip';
 import { api } from '@/lib/api';
@@ -79,7 +80,16 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
         <p className="mb-2 rounded-lg border border-amber-300/60 bg-amber-300/10 px-3 py-2 text-amber-100 text-sm flex items-start gap-2"><UiIcon name="clock" className="w-4 h-4 mt-0.5" /><span>{t('elive.timeChanged', { time: [data.event.start_time, data.event.end_time].filter(Boolean).map((x) => String(x).slice(0, 5)).join('–') })}</span></p>
       )}
       {toast && <p role="status" className="mb-2 rounded-lg border border-amber-300/60 bg-amber-300/10 px-3 py-2 text-amber-100 text-sm flex items-start gap-2"><UiIcon name="bell" className="w-4 h-4 mt-0.5" /><span>{toast}</span></p>}
-      <Segmented full items={['players', 'matches']} value={tab} onChange={setTab} label={(k) => (k === 'players' ? t('elive.tabPlayers') : `${t('elive.tabMatches')} (${results.length})`)} className="mb-3 w-full" />
+      <UnderlineTabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'players', label: t('elive.tabPlayers'), icon: 'users', count: data.players.length },
+          { key: 'results', label: t('elive.results'), icon: 'clipboard', count: results.length },
+          { key: 'standings', label: t('estand.title'), icon: 'medal' },
+          { key: 'challenges', label: t('elive.challenges'), icon: 'swords', count: challenges.length },
+        ]}
+      />
 
       {tab === 'players' && (
         <div className="flex flex-col gap-3">
@@ -119,10 +129,9 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
         </div>
       )}
 
-      {tab === 'matches' && (
-        <div className="flex flex-col gap-4">
+      {tab === 'results' && (
+        <div>
           <div>
-            <h3 className="text-white text-sm font-semibold mb-1">{t('elive.results')}</h3>
             {results.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('elive.noResults')}</p>
             ) : (
@@ -142,45 +151,42 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
             )}
           </div>
 
+        </div>
+      )}
+      {tab === 'standings' && (
+        <div>
           <div>
-            <h3 className="text-white text-sm font-semibold mb-1">{t('elive.standings')}</h3>
             <p className="text-gray-500 text-xs mb-1">{t('elive.standingsHint')}</p>
             {rows.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('estand.none')}</p>
             ) : (
-              <div className="table-wrap">
-                <table className="w-full text-xs sm:text-sm grid-table !min-w-0">
-                  <thead>
-                    <tr className="text-left">
-                      <th className="w-9 text-center">#</th>
-                      <th>{t('common.name')}</th>
-                      <th className="text-right">{t('estand.played')}</th>
-                      <th className="text-right">{t('estand.won')}</th>
-                      <th className="text-right">{t('estand.lost')}</th>
-                      <th className="text-right">{t('estand.rate')}</th>
-                      <th className="text-right">{t('elive.diff')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.id} className={r.id === myId ? 'bg-lime-400/10' : ''}>
-                        <td className={`text-center font-bold tabular-nums ${r.rank <= 3 ? 'text-lime-300' : 'text-gray-400'}`}>{r.rank}</td>
-                        <td className="text-white !whitespace-normal">{r.name}</td>
-                        <td className="text-right tabular-nums">{r.played}</td>
-                        <td className="text-right tabular-nums text-lime-300">{r.won}</td>
-                        <td className="text-right tabular-nums text-red-300">{r.lost}</td>
-                        <td className="text-right tabular-nums font-semibold">{r.rate}%</td>
-                        <td className={`text-right tabular-nums ${r.diff < 0 ? 'text-red-300' : 'text-gray-200'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+              <Podium className="rounded-xl border border-navy-700 bg-navy-900/40 pt-3 mb-3" rows={rows.slice(0, 3).map((r) => { const pl = data.players.find((x) => x.id === r.id) || {}; return { key: r.id, full_name: r.name, avatar_uid: pl.avatar_uid, avatar_v: pl.avatar_v, main: `${r.rate}%`, sub: `${r.won}-${r.lost} · ${r.diff > 0 ? `+${r.diff}` : r.diff}` }; })} />
+              {rows.length > 3 && (
+                <ol className="rounded-xl border border-navy-700 divide-y divide-navy-700">
+                  {rows.slice(3).map((r) => (
+                    <li key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${r.id === myId ? 'bg-lime-400/10' : ''}`}>
+                      <span className="w-6 text-center text-gray-400 font-bold tabular-nums">{r.rank}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-white text-sm font-semibold break-words">{r.name}</span>
+                        <span className="block text-gray-400 text-xs tabular-nums">{t('cpeople.record', { n: r.played, w: r.won, l: r.lost })}</span>
+                      </span>
+                      <span className="text-right shrink-0">
+                        <span className="block text-lime-300 font-bold tabular-nums">{r.rate}%</span>
+                        <span className={`block text-xs tabular-nums ${r.diff < 0 ? 'text-red-300' : 'text-gray-400'}`}>{r.diff > 0 ? `+${r.diff}` : r.diff}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              </>
             )}
           </div>
 
+        </div>
+      )}
+      {tab === 'challenges' && (
           <div className="rounded-xl border border-navy-600 bg-navy-700 p-2.5">
-            <h3 className="text-gray-200 text-sm font-semibold mb-1 flex items-center gap-2"><UiIcon name="swords" className="w-4 h-4" />{t('elive.challenges')}</h3>
             {challenges.length === 0 ? (
               <p className="text-gray-300 text-sm">{t('elive.noChallenges')}</p>
             ) : (
@@ -197,7 +203,6 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
               </ul>
             )}
           </div>
-        </div>
       )}
     </section>
   );

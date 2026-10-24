@@ -904,6 +904,21 @@ router.delete('/:clubId/members/:memberId/link', async (req, res) => {
     linkFail(res, err);
   }
 });
+// Players of past kèo without an account (đặt nhanh / thêm tay): who a request can be merged into.
+router.get('/:clubId/merge-guests', async (req, res) => {
+  try {
+    res.json(await memberLink.guestCandidates(req.club));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
+router.post('/:clubId/members/:memberId/merge-guests', async (req, res) => {
+  try {
+    res.json(await memberLink.mergeGuests(req.club, req.member, req.body?.ids));
+  } catch (err) {
+    linkFail(res, err);
+  }
+});
 // Merge a waiting join request into the member the Host already had (one person, one row).
 router.post('/:clubId/members/:memberId/merge', async (req, res) => {
   try {

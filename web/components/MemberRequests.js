@@ -3,6 +3,7 @@ import { levelTag } from '@/lib/levels';
 import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
+import { useLoad } from '@/lib/useLoad';
 import { PastWarning } from '@/components/MemberModeration';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
@@ -23,11 +24,12 @@ const SOURCE_STYLE = {
 
 // A request from someone the Host already typed in (no phone match): merge the request into
 // that member, so one person stays one row (history, passes and the account together).
-function MergeBox({ club, m, members, busy, onMerge }) {
-  const { t } = useI18n();
+function MergeBox({ club, m, members, guests = [], busy, onMerge, onMergeGuest }) {
+  const { t, lang } = useI18n();
   const [other, setOther] = useState('');
+  const [guest, setGuest] = useState('');
   const free = members.filter((x) => !x.user_id && !x.join_requested && x.id !== m.id);
-  if (!m.user_id || m.account_verified || (!m.matches?.length && !free.length)) return null;
+  if (!m.user_id || m.account_verified || (!m.matches?.length && !free.length && !guests.length)) return null;
   const name = m.account_name || m.full_name;
   const merge = (target) => window.confirm(t('requests.mergeAsk', { name, member: target.full_name })) && onMerge(m, target.id);
   return (
@@ -61,7 +63,25 @@ function MergeBox({ club, m, members, busy, onMerge }) {
           </button>
         </div>
       )}
+      {/* Played before without an account (đặt nhanh / Host thêm): their kèo, matches and
+          scores go to this account, under the account's name. */}
+      {guests.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select className="input !w-auto max-w-full !py-1 text-xs" value={guest} onChange={(e) => setGuest(e.target.value)} aria-label={t('requests.mergeGuest')}>
+            <option value="">{t('requests.mergeGuest')}</option>
+            {guests.map((g) => (
+              <option key={g.key} value={g.key}>
+                {g.full_name}{g.dupr_id ? ` · ${g.dupr_id}` : ''} · {t('requests.guestKeo', { n: g.count, date: g.last_date ? localDate(`${g.last_date}T00:00:00`, lang === 'vi' ? 'vi-VN' : 'en-GB', { day: '2-digit', month: '2-digit' }) : '' })}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="text-xs font-semibold text-sky-200 underline disabled:opacity-40 min-h-[2.75rem]" disabled={busy || !guest} onClick={() => { const g = guests.find((x) => x.key === guest); if (g && window.confirm(t('requests.mergeGuestAsk', { name, guest: g.full_name, n: g.count }))) onMergeGuest(m, g.ids); }}>
+            {t('requests.mergeBtn')}
+          </button>
+        </div>
+      )}
       <p className="mt-1.5 text-[11px] text-gray-400">{t('requests.mergeHint')}</p>
+      {guests.length > 0 && <p className="mt-1 text-[11px] text-gray-400">{t('requests.mergeGuestHint')}</p>}
     </div>
   );
 }
@@ -84,6 +104,23 @@ export default function MemberRequests({ club, requests, members = [], onChanged
       const body = action === 'approve' && m.join_requested ? { member_type: pick.member_type, tier: pick.tier || null } : {};
       await api.post(`/api/clubs/${club.id}/members/${m.id}/${action}`, body);
       window.dispatchEvent(new Event('member-requests-changed'));
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Past kèo players without an account (đặt nhanh / Host thêm), to merge a request into.
+  const { data: guests, reload: reloadGuests } = useLoad(() => api.get(`/api/clubs/${club.id}/merge-guests`).catch(() => []), [club.id]);
+  async function mergeGuest(m, ids) {
+    setBusy(m.id);
+    setError('');
+    try {
+      const r = await api.post(`/api/clubs/${club.id}/members/${m.id}/merge-guests`, { ids });
+      window.alert(t('requests.mergeGuestDone', { n: r.adopted ?? ids.length }));
+      reloadGuests();
       onChanged();
     } catch (err) {
       setError(err.message);
@@ -148,7 +185,7 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                 {m.join_note && <p className="text-gray-200 text-sm mt-1 rounded bg-navy-900 px-2 py-1">“{m.join_note}”</p>}
                 {/* Removed / reviewed here before (kept when the club changes manager). */}
                 <PastWarning past={m.past} />
-                <MergeBox club={club} m={m} members={members} busy={busy === m.id} onMerge={merge} />
+                <MergeBox club={club} m={m} members={members} guests={guests || []} busy={busy === m.id} onMerge={merge} onMergeGuest={mergeGuest} />
                 <p className="text-gray-600 text-xs mt-0.5">{t('requests.since', { date: localDate(new Date(m.join_requested_at || m.created_at), 'vi-VN') })}</p>
               </div>
               {m.join_requested && (

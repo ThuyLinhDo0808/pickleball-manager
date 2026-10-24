@@ -14,6 +14,8 @@ import { api, clubImage } from '@/lib/api';
 import { addDays, addMonths, formatDay, hhmm, todayYmd } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
 import Segmented from '@/components/ui/Segmented';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import { ClubMembersTab, ClubTopTab } from '@/components/ClubPeople';
 
 // A club found in the search: its profile, its coming sessions (sign up through the
 // public link when the club opened it), and "ask to join".
@@ -29,6 +31,7 @@ export default function DiscoverClubPage() {
   const [msg, setMsg] = useState(null);
   // Schedule: the next 7 days, or one month at a time (◀ ▶).
   const [view, setView] = useState('week');
+  const [tab, setTab] = useState('events');
   const [month, setMonth] = useState(() => todayYmd().slice(0, 7));
 
   async function askToJoin(e) {
@@ -114,7 +117,21 @@ export default function DiscoverClubPage() {
         </div>
       </section>
 
-      <section className="mt-6">
+      {/* Lịch sắp tới · Thành viên (thường xuyên / vãng lai) · Bảng xếp hạng (Top 10). */}
+      <div className="mt-6">
+        <UnderlineTabs
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { key: 'events', label: t('disc.events'), icon: 'calendar' },
+            { key: 'people', label: t('cpeople.tab'), icon: 'users' },
+            { key: 'top', label: t('cpeople.topTab'), icon: 'medal' },
+          ]}
+        />
+      </div>
+      {tab === 'people' && <section className="mt-2"><ClubMembersTab clubId={clubId} community={c.kind === 'community'} /></section>}
+      {tab === 'top' && <section className="mt-2"><ClubTopTab clubId={clubId} /></section>}
+      {tab === 'events' && <section className="mt-2">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h2 className="text-white font-semibold">{t('disc.events')}</h2>
           <Segmented items={['week', 'month']} value={view} onChange={setView} label={(v) => t(v === 'week' ? 'disc.viewWeek' : 'disc.viewMonth')} />
@@ -155,7 +172,7 @@ export default function DiscoverClubPage() {
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
 
       <Modal open={asking} title={t('disc.askTitle', { club: c.name })} onClose={() => setAsking(false)}>
         <form onSubmit={askToJoin} className="flex flex-col gap-3">

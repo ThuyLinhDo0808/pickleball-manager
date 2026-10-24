@@ -98,18 +98,18 @@ export default function PaymentReview({ event, rows, onChanged }) {
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-3 shrink-0">
-              {p.has_proof && <button className="text-sky-300 text-xs font-semibold" onClick={() => open(g)}>{t('review.view')}</button>}
-              <button className="text-lime-400 text-xs" disabled={busy} onClick={() => window.confirm(t('review.confirmAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'confirm-payment')}>
+            <div className="flex w-full flex-wrap justify-end gap-x-3 gap-y-1 sm:w-auto">
+              {p.has_proof && <button className="text-sky-300 text-xs font-semibold min-h-[2.75rem] sm:min-h-0" onClick={() => open(g)}>{t('review.view')}</button>}
+              <button className="text-lime-400 text-xs min-h-[2.75rem] sm:min-h-0" disabled={busy} onClick={() => window.confirm(t('review.confirmAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'confirm-payment')}>
                 {p.has_proof ? t('review.confirm') : t('review.cash')}
               </button>
-              <button className="text-lime-300 text-xs" disabled={busy} title={t('place.unpaidHint')} onClick={() => window.confirm(t('review.mainUnpaidAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'place', { to: 'main', unpaid: true })}>
+              <button className="text-lime-300 text-xs min-h-[2.75rem] sm:min-h-0" disabled={busy} title={t('place.unpaidHint')} onClick={() => window.confirm(t('review.mainUnpaidAsk', { name: nameOf(g), amount: formatVnd(total(g)) })) && act(g, 'place', { to: 'main', unpaid: true })}>
                 {t('place.mainUnpaid')}
               </button>
-              <button className="text-sky-300 text-xs" disabled={busy} title={t('review.toWaitlistHint')} onClick={() => window.confirm(t('review.toWaitlistAsk', { name: nameOf(g) })) && act(g, 'place', { to: 'waitlist' })}>
+              <button className="text-sky-300 text-xs min-h-[2.75rem] sm:min-h-0" disabled={busy} title={t('review.toWaitlistHint')} onClick={() => window.confirm(t('review.toWaitlistAsk', { name: nameOf(g) })) && act(g, 'place', { to: 'waitlist' })}>
                 {t('review.toWaitlist')}
               </button>
-              <button className="text-red-400 text-xs" disabled={busy} onClick={() => window.confirm(t('policy.cancelAsk', { name: nameOf(g) })) && act(g, 'cancel')}>
+              <button className="text-red-400 text-xs min-h-[2.75rem] sm:min-h-0" disabled={busy} onClick={() => window.confirm(t('policy.cancelAsk', { name: nameOf(g) })) && act(g, 'cancel')}>
                 {t('events.cancel')}
               </button>
             </div>

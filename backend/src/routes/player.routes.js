@@ -347,6 +347,44 @@ player.get('/discover/:clubId', async (req, res) => {
   }
 });
 
+// The people of a club / community, as a signed-in player sees them on its page: names,
+// gender, verified DUPR and photo, grouped by kind (thường xuyên · vãng lai · người mới).
+// Never phones, emails or money.
+player.get('/discover/:clubId/people', async (req, res) => {
+  if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+  try {
+    await discover.profile(req.params.clubId); // 404 when the club is not on the search
+    const { data, error } = await supabase.from('club_members').select('*').eq('club_id', req.params.clubId).eq('is_active', true).order('full_name').limit(2000);
+    if (error) throw error;
+    const rows = (data || []).filter((m) => !m.join_requested && !(m.review_until && Date.parse(m.review_until) > Date.now()));
+    await require('../services/playerAvatars').attach(rows);
+    const card = (m) => ({ id: m.id, full_name: m.full_name, gender: m.gender || null, dupr: m.dupr_doubles != null ? Number(m.dupr_doubles) : null, dupr_rel: m.dupr_doubles_rel ?? null, me: m.user_id === req.hostId, ...(m.avatar_v ? { avatar_uid: m.user_id, avatar_v: m.avatar_v } : {}) });
+    const kind = (m) => (m.member_type === 'fixed' ? 'regular' : m.member_type === 'new' ? 'new' : 'dropin');
+    const out = { regular: [], dropin: [], new: [] };
+    for (const m of rows) out[kind(m)].push(card(m));
+    res.json(out);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Top 10 of the whole club / community (win rate, enough matches), for its page.
+player.get('/discover/:clubId/rankings', async (req, res) => {
+  if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+  try {
+    await discover.profile(req.params.clubId);
+    const { data: owner } = await supabase.from('clubs').select('host_id, kind').eq('id', req.params.clubId).single();
+    const plan = require('../services/plan').planView(await getPlan(owner.host_id), owner.kind === 'community' ? 'community' : 'club');
+    if (plan.features_enforced && !plan.features.rankings) return res.status(402).json({ error: 'Rankings are not on for this club.', code: 'feature_locked' });
+    const period = ['month', 'quarter', 'year', 'all'].includes(req.query.period) ? req.query.period : 'month';
+    const stats = await clubStats({ id: req.params.clubId }, { period });
+    const top = stats.rankings.filter((r) => r.eligible).slice(0, 10).map((r) => ({ club_member_id: r.club_member_id, rank: r.rank, full_name: r.full_name, matches_played: r.matches_played, wins: r.wins, losses: r.losses, win_rate: r.win_rate, point_diff: r.point_diff, avatar_uid: r.avatar_uid, avatar_v: r.avatar_v }));
+    res.json({ period, range: stats.range, min_matches: stats.min_matches, match_count: stats.match_count, top });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // Ask to join a club found in the search (lands in its waiting list for the Host).
 player.post('/discover/:clubId/join', async (req, res) => {
   if (!isUuid(req.params.clubId)) return notFound(res, 'Club');

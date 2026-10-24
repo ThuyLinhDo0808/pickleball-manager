@@ -200,6 +200,7 @@ async function attach(invite, userId) {
   const { error: iErr } = await supabase.from('member_link_invites').update({ used_at: nowIso(), used_by: userId }).eq('id', invite.id);
   if (iErr) throw iErr;
   await revoke(member.id);
+  await adoptMemberRows({ ...member, ...patch }).catch(() => 0); // past kèo rows go to the account too
   return { club_id: club.id, club_name: club.name, member_id: member.id };
 }
 
@@ -310,7 +311,103 @@ async function mergeInto(club, source, targetId, { any = false } = {}) {
   const { data, error: uErr } = await supabase.from('club_members').update(patch).eq('id', target.id).select().single();
   if (uErr) throw uErr;
   await revoke(target.id);
+  await adoptMemberRows(data).catch(() => 0);
   return data;
 }
 
-module.exports = { ready, MIGRATION, status, createLink, cancel, requestByLogin, peek, claim, pendingFor, answer, matchesFor, mergeInto, nameKey, looksLike };
+// ---- Players of past kèo without an account (đặt nhanh / thêm tay) -----------------------
+// People who played in this club's kèo before they had an account: quick bookings and players
+// the Host typed in. Grouped by name (+ DUPR ID), with how many kèo and the last one.
+async function guestCandidates(club) {
+  const { data, error } = await supabase
+    .from('event_participants')
+    .select('id, full_name, dupr_id, gender, status, events!inner(club_id, event_date)')
+    .eq('events.club_id', club.id)
+    .is('user_id', null)
+    .is('source_club_member_id', null)
+    .is('guest_member_id', null)
+    .in('status', ['registered', 'checked_in', 'no_show', 'pending', 'requested', 'waitlisted'])
+    .limit(5000);
+  if (error) throw error;
+  const groups = new Map();
+  for (const p of data || []) {
+    const key = `${nameKey(p.full_name)}|${p.dupr_id || ''}`;
+    if (!groups.has(key)) groups.set(key, { key, full_name: p.full_name, dupr_id: p.dupr_id || null, gender: p.gender || null, count: 0, last_date: null, ids: [] });
+    const g = groups.get(key);
+    g.count += 1;
+    g.ids.push(p.id);
+    if (!g.last_date || p.events.event_date > g.last_date) g.last_date = p.events.event_date;
+  }
+  return [...groups.values()].sort((a, b) => String(b.last_date).localeCompare(String(a.last_date))).slice(0, 300);
+}
+
+// The name an account uses (its player profile, else the account, else the member row).
+async function accountName(userId, fallback) {
+  const { data: prof } = await supabase.from('player_profiles').select('full_name').eq('user_id', userId).maybeSingle();
+  if (prof?.full_name) return prof.full_name;
+  const { data: u } = await supabase.from('users').select('full_name, username').eq('id', userId).maybeSingle();
+  return u?.full_name || u?.username || fallback || null;
+}
+
+// Give past kèo rows to the account + member: their matches and scores (kept on the row),
+// the DUPR ID, and the account's name instead of the one typed at the booking. A kèo where
+// the account already has its own row is left alone (one person, one place per kèo).
+async function adoptRows(rows, member, userId) {
+  if (!rows.length) return 0;
+  const name = await accountName(userId, member.full_name);
+  const { data: mine } = await supabase.from('event_participants').select('event_id').eq('user_id', userId).in('event_id', [...new Set(rows.map((r) => r.event_id))]);
+  const taken = new Set((mine || []).map((r) => r.event_id));
+  let n = 0;
+  for (const r of rows) {
+    if (taken.has(r.event_id)) continue;
+    const patch = { user_id: userId, ...(name ? { full_name: name } : {}) };
+    if (!r.source_club_member_id && !r.guest_member_id) patch.guest_member_id = member.id;
+    if (!r.dupr_id && member.dupr_id) patch.dupr_id = member.dupr_id;
+    const { error } = await supabase.from('event_participants').update(patch).eq('id', r.id).is('user_id', null);
+    if (error) throw error;
+    taken.add(r.event_id);
+    n += 1;
+  }
+  return n;
+}
+
+// Host: "Gộp vào người chơi đặt nhanh / Host thêm" — a waiting request (with an account)
+// takes over those past kèo rows. Its DUPR ID is filled from them when it has none.
+async function mergeGuests(club, source, ids) {
+  await assertReady();
+  if (!source.user_id) throw fail('Only a request with an account can be merged.', 400, 'not_pending');
+  const list = (Array.isArray(ids) ? ids : []).filter((x) => /^[0-9a-f-]{36}$/i.test(String(x))).slice(0, 500);
+  if (!list.length) throw fail('Pick the player to merge.', 400, 'target_required');
+  const { data: rows, error } = await supabase
+    .from('event_participants')
+    .select('id, event_id, dupr_id, source_club_member_id, guest_member_id, events!inner(club_id)')
+    .in('id', list)
+    .eq('events.club_id', club.id)
+    .is('user_id', null);
+  if (error) throw error;
+  if (!rows?.length) throw fail('Player not found.', 404, 'not_found');
+  let member = source;
+  const dupr = rows.map((r) => r.dupr_id).find(Boolean);
+  if (!source.dupr_id && dupr) {
+    const { data: m } = await supabase.from('club_members').update({ dupr_id: dupr }).eq('id', source.id).select().single().then((r) => r, () => ({}));
+    if (m) member = m;
+  }
+  const adopted = await adoptRows(rows, member, source.user_id);
+  return { ...member, adopted };
+}
+
+// After a merge into a member the Host typed in: that member's past kèo rows without an
+// account go to the account too (name, DUPR ID; matches and scores stay on the rows).
+async function adoptMemberRows(member) {
+  if (!member?.user_id) return 0;
+  const { data: rows, error } = await supabase
+    .from('event_participants')
+    .select('id, event_id, dupr_id, source_club_member_id, guest_member_id')
+    .or(`source_club_member_id.eq.${member.id},guest_member_id.eq.${member.id}`)
+    .is('user_id', null)
+    .limit(2000);
+  if (error) throw error;
+  return adoptRows(rows || [], member, member.user_id);
+}
+
+module.exports = { guestCandidates, mergeGuests, adoptMemberRows, ready, MIGRATION, status, createLink, cancel, requestByLogin, peek, claim, pendingFor, answer, matchesFor, mergeInto, nameKey, looksLike };
