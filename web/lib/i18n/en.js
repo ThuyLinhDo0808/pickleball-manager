@@ -5558,6 +5558,10 @@ export const en = {
     requests: "{n} to approve",
   },
   people: {
+    srcAccount: "Linked player account",
+    srcQuick: "Quick booking link · no account",
+    srcHost: "Added by the Host · no account",
+    srcUnverified: "email not confirmed",
     restore: "Put back on the list",
     restoreAsk: "Put {name} back in this kèo? Before the kèo: on the main list if there is room (else the waitlist). After it, or when they already have matches: back as checked in. Their matches and scores stay as they are.",
     exportList: "Export player list",
