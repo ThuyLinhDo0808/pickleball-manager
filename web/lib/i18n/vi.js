@@ -4406,6 +4406,9 @@ export const vi = {
     hostAll: 'Xem tổng hợp',
   },
   requests: {
+    approveMergeMemberAsk: "Duyệt {name} bằng cách gộp vào thành viên \"{member}\"? Tài khoản được gắn vào dòng \"{member}\" (giữ hình thức, lịch sử, gói, công nợ), yêu cầu này được xoá.",
+    approveMergeGuestAsk: "Duyệt {name} và gộp với \"{guest}\" ({n} kèo)? Các kèo, trận đấu, tỷ số và DUPR ID của \"{guest}\" chuyển sang tài khoản {name}.",
+    approveMergesHint: "Bấm Duyệt để gộp và duyệt cùng lúc.",
     mergeGuest: "Gộp vào người chơi đặt nhanh / Host thêm…",
     guestKeo: "{n} kèo, gần nhất {date}",
     mergeGuestAsk: "Gộp {name} với \"{guest}\" ({n} kèo)? Các kèo, trận đấu, tỷ số và DUPR ID của \"{guest}\" sẽ chuyển sang tài khoản {name}, và tên trong các kèo đổi thành tên tài khoản.",

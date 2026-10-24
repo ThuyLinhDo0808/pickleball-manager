@@ -4406,6 +4406,9 @@ export const en = {
     hostAll: 'See summary',
   },
   requests: {
+    approveMergeMemberAsk: "Approve {name} by merging into member \"{member}\"? The account joins the \"{member}\" row (its type, history, passes and balance stay), and this request is removed.",
+    approveMergeGuestAsk: "Approve {name} and merge with \"{guest}\" ({n} sessions)? The sessions, matches, scores and DUPR ID of \"{guest}\" move to {name}'s account.",
+    approveMergesHint: "Press Approve to merge and approve in one step.",
     mergeGuest: "Merge into a quick-booked / host-added player…",
     guestKeo: "{n} sessions, last {date}",
     mergeGuestAsk: "Merge {name} with \"{guest}\" ({n} sessions)? Those sessions, matches, scores and the DUPR ID move to {name}'s account, and the name in those sessions becomes the account's name.",

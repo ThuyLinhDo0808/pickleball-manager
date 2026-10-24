@@ -794,6 +794,16 @@ router.get('/:clubId/member-requests', async (req, res) => {
 router.post('/:clubId/members/:memberId/approve', async (req, res) => {
   const m = req.member;
   if (!m.user_id && !m.join_requested) return res.status(400).json({ error: 'No player account is linked to this member.' });
+  // "Duyệt" with a member picked in "Gộp vào thành viên khác": merging is the approval (the
+  // account joins the row the Host already had, with its type), so both happen in one step.
+  if (req.body?.merge_into) {
+    try {
+      const kept = await memberLink.mergeInto(req.club, m, req.body.merge_into);
+      return res.json({ ...kept, merged_into: kept.id });
+    } catch (err) {
+      return linkFail(res, err);
+    }
+  }
   const patch = { join_requested: false };
   if (m.user_id) patch.account_verified = true;
   // Not decided yet ("---"): the person stays in the waiting list until the Host picks a type.
@@ -830,11 +840,22 @@ router.post('/:clubId/members/:memberId/approve', async (req, res) => {
   // Accepted: if this is someone the club already has (same name, nothing telling them
   // apart), the two rows become one.
   const merged = (await dedupe(req.club, { force: true })).find((d) => d.merged === data.id);
+  let out = data;
   if (merged) {
     const { data: kept } = await supabase.from('club_members').select('*').eq('id', merged.into).maybeSingle();
-    return res.json({ ...(kept || data), merged_from: data.id });
+    out = { ...(kept || data), merged_from: data.id };
   }
-  res.json(data);
+  // "Duyệt" with a past đặt nhanh / Host-added player picked: their kèo, matches and DUPR ID
+  // go to the account in the same step.
+  if (Array.isArray(req.body?.merge_guest_ids) && req.body.merge_guest_ids.length) {
+    try {
+      const r = await memberLink.mergeGuests(req.club, out, req.body.merge_guest_ids);
+      out = { ...out, ...r, merged_from: out.merged_from };
+    } catch (err) {
+      return res.json({ ...out, merge_error: err.message });
+    }
+  }
+  res.json(out);
 });
 
 // Not our member: a new join request is removed; a link to an existing member is undone.
