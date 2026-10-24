@@ -314,7 +314,11 @@ player.post('/onboarding', async (req, res) => {
     const p = cleanProfile(req.body, { badminton: await sportReady() });
     // DUPR ID (DUPR app → share button → "Copy DUPR ID"); only when the form sends it.
     const duprSvc = require('../services/dupr');
-    if ('dupr_id' in (req.body || {}) && (await duprSvc.ready())) p.dupr_id = duprSvc.cleanId(req.body.dupr_id);
+    const duprOn = 'dupr_id' in (req.body || {}) && (await duprSvc.ready());
+    if (duprOn) p.dupr_id = duprSvc.cleanId(req.body.dupr_id);
+    const { data: before } = duprOn ? await supabase.from('player_profiles').select('dupr_id').eq('user_id', req.hostId).maybeSingle() : { data: null };
+    // The form asks the DUPR ID, not a self-rated level: a level saved before stays.
+    if (!('dupr_level' in (req.body || {}))) delete p.dupr_level;
     if (!sports.includes('pickleball')) p.dupr_level = null;
     if (!sports.includes('badminton') && 'badminton_level' in p) p.badminton_level = null;
     const { data: old } = await supabase.from('player_profiles').select('avatar').eq('user_id', req.hostId).maybeSingle();
@@ -326,6 +330,8 @@ player.post('/onboarding', async (req, res) => {
       .single();
     if (error) throw error;
     await linkByPhone(req.hostId, data);
+    // The DUPR ID onto club records found by phone (linked at once where a DUPR list has it).
+    if (duprOn && (before?.dupr_id || null) !== (p.dupr_id || null)) await duprSvc.applyProfileId(req.hostId, before?.dupr_id || null, p.dupr_id || null);
     const userPatch = { sports, account_role: role, onboarded_at: new Date().toISOString() };
     if (['male', 'female', 'other'].includes(req.body.gender)) userPatch.gender = req.body.gender;
     if (p.birth_date) userPatch.birth_date = p.birth_date;

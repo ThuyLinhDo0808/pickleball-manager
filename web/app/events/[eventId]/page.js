@@ -95,6 +95,7 @@ export default function EventDetailPage() {
   const [addGroup, setAddGroup] = useState(null);
   const [flash, setFlash] = useState('');
   const [showMatch, setShowMatch] = useState(false); // false | true | { slots, extra } (challenge)
+  const [showDupr, setShowDupr] = useState(false); // "Xuất file DUPR": the CSV in DUPR's import template
   const [matchTab, setMatchTab] = useState('enter'); // Nhập điểm / Kết quả / Bảng xếp hạng
   // The place sheet on a name: { person (row or null for the Host without one), isHost }.
   const [sheet, setSheet] = useState(null);
@@ -560,8 +561,16 @@ export default function EventDetailPage() {
             >
               {t('matches.exportJpg')}
             </button>
+            {event.club_id && sport === 'pickleball' && (
+              <button className="btn-secondary text-sm" disabled={!(matches || []).length} onClick={() => setShowDupr(true)}>
+                {t('duprx.exportBtn')}
+              </button>
+            )}
             <button className="btn-primary text-sm" onClick={() => setShowMatch(true)}>+ {t('matches.add')}</button>
           </div>
+          <Modal open={showDupr} title={t('duprx.exportBtn')} onClose={() => setShowDupr(false)}>
+            {showDupr && <DuprExport bare clubId={event.club_id} scope={{ event: eventId }} fileName={`dupr-${event.event_date || 'keo'}`} reloadKey={JSON.stringify((matches || []).map((m) => [m.id, m.team1_score, m.team2_score]))} />}
+          </Modal>
           {/* Nhập điểm: set up matches and score the ones still open. Kết quả: every scored
               match. Bảng xếp hạng: this kèo's standings + the challenge suggestion. */}
           <UnderlineTabs

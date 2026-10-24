@@ -2447,6 +2447,7 @@ export const vi = {
     poweredBy: 'Quản lý bởi NexusZone',
   },
   matches: {
+    imagePage: "Ảnh {n}/{total}",
     tabEnter: "Nhập điểm",
     tabResults: "Kết quả",
     noneOpen: "Không có trận nào chờ nhập điểm. Bấm + Thêm trận để xếp trận mới.",
@@ -4194,6 +4195,12 @@ export const vi = {
     idHow: "Mở app DUPR → bấm nút chia sẻ ở góc trên bên phải → Copy DUPR ID, rồi dán vào đây. CLB dùng ID này để cập nhật điểm DUPR và gửi trận của bạn lên DUPR.",
   },
   duprm: {
+    groups: "Nhóm người chơi",
+    g_quick: "Đặt nhanh",
+    col_played: "Đã chơi",
+    quickPlayed: "{n} kèo · gần nhất {date}",
+    quickEmpty: "Chưa có người chơi đặt nhanh nào (chưa có tài khoản, chưa vào danh sách thành viên).",
+    quickHint: "Người chơi đặt nhanh / Host thêm tay, chưa có tài khoản và chưa vào danh sách thành viên. Nhập DUPR ID ở đây là ID được gắn vào mọi kèo họ đã chơi, nên trận của họ gửi lên DUPR được và điểm DUPR của ID đó hiện ra. Khi họ tạo tài khoản, dùng \"Gộp vào người chơi đặt nhanh\" ở Danh sách chờ để chuyển hết sang tài khoản.",
     guideImage: "Hướng dẫn bằng hình ảnh",
     typeScoreShort: "Nhập",
     guideVideo: "Hướng dẫn bằng video",
@@ -4250,6 +4257,8 @@ export const vi = {
     freeHint: "Khi người chơi khai DUPR ID trong hồ sơ (hoặc bạn nhập ID cho thành viên), tài khoản được liên kết ngay.",
   },
   duprx: {
+    exportBtn: "Xuất file DUPR (.csv)",
+    none: "Kèo này chưa có trận nào để gửi lên DUPR.",
     title: "Gửi trận lên DUPR",
     hint: "Tải file CSV theo mẫu Import Matches via CSV của DUPR, tải lên club trên DUPR, rồi đánh dấu đã tải lên.",
     ready: "chờ gửi",
@@ -4968,6 +4977,10 @@ export const vi = {
     h_finance_edit: "Thêm / sửa / huỷ thu chi, gói hội viên, xác nhận thanh toán, thu tiền buổi.",
   },
   onb: {
+    duprId: "DUPR ID (không bắt buộc)",
+    duprIdPh: "VD: YN9N0G",
+    duprIdHint: "Mở app DUPR → bấm nút chia sẻ ở góc trên bên phải → Copy DUPR ID, rồi dán vào đây. CLB / cộng đồng dùng ID này để lấy điểm DUPR đã xác thực của bạn và gửi trận lên DUPR. Chưa có thì để trống, thêm sau trong Hồ sơ.",
+    errDuprId: "DUPR ID gồm 4–10 chữ hoặc số (app DUPR → chia sẻ → Copy DUPR ID).",
     kicker: "Chào mừng bạn",
     progress: "Tiến độ",
     step_sports: "Môn chơi",
@@ -5593,6 +5606,8 @@ export const vi = {
     err_owner: "Bạn đang quản lý {kind} này nên không rời được. Hãy chuyển giao cho người khác trước.",
   },
   place: {
+    lockedCheckedIn: "Người này đã check-in nên không đổi chỗ được. Muốn đổi, bấm “Hoàn tác” bên dưới trước.",
+    lockedNoShow: "Người này đang bị ghi vắng mặt nên không đổi chỗ được. Muốn đổi, bấm “Hoàn tác” bên dưới trước.",
     mainUnpaid: "Vào DS chính, thu tiền sau",
     unpaidHint: "Cho người chơi vào danh sách chính ngay dù chưa chuyển khoản. Phí ghi là \"Chưa thu\" — thu tại sân hoặc khi họ chuyển khoản, rồi bấm \"Đã thu\".",
     waitShort: "Để chờ",

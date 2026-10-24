@@ -428,10 +428,49 @@ async function memberBoard(club) {
   const { data: last } = await supabase.from('club_dupr_imports').select('rows_total, duplicates, new_ids, linked_new, updated, created_at').eq('club_id', club.id).order('created_at', { ascending: false }).limit(1);
   return {
     members: list,
+    quick: await quickPlayers(club).catch(() => []),
     unclaimed: (roster || []).filter((r) => !claimed.has(r.dupr_id)).map((r) => ({ dupr_id: r.dupr_id, name: r.name, doubles: num(r.doubles), singles: num(r.singles), first_seen_at: r.first_seen_at })).sort((a, b) => String(b.first_seen_at).localeCompare(String(a.first_seen_at)) || String(a.name).localeCompare(String(b.name))),
     roster_size: (roster || []).length,
     last_import: last?.[0] || null,
   };
+}
+
+// Players of the club's kèo without an account and not on the member list (đặt nhanh /
+// Host thêm): one row per name + DUPR ID, with the rating that DUPR ID has anywhere.
+async function quickPlayers(club) {
+  const groups = await require('./memberLink').guestCandidates(club);
+  const rated = await latestRatings(groups.map((g) => g.dupr_id));
+  return groups.map((g) => {
+    const r = g.dupr_id ? rated.get(g.dupr_id) : null;
+    return {
+      key: g.key,
+      ids: g.ids,
+      full_name: g.full_name,
+      gender: g.gender,
+      count: g.count,
+      last_date: g.last_date,
+      dupr_id: g.dupr_id,
+      dupr_name: r?.name || null,
+      doubles: r?.doubles ?? null,
+      doubles_rel: r?.doubles_rel ?? null,
+      singles: r?.singles ?? null,
+      synced_at: r?.at || null,
+    };
+  });
+}
+
+// The Host types the DUPR ID of a quick-booking player: it goes on all their kèo rows, so
+// their matches can be sent to DUPR and the rating that ID has shows up.
+async function setQuickId(club, ids, raw) {
+  const id = cleanId(raw);
+  const list = (Array.isArray(ids) ? ids : []).filter((x) => /^[0-9a-f-]{36}$/i.test(String(x))).slice(0, 500);
+  if (!list.length) throw httpError('Pick the player.', 400, 'target_required');
+  const { data: rows, error } = await supabase.from('event_participants').select('id, events!inner(club_id)').in('id', list).eq('events.club_id', club.id).is('user_id', null);
+  if (error) throw error;
+  if (!rows?.length) throw httpError('Player not found.', 404, 'not_found');
+  const { error: uErr } = await supabase.from('event_participants').update({ dupr_id: id }).in('id', rows.map((r) => r.id));
+  if (uErr) throw uErr;
+  return { updated: rows.length, dupr_id: id };
 }
 
 // ---- matches -> DUPR "Import Matches via CSV" ------------------------------------------
@@ -504,7 +543,7 @@ async function clubMatches(club, opts = {}) {
           const mid = part?.source_club_member_id || part?.guest_member_id || null;
           if (mid) memberIds.add(mid);
           // A quick booking (no account) may carry the DUPR ID the player typed.
-          return { member_id: mid, name: part?.full_name || '?', user_id: part?.user_id || null, dupr_id: part?.dupr_id || null };
+          return { member_id: mid, part_id: mid || part?.user_id ? null : p.event_participant_id, name: part?.full_name || '?', user_id: part?.user_id || null, dupr_id: part?.dupr_id || null };
         });
     out.push({ kind: 'match', source: ev ? 'event' : 'club', id: m.id, date: ev?.event_date || ymdOf(m.played_at), event: ev?.title || null, location: ev?.location || null, a: team(1), b: team(2), games: gamesOf(m), exported_at: m.dupr_exported_at });
   }
@@ -557,6 +596,7 @@ async function clubMatches(club, opts = {}) {
     const m = p.member_id ? members.get(p.member_id) : null;
     return {
       member_id: p.member_id || null,
+      part_id: p.part_id || null, // a quick-booking row (no account, no member): its DUPR ID is set on the row
       name: m?.full_name || p.name || '?',
       dupr_id: m?.dupr_id || profId.get(m?.user_id || p.user_id) || p.dupr_id || null,
     };
@@ -740,4 +780,4 @@ async function playerDupr(userId) {
 
 module.exports = {
   latestRatings,
-  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, clubMatches, matchesCsv, markExported, stats, playerDupr, TEMPLATE };
+  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, quickPlayers, setQuickId, clubMatches, matchesCsv, markExported, stats, playerDupr, TEMPLATE };

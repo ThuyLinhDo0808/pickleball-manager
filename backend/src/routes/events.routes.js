@@ -1110,11 +1110,11 @@ router.get('/:eventId/participants', async (req, res) => {
   } catch (err) {
     return dbError(res, err);
   }
-  const { data, error } = await supabase
-    .from('event_participants')
-    .select('*')
-    .eq('event_id', req.event.id)
-    .order('joined_at', { ascending: true });
+  const list = () => supabase.from('event_participants').select('*').eq('event_id', req.event.id).order('joined_at', { ascending: true });
+  let { data, error } = await list();
+  if (error) return dbError(res, error);
+  // Members with an account added without it: the rows go to their accounts now.
+  if (await require('../services/memberLink').linkEventAccounts(data).catch(() => 0)) ({ data, error } = await list());
   if (error) return dbError(res, error);
   let cards;
   try {
@@ -1289,6 +1289,7 @@ router.post('/:eventId/participants', checkCapacity(), async (req, res) => {
     .single();
   if (error) return dbError(res, error);
   await ensureGuestMember(req.event, data);
+  await require('../services/memberLink').linkEventAccounts([data]).catch(() => 0);
   res.status(201).json(data);
 });
 
@@ -1400,6 +1401,7 @@ router.post('/:eventId/participants/import', checkCapacity(), async (req, res) =
 
   const { data, error } = await supabase.from('event_participants').insert(payload).select();
   if (error) return dbError(res, error);
+  await require('../services/memberLink').linkEventAccounts(data).catch(() => 0); // their accounts see the kèo
   res.status(201).json(data);
 });
 

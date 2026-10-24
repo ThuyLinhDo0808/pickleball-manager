@@ -1792,6 +1792,15 @@ router.patch('/:clubId/members/:memberId/dupr', async (req, res) => {
     duprErr(res, err);
   }
 });
+// DUPR ID of a quick-booking player (no account): onto their kèo rows in this club.
+router.patch('/:clubId/dupr/quick', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.setQuickId(req.club, req.body?.ids, req.body?.dupr_id));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
 router.patch('/:clubId/members/:memberId/dupr-score', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;

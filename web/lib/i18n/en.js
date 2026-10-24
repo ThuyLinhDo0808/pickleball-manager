@@ -2447,6 +2447,7 @@ export const en = {
     poweredBy: 'Powered by NexusZone',
   },
   matches: {
+    imagePage: "Image {n}/{total}",
     tabEnter: "Enter scores",
     tabResults: "Results",
     noneOpen: "No match waiting for a score. Tap + Add match to set one up.",
@@ -4194,6 +4195,12 @@ export const en = {
     idHow: "In the DUPR app, tap the share button at the top right → Copy DUPR ID, and paste it here. Clubs use it to update your DUPR rating and send your matches to DUPR.",
   },
   duprm: {
+    groups: "Player groups",
+    g_quick: "Quick booking",
+    col_played: "Played",
+    quickPlayed: "{n} kèo · last {date}",
+    quickEmpty: "No quick-booking players yet (no account, not on the member list).",
+    quickHint: "Players from quick bookings or added by the Host, with no account and not on the member list. A DUPR ID typed here goes on every kèo they played, so their matches can be sent to DUPR and the rating of that ID shows. When they make an account, use \"Merge into a quick-booking player\" in the waiting list to move it all to the account.",
     guideImage: "Picture guide",
     typeScoreShort: "Enter",
     guideVideo: "Video guide",
@@ -4250,6 +4257,8 @@ export const en = {
     freeHint: "When a player adds their DUPR ID to their profile (or you add it for a member), they are linked at once.",
   },
   duprx: {
+    exportBtn: "Export DUPR file (.csv)",
+    none: "This kèo has no matches to send to DUPR yet.",
     title: "Send matches to DUPR",
     hint: "Download the CSV in DUPR's Import Matches via CSV template, upload it to the club on DUPR, then mark it as uploaded.",
     ready: "ready",
@@ -4968,6 +4977,10 @@ export const en = {
     h_finance_edit: "Add / edit / void entries, plans, confirm payments, session fees.",
   },
   onb: {
+    duprId: "DUPR ID (optional)",
+    duprIdPh: "e.g. YN9N0G",
+    duprIdHint: "Open the DUPR app → tap the share button at the top right → Copy DUPR ID, then paste it here. Clubs and communities use it to get your verified DUPR rating and send your matches to DUPR. No ID yet? Leave it blank and add it later in your profile.",
+    errDuprId: "A DUPR ID is 4–10 letters or digits (DUPR app → share → Copy DUPR ID).",
     kicker: "Welcome",
     progress: "Progress",
     step_sports: "Sports",
@@ -5593,6 +5606,8 @@ export const en = {
     err_owner: "You manage this {kind}, so you can't leave it. Hand it over to someone else first.",
   },
   place: {
+    lockedCheckedIn: "This player has checked in, so their place can't change. To change it, press “Undo” below first.",
+    lockedNoShow: "This player is marked as a no-show, so their place can't change. To change it, press “Undo” below first.",
     mainUnpaid: "Main list, collect later",
     unpaidHint: "Put the player on the main list now, before the transfer. The fee shows as \"Not collected\" — collect it at the court or when they transfer, then tap \"Collected\".",
     waitShort: "Waitlist",

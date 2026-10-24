@@ -410,4 +410,21 @@ async function adoptMemberRows(member) {
   return adoptRows(rows || [], member, member.user_id);
 }
 
-module.exports = { guestCandidates, mergeGuests, adoptMemberRows, ready, MIGRATION, status, createLink, cancel, requestByLogin, peek, claim, pendingFor, answer, matchesFor, mergeInto, nameKey, looksLike };
+// Rows of a kèo that point at a club member with a confirmed account but carry no account
+// themselves (the Host added the member with "Thêm thành viên", or before the account was
+// linked): they go to that account, so the player sees the kèo and is shown as having one.
+async function linkEventAccounts(rows) {
+  const need = (rows || []).filter((r) => !r.user_id && (r.source_club_member_id || r.guest_member_id));
+  if (!need.length) return 0;
+  const ids = [...new Set(need.map((r) => r.source_club_member_id || r.guest_member_id))];
+  const { data: ms, error } = await supabase.from('club_members').select('*').in('id', ids).not('user_id', 'is', null);
+  if (error) throw error;
+  let n = 0;
+  for (const m of ms || []) {
+    if (m.account_verified === false || m.join_requested) continue; // a request still waiting
+    n += await adoptRows(need.filter((r) => (r.source_club_member_id || r.guest_member_id) === m.id), m, m.user_id);
+  }
+  return n;
+}
+
+module.exports = { guestCandidates, mergeGuests, adoptMemberRows, linkEventAccounts, ready, MIGRATION, status, createLink, cancel, requestByLogin, peek, claim, pendingFor, answer, matchesFor, mergeInto, nameKey, looksLike };
