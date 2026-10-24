@@ -15,6 +15,7 @@ import { formatVnd } from '@/lib/format';
 import { resizeImage } from '@/lib/image';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
+import { clearDraft, useDraft } from '@/lib/draft';
 import UiIcon from '@/components/ui/UiIcon';
 
 const ACTIVE = ['registered', 'checked_in', 'pending', 'waitlisted', 'requested'];
@@ -57,10 +58,13 @@ function VerifyFirst({ code }) {
 
 // The quick profile a player gives the first time they join a kèo: name, phone, gender and
 // level ("not sure" = blank). Birth date and the rest are asked later.
-export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGender }) {
+export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGender, userId }) {
   const { t } = useI18n();
   const levelKey = sport === 'badminton' ? 'badminton_level' : 'dupr_level'; // the level for this event's sport
-  const [f, setF] = useState({
+  // Typed but not saved yet: kept on this device for this account (lib/draft).
+  const uid = userId || profile?.user_id;
+  const draftKey = uid ? `pb_profile_draft_${uid}` : null;
+  const [f, setF] = useDraft(draftKey, {
     full_name: profile?.full_name || '',
     phone: profile?.phone || '',
     ...(sport === 'badminton' ? { [levelKey]: profile?.[levelKey] ?? '' } : { dupr_id: profile?.dupr_id || '' }),
@@ -77,6 +81,7 @@ export function ProfileForm({ profile, onSaved, sport = 'pickleball', accountGen
       // Pickleball: the DUPR ID (optional) instead of a self-rated level.
       const level = sport === 'badminton' ? { [levelKey]: f[levelKey] === '' ? null : Number(f[levelKey]) } : { dupr_id: f.dupr_id || null };
       await api.put('/api/player/profile', { ...(profile || {}), ...f, ...level });
+      clearDraft(draftKey);
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -169,7 +174,8 @@ function MemberStanding({ me, clubName }) {
 function ProofUpload({ token, reg, onChanged }) {
   const { t } = useI18n();
   const file = useRef(null);
-  const [preview, setPreview] = useState('');
+  // A picked transfer photo not sent yet survives a reload (lib/draft).
+  const [preview, setPreview] = useDraft(reg?.id ? `pb_proof_draft_${reg.id}` : null, '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -191,6 +197,7 @@ function ProofUpload({ token, reg, onChanged }) {
     try {
       await api.post(`/api/events/public/${token}/payment-proof`, { image: preview });
       setPreview('');
+      clearDraft(reg?.id ? `pb_proof_draft_${reg.id}` : null);
       onChanged();
     } catch (err) {
       setError(err.message);
@@ -501,7 +508,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   if (ev.members_only_now && me?.member?.state !== 'verified') return membersFirst;
   // Signed in: always the account sign-up (never "Đăng ký nhanh", which is for people
   // without an account), so the Host sees a normal sign-up, not a quick booking.
-  if (!me.profile?.full_name || !me.profile?.phone) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} />;
+  if (!me.profile?.full_name || !me.profile?.phone) return <ProfileForm profile={me.profile} onSaved={onChanged} sport={ev.sport} accountGender={me.account_gender} userId={user?.id} />;
 
   async function register() {
     setBusy(true);
