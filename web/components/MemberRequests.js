@@ -24,10 +24,13 @@ const SOURCE_STYLE = {
 
 // A request from someone the Host already typed in (no phone match): merge the request into
 // that member, so one person stays one row (history, passes and the account together).
-function MergeBox({ club, m, members, guests = [], busy, onMerge, onMergeGuest }) {
+// What the Host picks here is also used by "Duyệt": approving merges and approves in one step.
+function MergeBox({ club, m, members, guests = [], busy, onMerge, onMergeGuest, sel = {}, setSel }) {
   const { t, lang } = useI18n();
-  const [other, setOther] = useState('');
-  const [guest, setGuest] = useState('');
+  const other = sel.other || '';
+  const guest = sel.guest || '';
+  const setOther = (v) => setSel({ ...sel, other: v });
+  const setGuest = (v) => setSel({ ...sel, guest: v });
   const free = members.filter((x) => !x.user_id && !x.join_requested && x.id !== m.id);
   if (!m.user_id || m.account_verified || (!m.matches?.length && !free.length && !guests.length)) return null;
   const name = m.account_name || m.full_name;
@@ -81,6 +84,7 @@ function MergeBox({ club, m, members, guests = [], busy, onMerge, onMergeGuest }
         </div>
       )}
       <p className="mt-1.5 text-[11px] text-gray-400">{t('requests.mergeHint')}</p>
+      {(other || guest) && <p className="mt-1 text-[11px] text-lime-200">{t('requests.approveMergesHint')}</p>}
       {guests.length > 0 && <p className="mt-1 text-[11px] text-gray-400">{t('requests.mergeGuestHint')}</p>}
     </div>
   );
@@ -91,18 +95,27 @@ export default function MemberRequests({ club, requests, members = [], onChanged
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const [choice, setChoice] = useState({}); // id -> { member_type, tier }
+  const [mergeSel, setMergeSel] = useState({}); // id -> { other: member id, guest: guest key }
 
   async function act(m, action) {
     const name = m.account_name || m.full_name;
     const ask = m.source === 'survey' ? 'requests.declineGuestAsk' : 'requests.rejectAsk';
     if (action === 'reject' && !window.confirm(t(ask, { name }))) return;
+    // A merge picked in the box above goes with the approval (one click, one confirmation).
+    const plan = approvePlan(m);
+    if (action === 'approve' && plan.ask && !window.confirm(plan.ask)) return;
     setBusy(m.id);
     setError('');
     try {
       const pick = choice[m.id] || { member_type: '', tier: '' };
       // A new member needs a type; until the Host picks one they stay in the waiting list.
       const body = action === 'approve' && m.join_requested ? { member_type: pick.member_type, tier: pick.tier || null } : {};
-      await api.post(`/api/clubs/${club.id}/members/${m.id}/${action}`, body);
+      if (action === 'approve') Object.assign(body, plan.body);
+      const r = await api.post(`/api/clubs/${club.id}/members/${m.id}/${action}`, body);
+      if (r?.merge_error) setError(r.merge_error);
+      else if (plan.guest) window.alert(t('requests.mergeGuestDone', { n: r?.adopted ?? plan.guest.ids.length }));
+      if (plan.guest) reloadGuests();
+      setMergeSel((s) => ({ ...s, [m.id]: {} }));
       window.dispatchEvent(new Event('member-requests-changed'));
       onChanged();
     } catch (err) {
@@ -114,6 +127,17 @@ export default function MemberRequests({ club, requests, members = [], onChanged
 
   // Past kèo players without an account (đặt nhanh / Host thêm), to merge a request into.
   const { data: guests, reload: reloadGuests } = useLoad(() => api.get(`/api/clubs/${club.id}/merge-guests`).catch(() => []), [club.id]);
+
+  // Merge picked for this request: into a member (that is the approval) and/or a past player.
+  function approvePlan(m) {
+    const sel = mergeSel[m.id] || {};
+    const name = m.account_name || m.full_name;
+    const target = sel.other ? members.find((x) => x.id === sel.other) : null;
+    if (target) return { body: { merge_into: target.id }, target, ask: t('requests.approveMergeMemberAsk', { name, member: target.full_name }) };
+    const guest = sel.guest ? (guests || []).find((g) => g.key === sel.guest) : null;
+    if (guest) return { body: { merge_guest_ids: guest.ids }, guest, ask: t('requests.approveMergeGuestAsk', { name, guest: guest.full_name, n: guest.count }) };
+    return { body: {} };
+  }
   async function mergeGuest(m, ids) {
     setBusy(m.id);
     setError('');
@@ -165,6 +189,9 @@ export default function MemberRequests({ club, requests, members = [], onChanged
         const source = m.source || (m.join_requested ? 'request' : 'link');
         const pick = choice[m.id] || { member_type: '', tier: '' };
         const setPick = (patch) => setChoice((c) => ({ ...c, [m.id]: { ...pick, ...patch } }));
+        // Merging into a member the Host already had keeps that member's type: no type needed.
+        const intoMember = !!mergeSel[m.id]?.other;
+        const needType = m.join_requested && !pick.member_type && !intoMember;
         return (
           <div key={m.id} className="card !py-3">
             <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
@@ -185,7 +212,7 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                 {m.join_note && <p className="text-gray-200 text-sm mt-1 rounded bg-navy-900 px-2 py-1">“{m.join_note}”</p>}
                 {/* Removed / reviewed here before (kept when the club changes manager). */}
                 <PastWarning past={m.past} />
-                <MergeBox club={club} m={m} members={members} guests={guests || []} busy={busy === m.id} onMerge={merge} onMergeGuest={mergeGuest} />
+                <MergeBox club={club} m={m} members={members} guests={guests || []} busy={busy === m.id} onMerge={merge} onMergeGuest={mergeGuest} sel={mergeSel[m.id]} setSel={(v) => setMergeSel((s) => ({ ...s, [m.id]: v }))} />
                 <p className="text-gray-600 text-xs mt-0.5">{t('requests.since', { date: localDate(new Date(m.join_requested_at || m.created_at), 'vi-VN') })}</p>
               </div>
               {m.join_requested && (
@@ -211,7 +238,7 @@ export default function MemberRequests({ club, requests, members = [], onChanged
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-                <button className="btn-primary !py-1.5 text-sm" disabled={busy === m.id || (m.join_requested && !pick.member_type)} title={m.join_requested && !pick.member_type ? t('requests.pickTypeHint') : undefined} onClick={() => act(m, 'approve')}>
+                <button className="btn-primary !py-1.5 text-sm" disabled={busy === m.id || needType} title={needType ? t('requests.pickTypeHint') : undefined} onClick={() => act(m, 'approve')}>
                   ✓ {t('requests.approve')}
                 </button>
                 <button
