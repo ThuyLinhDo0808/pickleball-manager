@@ -819,9 +819,16 @@ Bật **Cho phép đăng ký qua link**, rồi *Copy link* hoặc *Chia sẻ* v�
 Người đã có chỗ trong kèo (đã đăng ký, đã check-in hoặc đang chờ chuyển khoản) — và Host — thấy thêm khung **Lịch chơi** (giống Reclub), tự cập nhật mỗi 20 giây:
 - Dòng **Bạn đang chơi: Sân 3**.
 - **Danh sách người chơi**: mỗi sân một bảng (*Sân 3 · Full nam · 17:00–20:00 · 4/8*) với ảnh chữ cái, tên, giới tính, DUPR (chưa có thì *DUPR NR*); ô của bạn được tô xanh; ai chưa xếp sân nằm ở *Chưa chọn sân*. Không hiện SĐT / email.
+- **Lịch chơi của kèo** (người chơi có chỗ): 4 tab **Danh sách người chơi · Bảng tỉ số · Bảng xếp hạng buổi · Kèo thách thức** (thay cho một trang dài). *Bảng xếp hạng buổi* có **bục Top 1 · 2 · 3** (tỉ lệ thắng, thắng–thua · hiệu số), từ hạng 4 là danh sách 2 dòng (không còn bảng nhiều cột bị cắt trên điện thoại).
 - **Khi Host chuyển người sang sân khác**: danh sách đổi ngay ở lần cập nhật sau, **không có thông báo** (trước giờ chơi Host sắp xếp thoải mái). Mỗi sân (kèo một sân: cả kèo) hiện đủ số ô: người đã có chỗ + ô nét đứt **Slot trống** cho chỗ còn lại (VD Sân 2 · 6/8 → 6 ô người + 2 ô trống). Mỗi ô ghi giới tính · DUPR và **Uy tín %** của điểm DUPR.
 - **Chỉ báo khi kèo đổi giờ hoặc bị huỷ**: Host đổi ngày / giờ bắt đầu / giờ kết thúc (hoặc giờ của một sân) → chuông người chơi có *"Kèo đã đổi giờ: 19:00–21:00"* và trang kèo hiện khung vàng *"Host đã đổi giờ kèo…"* (3 ngày); Host huỷ kèo → chuông có *"Host đã huỷ kèo"*. Đổi tên, ghi chú, chuyển sân… không báo.
 - **Trận đấu**: **Bảng tỉ số** (các trận đã có kết quả, đội thắng tô xanh, = kèo thách thức) · **Bảng xếp hạng buổi** tính đến hiện tại — số trận, thắng, thua, **tỉ lệ thắng**, **hệ số** (điểm thắng − điểm thua), xếp theo tỉ lệ thắng (bằng nhau xét hệ số) · **Kèo thách thức** (hai đội, phần thưởng, kết quả hoặc *Đang chờ kết quả*).
+
+### 5.3a. Trang CLB / cộng đồng khi tìm thấy (`/discover/<id>`)
+Ngoài thông tin CLB và nút *Xin gia nhập*, trang có 3 tab (người chơi đã đăng nhập mới xem được 2 tab sau):
+- **Lịch sắp tới**: 7 ngày tới / lịch tháng, nút *Đăng ký tham gia*.
+- **Thành viên**: cộng đồng chia **Thường xuyên · Vãng lai · Người mới** (CLB: *Cố định · Khách*), mỗi người một ô: ảnh, tên, giới tính, **DUPR · Uy tín %**. Không hiện SĐT, email; người đang chờ duyệt hoặc đang bị xem xét không hiện. Ô của chính bạn tô xanh.
+- **Bảng xếp hạng**: **Top 10 toàn cộng đồng** theo tháng / quý / năm / tất cả — **bục Top 1 · 2 · 3** dạng bậc thang, rồi hạng 4–10 (số trận, thắng, thua, tỉ lệ thắng, hiệu số). Cần đủ số trận tối thiểu Host đặt.
 
 ### 5.3b. Link mời đặt nhanh — không cần tài khoản (`/g/<kèo>/<mã>`)
 Mở bằng nút **Đăng ký nhanh** trên trang kèo công khai `/e/…` (khi kèo bật *Cho phép đăng ký qua link*; tắt là form đang mở cũng hết hiệu lực). **Thẻ *Link mời đặt nhanh* (link đổi mỗi 30 giây) đã bỏ khỏi tab Cài đặt của kèo**, vì link thường đã có đủ 2 lựa chọn (đăng ký nhanh không cần tài khoản, hoặc đăng nhập / tạo tài khoản); link mời 30 giây đã gửi trước đó vẫn mở được đến khi hết hạn. Kèo chia nhóm giờ: form đặt nhanh có ô **chọn nhóm giờ** (giờ, phí / slot, sân, còn bao nhiêu chỗ); cả đơn vào chung một nhóm, tổng tiền theo phí của nhóm.
@@ -843,6 +850,12 @@ Dành cho người Host đã biết (bạn bè, khách quen nhắn riêng): bỏ
 - **Không mất thông tin đang nhập dở**: form đặt nhanh tự lưu trên máy (tên, SĐT, giới tính, DUPR ID, từng slot, sân / khung giờ đã chọn) trong 2 ngày — tải lại trang, lỡ đóng tab hay hết 30 phút điền form thì mở lại link vẫn còn nguyên; gửi xong thì bản nháp tự xoá. Đã gửi đơn cho kèo này trên máy đó thì đầu form có khung **"Bạn đã gửi đơn cho kèo này" → Mở đơn đã gửi** để quay lại thanh toán / gửi ảnh / lấy QR. Ở trang đơn đặt chỗ, **ảnh chuyển khoản đã chọn nhưng chưa bấm gửi** cũng được giữ lại khi tải lại trang; mở trang đơn bằng link đã lưu thì đơn được ghi nhớ trên máy (hiện ở *Lịch đã đăng ký*).
 - **Số chỗ ghi theo số đã có**: ô thông tin ghi **Đã có 6/18** (thay cho *Còn trống 12*); ô chọn sân / khung giờ ghi **Đã có 6/18 slots**.
 - Quá 30 phút giữ chỗ chưa gửi ảnh thì các slot tự huỷ như thường; Host từ chối ảnh thì người đặt có thêm 2 giờ để gửi lại. SĐT nằm trong Danh sách đen / bị chặn của Host thì không đặt được.
+
+### 5.3c. Gộp người xin vào với người chơi cũ chưa có tài khoản
+Ở **Danh sách chờ** (Thành viên), mỗi yêu cầu có tài khoản có khung *Gộp*: ngoài **Gộp vào thành viên khác…**, có thêm **Gộp vào người chơi đặt nhanh / Host thêm…** — danh sách những người từng chơi kèo của CLB / cộng đồng mà **chưa có tài khoản** (đặt nhanh, Host thêm tay), ghi *tên · DUPR ID · số kèo, gần nhất dd/mm*. Bấm **Gộp vào** (hỏi lại) thì:
+- các lượt chơi đó **chuyển sang tài khoản**: tên trong kèo đổi thành **tên tài khoản**, gắn với người xin vào; **trận đấu và tỷ số giữ nguyên** (nên bảng xếp hạng, điểm tính cho tài khoản), **DUPR ID** của lượt chơi được điền vào thành viên nếu chưa có (và ngược lại);
+- kèo mà tài khoản đã có chỗ riêng thì bỏ qua (một người một chỗ mỗi kèo).
+Gộp vào một thành viên Host đã thêm (hoặc người chơi mở link liên kết riêng) cũng làm như vậy với các lượt chơi chưa có tài khoản của thành viên đó.
 
 ### 5.4. Quản lý người chơi trong kèo (`/events/<id>`)
 - **Thanh điều khiển kèo** (Host bấm tay lúc nào cũng được, không phụ thuộc hạn đăng ký):
@@ -868,7 +881,7 @@ Dành cho người Host đã biết (bạn bè, khách quen nhắn riêng): bỏ
   - **Chờ xác nhận tham gia**: người đã xin qua link, kèm trình độ; nút nhanh **✓ Xác nhận tham gia** / **Đặt vào danh sách chờ**.
   - **Bảng của từng người** (bấm vào người tổ chức, người chờ duyệt, hoặc **bất kỳ dòng nào** trong danh sách chính / chờ / đã huỷ): đầu bảng là ảnh, tên, trình độ, giới tính, điểm DUPR, trạng thái và SĐT; tiếp theo: *Vai trò* — **Người tổ chức**, **HLV**, **Trọng tài** (bấm để bật/tắt; HLV và Trọng tài là nhãn, quyền trọng tài vẫn cấp ở *Phân quyền*) — và các nút **Tạm hoãn duyệt** · **Đặt vào danh sách chờ** · **Xác nhận tham gia** (+ **Không chơi** cho người tổ chức). *Xác nhận tham gia* đưa vào danh sách chính (khách trả phí online chuyển sang bước thanh toán; hết chỗ thì báo *danh sách chính đã đủ*); *Đặt vào danh sách chờ* rút lại chỗ của người đó — đưa họ về danh sách chờ (chỗ giữ chưa trả tiền được nhả, tiền đã trả vẫn giữ). Người tổ chức chưa chắc chơi thì để ở danh sách chờ.
 - **Bảng đếm trên sân**: *Đã đến sân* (x/y) · *Giữ chỗ / tổng* · *Chờ xác nhận thanh toán* · *Chờ chuyển khoản* · *Danh sách chờ*.
-- **Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ.
+- **Thanh toán cần xác nhận**: danh sách khách đang giữ chỗ. Trên điện thoại các nút (*Đã thu tiền mặt · Vào DS chính, thu tiền sau · Về danh sách chờ · Hủy đăng ký*) tự xuống dòng, không tràn màn hình; mỗi nút cao ≥44px.
 - **Tài chính → Ảnh chuyển khoản chờ xác nhận** chỉ hiện chuyển khoản của **CLB / cộng đồng đang mở** — Host quản lý nhiều cộng đồng sẽ không thấy lẫn ảnh của cộng đồng khác (bấm vào là mở đúng kèo của cộng đồng đó).
   - Người đã gửi ảnh: bấm **Xem ảnh** để mở ảnh chụp chuyển khoản (kèm số tiền và nội dung cần khớp), rồi **Xác nhận** hoặc **Từ chối** (ghi lý do).
   - Người chưa gửi ảnh: hiện giờ hết hạn giữ chỗ. Khách trả tiền mặt tại sân thì bấm **Đã thu tiền mặt**.

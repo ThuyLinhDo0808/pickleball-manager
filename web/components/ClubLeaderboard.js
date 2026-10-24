@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Avatar } from '@/components/PlayerChip';
 import Segmented from '@/components/ui/Segmented';
+import Podium from '@/components/Podium';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
@@ -154,30 +155,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
       {error?.status === 402 && <p className="card text-gray-300 text-sm">{t('plan.rankingsOff')}</p>}
 
       {/* Podium as steps: 2 · 1 · 3, the step's height by place; the list below goes on from 4. */}
-      {!loading && top3.length > 0 && (
-        <section className="card !pb-0 mb-4 overflow-hidden" aria-label={t('rankx.podium')}>
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 items-end max-w-xl mx-auto">
-            {[1, 0, 2].map((idx) => {
-              const r = top3[idx];
-              if (!r) return <div key={idx} />;
-              const step = ['h-28 sm:h-32', 'h-20 sm:h-24', 'h-14 sm:h-16'][idx];
-              const ring = ['ring-amber-300', 'ring-gray-300', 'ring-orange-400'][idx];
-              const tone = ['bg-amber-300/20 border-amber-300/50 text-amber-200', 'bg-gray-300/10 border-gray-300/40 text-gray-200', 'bg-orange-400/10 border-orange-400/40 text-orange-200'][idx];
-              return (
-                <div key={r.club_member_id} className="flex flex-col items-center text-center min-w-0">
-                  <div className={`rounded-full ring-2 ${ring}`}><Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={idx === 0 ? 56 : 44} /></div>
-                  <div className="mt-1.5 text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
-                  <div className="text-lime-300 text-sm font-bold tabular-nums">{r.win_rate}%</div>
-                  <div className="text-gray-400 text-[11px] tabular-nums mb-2">{r.wins}-{r.losses} · {r.point_diff > 0 ? `+${r.point_diff}` : r.point_diff}</div>
-                  <div className={`w-full ${step} rounded-t-xl border border-b-0 flex items-start justify-center pt-2 ${tone}`}>
-                    <span className="text-2xl sm:text-3xl font-extrabold tabular-nums">{idx + 1}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      {!loading && top3.length > 0 && <Podium rows={top3.map((r) => ({ key: r.club_member_id, full_name: r.full_name, avatar_uid: r.avatar_uid, avatar_v: r.avatar_v, main: `${r.win_rate}%`, sub: `${r.wins}-${r.losses} · ${r.point_diff > 0 ? `+${r.point_diff}` : r.point_diff}` }))} />}
 
       {!loading && a && rg === 'all' && (stats.rankings.length > 0 || a.top_attendance.length > 0) && (
         <>

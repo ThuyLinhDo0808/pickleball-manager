@@ -1,43 +1,34 @@
 'use client';
+import { Avatar } from '@/components/PlayerChip';
 import { useI18n } from '@/context/I18nContext';
 
-// champion, runner-up, third (two teams share it when there is no third-place match).
-export default function Podium({ podium, compact = false }) {
+// Top 1 · 2 · 3 as steps (2 · 1 · 3, the step's height by place). rows: the first three,
+// each { key, full_name, avatar_uid?, avatar_v?, main (e.g. "75%"), sub (e.g. "3-1 · +7") }.
+export default function Podium({ rows, className = 'card !pb-0 mb-4' }) {
   const { t } = useI18n();
-  if (!podium?.first) return null;
-  const third = podium.third || [];
-  const rows = [
-    ['medal', t('tournaments.champion'), podium.first ? [podium.first] : [], 'text-amber-300'],
-    ['medal', t('tournaments.runnerUp'), podium.second ? [podium.second] : [], 'text-gray-200'],
-    ['medal', third.length > 1 ? t('tournaments.thirdShared') : t('tournaments.third'), third, 'text-orange-300'],
-  ].filter((r) => r[2].length);
-
-  if (compact) {
-    return (
-      <ul className="mt-2 flex flex-col gap-0.5 text-sm">
-        {rows.map(([icon, label, teams, color]) => (
-          <li key={label} className="flex gap-2 min-w-0">
-            
-            <span className="text-gray-400 shrink-0">{label}:</span>
-            <span className={`font-semibold break-words ${color}`}>{teams.map((x) => x.name).join(', ')}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  }
+  if (!rows?.length) return null;
   return (
-    <div className="card mb-4 border-lime-400 py-5">
-      <div className="grid gap-3 sm:grid-cols-3 text-center items-end">
-        {rows.map(([icon, label, teams, color], i) => (
-          <div key={label} className={`rounded-lg bg-navy-900 px-3 ${i === 0 ? 'py-5 sm:order-2' : i === 1 ? 'py-4 sm:order-1' : 'py-3 sm:order-3'}`}>
-            <div className={`font-bold tabular-nums ${i === 0 ? 'text-3xl text-lime-300' : 'text-2xl text-gray-300'}`}>{i + 1}</div>
-            <div className="text-gray-400 text-xs mt-1">{label}</div>
-            {teams.map((x) => (
-              <div key={x.id} className={`font-bold ${i === 0 ? 'text-2xl text-lime-400' : `text-lg ${color}`}`}>{x.name}</div>
-            ))}
-          </div>
-        ))}
+    <section className={`${className} overflow-hidden`} aria-label={t('rankx.podium')}>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 items-end max-w-xl mx-auto">
+        {[1, 0, 2].map((idx) => {
+          const r = rows[idx];
+          if (!r) return <div key={idx} />;
+          const step = ['h-28 sm:h-32', 'h-20 sm:h-24', 'h-14 sm:h-16'][idx];
+          const ring = ['ring-amber-300', 'ring-gray-300', 'ring-orange-400'][idx];
+          const tone = ['bg-amber-300/20 border-amber-300/50 text-amber-200', 'bg-gray-300/10 border-gray-300/40 text-gray-200', 'bg-orange-400/10 border-orange-400/40 text-orange-200'][idx];
+          return (
+            <div key={r.key} className="flex flex-col items-center text-center min-w-0">
+              <div className={`rounded-full ring-2 ${ring}`}><Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={idx === 0 ? 56 : 44} /></div>
+              <div className="mt-1.5 text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
+              {r.main != null && <div className="text-lime-300 text-sm font-bold tabular-nums">{r.main}</div>}
+              <div className="text-gray-400 text-[11px] tabular-nums mb-2">{r.sub || ' '}</div>
+              <div className={`w-full ${step} rounded-t-xl border border-b-0 flex items-start justify-center pt-2 ${tone}`}>
+                <span className="text-2xl sm:text-3xl font-extrabold tabular-nums">{idx + 1}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }

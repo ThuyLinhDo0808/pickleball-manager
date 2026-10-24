@@ -9,7 +9,7 @@ const { findClubPerson } = require('./guests');
 const fail = (message, status = 400, code) => Object.assign(new Error(message), { status, code });
 const SPORTS = ['pickleball', 'badminton'];
 const PAGE = 24;
-const BASE_FIELDS = 'id, host_id, name, sport, description, country, province, district, address, schedule, member_count_hint, avatar_version, cover_version, created_at';
+const BASE_FIELDS = 'id, host_id, name, sport, kind, description, country, province, district, address, schedule, member_count_hint, avatar_version, cover_version, created_at';
 // map_url only once its migration has run.
 const clubFields = async () => `${BASE_FIELDS}${(await require('./clubRequests').mapReady()) ? ', map_url' : ''}`;
 // Words typed in the search box go into a PostgREST filter: keep letters, digits, spaces.
@@ -41,6 +41,7 @@ const present = (c, counts) => ({
   id: c.id,
   name: c.name,
   sport: c.sport || 'pickleball',
+  kind: c.kind || 'club',
   description: c.description,
   country: c.country,
   province: c.province,
