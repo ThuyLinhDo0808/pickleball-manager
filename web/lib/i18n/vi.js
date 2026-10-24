@@ -2405,6 +2405,7 @@ export const vi = {
     member: 'Hội viên',
   },
   public: {
+    tabTicket: "Đăng ký / Vé",
     playerList: "Danh sách người chơi",
     reliability: "Uy tín",
     duprMatchesN: "{n} trận DUPR",
@@ -5163,7 +5164,7 @@ export const vi = {
   elive: {
     timeChanged: "Host đã đổi giờ kèo: {time}. Kiểm tra lại giờ chơi của bạn.",
     title: "Lịch chơi",
-    tabPlayers: "Danh sách người chơi",
+    tabPlayers: "Xếp sân",
     tabMatches: "Trận đấu",
     myCourt: "Bạn đang chơi: {court}",
     moved: "{name} đã được điều chuyển sang chơi {court}",

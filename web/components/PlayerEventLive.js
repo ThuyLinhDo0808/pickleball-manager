@@ -17,7 +17,9 @@ const teamNames = (m, team) => (m.match_players || []).filter((mp) => mp.team ==
 // "Lịch chơi" of a kèo for a player who has a place in it (like Reclub): who plays on which
 // court (refreshed every 20 s, with a notice when the Host moves someone), the scores, the
 // session rankings and the challenge matches. Hidden for everyone else.
-export default function PlayerEventLive({ token, sport = 'pickleball' }) {
+// onAvailable(bool): tells the page whether this player has a schedule here (the page shows
+// the "Lịch chơi" tab only then). bare: no card and no heading (the page's tab names it).
+export default function PlayerEventLive({ token, sport = 'pickleball', onAvailable, bare = false }) {
   const { t } = useI18n();
   const { user } = useAuth();
   const [data, setData] = useState(null);
@@ -55,6 +57,11 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
     return () => clearTimeout(id);
   }, [toast]);
 
+  const available = !!(user && data);
+  useEffect(() => {
+    onAvailable?.(available);
+  }, [available, onAvailable]);
+
   const matches = data?.matches || [];
   const rows = useMemo(() => eventStandings(matches), [matches]);
   if (!user || !data) return null;
@@ -71,8 +78,8 @@ export default function PlayerEventLive({ token, sport = 'pickleball' }) {
   const myId = data.me?.id;
 
   return (
-    <section className="card mb-4" aria-label={t('elive.title')}>
-      <h2 className="text-white font-semibold mb-1 flex items-center gap-2"><UiIcon name="calendar" className="w-4 h-4 text-gray-400" />{t('elive.title')}</h2>
+    <section className={bare ? '' : 'card mb-4'} aria-label={t('elive.title')}>
+      {!bare && <h2 className="text-white font-semibold mb-1 flex items-center gap-2"><UiIcon name="calendar" className="w-4 h-4 text-gray-400" />{t('elive.title')}</h2>}
       {groups.length > 0 && data.me && (
         <p className="text-lime-300 text-sm mb-2 flex items-center gap-2"><UiIcon name="court" className="w-4 h-4" />{t('elive.myCourt', { court: courtName(groups, data.me.group_id) })}</p>
       )}

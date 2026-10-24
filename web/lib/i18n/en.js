@@ -2405,6 +2405,7 @@ export const en = {
     member: 'Member',
   },
   public: {
+    tabTicket: "Sign-up / Ticket",
     playerList: "Player list",
     reliability: "Reliability",
     duprMatchesN: "{n} DUPR matches",
@@ -5163,7 +5164,7 @@ export const en = {
   elive: {
     timeChanged: "The host changed the session time: {time}. Check your playing time.",
     title: "Game schedule",
-    tabPlayers: "Players",
+    tabPlayers: "Courts",
     tabMatches: "Matches",
     myCourt: "You play on: {court}",
     moved: "{name} was moved to {court}",

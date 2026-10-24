@@ -2,11 +2,12 @@
 import { policyText } from '@/lib/cancelPolicy';
 import HomeLink from '@/components/HomeLink';
 import MapLink from '@/components/MapLink';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { eventLevelText, levelText } from '@/lib/levels';
 import { useParams } from 'next/navigation';
 import EventSignup from '@/components/EventSignup';
 import PlayerEventLive from '@/components/PlayerEventLive';
+import UiIcon from '@/components/ui/UiIcon';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
@@ -88,6 +89,13 @@ export default function PublicEventPage() {
     reload();
     reloadMe();
   };
+  // Below the kèo's details: three tabs — the sign-up / ticket (QR), the schedule (courts,
+  // scores, rankings; only for players with a place) and the player list.
+  const [pageTab, setPageTab] = useState('ticket');
+  const [hasLive, setHasLive] = useState(false);
+  useEffect(() => {
+    if (!hasLive && pageTab === 'live') setPageTab('ticket');
+  }, [hasLive, pageTab]);
 
   const langToggle = (
     <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="text-xs text-gray-400 border border-navy-700 rounded-full px-3 py-1">
@@ -160,13 +168,6 @@ export default function PublicEventPage() {
         {ev.services && <p className="text-gray-300 text-sm mt-2">{t('svc.included')}: <span className="text-white">{ev.services}</span></p>}
       </section>
 
-      {(ev.cancel_deadline_hours != null || ev.no_refund) && (
-        <p className="card mb-4 !py-3 text-sm text-gray-300">
-          {policyText(t, ev.cancel_deadline_hours, ev.cancel_half_hours, ev.no_refund)}.
-          <span className="block text-xs text-gray-500 mt-1">{t('policy.publicNote')}</span>
-        </p>
-      )}
-
       {ev.notice && (
         <section className="card mb-4 border-lime-400/40">
           <h2 className="text-lime-400 text-xs font-semibold mb-1">{t('public.hostNotice')}</h2>
@@ -174,13 +175,46 @@ export default function PublicEventPage() {
         </section>
       )}
 
+      <div role="tablist" className="grid gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4" style={{ gridTemplateColumns: `repeat(${hasLive ? 3 : 2}, minmax(0, 1fr))` }}>
+        {['ticket', ...(hasLive ? ['live'] : []), 'list'].map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={pageTab === k}
+            onClick={() => setPageTab(k)}
+            className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:flex-row sm:gap-1.5 sm:text-sm leading-tight transition-colors ${pageTab === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800 active:bg-navy-700'}`}
+          >
+            <UiIcon name={{ ticket: 'ticket', live: 'calendar', list: 'users' }[k]} className="w-5 h-5 sm:w-4 sm:h-4" />
+            <span>
+              {{ ticket: t('public.tabTicket'), live: t('elive.title'), list: t('public.playerList') }[k]}
+              {k === 'list' && ` (${main.length})`}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div hidden={pageTab !== 'ticket'}>
+      {(ev.cancel_deadline_hours != null || ev.no_refund) && (
+        <p className="card mb-4 !py-3 text-sm text-gray-300">
+          {policyText(t, ev.cancel_deadline_hours, ev.cancel_half_hours, ev.no_refund)}.
+          <span className="block text-xs text-gray-500 mt-1">{t('policy.publicNote')}</span>
+        </p>
+      )}
+
       <section className="card mb-4">
         <EventSignup ev={ev} me={me} meError={meError} user={user} token={token} onChanged={refresh} />
       </section>
 
-      {/* Players with a place: who plays on which court, scores, session rankings. */}
-      <PlayerEventLive token={ev.public_token || token} sport={ev.sport} />
+      </div>
 
+      {/* Players with a place: who plays on which court, scores, session rankings. Kept
+          mounted (it refreshes itself) and shown under its tab. */}
+      <div className={`card mb-4 ${pageTab === 'live' ? '' : 'hidden'}`}>
+        <PlayerEventLive bare token={ev.public_token || token} sport={ev.sport} onAvailable={setHasLive} />
+      </div>
+
+      <div hidden={pageTab !== 'list'}>
       <section className="card mb-6">
         <h2 className="text-white font-semibold mb-2">
           {t('public.playerList')} <span className="text-gray-400 font-normal">({main.length}/{ev.slots})</span>
@@ -196,6 +230,8 @@ export default function PublicEventPage() {
           </>
         )}
       </section>
+
+      </div>
 
       <p className="text-center text-gray-600 text-xs pb-4">{t('public.poweredBy')}</p>
     </div>
