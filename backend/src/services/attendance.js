@@ -275,6 +275,35 @@ async function cancelParticipant(event, prior, now = new Date(), opts = {}) {
   };
 }
 
+// "Đưa lại vào danh sách": the Host takes back a cancellation the Host made (e.g. by mistake).
+// Their matches were never touched. Before the kèo: back on the main list if there is room
+// (else the waitlist). After it, or when they already have matches: back as checked in
+// (a pass session is used again, as for any check-in). A player's own cancel stays theirs.
+async function restoreCancelled(event, prior) {
+  if (prior.status !== 'cancelled') throw httpError('Only cancelled registrations can be put back.', 409, 'not_cancelled');
+  if (prior.cancelled_by && prior.cancelled_by !== 'host') throw httpError('The player cancelled this one themselves.', 409, 'player_cancelled');
+  if (prior.refunded_at) throw httpError('The fee was refunded: take the refund back first.', 409, 'refunded');
+  const { count: played } = await supabase.from('match_players').select('id', { count: 'exact', head: true }).eq('event_participant_id', prior.id);
+  const over = event.status === 'completed' || Date.now() > eventEndMs(event);
+  let status = 'registered';
+  if (!over && !played) {
+    const { count } = await supabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('event_id', event.id).in('status', HOLDS_PLACE);
+    const eg = require('./eventGroups');
+    const group = eg.groupOf(event, prior.group_id);
+    const groupFull = group && ((await eg.takenByGroup(event))[group.id] || 0) >= group.slots;
+    if ((count || 0) >= event.slots || groupFull) status = 'waitlisted';
+  }
+  const patch = { status, cancelled_at: null, late_cancel: false, hold_expires_at: null };
+  if (await tiersReady()) Object.assign(patch, { refund_percent: null, cancel_reason: null, cancelled_by: null });
+  const { data, error } = await supabase.from('event_participants').update(patch).eq('id', prior.id).eq('status', 'cancelled').select().single();
+  if (error) throw error;
+  // A late cancel had used a pass session: give it back (a check-in below uses it again).
+  if (prior.late_cancel && prior.source_club_member_id && event.club_id) await releaseSession(prior.source_club_member_id, event.id);
+  if (status === 'registered' && (over || played)) return { ...(await setAttendance(event, data, 'check-in')), restored: true };
+  if (status === 'registered') await ensureGuestMember(event, data);
+  return { ...data, restored: true };
+}
+
 // Host forgives a late cancellation: session back, nothing owed.
 async function waiveLateCancel(event, prior) {
   if (!(prior.status === 'cancelled' && prior.late_cancel)) throw httpError('Only late cancellations can be waived.', 400, 'not_late');
@@ -349,6 +378,7 @@ async function checkInByCode(event, code) {
 }
 
 module.exports = {
+  restoreCancelled,
   eventStartMs,
   approvedHoldMs,
   PAY_BEFORE_START_MS,

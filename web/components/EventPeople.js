@@ -443,6 +443,18 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             {!cancelled && (
               <button type="button" disabled={busy} className={`${chip} border-red-500/60 text-red-300 hover:bg-red-500/10`} onClick={() => { onClose(); actions.onCancel(row); }}>✕ {t('events.cancel')}</button>
             )}
+            {/* Cancelled by the Host (by mistake): put them back — main list if there is room,
+                checked in when the kèo is over or they already have matches. */}
+            {cancelled && row.cancelled_by !== 'player' && !row.refunded_at && (
+              <button
+                type="button"
+                disabled={busy}
+                className={`${chip} border-lime-400/60 text-lime-200 hover:bg-lime-400/10`}
+                onClick={() => window.confirm(t('people.restoreAsk', { name })) && run(async () => { await api.post(`/api/events/${event.id}/participants/${row.id}/restore`, {}); onClose(); })}
+              >
+                ↺ {t('people.restore')}
+              </button>
+            )}
             {/* A test sign-up that was cancelled: delete it so it does not count as a cancel. */}
             {cancelled && (
               <button

@@ -210,7 +210,8 @@ export default function EventsPage() {
   const [q, setQ] = useState('');
   const [kindF, setKindF] = useState('all');
   const [groupF, setGroupF] = useState('all');
-  const [showDone, setShowDone] = useState(false);
+  // Each group folds open / shut; "Đã xong" starts shut.
+  const [shut, setShut] = useState({ done: true });
   const pickView = setView;
   // Phones: the month is a list of the days that have something, and the week grid
   // (7 narrow columns) is left out.
@@ -409,18 +410,24 @@ export default function EventsPage() {
           </div>
           {LIST_GROUPS.filter((g) => groupF === 'all' || groupF === g).map((g) => {
             const rows = groups[g];
-            const folded = g === 'done' && groupF === 'all' && !showDone;
+            const folded = groupF === 'all' && !!shut[g];
             // Nothing playing right now: no empty "Đang diễn ra" block.
             if (g === 'live' && !rows.length && groupF === 'all') return null;
             return (
               <section key={g} className="mb-6">
-                {g === 'done' && groupF === 'all' ? (
-                  <button type="button" className="text-gray-300 text-sm font-semibold mb-2" onClick={() => setShowDone(!showDone)}>
-                    {showDone ? '▾' : '▸'} {t('evlist.g_done')} ({rows.length})
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    aria-expanded={!folded}
+                    onClick={() => setShut((x) => ({ ...x, [g]: !x[g] }))}
+                    className="min-h-[2.75rem] sm:min-h-0 -ml-1 px-1 rounded-lg text-gray-300 text-sm font-semibold flex items-center gap-2 hover:text-white"
+                  >
+                    <UiIcon name="chevronDown" className={`w-4 h-4 transition-transform ${folded ? '-rotate-90' : ''}`} />
+                    <span className={`h-2.5 w-2.5 rounded-full ${PHASE[g].dot}`} aria-hidden />
+                    {t(`evlist.g_${g}`)} ({rows.length})
                   </button>
-                ) : (
-                  <h2 className="text-gray-300 text-sm font-semibold mb-2 flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${PHASE[g].dot}`} aria-hidden />{t(`evlist.g_${g}`)} ({rows.length}) <Hint inline text={t(`evlist.h_${g}`, { n: SOON_DAYS })} /></h2>
-                )}
+                  <Hint inline text={t(`evlist.h_${g}`, { n: SOON_DAYS })} />
+                </div>
                 {!folded && (
                   <>
                     {rows.length === 0 && <p className="text-gray-500 text-sm">{t('evlist.none')}</p>}

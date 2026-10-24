@@ -5558,6 +5558,8 @@ export const vi = {
     requests: "{n} chờ duyệt",
   },
   people: {
+    restore: "Đưa lại vào danh sách",
+    restoreAsk: "Đưa {name} trở lại kèo? Kèo chưa diễn ra: vào danh sách chính nếu còn chỗ (hết chỗ thì vào danh sách chờ). Kèo đã xong hoặc người đó đã có trận: trở lại là đã check-in. Trận đấu và tỷ số của họ vẫn giữ nguyên.",
     exportList: "Xuất DS người chơi",
     markPaid: "Đã thu",
     markUnpaid: "Chưa thu",

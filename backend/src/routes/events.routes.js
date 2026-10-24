@@ -1659,6 +1659,7 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     const cancel = (p) => cancelParticipant(req.event, p, new Date(), { reason: req.body?.reason, by: 'host' });
     if (action === 'cancel') return res.json(prior.status === 'requested' ? await withGroup(prior, cancel) : await cancel(prior));
     if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
+    if (action === 'restore') return res.json(await require('../services/attendance').restoreCancelled(req.event, prior));
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
     // The sheet on a name: where they are (main / waitlist / waiting for approval / not playing)…
     // unpaid: "Vào danh sách chính, thu tiền sau" — the place now, the fee collected later.

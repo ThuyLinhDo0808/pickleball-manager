@@ -5558,6 +5558,8 @@ export const en = {
     requests: "{n} to approve",
   },
   people: {
+    restore: "Put back on the list",
+    restoreAsk: "Put {name} back in this kèo? Before the kèo: on the main list if there is room (else the waitlist). After it, or when they already have matches: back as checked in. Their matches and scores stay as they are.",
     exportList: "Export player list",
     markPaid: "Paid",
     markUnpaid: "Not paid",
