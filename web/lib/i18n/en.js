@@ -2275,6 +2275,8 @@ export const en = {
     notes: 'Notes',
   },
   members: {
+    nickname: "Name in this club / community",
+    nicknameHint: "Like a nickname: this name shows on all your manager pages (members, kèo, matches, rankings, bell, coordinators). The player's own profile is not changed; other clubs / communities and their own pages keep the name they chose.",
     newPlayer: "New player",
     colDuprLinked: "DUPR",
     colSkill: "Skill score",
@@ -2330,7 +2332,7 @@ export const en = {
     deleteConfirm: 'Delete {count} member(s): {names}?\nTheir match history and memberships will also be removed. This cannot be undone.',
     selectHint: 'Tick members to delete them.',
     empty: 'No members yet. Share the invite link: players create an account, ask to join and you approve them in the waiting list.',
-    syncsProfile: 'The name, phone, gender, birth date and level you change here also update the player\'s own profile.',
+    syncsProfile: 'The phone, gender, birth date and level you change here also update the player\'s own profile. Not the name: the name here is only used in this club / community.',
     missCell: 'Missing',
     missingList: 'Missing: {list}',
     sessionsLeft: 'Sessions left',
@@ -5558,6 +5560,7 @@ export const en = {
     requests: "{n} to approve",
   },
   people: {
+    accountName: "Name on the account: {name}",
     srcAccount: "Linked player account",
     srcQuick: "Quick booking link · no account",
     srcHost: "Added by the Host · no account",

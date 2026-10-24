@@ -242,7 +242,7 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
     <form onSubmit={save} className="grid grid-cols-2 gap-3 rounded-lg border border-navy-600 p-3">
       {member.user_id && member.account_verified && <p className="col-span-2 text-[11px] text-sky-200">{t('members.syncsProfile')}</p>}
       <div className="col-span-2">
-        <label className="text-xs text-gray-400">{t('common.name')}</label>
+        <label className="text-xs text-gray-400">{member.user_id ? t('members.nickname') : t('common.name')} {member.user_id && <Hint inline text={t('members.nicknameHint')} />}</label>
         <input className="input" required value={f.full_name} onChange={(e) => set({ full_name: e.target.value })} />
       </div>
       <div className="min-w-0">

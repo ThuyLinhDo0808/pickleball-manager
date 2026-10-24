@@ -350,6 +350,9 @@ staff.get('/events/:eventId', async (req, res) => {
     ]);
     if (pErr) throw pErr;
     if (mErr) throw mErr;
+    // The club's names for its players (the Host's nickname on the member record).
+    await require('../services/hostNames').onRows(people);
+    await require('../services/hostNames').onMatches(matches);
     // The court-board card of each player, as the Host sees it: photo, gender, DUPR and its
     // reliability (Uy tín). Never phones, money or account details.
     const { data: ev } = await supabase.from('events').select('*').eq('id', req.event.id).single();

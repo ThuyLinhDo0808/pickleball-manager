@@ -328,6 +328,10 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
                 </span>
               </p>
             )}
+            {/* The club's name for them is a nickname: the name of their own account too. */}
+            {row?.account_name && (
+              <p className="text-xs text-gray-400 mt-1">{t('people.accountName', { name: row.account_name })}</p>
+            )}
           </div>
         </div>
 
