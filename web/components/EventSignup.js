@@ -231,29 +231,18 @@ function ProofUpload({ token, reg, onChanged }) {
 // Everything the signed-in player does on the event page: log in → confirm → pay → ticket.
 export default function EventSignup({ ev, me, meError, user, token, onChanged }) {
   const { t, lang } = useI18n();
+  const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [payLater, setPayLater] = useState(false);
+  const [useVoucher, setUseVoucher] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelErr, setCancelErr] = useState('');
   const [, tick] = useState(0);
   // Kèo with time groups (giờ / phí riêng): the one the player signs up for.
   const groups = ev.groups?.length ? ev.groups : null;
-  // The choices made before pressing Đăng ký (agree, khung giờ, pay later, voucher, friends)
-  // are kept on this device for this account until the sign-up is sent (lib/draft).
-  const draftKey = user?.id && ev.id ? `pb_signup_draft_${ev.id}_${user.id}` : null;
-  const [draft, setDraft] = useDraft(draftKey, { agree: false, payLater: false, useVoucher: true, groupId: firstOpenGroup(groups), extra: 0 });
-  const { agree, payLater, useVoucher, extra } = draft;
-  const groupId = groups?.some((g) => g.id === draft.groupId) ? draft.groupId : firstOpenGroup(groups);
-  const setAgree = (v) => setDraft((d) => ({ ...d, agree: v }));
-  const setPayLater = (v) => setDraft((d) => ({ ...d, payLater: v }));
-  const setUseVoucher = (v) => setDraft((d) => ({ ...d, useVoucher: v }));
-  const setGroupId = (v) => setDraft((d) => ({ ...d, groupId: v }));
-  const setExtra = (v) => setDraft((d) => ({ ...d, extra: typeof v === 'function' ? v(d.extra) : v }));
-  const signedUp = !!(me?.registration && ACTIVE.includes(me.registration.status));
-  useEffect(() => {
-    if (signedUp) clearDraft(draftKey);
-  }, [signedUp, draftKey]);
+  const [groupId, setGroupId] = useState(() => firstOpenGroup(groups));
   const gSel = groups ? groups.find((g) => g.id === groupId) || groups[0] : null;
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30000); // hold countdown
@@ -286,6 +275,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
       </div>
     </div>
   );
+  const [extra, setExtra] = useState(0); // friends to book right after this sign-up
 
 
   if (!user || meError?.status === 401) {
