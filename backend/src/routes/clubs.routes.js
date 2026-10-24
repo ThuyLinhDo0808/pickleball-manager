@@ -706,7 +706,7 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
 
 async function syncProfile(member, fields, sport) {
   const patch = {};
-  if (fields.full_name && String(fields.full_name).trim()) patch.full_name = String(fields.full_name).trim().slice(0, 120);
+  // Not the name: what the Host calls a player here is a nickname for this club only.
   if (fields.phone && String(fields.phone).replace(/\D/g, '').length >= 9) patch.phone = String(fields.phone).trim();
   if (fields.gender) patch.gender = fields.gender;
   if (fields.birth_date) Object.assign(patch, { birth_date: fields.birth_date, birth_year: Number(String(fields.birth_date).slice(0, 4)) });

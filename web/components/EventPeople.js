@@ -317,6 +317,21 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
               {row ? t(`player.status_${row.status}`) : t('place.hostNoRow')}
               {(c.phone || row?.phone) && <span className="ml-2">{c.phone || row.phone}</span>}
             </p>
+            {/* Where this place comes from: the player's own account, a quick booking, or
+                added by the Host (the last two have no account). */}
+            {row && (
+              <p className="mt-1">
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${row.user_id ? 'border-lime-400/50 text-lime-200' : 'border-navy-500 text-gray-300'}`}>
+                  <UiIcon name={row.user_id ? 'user' : row.guest_booking_id ? 'bolt' : 'userPlus'} className="w-3.5 h-3.5" />
+                  {row.user_id ? t('people.srcAccount') : row.guest_booking_id ? t('people.srcQuick') : t('people.srcHost')}
+                  {row.user_id && row.email_unverified ? ` · ${t('people.srcUnverified')}` : ''}
+                </span>
+              </p>
+            )}
+            {/* The club's name for them is a nickname: the name of their own account too. */}
+            {row?.account_name && (
+              <p className="text-xs text-gray-400 mt-1">{t('people.accountName', { name: row.account_name })}</p>
+            )}
           </div>
         </div>
 
@@ -442,6 +457,18 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
             )}
             {!cancelled && (
               <button type="button" disabled={busy} className={`${chip} border-red-500/60 text-red-300 hover:bg-red-500/10`} onClick={() => { onClose(); actions.onCancel(row); }}>✕ {t('events.cancel')}</button>
+            )}
+            {/* Cancelled by the Host (by mistake): put them back — main list if there is room,
+                checked in when the kèo is over or they already have matches. */}
+            {cancelled && row.cancelled_by !== 'player' && !row.refunded_at && (
+              <button
+                type="button"
+                disabled={busy}
+                className={`${chip} border-lime-400/60 text-lime-200 hover:bg-lime-400/10`}
+                onClick={() => window.confirm(t('people.restoreAsk', { name })) && run(async () => { await api.post(`/api/events/${event.id}/participants/${row.id}/restore`, {}); onClose(); })}
+              >
+                ↺ {t('people.restore')}
+              </button>
             )}
             {/* A test sign-up that was cancelled: delete it so it does not count as a cancel. */}
             {cancelled && (

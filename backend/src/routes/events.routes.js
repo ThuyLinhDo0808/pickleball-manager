@@ -612,12 +612,13 @@ router.get('/pending-payments', async (req, res) => {
   if (!events.length) return res.json([]);
   const { data: rows, error: pErr } = await supabase
     .from('event_participants')
-    .select('id, event_id, full_name, phone, kind, fee_amount, payment_ref, payment_submitted_at, guest_booking_id')
+    .select('id, event_id, full_name, phone, kind, fee_amount, payment_ref, payment_submitted_at, guest_booking_id, source_club_member_id, guest_member_id')
     .in('event_id', events.map((e) => e.id))
     .eq('status', 'pending')
     .eq('payment_status', 'proof_submitted')
     .order('payment_submitted_at', { ascending: true });
   if (pErr) return dbError(res, pErr);
+  await require('../services/hostNames').onRows(rows); // the club's names for its players
   const byId = new Map(events.map((e) => [e.id, e]));
   const bookings = await require('../services/quickBooking').bookingsFor(rows).catch(() => new Map());
   res.json(rows.map((r) => {
@@ -640,7 +641,7 @@ router.get('/recent-signups', async (req, res) => {
   const NONE = '00000000-0000-0000-0000-000000000000';
   const { data: rows, error: pErr } = await supabase
     .from('event_participants')
-    .select('id, event_id, full_name, status, payment_status, joined_at, is_organizer, guest_booking_id')
+    .select('id, event_id, full_name, status, payment_status, joined_at, is_organizer, guest_booking_id, source_club_member_id, guest_member_id')
     .in('event_id', events.length ? events.map((e) => e.id) : [NONE])
     .gte('joined_at', since)
     .neq('status', 'cancelled')
@@ -648,22 +649,27 @@ router.get('/recent-signups', async (req, res) => {
     .order('joined_at', { ascending: false })
     .limit(40);
   if (pErr) return dbError(res, pErr);
+  const HN = require('../services/hostNames');
+  await HN.onRows(rows); // the club's names for its players
   const byId = new Map(events.map((e) => [e.id, e]));
   // Ticket passes waiting for the Host (find a taker / check the money).
   let passes = [];
   if (await require('../services/ticketPass').ready()) {
     const { data: ps } = await supabase.from('event_ticket_passes').select('id, event_id, from_participant_id, status, created_at, submitted_at').in('event_id', events.length ? events.map((e) => e.id) : [NONE]).in('status', ['open', 'proof_submitted']).gte('created_at', since).limit(20);
     const fromIds = (ps || []).map((x) => x.from_participant_id);
-    const { data: who } = fromIds.length ? await supabase.from('event_participants').select('id, full_name').in('id', fromIds) : { data: [] };
+    const { data: who } = fromIds.length ? await supabase.from('event_participants').select('id, full_name, source_club_member_id, guest_member_id').in('id', fromIds) : { data: [] };
+    await HN.onRows(who);
     const nameOf = new Map((who || []).map((x) => [x.id, x.full_name]));
     passes = (ps || []).map((x) => ({ id: `pass-${x.id}`, event_id: x.event_id, full_name: nameOf.get(x.from_participant_id) || '—', status: x.status === 'open' ? 'pass_open' : 'pass_proof', joined_at: x.submitted_at || x.created_at, event: byId.get(x.event_id) }));
   }
   const evIds = events.length ? events.map((e) => e.id) : [NONE];
   // Transfer screenshots sent, and players who cancelled their place.
   const [{ data: proofs }, { data: cancels }] = await Promise.all([
-    supabase.from('event_participants').select('id, event_id, full_name, payment_submitted_at').in('event_id', evIds).eq('payment_status', 'proof_submitted').gte('payment_submitted_at', since).limit(30),
-    supabase.from('event_participants').select('id, event_id, full_name, cancelled_at, cancelled_by').in('event_id', evIds).eq('status', 'cancelled').gte('cancelled_at', since).limit(30),
+    supabase.from('event_participants').select('id, event_id, full_name, payment_submitted_at, source_club_member_id, guest_member_id').in('event_id', evIds).eq('payment_status', 'proof_submitted').gte('payment_submitted_at', since).limit(30),
+    supabase.from('event_participants').select('id, event_id, full_name, cancelled_at, cancelled_by, source_club_member_id, guest_member_id').in('event_id', evIds).eq('status', 'cancelled').gte('cancelled_at', since).limit(30),
   ]);
+  await HN.onRows(proofs);
+  await HN.onRows(cancels);
   const proofItems = (proofs || []).map((x) => ({ id: `proof-${x.id}`, event_id: x.event_id, full_name: x.full_name, status: 'proof_sent', joined_at: x.payment_submitted_at, event: byId.get(x.event_id) }));
   const cancelItems = (cancels || []).filter((x) => x.cancelled_by !== 'host').map((x) => ({ id: `cancel-${x.id}`, event_id: x.event_id, full_name: x.full_name, status: 'cancelled', joined_at: x.cancelled_at, event: byId.get(x.event_id) }));
   // People asking to join a club / community the Host runs.
@@ -1153,6 +1159,7 @@ router.get('/:eventId/participants', async (req, res) => {
   // Members with an account added without it: the rows go to their accounts now.
   if (await require('../services/memberLink').linkEventAccounts(data).catch(() => 0)) ({ data, error } = await list());
   if (error) return dbError(res, error);
+  await require('../services/hostNames').onRows(data); // the club's name for each player
   let cards;
   try {
     cards = await playerCards(req.event, data);
@@ -1659,6 +1666,7 @@ router.post('/:eventId/participants/:participantId/:action', async (req, res) =>
     const cancel = (p) => cancelParticipant(req.event, p, new Date(), { reason: req.body?.reason, by: 'host' });
     if (action === 'cancel') return res.json(prior.status === 'requested' ? await withGroup(prior, cancel) : await cancel(prior));
     if (action === 'waive') return res.json(await waiveLateCancel(req.event, prior));
+    if (action === 'restore') return res.json(await require('../services/attendance').restoreCancelled(req.event, prior));
     if (action === 'promote') return res.json(await promoteParticipant(req.event, prior));
     // The sheet on a name: where they are (main / waitlist / waiting for approval / not playing)…
     // unpaid: "Vào danh sách chính, thu tiền sau" — the place now, the fee collected later.

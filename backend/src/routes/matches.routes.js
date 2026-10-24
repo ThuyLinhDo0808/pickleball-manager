@@ -68,7 +68,7 @@ router.get('/', async (req, res) => {
   }
   const { data, error } = await query;
   if (error) return dbError(res, error);
-  res.json(data);
+  res.json(await require('../services/hostNames').onMatches(data)); // the club's names for its players
 });
 
 router.post('/', async (req, res) => {

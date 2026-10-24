@@ -2275,6 +2275,8 @@ export const vi = {
     notes: 'Ghi chú',
   },
   members: {
+    nickname: "Tên trong cộng đồng / CLB",
+    nicknameHint: "Giống biệt danh: tên này hiện ở mọi trang quản lý của bạn (danh sách thành viên, kèo, trận đấu, xếp hạng, chuông, điều phối viên). Hồ sơ của người chơi không bị đổi; ở cộng đồng / CLB khác và trên trang của chính họ vẫn dùng tên họ tự đặt.",
     newPlayer: "Người chơi mới",
     colDuprLinked: "DUPR",
     colSkill: "Điểm trình",
@@ -2330,7 +2332,7 @@ export const vi = {
     deleteConfirm: 'Xóa {count} thành viên: {names}?\nLịch sử trận đấu và gói hội viên của họ cũng sẽ bị xóa. Không thể hoàn tác.',
     selectHint: 'Tick chọn thành viên để xóa.',
     empty: 'Chưa có thành viên. Gửi link mời: người chơi tạo tài khoản, xin gia nhập và bạn duyệt trong Danh sách chờ.',
-    syncsProfile: 'Tên, SĐT, giới tính, ngày sinh và trình độ bạn sửa ở đây cũng cập nhật vào hồ sơ của người chơi.',
+    syncsProfile: 'SĐT, giới tính, ngày sinh và trình độ bạn sửa ở đây cũng cập nhật vào hồ sơ của người chơi. Tên thì không: tên ở đây chỉ dùng trong cộng đồng / CLB này.',
     missCell: 'Thiếu',
     missingList: 'Thiếu: {list}',
     sessionsLeft: 'Buổi còn lại',
@@ -2405,6 +2407,7 @@ export const vi = {
     member: 'Hội viên',
   },
   public: {
+    tabTicket: "Đăng ký / Vé",
     playerList: "Danh sách người chơi",
     reliability: "Uy tín",
     duprMatchesN: "{n} trận DUPR",
@@ -5163,7 +5166,7 @@ export const vi = {
   elive: {
     timeChanged: "Host đã đổi giờ kèo: {time}. Kiểm tra lại giờ chơi của bạn.",
     title: "Lịch chơi",
-    tabPlayers: "Danh sách người chơi",
+    tabPlayers: "Xếp sân",
     tabMatches: "Trận đấu",
     myCourt: "Bạn đang chơi: {court}",
     moved: "{name} đã được điều chuyển sang chơi {court}",
@@ -5557,6 +5560,13 @@ export const vi = {
     requests: "{n} chờ duyệt",
   },
   people: {
+    accountName: "Tên trên tài khoản: {name}",
+    srcAccount: "Tài khoản người chơi đã liên kết",
+    srcQuick: "Đặt nhanh qua link · chưa có tài khoản",
+    srcHost: "Host thêm tay · chưa có tài khoản",
+    srcUnverified: "chưa xác nhận email",
+    restore: "Đưa lại vào danh sách",
+    restoreAsk: "Đưa {name} trở lại kèo? Kèo chưa diễn ra: vào danh sách chính nếu còn chỗ (hết chỗ thì vào danh sách chờ). Kèo đã xong hoặc người đó đã có trận: trở lại là đã check-in. Trận đấu và tỷ số của họ vẫn giữ nguyên.",
     exportList: "Xuất DS người chơi",
     markPaid: "Đã thu",
     markUnpaid: "Chưa thu",
