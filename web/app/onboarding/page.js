@@ -153,9 +153,11 @@ export default function OnboardingPage() {
             <span />
           )}
           {step < STEPS.length - 1 ? (
-            <button type="button" className="btn-primary" disabled={!canNext} onClick={() => setStep(step + 1)}>{t('onb.next')} →</button>
+            // Separate keys: reusing one button that turns into "submit" during the click would
+            // send the form at once and skip the info step.
+            <button key="next" type="button" className="btn-primary" disabled={!canNext} onClick={() => setStep(step + 1)}>{t('onb.next')} →</button>
           ) : (
-            <button type="submit" form="onb-info" className="btn-primary" disabled={busy}>
+            <button key="finish" type="submit" form="onb-info" className="btn-primary" disabled={busy}>
               {busy ? t('common.loading') : role === 'manager' ? t('onb.finishManager') : t('onb.finish')}
             </button>
           )}

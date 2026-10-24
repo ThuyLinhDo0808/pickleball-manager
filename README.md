@@ -1059,7 +1059,7 @@ Cùng kiểu với trang giới thiệu: phía sau là sân pickleball 3D có b�
 
 **Lần đầu đăng nhập — trang Chào mừng (`/onboarding`)**, 3 bước:
 1. **Vai trò:** **Người chơi** (tìm CLB, xin gia nhập, đăng ký buổi chơi) hoặc **Quản lý CLB / cộng đồng** (mở câu lạc bộ hoặc cộng đồng xé vé).
-2. **Thông tin:** họ tên, SĐT, ngày sinh, giới tính và **DUPR ID** (không bắt buộc; nút (i) chỉ cách lấy: app DUPR → nút chia sẻ → *Copy DUPR ID*) → lưu vào **hồ sơ người chơi**. **Không còn ô DUPR tự nhập** — điểm lấy từ DUPR theo ID. Có ID là CLB / cộng đồng nào có người này trong file DUPR sẽ liên kết điểm ngay (kể cả CLB vừa nhận ra người đó qua SĐT). ID sai dạng bị báo *DUPR ID gồm 4–10 chữ hoặc số*. Điểm tự nhập đã lưu từ trước vẫn giữ nguyên.
+2. **Thông tin:** họ tên, SĐT, ngày sinh, giới tính và **DUPR ID** (không bắt buộc; nút (i) chỉ cách lấy: app DUPR → nút chia sẻ → *Copy DUPR ID*) → lưu vào **hồ sơ người chơi**. **Không còn ô DUPR tự nhập** — điểm lấy từ DUPR theo ID. Có ID là CLB / cộng đồng nào có người này trong file DUPR sẽ liên kết điểm ngay (kể cả CLB vừa nhận ra người đó qua SĐT). ID sai dạng bị báo *DUPR ID gồm 4–10 chữ hoặc số*. Điểm tự nhập đã lưu từ trước vẫn giữ nguyên. (Đã sửa lỗi: trước đây bấm *Tiếp tục →* ở bước 1 có thể lưu luôn và bỏ qua bước 2 khi thông tin đã điền sẵn; giờ luôn dừng ở bước 2 để người chơi xem lại và nhập DUPR ID.)
 
 **Chỉ pickleball:** bước chọn môn đã bỏ; mọi lựa chọn cầu lông (trang Chào mừng, tạo / đăng ký CLB, ô lọc môn ở Tìm CLB, nút môn ở Bảng xếp hạng chung, trình độ cầu lông ở Hồ sơ) đều được ẩn. CLB cầu lông đã có từ trước vẫn chạy như cũ.
 

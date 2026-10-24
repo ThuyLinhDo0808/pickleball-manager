@@ -4988,7 +4988,7 @@ export const en = {
     step_info: "Your details",
     title_sports: "Which sports do you play?",
     title_role: "How will you use the app?",
-    title_info: "Your details and level",
+    title_info: "Your details",
     sub_sports: "Pick one or more. Levels and clubs are shown for the sports you play.",
     sub_role: "Players find clubs and sign up for sessions. Managers request to open a club or a play community.",
     sub_info: "Saved to your profile — clubs use it for check-in, pairing and birthdays.",

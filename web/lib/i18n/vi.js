@@ -4988,7 +4988,7 @@ export const vi = {
     step_info: "Thông tin",
     title_sports: "Bạn đang chơi môn nào?",
     title_role: "Bạn tham gia với vai trò nào?",
-    title_info: "Thông tin và trình độ của bạn",
+    title_info: "Thông tin của bạn",
     sub_sports: "Chọn một hoặc nhiều môn. Trình độ và CLB sẽ hiện theo đúng môn bạn chơi.",
     sub_role: "Người chơi tìm CLB và đăng ký buổi chơi. Người quản lý gửi yêu cầu mở CLB hoặc cộng đồng xé vé.",
     sub_info: "Thông tin được lưu vào hồ sơ để CLB điểm danh, ghép trận và chúc mừng sinh nhật bạn.",
