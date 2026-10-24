@@ -1,6 +1,7 @@
 'use client';
 import { peekReturn } from '@/lib/returnTo';
 import { useEffect, useState } from 'react';
+import { clearDraft, readDraft, useDraft } from '@/lib/draft';
 import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
 import { useI18n } from '@/context/I18nContext';
@@ -41,10 +42,12 @@ export default function OnboardingPage() {
   const { t } = useI18n();
   const { user } = useAuth();
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  // What is typed (and the step reached) is kept on this device until it is sent (lib/draft).
+  const draftKey = user?.id ? `pb_onb_draft_${user.id}` : null;
+  const [step, setStep] = useDraft(draftKey && `${draftKey}_step`, 0);
   const sports = ['pickleball'];
-  const [role, setRole] = useState('player');
-  const [f, setF] = useState({ full_name: '', phone: '', gender: '', birth_date: '', dupr_id: '' });
+  const [role, setRole] = useDraft(draftKey && `${draftKey}_role`, 'player');
+  const [f, setF] = useDraft(draftKey, { full_name: '', phone: '', gender: '', birth_date: '', dupr_id: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,14 +56,15 @@ export default function OnboardingPage() {
     if (!user) return;
     Promise.all([api.get('/api/host/me').catch(() => null), api.get('/api/player/me').catch(() => null)]).then(([me, pm]) => {
       const p = pm?.profile || {};
-      if (me?.account_role) setRole(me.account_role);
+      if (me?.account_role && !readDraft(`${draftKey}_role`)) setRole(me.account_role);
+      // What the player already typed here wins over what was known before.
       setF((x) => ({
         ...x,
-        full_name: p.full_name || x.full_name,
-        phone: p.phone || x.phone,
-        gender: p.gender || me?.gender || x.gender,
-        birth_date: p.birth_date || me?.birth_date || x.birth_date,
-        dupr_id: p.dupr_id || x.dupr_id,
+        full_name: x.full_name || p.full_name || '',
+        phone: x.phone || p.phone || '',
+        gender: x.gender || p.gender || me?.gender || '',
+        birth_date: x.birth_date || p.birth_date || me?.birth_date || '',
+        dupr_id: x.dupr_id || p.dupr_id || '',
       }));
     });
   }, [user]);
@@ -74,6 +78,7 @@ export default function OnboardingPage() {
     setError('');
     try {
       await api.post('/api/player/onboarding', { sports, role, ...f, gender: f.gender || null, dupr_id: f.dupr_id || null });
+      [draftKey, `${draftKey}_step`, `${draftKey}_role`].forEach(clearDraft);
       // Came from a link (club invite, kèo…): back to it; else managers go on to ask for
       // their club / community.
       const next = new URLSearchParams(window.location.search).get('next') || '';
