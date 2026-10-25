@@ -1,4 +1,5 @@
 'use client';
+import DuprIdGuide from '@/components/DuprIdGuide';
 import { peekReturn, rememberReturn } from '@/lib/returnTo';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
@@ -28,7 +29,7 @@ function errorText(err, t) {
   if (err?.status === 429) return t('auth.rateLimit');
   if (code === 'terms_required') return t('legal.termsRequired');
   if (code === 'maintenance') return t('auth.err_maintenance', { time: err.payload.maintenance?.ends_at ? localDate(new Date(err.payload.maintenance.ends_at), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—' });
-  const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'email_rate_limit', 'auth_unavailable'];
+  const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'bad_dupr_id', 'email_rate_limit', 'auth_unavailable'];
   return known.includes(code) ? t(`auth.err_${code}`) : err?.message || t('common.error');
 }
 
@@ -88,7 +89,7 @@ export default function SignInPage() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   // sign up
-  const [f, setF] = useState({ username: '', password: '', password2: '', email: '', gender: '' });
+  const [f, setF] = useState({ username: '', password: '', password2: '', email: '', gender: '', dupr_id: '' });
   const [agree, setAgree] = useState(false);
   const [nameState, setNameState] = useState(null); // null | 'checking' | 'free' | 'taken' | 'invalid'
   const set = (k) => (e) => setF({ ...f, [k]: typeof e === 'string' ? e : e.target.value });
@@ -205,8 +206,8 @@ export default function SignInPage() {
     if (!agree) return setError(t('legal.termsRequired'));
     setBusy(true);
     try {
-      const { password2, ...body } = f;
-      const r = await api.publicPost('/api/public/auth/signup', { ...body, username: f.username.trim().toLowerCase(), origin: window.location.origin, accept_terms: agree, device_id: deviceId() });
+      const { password2, dupr_id, ...body } = f;
+      const r = await api.publicPost('/api/public/auth/signup', { ...body, ...(dupr_id ? { dupr_id } : {}), username: f.username.trim().toLowerCase(), origin: window.location.origin, accept_terms: agree, device_id: deviceId() });
       if (r.session) {
         // Signed in at once; next: the 6-digit code (it can be skipped to hold a place first).
         setJustSignedUp(true);
@@ -357,6 +358,10 @@ export default function SignInPage() {
                   ))}
                 </div>
               </fieldset>
+              {/* Optional: saved with the account and filled in on the welcome step. */}
+              <Field label={t('auth.duprId')} htmlFor="su-dupr" hint={<span className="text-gray-400 text-sm">{t('auth.duprIdNote')} <DuprIdGuide /></span>}>
+                <input id="su-dupr" className="input font-mono uppercase placeholder:normal-case" maxLength={10} autoComplete="off" autoCapitalize="characters" value={f.dupr_id} onChange={(e) => set('dupr_id')(e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase())} placeholder={t('onb.duprIdPh')} />
+              </Field>
               <label className="flex items-start gap-2 mb-4 text-sm text-gray-300 cursor-pointer">
                 <input type="checkbox" className="mt-1" required checked={agree} onChange={(e) => setAgree(e.target.checked)} />
                 <span>

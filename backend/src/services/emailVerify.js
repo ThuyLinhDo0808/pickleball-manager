@@ -68,8 +68,30 @@ async function markVerified(userId) {
   forget(userId);
 }
 
-// Email the 6-digit code (and a sign-in link to /verify-email, for templates that show it).
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+// Our own email (Resend) that shows only the code: Supabase makes the one-time code
+// (generateLink, the same code verifyOtp checks), we send it. Returns false when there is
+// no mail sender or it failed, so Supabase's own email is used instead.
+async function mailCode(email) {
+  if (!process.env.RESEND_API_KEY) return false;
+  const { data, error } = await supabase.auth.admin.generateLink({ type: 'magiclink', email });
+  const code = data?.properties?.email_otp;
+  if (error || !/^\d{6}$/.test(String(code || ''))) return false;
+  const text = `Mã xác nhận email NexusZone của bạn là: ${code}\n\nNhập mã này trên màn hình xác nhận email. Mã dùng được một lần và sớm hết hạn.\n\nNếu không phải bạn đăng ký, hãy bỏ qua email này.`;
+  const html = `<p>Mã xác nhận email NexusZone của bạn:</p>
+<p style="font-size:32px;font-weight:700;letter-spacing:8px;font-family:Consolas,monospace;margin:16px 0">${esc(code)}</p>
+<p>Nhập mã này trên màn hình xác nhận email. Mã dùng được một lần và sớm hết hạn.</p>
+<p style="color:#64748b">Nếu không phải bạn đăng ký, hãy bỏ qua email này.</p>`;
+  const r = await require('./accountSecurity').sendMail(email, `Mã xác nhận NexusZone: ${code}`, text, html);
+  if (r !== 'sent') console.error('verify code mail', r);
+  return r === 'sent';
+}
+
+// Email the 6-digit code. With our own mail sender the email shows only the code; without
+// it, Supabase's "Magic Link" template is used (it must contain {{ .Token }}).
 async function sendCode(email, origin) {
+  if (await mailCode(email).catch(() => false)) return;
   const { error } = await authClient().auth.signInWithOtp({
     email,
     options: { shouldCreateUser: false, ...(origin ? { emailRedirectTo: `${origin}/verify-email` } : {}) },

@@ -40,7 +40,9 @@ router.get('/me', async (req, res) => {
   const { data: user, error: uErr } = await supabase.from('users').select('*').eq('id', req.hostId).single();
   if (uErr) return dbError(res, uErr);
   const usage = await getUsage(req.hostId).catch(() => null);
-  res.json({ ...user, usage });
+  // The DUPR ID typed at sign-up, until the welcome step saves it to the player profile.
+  const signupDupr = !user.onboarded_at && /^[A-Z0-9]{4,10}$/.test(String(req.authMeta?.dupr_id || '')) ? req.authMeta.dupr_id : null;
+  res.json({ ...user, usage, signup_dupr_id: signupDupr });
 });
 
 router.get('/subscription', async (req, res) => {

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 300" role="img" aria-label="Bước 3: bấm nút chia sẻ góc trên bên phải">
+<rect width="360" height="300" fill="#0B1220"/>
+<rect x="105" y="14" width="150" height="272" rx="22" fill="#111A2E" stroke="#2A3A5C" stroke-width="3"/>
+<rect x="150" y="22" width="60" height="6" rx="3" fill="#2A3A5C"/>
+
+<circle cx="180" cy="80" r="24" fill="#2A3A5C"/>
+<text x="180" y="124" fill="#E5E7EB" font-family="Segoe UI,Arial" font-size="12" font-weight="700" text-anchor="middle">Nguyen Van A</text>
+<rect x="134" y="134" width="92" height="16" rx="4" fill="#1E2A44"/>
+<g transform="translate(222 40)"><rect x="-10" y="-10" width="20" height="20" rx="4" fill="#B6F03B"/><path d="M0 -5 L0 4 M-4 -1 L0 -5 L4 -1" stroke="#0B1220" stroke-width="2" fill="none"/></g>
+<circle cx="222" cy="40" r="18" fill="none" stroke="#B6F03B" stroke-width="2" stroke-dasharray="4 4"/>
+<rect x="125" y="170" width="52" height="40" rx="6" fill="#1E2A44"/><rect x="183" y="170" width="52" height="40" rx="6" fill="#1E2A44"/>
+<text x="151" y="194" fill="#E5E7EB" font-family="Segoe UI,Arial" font-size="12" text-anchor="middle">3.50</text>
+<text x="209" y="194" fill="#E5E7EB" font-family="Segoe UI,Arial" font-size="12" text-anchor="middle">3.25</text>
+</svg>

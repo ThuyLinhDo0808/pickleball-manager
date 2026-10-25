@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 300" role="img" aria-label="Bước 2: mở trang cá nhân">
+<rect width="360" height="300" fill="#0B1220"/>
+<rect x="105" y="14" width="150" height="272" rx="22" fill="#111A2E" stroke="#2A3A5C" stroke-width="3"/>
+<rect x="150" y="22" width="60" height="6" rx="3" fill="#2A3A5C"/>
+
+<rect x="117" y="40" width="126" height="22" rx="4" fill="#1E2A44"/>
+<circle cx="225" cy="51" r="8" fill="#B6F03B"/>
+<circle cx="225" cy="51" r="16" fill="none" stroke="#B6F03B" stroke-width="2" stroke-dasharray="4 4"/>
+<rect x="125" y="80" width="110" height="40" rx="6" fill="#1E2A44"/>
+<rect x="125" y="128" width="110" height="40" rx="6" fill="#1E2A44"/>
+<rect x="125" y="176" width="110" height="40" rx="6" fill="#1E2A44"/>
+<rect x="117" y="248" width="126" height="26" rx="6" fill="#1E2A44"/>
+<circle cx="225" cy="261" r="6" fill="#B6F03B"/>
+</svg>

@@ -11,7 +11,8 @@ import PlayerShell from '@/components/PlayerShell';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import Hint from '@/components/ui/Hint';
+import DateInput from '@/components/ui/DateInput';
+import DuprIdGuide from '@/components/DuprIdGuide';
 
 const empty = { full_name: '', phone: '', dupr_level: '', dupr_id: '', badminton_level: '', gender: '', birth_date: '', avatar: null };
 
@@ -134,8 +135,9 @@ export default function PlayerProfile() {
             value={form.dupr_id}
             onChange={(e) => setForm({ ...form, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })}
           />
-          <p className="text-sky-200 text-xs mt-1">{t('dupr.idOptional')}</p>
-          <Hint text={t('dupr.idHow')} className="mt-1" />
+          <p className="text-sky-200 text-sm mt-1 leading-relaxed">
+            {t('dupr.idOptional')} <DuprIdGuide label={t('duprGuide.more')} />
+          </p>
           {dupr && (dupr.linked || dupr.dupr_id) && (
             <div className="mt-2">
               <DuprCard dupr={dupr} showLink={false} />
@@ -144,7 +146,7 @@ export default function PlayerProfile() {
         </div>
         <div>
           <label className="text-xs text-gray-400">{t('members.birthDate')} *</label>
-          <input className="input" required type="date" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={form.birth_date} onChange={set('birth_date')} />
+          <DateInput required min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={form.birth_date} onChange={(v) => setForm((x) => ({ ...x, birth_date: v }))} />
           {!form.birth_date && form.birth_year && <p className="text-yellow-300 text-xs mt-1">{t('player.needBirthDate')}</p>}
         </div>
         <div className="col-span-2">

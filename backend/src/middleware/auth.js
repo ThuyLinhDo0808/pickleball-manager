@@ -32,6 +32,8 @@ async function requireAuth(req, res, next) {
     // The signed-in account itself. req.hostId can later be swapped to a club's owner
     // when this account is that club's co-admin (see services/clubAccess.js).
     req.userId = data.user.id;
+    // What was typed at sign-up (e.g. the DUPR ID, used to fill the welcome step).
+    req.authMeta = data.user.user_metadata || {};
     // An account whose email is not confirmed yet (quick sign-up, see services/emailVerify.js)
     // gets no rights from its email: no owner / support console, no club roles given by
     // email. req.hostEmail is then null; req.accountEmail is the address it signed up with.
