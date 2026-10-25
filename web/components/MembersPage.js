@@ -9,6 +9,7 @@ import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
 import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
 import VipBadge from '@/components/VipBadge';
+import RoleBadges from '@/components/RoleBadges';
 import { Avatar } from '@/components/PlayerChip';
 import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
@@ -319,6 +320,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-white font-semibold break-words">{m.full_name}</span>
                           {(m.member_type === 'fixed' || isCommunity) && <VipBadge stars={m.vip_stars} tier={m.vip_tier} />}
+                          <RoleBadges roles={m.club_roles} />
                           {tab === 'all' && <span className={`text-[10px] leading-4 rounded-full border px-1.5 ${PLACE_PILL[placeOf(m)]}`}>{t(`xlsx.place_${placeOf(m)}`)}</span>}
                           {isBirthdayMonth(m.birth_date) && <span title={t('members.birthdayMonth')}><UiIcon name="cake" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>}
                         </span>
@@ -428,6 +430,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                               >
                                 {m.full_name}
                               </button>
+                              <RoleBadges roles={m.club_roles} />
                               {isCommunity && !isGuestTab && m.guest_perk && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
                               {m.account_email && !m.account_verified && (
                                 <span className="text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 whitespace-nowrap">{t('verify.pending')}</span>

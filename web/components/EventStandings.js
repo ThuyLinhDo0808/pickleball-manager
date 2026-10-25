@@ -31,7 +31,29 @@ export default function EventStandings({ matches, onChallenge }) {
           rows={rows.slice(0, 3).map((r) => ({ key: r.id, full_name: r.name, avatar_uid: r.user_id, main: `${r.rate}%`, sub: `${t('cpeople.record', { n: r.played, w: r.won, l: r.lost })} · ${sign(r.diff)}` }))}
         />
         {rest.length > 0 && (
-          <div className="rounded-xl border border-navy-600 overflow-hidden">
+          <>
+          {/* Phones: two-line rows (name + record, win rate + difference on the right). */}
+          <ol className="md:hidden rounded-xl border border-navy-600 divide-y divide-navy-700 overflow-hidden">
+            <li className="flex items-center gap-3 px-3 py-2 bg-navy-900/80 text-gray-400 text-xs font-semibold uppercase tracking-wide" aria-hidden="true">
+              <span className="w-7 text-center">#</span>
+              <span className="flex-1">{t('common.name')}</span>
+              <span>{t('estand.rate')}</span>
+            </li>
+            {rest.map((r) => (
+              <li key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${r.rank === rows.length ? 'bg-red-400/5' : ''}`}>
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-navy-600 text-gray-300 text-sm font-bold tabular-nums">{r.rank}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-white text-sm font-semibold break-words">{r.name}</span>
+                  <span className="block text-gray-400 text-xs tabular-nums">{t('cpeople.record', { n: r.played, w: r.won, l: r.lost })}</span>
+                </span>
+                <span className="text-right shrink-0">
+                  <span className="block text-white font-bold tabular-nums">{r.rate}%</span>
+                  <span className={`block text-xs tabular-nums ${r.diff < 0 ? 'text-red-300' : 'text-gray-400'}`}>{sign(r.diff)}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <div className="hidden md:block rounded-xl border border-navy-600 overflow-hidden">
             <div className="table-wrap">
               <table className="w-full text-sm !min-w-[30rem] border-collapse">
                 <thead>
@@ -63,6 +85,7 @@ export default function EventStandings({ matches, onChallenge }) {
               </table>
             </div>
           </div>
+          </>
         )}
       </section>
 
