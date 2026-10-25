@@ -405,9 +405,23 @@ router.get('/:clubId/members', async (req, res) => {
   }));
   // The player's own photo (latest), for the avatar in the list and the member's card.
   await require('../services/playerAvatars').attach(rows);
+  // Roles in this club / community (Host, đồng quản trị, tài chính, vận hành, điều phối,
+  // trọng tài): staff are players too, so the list marks who holds which role.
+  const { data: grants } = await supabase
+    .from('staff_grants')
+    .select('email, role, club_id')
+    .eq('host_id', req.club.host_id)
+    .is('event_id', null)
+    .or(`club_id.eq.${req.club.id},club_id.is.null`);
+  const rolesBy = new Map();
+  for (const g of grants || []) rolesBy.set(g.email, [...new Set([...(rolesBy.get(g.email) || []), g.role])]);
+  for (const m of rows) {
+    const roles = [...(m.user_id && m.user_id === req.club.host_id ? ['owner'] : []), ...(m.account_email ? rolesBy.get(m.account_email.toLowerCase()) || [] : [])];
+    m.club_roles = roles;
+  }
   // Operations staff see basic info only: no phone, email, birthday, notes or money.
   if (['finance', 'operator'].includes(req.clubRole) && !(req.clubGroups || []).includes('finance_view')) {
-    const BASIC = ['avatar_v', 'id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'vip_tier', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score', 'newcomer_until'];
+    const BASIC = ['avatar_v', 'id', 'club_id', 'full_name', 'member_type', 'tier', 'dupr_level', 'gender', 'is_active', 'joined_on', 'user_id', 'account_verified', 'guest_perk', 'created_at', 'dupr_linked', 'dupr_linked_at', 'dupr_manual', 'dupr_self', 'membership_state', 'vip_stars', 'vip_tier', 'current_period', 'sessions_unlimited', 'sessions_remaining', 'level', 'level_key', 'skill_score', 'newcomer_until', 'club_roles'];
     return res.json(rows.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => BASIC.includes(k)))));
   }
   res.json(rows);
