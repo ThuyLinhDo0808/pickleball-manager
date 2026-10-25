@@ -1,8 +1,10 @@
 'use client';
 import { Avatar } from '@/components/PlayerChip';
+import UiIcon from '@/components/ui/UiIcon';
 import { useI18n } from '@/context/I18nContext';
 
-// Top 1 · 2 · 3 as steps (2 · 1 · 3, the step's height by place). rows: the first three,
+// Top 1 · 2 · 3 as steps (2 · 1 · 3, the step's height by place), a gold / silver / bronze
+// cup on each step. rows: the first three,
 // each { key, full_name, avatar_uid?, avatar_v?, main (e.g. "75%"), sub (e.g. "3-1 · +7") }.
 export default function Podium({ rows, className = 'card !pb-0 mb-4' }) {
   const { t } = useI18n();
@@ -22,8 +24,9 @@ export default function Podium({ rows, className = 'card !pb-0 mb-4' }) {
               <div className="mt-1.5 text-white font-semibold text-sm break-words max-w-full">{r.full_name}</div>
               {r.main != null && <div className="text-lime-300 text-sm font-bold tabular-nums">{r.main}</div>}
               <div className="text-gray-400 text-[11px] tabular-nums mb-2">{r.sub || ' '}</div>
-              <div className={`w-full ${step} rounded-t-xl border border-b-0 flex items-start justify-center pt-2 ${tone}`}>
-                <span className="text-2xl sm:text-3xl font-extrabold tabular-nums">{idx + 1}</span>
+              <div className={`w-full ${step} rounded-t-xl border border-b-0 flex flex-col items-center justify-start gap-0.5 pt-2 ${tone}`}>
+                <UiIcon name="trophy" className={idx === 0 ? 'w-6 h-6 sm:w-7 sm:h-7' : 'w-5 h-5'} aria-hidden="true" />
+                <span className="text-xl sm:text-2xl font-extrabold tabular-nums leading-none">{idx + 1}</span>
               </div>
             </div>
           );

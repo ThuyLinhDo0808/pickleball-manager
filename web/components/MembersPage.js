@@ -270,7 +270,7 @@ export default function MembersPage({ tab = 'fixed' }) {
             <ColumnPicker
               cols={[
                 'type', 'gender', 'birth', ...(showPhone ? ['phone'] : []), 'joined',
-                ...(pickleball ? ['dupr', 'duprSelf'] : ['score']),
+                ...(pickleball ? ['duprId', 'dupr', 'duprSelf'] : ['score']),
                 ...(isCommunity ? ['skill'] : []), ...(levelCfg ? ['level'] : []),
                 ...(isGuestTab ? ['played', 'perk', 'notes'] : ['tier']),
               ]}
@@ -312,7 +312,8 @@ export default function MembersPage({ tab = 'fixed' }) {
                 {shownRows.map((m) => (
                   <li key={m.id} className={`flex items-start gap-3 px-3 py-3 ${selected.includes(m.id) ? 'bg-red-500/10' : ''} ${m.is_active ? '' : 'opacity-50'}`}>
                     <input type="checkbox" className="mt-3" checked={selected.includes(m.id)} onChange={() => toggle(m.id)} aria-label={m.full_name} />
-                    <button type="button" className="flex-1 min-w-0 text-left flex items-start gap-3" onClick={() => openMember(m, false)}>
+                    <div className="flex-1 min-w-0">
+                    <button type="button" className="w-full text-left flex items-start gap-3" onClick={() => openMember(m, false)}>
                       <Avatar uid={m.user_id} v={m.avatar_v} name={m.full_name} size={40} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 flex-wrap">
@@ -355,6 +356,13 @@ export default function MembersPage({ tab = 'fixed' }) {
                         )}
                       </span>
                     </button>
+                    {pickleball && show('duprId') && (
+                      <label className="mt-2 ml-[52px] flex items-center gap-2 text-xs text-gray-400">
+                        DUPR ID
+                        <DuprIdCell club={club} member={m} onSaved={reload} />
+                      </label>
+                    )}
+                    </div>
                     <button type="button" className="rounded-lg px-2 py-1 text-sm hover:bg-navy-700" aria-label={`${t('members.edit')}: ${m.full_name}`} onClick={() => openMember(m, true)}><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></button>
                   </li>
                 ))}
@@ -378,6 +386,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                       {/* Khu vực is kept (to suggest courts nearby) but not shown in the list. */}
                       {pickleball ? (
                         <>
+                          {show('duprId') && <th>DUPR ID <Hint inline text={t('memx.duprIdHint')} /></th>}
                           {show('dupr') && <th>{t('members.colDuprLinked')}</th>}
                           {show('duprSelf') && <th>{t('members.colDuprSelf')}</th>}
                         </>
@@ -468,6 +477,11 @@ export default function MembersPage({ tab = 'fixed' }) {
                         )}
                         {pickleball ? (
                           <>
+                            {show('duprId') && (
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <DuprIdCell club={club} member={m} onSaved={reload} />
+                              </td>
+                            )}
                             {show('dupr') && (
                               <td className="whitespace-nowrap">
                                 {m.dupr_linked != null ? (
@@ -572,6 +586,50 @@ export default function MembersPage({ tab = 'fixed' }) {
 
 // Điểm trình: the Host's own score for the player (1.00–8.00), typed in the table and saved
 // when the field loses focus. Empty = not scored yet.
+// DUPR ID typed straight into the list (saved when the box loses focus / Enter), the same
+// as "Update điểm DUPR" and the member's detail: no need to open the member to edit it.
+function DuprIdCell({ club, member, onSaved }) {
+  const { t } = useI18n();
+  const start = member.dupr_id || '';
+  const [v, setV] = useState(start);
+  const [busy, setBusy] = useState(false);
+  const [ok, setOk] = useState(false);
+  useEffect(() => setV(start), [start]);
+  async function save() {
+    const next = v.trim().toUpperCase();
+    if (next === start) return;
+    setBusy(true);
+    try {
+      await api.patch(`/api/clubs/${club.id}/members/${member.id}/dupr`, { dupr_id: next || null });
+      setOk(true);
+      setTimeout(() => setOk(false), 1500);
+      onSaved?.();
+    } catch (err) {
+      window.alert(err.message);
+      setV(start);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input
+        className="input !w-28 !py-1 text-sm font-mono uppercase placeholder:normal-case"
+        maxLength={10}
+        autoComplete="off"
+        placeholder="—"
+        value={v}
+        disabled={busy}
+        aria-label={`DUPR ID: ${member.full_name}`}
+        onChange={(e) => setV(e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase())}
+        onBlur={save}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      />
+      {ok && <span className="text-lime-300 text-xs" role="status">{t('memx.duprIdSaved')}</span>}
+    </span>
+  );
+}
+
 function SkillScoreCell({ club, member, onSaved }) {
   const { t } = useI18n();
   const start = member.skill_score == null ? '' : Number(member.skill_score).toFixed(2);

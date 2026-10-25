@@ -326,6 +326,41 @@ router.post('/account/verify-email/send', codeSends, async (req, res) => {
   }
 });
 
+// ---- Đổi email đăng nhập: password, then the 6-digit code sent to the new address ----
+const emailChange = require('../services/emailChange');
+const changeSends = limiter({ windowMs: 15 * 60 * 1000, max: 5, key: (req) => `echange:${req.userId}`, code: 'code_rate_limit' });
+const changeFail = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err));
+router.get('/account/email-change', async (req, res) => {
+  try {
+    res.json({ email: req.accountEmail, ...(await emailChange.status(req.userId)) });
+  } catch (err) {
+    changeFail(res, err);
+  }
+});
+router.post('/account/email-change', changeSends, async (req, res) => {
+  if (req.viewAs) return res.status(403).json({ error: 'Read-only.' });
+  try {
+    res.json(await emailChange.start(req.userId, req.accountEmail, req.body?.email, req.body?.password));
+  } catch (err) {
+    changeFail(res, err);
+  }
+});
+router.post('/account/email-change/confirm', codeTries, async (req, res) => {
+  if (req.viewAs) return res.status(403).json({ error: 'Read-only.' });
+  try {
+    res.json(await emailChange.confirm(req.userId, req.accountEmail, req.body?.code));
+  } catch (err) {
+    changeFail(res, err);
+  }
+});
+router.delete('/account/email-change', async (req, res) => {
+  try {
+    res.json(await emailChange.cancel(req.userId));
+  } catch (err) {
+    changeFail(res, err);
+  }
+});
+
 // The account's sign-in name and personal details (asked at sign-up; older accounts can
 // set a username here to sign in with it instead of the email).
 const ACCOUNT_FIELDS = 'email, username, birth_date, gender, region';

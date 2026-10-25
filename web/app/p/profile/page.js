@@ -1,6 +1,7 @@
 'use client';
 import DuprCard from '@/components/DuprCard';
 import DeleteAccount from '@/components/DeleteAccount';
+import EmailChange from '@/components/EmailChange';
 import AccountSecurity from '@/components/AccountSecurity';
 import MyData from '@/components/MyData';
 import FeedbackButton from '@/components/FeedbackButton';
@@ -187,8 +188,11 @@ export default function PlayerProfile() {
 
       {/* Sign out lives here (not in the top bar). */}
       <section className="card mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-gray-300 text-sm min-w-0">{user?.email}</p>
-        <button type="button" className="btn-secondary text-sm" onClick={() => signOut()}>↩ {t('nav.signOut')}</button>
+        <p className="text-gray-300 text-sm min-w-0 break-all">{user?.email}</p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <EmailChange />
+          <button type="button" className="btn-secondary text-sm" onClick={() => signOut()}>{t('nav.signOut')}</button>
+        </div>
       </section>
 
       <DeleteAccount />

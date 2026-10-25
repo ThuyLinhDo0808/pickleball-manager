@@ -170,10 +170,15 @@ export default function PlayerEventLive({ token, sport = 'pickleball', onAvailab
               <>
               <Podium className="rounded-xl border border-navy-700 bg-navy-900/40 pt-3 mb-3" rows={rows.slice(0, 3).map((r) => { const pl = data.players.find((x) => x.id === r.id) || {}; return { key: r.id, full_name: r.name, avatar_uid: pl.avatar_uid, avatar_v: pl.avatar_v, main: `${r.rate}%`, sub: `${r.won}-${r.lost} · ${r.diff > 0 ? `+${r.diff}` : r.diff}` }; })} />
               {rows.length > 3 && (
-                <ol className="rounded-xl border border-navy-700 divide-y divide-navy-700">
+                <ol className="rounded-xl border border-navy-600 divide-y divide-navy-700 overflow-hidden">
+                  <li className="flex items-center gap-3 px-3 py-2 bg-navy-900/80 text-gray-400 text-xs font-semibold uppercase tracking-wide" aria-hidden="true">
+                    <span className="w-7 text-center">#</span>
+                    <span className="flex-1">{t('common.name')}</span>
+                    <span>{t('estand.rate')}</span>
+                  </li>
                   {rows.slice(3).map((r) => (
                     <li key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${r.id === myId ? 'bg-lime-400/10' : ''}`}>
-                      <span className="w-6 text-center text-gray-400 font-bold tabular-nums">{r.rank}</span>
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-navy-600 text-gray-300 text-sm font-bold tabular-nums">{r.rank}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-white text-sm font-semibold break-words">{r.name}</span>
                         <span className="block text-gray-400 text-xs tabular-nums">{t('cpeople.record', { n: r.played, w: r.won, l: r.lost })}</span>

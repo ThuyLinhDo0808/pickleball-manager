@@ -4,7 +4,7 @@ const { clubSport, badmintonResult } = require('./sport');
 const { extrasReady } = require('./memberExtras');
 
 const TEAM_SIZE = { singles: 1, doubles: 2, mixed: 2 };
-const PLAYER_SELECT = '*, match_players(*, club_members(full_name, gender), event_participants(full_name, source_club_member_id, guest_member_id))';
+const PLAYER_SELECT = '*, match_players(*, club_members(full_name, gender), event_participants(full_name, gender, user_id, source_club_member_id, guest_member_id))';
 
 function badRequest(message) {
   return Object.assign(new Error(message), { status: 400 });

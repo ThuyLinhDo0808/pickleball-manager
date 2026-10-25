@@ -82,6 +82,22 @@ export default function HomeHub() {
     }
   }, [data, router]);
 
+  // "Đã duyệt" (club / community request) is news once: shown on the first visit after the
+  // approval, then not again on this device.
+  const [approvedNew, setApprovedNew] = useState(false);
+  const crId = data?.club_request?.status === 'approved' ? data.club_request.id : null;
+  useEffect(() => {
+    if (!crId) return;
+    const k = `pb_creq_seen_${crId}`;
+    try {
+      if (window.localStorage.getItem(k)) return;
+      window.localStorage.setItem(k, String(Date.now()));
+    } catch {
+      /* no storage: show it this time */
+    }
+    setApprovedNew(true);
+  }, [crId]);
+
   const days = useMemo(() => {
     const list = (data?.upcoming || []).filter((e) => filter === 'all' || (filter === 'xeve' ? !e.club_id : e.club_id === filter));
     const out = [];
@@ -154,7 +170,7 @@ export default function HomeHub() {
       )}
 
 
-      {cr && (cr.status === 'pending' || (cr.status !== 'cancelled' && cr.decided_at && Date.now() - Date.parse(cr.decided_at) < 14 * 86400000)) && (
+      {cr && (cr.status === 'pending' || (cr.status === 'approved' ? approvedNew : cr.status !== 'cancelled' && cr.decided_at && Date.now() - Date.parse(cr.decided_at) < 14 * 86400000)) && (
         <Link href="/club-request" className={`card block mb-4 text-sm ${cr.status === 'approved' ? 'border-lime-400/50' : cr.status === 'rejected' ? 'border-red-400/50' : 'border-amber-300/50'}`}>
           <span className="font-semibold text-white">{cr.name}</span>
           <span className="text-gray-300"> · {t(`creq.status_${cr.status}`)}</span>
