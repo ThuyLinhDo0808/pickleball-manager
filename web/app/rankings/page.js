@@ -16,7 +16,7 @@ export default function PlayerRankingsPage() {
     <PlayerShell>
       <h1 className="text-white text-2xl font-bold mb-1">{t('hub.navRankings')}</h1>
       <p className="text-gray-400 text-sm mb-4">{t('hub.rankingsLead')}</p>
-      {loading && !data ? <p className="text-gray-400">{t('common.loading')}</p> : <HomeRankings clubs={data?.member_clubs || []} showTitle={false} />}
+      {loading && !data ? <p className="text-gray-400">{t('common.loading')}</p> : <HomeRankings clubs={data?.ranking_clubs || data?.member_clubs || []} showTitle={false} />}
     </PlayerShell>
   );
 }

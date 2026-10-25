@@ -1024,6 +1024,11 @@ player.get('/home', async (req, res) => {
         ...coAdmin.filter((c) => !(managed.data || []).some((o) => o.id === c.id)).map((c) => ({ club_id: c.id, name: c.name, sport: c.sport || 'pickleball', kind: c.kind || 'club', role: c.role || 'co_admin' })),
       ],
       member_clubs: memberClubs,
+      // Rankings: every club / community I am a member of, including the ones I run (the
+      // Host plays too and is ranked like everyone).
+      ranking_clubs: members
+        .filter((m) => m.clubs)
+        .map((m) => ({ club_id: m.club_id, name: m.clubs.name, sport: m.clubs.sport || 'pickleball', kind: m.clubs.kind || 'club', member_type: m.member_type })),
       xeve_events: xeve.count || 0,
       plan: await getPlan(uid).catch(() => null),
       upcoming: upcoming.slice(0, 40),

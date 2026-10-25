@@ -453,12 +453,12 @@ export default function AppShell({ children, back }) {
   const Gem = ({ href }) => (lockedHref(href) ? <span className="text-gray-400" title={t('plan.locked')} aria-label={t('plan.locked')}><UiIcon name="lock" className="w-3.5 h-3.5" /></span> : null);
 
   // One way to mark the current page in every shell (manager, player, owner): lime text on
-  // a faint lime fill (NAV_ACTIVE). Group titles are plain sentence case, never cut off.
+  // a faint lime fill (NAV_ACTIVE). Main menu items (groups and top-level pages) are in CAPITALS, never cut off.
   const linkClass = (active, extra = '') =>
     `flex items-center gap-3 rounded-lg text-sm ${extra} ${active ? NAV_ACTIVE : 'text-gray-300 hover:bg-navy-800'}`;
   const tileClass = (active) => `shrink-0 w-6 h-6 flex items-center justify-center transition-colors ${active ? 'text-lime-300' : 'text-gray-400 group-hover:text-white'}`;
-  const headClass = (active) => `group w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold transition-colors ${active ? 'text-white' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
-  const pageClass = (active) => `group w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold transition-colors ${active ? NAV_ACTIVE : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
+  const headClass = (active) => `group w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${active ? 'text-white' : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
+  const pageClass = (active) => `group w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${active ? NAV_ACTIVE : 'text-gray-200 hover:bg-navy-800/70 hover:text-white'}`;
   const subClass = (active) => `flex items-center gap-2 rounded-lg pl-3 pr-2 py-1.5 text-sm leading-snug transition-colors ${active ? `${NAV_ACTIVE} font-medium` : 'text-gray-400 hover:text-gray-100 hover:bg-navy-800/60'}`;
 
   return (
@@ -664,7 +664,7 @@ export default function AppShell({ children, back }) {
               {NAV.map((item) =>
                 item.children ? (
                   <div key={item.key} className="mt-3">
-                    <p className="px-3 mb-1 text-gray-400 text-sm font-semibold">{t(item.key)}</p>
+                    <p className="px-3 mb-1 text-gray-400 text-sm font-semibold uppercase tracking-wide">{t(item.key)}</p>
                     <div className="flex flex-col gap-0.5">
                       {item.children.map((c) => (
                         <Link
@@ -687,7 +687,7 @@ export default function AppShell({ children, back }) {
                     className={`min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-[0.9375rem] ${navActive(item) ? NAV_ACTIVE : 'text-gray-200'}`}
                   >
                     <Icon name={item.icon} />
-                    <span className="flex-1 leading-snug">{t(item.key)}</span>
+                    <span className="flex-1 leading-snug uppercase tracking-wide font-semibold">{t(item.key)}</span>
                     <Badge n={badges[item.badge]} />
                   </Link>
                 )

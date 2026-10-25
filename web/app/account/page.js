@@ -8,6 +8,7 @@ import SettingsSection from '@/components/SettingsSection';
 import HostPaymentSettings from '@/components/HostPaymentSettings';
 import HostContactPhone from '@/components/HostContactPhone';
 import DeleteAccount from '@/components/DeleteAccount';
+import EmailChange from '@/components/EmailChange';
 import AccountDetails from '@/components/AccountDetails';
 import AccountSecurity from '@/components/AccountSecurity';
 import { useI18n } from '@/context/I18nContext';
@@ -112,6 +113,7 @@ export default function AccountPage() {
               {user?.email_confirmed_at && (
                 <span className="text-[11px] rounded-full border border-lime-400/50 text-lime-300 px-2 py-0.5">✓ {t('acct.verified')}</span>
               )}
+              <EmailChange className="text-xs text-sky-200 underline min-h-[2.75rem] px-1" />
               {sub && <span className="text-[11px] rounded-full bg-amber-300 text-navy-950 font-bold px-2 py-0.5">{sub.tier === 'free' ? t('plan.noPlan') : sub.tier}</span>}
             </div>
           </div>
