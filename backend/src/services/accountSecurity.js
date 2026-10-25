@@ -411,7 +411,7 @@ async function applyReset(userId) {
 
 async function sendMail(email, subject, text, html) {
   if (!process.env.RESEND_API_KEY || !email) return 'off';
-  const from = process.env.NOTIFY_FROM_EMAIL || process.env.FEEDBACK_FROM_EMAIL || 'NexusZone <onboarding@resend.dev>';
+  const from = (process.env.NOTIFY_FROM_EMAIL || process.env.FEEDBACK_FROM_EMAIL || 'NexusZone <onboarding@resend.dev>').trim();
   try {
     const r = await fetch(`${process.env.RESEND_API_URL || 'https://api.resend.com'}/emails`, {
       method: 'POST',

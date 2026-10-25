@@ -4136,7 +4136,7 @@ export const en = {
     theme_dark: "Dark",
     theme_light: "Light",
     theme_system: "Match device",
-    themeNote: "Saved on this device. The welcome page and sign-in always stay dark.",
+    themeNote: "Saved on this device.",
     account: "Account",
     accountHint: "The email you sign in with and get codes at.",
   },

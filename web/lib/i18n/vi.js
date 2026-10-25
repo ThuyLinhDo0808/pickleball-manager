@@ -4136,7 +4136,7 @@ export const vi = {
     theme_dark: "Tối",
     theme_light: "Sáng",
     theme_system: "Theo thiết bị",
-    themeNote: "Lưu trên thiết bị này. Trang giới thiệu và trang đăng nhập luôn dùng nền tối.",
+    themeNote: "Lưu trên thiết bị này.",
     account: "Tài khoản",
     accountHint: "Email dùng để đăng nhập và nhận mã xác nhận.",
   },

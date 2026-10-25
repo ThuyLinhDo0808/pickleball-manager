@@ -386,6 +386,22 @@ html[data-theme='light'] :is([class*='bg-red-5'], [class*='bg-red-6'], [class*='
 html[data-theme='light'] .btn-danger {
   color: #fff;
 }
+/* Logo: lime on dark, navy on light (BrandLogo renders both). */
+.logo-on-light {
+  display: none;
+}
+html[data-theme='light'] .logo-on-dark {
+  display: none;
+}
+html[data-theme='light'] .logo-on-light {
+  display: inline;
+}
+html[data-theme='light'] .theme-dark .logo-on-dark {
+  display: inline;
+}
+html[data-theme='light'] .theme-dark .logo-on-light {
+  display: none;
+}
 /* Solid white stays white (QR codes, photos on white). */
 html[data-theme='light'] .bg-white {
   background-color: #fff;
