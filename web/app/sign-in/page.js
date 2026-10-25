@@ -262,7 +262,7 @@ export default function SignInPage() {
   const title = t(`auth.scene_${mode}`);
 
   return (
-    <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/'])} className="lp-root relative flex min-h-[100svh] flex-col overflow-x-hidden bg-navy-950">
+    <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/'])} className="lp-root theme-dark relative flex min-h-[100svh] flex-col overflow-x-hidden bg-navy-950">
       <Stage scene={AUTH_SCENES[mode]} idx={ORDER.indexOf(mode)} />
       {sweep.n > 0 && <span key={sweep.n} className={`lp-sweep ${sweep.dir > 0 ? 'down' : 'up'}`} aria-hidden="true" />}
       <header className="relative z-20 mx-auto flex h-20 w-full max-w-[1440px] items-center gap-3 px-5 sm:px-10 lg:px-16">

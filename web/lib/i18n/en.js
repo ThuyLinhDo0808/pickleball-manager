@@ -4128,6 +4128,18 @@ export const en = {
     priorityMeans: 'first onto the main list when a place opens, plus the % off the ticket the Host set for that guest.',
     perkHowTo: 'Guests buy single tickets only (no plans, no VIP). Press Edit in the Edit column → tick Priority → enter the % off (e.g. 10%, 20%, 50%).',
   },
+  prof: {
+    personal: "Personal details",
+    personalHint: "Your real name, phone, birth date and DUPR ID help clubs and communities take attendance, pair matches and update your DUPR rating.",
+    appearance: "Appearance",
+    appearanceHint: "Choose a dark or light background for every page.",
+    theme_dark: "Dark",
+    theme_light: "Light",
+    theme_system: "Match device",
+    themeNote: "Saved on this device. The welcome page and sign-in always stay dark.",
+    account: "Account",
+    accountHint: "The email you sign in with and get codes at.",
+  },
   duprGuide: {
     link: "How to get your DUPR ID",
     more: "See the step-by-step guide…",

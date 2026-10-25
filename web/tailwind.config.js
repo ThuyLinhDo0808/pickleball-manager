@@ -1,4 +1,14 @@
 /** @type {import('tailwindcss').Config} */
+const { DARK } = require('./lib/themeColors');
+
+const v = (name) => `rgb(var(--tw-c-${name}) / <alpha-value>)`;
+// { navy: { 950: v('navy-950'), … }, gray: {…}, white: v('white'), … }
+const palette = {};
+for (const key of Object.keys(DARK)) {
+  const m = /^([a-z]+)-(\d+)$/.exec(key);
+  if (m) (palette[m[1]] = palette[m[1]] || {})[m[2]] = v(key);
+}
+palette.white = v('white');
 module.exports = {
   content: ['./app/**/*.{js,jsx}', './components/**/*.{js,jsx}', './context/**/*.{js,jsx}'],
   theme: {
@@ -8,30 +18,17 @@ module.exports = {
       fontFamily: {
         sans: ['var(--font-app)'],
       },
+      // Every colour is a CSS variable (app/theme.css, made from lib/themeColors.js), so the
+      // light theme (html[data-theme="light"]) changes them all at once.
       colors: {
-        // Lighter greys than Tailwind's own: small print stays readable on the dark navy.
-        gray: {
-          400: '#b4becd',
-          500: '#97a2b5',
-        },
-        navy: {
-          950: '#0B1220',
-          900: '#101a2e',
-          800: '#16223b',
-          700: '#1e2f4d',
-          600: '#28406b',
-        },
-        lime: {
-          400: '#B6F03B',
-          500: '#a3dc2c',
-        },
+        ...palette,
         // Status pairs: a pale tint (bg) with text of the same hue (fg). Use these, not raw
         // red / amber / emerald, so "good", "bad" and "needs attention" look the same everywhere.
-        good: { fg: '#86efac', bg: 'rgba(34,197,94,0.14)', line: 'rgba(34,197,94,0.35)' },
-        bad: { fg: '#fca5a5', bg: 'rgba(239,68,68,0.14)', line: 'rgba(239,68,68,0.35)' },
-        warn: { fg: '#fcd34d', bg: 'rgba(245,158,11,0.14)', line: 'rgba(245,158,11,0.35)' },
-        // Text roles on the navy ground.
-        ink: { DEFAULT: '#e6ecf5', muted: '#b4becd', faint: '#97a2b5' },
+        good: { fg: v('good-fg'), bg: 'rgba(34,197,94,0.14)', line: 'rgba(34,197,94,0.35)' },
+        bad: { fg: v('bad-fg'), bg: 'rgba(239,68,68,0.14)', line: 'rgba(239,68,68,0.35)' },
+        warn: { fg: v('warn-fg'), bg: 'rgba(245,158,11,0.14)', line: 'rgba(245,158,11,0.35)' },
+        // Text roles on the ground.
+        ink: { DEFAULT: v('ink'), muted: v('ink-muted'), faint: v('ink-faint') },
       },
       fontSize: {
         // Named sizes: meta (small print, never below 12px), body (14px), title (page title).

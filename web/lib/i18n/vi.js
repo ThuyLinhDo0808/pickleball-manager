@@ -4128,6 +4128,18 @@ export const vi = {
     priorityMeans: 'lên danh sách chính đầu tiên khi có chỗ trống, và được giảm giá vé theo % Host đặt cho từng khách.',
     perkHowTo: "Khách giao lưu chỉ mua vé lẻ (không có gói hay VIP). Bấm nút Sửa ở cột Sửa → tick Ưu tiên → nhập % giảm (ví dụ 10%, 20%, 50%).",
   },
+  prof: {
+    personal: "Thông tin cá nhân",
+    personalHint: "Tên thật, số điện thoại, ngày sinh và DUPR ID giúp CLB / cộng đồng điểm danh, ghép trận và cập nhật điểm DUPR cho bạn.",
+    appearance: "Giao diện",
+    appearanceHint: "Chọn nền tối hoặc sáng cho mọi trang.",
+    theme_dark: "Tối",
+    theme_light: "Sáng",
+    theme_system: "Theo thiết bị",
+    themeNote: "Lưu trên thiết bị này. Trang giới thiệu và trang đăng nhập luôn dùng nền tối.",
+    account: "Tài khoản",
+    accountHint: "Email dùng để đăng nhập và nhận mã xác nhận.",
+  },
   duprGuide: {
     link: "Hướng dẫn lấy DUPR ID",
     more: "Xem hướng dẫn chi tiết…",

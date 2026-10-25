@@ -19,6 +19,21 @@
   --c-warn: #fcd34d;
   --c-chart: #B6F03B;
   --c-chart-2: #5b7aa8;
+  color-scheme: dark;
+}
+html[data-theme='light'] {
+  --c-ground: #f3f5f9;
+  --c-surface: #ffffff;
+  --c-line: #e2e8f0;
+  --c-ink: #0f172a;
+  --c-muted: #475569;
+  --c-faint: #5b6779;
+  --c-good: #15803d;
+  --c-bad: #b91c1c;
+  --c-warn: #b45309;
+  --c-chart: #65a30d;
+  --c-chart-2: #64748b;
+  color-scheme: light;
 }
 
 /* App font: the system face on computers (as before), Plus Jakarta Sans on phones. The
@@ -31,8 +46,8 @@
 }
 
 body {
-  background-color: #0B1220;
-  color: #e6ecf5;
+  background-color: rgb(var(--tw-c-navy-950));
+  color: rgb(var(--tw-c-ink));
   font-family: var(--font-app);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -48,7 +63,7 @@ body {
 .num:empty::before,
 .dash::before {
   content: '—';
-  color: #97a2b5;
+  color: rgb(var(--tw-c-ink-faint));
 }
 
 /* Status pills: pale tint, text of the same hue. One per row. */
@@ -259,7 +274,7 @@ body {
     column-gap: 0.75rem;
     row-gap: 0.125rem;
     padding: 0.625rem 0;
-    border-bottom: 1px solid #1e2f4d;
+    border-bottom: 1px solid rgb(var(--tw-c-navy-700));
   }
   .mobile-list tbody tr:last-child {
     border-bottom: 0;
@@ -279,7 +294,7 @@ body {
     white-space: normal !important;
     text-align: left !important;
     font-size: 0.875rem;
-    color: #97a2b5;
+    color: rgb(var(--tw-c-ink-faint));
     min-width: 0;
   }
   .mobile-list td:first-child,
@@ -287,25 +302,25 @@ body {
     order: 0;
     flex: 1 1 0;
     font-size: 0.9375rem;
-    color: #fff;
+    color: rgb(var(--tw-c-white));
   }
   .mobile-list td.first {
     order: 0;
     flex: 1 1 0;
     font-size: 0.9375rem;
-    color: #fff;
+    color: rgb(var(--tw-c-white));
   }
   .mobile-list tr:has(> td.first) > td:first-child:not(.first) {
     order: 3;
     flex: none;
     font-size: 0.875rem;
-    color: #97a2b5;
+    color: rgb(var(--tw-c-ink-faint));
   }
   .mobile-list td.key {
     order: 1;
     margin-left: auto;
     font-size: 0.9375rem;
-    color: #e6ecf5;
+    color: rgb(var(--tw-c-ink));
     text-align: right !important;
   }
   .mobile-list td.act {
@@ -349,6 +364,39 @@ body {
 }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* ---- Light theme (html[data-theme="light"], set from Hồ sơ → Giao diện) -------------
+   The colour classes already follow theme.css; these few need more than a colour swap. */
+html[data-theme='light'] .card {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+/* Lime stays bright as a fill (buttons, chips) but is too pale as text on white. */
+html[data-theme='light'] :is(.text-lime-200, .text-lime-300, .text-lime-400, .text-lime-500) {
+  color: #3f6212;
+}
+html[data-theme='light'] :is(.hover\:text-lime-200, .hover\:text-lime-300, .hover\:text-lime-400):hover {
+  color: #365314;
+}
+/* Dark text on lime / bright fills stays dark. */
+html[data-theme='light'] :is(.text-navy-950, .text-navy-900, .text-navy-800) {
+  color: #0b1220;
+}
+/* White text on solid coloured buttons and badges stays white. */
+html[data-theme='light'] :is([class*='bg-red-5'], [class*='bg-red-6'], [class*='bg-sky-5'], [class*='bg-sky-6'], [class*='bg-amber-5'], [class*='bg-amber-6'], [class*='bg-emerald-5'], [class*='bg-emerald-6'], [class*='bg-orange-5'], [class*='bg-orange-6'], [class*='bg-pink-5'], [class*='bg-pink-6'], [class*='bg-blue-5'], [class*='bg-blue-6'], .btn-danger).text-white,
+html[data-theme='light'] .btn-danger {
+  color: #fff;
+}
+/* Solid white stays white (QR codes, photos on white). */
+html[data-theme='light'] .bg-white {
+  background-color: #fff;
+}
+html[data-theme='light'] .bg-black\/60,
+html[data-theme='light'] .bg-black\/70 {
+  background-color: rgba(15, 23, 42, 0.45);
+}
+html[data-theme='light'] * {
+  scrollbar-color: rgba(71, 85, 105, 0.3) transparent;
+}
 
 /* ---- Landing page (all motion off with prefers-reduced-motion) ---------------------- */
 @keyframes lp-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
