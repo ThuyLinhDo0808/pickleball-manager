@@ -1749,9 +1749,9 @@ export const vi = {
     created: 'Tạo ngày {date}',
   },
   auth: {
-    duprId: "DUPR ID (không bắt buộc)",
-    duprIdNote: "Có DUPR ID thì nhập luôn, bước sau sẽ tự điền.",
-    err_bad_dupr_id: "DUPR ID gồm 4–10 chữ hoặc số, ví dụ YN9N0G.",
+    duprId: "DUPR ID",
+    duprIdNote: "Dùng để cập nhật điểm DUPR và gửi kết quả trận đấu của bạn lên DUPR.",
+    err_bad_dupr_id: "DUPR ID gồm 4–10 chữ hoặc số.",
     toLanding: "Về trang giới thiệu",
     linkExpired: "Link xác nhận đã hết hạn hoặc đã được dùng. Hãy thử đăng nhập; nếu chưa được, bấm Đăng ký lại để nhận email mới.",
     notConfirmed: 'Email này chưa được xác nhận. Bấm "Gửi lại email xác nhận" và dùng email MỚI NHẤT trong hộp thư.',
@@ -3718,7 +3718,7 @@ export const vi = {
     callHost: "Gọi Host",
     duprId: "DUPR ID",
     duprIdNote: "Kèo được tính điểm DUPR. Nếu bạn muốn cập nhật điểm DUPR sau buổi chơi, hãy nhập DUPR ID của bạn (app DUPR → Chia sẻ → Copy DUPR ID).",
-    duprIdPh: "Nxxxxxx",
+    duprIdPh: "",
     duprIdSlot: "DUPR ID",
     title: 'Link mời đặt nhanh',
     on: 'Đang bật',
@@ -4139,7 +4139,7 @@ export const vi = {
     s3Title: "Bấm nút chia sẻ",
     s3Body: "Ở trang cá nhân, bấm nút chia sẻ ở góc trên bên phải.",
     s4Title: "Copy DUPR ID",
-    s4Body: "Chọn \"Copy DUPR ID\". DUPR ID gồm 4–10 chữ hoặc số, ví dụ YN9N0G. Quay lại đây và dán vào ô DUPR ID.",
+    s4Body: "Chọn \"Copy DUPR ID\". DUPR ID gồm 4–10 chữ hoặc số. Quay lại đây và dán vào ô DUPR ID.",
   },
   dupr: {
     nr: "DUPR NR",
@@ -4216,7 +4216,7 @@ export const vi = {
     noScore: "Chưa có tỷ số",
     missing: "Thiếu DUPR ID: {names}",
     idLabel: "DUPR ID",
-    idPh: "Nxxxxxx",
+    idPh: "",
     idHow: "Mở app DUPR → bấm nút chia sẻ ở góc trên bên phải → Copy DUPR ID, rồi dán vào đây. CLB dùng ID này để cập nhật điểm DUPR và gửi trận của bạn lên DUPR.",
   },
   duprm: {
@@ -5034,8 +5034,8 @@ export const vi = {
   onb: {
     fullNameNote: "Tên thật để CLB / cộng đồng nhận ra bạn. Khác với tên đăng nhập (dùng để đăng nhập).",
     duprIdNote: "Chưa có thì để trống, thêm sau trong Hồ sơ.",
-    duprId: "DUPR ID (không bắt buộc)",
-    duprIdPh: "VD: YN9N0G",
+    duprId: "DUPR ID",
+    duprIdPh: "",
     duprIdHint: "Mở app DUPR → bấm nút chia sẻ ở góc trên bên phải → Copy DUPR ID, rồi dán vào đây. CLB / cộng đồng dùng ID này để lấy điểm DUPR đã xác thực của bạn và gửi trận lên DUPR. Chưa có thì để trống, thêm sau trong Hồ sơ.",
     errDuprId: "DUPR ID gồm 4–10 chữ hoặc số (app DUPR → chia sẻ → Copy DUPR ID).",
     kicker: "Chào mừng bạn",
@@ -6295,6 +6295,6 @@ export const vi = {
     title: "Sửa thông tin người chơi",
     hint: "Dùng khi người chơi có thêm thông tin sau buổi chơi, ví dụ mới tạo tài khoản DUPR và có DUPR ID. Thông tin mới được lưu cho người này trong kèo và trong danh sách thành viên.\n\nĐể gửi lại các trận đã xuất lên DUPR: vào Xuất DUPR, bấm \"Bỏ đánh dấu\" ở trận đó rồi xuất lại. Trận trước đây chưa xuất được vì thiếu DUPR ID sẽ tự sẵn sàng để xuất.",
     saved: "Đã lưu thông tin mới.",
-    badId: "DUPR ID gồm 4–10 chữ hoặc số, ví dụ YN9N0G.",
+    badId: "DUPR ID gồm 4–10 chữ hoặc số.",
   },
 };

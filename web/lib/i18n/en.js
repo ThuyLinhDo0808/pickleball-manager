@@ -1749,9 +1749,9 @@ export const en = {
     created: 'Created {date}',
   },
   auth: {
-    duprId: "DUPR ID (optional)",
-    duprIdNote: "Have a DUPR ID? Type it now and the next step fills it in.",
-    err_bad_dupr_id: "A DUPR ID is 4–10 letters or digits, e.g. YN9N0G.",
+    duprId: "DUPR ID",
+    duprIdNote: "Used to update your DUPR rating and send your match results to DUPR.",
+    err_bad_dupr_id: "A DUPR ID is 4–10 letters or digits.",
     toLanding: "Back to the home page",
     linkExpired: 'The confirmation link has expired or was already used. Try signing in; if that fails, sign up again to get a new email.',
     notConfirmed: 'This email is not confirmed yet. Press "Resend confirmation email" and use the NEWEST email in your inbox.',
@@ -3718,7 +3718,7 @@ export const en = {
     callHost: "Call the Host",
     duprId: "DUPR ID",
     duprIdNote: "This event is DUPR-rated. To have your DUPR rating updated after play, enter your DUPR ID (DUPR app → Share → Copy DUPR ID).",
-    duprIdPh: "Nxxxxxx",
+    duprIdPh: "",
     duprIdSlot: "DUPR ID",
     title: 'Quick invite link',
     on: 'On',
@@ -4139,7 +4139,7 @@ export const en = {
     s3Title: "Tap the share button",
     s3Body: "On your profile, tap the share button at the top right.",
     s4Title: "Copy DUPR ID",
-    s4Body: "Choose \"Copy DUPR ID\". A DUPR ID is 4–10 letters or digits, e.g. YN9N0G. Come back here and paste it into the DUPR ID box.",
+    s4Body: "Choose \"Copy DUPR ID\". A DUPR ID is 4–10 letters or digits. Come back here and paste it into the DUPR ID box.",
   },
   dupr: {
     nr: "DUPR NR",
@@ -4216,7 +4216,7 @@ export const en = {
     noScore: "No score yet",
     missing: "Missing DUPR ID: {names}",
     idLabel: "DUPR ID",
-    idPh: "Nxxxxxx",
+    idPh: "",
     idHow: "In the DUPR app, tap the share button at the top right → Copy DUPR ID, and paste it here. Clubs use it to update your DUPR rating and send your matches to DUPR.",
   },
   duprm: {
@@ -5034,8 +5034,8 @@ export const en = {
   onb: {
     fullNameNote: "Your real name, so clubs and communities know you. Not the same as your username (used to sign in).",
     duprIdNote: "No ID yet? Leave it blank and add it later in your profile.",
-    duprId: "DUPR ID (optional)",
-    duprIdPh: "e.g. YN9N0G",
+    duprId: "DUPR ID",
+    duprIdPh: "",
     duprIdHint: "Open the DUPR app → tap the share button at the top right → Copy DUPR ID, then paste it here. Clubs and communities use it to get your verified DUPR rating and send your matches to DUPR. No ID yet? Leave it blank and add it later in your profile.",
     errDuprId: "A DUPR ID is 4–10 letters or digits (DUPR app → share → Copy DUPR ID).",
     kicker: "Welcome",
@@ -6295,6 +6295,6 @@ export const en = {
     title: "Edit player details",
     hint: "For details that come later, e.g. they made a DUPR account after the kèo and now have a DUPR ID. The new details are saved for this person in the kèo and in the member list.\n\nTo send matches already exported to DUPR again: open DUPR export, press \"Unmark\" on that match and export again. Matches that could not be exported for lack of a DUPR ID become ready by themselves.",
     saved: "New details saved.",
-    badId: "A DUPR ID is 4–10 letters or digits, e.g. YN9N0G.",
+    badId: "A DUPR ID is 4–10 letters or digits.",
   },
 };

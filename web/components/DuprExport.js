@@ -135,7 +135,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
             <li key={keyOf(p) || p.name} className="flex flex-wrap items-center gap-2">
               <span className="text-gray-100 text-sm min-w-0 flex-1">{p.name}</span>
               {keyOf(p) ? (
-                <input className="input !w-40 font-mono uppercase" maxLength={10} placeholder="Nxxxxxx" value={ids[keyOf(p)] || ''} onChange={(e) => setIds({ ...ids, [keyOf(p)]: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} aria-label={`DUPR ID ${p.name}`} />
+                <input className="input !w-40 font-mono uppercase" maxLength={10} value={ids[keyOf(p)] || ''} onChange={(e) => setIds({ ...ids, [keyOf(p)]: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })} aria-label={`DUPR ID ${p.name}`} />
               ) : (
                 <span className="text-gray-500 text-xs">{t('quickfix.duprNoMember')}</span>
               )}

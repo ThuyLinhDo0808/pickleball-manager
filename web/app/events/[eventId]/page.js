@@ -424,7 +424,7 @@ export default function EventDetailPage() {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="text-sm text-gray-300" htmlFor="am-dupr-id">{t('quick.duprId')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
-                    <input id="am-dupr-id" className="input uppercase" maxLength={10} autoCapitalize="characters" placeholder="VD: YN9N0G" value={form.dupr_id} onChange={(e) => setForm({ ...form, dupr_id: e.target.value.toUpperCase() })} />
+                    <input id="am-dupr-id" className="input uppercase" maxLength={10} autoCapitalize="characters" value={form.dupr_id} onChange={(e) => setForm({ ...form, dupr_id: e.target.value.toUpperCase() })} />
                   </div>
                   <div>
                     <label className="text-sm text-gray-300" htmlFor="am-dupr">{t('members.colDuprSelf')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>

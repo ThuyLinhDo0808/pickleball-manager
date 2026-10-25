@@ -151,7 +151,7 @@ export default function OnboardingPage() {
               <input className="input mt-1 font-mono uppercase placeholder:normal-case" maxLength={10} autoComplete="off" value={f.dupr_id} onChange={(e) => setF((x) => ({ ...x, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() }))} placeholder={t('onb.duprIdPh')} />
             </label>
             <p className="-mt-1 text-sm text-gray-400">
-              {t('onb.duprIdNote')} <DuprIdGuide />
+              <DuprIdGuide />
             </p>
             {error && <p className="text-red-300 text-sm">{error}</p>}
           </form>

@@ -234,7 +234,7 @@ function GuestInfoEditor({ event, row, card, sport, onSaved }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="text-sm text-gray-300" htmlFor="gi-id">{t('quick.duprId')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
-            <input id="gi-id" className="input uppercase" maxLength={10} autoCapitalize="characters" placeholder="VD: YN9N0G" value={f.dupr_id} onChange={(e) => setF({ ...f, dupr_id: e.target.value.toUpperCase() })} />
+            <input id="gi-id" className="input uppercase" maxLength={10} autoCapitalize="characters" value={f.dupr_id} onChange={(e) => setF({ ...f, dupr_id: e.target.value.toUpperCase() })} />
           </div>
           <div>
             <label className="text-sm text-gray-300" htmlFor="gi-dupr">{t('members.colDuprSelf')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
