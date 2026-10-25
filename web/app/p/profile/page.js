@@ -121,10 +121,7 @@ export default function PlayerProfile() {
           <label className="text-xs text-gray-400">{t('common.phone')}</label>
           <input className="input" required type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} />
         </div>
-        <div>
-          <label className="text-xs text-gray-400">{t('level.pickleballProfile')}</label>
-          <input className="input" type="number" inputMode="decimal" step="0.01" min="1" max="8" value={form.dupr_level} onChange={set('dupr_level')} />
-        </div>
+        {/* No self-rated DUPR here: the DUPR ID below brings the real doubles / singles. */}
         <div className="col-span-2">
           <label className="text-xs text-gray-400" htmlFor="dupr-id">{t('dupr.idLabel')}</label>
           <input

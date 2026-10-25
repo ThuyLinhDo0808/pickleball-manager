@@ -1026,7 +1026,7 @@ Thay vì lướt tìm tên, làm như sau:
 
 Người chơi dùng chung app: **Trang chủ** (`/home`, xem [3.1](#31-trang-chủ-home--mọi-vai-trò-ở-một-chỗ)) liệt kê CLB họ tham gia và lịch sắp tới; mỗi CLB có **trang thành viên** `/c/<id>`; tab **Hoạt động** (`/p`) chứa các mục dưới đây.
 
-- **Hồ sơ** (`/p/profile`): ảnh đại diện, họ tên, số điện thoại, DUPR, **DUPR ID** (app DUPR → nút chia sẻ góc trên bên phải → *Copy DUPR ID*; xem [4.7b](#47b-dupr--liên-kết-điểm-trình-gửi-trận-thống-kê)), giới tính, năm sinh.
+- **Hồ sơ** (`/p/profile`): ảnh đại diện, họ tên, số điện thoại, **DUPR ID** (không còn ô *DUPR (pickleball)* tự nhập — điểm DUPR đôi / đơn hiện ngay dưới, lấy theo DUPR ID) (app DUPR → nút chia sẻ góc trên bên phải → *Copy DUPR ID*; xem [4.7b](#47b-dupr--liên-kết-điểm-trình-gửi-trận-thống-kê)), giới tính, năm sinh.
   - **Họ tên đồng bộ sang CLB**: lưu hồ sơ thì họ tên mới được ghi luôn vào bản ghi thành viên ở mọi CLB / cộng đồng đã liên kết và đã xác nhận tài khoản này (Host thấy tên mới ở *Thành viên*). Yêu cầu gia nhập còn chờ duyệt thì chưa đổi. Các thông tin khác (SĐT, giới tính, ngày sinh, trình độ) vẫn chỉ điền vào ô CLB đang để trống.
 - **Mã check-in của tôi**: mã QR cá nhân để Host / điều phối viên quét khi đến sân (*Phóng to*, *Đổi mã mới*).
 - **Thông báo từ CLB** (đầu Trang chủ và trang người chơi): khung vàng khi bị cảnh báo / tạm ngưng (lý do + ngày hết hạn), khung xanh khi được cho quay lại, khung đỏ khi bị xoá khỏi CLB (lý do, cảnh báo, và báo bị chặn nếu có). Bấm **Đã hiểu** để ẩn. Đăng ký sự kiện của CLB đang tạm ngưng / đã chặn sẽ báo lỗi kèm lý do.
