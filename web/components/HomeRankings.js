@@ -1,6 +1,7 @@
 'use client';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import Hint from '@/components/ui/Hint';
+import Podium from '@/components/Podium';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
@@ -62,6 +63,40 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
     setPick(id);
     setBand('all');
   };
+  const ranked = rows.filter((r) => r.place != null);
+  const top = ranked.slice(0, 3);
+  const rest = ranked.slice(3);
+  const unranked = rows.filter((r) => r.place == null);
+  const levelName = sport === 'badminton' ? t('homeRank.levelLabel') : 'DUPR';
+  // One player per row: place in a circle · name (+ "Bạn") and level · record on a second line ·
+  // the number the list is ordered by, big on the right.
+  const RankList = ({ rows: list, muted = false }) => (
+    <ol className={`rounded-xl border border-navy-600 divide-y divide-navy-700 overflow-hidden ${muted ? 'opacity-70' : ''}`}>
+      <li className="flex items-center gap-3 px-3 py-2 bg-navy-900/80 text-gray-400 text-xs font-semibold uppercase tracking-wide" aria-hidden="true">
+        <span className="w-8 text-center">#</span>
+        <span className="flex-1">{t('common.name')}</span>
+        <span>{order === 'level' ? levelName : t('homeRank.byRate')}</span>
+      </li>
+      {list.map((r, i) => (
+        <li key={keyOf(r)} className={`flex items-center gap-3 px-3 py-2.5 ${isMe(r) ? 'bg-lime-400/10' : i % 2 ? 'bg-navy-800/40' : ''}`}>
+          <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold tabular-nums ${isMe(r) ? 'border-lime-400/70 text-lime-300' : 'border-navy-600 text-gray-300'}`}>{r.place ?? '—'}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-white text-sm font-semibold break-words">
+              {r.full_name}
+              {isMe(r) && <span className="ml-1.5 align-middle text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
+            </span>
+            <span className="block text-gray-400 text-xs tabular-nums">
+              {levelName} {fmtLevel(r.level, sport) || '—'} · {t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses })}
+            </span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className="block text-white font-bold tabular-nums">{order === 'level' ? fmtLevel(r.level, sport) || '—' : `${r.win_rate}%`}</span>
+            {order === 'level' && <span className="block text-gray-400 text-xs tabular-nums">{r.win_rate}%</span>}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
   const small = (on) => `rounded-md px-2.5 py-2 sm:px-2 sm:py-0.5 text-xs sm:text-[11px] transition-colors ${on ? 'bg-navy-600 text-white' : 'text-gray-400 hover:text-gray-200'}`;
 
   return (
@@ -103,40 +138,55 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
         {error && error.status !== 402 && <p className="p-4 text-red-300 text-sm">{error.message}</p>}
         {data && (
           <>
-            <div className="px-4 py-3 border-b border-navy-700 bg-navy-900/60">
-              <p className="text-gray-400 text-xs">{t('homeRank.month')} · {scopeLabel}</p>
-              {mine ? (
-                <p className="text-white text-sm mt-0.5">
-                  {mine.place == null
-                    ? order === 'level'
-                      ? t('homeRank.mineNoLevel')
-                      : t('homeRank.mineNotYet', { n: data.min_matches - mine.matches_played, m: mine.matches_played })
-                    : t('homeRank.mine', { rank: mine.place, total: placed })}
-                  <span className="text-gray-400"> · {t('homeRank.mineStats', { w: mine.wins, l: mine.losses, p: mine.win_rate })}</span>
-                </p>
-              ) : (data.rankings || []).some(isMe) ? (
-                <p className="text-gray-300 text-sm mt-0.5">{t('homeRank.otherBand')}</p>
-              ) : (
-                <p className="text-gray-300 text-sm mt-0.5">{t('homeRank.noMatchesYet', { n: data.min_matches })}</p>
-              )}
+            {/* Where I stand: big place number + record, on top. */}
+            <div className="px-4 py-3 border-b border-navy-700 bg-navy-900/60 flex items-center gap-3">
+              <span className={`shrink-0 inline-flex h-12 min-w-12 px-2 items-center justify-center rounded-xl border text-lg font-extrabold tabular-nums ${mine?.place != null ? 'border-lime-400/60 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-400'}`}>
+                {mine?.place != null ? `#${mine.place}` : '—'}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-gray-400 text-xs">{t('homeRank.month')} · {scopeLabel}</span>
+                {mine ? (
+                  <span className="block text-white text-sm mt-0.5">
+                    {mine.place == null
+                      ? order === 'level'
+                        ? t('homeRank.mineNoLevel')
+                        : t('homeRank.mineNotYet', { n: data.min_matches - mine.matches_played, m: mine.matches_played })
+                      : t('homeRank.mine', { rank: mine.place, total: placed })}
+                    <span className="block text-gray-400 text-xs tabular-nums">{t('homeRank.mineStats', { w: mine.wins, l: mine.losses, p: mine.win_rate })}</span>
+                  </span>
+                ) : (data.rankings || []).some(isMe) ? (
+                  <span className="block text-gray-300 text-sm mt-0.5">{t('homeRank.otherBand')}</span>
+                ) : (
+                  <span className="block text-gray-300 text-sm mt-0.5">{t('homeRank.noMatchesYet', { n: data.min_matches })}</span>
+                )}
+              </span>
             </div>
             {rows.length === 0 ? (
               <p className="p-4 text-gray-400 text-sm">{t('rankings.noData')}</p>
             ) : (
-              <ol className="divide-y divide-navy-700">
-                {rows.map((r) => (
-                  <li key={keyOf(r)} className={`flex items-center gap-3 px-4 py-2 text-sm ${isMe(r) ? 'bg-lime-400/10' : ''} ${r.place == null ? 'opacity-60' : ''}`}>
-                    <span className={`w-7 text-center tabular-nums ${r.place != null && r.place <= 3 ? 'text-lime-300 font-bold' : 'text-gray-400'}`}>{r.place == null ? '—' : r.place}</span>
-                    <span className="min-w-0 flex-1 break-words text-gray-100">
-                      {r.full_name}
-                      {isMe(r) && <span className="ml-1.5 text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
-                    </span>
-                    <span className={`w-10 text-right text-xs tabular-nums ${order === 'level' ? 'text-lime-300 font-semibold' : 'text-gray-400'}`}>{fmtLevel(r.level, sport) || '—'}</span>
-                    <span className="text-gray-400 text-xs tabular-nums">{r.wins}-{r.losses}</span>
-                    <span className={`w-12 text-right tabular-nums ${order === 'rate' ? 'text-lime-300 font-semibold' : 'text-gray-400 text-xs'}`}>{r.win_rate}%</span>
-                  </li>
-                ))}
-              </ol>
+              <div className="p-3 sm:p-4 flex flex-col gap-3">
+                {/* Top 1 · 2 · 3 on the podium (cups); everyone else in the list below. */}
+                {top.length > 0 && (
+                  <Podium
+                    className="rounded-xl border border-navy-600 bg-navy-900/50 pt-4"
+                    rows={top.map((r) => ({
+                      key: keyOf(r),
+                      full_name: r.full_name,
+                      avatar_uid: r.avatar_uid,
+                      avatar_v: r.avatar_v,
+                      main: order === 'level' ? fmtLevel(r.level, sport) || '—' : `${r.win_rate}%`,
+                      sub: t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses }),
+                    }))}
+                  />
+                )}
+                {rest.length > 0 && <RankList rows={rest} />}
+                {unranked.length > 0 && (
+                  <div>
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1.5 px-1">{order === 'level' ? t('homeRank.noLevelYet') : t('homeRank.notRanked', { n: data.min_matches })}</p>
+                    <RankList rows={unranked} muted />
+                  </div>
+                )}
+              </div>
             )}
             <div className="px-4 py-2 border-t border-navy-700">
               <Hint text={order === 'level' ? t('homeRank.ruleLevel') : t('homeRank.rule', { n: data.min_matches })} />

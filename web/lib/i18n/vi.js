@@ -6080,6 +6080,8 @@ export const vi = {
     hint: "\"Chưa rõ\" = hồ sơ chưa ghi giới tính.",
   },
   homeRank: {
+    notRanked: "Chưa đủ {n} trận để có hạng",
+    noLevelYet: "Chưa có trình độ",
     noClubs: "Bạn chưa là thành viên CLB / cộng đồng nào. Xin gia nhập một CLB / cộng đồng để xem bảng xếp hạng.",
     wholeCommunity: "Toàn cộng đồng",
     groupLabel: "Nhóm xếp hạng",

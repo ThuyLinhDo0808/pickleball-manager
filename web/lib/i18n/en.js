@@ -6080,6 +6080,8 @@ export const en = {
     hint: "\"Unknown\" = no gender on the profile.",
   },
   homeRank: {
+    notRanked: "Fewer than {n} matches — not ranked yet",
+    noLevelYet: "No level yet",
     noClubs: "You are not a member of any club / community yet. Join one to see its rankings.",
     wholeCommunity: "Whole community",
     groupLabel: "Ranking group",
