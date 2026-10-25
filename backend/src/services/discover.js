@@ -210,8 +210,10 @@ async function relation(clubId, userId) {
   const m = await findClubPerson(clubId, { userId, phone: profile?.phone });
   if (!m) return { state: 'none' };
   if (m.review_started_at) return { state: 'review' };
-  if (m.member_type === 'fixed' && m.is_active !== false && !m.join_requested) return { state: 'member' };
   if (m.join_requested) return { state: 'requested' };
+  // Approved by the Host (any type: cố định / giao lưu / thường xuyên / vãng lai / người mới) =
+  // a member. A guest row the player never asked for (only played a kèo) is not.
+  if (m.is_active !== false && (m.member_type === 'fixed' || (m.user_id === userId && m.account_verified))) return { state: 'member', member_type: m.member_type };
   return { state: 'guest' };
 }
 

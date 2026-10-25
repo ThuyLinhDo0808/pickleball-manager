@@ -641,9 +641,10 @@ router.post('/account/handover/cancel', async (req, res) => {
 // that still runs any must hand them over first (409 must_handover).
 router.delete('/account', async (req, res) => {
   const userId = req.userId;
+  // Typed "delete" to confirm (not the email: an account whose email is wrong could not be deleted).
   const typed = String(req.query.confirm || '').trim().toLowerCase();
-  if (!typed || typed !== String(req.accountEmail || req.hostEmail || '').trim().toLowerCase()) {
-    return res.status(400).json({ error: 'Type your account email to confirm.', code: 'confirm_email' });
+  if (typed !== 'delete') {
+    return res.status(400).json({ error: 'Type "delete" to confirm.', code: 'confirm_delete' });
   }
   try {
     const owned = await handover.ownedBy(userId);
