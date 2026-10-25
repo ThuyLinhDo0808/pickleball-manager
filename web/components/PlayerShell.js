@@ -16,8 +16,8 @@ import BrandLogo from '@/components/BrandLogo';
 // account only plays in opens its member page (/c/<id>) inside this shell.
 const NAV = [
   { href: '/home', key: 'hub.navHome', icon: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10', match: (p) => p === '/home' || p.startsWith('/c/') },
-  { href: '/discover', key: 'hub.navDiscover', icon: 'M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35', match: (p) => p.startsWith('/discover') },
   { href: '/rankings', key: 'hub.navRankings', icon: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3', match: (p) => p.startsWith('/rankings') },
+  { href: '/discover', key: 'hub.navDiscover', icon: 'M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35', match: (p) => p.startsWith('/discover') },
   { href: '/p', key: 'hub.navActivity', icon: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', match: (p) => p === '/p' },
   { href: '/p/profile', key: 'hub.navProfile', icon: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0', match: (p) => p.startsWith('/p/profile') },
 ];

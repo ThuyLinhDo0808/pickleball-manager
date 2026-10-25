@@ -27,7 +27,7 @@ async function ready() {
 function cleanId(raw) {
   const v = String(raw ?? '').trim().toUpperCase();
   if (!v) return null;
-  if (!ID_RE.test(v)) throw httpError('A DUPR ID is 4-10 letters or digits, e.g. YN9N0G.', 400, 'bad_dupr_id');
+  if (!ID_RE.test(v)) throw httpError('A DUPR ID is 4-10 letters or digits.', 400, 'bad_dupr_id');
   return v;
 }
 

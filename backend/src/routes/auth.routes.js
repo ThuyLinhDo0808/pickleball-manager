@@ -8,6 +8,7 @@ const { rateLimit } = require('../services/rateLimit');
 const security = require('../services/accountSecurity');
 const { LEGAL_VERSION } = require('../services/privacy');
 const emailVerify = require('../services/emailVerify');
+const dupr = require('../services/dupr');
 
 const announcements = require('./announcements.routes');
 const { isOwner } = require('../services/owner');
@@ -120,12 +121,20 @@ router.post('/signup', tooMany, mails, async (req, res) => {
   const birth = b.birth_date ? String(b.birth_date) : null;
   if (birth && (!YMD.test(birth) || birth < '1900-01-01' || birth >= today)) return fail('bad_birth_date', 'A valid birth date is required.');
   const region = String(b.region || '').trim().slice(0, 80) || null;
+  // Optional DUPR ID; kept with the account and filled in on the welcome step.
+  let duprId = null;
+  try {
+    duprId = dupr.cleanId(b.dupr_id);
+  } catch (err) {
+    return fail('bad_dupr_id', err.message);
+  }
   if (b.accept_terms !== true) return fail('terms_required', 'Accept the Terms and the Privacy Policy to sign up.');
   try {
     const { data: taken } = await supabase.from('users').select('id').eq('username', username).maybeSingle();
     if (taken) return fail('username_taken', 'This username is taken.', 409);
     const details = { username, gender: b.gender, ...(birth ? { birth_date: birth } : {}), ...(region ? { region } : {}) };
-    const { data: created, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: details });
+    const meta = { ...details, ...(duprId ? { dupr_id: duprId } : {}) };
+    const { data: created, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: meta });
     if (error) {
       if (error.code === 'email_exists' || error.code === 'user_already_exists' || /already (been )?registered|already exists/i.test(error.message || '')) return fail('email_taken', 'This email already has an account.', 409);
       if (error.code === 'weak_password') return fail('weak_password', error.message);

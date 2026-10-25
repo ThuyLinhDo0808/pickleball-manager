@@ -4,6 +4,7 @@ import '@fontsource/plus-jakarta-sans/400.css';
 import '@fontsource/plus-jakarta-sans/500.css';
 import '@fontsource/plus-jakarta-sans/600.css';
 import '@fontsource/plus-jakarta-sans/700.css';
+import './theme.css';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { I18nProvider } from '@/context/I18nContext';
@@ -16,6 +17,8 @@ import ConsentGate from '@/components/ConsentGate';
 import EmailVerifyBanner from '@/components/EmailVerifyBanner';
 import NavTracker from '@/components/NavTracker';
 import MaintenanceGate from '@/components/MaintenanceGate';
+import ThemeSync from '@/components/ThemeSync';
+import { THEME_BOOT } from '@/lib/theme';
 
 export const metadata = {
   title: 'NexusZone',
@@ -32,8 +35,13 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
+      <head>
+        {/* Light / dark before the first paint (Hồ sơ → Giao diện). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body>
+        <ThemeSync />
         <AuthProvider>
           <I18nProvider>
             <WorkspaceProvider>

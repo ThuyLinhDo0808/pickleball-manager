@@ -68,8 +68,56 @@ async function markVerified(userId) {
   forget(userId);
 }
 
-// Email the 6-digit code (and a sign-in link to /verify-email, for templates that show it).
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+// The code email, laid out like other account-code emails: one card with the title, the
+// code in a large spaced box, how long it lasts, what to do if it was not you, and a small
+// footer saying why the email was sent. Inline styles and tables only (email clients).
+// docs/email-templates/verify-code.html is the same layout with {{ .Token }} for Supabase.
+function codeEmail(code) {
+  const c = esc(code);
+  const subject = 'Mã xác nhận NexusZone của bạn';
+  const text =
+    `Mã xác nhận NexusZone của bạn\n\n${code}\n\n` +
+    `Nhập mã này trên NexusZone để hoàn tất xác nhận email. Mã sẽ hết hạn sau vài phút.\n\n` +
+    `Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này. Không ai có thể dùng email của bạn nếu không có mã này.\n\n` +
+    `Đây là email tài khoản từ NexusZone, được gửi vì địa chỉ này vừa được dùng để đăng ký trên NexusZone.`;
+  const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
+<body style="margin:0;padding:0;background:#f3f4f6">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6"><tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#0b1220">
+<tr><td align="center" style="padding:36px 32px 8px;font-size:15px;font-weight:800;letter-spacing:2px;color:#0b1220">NEXUSZONE</td></tr>
+<tr><td align="center" style="padding:8px 32px 0;font-size:26px;line-height:1.3;font-weight:700">Mã xác nhận NexusZone của bạn</td></tr>
+<tr><td align="center" style="padding:24px 32px">
+<div style="display:inline-block;background:#f1f3f5;border-radius:12px;padding:16px 28px;font-size:36px;font-weight:700;letter-spacing:10px;color:#0b1220;font-family:'Segoe UI',Helvetica,Arial,sans-serif">${c}</div>
+</td></tr>
+<tr><td align="center" style="padding:0 32px 20px;font-size:16px;line-height:1.6;color:#1f2937">Nhập mã này trên NexusZone để hoàn tất xác nhận email. Mã sẽ hết hạn sau vài phút.</td></tr>
+<tr><td align="center" style="padding:0 32px 32px;font-size:14px;line-height:1.6;color:#6b7280">Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này. Không ai có thể dùng email của bạn nếu không có mã này.</td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px"><tr><td align="center" style="padding:20px 32px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#9ca3af">Đây là email tài khoản từ NexusZone. Email được gửi vì địa chỉ này vừa được dùng để đăng ký trên NexusZone.</td></tr></table>
+</td></tr></table>
+</body></html>`;
+  return { subject, text, html };
+}
+
+// Our own email (Resend) that shows only the code: Supabase makes the one-time code
+// (generateLink, the same code verifyOtp checks), we send it. Returns false when there is
+// no mail sender or it failed, so Supabase's own email is used instead.
+async function mailCode(email) {
+  if (!process.env.RESEND_API_KEY) return false;
+  const { data, error } = await supabase.auth.admin.generateLink({ type: 'magiclink', email });
+  const code = data?.properties?.email_otp;
+  if (error || !/^\d{6}$/.test(String(code || ''))) return false;
+  const { subject, text, html } = codeEmail(code);
+  const r = await require('./accountSecurity').sendMail(email, subject, text, html);
+  if (r !== 'sent') console.error('verify code mail', r);
+  return r === 'sent';
+}
+
+// Email the 6-digit code. With our own mail sender the email shows only the code; without
+// it, Supabase's "Magic Link" template is used (it must contain {{ .Token }}).
 async function sendCode(email, origin) {
+  if (await mailCode(email).catch(() => false)) return;
   const { error } = await authClient().auth.signInWithOtp({
     email,
     options: { shouldCreateUser: false, ...(origin ? { emailRedirectTo: `${origin}/verify-email` } : {}) },
@@ -104,4 +152,4 @@ function signedInByEmail(accessToken) {
   }
 }
 
-module.exports = { MIGRATION, GRACE_HOURS, authClient, unverifiedSince, status, assertCanRegister, assertVerified, markVerified, sendCode, verifyCode, signedInByEmail, forget };
+module.exports = { MIGRATION, GRACE_HOURS, authClient, unverifiedSince, status, assertCanRegister, assertVerified, markVerified, sendCode, verifyCode, signedInByEmail, forget, codeEmail };

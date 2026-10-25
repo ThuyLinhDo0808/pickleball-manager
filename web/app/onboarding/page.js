@@ -8,6 +8,8 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import Hint from '@/components/ui/Hint';
+import DateInput from '@/components/ui/DateInput';
+import DuprIdGuide from '@/components/DuprIdGuide';
 import UiIcon from '@/components/ui/UiIcon';
 
 // Only pickleball is offered for now: no sport step (badminton is hidden everywhere).
@@ -64,7 +66,7 @@ export default function OnboardingPage() {
         phone: x.phone || p.phone || '',
         gender: x.gender || p.gender || me?.gender || '',
         birth_date: x.birth_date || p.birth_date || me?.birth_date || '',
-        dupr_id: x.dupr_id || p.dupr_id || '',
+        dupr_id: x.dupr_id || p.dupr_id || me?.signup_dupr_id || '',
       }));
     });
   }, [user]);
@@ -121,6 +123,7 @@ export default function OnboardingPage() {
             <label className="block">
               <span className="text-xs text-gray-300">{t('onb.fullName')} <span className="text-lime-400">*</span></span>
               <input className="input mt-1" required maxLength={120} value={f.full_name} onChange={set('full_name')} />
+              <span className="block mt-1 text-sm text-gray-400">{t('onb.fullNameNote')}</span>
             </label>
             <label className="block">
               <span className="text-xs text-gray-300">{t('onb.phone')} <span className="text-lime-400">*</span></span>
@@ -129,7 +132,7 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-xs text-gray-300">{t('onb.birthDate')} <span className="text-lime-400">*</span></span>
-                <input className="input mt-1" type="date" required max={new Date().toISOString().slice(0, 10)} value={f.birth_date || ''} onChange={set('birth_date')} />
+                <DateInput className="input mt-1" required min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={f.birth_date || ''} onChange={set('birth_date')} />
               </label>
               <label className="block">
                 <span className="text-xs text-gray-300">{t('onb.gender')}</span>
@@ -144,9 +147,12 @@ export default function OnboardingPage() {
             {/* DUPR ID (optional): the club links the verified DUPR rating with it. No
                 self-rated level here — the rating comes from DUPR. */}
             <label className="block border-t border-navy-700 pt-3">
-              <span className="text-xs text-gray-300">{t('onb.duprId')} <Hint inline text={t('onb.duprIdHint')} /></span>
+              <span className="text-xs text-gray-300">{t('onb.duprId')}</span>
               <input className="input mt-1 font-mono uppercase placeholder:normal-case" maxLength={10} autoComplete="off" value={f.dupr_id} onChange={(e) => setF((x) => ({ ...x, dupr_id: e.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase() }))} placeholder={t('onb.duprIdPh')} />
             </label>
+            <p className="-mt-1 text-sm text-gray-400">
+              <DuprIdGuide />
+            </p>
             {error && <p className="text-red-300 text-sm">{error}</p>}
           </form>
         )}

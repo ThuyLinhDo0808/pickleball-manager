@@ -1010,7 +1010,7 @@ export default function Landing() {
   };
 
   return (
-    <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/sign-in'])} className={`lp-root relative bg-navy-950 text-gray-200 ${deck ? 'lp-deck h-[100svh] overflow-hidden' : 'overflow-x-hidden'}`}>
+    <div ref={rootRef} onPointerMove={onMove} onClickCapture={curtainClick(leave, ['/sign-in'])} className={`lp-root theme-dark relative bg-navy-950 text-gray-200 ${deck ? 'lp-deck h-[100svh] overflow-hidden' : 'overflow-x-hidden'}`}>
       {preload && <Preloader onDone={preloadDone} />}
       <Stage scene={SCENES[idx]} idx={idx} ghost={pad(idx + 1)} />
       {deck && sweep > 0 && <span key={sweep} className={`lp-sweep ${dir > 0 ? 'down' : 'up'}`} aria-hidden="true" />}

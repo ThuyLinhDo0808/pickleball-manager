@@ -31,15 +31,23 @@ const MY_TONE = {
 
 const PHASES = ['done', 'live', 'soon', 'later'];
 const SOON_DAYS = 7;
-// Where a session is in time (the device's clock): over, on now, within SOON_DAYS, or later.
-// No end time = 2 hours; an end before the start = past midnight.
+// Where a session is in time (the device's clock): over, today (not over yet), within the next
+// SOON_DAYS days, or later. No end time = 2 hours; an end before the start = past midnight.
+const ymdOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const runningNow = (e, now) => {
+  const at = (hm) => new Date(`${e.event_date}T${String(hm).slice(0, 5)}:00`);
+  const start = at(e.start_time || '00:00');
+  let end = e.end_time ? at(e.end_time) : new Date(start.getTime() + (e.start_time ? 2 : 24) * 3600e3);
+  if (end <= start) end = new Date(end.getTime() + 86400e3);
+  return now >= start && now < end;
+};
 function phaseOf(e, now) {
   const at = (hm) => new Date(`${e.event_date}T${String(hm).slice(0, 5)}:00`);
   const start = at(e.start_time || '00:00');
   let end = e.end_time ? at(e.end_time) : new Date(start.getTime() + (e.start_time ? 2 : 24) * 3600e3);
   if (end <= start) end = new Date(end.getTime() + 86400e3);
   if (now >= end) return 'done';
-  if (now >= start) return 'live';
+  if (e.event_date <= ymdOf(now)) return 'live'; // "Hôm nay" (also a session still on from last night)
   return start - now <= SOON_DAYS * 86400e3 ? 'soon' : 'later';
 }
 
@@ -188,7 +196,7 @@ export default function MemberClubPage() {
                 </div>
                 <div className="min-w-0 flex-1 p-3">
                   <div className="text-white font-semibold break-words">
-                    {shownPhase === 'live' && <span className="mr-1.5 rounded-full bg-red-500/20 px-2 py-0.5 text-[11px] font-bold text-red-200 align-middle">● {t('hub.phase_live')}</span>}
+                    {runningNow(e, now) && <span className="mr-1.5 rounded-full bg-red-500/20 px-2 py-0.5 text-[11px] font-bold text-red-200 align-middle">● {t('hub.live_now')}</span>}
                     {e.title}
                   </div>
                   <div className="text-gray-400 text-xs break-words">

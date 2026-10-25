@@ -171,7 +171,7 @@ export default function QuickBookPage() {
       router.replace(`/g/b/${r.token}`);
     } catch (err) {
       const p = err.payload || {};
-      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : p.code === 'bad_dupr_id' ? t('dupr.idOptional') : p.code === 'phone_required' || p.code === 'phone_or_contact' ? t('quick.phoneOrHost') : err.message);
+      setError(p.code === 'not_enough_places' ? t('quick.notEnough', { n: p.free ?? 0 }) : p.code === 'pass_expired' ? t('quick.passExpired') : p.code === 'club_blocked' || p.code === 'club_suspended' ? t('quick.blocked') : p.code === 'bad_dupr_id' ? t('onb.errDuprId') : p.code === 'phone_required' || p.code === 'phone_or_contact' ? t('quick.phoneOrHost') : err.message);
     } finally {
       setBusy(false);
     }

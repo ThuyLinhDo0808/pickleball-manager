@@ -11,7 +11,7 @@ import { api } from '@/lib/api';
 // checks that person is real and approves, then the account can be deleted.
 export default function DeleteAccount({ bare = false } = {}) {
   const { t } = useI18n();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -20,7 +20,6 @@ export default function DeleteAccount({ bare = false } = {}) {
   const [error, setError] = useState('');
   const [to, setTo] = useState('');
   const [note, setNote] = useState('');
-  const email = user?.email || '';
 
   async function load() {
     setPreview(await api.get('/api/host/account/delete-preview'));
@@ -91,7 +90,7 @@ export default function DeleteAccount({ bare = false } = {}) {
 
   const h = preview?.handover || null;
   const owns = !!preview?.must_handover;
-  const matches = typed.trim().toLowerCase() === email.toLowerCase() && !!email;
+  const matches = typed.trim().toLowerCase() === 'delete';
   return (
     <div className={bare ? '' : 'card mt-4 border-red-500/40'}>
       {!bare && (
@@ -147,8 +146,8 @@ export default function DeleteAccount({ bare = false } = {}) {
                 {preview.linked_memberships > 0 && <li className="text-gray-300">{t('deleteAccount.linked', { n: preview.linked_memberships })}</li>}
               </ul>
               <p className="text-gray-400 text-xs">{t('deleteAccount.keepsClubs')}</p>
-              <label htmlFor="del-acc-email" className="text-gray-300">{t('deleteAccount.type', { email })}</label>
-              <input id="del-acc-email" className="input" type="email" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={email} />
+              <label htmlFor="del-acc-email" className="text-gray-300">{t('deleteAccount.type')}</label>
+              <input id="del-acc-email" className="input" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="delete" />
               {error && <p className="text-red-400">{error}</p>}
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" className="btn-secondary" disabled={busy} onClick={() => setOpen(false)}>{t('common.cancel')}</button>

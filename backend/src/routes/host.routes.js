@@ -40,7 +40,9 @@ router.get('/me', async (req, res) => {
   const { data: user, error: uErr } = await supabase.from('users').select('*').eq('id', req.hostId).single();
   if (uErr) return dbError(res, uErr);
   const usage = await getUsage(req.hostId).catch(() => null);
-  res.json({ ...user, usage });
+  // The DUPR ID typed at sign-up, until the welcome step saves it to the player profile.
+  const signupDupr = !user.onboarded_at && /^[A-Z0-9]{4,10}$/.test(String(req.authMeta?.dupr_id || '')) ? req.authMeta.dupr_id : null;
+  res.json({ ...user, usage, signup_dupr_id: signupDupr });
 });
 
 router.get('/subscription', async (req, res) => {
@@ -641,9 +643,10 @@ router.post('/account/handover/cancel', async (req, res) => {
 // that still runs any must hand them over first (409 must_handover).
 router.delete('/account', async (req, res) => {
   const userId = req.userId;
+  // Typed "delete" to confirm (not the email: an account whose email is wrong could not be deleted).
   const typed = String(req.query.confirm || '').trim().toLowerCase();
-  if (!typed || typed !== String(req.accountEmail || req.hostEmail || '').trim().toLowerCase()) {
-    return res.status(400).json({ error: 'Type your account email to confirm.', code: 'confirm_email' });
+  if (typed !== 'delete') {
+    return res.status(400).json({ error: 'Type "delete" to confirm.', code: 'confirm_delete' });
   }
   try {
     const owned = await handover.ownedBy(userId);
