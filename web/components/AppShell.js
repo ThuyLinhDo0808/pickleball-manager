@@ -12,7 +12,6 @@ import ContextSwitcher from '@/components/ContextSwitcher';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import SignupBell from '@/components/SignupBell';
 import SchemaBanner from '@/components/SchemaBanner';
-import BirthdayBanner from '@/components/BirthdayBanner';
 import { api } from '@/lib/api';
 import LockedFeature from '@/components/LockedFeature';
 import PlanLimitNotice from '@/components/PlanLimitNotice';
@@ -144,7 +143,6 @@ NAV_BY_WORKSPACE.community = [
     icon: 'chart',
     children: [
       { href: '/club/business', key: 'nav.bizPlayers', icon: 'members', exact: true },
-      { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
     ],
@@ -654,7 +652,6 @@ export default function AppShell({ children, back }) {
               </div>
             )}
             <UpgradeModal open={renewOpen} onClose={() => setRenewOpen(false)} product={mode === 'community' ? 'social_manager' : 'tier'} />
-            {scoped && clubRole !== 'finance' && <BirthdayBanner clubId={club?.id} />}
             {back !== false && !TOP_LEVEL.has(pathname) && <BackButton fallback={typeof back === 'string' ? back : backFallback(pathname)} />}
             {children}
           </>

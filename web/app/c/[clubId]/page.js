@@ -10,7 +10,6 @@ import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import ClubLeaderboard from '@/components/ClubLeaderboard';
-import RaceBoard from '@/components/RaceBoard';
 import LeaveClub from '@/components/LeaveClub';
 import { useI18n } from '@/context/I18nContext';
 import { translate } from '@/lib/i18n/core';
@@ -153,7 +152,6 @@ export default function MemberClubPage() {
           { key: 'pass', label: t('hub.tabPass'), icon: 'ticket' },
           { key: 'history', label: t('hub.tabHistory'), icon: 'clock', count: data.history.length },
           { key: 'rankings', label: t('hub.tabRankings'), icon: 'medal' },
-          ...(data.club.kind === 'community' ? [{ key: 'race', label: t('race.tab'), icon: 'trophy' }] : []),
         ]}
       />
 
@@ -307,7 +305,6 @@ export default function MemberClubPage() {
         </section>
       )}
 
-      {tab === 'race' && <RaceBoard clubId={clubId} />}
       {tab === 'rankings' && <ClubLeaderboard statsUrl={`/api/player/clubs/${clubId}/rankings`} clubName={data.club.name} />}
 
       <p className="text-center mt-6">

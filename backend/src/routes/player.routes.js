@@ -829,7 +829,7 @@ player.get('/me', async (req, res) => {
     const form = Object.values(months)
       .sort((a, b) => a.month.localeCompare(b.month))
       .slice(-12)
-      .map((s) => ({ ...s, win_rate: Math.round((1000 * s.wins) / s.matches) / 10, diff: s.points_for - s.points_against }));
+      .map((s) => ({ ...s, win_rate: Math.round((100 * s.wins) / s.matches), diff: s.points_for - s.points_against }));
 
     // DUPR over time (SCD2 history): the player's own profile + what their clubs recorded.
     const duprFilters = [`and(entity.eq.player,entity_id.eq.${uid})`];
@@ -855,7 +855,6 @@ player.get('/me', async (req, res) => {
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
-      vouchers: await require('../services/race').vouchersOf(uid).catch(() => []),
       notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
       // DUPR ratings from the clubs' DUPR imports (null before the migration).
@@ -1144,20 +1143,6 @@ player.get('/clubs/:clubId', async (req, res) => {
   }
 });
 
-// Top tháng of a community, as a member sees it (names and points only).
-player.get('/clubs/:clubId/race', async (req, res) => {
-  try {
-    const { clubId } = req.params;
-    if (!isUuid(clubId)) return notFound(res, 'Club');
-    const { data: me } = await supabase.from('club_members').select('id, clubs(*)').eq('club_id', clubId).eq('user_id', req.hostId).maybeSingle();
-    if (!me || !me.clubs) return notFound(res, 'Club');
-    const race = require('../services/race');
-    if (!(await race.ready())) return res.json({ enabled: false });
-    res.json({ ...(await race.playerView(me.clubs, req.hostId)), vouchers: await race.vouchersOf(req.hostId, clubId) });
-  } catch (err) {
-    fail(res, err);
-  }
-});
 
 // The club's leaderboard as a member sees it (same as the managers' page, read-only),
 // with my own row marked.

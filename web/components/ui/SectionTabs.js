@@ -18,7 +18,6 @@ const GROUPS = {
   stats: [
     { href: '/club/attendance', key: 'nav.memberStats', icon: 'members', match: (p) => p.startsWith('/club/attendance') },
     { href: '/club/rankings', key: 'nav.rankings', icon: 'medal', match: (p) => p.startsWith('/club/rankings') },
-    { href: '/club/race', key: 'nav.race', icon: 'trophy', match: (p) => p.startsWith('/club/race'), community: true },
     { href: '/club/dupr', key: 'nav.dupr', icon: 'chart', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
     { href: '/club/reviews', key: 'nav.reviews', icon: 'star', match: (p) => p.startsWith('/club/reviews') },
     { href: '/club/insights', key: 'nav.insights', icon: 'chart', match: (p) => p.startsWith('/club/insights') },
@@ -29,7 +28,6 @@ const GROUPS = {
 const COMMUNITY_GROUPS = {
   stats: [
     { href: '/club/business', key: 'nav.bizPlayers', icon: 'chart', match: (p) => p === '/club/business' },
-    { href: '/club/race', key: 'nav.race', icon: 'trophy', match: (p) => p.startsWith('/club/race') },
     { href: '/club/dupr', key: 'nav.dupr', icon: 'chart', match: (p) => p.startsWith('/club/dupr'), sport: 'pickleball' },
     { href: '/club/reviews', key: 'nav.reviews', icon: 'star', match: (p) => p.startsWith('/club/reviews') },
   ],

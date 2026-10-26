@@ -20,7 +20,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
-import { VoucherChip } from '@/components/RaceBoard';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
@@ -127,15 +126,6 @@ export default function PlayerHome() {
         <Stat label={t('player.eventsPlayed')} value={me.totals.events} />
         <Stat label={t('player.winRate')} value={me.totals.matches ? `${Math.round((100 * me.totals.wins) / me.totals.matches)}%` : '—'} />
       </div>
-
-      {/* Top-month prizes still to use (or used / expired lately). */}
-      {me.vouchers?.some((v) => v.state === 'available') && (
-        <section className="card mb-4 border-amber-300/40">
-          <h2 className="text-amber-200 font-semibold mb-2 flex items-center gap-2"><UiIcon name="gift" className="w-4 h-4" />{t('race.myVouchers')}</h2>
-          <ul className="flex flex-col gap-2">{me.vouchers.filter((v) => v.state === 'available').map((v) => <VoucherChip key={v.id} v={v} />)}</ul>
-          <p className="text-gray-500 text-xs mt-2">{t('race.autoApply')}</p>
-        </section>
-      )}
 
       {me.surveys_due?.length > 0 && (
         <section className="card mb-4 border-lime-400/40">

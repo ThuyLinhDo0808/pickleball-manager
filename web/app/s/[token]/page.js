@@ -110,13 +110,10 @@ export default function SurveyPage() {
 }
 
 // Communities: why join (shown from the invitation after the review). Only what the app
-// really gives: the Top-month race (statistics) when the Host runs it, the community
-// page, membership plans, and the Host's member perks.
+// really gives: the community page, membership plans, and the Host's member perks.
 function JoinWhy({ data, onClose, onJoin }) {
   const { t } = useI18n();
-  const r = data.race;
   const items = [
-    ...(r ? [['trophy', t('survey.why_race_t'), t('survey.why_race', { min: r.min_sessions })]] : []),
     ['calendar', t('survey.why_page_t'), t('survey.why_page')],
     ['ticket', t('survey.why_plan_t'), t('survey.why_plan')],
     ['bolt', t('survey.why_perk_t'), t('survey.why_perk')],

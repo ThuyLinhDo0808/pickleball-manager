@@ -209,7 +209,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
             </div>
           ) : (
             <div className="table-wrap">
-              <table className="w-full text-sm grid-table">
+              <table className="w-full text-sm rank-table">
                 <thead>
                   <tr className="text-left">
                     <th className="w-12 text-center">#</th>
@@ -233,6 +233,8 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
                         <span className="flex items-center gap-2">
                           <Avatar uid={r.avatar_uid} v={r.avatar_v} name={r.full_name} size={26} />
                           <span className="text-white">{r.full_name}</span>
+                          {/* On the member list or not (a quick sign-up / a name typed into a match). */}
+                          <span className={`text-[10px] rounded-full px-1.5 py-0.5 whitespace-nowrap ${r.kind === 'guest' ? 'bg-navy-700 text-gray-300' : 'bg-sky-400/15 text-sky-200'}`}>{t(r.kind === 'guest' ? 'rankings.tagGuest' : 'rankings.tagMember')}</span>
                           {r.club_member_id === meId && <span className="text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
                         </span>
                       </td>

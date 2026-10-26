@@ -124,7 +124,6 @@ async function surveyView(token) {
     club_name: event.clubs?.name || null,
     // Communities invite to join after the review, with the reasons (Top tháng and its prizes).
     community: event.clubs?.kind === 'community',
-    race: event.clubs?.race_enabled ? { min_sessions: require('./race').MIN_SESSIONS, rewards: require('./race').settingsOf(event.clubs).rewards } : null,
     sport,
     player_name: p.full_name,
     open: started,

@@ -582,3 +582,19 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
 .capitalize { text-transform: none; }
 .capitalize::first-letter { text-transform: uppercase; }
 span.capitalize:not(.block) { display: inline-block; }
+
+/* Ranking tables (bảng xếp hạng): a full grid — every cell boxed, header shaded — so the
+   columns line up and each row reads as one line across. Numbers right-aligned by .num. */
+.rank-table {
+  @apply w-full border-collapse;
+}
+.rank-table th,
+.rank-table td {
+  @apply border border-navy-600 px-3 py-2 align-middle;
+}
+.rank-table th {
+  @apply bg-navy-900 text-gray-300 text-xs font-semibold text-left whitespace-nowrap;
+}
+.rank-table tbody tr:nth-child(even) td {
+  @apply bg-navy-900/30;
+}

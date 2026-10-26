@@ -194,7 +194,7 @@ export default function CommunitySettingsPage() {
                 <NumberField min={0} max={30} value={s.regular.min} label={t('cpanel.regularTitle')} onChange={(v) => set({ regular: { ...s.regular, min: v } })} unit={t('cpanel.regularUnit')} />
               </span>
             </Row>
-            <Row title={t('cpanel.auto')} desc={t('cpanel.autoHint')}>
+            <Row title={t('cpanel.auto')} desc={t('cpanel.autoHint', { days: s.active_days })}>
               <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                 <Toggle checked={s.regular.auto} onChange={(v) => set({ regular: { ...s.regular, auto: v } })} label={s.regular.auto ? t('cpanel.on') : t('cpanel.off')} />
                 <button type="button" className="btn-secondary text-sm" onClick={runNow}><UiIcon name="refresh" className="w-4 h-4" />{t('cpanel.runNow')}</button>

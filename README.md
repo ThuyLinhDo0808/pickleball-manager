@@ -122,7 +122,6 @@ Chỉ thành viên (tài khoản đã liên kết với CLB) mới mở được
 - **Lịch CLB**: chia 4 nhóm bằng nút chọn — **Đã xong** (các buổi kết thúc trong 30 ngày qua, kèm trạng thái của bạn: *Đã chơi / Vắng…*), **Hôm nay** (mọi buổi trong hôm nay chưa kết thúc; buổi đang trong giờ chơi có nhãn đỏ *● Đang diễn ra*), **Sắp diễn ra** (các buổi trong 7 ngày tới, không tính hôm nay), **Chưa diễn ra** (xa hơn 7 ngày); mỗi nút có số buổi, mặc định mở nhóm *Hôm nay* (nếu có) rồi tới *Sắp diễn ra*. Buổi không ghi giờ kết thúc tính là 2 tiếng. Mỗi buổi: số chỗ, trạng thái của bạn (✓ đã đăng ký…), nút **Đăng ký** / **Vào danh sách chờ** (mở trang đăng ký `/e/…`). Buổi CLB không mở đăng ký qua link hiện "CLB tự xếp danh sách".
 - **Gói của tôi**: các kỳ gói, đã đóng / chưa đóng, đã dùng x/y buổi.
 - **Lịch sử**: các buổi đã qua (đã chơi / vắng / huỷ muộn) kèm tổng.
-- **Top tháng** (chỉ ở **cộng đồng**): bảng *Cuộc đua Top tháng* của tháng đang chạy (xem [5.0b](#50b-cuộc-đua-top-tháng--voucher-tự-động)) — luật tính điểm, quà, điểm của từng người (dòng của bạn có nhãn *bạn*) và voucher bạn đang có. Cộng đồng chưa bật thì báo *chưa bật Cuộc đua Top tháng*.
 - **Bảng xếp hạng**: giống trang Bảng xếp hạng của quản lý (chỉ xem) — 3 bảng *Tất cả / Thành viên cố định / Thành viên giao lưu*, kỳ *Ngày / Tháng / Quý / Năm / Tất cả*, bục top 3, các giải (tỷ lệ thắng, hiệu số, chăm chỉ, mâm xôi), **Số tuần giữ Top 1** và bảng đầy đủ; dòng của bạn có nhãn *Bạn*.
 - **Rời CLB / Rời cộng đồng** (nút đỏ cuối trang): hỏi lại một lần, có ô *Lý do* (không bắt buộc), nhắc nếu bạn còn nợ. Không rời được khi: bạn là người quản lý nơi đó (chuyển giao trước), đang ở **Danh sách đen** (chờ Ban quản trị xử lý), hoặc còn **đăng ký buổi sắp tới** (danh sách các buổi hiện ra — huỷ trước để áp dụng đúng chính sách huỷ). Rời xong: không còn thấy trang này / lịch thành viên, gói còn lại không dùng được. Nếu bạn từng chơi hoặc có gói, CLB vẫn giữ một dòng (đã ngừng hoạt động, bỏ liên kết tài khoản và không tự nối lại theo SĐT) để giữ lịch sử và công nợ; chưa từng chơi thì dòng bị xoá hẳn. Host nhận thông báo webhook `member_left`. Muốn quay lại thì *Xin gia nhập* như người mới.
 
@@ -269,7 +268,7 @@ Trên điện thoại các mục nằm trong nhóm *Thành viên* của bảng *
 **Ngày sinh & thâm niên:**
 - Cột **Ngày sinh** (dd/mm/yyyy; thành viên cũ mới có năm sinh hiện "1990 · thiếu ngày" để Host bổ sung) và **Vào CLB** (tháng/năm + thâm niên, VD "2 năm 3 tháng"). Lấy từ hồ sơ người chơi; Host sửa trong chi tiết thành viên. Thành viên mới mặc định vào CLB tháng duyệt.
 - **Nhắc chưa đủ thông tin (chỉ thành viên chính thức đang hoạt động):** ai còn thiếu **ngày sinh đầy đủ, số điện thoại hoặc giới tính** thì **chính ô bị thiếu** hiện nhãn vàng *Thiếu* (cột *Giới tính*, *Ngày sinh*, *Số điện thoại*) — không còn nhãn chen cạnh tên. Trên điện thoại, thẻ của người đó có dòng *Thiếu: ngày sinh, số điện thoại…*. Đầu tab *Thành viên cố định* hiện khung *"N thành viên chính thức chưa đủ thông tin"* — bấm để **lọc ra** những người đó, bấm lần nữa để hiện tất cả. Trong chi tiết thành viên cũng ghi rõ thiếu mục nào. Thành viên giao lưu / khách không bị nhắc (CLB chỉ tổ chức sinh nhật cho thành viên chính thức).
-- Người có **sinh nhật trong tháng** hiện, và đầu trang có dòng "Sinh nhật tháng này" để CLB chuẩn bị quà.
+- Người có **sinh nhật trong tháng** hiện, và đầu trang có dòng "Sinh nhật tháng này" để CLB chuẩn bị quà. **Thanh báo sinh nhật** (hôm nay / sắp tới, có nút ×) chỉ hiện ở **trang Thành viên**, không hiện ở các trang khác.
 - **Nhắc sinh nhật trên web:** ở đầu mọi trang của Host (Club) hiện khung khi có thành viên đang hoạt động sinh nhật **hôm nay** (kèm "tròn N tuổi") hoặc **trong 3 ngày tới** ("ngày mai", "còn 2/3 ngày" + ngày). Bấm × để ẩn đến hết hôm nay. Chỉ tính thành viên đã có ngày sinh đầy đủ.
 - Bảng thành viên chỉ để xem thông tin; số buổi còn lại xem ở **Thống kê → Thống kê thành viên**.
 
@@ -399,9 +398,12 @@ Mục *Trận đấu* đã được **bỏ khỏi Thống kê của CLB**. Trậ
 
 ### 4.7. Bảng xếp hạng & vinh danh (`/club/rankings`)
 - **3 tab**: **Tất cả** (mọi người), **Thành viên cố định** và **Thành viên giao lưu** (khách).
+- **Ai được vào bảng:** mọi người từng chơi trận có tỷ số — thành viên trong danh sách (nhãn **Thành viên**) *và* người **không có trong danh sách thành viên** (đăng ký nhanh, Host gõ tên vào trận; nhãn **Khách**). Người ngoài danh sách được **gộp theo DUPR ID** giữa các kèo (cùng ID = một người; ID trùng với một thành viên thì tính cho thành viên đó); chưa có ID thì gộp theo tên.
+- **Tỷ lệ thắng** làm tròn **số nguyên** (57% thay vì 57.1%) ở mọi bảng.
+- **Bảng kẻ ô đầy đủ**: mọi bảng xếp hạng (CLB / cộng đồng, Bảng xếp hạng buổi, Thách thức, toàn web, bảng ở trang chủ người chơi) kẻ đủ dòng ngang / dọc, tiêu đề nền sẫm, số căn phải cùng cột.
 - **Cách xếp hạng:** theo **tỷ lệ thắng** (số trận thắng / tổng số trận); bằng nhau thì ai đánh **nhiều trận hơn** xếp trên, rồi tới **hiệu số**. Phải có **ít nhất N trận trong kỳ** mới có hạng — N do **Host đặt** ngay trên trang (ô *Từ N trận*, 1–50, mặc định 3; chủ CLB / đồng quản trị). Người chưa đủ vẫn hiện cuối bảng nhưng **mờ, cột hạng ghi "—"**, không lên bục và không nhận giải.
 - **CLB chỉ tính buổi chơi chính:** bảng xếp hạng nội bộ của **CLB** chỉ lấy trận trong **lịch chơi hàng tuần** (buổi tạo bằng *Tạo lịch cố định*). Kèo CLB mở thêm vào ngày khác được coi là **xé vé** — không tính vào hạng CLB. Vd anh A mua vé tháng ca 17h–20h thứ 7 của CLB B: chỉ trận ca thứ 7 tính hạng CLB B; anh A chơi buổi khác là xé vé. **Cộng đồng xé vé** thì mọi kèo đều tính (đã là DUPR, mọi trận đều có tỷ số).
-- **Số tuần giữ Top 1** (theo tab đang xem): mỗi tuần (thứ 2 – chủ nhật) có trận được tính một bảng xếp hạng riêng của tuần đó; ai đứng đầu tuần được tính **1 tuần Top 1** (bằng nhau hoàn toàn về số trận thắng, tỷ lệ thắng và hiệu số thì cùng được tính). Tính từ trận đầu tiên của CLB, không phụ thuộc kỳ đang chọn; tuần không có trận không tính. Hiện 6 người nhiều tuần nhất, **chuỗi dài nhất** (số tuần liên tiếp) và nhãn *Đang giữ* cho người đứng đầu tuần gần nhất; bảng xếp hạng có thêm cột *Tuần Top 1*, file Excel có thêm sheet *Weeks at No. 1*.
+- **Số tuần giữ Top 1** (theo tab đang xem): mỗi tuần (thứ 2 – chủ nhật) có trận được tính một bảng riêng **theo đúng luật của bảng xếp hạng**: tỉ lệ thắng cao nhất trong số người **đủ số trận tối thiểu trong tuần đó** (bằng nhau thì xét số trận, rồi hiệu số; bằng hệt thì cùng được tính). Ai đứng đầu tuần được **1 tuần Top 1**; tuần không ai đủ số trận thì không ai được tính. Tính từ trận đầu tiên của CLB, không phụ thuộc kỳ đang chọn. Hiện 6 người nhiều tuần nhất, **chuỗi dài nhất** (số tuần liên tiếp) và nhãn *Đang giữ* cho người đứng đầu tuần gần nhất.
 - **Bục vinh quang** cho giải đấu: Vô địch, Á quân và **đồng hạng Ba** (2 đội thua bán kết).
 - Xếp hạng theo kỳ **Ngày / Tháng / Quý / Năm / Tất cả**, có nút chuyển kỳ trước/kỳ sau.
 - **Top 3 của kỳ** hiện dạng bục (ảnh/chữ cái đầu, huy chương, tỷ lệ thắng, thắng–thua, hiệu số). Bảng xếp hạng có cột tỷ lệ thắng kèm thanh biểu đồ nhỏ.
@@ -689,6 +691,8 @@ Một Host có thể điều hành **nhiều cụm sân xé vé**; mỗi cụm s
 - **Duyệt xin gia nhập** (cả CLB lẫn cộng đồng): ô *Hình thức* để trống (**--- Chọn hình thức**) và nút **Duyệt** chỉ bấm được khi Host đã chọn *Thường xuyên* / *Vãng lai* (CLB: *Cố định* / *Giao lưu*). Chưa chọn thì người đó **vẫn ở Danh sách chờ** — không bị đưa vào Danh sách đen. (API: duyệt mà không có `member_type` fixed/guest → `400 type_required`.) Danh sách đen chỉ dành cho người bị xử lý.
 - **Bảng điều khiển cộng đồng** (`/club/community-settings`, menu *Cài đặt → Bảng điều khiển*, hoặc nút **Bảng điều khiển** trên trang Thành viên; chủ cộng đồng và đồng quản trị sửa được). Trang chia **3 nhóm**: **Thành viên** (thường xuyên / vãng lai, tự chuyển, hoạt động) · **Đăng ký kèo** (tự xác nhận theo DUPR, luật hoàn tiền) · **Trình độ & xếp hạng** (cách chia trình độ, bảng xếp hạng). Máy tính có mục lục nhóm bên trái (luôn hiện khi cuộn); điện thoại có hàng nút nhảy tới nhóm ở đầu trang. Mỗi cài đặt là một dòng: tên + giải thích bên trái, ô chỉnh bên phải. Một nút **Lưu cài đặt** ở thanh dưới cùng; thanh báo *Có thay đổi chưa lưu* khi bạn sửa mà chưa lưu.
   - **Bảng xếp hạng** (nhóm *Trình độ & xếp hạng*): bảng xếp hạng cộng đồng luôn có tab **Toàn cộng đồng**; chọn thêm: *Chỉ toàn cộng đồng* · *Theo mức trình độ* (mỗi mức ở trên là một tab — cần đặt mức trình độ trước) · *Theo khoảng DUPR tự đặt* (tự đặt tên + DUPR từ / đến cho từng tab, tối đa 12; mẫu gợi ý *3.5++ · 3.0 – 3.5 · < 3.0*; người chơi vào tab đầu tiên có khoảng chứa DUPR của họ — DUPR xác thực trước, không có thì DUPR trong hồ sơ thành viên). Khung *Các tab người chơi sẽ thấy* xem trước kết quả. Các tab hiện ở trang **Bảng xếp hạng** của Host (thay cho *Tất cả / Khách thường xuyên / Khách vãng lai*), tab Bảng xếp hạng ở trang cộng đồng của người chơi và trang **Xếp hạng** của người chơi; mỗi tab chỉ xếp hạng người thuộc tab đó (bục Top 3 và số thứ tự tính lại trong tab).
+  - **Tạm nghỉ** (Sửa thành viên → *Tạm nghỉ*: Chấn thương / Đi xa, công tác / Bận việc / Lý do khác): người đang tạm nghỉ **không bao giờ bị tự chuyển xuống vãng lai** dù lâu không chơi (chấn thương 3 tháng vẫn là thường xuyên); bỏ chọn khi họ quay lại. Nhãn *Tạm nghỉ: …* hiện cạnh tên ở trang Thành viên. Cần migration `20261222090000_member_hold_reason.sql`.
+  - **Tự chuyển thường xuyên ↔ vãng lai** (công tắc trong Bảng điều khiển, chữ ngắn gọn): bật → ai **không chơi quá số ngày ở mục Hoạt động** (mặc định 30) tự xuống vãng lai, chơi đủ ngưỡng tự lên thường xuyên; tắt → web chỉ gợi ý ở trang Thành viên.
   - **Khách thường xuyên / vãng lai**: *Khách thường xuyên khi chơi nhiều hơn [N] buổi trong 30 ngày gần nhất* (0–30; mặc định **3**, tức > 3 buổi/tháng = thường xuyên, từ 3 buổi trở xuống = vãng lai). Chỉ tính buổi đã diễn ra mà người đó có mặt / đăng ký và không huỷ; mỗi kèo tính 1 lần dù bị ghi tên 2 lần. Mặc định **không tự chuyển**: trang Thành viên hiện khung **Gợi ý xếp loại** — *Nên chuyển lên Khách thường xuyên* / *Nên chuyển xuống Khách vãng lai* kèm số buổi, nút **Chuyển** từng người hoặc **Chuyển cả N người**; không bấm thì giữ nguyên. Bật ô **Tự chuyển thường xuyên ↔ vãng lai, không hỏi** thì web tự chuyển mỗi khi mở trang Thành viên (tối đa 10 phút một lần) và ngay khi lưu. Người mới thêm chưa đủ 30 ngày và người đang có **vé tháng còn hạn** không bị gợi ý / chuyển xuống vãng lai. Nút **Xếp lại ngay** chạy luôn. Mỗi lần đổi đều vào *Lịch sử thay đổi* của thành viên.
   - **Người mới → thường xuyên / vãng lai** (luồng của cộng đồng):
     1. Khi **duyệt người xin gia nhập**, ô *Hình thức* có thêm **Người mới (30 ngày đầu)** (bên cạnh *Thường xuyên* / *Vãng lai*). Chơi kèo **không** làm ai thành thành viên: người Host thêm tay vào kèo (*Thêm thành viên* trong *Lịch chơi*) hay người đăng ký chơi thêm ở kèo chỉ có chỗ **trong kèo đó**, không vào danh sách thành viên. Muốn vào cộng đồng thì Host gửi link để họ tạo tài khoản và **xin gia nhập**; người đã có trong danh sách (trùng tài khoản / SĐT / tên) thì vẫn được nối với hồ sơ cũ.
@@ -722,37 +726,8 @@ Một Host có thể điều hành **nhiều cụm sân xé vé**; mỗi cụm s
   - Bảng *Thu chi từng buổi / kèo* ghi cột **Lợi nhuận**.
 - **Kèo lẻ (Xé Vé cũ) → chuyển vào cộng đồng**: không còn lối vào riêng cho kèo lẻ. Nếu tài khoản còn kèo tạo trước khi có cộng đồng, đầu trang **Tổng quan** của cộng đồng (chỉ chủ thấy) hiện thẻ *Bạn còn N kèo lẻ cũ* → **Chuyển vào cộng đồng** → tick các kèo (mặc định tất cả) → **Chuyển N kèo**. Kèo đi cùng người đăng ký, tiền thu chi, trận đấu và phân quyền theo kèo; link đăng ký giữ nguyên. Buổi họp / round robin không chuyển (cộng đồng không có loại này). Khi chưa có cộng đồng nào, Social Manager hiện thẻ **Tạo cộng đồng mới**.
 
-### 5.0b. Cuộc đua Top tháng (chỉ thống kê)
-> **Không còn trao giải:** Top tháng giờ **chỉ là bảng thống kê** — chốt tháng không phát voucher, không gửi email quà; trang Top tháng của Host bỏ cột *Quà* và khung *Voucher đã phát*; trang của người chơi bỏ dòng quà và *Voucher của tôi*. Voucher đã phát từ trước vẫn dùng được tới hạn. Các mục về quà / voucher bên dưới là cách làm cũ.
-
-Chỉ có ở **cộng đồng** (Social Manager) dùng **gói PRO** — gói cao nhất, dành cho cộng đồng lớn (trên 200 người). Gói thấp hơn: mục **Top tháng** hiện ổ khoá và trang hiện thẻ nâng cấp; bật cuộc đua → `402 feature_locked` (`feature: monthly_race`); hạ gói thì cuộc đua tạm ngưng (không chốt tháng, không phát voucher, người chơi không thấy bảng; cài đặt vẫn giữ, lên lại PRO là chạy tiếp). Menu **Thống kê → Top tháng** (`/club/race`) chỉ còn bảng điểm, chọn tháng và voucher. Trên cùng trang chỉ còn công tắc **Bật / Tắt** cuộc đua (chủ cộng đồng và đồng quản trị); **phần cài đặt giải thưởng đã bỏ** (cả ở trang này lẫn Bảng điều khiển) — quà, số kèo tối thiểu và hạn voucher dùng mặc định: Top 1 một kèo miễn phí, Top 2–3 giảm 50% một kèo, từ 4 kèo / tháng, voucher dùng trong 30 ngày. App tự chạy hết, Host không phải tạo hay trừ voucher bằng tay.
-
-**Luật (cố định):**
-- Tính **mọi người chơi đang hoạt động** của cộng đồng (VIP, ưu tiên, khách thường xuyên, vãng lai). Điểm trong tháng: **+1** mỗi kèo đã check-in, **+2** mỗi trận thắng, **−2** mỗi lần vắng không báo.
-- Muốn nhận quà phải chơi **ít nhất N kèo** trong tháng — **N do Host đặt** (1–31, mặc định 4, ô *Số kèo tối thiểu* ở thẻ Cài đặt) — và đã vào cộng đồng **trước ngày 15** của tháng đó (vào sau thì bảng ghi *Vào sau hạn*; chưa đủ kèo thì ghi *Chưa đủ N kèo*).
-- Bằng điểm: ai chơi **nhiều kèo hơn** xếp trên, rồi tới ai **thắng nhiều hơn**.
-
-**Host cài đặt** (thẻ *Cài đặt* đầu trang):
-- Công tắc **Đang chạy / Đang tắt**. Bật lần đầu thì cuộc đua tính từ tháng đó.
-- **Quà Top 1 / 2 / 3**: *1 kèo miễn phí*, *giảm 50% một kèo* hoặc *Không có quà*. Mặc định Top 1 miễn phí, Top 2–3 giảm 50%.
-- **Số kèo tối thiểu trong tháng** để nhận quà (1–31, mặc định 4).
-- **Hạn dùng voucher**: 7 / 14 / 30 / 45 / 60 / 90 ngày (mặc định 30).
-- **Chia nhóm theo trình độ** (tuỳ chọn): mỗi nhóm có Top 3 riêng. Pickleball: dưới 3.0 / 3.0–3.5 / trên 3.5; cầu lông: cấp 1–2 / 3–4 / 5–6. Chưa có trình độ thì vào nhóm dưới.
-
-**Bảng xếp hạng**: chọn tháng để xem; tháng đang chạy có nhãn *Đang diễn ra*, tháng đã chốt có nhãn *Đã chốt*. Cột: hạng, thành viên, số kèo, thắng, vắng, điểm, quà.
-
-**Chốt tháng & phát voucher**: sang ngày 1 tháng sau, app tự chốt bảng tháng trước (lưu lại, không đổi nữa) và phát voucher cho Top 3 (mỗi nhóm nếu chia nhóm). Người thắng nhận email báo (nếu máy chủ có cấu hình gửi email). Server tắt lâu thì lần chạy sau chốt bù các tháng còn thiếu.
-
-**Voucher**:
-- **Tự áp dụng khi đăng ký kèo** của chính cộng đồng đó: trang đăng ký hiện ô *Dùng voucher Top 1 tháng 9/2026: 1 kèo miễn phí* (đã tick sẵn, bỏ tick nếu muốn để dành) và *Bạn cần trả: …*. Voucher miễn phí thì không cần chuyển khoản. Thành viên có gói còn buổi thì không dùng voucher (giữ lại).
-- **Mỗi kèo dùng tối đa 1 voucher**, không chuyển cho người khác, chỉ dùng trong cộng đồng đã phát.
-- **Huỷ đúng hạn** thì voucher được trả lại; **huỷ muộn hoặc vắng** thì mất voucher.
-- Người chơi xem voucher của mình ở **Hoạt động** (`/p`, thẻ *Voucher của bạn*) và ở tab *Top tháng* của trang cộng đồng.
-- Host xem danh sách **Voucher đã phát** (còn dùng được / đã dùng cho kèo nào / hết hạn / đã thu hồi) và bấm **Gia hạn**, **Thu hồi** hoặc **Khôi phục**.
-
-**Tiền**: sổ thu chi chỉ ghi **số tiền thực thu** (kèo dùng voucher miễn phí thu 0 đ, giảm 50% thu nửa giá). Chi phí của quà hiện ở trang Top tháng: *Đã tặng N lượt, trị giá X đ*.
-
-**Mời gia nhập sau buổi**: ở trang đánh giá sau kèo của cộng đồng, câu cuối hỏi *"Bạn có muốn trở thành thành viên của <cộng đồng> không?"*, kèm link **Vì sao nên gia nhập?** mở popup liệt kê lợi ích thật: đua Top tháng (khi Host bật) và quà của Top 1–3, trang cộng đồng riêng (lịch kèo, lịch sử, bảng xếp hạng), gói thành viên thay vì trả lẻ từng kèo, ưu đãi Host dành cho thành viên cố định. Nút **Bấm vào đây để đăng ký thành viên** mở form gia nhập như trước.
+### 5.0b. Cuộc đua Top tháng — đã bỏ
+Tính năng *Top tháng* (và voucher) **đã được bỏ hẳn** khỏi menu, trang cộng đồng của người chơi, trang đăng ký kèo và Bảng điều khiển. Bảng `race_*` trong cơ sở dữ liệu vẫn còn (migration `20261117090000_community_race.sql`) nhưng không còn được đọc / ghi.
 
 ### 5.1. Lịch kèo dạng calendar (`/events`)
 Trang Lịch/Kèo có 5 chế độ xem: **Danh sách · Năm · Tháng · Tuần · Ngày**; **mở ra luôn là *Danh sách*** (cả CLB lẫn Social Manager). **Năm** hiện 12 tháng nhỏ của năm (‹ › đổi năm): ngày có kèo tô xanh, có từ 2 kèo thì góc ô ghi số kèo; cạnh tên tháng ghi tổng số kèo của tháng (kèo huỷ không tính). Bấm một ngày để mở chế độ *Ngày*, bấm tên tháng để mở chế độ *Tháng*.
@@ -1056,7 +1031,6 @@ Người chơi dùng chung app: **Trang chủ** (`/home`, xem [3.1](#31-trang-ch
   - yêu cầu *chờ thanh toán* (xem lại QR hoặc huỷ yêu cầu).
 - Các mục khác trên **Trang của tôi**:
   - **Lịch sử tham gia**: đã đăng ký / danh sách chờ / đã chơi / vắng / đã huỷ (kèm nhãn *Huỷ muộn*).
-  - **Voucher của bạn**: voucher Top tháng còn dùng được (cộng đồng, quà, hạn). Tự áp dụng khi đăng ký kèo của cộng đồng đó.
   - **Xem vé QR** cho từng kèo đã đăng ký thành công; **Thanh toán để giữ chỗ** / *Host đang xác nhận* cho kèo đang chờ.
   - **Tự huỷ kèo sắp tới**: nút *Huỷ* cạnh từng kèo, kèm dòng "Huỷ miễn phí đến 20:00 30/09" hoặc "Đã quá hạn huỷ miễn phí". Nếu đã quá hạn, app hỏi lại trước khi huỷ (xem [5.5](#55-chính-sách-huỷ--hoàn-buổi)).
   - **Phí kèo chưa thanh toán**: các kèo đã chơi hoặc huỷ muộn mà chưa trả phí (huỷ ở mốc 50% thì nợ 50%). Được cộng vào *Công nợ*.
@@ -1563,7 +1537,8 @@ supabase/migrations/
 └── 20261218090000_host_bell_dismiss.sql          # Chuông Host: xoá từng tin / xoá tất cả — users.host_bell_hidden + host_bell_cleared_at
 └── 20261219090000_email_change.sql              # Đổi email: users.pending_email / pending_email_hash (HMAC) / pending_email_until / pending_email_tries
 ├── 20261220090000_function_search_path.sql      # Bảo mật: cố định search_path cho các hàm trigger / tiện ích (cảnh báo Supabase); bảng security_revisions ghi các bước đã làm
-└── 20261221090000_dupr_export_batches.sql      # DUPR: bảng dupr_export_batches — mỗi lần tải file trận là một lượt tải chờ xác nhận / đã xác nhận / đã huỷ (không gửi trùng)
+├── 20261221090000_dupr_export_batches.sql      # DUPR: bảng dupr_export_batches — mỗi lần tải file trận là một lượt tải chờ xác nhận / đã xác nhận / đã huỷ (không gửi trùng)
+└── 20261222090000_member_hold_reason.sql       # club_members.hold_reason (Tạm nghỉ: injury / away / busy / other) — không bị tự chuyển xuống vãng lai
 ```
 
 Cách dùng (chỉ cần làm một lần cho mỗi máy):

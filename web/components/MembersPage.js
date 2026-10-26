@@ -17,6 +17,7 @@ import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
 import ChipRow from '@/components/ui/ChipRow';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import BirthdayBanner from '@/components/BirthdayBanner';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -188,6 +189,8 @@ export default function MembersPage({ tab = 'fixed' }) {
 
   return (
     <AppShell>
+      {/* Birthdays today / soon: only here, where the Host works with the member list. */}
+      <BirthdayBanner clubId={club?.id} />
       <PageHeader
         icon="users"
         title={t('nav.members')}
@@ -336,6 +339,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                                   show('dupr') ? (m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null) : null,
                                 ]
                               : [show('score') ? levelText(m.dupr_level, sport, t) : null]),
+                            m.hold_reason ? t('members.holdShort', { r: t(`members.hold_${m.hold_reason}`) }) : null,
                             isCommunity && show('skill') && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null,
                             levelCfg && show('level') && m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null,
                             !isGuestTab && show('tier') && m.tier && !(m.vip_tier || m.vip_stars > 0) ? t(`members.${m.tier}`) : null,
@@ -432,6 +436,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                                 {m.full_name}
                               </button>
                               <RoleBadges roles={m.club_roles} />
+                              {m.hold_reason && <span className="text-[10px] leading-4 rounded border border-sky-400/50 text-sky-200 px-1 whitespace-nowrap">{t('members.holdShort', { r: t(`members.hold_${m.hold_reason}`) })}</span>}
                               {isCommunity && !isGuestTab && m.guest_perk && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
                               {m.account_email && !m.account_verified && (
                                 <span className="text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 whitespace-nowrap">{t('verify.pending')}</span>

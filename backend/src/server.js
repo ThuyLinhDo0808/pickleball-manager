@@ -155,7 +155,5 @@ process.on('uncaughtException', (err) => {
 });
 // Thank-you + survey link to guests once their session is over.
 if (process.env.SURVEY_SWEEP_DISABLED !== 'true') startSurveySweeper();
-// Top-month race: close last month and give the winners their vouchers.
-if (process.env.RACE_SWEEP_DISABLED !== 'true') require('./services/race').startRaceSweeper();
 // Deletes old transfer screenshots / sign-in devices (services/privacy.js).
 if (process.env.RETENTION_SWEEP_DISABLED !== 'true') require('./services/privacy').startRetentionSweeper();
