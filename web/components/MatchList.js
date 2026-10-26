@@ -14,10 +14,36 @@ function playerName(mp) {
 const teamNames = (m, n) => (m.match_players || []).filter((p) => p.team === n).map(playerName).join(' & ');
 export const isScored = (m) => m.team1_score != null && m.team2_score != null;
 
-function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
+// players / idField: who can be picked (the kèo's or the club's players). Without them only
+// the score is edited.
+function EditMatch({ match, basePath, onSaved, onCancel, badminton, players = null, idField = null }) {
   const { t } = useI18n();
   const [form, setForm] = useState({ team1_score: match.team1_score ?? '', team2_score: match.team2_score ?? '' });
-  const names = [teamNames(match, 1) || t('matches.team1'), teamNames(match, 2) || t('matches.team2')];
+  const canPick = !!(players && idField);
+  const idOf = (mp) => mp[idField] || mp.event_participant_id || mp.club_member_id;
+  const startSlots = () => {
+    const per = Math.max(1, ...[1, 2].map((n) => (match.match_players || []).filter((p) => p.team === n).length));
+    return Object.fromEntries([1, 2].map((n) => {
+      const ids = (match.match_players || []).filter((p) => p.team === n).map(idOf);
+      return [n, [...ids, ...Array(per).fill('')].slice(0, per)];
+    }));
+  };
+  const [slots, setSlots] = useState(startSlots);
+  // Everyone who can be picked: the list given, plus players already in this match who are
+  // no longer in it (e.g. moved out of the main list) so their names still show.
+  const options = (() => {
+    const list = [...(players || [])];
+    for (const mp of match.match_players || []) {
+      const id = idOf(mp);
+      if (id && !list.some((p) => p.id === id)) list.push({ id, name: playerName(mp) });
+    }
+    return list.sort((a, b) => String(a.name).localeCompare(String(b.name), 'vi'));
+  })();
+  const nameOfId = (id) => options.find((p) => p.id === id)?.name || '';
+  const changed = canPick && JSON.stringify(slots) !== JSON.stringify(startSlots());
+  const names = canPick
+    ? [1, 2].map((n) => slots[n].filter(Boolean).map(nameOfId).join(' & ') || t(`matches.team${n}`))
+    : [teamNames(match, 1) || t('matches.team1'), teamNames(match, 2) || t('matches.team2')];
   const [format, setFormat] = useState(() => inferFormat(match.games, 'badminton'));
   const [games, setGames] = useState(() =>
     Array.isArray(match.games) && match.games.length ? match.games.map(([a, b]) => [String(a), String(b)]) : [['', ''], ['', '']]
@@ -27,13 +53,17 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
 
   async function submit(e) {
     e.preventDefault();
+    const chosen = canPick ? [...slots[1], ...slots[2]] : [];
+    if (canPick && chosen.some((id) => !id)) return setError(t('matches.editNeedAll'));
+    if (canPick && new Set(chosen).size !== chosen.length) return setError(t('matches.editTwice'));
     setBusy(true);
     setError('');
     try {
-      await api.patch(
-        `${basePath}/${match.id}`,
-        badminton ? { games: gamesPayload(games), format } : { team1_score: Number(form.team1_score || 0), team2_score: Number(form.team2_score || 0) }
-      );
+      const score = badminton ? { games: gamesPayload(games), format } : { team1_score: Number(form.team1_score || 0), team2_score: Number(form.team2_score || 0) };
+      // Changing only the players of a match not scored yet: no score is sent.
+      const hasScore = !canPick || (badminton ? score.games.length > 0 : form.team1_score !== '' || form.team2_score !== '');
+      const who = changed ? { players: [1, 2].flatMap((n) => slots[n].map((id) => ({ team: n, [idField]: id }))) } : {};
+      await api.patch(`${basePath}/${match.id}`, { ...who, ...(isScored(match) || hasScore ? score : {}) });
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -44,6 +74,31 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      {canPick && (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="text-sm font-semibold text-white mb-1">{t('matches.editPlayers')}</legend>
+          {[1, 2].map((n) => (
+            <div key={n} className="grid gap-2 sm:grid-cols-[auto_1fr_1fr] sm:items-center">
+              <span className="text-xs text-gray-400 sm:w-14">{t(`matches.team${n}`)}</span>
+              {slots[n].map((id, i) => (
+                <select
+                  key={i}
+                  className="input"
+                  aria-label={`${t(`matches.team${n}`)} ${i + 1}`}
+                  value={id}
+                  onChange={(e) => setSlots((s) => ({ ...s, [n]: s[n].map((v, j) => (j === i ? e.target.value : v)) }))}
+                >
+                  <option value="">—</option>
+                  {options.map((p) => (
+                    <option key={p.id} value={p.id} disabled={p.id !== id && [...slots[1], ...slots[2]].includes(p.id)}>{p.name}</option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          ))}
+        </fieldset>
+      )}
+      {canPick && <p className="text-sm font-semibold text-white -mb-1">{t('matches.editScore')}</p>}
       {badminton ? <GamesInput value={games} onChange={setGames} labels={names} format={format} onFormatChange={setFormat} /> : (
       <div className="grid grid-cols-2 gap-3">
         {[1, 2].map((team) => (
@@ -54,7 +109,7 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
             </label>
             <input
               id={`edit-score-${team}`}
-              required
+              required={!canPick || isScored(match)}
               className="input text-center text-lg font-bold"
               type="number"
               inputMode="numeric"
@@ -77,7 +132,8 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton }) {
 }
 
 // basePath: where edits go ('/api/matches' for hosts, the staff API for referees).
-export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true, sport: sportProp, emptyText = '' }) {
+// players / idField: who can be picked when editing (then "Sửa trận" also changes the players).
+export default function MatchList({ matches, onChanged, basePath = '/api/matches', allowDelete = true, sport: sportProp, emptyText = '', players = null, idField = null }) {
   const { t, lang, sport: clubSport } = useI18n();
   const badminton = (sportProp || clubSport) === 'badminton';
   const [editing, setEditing] = useState(null);
@@ -129,7 +185,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
               {gamesText(m.games) && <p className="text-gray-400 text-xs mt-1 tabular-nums">{gamesText(m.games)}</p>}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm">
                 <button className={scored ? 'text-gray-300' : 'text-lime-400 font-semibold'} onClick={() => setEditing(m)}>
-                  {scored ? t('matches.edit') : `${t('matches.enterScore')}`}
+                  {players && idField ? t('matches.editMatch') : scored ? t('matches.edit') : t('matches.enterScore')}
                 </button>
                 {allowDelete && (
                   <button className="text-red-400/80 ml-auto" onClick={() => remove(m)}>{t('common.delete')}</button>
@@ -140,12 +196,14 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
         })}
       </div>
 
-      <Modal open={!!editing} title={t('matches.edit')} onClose={() => setEditing(null)}>
+      <Modal open={!!editing} title={players && idField ? t('matches.editMatch') : t('matches.edit')} onClose={() => setEditing(null)}>
         {editing && (
           <EditMatch
             match={editing}
             badminton={badminton || Array.isArray(editing.games)}
             basePath={basePath}
+            players={players}
+            idField={idField}
             onCancel={() => setEditing(null)}
             onSaved={() => {
               setEditing(null);
