@@ -27,6 +27,7 @@ const USERNAME = /^[a-z][a-z0-9._]{2,29}$/;
 // API error code -> words people understand.
 function errorText(err, t) {
   const code = err?.payload?.code;
+  if (code === 'code_wait') return t('auth.err_code_wait', { s: err.payload.retry_after || 60 });
   if (err?.status === 429) return t('auth.rateLimit');
   if (code === 'terms_required') return t('legal.termsRequired');
   if (code === 'maintenance') return t('auth.err_maintenance', { time: err.payload.maintenance?.ends_at ? localDate(new Date(err.payload.maintenance.ends_at), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—' });
@@ -90,6 +91,13 @@ export default function SignInPage() {
   const [login, setLogin] = useState('');
   // Forgot password: 'ask' (send the code) → 'code' (code + new password).
   const [resetStep, setResetStep] = useState('ask');
+  // A new reset code can be asked once a minute: seconds left before "Send again" works.
+  const [resendIn, setResendIn] = useState(0);
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const id = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
   const [rs, setRs] = useState({ code: '', password: '', password2: '' });
   const [password, setPassword] = useState('');
   // sign up
@@ -241,8 +249,10 @@ export default function SignInPage() {
       await api.publicPost('/api/public/auth/forgot', { login, origin: window.location.origin, captcha_token: captcha });
       setRs({ code: '', password: '', password2: '' });
       setResetStep('code');
+      setResendIn(60);
       setInfo(t('auth.resetCodeSent'));
     } catch (err) {
+      if (err?.payload?.code === 'code_wait') setResendIn(Number(err.payload.retry_after) || 60);
       setError(errorText(err, t));
     } finally {
       capRef.current?.reset();
@@ -423,7 +433,7 @@ export default function SignInPage() {
               </Field>
               <button type="submit" disabled={busy || rs.code.length !== 6} className="btn-primary w-full mt-2">{busy ? t('auth.working') : t('auth.resetSave')}</button>
               <p className="text-sm text-center mt-5 flex flex-col gap-3">
-                <button type="button" className="text-lime-400 hover:underline" onClick={() => { setResetStep('ask'); setInfo(''); setError(''); }}>{t('auth.resetAgain')}</button>
+                <button type="button" disabled={resendIn > 0} className="text-lime-400 hover:underline disabled:text-gray-500 disabled:no-underline min-h-[44px] tabular-nums" onClick={() => { setResetStep('ask'); setInfo(''); setError(''); }}>{resendIn > 0 ? t('auth.resetAgainIn', { s: resendIn }) : t('auth.resetAgain')}</button>
                 <button type="button" className="text-gray-400 hover:underline" onClick={() => { setResetStep('ask'); go('signIn'); }}>← {t('auth.backToSignIn')}</button>
               </p>
             </form>
@@ -435,7 +445,7 @@ export default function SignInPage() {
                 <input id="fg-login" className="input" required autoCapitalize="none" placeholder={t('auth.usernamePh')} value={login} onChange={(e) => setLogin(e.target.value)} />
               </Field>
               <Captcha key={mode} ref={capRef} onToken={setCaptcha} className="mb-3 flex justify-center" />
-              <button type="submit" disabled={busy} className="btn-primary w-full mt-2">{busy ? t('auth.working') : t('auth.sendReset')}</button>
+              <button type="submit" disabled={busy || resendIn > 0} className="btn-primary w-full mt-2 tabular-nums">{busy ? t('auth.working') : resendIn > 0 ? t('auth.resetAgainIn', { s: resendIn }) : t('auth.sendReset')}</button>
               <p className="text-sm text-center mt-5">
                 <button type="button" className="text-lime-400 hover:underline" onClick={() => go('signIn')}>← {t('auth.backToSignIn')}</button>
               </p>
