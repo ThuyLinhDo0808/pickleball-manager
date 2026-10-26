@@ -1753,6 +1753,8 @@ export const vi = {
     resetCode: "Mã 6 số trong email",
     resetSave: "Đặt mật khẩu mới",
     resetAgain: "Chưa nhận được mã? Gửi lại",
+    resetAgainIn: "Gửi lại mã sau {s} giây",
+    err_code_wait: "Mỗi phút chỉ gửi được 1 mã. Hãy đợi {s} giây rồi gửi lại — mã đã gửi trước đó vẫn dùng được.",
     resetDone: "Đã đổi mật khẩu. Hãy đăng nhập bằng mật khẩu mới. Mọi thiết bị khác đã được đăng xuất.",
     err_bad_code: "Mã sai hoặc đã hết hạn. Hãy kiểm tra lại hoặc gửi mã mới.",
     err_password_leaked: "Mật khẩu này đã bị lộ trên mạng hoặc quá dễ đoán. Hãy chọn mật khẩu khác.",

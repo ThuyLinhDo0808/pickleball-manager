@@ -188,6 +188,10 @@ async function sendResetCode(email) {
   if (!process.env.RESEND_API_KEY) return 'off';
   const { data, error } = await supabase.auth.admin.generateLink({ type: 'recovery', email });
   const code = data?.properties?.email_otp;
+  // Supabase lets one account ask for a new code once a minute. A second ask inside that
+  // minute is refused — the code already sent is still the one to use.
+  if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') return 'wait';
+  if (error) console.error('forgot link', error.status || '', error.code || '', error.message);
   if (error || !/^\d{6}$/.test(String(code || ''))) return 'no_account';
   const { subject, text, html } = emailVerify.codeEmail(code, 'reset');
   const r = await security.sendMail(email, subject, text, html);
@@ -195,12 +199,17 @@ async function sendResetCode(email) {
   return r;
 }
 
+// One code per login a minute, the same for every login typed (so the wait never tells
+// whether the account exists). Supabase keeps the same one-minute rule per account.
+const resendWait = rateLimit({ windowMs: 60 * 1000, max: 1, key: (req) => `forgot:${cleanLogin(req.body?.login)}`, code: 'code_wait' });
+
 // Always answers ok (never says whether the account exists).
-router.post('/forgot', tooMany, mails, requireCaptcha, async (req, res) => {
+router.post('/forgot', tooMany, mails, requireCaptcha, resendWait, async (req, res) => {
   try {
     const email = await emailFor(cleanLogin(req.body?.login));
     const origin = webOrigin(req);
-    if (email && (await sendResetCode(email)) !== 'sent') {
+    const sent = email ? await sendResetCode(email) : null;
+    if (email && sent !== 'sent' && sent !== 'wait') {
       // No own mail sender (or it failed): Supabase's own "Reset Password" email (its
       // template must contain {{ .Token }} for the code). Its built-in sender only reaches
       // a few addresses an hour — set custom SMTP in Supabase for real use.

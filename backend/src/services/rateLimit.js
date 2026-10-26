@@ -18,8 +18,9 @@ function rateLimit({ windowMs, max, key = (req) => req.ip, code = 'rate_limited'
     const now = Date.now();
     const list = (hits.get(k) || []).filter((t) => now - t < windowMs);
     if (list.length >= max) {
-      res.set('Retry-After', String(Math.ceil((windowMs - (now - list[0])) / 1000)));
-      return res.status(429).json({ error: 'Too many attempts. Try again in a few minutes.', code });
+      const wait = Math.ceil((windowMs - (now - list[0])) / 1000);
+      res.set('Retry-After', String(wait));
+      return res.status(429).json({ error: 'Too many attempts. Try again in a few minutes.', code, retry_after: wait });
     }
     list.push(now);
     hits.set(k, list);

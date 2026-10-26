@@ -1753,6 +1753,8 @@ export const en = {
     resetCode: "6-digit code from the email",
     resetSave: "Set new password",
     resetAgain: "No code? Send again",
+    resetAgainIn: "Send again in {s}s",
+    err_code_wait: "Only one code a minute. Wait {s} seconds to send again — the code already sent still works.",
     resetDone: "Password changed. Sign in with your new password. Every other device has been signed out.",
     err_bad_code: "Wrong or expired code. Check it or ask for a new one.",
     err_password_leaked: "This password has been leaked online or is too easy to guess. Choose another one.",
