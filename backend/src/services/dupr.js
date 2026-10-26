@@ -733,12 +733,12 @@ async function getBatch(club, id) {
   return data;
 }
 
-// The same file again (a pending lượt tải): its matches as they are now.
+// The same file again, for any lượt tải (also one already confirmed or cancelled — the Host
+// may have lost the file): its matches as they are now.
 async function batchCsv(club, id) {
   const b = await getBatch(club, id);
-  if (b.status !== 'pending') throw httpError('This download was already confirmed or cancelled.', 409, 'batch_closed');
   const want = new Set((b.items || []).map(itemKey));
-  const list = (await clubMatches(club, { all: true })).filter((m) => want.has(itemKey(m)) && !m.exported_at && !m.no_score);
+  const list = (await clubMatches(club, { all: true })).filter((m) => want.has(itemKey(m)) && !m.no_score);
   return { csv: matchesCsv(club, list, b.score_type, true), count: list.length, file_name: b.file_name };
 }
 
@@ -755,6 +755,33 @@ async function decideBatch(club, id, action, userId) {
     .eq('status', 'pending');
   if (error) throw error;
   return { id: b.id, status: action === 'confirm' ? 'confirmed' : 'cancelled', count: b.match_count };
+}
+
+// Undo a decision made by mistake: the lượt tải goes back to "chờ xác nhận".
+// - confirmed, but the file never reached DUPR → its matches are no longer "đã gửi";
+// - cancelled, but the file was uploaded after all → its matches wait in it again.
+// Refused when one of its matches is now in another pending lượt tải (or, for a cancelled
+// one, was sent since) — reopening would let the same match reach DUPR twice.
+async function reopenBatch(club, id, userId) {
+  const b = await getBatch(club, id);
+  if (b.status === 'pending') return { id: b.id, status: 'pending', count: b.match_count };
+  const items = cleanItems(b.items);
+  const mine = new Set(items.map(itemKey));
+  const others = (await pendingBatches(club)).filter((x) => x.id !== b.id);
+  const clash = others.flatMap((x) => (x.items || []).map(itemKey)).filter((k) => mine.has(k));
+  if (b.status === 'cancelled') {
+    const sent = (await clubMatches(club, { all: true })).filter((m) => mine.has(itemKey(m)) && m.exported_at);
+    clash.push(...sent.map(itemKey));
+  }
+  if (clash.length) throw Object.assign(httpError('Some of these matches are in another download or were sent since.', 409, 'batch_conflict'), { count: new Set(clash).size });
+  if (b.status === 'confirmed') await markExported(club, items, false);
+  const { error } = await supabase
+    .from('dupr_export_batches')
+    .update({ status: 'pending', decided_at: null, decided_by: userId || null })
+    .eq('id', b.id)
+    .eq('status', b.status);
+  if (error) throw error;
+  return { id: b.id, status: 'pending', count: b.match_count, was: b.status };
 }
 
 // ---- statistics (the DUPR page under Thống kê) ------------------------------------------
@@ -873,4 +900,4 @@ async function playerDupr(userId) {
 
 module.exports = {
   latestRatings,
-  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, quickPlayers, setQuickId, clubMatches, matchesCsv, markExported, stats, batchesReady, withBatches, createBatch, listBatches, batchCsv, decideBatch, cleanItems, BATCH_MIGRATION, playerDupr, TEMPLATE };
+  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, quickPlayers, setQuickId, clubMatches, matchesCsv, markExported, stats, batchesReady, withBatches, createBatch, listBatches, batchCsv, decideBatch, reopenBatch, cleanItems, BATCH_MIGRATION, playerDupr, TEMPLATE };

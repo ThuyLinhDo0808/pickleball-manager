@@ -1921,6 +1921,16 @@ router.post('/:clubId/dupr/batches/:batchId/:action(confirm|cancel)', async (req
     duprErr(res, err);
   }
 });
+// Undo a confirm / cancel made by mistake (the lượt tải waits for a decision again).
+router.post('/:clubId/dupr/batches/:batchId/reopen', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.reopenBatch(req.club, req.params.batchId, req.userId));
+  } catch (err) {
+    if (err.code === 'batch_conflict') return res.status(409).json({ error: err.message, code: err.code, count: err.count });
+    duprErr(res, err);
+  }
+});
 router.post('/:clubId/dupr/matches/mark', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;

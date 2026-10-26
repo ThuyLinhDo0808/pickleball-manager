@@ -47,6 +47,8 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const [fixOpen, setFixOpen] = useState(false);
   const [ids, setIds] = useState({});
   const [fixErr, setFixErr] = useState('');
+  const [showItems, setShowItems] = useState(null); // batch id whose matches are listed
+  const [showHistory, setShowHistory] = useState(false);
   if (bare && error) return <p className="text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
   if (bare && !data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
   if (!clubId || error || !data) return null;
@@ -64,6 +66,10 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   // (one whose matches were all marked as sent one by one is left out).
   const here = new Set(waiting.map((m) => `${m.kind}:${m.id}`));
   const batches = (bData?.batches || []).filter((b) => b.status === 'pending' && (b.items || []).some((i) => here.has(`${i.kind}:${i.id}`)));
+  // Lượt tải already decided (confirmed / cancelled) for these matches: the file can be
+  // downloaded again and a decision made by mistake can be undone ("Mở lại").
+  const byKey = new Map(list.map((m) => [`${m.kind}:${m.id}`, m]));
+  const history = (bData?.batches || []).filter((b) => b.status !== 'pending' && (b.items || []).some((i) => byKey.has(`${i.kind}:${i.id}`)));
   // A member's ID is saved on the member; a quick-booking player's on their kèo row.
   const keyOf = (p) => p.member_id || (p.part_id ? `p:${p.part_id}` : null);
   const missingPeople = [...new Map(blocked.flatMap((m) => [...m.a, ...m.b]).filter((p) => !p.dupr_id).map((p) => [keyOf(p) || `n:${p.name}`, p])).values()];
@@ -140,6 +146,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   };
   const decide = async (b, action) => {
     if (action === 'cancel' && !window.confirm(t('duprx.cancelAsk', { n: b.count }))) return;
+    if (action === 'confirm' && !window.confirm(t('duprx.confirmAsk', { n: b.count }))) return;
     setBusy(true);
     setErr('');
     setDone('');
@@ -154,6 +161,35 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
       setBusy(false);
     }
   };
+  const reopen = async (b) => {
+    if (!window.confirm(t(b.status === 'confirmed' ? 'duprx.reopenConfirmedAsk' : 'duprx.reopenCancelledAsk', { n: b.count }))) return;
+    setBusy(true);
+    setErr('');
+    setDone('');
+    try {
+      await api.post(`/api/clubs/${clubId}/dupr/batches/${b.id}/reopen`, {});
+      setDone(t('duprx.reopened', { n: b.count }));
+      await refresh();
+    } catch (e) {
+      setErr(e.payload?.code === 'batch_conflict' ? t('duprx.reopenConflict', { n: e.payload.count || 1 }) : e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  // The matches of one lượt tải, to compare with the Matches list on DUPR.
+  const BatchMatches = ({ b }) => (
+    <ul className="mt-2 flex flex-col gap-1 text-sm">
+      {(b.items || []).map((i) => {
+        const m = byKey.get(`${i.kind}:${i.id}`);
+        return (
+          <li key={`${i.kind}:${i.id}`} className="flex flex-wrap justify-between gap-x-3 text-gray-300">
+            <span className="min-w-0 break-words">{m ? <>{team(m.a)} <span className="text-gray-500">vs</span> {team(m.b)}</> : t('duprx.matchGone')}</span>
+            {m && <span className="tabular-nums text-gray-400">{m.date} · {m.games.map(([x, y]) => `${x}-${y}`).join(', ')}</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
   const mark = async (items, exported) => {
     if (exported && items.length === 1 && !window.confirm(t('duprx.markOneAsk'))) return;
     setBusy(true);
@@ -274,6 +310,8 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
                   <span className="text-xs text-sky-300">{t('duprx.batchPending')}</span>
                 </div>
                 <p className="text-gray-400 text-sm mt-1">{t('duprx.batchAsk')}</p>
+                <button type="button" className="text-sm text-gray-300 underline underline-offset-2 mt-1 min-h-[44px] sm:min-h-0" onClick={() => setShowItems(showItems === b.id ? null : b.id)}>{showItems === b.id ? t('duprx.hideItems') : t('duprx.showItems', { n: b.count })}</button>
+                {showItems === b.id && <BatchMatches b={b} />}
                 <div className="flex flex-wrap items-center justify-end gap-2 mt-2">
                   <button type="button" className="text-sm text-gray-400 underline underline-offset-2 min-h-[44px] mr-auto" disabled={busy} onClick={() => decide(b, 'cancel')}>{t('duprx.cancelBatch')}</button>
                   <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => again(b)}>{t('duprx.againBtn')}</button>
@@ -282,6 +320,37 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-4">
+          <button type="button" className="text-sm font-semibold text-white underline underline-offset-2 min-h-[44px] sm:min-h-0" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>
+            {showHistory ? t('duprx.historyHide') : t('duprx.historyShow', { n: history.length })}
+          </button>{' '}
+          <Hint inline text={t('duprx.historyHint')} />
+          {showHistory && (
+            <ul className="mt-2 flex flex-col gap-2">
+              {history.map((b) => (
+                <li key={b.id} className="rounded-xl border border-navy-600 bg-navy-900/40 p-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="text-gray-100 text-sm">
+                      {t('duprx.batchLine', { time: when(b.created_at) })} · <span className="tabular-nums">{t('duprx.batchN', { n: b.count })}</span>
+                    </span>
+                    <span className={`text-xs ${b.status === 'confirmed' ? 'text-lime-300' : 'text-gray-400'}`}>
+                      {t(b.status === 'confirmed' ? 'duprx.statusConfirmed' : 'duprx.statusCancelled', { time: b.decided_at ? when(b.decided_at) : '—' })}
+                    </span>
+                  </div>
+                  <button type="button" className="text-sm text-gray-300 underline underline-offset-2 mt-1 min-h-[44px] sm:min-h-0" onClick={() => setShowItems(showItems === b.id ? null : b.id)}>{showItems === b.id ? t('duprx.hideItems') : t('duprx.showItems', { n: b.count })}</button>
+                  {showItems === b.id && <BatchMatches b={b} />}
+                  <div className="flex flex-wrap items-center justify-end gap-2 mt-2">
+                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => again(b)}>{t('duprx.againBtn')}</button>
+                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => reopen(b)}>{t(b.status === 'confirmed' ? 'duprx.reopenConfirmedBtn' : 'duprx.reopenCancelledBtn')}</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
