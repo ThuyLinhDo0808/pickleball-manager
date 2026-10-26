@@ -271,7 +271,7 @@ export default function MembersPage({ tab = 'fixed' }) {
             <ColumnPicker
               cols={[
                 'type', 'gender', 'birth', ...(showPhone ? ['phone'] : []), 'joined',
-                ...(pickleball ? ['duprId', 'dupr', 'duprSelf'] : ['score']),
+                ...(pickleball ? ['duprId', 'dupr'] : ['score']),
                 ...(isCommunity ? ['skill'] : []), ...(levelCfg ? ['level'] : []),
                 ...(isGuestTab ? ['played', 'perk', 'notes'] : ['tier']),
               ]}
@@ -331,7 +331,6 @@ export default function MembersPage({ tab = 'fixed' }) {
                             ...(pickleball
                               ? [
                                   show('dupr') ? (m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null) : null,
-                                  show('duprSelf') && m.dupr_self != null ? `${t('members.colDuprSelf')} ${m.dupr_self.toFixed(2)}` : null,
                                 ]
                               : [show('score') ? levelText(m.dupr_level, sport, t) : null]),
                             isCommunity && show('skill') && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null,
@@ -390,7 +389,6 @@ export default function MembersPage({ tab = 'fixed' }) {
                         <>
                           {show('duprId') && <th>DUPR ID <Hint inline text={t('memx.duprIdHint')} /></th>}
                           {show('dupr') && <th>{t('members.colDuprLinked')}</th>}
-                          {show('duprSelf') && <th>{t('members.colDuprSelf')}</th>}
                         </>
                       ) : (
                         show('score') && <th>{t('members.colScore')}</th>
@@ -499,7 +497,6 @@ export default function MembersPage({ tab = 'fixed' }) {
                                 )}
                               </td>
                             )}
-                            {show('duprSelf') && <td className="text-gray-300 tabular-nums">{m.dupr_self != null ? m.dupr_self.toFixed(2) : '—'}</td>}
                           </>
                         ) : (
                           show('score') && <td className="text-gray-300">{levelText(m.dupr_level, sport, t) ?? '—'}</td>

@@ -313,10 +313,12 @@ function JoinForm({ token, data, onDone }) {
           <label htmlFor="j-birth" className="text-xs text-gray-400">{t('members.birthDate')} *</label>
           <input id="j-birth" className="input" type="date" required value={f.birth_date} onChange={(e) => set({ birth_date: e.target.value })} />
         </div>
-        <div className="min-w-0">
-          <label htmlFor="j-dupr" className="text-xs text-gray-400">{t('common.level')}</label>
-          <LevelInput id="j-dupr" sport={data.sport} value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
-        </div>
+        {data.sport === 'badminton' && (
+          <div className="min-w-0">
+            <label htmlFor="j-dupr" className="text-xs text-gray-400">{t('common.level')}</label>
+            <LevelInput id="j-dupr" sport={data.sport} value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
+          </div>
+        )}
       </div>
       <div>
         <label htmlFor="j-note" className="text-xs text-gray-400">{t('survey.joinNote')}</label>
