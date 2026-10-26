@@ -288,8 +288,8 @@ export default function StaffEventPage() {
               { key: 'standings', label: t('estand.title'), icon: 'medal' },
             ]}
           />
-          {matchTab === 'enter' && <MatchList matches={ev.matches.filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} />}
-          {matchTab === 'results' && <MatchList matches={ev.matches.filter(isScored)} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} />}
+          {matchTab === 'enter' && <MatchList matches={ev.matches.filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} players={mainList.map((p) => ({ id: p.id, name: p.full_name }))} idField="event_participant_id" />}
+          {matchTab === 'results' && <MatchList matches={ev.matches.filter(isScored)} onChanged={reload} basePath={`${base}/matches`} allowDelete={false} sport={ev.sport} players={mainList.map((p) => ({ id: p.id, name: p.full_name }))} idField="event_participant_id" />}
           {matchTab === 'auto' && ev.can.courts && <CourtsPlanner ev={ev} people={ev.participants} endpoint={`${base}/matches`} onSaved={reload} />}
           {matchTab === 'standings' && (
             <EventStandings matches={ev.matches} onChallenge={(pick, reward) => setShowMatch({ slots: { 1: pick.team1.map((r) => r.id), 2: pick.team2.map((r) => r.id) }, extra: { is_challenge: true, challenge_reward: reward } })} />

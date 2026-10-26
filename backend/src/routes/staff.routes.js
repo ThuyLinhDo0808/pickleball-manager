@@ -467,7 +467,7 @@ staff.patch('/events/:eventId/matches/:matchId', async (req, res) => {
   const { data: match } = await supabase.from('matches').select('id').eq('id', req.params.matchId).eq('event_id', req.event.id).maybeSingle();
   if (!match) return notFound(res, 'Match');
   try {
-    res.json(await updateMatch(match.id, req.body));
+    res.json(await updateMatch(match.id, req.body, undefined, { idField: 'event_participant_id' }));
   } catch (err) {
     fail(res, err);
   }

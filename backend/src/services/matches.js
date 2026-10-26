@@ -162,8 +162,42 @@ async function createMatch(parent, body) {
   return full;
 }
 
-// Score / video / time edits. match_type is fixed: changing it would break team sizes.
-async function updateMatch(matchId, body, allowed = ['team1_score', 'team2_score', 'video_url', 'played_at']) {
+// Who played: `players` [{team, club_member_id | event_participant_id}] replaces the match's
+// players (a name picked by mistake, a swap after the match was entered). Same rules as a
+// new match: same parent, nobody twice, 1 or 2 per team (singles / doubles follows).
+// `idField` limits which kind of player may be sent (staff: event players only).
+async function replacePlayers(matchId, players, idField = null) {
+  if (!Array.isArray(players)) throw badRequest('players[] is required.');
+  if (players.some((p) => ![1, 2].includes(p.team))) throw badRequest('each player needs team 1 or 2.');
+  const clean = players.map((p) => ({
+    team: p.team,
+    club_member_id: idField === 'event_participant_id' ? null : p.club_member_id || null,
+    event_participant_id: idField === 'club_member_id' ? null : p.event_participant_id || null,
+  }));
+  const { data: m, error: mErr } = await supabase.from('matches').select('id, club_id, event_id, match_type').eq('id', matchId).single();
+  if (mErr) throw mErr;
+  const match_type = matchTypeFor(clean, m.match_type);
+  const keys = clean.map((p) => p.club_member_id || p.event_participant_id);
+  if (keys.some((k) => !k)) throw badRequest('each player needs an id.');
+  if (new Set(keys).size !== keys.length) throw badRequest('a player cannot appear twice in a match.');
+  const parent = { club_id: m.club_id, event_id: m.event_id };
+  for (const p of clean) {
+    if (!(await playerBelongsToParent(p, parent))) throw badRequest('a player does not belong to this club/event.');
+  }
+  const { data: old } = await supabase.from('match_players').select('match_id, team, club_member_id, event_participant_id').eq('match_id', matchId);
+  const { error: dErr } = await supabase.from('match_players').delete().eq('match_id', matchId);
+  if (dErr) throw dErr;
+  const { error: iErr } = await supabase.from('match_players').insert(clean.map((p) => ({ match_id: matchId, ...p })));
+  if (iErr) {
+    if (old?.length) await supabase.from('match_players').insert(old); // put the old players back
+    throw iErr;
+  }
+  if (match_type !== m.match_type) await supabase.from('matches').update({ match_type }).eq('id', matchId);
+}
+
+// Score / video / time edits, and the players when `players` is sent.
+async function updateMatch(matchId, body, allowed = ['team1_score', 'team2_score', 'video_url', 'played_at'], { idField = null } = {}) {
+  if (body.players !== undefined) await replacePlayers(matchId, body.players, idField);
   const fields = pick(body, allowed);
   if (body.games !== undefined) {
     const { data: m } = await supabase.from('matches').select('club_id, event_id').eq('id', matchId).single();
@@ -173,6 +207,11 @@ async function updateMatch(matchId, body, allowed = ['team1_score', 'team2_score
   if ('team2_score' in fields && body.games === undefined) fields.team2_score = cleanScore(fields.team2_score);
   if ('video_url' in fields) fields.video_url = cleanVideoUrl(fields.video_url);
   if ('played_at' in fields) fields.played_at = cleanDate(fields.played_at);
+  if (!Object.keys(fields).length) {
+    const { data, error } = await supabase.from('matches').select(PLAYER_SELECT).eq('id', matchId).single();
+    if (error) throw error;
+    return data;
+  }
   const { data, error } = await supabase.from('matches').update(fields).eq('id', matchId).select(PLAYER_SELECT).single();
   if (error) throw error;
   return data;

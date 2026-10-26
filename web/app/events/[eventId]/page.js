@@ -589,8 +589,8 @@ export default function EventDetailPage() {
               onSaved={reloadMatches}
             />
           )}
-          {matchTab === 'enter' && <MatchList matches={(matches || []).filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reloadMatches} />}
-          {matchTab === 'results' && <MatchList matches={(matches || []).filter(isScored)} onChanged={reloadMatches} />}
+          {matchTab === 'enter' && <MatchList matches={(matches || []).filter((m) => !isScored(m))} emptyText={t('matches.noneOpen')} onChanged={reloadMatches} players={main.map((p) => ({ id: p.id, name: p.full_name }))} idField="event_participant_id" />}
+          {matchTab === 'results' && <MatchList matches={(matches || []).filter(isScored)} onChanged={reloadMatches} players={main.map((p) => ({ id: p.id, name: p.full_name }))} idField="event_participant_id" />}
           {matchTab === 'standings' && (
             <EventStandings
               event={event}

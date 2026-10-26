@@ -1,4 +1,5 @@
 'use client';
+import { digits, NUMPAD } from '@/lib/digits';
 import { useState } from 'react';
 import Segmented from '@/components/ui/Segmented';
 import { useI18n } from '@/context/I18nContext';
@@ -80,14 +81,11 @@ export function FormatPicker({ sport, value, onChange }) {
             {t('games.customPoints')}
             <input
               className="input !w-20 text-center"
-              type="number"
-              inputMode="numeric"
-              min="3"
-              max="99"
+              {...NUMPAD}
               autoFocus
               placeholder="25"
               value={typing}
-              onChange={(e) => type(e.target.value)}
+              onChange={(e) => type(digits(e.target.value))}
             />
             {t('games.pointsUnit')}
           </label>
@@ -109,14 +107,11 @@ export default function GamesInput({ value, onChange, labels = null, sport = 'ba
   const num = (i, side) => (
     <input
       className="input text-center font-bold !px-1"
-      type="number"
-      inputMode="numeric"
-      min="0"
-      max={top}
+      {...NUMPAD}
       placeholder="0"
       aria-label={`${t('games.game', { n: i + 1 })} · ${labels ? labels[side] : side + 1}`}
       value={value[i][side]}
-      onChange={(e) => set(i, side, e.target.value)}
+      onChange={(e) => set(i, side, digits(e.target.value))}
     />
   );
   const hint =

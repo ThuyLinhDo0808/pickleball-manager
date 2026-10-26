@@ -1,4 +1,5 @@
 'use client';
+import { digits, NUMPAD } from '@/lib/digits';
 import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
@@ -87,14 +88,11 @@ export default function MatchForm({ players, idField, parent, onSaved, onCancel,
               <div className="w-20 shrink-0">
                 <input
                   className="input text-center text-lg font-bold"
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  max="99"
+                  {...NUMPAD}
                   aria-label={`${t(`matches.team${team}`)} ${t('matches.score')}`}
                   placeholder="–"
                   value={score[team]}
-                  onChange={(e) => setScore({ ...score, [team]: e.target.value })}
+                  onChange={(e) => setScore({ ...score, [team]: digits(e.target.value) })}
                 />
               </div>
             )}

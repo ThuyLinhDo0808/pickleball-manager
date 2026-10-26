@@ -1,4 +1,5 @@
 'use client';
+import { digits, NUMPAD } from '@/lib/digits';
 import { useMemo, useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
@@ -101,9 +102,9 @@ export default function CourtRotation({ players, matches, defaultCourts = 2, lab
                 </div>
                 <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 items-center text-sm">
                   <div className="rounded-lg bg-navy-900 px-3 py-2 text-gray-100">{c.team1.map((p) => <span key={p.id}>{name(p)}</span>)}</div>
-                  <input className="input !w-16 text-center font-bold" type="number" min="0" inputMode="numeric" aria-label={`${courtName(c.court)} · 1`} disabled={c.saved} value={c.s1} onChange={(e) => setScore(i, 's1', e.target.value)} />
+                  <input className="input !w-16 text-center font-bold" {...NUMPAD} aria-label={`${courtName(c.court)} · 1`} disabled={c.saved} value={c.s1} onChange={(e) => setScore(i, 's1', digits(e.target.value))} />
                   <div className="rounded-lg bg-navy-900 px-3 py-2 text-gray-100">{c.team2.map((p) => <span key={p.id}>{name(p)}</span>)}</div>
-                  <input className="input !w-16 text-center font-bold" type="number" min="0" inputMode="numeric" aria-label={`${courtName(c.court)} · 2`} disabled={c.saved} value={c.s2} onChange={(e) => setScore(i, 's2', e.target.value)} />
+                  <input className="input !w-16 text-center font-bold" {...NUMPAD} aria-label={`${courtName(c.court)} · 2`} disabled={c.saved} value={c.s2} onChange={(e) => setScore(i, 's2', digits(e.target.value))} />
                 </div>
                 {!c.saved && (
                   <button type="button" className="btn-secondary w-full mt-3 !py-1.5 text-sm" disabled={busy === i} onClick={() => save(i)}>{t('courts.saveScore')}</button>

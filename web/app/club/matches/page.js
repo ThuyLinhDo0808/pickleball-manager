@@ -42,7 +42,7 @@ export default function ClubMatchesPage() {
         </button>
       </div>
 
-      {loading ? <p className="text-gray-400 text-sm">{t('common.loading')}</p> : <MatchList matches={matches || []} onChanged={reload} />}
+      {loading ? <p className="text-gray-400 text-sm">{t('common.loading')}</p> : <MatchList matches={matches || []} onChanged={reload} players={players} idField="club_member_id" />}
       {club && (club.sport || 'pickleball') === 'pickleball' && <DuprExport clubId={club.id} scope={{ scope: 'club' }} fileName={`dupr-${club.name}`} reloadKey={JSON.stringify((matches || []).map((m) => [m.id, m.team1_score, m.team2_score]))} />}
 
       <Modal open={showAdd} title={t('matches.add')} onClose={() => setShowAdd(false)}>
