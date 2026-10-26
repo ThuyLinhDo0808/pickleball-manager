@@ -182,7 +182,11 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
                 ))}
               </div>
               {gamesText(m.games) && <p className="text-gray-400 text-xs mt-1 tabular-nums">{gamesText(m.games)}</p>}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm">
+              {m.dupr_exported_at ? (
+                // Sent to DUPR: locked (Hoàn tác the lượt tải under "Gửi trận lên DUPR" to change it).
+                <p className="mt-3 text-sm text-lime-300">{t('matches.duprLocked')}</p>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm">
                 <button className={scored ? 'text-gray-300' : 'text-lime-400 font-semibold'} onClick={() => setEditing(m)}>
                   {players && idField ? t('matches.editMatch') : scored ? t('matches.edit') : t('matches.enterScore')}
                 </button>
@@ -190,6 +194,7 @@ export default function MatchList({ matches, onChanged, basePath = '/api/matches
                   <button className="text-red-400/80 ml-auto" onClick={() => remove(m)}>{t('common.delete')}</button>
                 )}
               </div>
+              )}
             </div>
           );
         })}

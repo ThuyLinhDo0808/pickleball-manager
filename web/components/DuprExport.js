@@ -49,6 +49,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const [showHistory, setShowHistory] = useState(false);
   const [tab, setTab] = useState(null); // ready | waiting | sent | ineligible (null = the first with matches)
   const [unpicked, setUnpicked] = useState({}); // ready matches the Host took out of the file
+  const [justConfirmed, setJustConfirmed] = useState(null); // the lượt tải just confirmed → "Hoàn tác" right there
   if (bare && error) return <p className="text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
   if (bare && !data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
   if (!clubId || error || !data) return null;
@@ -70,6 +71,9 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   // downloaded again and a decision made by mistake can be undone ("Mở lại").
   const byKey = new Map(list.map((m) => [`${m.kind}:${m.id}`, m]));
   const history = (bData?.batches || []).filter((b) => b.status !== 'pending' && (b.items || []).some((i) => byKey.has(`${i.kind}:${i.id}`)));
+  // Confirmed lượt tải show on the "đã gửi" tab with Hoàn tác; cancelled ones stay in the history.
+  const confirmedBatches = history.filter((b) => b.status === 'confirmed');
+  const cancelledBatches = history.filter((b) => b.status !== 'confirmed');
   // A member's ID is saved on the member; a quick-booking player's on their kèo row.
   const keyOf = (p) => p.member_id || (p.part_id ? `p:${p.part_id}` : null);
   const missingPeople = [...new Map(blocked.flatMap((m) => [...m.a, ...m.b]).filter((p) => !p.dupr_id).map((p) => [keyOf(p) || `n:${p.name}`, p])).values()];
@@ -155,6 +159,8 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
     try {
       await api.post(`/api/clubs/${clubId}/dupr/batches/${b.id}/${action}`, {});
       setDone(action === 'confirm' ? t('duprx.confirmed', { n: b.count }) : t('duprx.cancelled', { n: b.count }));
+      setJustConfirmed(action === 'confirm' ? b : null);
+      if (action === 'confirm') setTab('sent');
       await refresh();
     } catch (e) {
       setErr(e.payload?.code === 'batch_closed' ? t('duprx.batchClosed') : e.message);
@@ -170,6 +176,8 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
     setDone('');
     try {
       await api.post(`/api/clubs/${clubId}/dupr/batches/${b.id}/reopen`, {});
+      setJustConfirmed(null);
+      setTab('waiting');
       setDone(t('duprx.reopened', { n: b.count }));
       await refresh();
     } catch (e) {
@@ -308,7 +316,12 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
           </button>
         ))}
       </div>
-      {done && <p className="text-lime-200 text-sm mt-3" role="status">{done}</p>}
+      {done && (
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-3 rounded-xl border border-lime-400/30 bg-lime-400/5 px-3 py-2" role="status">
+          <p className="text-lime-200 text-sm">{done}</p>
+          {justConfirmed && <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => reopen({ ...justConfirmed, status: 'confirmed' })}>{t('duprx.undoBtn')}</button>}
+        </div>
+      )}
       {err && <p className="text-red-400 text-sm mt-3" role="alert">{err}</p>}
 
       {current === 'ready' && (
@@ -376,6 +389,22 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
 
       {current === 'sent' && (
         <div role="tabpanel">
+          {confirmedBatches.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-2">
+              {confirmedBatches.map((b) => (
+                <li key={b.id} className="rounded-xl border border-lime-400/30 bg-lime-400/5 p-3 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm text-gray-100">
+                    {t('duprx.batchLine', { time: when(b.created_at) })} · <span className="tabular-nums">{t('duprx.batchN', { n: b.count })}</span>
+                    <span className="block text-xs text-lime-300">{t('duprx.statusConfirmed', { time: b.decided_at ? when(b.decided_at) : '—' })} · {t('duprx.lockedNote')}</span>
+                  </span>
+                  <span className="flex flex-wrap gap-2 ml-auto">
+                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => again(b)}>{t('duprx.againBtn')}</button>
+                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => reopen(b)}>{t('duprx.undoBtn')}</button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           {!sent.length ? <Empty text={t('duprx.emptySent')} /> : (
             <Grid>
               {sent.map((m) => (
@@ -392,15 +421,15 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
               ))}
             </Grid>
           )}
-          {history.length > 0 && (
+          {cancelledBatches.length > 0 && (
             <div className="mt-4">
               <button type="button" className="text-sm font-semibold text-white underline underline-offset-2 min-h-[44px] sm:min-h-0" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>
-                {showHistory ? t('duprx.historyHide') : t('duprx.historyShow', { n: history.length })}
+                {showHistory ? t('duprx.historyHide') : t('duprx.historyShow', { n: cancelledBatches.length })}
               </button>{' '}
               <Hint inline text={t('duprx.historyHint')} />
               {showHistory && (
                 <ul className="mt-2 flex flex-col gap-2">
-                  {history.map((b) => (
+                  {cancelledBatches.map((b) => (
                     <li key={b.id} className="rounded-xl border border-navy-600 bg-navy-900/40 p-3">
                       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                         <span className="text-gray-100 text-sm">

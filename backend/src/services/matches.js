@@ -10,6 +10,16 @@ function badRequest(message) {
   return Object.assign(new Error(message), { status: 400 });
 }
 
+// A match already sent to DUPR is locked: no edits, no delete. The Host undoes the lượt tải
+// ("Hoàn tác") first, so the web and DUPR never disagree.
+function duprLocked() {
+  return Object.assign(new Error('This match was sent to DUPR. Undo that download first to change it.'), { status: 409, code: 'dupr_sent' });
+}
+async function assertNotSent(matchId) {
+  const { data } = await supabase.from('matches').select('dupr_exported_at').eq('id', matchId).maybeSingle();
+  if (data?.dupr_exported_at) throw duprLocked();
+}
+
 // Accept YouTube links only (watch, youtu.be, shorts, live, embed); empty clears it.
 function cleanVideoUrl(v) {
   if (v == null || v === '') return null;
@@ -197,6 +207,7 @@ async function replacePlayers(matchId, players, idField = null) {
 
 // Score / video / time edits, and the players when `players` is sent.
 async function updateMatch(matchId, body, allowed = ['team1_score', 'team2_score', 'video_url', 'played_at'], { idField = null } = {}) {
+  await assertNotSent(matchId);
   if (body.players !== undefined) await replacePlayers(matchId, body.players, idField);
   const fields = pick(body, allowed);
   if (body.games !== undefined) {
@@ -217,4 +228,4 @@ async function updateMatch(matchId, body, allowed = ['team1_score', 'team2_score
   return data;
 }
 
-module.exports = { TEAM_SIZE, PLAYER_SELECT, createMatch, updateMatch };
+module.exports = { TEAM_SIZE, PLAYER_SELECT, createMatch, updateMatch, duprLocked };
