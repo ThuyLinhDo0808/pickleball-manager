@@ -666,6 +666,97 @@ async function markExported(club, items, exported) {
   return { updated: n };
 }
 
+// ---- lượt tải: every CSV download kept on the server -----------------------------------
+// A download makes a pending lượt tải; the Host then confirms it ("Đã tải lên DUPR": its
+// matches become sent) or cancels it (they go back to waiting). Matches in a pending lượt
+// tải are not put in a new file, so nothing reaches DUPR twice even after a page reload or
+// on another device. Without the migration (20261221090000) downloads work as before.
+const BATCH_MIGRATION = '20261221090000_dupr_export_batches.sql';
+let batchCache = null;
+async function batchesReady() {
+  if (batchCache && Date.now() - batchCache.at < 60000) return batchCache.ok;
+  const { error } = await supabase.from('dupr_export_batches').select('id').limit(1);
+  batchCache = { ok: !error, at: Date.now() };
+  return batchCache.ok;
+}
+const itemKey = (i) => `${i?.kind}:${i?.id}`;
+const cleanItems = (items) => (Array.isArray(items) ? items : []).filter((i) => TABLE[i?.kind] && /^[0-9a-f-]{36}$/i.test(String(i?.id || ''))).map((i) => ({ kind: i.kind, id: i.id }));
+
+async function pendingBatches(club) {
+  if (!(await batchesReady())) return [];
+  const { data, error } = await supabase.from('dupr_export_batches').select('*').eq('club_id', club.id).eq('status', 'pending').order('created_at', { ascending: true }).limit(200);
+  if (error) throw error;
+  return data || [];
+}
+
+// Each match gets `batch` = { id, created_at } of the pending lượt tải it is in (or null).
+async function withBatches(club, list) {
+  const pending = await pendingBatches(club);
+  const where = new Map();
+  for (const b of pending) for (const i of b.items || []) where.set(itemKey(i), { id: b.id, created_at: b.created_at });
+  return list.map((m) => ({ ...m, batch: m.exported_at ? null : where.get(itemKey(m)) || null }));
+}
+
+async function createBatch(club, userId, list, { scoreType = 'SIDEOUT', fileName = null } = {}) {
+  if (!(await batchesReady()) || !list.length) return null;
+  const { data, error } = await supabase
+    .from('dupr_export_batches')
+    .insert({
+      club_id: club.id,
+      created_by: userId || null,
+      items: list.map((m) => ({ kind: m.kind, id: m.id })),
+      match_count: list.length,
+      with_missing: list.filter((m) => !m.ready).length,
+      score_type: scoreType === 'RALLY' ? 'RALLY' : 'SIDEOUT',
+      file_name: fileName ? String(fileName).slice(0, 120) : null,
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// The club's lượt tải: every pending one and the latest decided ones.
+async function listBatches(club, { limit = 10 } = {}) {
+  if (!(await batchesReady())) throw httpError(`Run migration ${BATCH_MIGRATION} first.`, 409, 'migration_required');
+  const pending = await pendingBatches(club);
+  const { data, error } = await supabase.from('dupr_export_batches').select('*').eq('club_id', club.id).neq('status', 'pending').order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return [...pending.reverse(), ...(data || [])].map((b) => ({ id: b.id, status: b.status, created_at: b.created_at, decided_at: b.decided_at, count: b.match_count, with_missing: b.with_missing, score_type: b.score_type, file_name: b.file_name, items: b.items || [] }));
+}
+
+async function getBatch(club, id) {
+  if (!(await batchesReady())) throw httpError(`Run migration ${BATCH_MIGRATION} first.`, 409, 'migration_required');
+  if (!/^[0-9a-f-]{36}$/i.test(String(id || ''))) throw httpError('Not found.', 404, 'not_found');
+  const { data } = await supabase.from('dupr_export_batches').select('*').eq('id', id).eq('club_id', club.id).maybeSingle();
+  if (!data) throw httpError('Not found.', 404, 'not_found');
+  return data;
+}
+
+// The same file again (a pending lượt tải): its matches as they are now.
+async function batchCsv(club, id) {
+  const b = await getBatch(club, id);
+  if (b.status !== 'pending') throw httpError('This download was already confirmed or cancelled.', 409, 'batch_closed');
+  const want = new Set((b.items || []).map(itemKey));
+  const list = (await clubMatches(club, { all: true })).filter((m) => want.has(itemKey(m)) && !m.exported_at && !m.no_score);
+  return { csv: matchesCsv(club, list, b.score_type, true), count: list.length, file_name: b.file_name };
+}
+
+// confirm: the file was uploaded to DUPR → its matches are sent. cancel: it was not → they
+// wait again.
+async function decideBatch(club, id, action, userId) {
+  const b = await getBatch(club, id);
+  if (b.status !== 'pending') throw httpError('This download was already confirmed or cancelled.', 409, 'batch_closed');
+  if (action === 'confirm') await markExported(club, cleanItems(b.items), true);
+  const { error } = await supabase
+    .from('dupr_export_batches')
+    .update({ status: action === 'confirm' ? 'confirmed' : 'cancelled', decided_at: new Date().toISOString(), decided_by: userId || null })
+    .eq('id', b.id)
+    .eq('status', 'pending');
+  if (error) throw error;
+  return { id: b.id, status: action === 'confirm' ? 'confirmed' : 'cancelled', count: b.match_count };
+}
+
 // ---- statistics (the DUPR page under Thống kê) ------------------------------------------
 const round3 = (v) => (v == null ? null : Math.round(v * 1000) / 1000);
 const monthsAgo = (n) => {
@@ -782,4 +873,4 @@ async function playerDupr(userId) {
 
 module.exports = {
   latestRatings,
-  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, quickPlayers, setQuickId, clubMatches, matchesCsv, markExported, stats, playerDupr, TEMPLATE };
+  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, quickPlayers, setQuickId, clubMatches, matchesCsv, markExported, stats, batchesReady, withBatches, createBatch, listBatches, batchCsv, decideBatch, cleanItems, BATCH_MIGRATION, playerDupr, TEMPLATE };

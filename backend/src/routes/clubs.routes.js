@@ -1868,25 +1868,55 @@ const duprScope = (src) => {
 router.get('/:clubId/dupr/matches', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
-    res.json({ matches: await dupr.clubMatches(req.club, duprScope(req.query)) });
+    const list = await dupr.clubMatches(req.club, duprScope(req.query));
+    res.json({ matches: await dupr.withBatches(req.club, list), batches: await dupr.batchesReady() });
   } catch (err) {
     duprErr(res, err);
   }
 });
-// The CSV in DUPR's import template (ready matches only), optionally limited to `items`.
+// The CSV in DUPR's import template, optionally limited to `items`. Only matches where
+// everyone has a DUPR ID, unless allow_missing (the Host was told who has none and chose to
+// include them). Matches waiting in a lượt tải (downloaded, not yet confirmed) are left out;
+// the download itself becomes a new lượt tải (`batch`).
 router.post('/:clubId/dupr/matches/csv', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
     const b = req.body || {};
-    let list = await dupr.clubMatches(req.club, duprScope(b));
+    let list = await dupr.withBatches(req.club, await dupr.clubMatches(req.club, duprScope(b)));
     if (Array.isArray(b.items) && b.items.length) {
       const want = new Set(b.items.map((i) => `${i?.kind}:${i?.id}`));
       list = list.filter((m) => want.has(`${m.kind}:${m.id}`));
     }
-    // allow_missing: the Host was told who has no DUPR ID and downloads anyway.
     const allowMissing = b.allow_missing === true;
-    const ready = list.filter((m) => m.ready || (allowMissing && !m.no_score));
-    res.json({ csv: dupr.matchesCsv(req.club, ready, b.score_type === 'RALLY' ? 'RALLY' : 'SIDEOUT', allowMissing), count: ready.length, items: ready.map((m) => ({ kind: m.kind, id: m.id })) });
+    const ready = list.filter((m) => !m.exported_at && !m.batch && (m.ready || (allowMissing && !m.no_score)));
+    const scoreType = b.score_type === 'RALLY' ? 'RALLY' : 'SIDEOUT';
+    const batch = await dupr.createBatch(req.club, req.userId, ready, { scoreType, fileName: b.file_name });
+    res.json({ csv: dupr.matchesCsv(req.club, ready, scoreType, allowMissing), count: ready.length, items: ready.map((m) => ({ kind: m.kind, id: m.id })), batch: batch ? { id: batch.id, created_at: batch.created_at, count: batch.match_count } : null });
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+// Lượt tải: list, download the same file again, confirm (uploaded to DUPR) or cancel.
+router.get('/:clubId/dupr/batches', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json({ batches: await dupr.listBatches(req.club) });
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.get('/:clubId/dupr/batches/:batchId/csv', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.batchCsv(req.club, req.params.batchId));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.post('/:clubId/dupr/batches/:batchId/:action(confirm|cancel)', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.decideBatch(req.club, req.params.batchId, req.params.action, req.userId));
   } catch (err) {
     duprErr(res, err);
   }
