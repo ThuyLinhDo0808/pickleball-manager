@@ -34,8 +34,10 @@ export default function UnderlineTabs({ tabs, value, onChange, className = 'mb-4
         role="tablist"
         className="flex gap-1 overflow-x-auto overscroll-x-contain border-b border-navy-700 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x"
       >
-        {tabs.map(({ key, label, count, alert, icon }) => {
+        {tabs.map(({ key, label, count, alert, icon, tone }) => {
           const active = value === key;
+          // tone 'danger': a red tab (delete account) so it is never mistaken for an ordinary setting.
+          const danger = tone === 'danger';
           return (
             <button
               key={key}
@@ -43,13 +45,13 @@ export default function UnderlineTabs({ tabs, value, onChange, className = 'mb-4
               role="tab"
               aria-selected={active}
               onClick={() => onChange(key)}
-              className={`relative shrink-0 snap-start min-h-[44px] px-3 sm:px-3.5 text-sm whitespace-nowrap flex items-center gap-1.5 transition-colors ${active ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-100'}`}
+              className={`relative shrink-0 snap-start min-h-[44px] px-3 sm:px-3.5 text-sm whitespace-nowrap flex items-center gap-1.5 transition-colors ${danger ? (active ? 'text-red-300 font-semibold' : 'text-red-400/80 hover:text-red-300') : active ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-100'}`}
             >
-              {icon && <UiIcon name={icon} className={`w-4 h-4 ${active ? 'text-lime-300' : ''}`} />}
+              {icon && <UiIcon name={icon} className={`w-4 h-4 ${active && !danger ? 'text-lime-300' : ''}`} />}
               {label}
               {count != null && <span className={`rounded-full px-1.5 min-w-[1.25rem] text-center text-xs tabular-nums ${active ? 'bg-lime-400/20 text-lime-200' : 'bg-navy-700 text-gray-300'}`}>{count}</span>}
               {alert > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs leading-5 tabular-nums text-center">{alert}</span>}
-              <span className={`absolute left-2 right-2 -bottom-px h-0.5 rounded-full ${active ? 'bg-lime-400' : 'bg-transparent'}`} aria-hidden />
+              <span className={`absolute left-2 right-2 -bottom-px h-0.5 rounded-full ${active ? (danger ? 'bg-red-400' : 'bg-lime-400') : 'bg-transparent'}`} aria-hidden />
             </button>
           );
         })}
