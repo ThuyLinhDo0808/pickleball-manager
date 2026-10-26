@@ -71,11 +71,31 @@ Cloudflare → tên miền → **SSL/TLS**:
 4. Về Cloudflare, sửa bản ghi `api` → bật **Proxied** (đám mây cam) → Save.
 5. **Render → Environment**, thêm / sửa rồi *Save* (Render tự deploy lại):
    - `TRUST_CLOUDFLARE=true` — API lấy đúng IP người dùng từ Cloudflare (không có biến này, mọi người dùng bị tính chung một IP của Cloudflare → giới hạn số lần bị chạm rất nhanh).
-   - `CLOUDFLARE_ONLY=true` — từ chối mọi request **không** đi qua Cloudflare (người tấn công gọi thẳng `*.onrender.com` để né tường lửa sẽ nhận 403). Chỉ bật **sau khi** web đã đổi sang `api.nexuszone.vn` (mục 6). `/health` vẫn mở.
    - `CORS_ORIGIN=https://nexuszone.vn,https://www.nexuszone.vn`
    - `PUBLIC_WEB_URL=https://nexuszone.vn`
 6. **Vercel → Settings → Environment Variables**: `NEXT_PUBLIC_API_URL=https://api.nexuszone.vn` → **Redeploy** (biến `NEXT_PUBLIC_*` chỉ có hiệu lực sau khi build lại).
 7. Kiểm tra: mở `https://api.nexuszone.vn/health` thấy `{"ok":true}`; đăng nhập web bình thường. Trong DevTools → Network, response của API có header `server: cloudflare` và `cf-ray`.
+
+## Bước 5b — Chỉ cho phép đi qua Cloudflare (chặn gọi thẳng `*.onrender.com`)
+
+Render cũng đặt máy chủ sau Cloudflare, nên không phân biệt được bằng địa chỉ IP. Cách làm: Cloudflare gắn một **header bí mật** vào mọi request tới `api.`; request nào thiếu header đó (gọi thẳng Render) bị chặn.
+
+1. Tạo chuỗi bí mật dài, ngẫu nhiên (vd vào <https://www.random.org/strings/> lấy 1 chuỗi 32 ký tự chữ + số, hoặc chạy `openssl rand -hex 32`). **Không** gửi chuỗi này cho ai, không dán vào chat.
+2. **Cloudflare → tên miền → Rules → Transform Rules** (hoặc *Rules → Overview → Create rule → Request Header Transform Rule*) → **Modify Request Header → Create rule**:
+   - Rule name: `Khoá API qua Cloudflare`
+   - *If incoming requests match*: **Custom filter expression** → `(http.host eq "api.nexuszone.vn")`
+   - *Then*: **Set static** — Header name `X-Origin-Auth`, Value = chuỗi bí mật ở bước 1
+   - **Deploy**.
+3. **Render → Environment**: thêm `ORIGIN_SECRET` = **đúng** chuỗi bí mật đó → Save (chờ deploy xong).
+4. Kiểm tra:
+   - `https://nexuszone.vn` đăng nhập bình thường.
+   - `https://<service>.onrender.com/api/public/maintenance` → `{"error":"Forbidden.","code":"direct_access"}`.
+   - `https://<service>.onrender.com/health` → `{"ok":true}`.
+   - Web lỗi → xoá `ORIGIN_SECRET` trên Render (web chạy lại ngay), kiểm tra Transform Rule đúng tên miền / đúng giá trị.
+
+Đổi chuỗi bí mật: sửa ở Cloudflare **và** Render cùng lúc (Cloudflare trước, Render ngay sau).
+
+> `CLOUDFLARE_ONLY` (bản trước) đã bỏ: nó dựa vào địa chỉ IP nên không dùng được trên Render.
 
 ## Bước 6 — Bảo mật cơ bản
 
@@ -129,7 +149,7 @@ Ngoài ra vẫn có thể chặn nhanh ở server bằng biến `BLOCKED_IPS` tr
 |---|---|
 | `https://nexuszone.vn` | Web mở bình thường, có ổ khoá HTTPS |
 | `https://api.nexuszone.vn/health` | `{"ok":true}`, header `server: cloudflare` |
-| Gọi thẳng `https://<service>.onrender.com/api/public/maintenance` (khi đã bật `CLOUDFLARE_ONLY`) | `403 direct_access` |
+| Gọi thẳng `https://<service>.onrender.com/api/public/maintenance` (khi đã bật `ORIGIN_SECRET`) | `403 direct_access` |
 | Đăng nhập, đăng ký, gửi email mã | Hoạt động; email vẫn tới (bản ghi Resend còn đủ, DNS only) |
 | Render → Logs | IP trong log là IP người dùng, không phải IP Cloudflare |
 
