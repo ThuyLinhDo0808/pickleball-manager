@@ -126,7 +126,7 @@ export default function StaffEventPage() {
   const lastMatch = ev.matches[0]?.played_at ? new Date(ev.matches[0].played_at) : null;
 
   return (
-    <AppShell>
+    <AppShell back={false}>
       <Link href="/staff" className="text-gray-400 text-sm hover:text-white">{t('staffView.back')}</Link>
       <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-navy-800 p-4 sm:p-5 mt-2 mb-4">
         <div className="flex items-start justify-between gap-3">
@@ -191,8 +191,10 @@ export default function StaffEventPage() {
             <input className="input flex-1" type="search" placeholder={t('staffView.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
             <button className="btn-primary shrink-0 text-sm" onClick={() => setShowQr(true)}>{t('qr.scan')}</button>
           </div>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="mb-3">
             <Segmented
+              phoneCols={2}
+              className="w-full sm:w-auto"
               items={FILTERS}
               value={filter}
               onChange={setFilter}

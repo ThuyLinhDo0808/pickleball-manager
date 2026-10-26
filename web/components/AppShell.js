@@ -438,6 +438,9 @@ export default function AppShell({ children, back }) {
     .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
   const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
+  // Staff / finance see one or two pages: put their account beside them, so the bar is not
+  // one lonely icon next to "Thêm".
+  if (tabs.length < 3 && !tabs.some((tab) => tab.href === '/account')) tabs.push({ href: '/account', key: 'nav.account', icon: 'account' });
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
@@ -624,6 +627,8 @@ export default function AppShell({ children, back }) {
           <div className="max-w-md mx-auto card mt-4">
             <h1 className="text-white text-xl font-bold mb-1">{t('clubs.createFirst')}</h1>
             <p className="text-gray-400 text-sm mb-4">{t('clubs.createFirstHint')}</p>
+            {/* Invited as Co-Admin / staff but the email is not confirmed yet: the grant waits for that. */}
+            {user && !user.email_confirmed_at && <p className="mb-4 rounded-lg border border-amber-400/40 bg-amber-400/5 px-3 py-2 text-sm text-amber-200">{t('staffView.unverified')}</p>}
             <CreateClubForm autoFocus />
           </div>
         ) : (
