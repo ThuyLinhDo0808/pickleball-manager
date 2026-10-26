@@ -40,7 +40,7 @@ import { deadlinesOf, eventStartMs, policyText, refundIfCancelNow } from '@/lib/
 import Hint from '@/components/ui/Hint';
 
 // "Thêm thành viên": họ tên, giới tính, DUPR ID và DUPR tự nhập (2 ô cuối không bắt buộc).
-const EMPTY_MEMBER = { full_name: '', gender: '', dupr_id: '', dupr_self: '' };
+const EMPTY_MEMBER = { full_name: '', gender: '', dupr_id: '' };
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
@@ -421,14 +421,10 @@ export default function EventDetailPage() {
                 </div>
               </div>
               {sport === 'pickleball' && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
                   <div>
                     <label className="text-sm text-gray-300" htmlFor="am-dupr-id">{t('quick.duprId')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
                     <input id="am-dupr-id" className="input uppercase" maxLength={10} autoCapitalize="characters" value={form.dupr_id} onChange={(e) => setForm({ ...form, dupr_id: e.target.value.toUpperCase() })} />
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-300" htmlFor="am-dupr">{t('members.colDuprSelf')} <span className="text-gray-500 text-xs">({t('ux.optional')})</span></label>
-                    <input id="am-dupr" className="input tabular-nums" type="number" inputMode="decimal" min="1" max="8" step="0.01" placeholder="VD: 3.25" value={form.dupr_self} onChange={(e) => setForm({ ...form, dupr_self: e.target.value })} />
                   </div>
                 </div>
               )}

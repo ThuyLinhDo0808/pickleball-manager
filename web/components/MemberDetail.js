@@ -257,10 +257,12 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
           <option value="female">{t('members.female')}</option>
         </select>
       </div>
-      <div className="min-w-0">
-        <label className="text-xs text-gray-400">{t('common.level')}</label>
-        <LevelInput value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
-      </div>
+      {sport === 'badminton' && (
+        <div className="min-w-0">
+          <label className="text-xs text-gray-400">{t('common.level')}</label>
+          <LevelInput value={f.dupr_level} onChange={(v) => set({ dupr_level: v })} />
+        </div>
+      )}
       {sport !== 'badminton' && (
         <div className="min-w-0">
           <label className="text-xs text-gray-400" htmlFor="edit-dupr-id">{t('dupr.idLabel')}</label>
