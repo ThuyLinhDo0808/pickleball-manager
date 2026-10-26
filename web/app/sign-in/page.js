@@ -98,7 +98,6 @@ export default function SignInPage() {
     const id = setTimeout(() => setResendIn((n) => n - 1), 1000);
     return () => clearTimeout(id);
   }, [resendIn]);
-  const [rs, setRs] = useState({ code: '', password: '', password2: '' });
   const [password, setPassword] = useState('');
   // sign up
   const [f, setF] = useState({ username: '', password: '', password2: '', email: '', gender: '', dupr_id: '' });
@@ -247,32 +246,14 @@ export default function SignInPage() {
     setError('');
     try {
       await api.publicPost('/api/public/auth/forgot', { login, origin: window.location.origin, captcha_token: captcha });
-      setRs({ code: '', password: '', password2: '' });
-      setResetStep('code');
+      setResetStep('sent');
       setResendIn(60);
-      setInfo(t('auth.resetCodeSent'));
+      setInfo(t('auth.resetLinkSent'));
     } catch (err) {
       if (err?.payload?.code === 'code_wait') setResendIn(Number(err.payload.retry_after) || 60);
       setError(errorText(err, t));
     } finally {
       capRef.current?.reset();
-      setBusy(false);
-    }
-  }
-
-  async function resetWithCode(e) {
-    e.preventDefault();
-    setError('');
-    if (rs.password !== rs.password2) return setError(t('auth.passwordMismatch'));
-    setBusy(true);
-    try {
-      await api.publicPost('/api/public/auth/reset', { login, code: rs.code, password: rs.password });
-      setResetStep('ask');
-      setRs({ code: '', password: '', password2: '' });
-      go('signIn', t('auth.resetDone'));
-    } catch (err) {
-      setError(errorText(err, t));
-    } finally {
       setBusy(false);
     }
   }
@@ -420,23 +401,14 @@ export default function SignInPage() {
             </form>
           )}
 
-          {mode === 'forgot' && resetStep === 'code' && (
-            <form onSubmit={resetWithCode}>
-              <Field label={t('auth.resetCode')} htmlFor="rs-code">
-                <input id="rs-code" className="input text-center text-2xl tracking-[0.5em] tabular-nums" required inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="\d{6}" value={rs.code} onChange={(e) => setRs({ ...rs, code: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
-              </Field>
-              <Field label={`${t('auth.newPassword')} *`} htmlFor="rs-pw" hint={<span className="text-gray-500">{t('auth.passwordRule')}</span>}>
-                <PasswordInput id="rs-pw" value={rs.password} onChange={(e) => setRs({ ...rs, password: e.target.value })} autoComplete="new-password" minLength={8} />
-              </Field>
-              <Field label={`${t('auth.password2')} *`} htmlFor="rs-pw2" hint={rs.password2 && rs.password2 !== rs.password ? <span className="text-red-300">{t('auth.passwordMismatch')}</span> : null}>
-                <PasswordInput id="rs-pw2" value={rs.password2} onChange={(e) => setRs({ ...rs, password2: e.target.value })} autoComplete="new-password" minLength={8} />
-              </Field>
-              <button type="submit" disabled={busy || rs.code.length !== 6} className="btn-primary w-full mt-2">{busy ? t('auth.working') : t('auth.resetSave')}</button>
+          {mode === 'forgot' && resetStep === 'sent' && (
+            <div>
+              <p className="text-sm text-gray-300 leading-relaxed">{t('auth.resetLinkHow')}</p>
               <p className="text-sm text-center mt-5 flex flex-col gap-3">
                 <button type="button" disabled={resendIn > 0} className="text-lime-400 hover:underline disabled:text-gray-500 disabled:no-underline min-h-[44px] tabular-nums" onClick={() => { setResetStep('ask'); setInfo(''); setError(''); }}>{resendIn > 0 ? t('auth.resetAgainIn', { s: resendIn }) : t('auth.resetAgain')}</button>
-                <button type="button" className="text-gray-400 hover:underline" onClick={() => { setResetStep('ask'); go('signIn'); }}>← {t('auth.backToSignIn')}</button>
+                <button type="button" className="text-gray-400 hover:underline min-h-[44px]" onClick={() => { setResetStep('ask'); go('signIn'); }}>← {t('auth.backToSignIn')}</button>
               </p>
-            </form>
+            </div>
           )}
 
           {mode === 'forgot' && resetStep === 'ask' && (
