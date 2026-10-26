@@ -70,31 +70,56 @@ async function markVerified(userId) {
 
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-// The code email, laid out like other account-code emails: one card with the title, the
-// code in a large spaced box, how long it lasts, what to do if it was not you, and a small
-// footer saying why the email was sent. Inline styles and tables only (email clients).
-// docs/email-templates/verify-code.html is the same layout with {{ .Token }} for Supabase.
-function codeEmail(code) {
+// The code emails (email check, password reset), laid out like other account-code emails:
+// the logo, one card with the title, the code in a large spaced box, how long it lasts, what
+// to do if it was not you, and a small footer saying why the email was sent. Inline styles
+// and tables only (email clients). docs/email-templates/*.html are the same layout with
+// {{ .Token }} for Supabase's own templates.
+const KINDS = {
+  verify: {
+    subject: 'Mã xác nhận NexusZone của bạn',
+    title: 'Mã xác nhận NexusZone của bạn',
+    use: 'Nhập mã này trên NexusZone để hoàn tất xác nhận email. Mã sẽ hết hạn sau vài phút.',
+    notYou: 'Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này. Không ai có thể dùng email của bạn nếu không có mã này.',
+    why: 'Email được gửi vì địa chỉ này vừa được dùng để đăng ký trên NexusZone.',
+  },
+  reset: {
+    subject: 'Mã đặt lại mật khẩu NexusZone',
+    title: 'Mã đặt lại mật khẩu NexusZone',
+    use: 'Nhập mã này trên NexusZone để đặt mật khẩu mới. Mã dùng được một lần và sẽ hết hạn sau 1 giờ.',
+    notYou: 'Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này — mật khẩu của bạn không đổi. Không ai có thể đổi mật khẩu nếu không có mã này.',
+    why: 'Email được gửi vì có yêu cầu đặt lại mật khẩu cho tài khoản dùng địa chỉ này.',
+  },
+};
+
+// The logo (a PNG: email apps do not show SVG), from the web's address when it is known.
+function logoUrl() {
+  const base = String(process.env.PUBLIC_WEB_URL || '').split(',')[0].trim().replace(/\/+$/, '');
+  return /^https:\/\//.test(base) ? `${base}/brand/email-logo.png` : null;
+}
+
+function codeEmail(code, kind = 'verify', { logo = logoUrl() } = {}) {
+  const k = KINDS[kind] || KINDS.verify;
   const c = esc(code);
-  const subject = 'Mã xác nhận NexusZone của bạn';
-  const text =
-    `Mã xác nhận NexusZone của bạn\n\n${code}\n\n` +
-    `Nhập mã này trên NexusZone để hoàn tất xác nhận email. Mã sẽ hết hạn sau vài phút.\n\n` +
-    `Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này. Không ai có thể dùng email của bạn nếu không có mã này.\n\n` +
-    `Đây là email tài khoản từ NexusZone, được gửi vì địa chỉ này vừa được dùng để đăng ký trên NexusZone.`;
+  const subject = k.subject;
+  const text = `${k.title}\n\n${code}\n\n${k.use}\n\n${k.notYou}\n\nĐây là email tài khoản từ NexusZone. ${k.why}`;
+  const brand = logo
+    ? `<img src="${esc(logo)}" width="160" height="40" alt="NexusZone" style="display:block;border:0;width:160px;height:40px">`
+    : `<span style="font-size:15px;font-weight:800;letter-spacing:2px;color:#0b1220">NEXUSZONE</span>`;
   const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
 <body style="margin:0;padding:0;background:#f3f4f6">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(k.title)}: ${c}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#0b1220">
-<tr><td align="center" style="padding:36px 32px 8px;font-size:15px;font-weight:800;letter-spacing:2px;color:#0b1220">NEXUSZONE</td></tr>
-<tr><td align="center" style="padding:8px 32px 0;font-size:26px;line-height:1.3;font-weight:700">Mã xác nhận NexusZone của bạn</td></tr>
+<tr><td align="center" style="padding:32px 32px 8px">${brand}</td></tr>
+<tr><td align="center" style="padding:16px 32px 0;font-size:26px;line-height:1.3;font-weight:700">${esc(k.title)}</td></tr>
 <tr><td align="center" style="padding:24px 32px">
 <div style="display:inline-block;background:#f1f3f5;border-radius:12px;padding:16px 28px;font-size:36px;font-weight:700;letter-spacing:10px;color:#0b1220;font-family:'Segoe UI',Helvetica,Arial,sans-serif">${c}</div>
 </td></tr>
-<tr><td align="center" style="padding:0 32px 20px;font-size:16px;line-height:1.6;color:#1f2937">Nhập mã này trên NexusZone để hoàn tất xác nhận email. Mã sẽ hết hạn sau vài phút.</td></tr>
-<tr><td align="center" style="padding:0 32px 32px;font-size:14px;line-height:1.6;color:#6b7280">Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này. Không ai có thể dùng email của bạn nếu không có mã này.</td></tr>
+<tr><td align="center" style="padding:0 32px 20px;font-size:16px;line-height:1.6;color:#1f2937">${esc(k.use)}</td></tr>
+<tr><td align="center" style="padding:0 32px 32px;font-size:14px;line-height:1.6;color:#6b7280">${esc(k.notYou)}</td></tr>
 </table>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px"><tr><td align="center" style="padding:20px 32px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#9ca3af">Đây là email tài khoản từ NexusZone. Email được gửi vì địa chỉ này vừa được dùng để đăng ký trên NexusZone.</td></tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px"><tr><td align="center" style="padding:20px 32px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#9ca3af">Đây là email tài khoản từ NexusZone. ${esc(k.why)}</td></tr></table>
 </td></tr></table>
 </body></html>`;
   return { subject, text, html };

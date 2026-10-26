@@ -181,41 +181,69 @@ router.post('/signup', tooMany, mails, requireCaptcha, async (req, res) => {
   }
 });
 
-// The reset link sent through our own mail sender (Resend), like the other account emails,
-// so it does not depend on Supabase's built-in sender (a few emails an hour, often only to
-// the project's own team). Returns 'sent', or why not.
-async function sendResetLink(email, origin) {
+// Forgot password, step 1: email a 6-digit code (our own mail sender, Resend). Supabase
+// makes the one-time recovery code (generateLink), we send it with the same layout as the
+// email-check code. Returns 'sent', or why not.
+async function sendResetCode(email) {
   if (!process.env.RESEND_API_KEY) return 'off';
-  const { data, error } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: origin ? { redirectTo: `${origin}/reset-password` } : {} });
-  const link = data?.properties?.action_link;
-  if (error || !link) return 'no_account';
-  const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const text = `Bạn (hoặc ai đó) vừa yêu cầu đặt lại mật khẩu tài khoản NexusZone.\n\nMở link sau để chọn mật khẩu mới (link dùng được một lần, hết hạn sau 1 giờ):\n${link}\n\nNếu không phải bạn yêu cầu, hãy bỏ qua email này — mật khẩu của bạn không đổi.`;
-  const html = `<p>Bạn (hoặc ai đó) vừa yêu cầu <b>đặt lại mật khẩu</b> tài khoản NexusZone.</p>
-<p><a href="${esc(link)}" style="display:inline-block;padding:10px 18px;background:#B6F03B;color:#0B1220;border-radius:8px;text-decoration:none;font-weight:600">Đặt mật khẩu mới</a></p>
-<p>Link dùng được một lần, hết hạn sau 1 giờ.</p>
-<p>Nếu không phải bạn yêu cầu, hãy bỏ qua email này — mật khẩu của bạn không đổi.</p>`;
-  const r = await security.sendMail(email, 'Đặt lại mật khẩu NexusZone', text, html);
+  const { data, error } = await supabase.auth.admin.generateLink({ type: 'recovery', email });
+  const code = data?.properties?.email_otp;
+  if (error || !/^\d{6}$/.test(String(code || ''))) return 'no_account';
+  const { subject, text, html } = emailVerify.codeEmail(code, 'reset');
+  const r = await security.sendMail(email, subject, text, html);
   if (r !== 'sent') console.error('forgot mail', r);
   return r;
 }
 
-// Forgot password: email a reset link. Always answers ok (never says whether the
-// account exists).
+// Always answers ok (never says whether the account exists).
 router.post('/forgot', tooMany, mails, requireCaptcha, async (req, res) => {
   try {
     const email = await emailFor(cleanLogin(req.body?.login));
     const origin = webOrigin(req);
-    if (email && (await sendResetLink(email, origin)) !== 'sent') {
-      // No own mail sender (or it failed): Supabase's own email. Its built-in sender only
-      // reaches a few addresses an hour — set custom SMTP in Supabase for real use.
+    if (email && (await sendResetCode(email)) !== 'sent') {
+      // No own mail sender (or it failed): Supabase's own "Reset Password" email (its
+      // template must contain {{ .Token }} for the code). Its built-in sender only reaches
+      // a few addresses an hour — set custom SMTP in Supabase for real use.
       const { error } = await authClient().auth.resetPasswordForEmail(email, origin ? { redirectTo: `${origin}/reset-password` } : {});
       if (error) console.error('forgot', error.status || '', error.code || '', error.message);
     }
   } catch (err) {
     console.error('forgot', err.message);
   }
-  res.json({ ok: true });
+  res.json({ ok: true, method: 'code' });
+});
+
+// Forgot password, step 2: { login, code, password }. A right code sets the new password,
+// signs every device out and counts the email as confirmed (the code came to it).
+const resetTries = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, key: (req) => `reset:${cleanLogin(req.body?.login)}` });
+router.post('/reset', tooMany, resetTries, async (req, res) => {
+  const fail = (code, error, status = 400) => res.status(status).json({ error, code });
+  const code = String(req.body?.code || '').replace(/\s+/g, '');
+  const password = String(req.body?.password || '');
+  if (!/^\d{6}$/.test(code)) return fail('bad_code', 'Enter the 6-digit code.');
+  if (password.length < 8 || password.length > 72) return fail('weak_password', 'Password: 8–72 characters.');
+  try {
+    const email = await emailFor(cleanLogin(req.body?.login));
+    if (!email) return fail('bad_code', 'Wrong or expired code.');
+    const { data: u } = await supabase.from('users').select('username').eq('email', email).maybeSingle();
+    const weak = await weakReason(password, { username: u?.username, email });
+    if (weak === 'password_like_name') return fail('password_like_name', 'The password must not contain your username or email.');
+    if (weak === 'password_leaked') return fail('password_leaked', 'This password appears in leaked password lists. Choose another one.');
+    const { data, error } = await authClient().auth.verifyOtp({ email, token: code, type: 'recovery' });
+    if (error || !data?.user?.id) return fail('bad_code', 'Wrong or expired code.');
+    const userId = data.user.id;
+    const { error: pErr } = await supabase.auth.admin.updateUserById(userId, { password });
+    if (pErr) {
+      if (pErr.code === 'weak_password') return fail('weak_password', pErr.message);
+      throw pErr;
+    }
+    await security.signOutEverywhere(userId, data.session?.access_token).catch(() => {});
+    await emailVerify.markVerified(userId).catch(() => {});
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('reset', err.message);
+    res.status(502).json({ error: 'Password reset is unavailable right now.', code: 'auth_unavailable' });
+  }
 });
 
 // Send the confirmation email again (username or email). Always ok.

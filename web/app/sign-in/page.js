@@ -30,7 +30,7 @@ function errorText(err, t) {
   if (err?.status === 429) return t('auth.rateLimit');
   if (code === 'terms_required') return t('legal.termsRequired');
   if (code === 'maintenance') return t('auth.err_maintenance', { time: err.payload.maintenance?.ends_at ? localDate(new Date(err.payload.maintenance.ends_at), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—' });
-  const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'bad_dupr_id', 'captcha_failed', 'password_leaked', 'password_like_name', 'email_rate_limit', 'auth_unavailable'];
+  const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'bad_dupr_id', 'captcha_failed', 'password_leaked', 'password_like_name', 'bad_code', 'email_rate_limit', 'auth_unavailable'];
   return known.includes(code) ? t(`auth.err_${code}`) : err?.message || t('common.error');
 }
 
@@ -88,6 +88,9 @@ export default function SignInPage() {
   const [unconfirmed, setUnconfirmed] = useState(false);
   // sign in / forgot
   const [login, setLogin] = useState('');
+  // Forgot password: 'ask' (send the code) → 'code' (code + new password).
+  const [resetStep, setResetStep] = useState('ask');
+  const [rs, setRs] = useState({ code: '', password: '', password2: '' });
   const [password, setPassword] = useState('');
   // sign up
   const [f, setF] = useState({ username: '', password: '', password2: '', email: '', gender: '', dupr_id: '' });
@@ -236,11 +239,30 @@ export default function SignInPage() {
     setError('');
     try {
       await api.publicPost('/api/public/auth/forgot', { login, origin: window.location.origin, captcha_token: captcha });
-      setInfo(t('auth.resetSent'));
+      setRs({ code: '', password: '', password2: '' });
+      setResetStep('code');
+      setInfo(t('auth.resetCodeSent'));
     } catch (err) {
       setError(errorText(err, t));
     } finally {
       capRef.current?.reset();
+      setBusy(false);
+    }
+  }
+
+  async function resetWithCode(e) {
+    e.preventDefault();
+    setError('');
+    if (rs.password !== rs.password2) return setError(t('auth.passwordMismatch'));
+    setBusy(true);
+    try {
+      await api.publicPost('/api/public/auth/reset', { login, code: rs.code, password: rs.password });
+      setResetStep('ask');
+      setRs({ code: '', password: '', password2: '' });
+      go('signIn', t('auth.resetDone'));
+    } catch (err) {
+      setError(errorText(err, t));
+    } finally {
       setBusy(false);
     }
   }
@@ -388,7 +410,26 @@ export default function SignInPage() {
             </form>
           )}
 
-          {mode === 'forgot' && (
+          {mode === 'forgot' && resetStep === 'code' && (
+            <form onSubmit={resetWithCode}>
+              <Field label={t('auth.resetCode')} htmlFor="rs-code">
+                <input id="rs-code" className="input text-center text-2xl tracking-[0.5em] tabular-nums" required inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="\d{6}" value={rs.code} onChange={(e) => setRs({ ...rs, code: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
+              </Field>
+              <Field label={`${t('auth.newPassword')} *`} htmlFor="rs-pw" hint={<span className="text-gray-500">{t('auth.passwordRule')}</span>}>
+                <PasswordInput id="rs-pw" value={rs.password} onChange={(e) => setRs({ ...rs, password: e.target.value })} autoComplete="new-password" minLength={8} />
+              </Field>
+              <Field label={`${t('auth.password2')} *`} htmlFor="rs-pw2" hint={rs.password2 && rs.password2 !== rs.password ? <span className="text-red-300">{t('auth.passwordMismatch')}</span> : null}>
+                <PasswordInput id="rs-pw2" value={rs.password2} onChange={(e) => setRs({ ...rs, password2: e.target.value })} autoComplete="new-password" minLength={8} />
+              </Field>
+              <button type="submit" disabled={busy || rs.code.length !== 6} className="btn-primary w-full mt-2">{busy ? t('auth.working') : t('auth.resetSave')}</button>
+              <p className="text-sm text-center mt-5 flex flex-col gap-3">
+                <button type="button" className="text-lime-400 hover:underline" onClick={() => { setResetStep('ask'); setInfo(''); setError(''); }}>{t('auth.resetAgain')}</button>
+                <button type="button" className="text-gray-400 hover:underline" onClick={() => { setResetStep('ask'); go('signIn'); }}>← {t('auth.backToSignIn')}</button>
+              </p>
+            </form>
+          )}
+
+          {mode === 'forgot' && resetStep === 'ask' && (
             <form onSubmit={forgot}>
               <Field label={t('auth.username')} htmlFor="fg-login">
                 <input id="fg-login" className="input" required autoCapitalize="none" placeholder={t('auth.usernamePh')} value={login} onChange={(e) => setLogin(e.target.value)} />
