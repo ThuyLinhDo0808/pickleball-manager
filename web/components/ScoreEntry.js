@@ -1,4 +1,5 @@
 'use client';
+import { digits, NUMPAD } from '@/lib/digits';
 import { useEffect, useState } from 'react';
 import GamesInput, { FormatPicker, gamesPayload, inferFormat } from '@/components/GamesInput';
 import Segmented from '@/components/ui/Segmented';
@@ -46,14 +47,11 @@ export default function ScoreEntry({ sport, labels, initial = {}, onChange, with
               <div className="w-20 shrink-0">
                 <input
                   className="input text-center text-lg font-bold"
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  max="99"
+                  {...NUMPAD}
                   required
                   aria-label={name}
                   value={v}
-                  onChange={(e) => set(e.target.value)}
+                  onChange={(e) => set(digits(e.target.value))}
                 />
               </div>
             </div>
@@ -67,7 +65,7 @@ export default function ScoreEntry({ sport, labels, initial = {}, onChange, with
             <span className="block text-gray-500 text-xs">{t('scoreEntry.durationHint')}</span>
           </label>
           <div className="w-24 shrink-0 relative">
-            <input id="score-minutes" className="input text-center !pr-9" type="number" inputMode="numeric" min="0" max="600" placeholder="—" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+            <input id="score-minutes" className="input text-center !pr-9" {...NUMPAD} placeholder="—" value={minutes} onChange={(e) => setMinutes(digits(e.target.value, 3))} />
             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">{t('scoreEntry.min')}</span>
           </div>
         </div>

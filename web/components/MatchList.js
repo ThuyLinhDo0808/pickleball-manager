@@ -1,4 +1,5 @@
 'use client';
+import { digits, NUMPAD } from '@/lib/digits';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
@@ -111,12 +112,9 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton, players = nu
               id={`edit-score-${team}`}
               required={!canPick || isScored(match)}
               className="input text-center text-lg font-bold"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              max="99"
+              {...NUMPAD}
               value={form[`team${team}_score`]}
-              onChange={(e) => setForm({ ...form, [`team${team}_score`]: e.target.value })}
+              onChange={(e) => setForm({ ...form, [`team${team}_score`]: digits(e.target.value) })}
             />
           </div>
         ))}
