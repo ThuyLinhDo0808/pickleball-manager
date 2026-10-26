@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import ChipRow from '@/components/ui/ChipRow';
 
 const chip = (on) => `rounded-full px-3 py-1 text-sm border ${on ? 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold' : 'border-navy-600 text-gray-300'}`;
 
@@ -64,9 +65,9 @@ function Xeve() {
   const { data, error } = useLoad(() => api.get(`/api/owner/activity/xeve?when=${when}&page=${page}`), [when, page]);
   return (
     <>
-      <div className="flex flex-wrap gap-1.5 mb-3">
+      <ChipRow gap="gap-1.5" className="mb-3">
         {['upcoming', 'past', 'all'].map((w) => <button key={w} type="button" className={chip(when === w)} onClick={() => { setWhen(w); setPage(1); }}>{t(`owner.when_${w}`)}</button>)}
-      </div>
+      </ChipRow>
       {data && <p className="text-gray-500 text-xs mb-2">{t('owner.xeveTodayLine', { g: data.today.games, p: data.today.players })} · {t('owner.nResults', { n: data.total })}</p>}
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}

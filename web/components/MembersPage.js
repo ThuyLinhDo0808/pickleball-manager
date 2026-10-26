@@ -15,6 +15,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
+import ChipRow from '@/components/ui/ChipRow';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
@@ -258,11 +259,12 @@ export default function MembersPage({ tab = 'fixed' }) {
 
       {!['waiting', 'dupr'].includes(tab) && (
         <section className={`card !p-0 overflow-hidden ${tab === 'review' ? 'mb-4 border-amber-300/30' : ''}`}>
-          <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
-            <div className="relative flex-1 min-w-[12rem]">
+          <div className="p-3 border-b border-navy-700 bg-navy-900/40 space-y-2">
+            <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" aria-hidden="true"><UiIcon name="search" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
               <input className="input !pl-9" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
             </div>
+            <ChipRow gap="gap-2" innerClass="items-center" dark="from-navy-800 via-navy-800/80">
             <Segmented items={['all', 'male', 'female']} value={gender} onChange={setGender} label={(k) => (k === 'all' ? t('memx.allGenders') : t(`members.${k}`))} />
             <Segmented items={vipFilters} value={vipF} onChange={setVipF} label={(k) => t(`memx.vipF_${k}`)} />
             <select className="input !w-auto text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t('memx.sort')}>
@@ -284,6 +286,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                 {t('memx.showInactive', { n: inactiveCount })}
               </label>
             )}
+            </ChipRow>
           </div>
 
           {selected.length > 0 && (

@@ -233,6 +233,14 @@ export const en = {
     signOutHint: 'Leave your account on this device.',
   },
   staffX: {
+    guideBtn: 'Quick guide',
+    guideTitle: 'Your job in 3 steps',
+    guide1t: 'Open today\'s event',
+    guide1: 'Under Today, tap the session name or the Check-in / Scores button. Only events assigned to you appear here.',
+    guide2t: 'Check in or enter scores',
+    guide2: 'Coordinator: type a name or Scan QR, then tap Check in; walk-ins go in the box "Walk-in without sign-up". Referee: tap + Add match, pick the players, enter the score.',
+    guide3t: 'Share the result',
+    guide3: 'Tap Export image (.jpg) or open the session standings to post in the group chat. The admins see everything you record right away.',
     forClub: "For: {name} (the community / club picked in the menu)",
     pickClubMenu: "Pick one of your communities / clubs in the menu first.",
     youAre_coordinator: "You are a coordinator — check-in, walk-ins, the waitlist, courts and scores for the events you are assigned.",
@@ -2276,6 +2284,7 @@ export const en = {
     signIn: "Sign in to see the members and rankings.",
   },
   common: {
+    clear: 'Clear',
     saved: "Saved",
     savedLong: "Changes saved.",
     notSaved: "Not saved",

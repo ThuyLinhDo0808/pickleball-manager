@@ -7,6 +7,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { FEEDBACK_CATEGORIES } from '@/components/FeedbackButton';
+import ChipRow from '@/components/ui/ChipRow';
 
 const STATUSES = ['new', 'in_progress', 'closed'];
 const TABS = [...STATUSES, 'spam'];
@@ -42,21 +43,21 @@ export default function OwnerFeedbackPage() {
   };
   return (
     <OwnerShell title={t('owner.tabFeedback')} description={t('owner.desc_feedback')}>
-      <div className="flex flex-wrap gap-1.5 mb-2">
+      <ChipRow gap="gap-1.5" className="mb-2">
         {[...TABS, ''].map((s) => (
           <button key={s || 'all'} type="button" onClick={() => { setStatus(s); setPage(1); }} className={`rounded-full px-3 py-1 text-sm border ${status === s ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>
             {s ? t(`owner.fb_${s}`) : t('owner.fb_all')}
             {s && data?.counts ? <span className="ml-1 tabular-nums opacity-80">({data.counts[s]})</span> : null}
           </button>
         ))}
-      </div>
-      <div className="flex flex-wrap gap-1.5 mb-3" role="radiogroup" aria-label={t('feedback.category')}>
+      </ChipRow>
+      <ChipRow gap="gap-1.5" className="mb-3" role="radiogroup" aria-label={t('feedback.category')}>
         {['', ...FEEDBACK_CATEGORIES].map((c) => (
           <button key={c || 'all'} type="button" role="radio" aria-checked={category === c} onClick={() => { setCategory(c); setPage(1); }} className={`rounded-full px-2.5 py-0.5 text-xs border ${category === c ? 'border-sky-300 bg-sky-300/20 text-sky-100 font-semibold' : 'border-navy-600 text-gray-400'}`}>
             {c ? t(`feedback.cat_${c}`) : t('owner.fb_allKinds')}
           </button>
         ))}
-      </div>
+      </ChipRow>
       {(error || err) && <p className="card text-red-300 text-sm mb-3">{error?.message || err}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {data && data.rows.length === 0 && <p className="card text-gray-500 text-sm">{t('owner.noFeedback')}</p>}

@@ -117,7 +117,10 @@ const NAV_BY_WORKSPACE = {
   // The old one-off kèo space (no community) is gone — every kèo belongs to a community.
   xeve: [{ href: '/account', key: 'nav.account', icon: 'account' }],
   // Referees / coordinators: only their assigned events. No finance, no members.
-  staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
+  staff: [
+    { href: '/staff', key: 'nav.staffEvents', icon: 'whistle' },
+    { href: '/account', key: 'nav.account', icon: 'account' },
+  ],
 };
 // Social Manager with a community (cụm sân) picked: every Club Manager page, for the
 // community (no meetings / round robin), plus the app-wide leaderboard.
@@ -651,7 +654,7 @@ export default function AppShell({ children, back }) {
               </div>
             )}
             <UpgradeModal open={renewOpen} onClose={() => setRenewOpen(false)} product={mode === 'community' ? 'social_manager' : 'tier'} />
-            {scoped && <BirthdayBanner clubId={club?.id} />}
+            {scoped && clubRole !== 'finance' && <BirthdayBanner clubId={club?.id} />}
             {back !== false && !TOP_LEVEL.has(pathname) && <BackButton fallback={typeof back === 'string' ? back : backFallback(pathname)} />}
             {children}
           </>

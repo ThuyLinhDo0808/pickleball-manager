@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { formatVnd } from '@/lib/format';
+import ChipRow from '@/components/ui/ChipRow';
 
 const fmtDay = (ymd) => (ymd ? `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}` : '');
 const fmtHours = (h) => (Math.abs(h) >= 10 ? Math.round(h) : Math.round(h * 10) / 10);
@@ -101,11 +102,11 @@ export function CancelDialog({ open, name, percent, fee, paid = true, usesSessio
         {percent < 100 && <span className="block text-xs mt-1 opacity-90">{t('cancelx.lateNote')}</span>}
       </div>
       <label className="text-xs text-gray-400" htmlFor="cancel-reason">{host ? t('cancelx.reasonHost') : t('cancelx.reason')}</label>
-      <div className="flex flex-wrap gap-1.5 my-1.5">
+      <ChipRow gap="gap-1.5" className="my-1.5">
         {QUICK.map((k) => (
           <button key={k} type="button" className="text-xs rounded-full border border-navy-600 px-2 py-0.5 text-gray-200 hover:border-lime-400" onClick={() => pick(k)}>{t(`cancelx.quick_${k}`)}</button>
         ))}
-      </div>
+      </ChipRow>
       <textarea id="cancel-reason" className="input" rows={2} maxLength={300} value={reason} placeholder={t('cancelx.reasonPh')} onChange={(e) => setReason(e.target.value)} />
       <p className="text-gray-500 text-xs mt-1">{host ? t('cancelx.reasonHostHint') : t('cancelx.reasonHint')}</p>
       {error && <p className="text-red-400 text-sm mt-2">{error}</p>}

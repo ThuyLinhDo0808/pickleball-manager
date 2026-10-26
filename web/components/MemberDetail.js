@@ -18,6 +18,7 @@ import { todayYmd } from '@/lib/dates';
 import MemberLink from '@/components/MemberLink';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 export const FLAGS = ['unpaid', 'late', 'attitude'];
 export const FLAG_STYLE = {
@@ -469,7 +470,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
 
         <section>
           <h3 className="text-white font-semibold text-sm mb-2">{t('flags.title')}</h3>
-          <div className="flex flex-wrap gap-2 mb-3">
+          <ChipRow gap="gap-2" className="mb-3">
             {FLAGS.map((f) => (
               <button
                 key={f}
@@ -484,7 +485,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
                 {t(`flags.${f}`)}
               </button>
             ))}
-          </div>
+          </ChipRow>
           <div className="flex gap-2">
             <input className="input text-sm" placeholder={t('flags.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
             <button

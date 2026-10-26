@@ -13,6 +13,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { planFor, hasFeature, lockedNotice } from '@/lib/planFeatures';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 const ROLES = ['coordinator', 'referee', 'co_admin', 'finance', 'operator'];
 // Roles given from now on (Trọng tài and Vận hành are no longer offered; old grants keep showing).
@@ -267,13 +268,13 @@ export default function StaffAccessPage() {
       {/* Granted people */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 className="text-white font-semibold">{t('staffX.people', { n: (grants || []).length })}</h2>
-        <div className="flex flex-wrap gap-1.5 text-sm">
+        <ChipRow gap="gap-1.5" className="text-sm">
           {['all', ...shown].map((r) => (
             <button key={r} onClick={() => setFilter(r)} className={`rounded-full border px-3 py-1 whitespace-nowrap ${filter === r ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-300 hover:text-white'}`}>
               {r === 'all' ? t('staffX.allRoles') : t(`staff.${r}`)}
             </button>
           ))}
-        </div>
+        </ChipRow>
       </div>
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {!loading && list.length === 0 && <p className="card text-gray-400 text-sm">{t('staff.none')}</p>}

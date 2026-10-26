@@ -21,6 +21,7 @@ import { useClubs } from '@/context/ClubContext';
 import { clubTones, STATUS_MOD } from '@/lib/clubColors';
 import { addDays, addMonths, formatDay, hhmm, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 const VIEWS = ['list', 'year', 'month', 'week', 'day'];
 const SOON_DAYS = 3; // "Sắp diễn ra": from now to 3 days ahead
@@ -342,7 +343,7 @@ export default function EventsPage() {
       </div>
 
       {manyClubs && (
-        <div className="flex flex-wrap gap-1.5 mb-3 text-sm" role="tablist">
+        <ChipRow gap="gap-1.5" className="mb-3 text-sm" role="tablist">
           {[{ id: 'all', name: t(community ? 'social.allComm' : 'cal.allClubs') }, ...clubs].map((c) => (
             <button
               key={c.id}
@@ -357,7 +358,7 @@ export default function EventsPage() {
               {c.name}
             </button>
           ))}
-        </div>
+        </ChipRow>
       )}
 
       {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
@@ -403,13 +404,13 @@ export default function EventsPage() {
               <option value="all">{t('evlist.allKinds')}</option>
               {kindsPresent.map((k) => <option key={k} value={k}>{t(`kind.${k}`)}</option>)}
             </select>
-            <div className="flex flex-wrap gap-1.5" role="tablist">
+            <ChipRow gap="gap-1.5" role="tablist">
               {['all', ...LIST_GROUPS].map((g) => (
                 <button key={g} type="button" role="tab" aria-selected={groupF === g} onClick={() => setGroupF(g)} className={`rounded-full border px-3 py-1 text-sm ${groupF === g ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}>
                   {t(`evlist.g_${g}`)}{g !== 'all' && <span className="ml-1 text-gray-400 tabular-nums">{groups[g].length}</span>}
                 </button>
               ))}
-            </div>
+            </ChipRow>
           </div>
           {LIST_GROUPS.filter((g) => groupF === 'all' || groupF === g).map((g) => {
             const rows = groups[g];

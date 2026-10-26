@@ -11,6 +11,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
+import ChipRow from '@/components/ui/ChipRow';
 
 const fmtMonth = (m) => m.split('-').reverse().join('/');
 const fmtDay = (d) => (d ? d.split('-').reverse().join('/') : '—');
@@ -63,13 +64,13 @@ function Heatmap({ data, t }) {
   const step = (v) => (v <= 0 ? -1 : Math.min(4, Math.floor((v / max) * 4.999)));
   return (
     <div>
-      <div className="flex flex-wrap gap-1.5 mb-3" role="radiogroup" aria-label={t('insights.heatMetric')}>
+      <ChipRow gap="gap-1.5" className="mb-3" role="radiogroup" aria-label={t('insights.heatMetric')}>
         {['plays', 'avg', 'sessions'].map((k) => (
           <button key={k} type="button" role="radio" aria-checked={metric === k} onClick={() => setMetric(k)} className={`rounded-full px-3 py-1 text-xs border ${metric === k ? 'border-lime-400 bg-lime-400 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>
             {t(`insights.m_${k}`)}
           </button>
         ))}
-      </div>
+      </ChipRow>
       <div className="overflow-x-auto">
         <table className="border-separate" style={{ borderSpacing: 2 }} aria-label={t('insights.heatTitle')}>
           <thead>

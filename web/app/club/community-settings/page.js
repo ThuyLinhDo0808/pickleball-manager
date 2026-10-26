@@ -9,6 +9,7 @@ import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 // 'experience' (by Thời gian chơi) is no longer offered; a community still on it keeps working.
 const MODES = ['none', 'manual', 'score'];
@@ -366,11 +367,11 @@ export default function CommunitySettingsPage() {
               )}
               <div className="mt-4 rounded-lg border border-dashed border-navy-600 px-3 py-2">
                 <p className="text-xs text-gray-400 mb-1.5">{t('cpanel.rankPreview')}</p>
-                <div className="flex flex-wrap gap-1.5">
+                <ChipRow gap="gap-1.5">
                   {tabs.map((x, i) => (
                     <span key={i} className={`rounded-full border px-3 py-1 text-xs ${i === 0 ? 'border-lime-400 bg-lime-400/15 text-lime-200' : 'border-navy-600 text-gray-300'}`}>{x}</span>
                   ))}
-                </div>
+                </ChipRow>
               </div>
             </Row>
           </Section>

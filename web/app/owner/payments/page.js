@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import ChipRow from '@/components/ui/ChipRow';
 
 const STATUSES = ['pending', 'paid', 'cancelled', 'all'];
 
@@ -65,13 +66,13 @@ function Payments() {
   return (
     <>
       <div className="flex flex-wrap items-end gap-2 mb-4">
-        <div className="flex flex-wrap gap-1.5">
+        <ChipRow gap="gap-1.5">
           {STATUSES.map((s) => (
             <button key={s} type="button" onClick={() => setStatus(s)} className={`rounded-full px-3 py-1 text-sm border ${status === s ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>
               {t(`admin.st_${s}`)}
             </button>
           ))}
-        </div>
+        </ChipRow>
         <label className="text-xs text-gray-400">
           {t('owner.from')}
           <input type="date" className="input !py-1 text-sm mt-0.5" value={from} onChange={(e) => setFrom(e.target.value)} />

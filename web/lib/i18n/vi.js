@@ -233,6 +233,14 @@ export const vi = {
     signOutHint: 'Thoát khỏi tài khoản trên thiết bị này.',
   },
   staffX: {
+    guideBtn: 'Hướng dẫn nhanh',
+    guideTitle: 'Việc của bạn trong 3 bước',
+    guide1t: 'Mở sự kiện hôm nay',
+    guide1: 'Ở mục Hôm nay, bấm vào tên buổi hoặc nút Điểm danh / Tỷ số. Sự kiện bạn được giao mới hiện ở đây.',
+    guide2t: 'Điểm danh hoặc nhập tỷ số',
+    guide2: 'Điều phối viên: gõ tên hoặc Quét QR rồi bấm Điểm danh; người chưa đăng ký thì ghi tên ở ô Người đến sân chưa đăng ký. Trọng tài: bấm + Thêm trận, chọn người chơi, nhập điểm.',
+    guide3t: 'Gửi kết quả cho nhóm',
+    guide3: 'Bấm Xuất ảnh (.jpg) hoặc xem Bảng xếp hạng buổi để gửi vào nhóm chat. Ban quản trị thấy mọi thứ bạn đã ghi ngay lập tức.',
     forClub: "Áp dụng cho: {name} (cộng đồng / CLB đang chọn ở menu)",
     pickClubMenu: "Chọn cộng đồng / CLB của bạn ở menu bên trái trước khi cấp quyền.",
     youAre_coordinator: "Bạn là Điều phối viên: điểm danh, thêm khách vãng lai, quản lý danh sách chờ, xếp sân và nhập tỷ số cho các sự kiện được giao.",
@@ -2276,6 +2284,7 @@ export const vi = {
     signIn: "Đăng nhập để xem thành viên và bảng xếp hạng.",
   },
   common: {
+    clear: 'Xoá',
     saved: "Đã lưu",
     savedLong: "Đã lưu thay đổi.",
     notSaved: "Chưa lưu được",

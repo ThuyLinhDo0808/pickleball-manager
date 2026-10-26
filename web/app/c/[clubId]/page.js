@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
+import { useAuth } from '@/context/AuthContext';
 import ClubAvatar from '@/components/ClubAvatar';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
@@ -57,6 +58,12 @@ export default function MemberClubPage() {
   const { clubId } = useParams();
   const router = useRouter();
   const { t: tBase, lang } = useI18n();
+  // Not signed in: show the club's public page (schedule, place, how to join) instead of a
+  // sign-in wall; signing in is asked only when they tap "Xin gia nhập" there.
+  const { user, loading: authLoading } = useAuth();
+  useEffect(() => {
+    if (!authLoading && !user) router.replace(`/discover/${clubId}`);
+  }, [authLoading, user, router, clubId]);
   // A community reads as one ("Lịch cộng đồng", thường xuyên / vãng lai), set once the data is in.
   let t = tBase;
   const { data, loading, error, setData } = useLoad(() => api.get(`/api/player/clubs/${clubId}`), [clubId]);
@@ -79,10 +86,10 @@ export default function MemberClubPage() {
     return () => clearInterval(id);
   }, []);
 
-  if (loading && !data) return <PlayerShell><p className="text-gray-400">{t('common.loading')}</p></PlayerShell>;
+  if (loading && !data) return <PlayerShell requireAuth={false}><p className="text-gray-400">{t('common.loading')}</p></PlayerShell>;
   if (error || !data) {
     return (
-      <PlayerShell>
+      <PlayerShell requireAuth={false}>
         <div className="card text-center py-8">
           <p className="text-gray-300 mb-3">{t('hub.notMember')}</p>
           <Link href="/home" className="btn-primary text-sm">← {t('hub.navHome')}</Link>

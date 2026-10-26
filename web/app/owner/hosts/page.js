@@ -7,6 +7,7 @@ import OwnerShell, { fmtDate, fmtTime, TIER_BADGE } from '@/components/OwnerShel
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import ChipRow from '@/components/ui/ChipRow';
 
 const FILTERS = ['hosts', 'paying', 'gifted', 'trial', 'free', 'expiring', 'suspended', 'all'];
 
@@ -44,15 +45,16 @@ function HostList() {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+      {/* Phone: the search and filters stay at the top while the long list scrolls. */}
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-navy-950/95 backdrop-blur sm:static sm:mx-0 sm:p-0 flex flex-col sm:flex-row gap-2 mb-3">
         <input className="input text-sm sm:max-w-sm" type="search" placeholder={t('owner.searchHosts')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('owner.searchHosts')} />
-        <div className="flex flex-wrap gap-1.5">
+        <ChipRow gap="gap-1.5">
           {FILTERS.map((f) => (
             <button key={f} type="button" onClick={() => { setFilter(f); setPage(1); }} className={`rounded-full px-3 py-1 text-sm border ${filter === f ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>
               {t(`owner.f_${f}`)}
             </button>
           ))}
-        </div>
+        </ChipRow>
       </div>
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {data && <p className="text-gray-500 text-xs mb-2">{t('owner.nResults', { n: data.total })}</p>}

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import ChipRow from '@/components/ui/ChipRow';
 
 const TONE = {
   yes: 'bg-lime-400 text-navy-950 border-lime-400',
@@ -61,7 +62,7 @@ export default function EventVotes({ event }) {
         <span className="bg-lime-400" style={{ width: `${(100 * data.yes) / total}%` }} />
         <span className="bg-red-500" style={{ width: `${(100 * data.no) / total}%` }} />
       </div>
-      <div className="flex flex-wrap gap-2 mb-3 text-sm">
+      <ChipRow gap="gap-2" className="mb-3 text-sm">
         {[
           ['all', `${t('meeting.all')} · ${data.members.length}`, 'text-gray-200'],
           ['yes', `✓ ${t('meeting.yes')} · ${data.yes}`, 'text-lime-300'],
@@ -72,7 +73,7 @@ export default function EventVotes({ event }) {
             {label}
           </button>
         ))}
-      </div>
+      </ChipRow>
       {Number(event.fee_amount) > 0 && data.yes > 0 && (
         <p className="text-gray-300 text-sm mb-2">{t('meeting.feeTotal', { n: data.yes, v: (Number(event.fee_amount) * data.yes).toLocaleString('vi-VN') })}</p>
       )}

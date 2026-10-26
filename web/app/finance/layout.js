@@ -6,6 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 // Everything money-related lives under /finance, as tabs of one section.
 const TABS = {
@@ -45,7 +46,7 @@ export default function FinanceLayout({ children }) {
         </div>
       </div>
       <nav className="mb-6">
-        <div className="flex flex-wrap gap-2">
+        <ChipRow gap="gap-2">
           {tabs.map((tab) => {
             const active = pathname === tab.href;
             return (
@@ -60,7 +61,7 @@ export default function FinanceLayout({ children }) {
               </Link>
             );
           })}
-        </div>
+        </ChipRow>
       </nav>
       {children}
     </AppShell>
