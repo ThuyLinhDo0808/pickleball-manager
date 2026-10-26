@@ -593,6 +593,7 @@ export default function EventDetailPage() {
           {matchTab === 'results' && <MatchList matches={(matches || []).filter(isScored)} onChanged={reloadMatches} />}
           {matchTab === 'standings' && (
             <EventStandings
+              event={event}
               matches={matches || []}
               onChallenge={(pick, reward) => setShowMatch({ slots: { 1: pick.team1.map((r) => r.id), 2: pick.team2.map((r) => r.id) }, extra: { is_challenge: true, challenge_reward: reward } })}
             />

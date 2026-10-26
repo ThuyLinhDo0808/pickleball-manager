@@ -4007,6 +4007,8 @@ export const vi = {
     k_link_request: "CLB muốn liên kết tài khoản của bạn",
   },
   estand: {
+    exportJpg: "Xuất ảnh BXH (.jpg)",
+    imageFooter: "{n} người · {m} trận có tỉ số · NexusZone",
     noGenderPair: "Không tìm được cặp cùng giới tính (nam / nữ) với cặp cao nhất + thấp nhất để thách thức.",
     randomPairWider: "Cặp cùng giới tính (ngoài hạng 2–5)",
     title: "Bảng xếp hạng buổi",

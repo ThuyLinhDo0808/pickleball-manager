@@ -15,10 +15,10 @@ const COLS = 2;
 const CARD_H = 204;
 const HEAD = 176;
 const FOOT = 64;
-const FONT = (size, weight = 400) => `${weight} ${size}px "Inter", "Segoe UI", Roboto, Arial, sans-serif`;
+export const FONT = (size, weight = 400) => `${weight} ${size}px "Inter", "Segoe UI", Roboto, Arial, sans-serif`;
 
 // Write `text` in at most `max` pixels: smaller type first (down to `min`), "…" only last.
-function fitText(ctx, text, max, size, weight, min = 17) {
+export function fitText(ctx, text, max, size, weight, min = 17) {
   for (let s = size; s >= min; s -= 1) {
     ctx.font = FONT(s, weight);
     if (ctx.measureText(text).width <= max) return text;
@@ -28,7 +28,7 @@ function fitText(ctx, text, max, size, weight, min = 17) {
   return `${t}…`;
 }
 
-function roundRect(ctx, x, y, w, h, r) {
+export function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -142,7 +142,7 @@ export function drawMatches(canvas, { event, matches, t, lang, page = 0 }) {
   return canvas;
 }
 
-const save = (canvas, file) =>
+export const saveJpg = (canvas, file) =>
   new Promise((resolve) =>
     canvas.toBlob(
       (blob) => {
@@ -169,7 +169,7 @@ export async function exportMatchesJpg({ event, matches, t, lang }) {
   const base = `tran-dau-${event.event_date || 'buoi'}`;
   for (let page = 0; page < pages; page += 1) {
     const canvas = drawMatches(document.createElement('canvas'), { event, matches, t, lang, page });
-    await save(canvas, pages > 1 ? `${base}-${page + 1}.jpg` : `${base}.jpg`);
+    await saveJpg(canvas, pages > 1 ? `${base}-${page + 1}.jpg` : `${base}.jpg`);
     if (page < pages - 1) await new Promise((r) => setTimeout(r, 400));
   }
 }

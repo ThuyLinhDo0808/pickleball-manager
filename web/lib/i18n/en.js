@@ -4007,6 +4007,8 @@ export const en = {
     k_link_request: "A club wants to link your account",
   },
   estand: {
+    exportJpg: "Export standings image (.jpg)",
+    imageFooter: "{n} players · {m} scored matches · NexusZone",
     noGenderPair: "No pair with the same genders (men / women) as the top + last pair to challenge.",
     randomPairWider: "Same-gender pair (beyond ranks 2–5)",
     title: "Session rankings",

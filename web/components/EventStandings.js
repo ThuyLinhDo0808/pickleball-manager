@@ -4,13 +4,16 @@ import { useI18n } from '@/context/I18nContext';
 import Hint from '@/components/ui/Hint';
 import Podium from '@/components/Podium';
 import { challengePick, eventStandings } from '@/lib/eventStandings';
+import { exportStandingsJpg } from '@/lib/standingsImage';
 
 // Bảng xếp hạng of this kèo only (scored matches): top 3 on a podium with cups, the rest in a
 // table (played, won, lost, point difference, win rate). Below it, the challenge suggestion:
 // the best player with the last one against a random pair from ranks 2-5 of the same genders;
 // the Host sets the reward and starts it as a match (scored in Nhập điểm).
-export default function EventStandings({ matches, onChallenge }) {
-  const { t } = useI18n();
+// `event`: given on the Host's page → "Xuất ảnh BXH" saves the podium + table as a JPG.
+export default function EventStandings({ matches, onChallenge, event = null }) {
+  const { t, lang } = useI18n();
+  const [saving, setSaving] = useState(false);
   const rows = useMemo(() => eventStandings(matches), [matches]);
   const [seed, setSeed] = useState(0);
   const pick = useMemo(() => challengePick(rows), [rows, seed]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -24,7 +27,26 @@ export default function EventStandings({ matches, onChallenge }) {
   return (
     <div className="flex flex-col gap-4">
       <section className="card !px-2 sm:!px-4">
-        <h3 className="text-white font-semibold mb-3 px-2 sm:px-0">{t('estand.title')} <Hint inline text={t('estand.hint')} /></h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3 px-2 sm:px-0">
+          <h3 className="text-white font-semibold">{t('estand.title')} <Hint inline text={t('estand.hint')} /></h3>
+          {event && (
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await exportStandingsJpg({ event, rows, scoredMatches: matches.filter((m) => m.team1_score != null && m.team2_score != null && m.team1_score !== m.team2_score).length, t, lang });
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? t('common.loading') : t('estand.exportJpg')}
+            </button>
+          )}
+        </div>
         {/* Top 1 · 2 · 3 on the podium (cups), everyone else in the table below. */}
         <Podium
           className="rounded-xl border border-navy-600 bg-navy-900/50 pt-4 mb-4"
