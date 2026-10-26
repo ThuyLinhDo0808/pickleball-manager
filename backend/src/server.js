@@ -33,13 +33,14 @@ const analyticsRoutes = require('./routes/analytics.routes');
 const liveRoutes = require('./routes/live.routes');
 const { schemaStatus } = require('./services/schemaCheck');
 const { startSurveySweeper } = require('./services/survey');
-const { securityHeaders, requestId, corsOptions, limits, blockIps, shedLoad, cloudflareIp } = require('./middleware/security');
+const { securityHeaders, requestId, corsOptions, limits, blockIps, shedLoad, cloudflareIp, originGuard } = require('./middleware/security');
 
 const app = express();
 app.disable('x-powered-by');
 // Render / Vercel sit behind one proxy: trust it so req.ip is the real client (rate limits).
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
 app.use(requestId);
+app.use(originGuard);
 app.use(cloudflareIp);
 app.use(blockIps());
 app.use(shedLoad);

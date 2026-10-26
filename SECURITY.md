@@ -69,7 +69,7 @@ Bộ test tự động (chạy với backend ở chế độ production) kiểm 
 
 Code chỉ chống được tấn công nhỏ (một vài IP, gửi chậm, spam form). Tấn công lớn (hàng nghìn IP) phải chặn **trước khi tới server**:
 
-1. **Đưa tên miền qua Cloudflare** (gói Free đủ dùng) — hướng dẫn từng bước: **[docs/cloudflare-setup.md](docs/cloudflare-setup.md)**. Tóm tắt: web (Vercel) để *DNS only*, API ở `api.<tên-miền>` để *Proxied*, bản ghi email luôn *DNS only*; SSL **Full (strict)**; Bot Fight Mode; 1 luật rate limit cho `/api/public/auth/*`; trên Render đặt `TRUST_CLOUDFLARE=true` (và `CLOUDFLARE_ONLY=true` để chặn ai gọi thẳng `*.onrender.com`).
+1. **Đưa tên miền qua Cloudflare** (gói Free đủ dùng) — hướng dẫn từng bước: **[docs/cloudflare-setup.md](docs/cloudflare-setup.md)**. Tóm tắt: web (Vercel) để *DNS only*, API ở `api.<tên-miền>` để *Proxied*, bản ghi email luôn *DNS only*; SSL **Full (strict)**; Bot Fight Mode; 1 luật rate limit cho `/api/public/auth/*`; trên Render đặt `TRUST_CLOUDFLARE=true`, và dùng Transform Rule của Cloudflare gắn header bí mật `X-Origin-Auth` + biến `ORIGIN_SECRET` trên Render để chặn ai gọi thẳng `*.onrender.com` (bước 5b).
    - **Không bật *Under Attack Mode* cho API**: nó bắt giải thử thách JavaScript nên web không gọi được API. Khi bị tấn công dùng luật chặn IP / quốc gia (WAF → Custom rules) hoặc `BLOCKED_IPS`.
 2. **Vercel** đã có chống DDoS sẵn; khi cần bật thêm *Firewall → Attack Challenge Mode* (chỉ ảnh hưởng trang web, không ảnh hưởng API).
 3. Sau khi API chạy qua `api.<tên-miền>`: đổi `NEXT_PUBLIC_API_URL` trên Vercel và Redeploy.

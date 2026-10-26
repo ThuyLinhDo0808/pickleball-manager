@@ -112,8 +112,6 @@ const limits = {
 // really comes from Cloudflare (its published ranges), use the visitor address Cloudflare
 // sends in CF-Connecting-IP. A request that does not come from Cloudflare keeps its own
 // address, so nobody can fake one by sending that header straight to *.onrender.com.
-// CLOUDFLARE_ONLY=true also refuses those direct requests (except /health), so every call
-// passes Cloudflare's firewall.
 const net = require('net');
 const CF_RANGES = [
   '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
@@ -137,10 +135,23 @@ function cloudflareIp(req, res, next) {
   if (fromCloudflare(req.ip)) {
     const real = plainIp(req.get('cf-connecting-ip'));
     if (net.isIP(real)) Object.defineProperty(req, 'ip', { value: real, configurable: true });
-  } else if (process.env.CLOUDFLARE_ONLY === 'true' && !req.path.startsWith('/health')) {
-    return res.status(403).json({ error: 'Forbidden.', code: 'direct_access' });
   }
   next();
+}
+
+// ---- Only through our Cloudflare (ORIGIN_SECRET) -----------------------------------
+// Render itself sits behind Cloudflare, so the address alone cannot tell "came through our
+// Cloudflare zone" from "called *.onrender.com directly". Instead a Cloudflare Transform
+// Rule adds a secret header (X-Origin-Auth: <ORIGIN_SECRET>) to every request for the API
+// domain; requests without it (direct calls that skip the firewall) get 403. /health stays
+// open for uptime checks.
+function originGuard(req, res, next) {
+  const secret = process.env.ORIGIN_SECRET;
+  if (!secret || req.path.startsWith('/health')) return next();
+  const got = Buffer.from(String(req.get('x-origin-auth') || ''));
+  const want = Buffer.from(secret);
+  if (got.length === want.length && crypto.timingSafeEqual(got, want)) return next();
+  return res.status(403).json({ error: 'Forbidden.', code: 'direct_access' });
 }
 
 // ---- Blocked addresses ------------------------------------------------------------
@@ -183,4 +194,4 @@ function shedLoad(req, res, next) {
 }
 const currentLag = () => lag;
 
-module.exports = { securityHeaders, requestId, corsOptions, rateLimit, limits, isProd, blockIps, blockList, shedLoad, currentLag, cloudflareIp, fromCloudflare };
+module.exports = { securityHeaders, requestId, corsOptions, rateLimit, limits, isProd, blockIps, blockList, shedLoad, currentLag, cloudflareIp, fromCloudflare, originGuard };
