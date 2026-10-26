@@ -75,6 +75,7 @@ function EditMatch({ match, basePath, onSaved, onCancel, badminton, players = nu
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      {match.dupr_exported_at && <p className="rounded-lg border border-amber-400/40 bg-amber-400/10 text-amber-100 text-sm px-3 py-2">{t('matches.duprSentNote')}</p>}
       {canPick && (
         <fieldset className="flex flex-col gap-3">
           <legend className="text-sm font-semibold text-white mb-1">{t('matches.editPlayers')}</legend>
