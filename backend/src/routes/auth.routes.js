@@ -1,6 +1,7 @@
 // Signing in with a username (or email), quick sign-up, and
 // "forgot password". No login needed. Supabase Auth only knows emails, so the server
 // turns a username into its email here — the email is never sent back to the browser.
+const crypto = require('crypto');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { supabase } = require('../supabase');
@@ -181,25 +182,44 @@ router.post('/signup', tooMany, mails, requireCaptcha, async (req, res) => {
   }
 });
 
-// Forgot password, step 1: email a 6-digit code (our own mail sender, Resend). Supabase
-// makes the one-time recovery code (generateLink), we send it with the same layout as the
-// email-check code. Returns 'sent', or why not.
-async function sendResetCode(email) {
-  if (!process.env.RESEND_API_KEY) return 'off';
+// Forgot password: email a link that opens /reset-password on the web. Supabase makes the
+// one-time recovery token (generateLink → hashed_token); our own mail sender (Resend)
+// sends it. The link also carries `k` = the account id signed by the server, so the new
+// password can be checked against the username / email before the one-time token is used.
+const RESET_LINK_HOURS = 1;
+const linkKey = () => crypto.createHash('sha256').update(`pbm-reset-link:${process.env.MFA_ENC_KEY || ''}:${process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`).digest();
+const linkSig = (uid, exp) => crypto.createHmac('sha256', linkKey()).update(`${uid}.${exp}`).digest('base64url');
+function signUser(uid) {
+  const exp = Math.floor(Date.now() / 1000) + RESET_LINK_HOURS * 3600;
+  return `${Buffer.from(uid).toString('base64url')}.${exp}.${linkSig(uid, exp)}`;
+}
+function readUser(k) {
+  const [u, exp, sig] = String(k || '').split('.');
+  if (!u || !exp || !sig) return null;
+  const uid = Buffer.from(u, 'base64url').toString();
+  if (Number(exp) < Date.now() / 1000) return null;
+  const want = Buffer.from(linkSig(uid, Number(exp)));
+  const got = Buffer.from(sig);
+  return want.length === got.length && crypto.timingSafeEqual(want, got) ? uid : null;
+}
+
+async function sendResetLink(email, origin) {
+  if (!process.env.RESEND_API_KEY || !origin) return 'off';
   const { data, error } = await supabase.auth.admin.generateLink({ type: 'recovery', email });
-  const code = data?.properties?.email_otp;
-  // Supabase lets one account ask for a new code once a minute. A second ask inside that
-  // minute is refused — the code already sent is still the one to use.
+  // Supabase lets one account ask once a minute; the link already sent still works.
   if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') return 'wait';
   if (error) console.error('forgot link', error.status || '', error.code || '', error.message);
-  if (error || !/^\d{6}$/.test(String(code || ''))) return 'no_account';
-  const { subject, text, html } = emailVerify.codeEmail(code, 'reset');
+  const hash = data?.properties?.hashed_token;
+  const uid = data?.user?.id;
+  if (error || !hash || !uid) return 'no_account';
+  const url = `${origin}/reset-password?token_hash=${encodeURIComponent(hash)}&type=recovery&k=${encodeURIComponent(signUser(uid))}`;
+  const { subject, text, html } = emailVerify.linkEmail(url, 'reset');
   const r = await security.sendMail(email, subject, text, html);
   if (r !== 'sent') console.error('forgot mail', r);
   return r;
 }
 
-// One code per login a minute, the same for every login typed (so the wait never tells
+// One email per login a minute, the same for every login typed (so the wait never tells
 // whether the account exists). Supabase keeps the same one-minute rule per account.
 const resendWait = rateLimit({ windowMs: 60 * 1000, max: 1, key: (req) => `forgot:${cleanLogin(req.body?.login)}`, code: 'code_wait' });
 
@@ -208,22 +228,53 @@ router.post('/forgot', tooMany, mails, requireCaptcha, resendWait, async (req, r
   try {
     const email = await emailFor(cleanLogin(req.body?.login));
     const origin = webOrigin(req);
-    const sent = email ? await sendResetCode(email) : null;
+    const sent = email ? await sendResetLink(email, origin) : null;
     if (email && sent !== 'sent' && sent !== 'wait') {
-      // No own mail sender (or it failed): Supabase's own "Reset Password" email (its
-      // template must contain {{ .Token }} for the code). Its built-in sender only reaches
-      // a few addresses an hour — set custom SMTP in Supabase for real use.
+      // No own mail sender (or it failed): Supabase's own "Reset Password" email, whose
+      // link ({{ .ConfirmationURL }}) comes back to /reset-password. Its built-in sender
+      // only reaches a few addresses an hour — set custom SMTP in Supabase for real use.
       const { error } = await authClient().auth.resetPasswordForEmail(email, origin ? { redirectTo: `${origin}/reset-password` } : {});
       if (error) console.error('forgot', error.status || '', error.code || '', error.message);
     }
   } catch (err) {
     console.error('forgot', err.message);
   }
-  res.json({ ok: true, method: 'code' });
+  res.json({ ok: true, method: 'link' });
 });
 
-// Forgot password, step 2: { login, code, password }. A right code sets the new password,
-// signs every device out and counts the email as confirmed (the code came to it).
+// The link from the email: { token_hash, k, password }. Sets the new password, signs every
+// device out and counts the email as confirmed (the link came to it).
+const linkTries = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, key: (req) => `reset-link:${req.ip}` });
+router.post('/reset-link', tooMany, linkTries, async (req, res) => {
+  const fail = (code, error, status = 400) => res.status(status).json({ error, code });
+  const tokenHash = String(req.body?.token_hash || '').trim();
+  const password = String(req.body?.password || '');
+  const uid = readUser(req.body?.k);
+  if (!tokenHash || tokenHash.length > 200 || !uid) return fail('bad_link', 'This link is wrong or has expired.');
+  if (password.length < 8 || password.length > 72) return fail('weak_password', 'Password: 8–72 characters.');
+  try {
+    const { data: u } = await supabase.from('users').select('username, email').eq('id', uid).maybeSingle();
+    const weak = await weakReason(password, { username: u?.username, email: u?.email });
+    if (weak === 'password_like_name') return fail('password_like_name', 'The password must not contain your username or email.');
+    if (weak === 'password_leaked') return fail('password_leaked', 'This password appears in leaked password lists. Choose another one.');
+    const { data, error } = await authClient().auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    if (error || !data?.user?.id || data.user.id !== uid) return fail('bad_link', 'This link is wrong or has expired.');
+    const { error: pErr } = await supabase.auth.admin.updateUserById(uid, { password });
+    if (pErr) {
+      if (pErr.code === 'weak_password') return fail('weak_password', pErr.message);
+      throw pErr;
+    }
+    await security.signOutEverywhere(uid, data.session?.access_token).catch(() => {});
+    await emailVerify.markVerified(uid).catch(() => {});
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('reset link', err.message);
+    res.status(502).json({ error: 'Password reset is unavailable right now.', code: 'auth_unavailable' });
+  }
+});
+
+// Older reset emails had a 6-digit code: { login, code, password }. Kept so a code already
+// sent still works; new emails carry a link (above).
 const resetTries = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, key: (req) => `reset:${cleanLogin(req.body?.login)}` });
 router.post('/reset', tooMany, resetTries, async (req, res) => {
   const fail = (code, error, status = 400) => res.status(status).json({ error, code });
