@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import UiIcon from '@/components/ui/UiIcon';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import MatchForm from '@/components/MatchForm';
@@ -31,14 +32,9 @@ export default function ClubMatchesPage() {
     <AppShell>
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-white text-2xl font-bold">{t('matches.title')}</h1>
-        <button
-          className="btn-primary w-10 h-10 !p-0 text-2xl leading-none flex items-center justify-center"
-          aria-label={t('matches.add')}
-          title={t('matches.add')}
-          disabled={!club}
-          onClick={() => setShowAdd(true)}
-        >
-          +
+        <button className="btn-primary flex items-center gap-1.5 whitespace-nowrap" disabled={!club} onClick={() => setShowAdd(true)}>
+          <UiIcon name="plus" className="w-4 h-4" />
+          {t('matches.add')}
         </button>
       </div>
 

@@ -721,7 +721,7 @@ export default function AppShell({ children, back }) {
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${
+                className={`flex flex-col items-center justify-start gap-0.5 min-h-[4rem] pt-2 pb-1 text-xs leading-tight ${
                   navActive(item) ? 'text-lime-300' : 'text-gray-400'
                 }`}
               >
@@ -729,18 +729,19 @@ export default function AppShell({ children, back }) {
                   <Icon name={item.icon} />
                   <Badge n={badges[item.badge]} className="absolute -top-2 -right-3" />
                 </span>
-                <span className="max-w-full px-0.5 text-center break-words hyphens-auto">{t(item.key)}</span>
+                {/* Two lines of room for every label, so "Lịch hoạt động" never pushes its icon up. */}
+                <span className="max-w-full px-0.5 h-8 flex items-start justify-center text-center break-words hyphens-auto">{t(item.key)}</span>
               </Link>
             );
           })}
           <button
             onClick={() => setMoreOpen((o) => !o)}
-            className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${
+            className={`flex flex-col items-center justify-start gap-0.5 min-h-[4rem] pt-2 pb-1 text-xs leading-tight ${
               moreOpen || moreActive ? 'text-lime-300' : 'text-gray-400'
             }`}
           >
             <Icon name="more" />
-            <span>{t('nav.more')}</span>
+            <span className="h-8 flex items-start justify-center">{t('nav.more')}</span>
           </button>
         </div>
       </nav>

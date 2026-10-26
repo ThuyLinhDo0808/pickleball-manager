@@ -24,6 +24,7 @@ import { levelText } from '@/lib/levels';
 import EventFinance from '@/components/EventFinance';
 import { AutoApproveToggle, OrganizersSection, PlaceSheet, RequestsSection } from '@/components/EventPeople';
 import MapLink from '@/components/MapLink';
+import ActionRow from '@/components/ui/ActionRow';
 import { exportMatchesJpg } from '@/lib/matchImage';
 import { formatDay, hhmm, localDate } from '@/lib/dates';
 import { formatVnd } from '@/lib/format';
@@ -318,17 +319,14 @@ export default function EventDetailPage() {
         {/* The three things a Host does all the time, as big buttons; the main one (send the link) on the right. */}
         {event.kind !== 'meeting' && (
           // Phone: three equal buttons in one row (icon above the word); wider screens: on the right.
-          <div className="grid grid-cols-3 gap-2 mt-3 sm:flex sm:flex-wrap sm:justify-end">
-            <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => { setTab('participants'); setShowImport(true); }}>
-              <UiIcon name="userPlus" /> <span>{t('ux.addPlayer')}</span>
-            </button>
-            <button type="button" className="btn-secondary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={() => setShowQr(true)}>
-              <UiIcon name="scan" /> <span>{t('ux.checkin')}</span>
-            </button>
-            <button type="button" className="btn-primary !px-2 sm:!px-4 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 leading-tight" onClick={copyLink} disabled={!event.allow_public_registration}>
-              <UiIcon name="send" /> <span>{linkCopied ? t('events.copied') : t('ux.sendLink')}</span>
-            </button>
-          </div>
+          <ActionRow
+            className="mt-3"
+            actions={[
+              { key: 'add', icon: 'userPlus', label: t('ux.addPlayer'), onClick: () => { setTab('participants'); setShowImport(true); } },
+              { key: 'checkin', icon: 'scan', label: t('ux.checkin'), onClick: () => setShowQr(true) },
+              { key: 'link', icon: 'send', label: linkCopied ? t('events.copied') : t('ux.sendLink'), onClick: copyLink, primary: true, disabled: !event.allow_public_registration },
+            ]}
+          />
         )}
       </div>
       <Modal open={showQr} title={t('qr.scanTitle')} onClose={() => setShowQr(false)}>
@@ -345,15 +343,15 @@ export default function EventDetailPage() {
             role="tab"
             aria-selected={tab === tb}
             onClick={() => setTab(tb)}
-            className={`relative flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:min-h-0 sm:flex-row sm:gap-1.5 sm:text-sm leading-tight transition-colors ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800 active:bg-navy-700'}`}
+            className={`relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:min-h-0 sm:flex-row sm:gap-1.5 sm:text-sm leading-tight transition-colors ${tab === tb ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800 active:bg-navy-700'}`}
           >
             {/* Every tab says what it is (icon + word), counts in brackets. */}
             <UiIcon name={{ participants: 'users', finance: 'wallet', matches: 'paddle', details: 'settings' }[tb]} className="w-5 h-5 sm:w-4 sm:h-4" />
-            <span>
-              {{ participants: t('ux.tabPlayers'), finance: t('ux.tabMoney'), matches: t('ux.tabMatches'), details: t('ux.tabSettings') }[tb]}
-              {tb === 'participants' && ` (${main.length})`}
-              {tb === 'matches' && ` (${(matches || []).length})`}
-            </span>
+            {/* The word on one line; the count as a small pill under it (phone) / after it. */}
+            <span className="whitespace-nowrap">{{ participants: t('ux.tabPlayers'), finance: t('ux.tabMoney'), matches: t('ux.tabMatches'), details: t('ux.tabSettings') }[tb]}</span>
+            {(tb === 'participants' || tb === 'matches') && (
+              <span className={`rounded-full px-1.5 min-w-[1.25rem] text-[11px] leading-4 tabular-nums ${tab === tb ? 'bg-navy-950/15 text-navy-950' : 'bg-navy-700 text-gray-200'}`}>{tb === 'participants' ? main.length : (matches || []).length}</span>
+            )}
             {tb === 'participants' && requested.length > 0 && <span className="absolute -top-1 -right-1 min-w-[1.25rem] rounded-full bg-amber-400 px-1 text-[11px] font-bold text-navy-950">{requested.length}</span>}
           </button>
         ))}

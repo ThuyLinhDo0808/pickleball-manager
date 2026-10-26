@@ -61,10 +61,10 @@ export default function SectionTabs({ group }) {
               key={tab.href}
               href={tab.href}
               aria-current={active ? 'page' : undefined}
-              className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-center text-xs leading-tight transition-colors active:bg-navy-700 sm:min-h-0 sm:flex-row sm:gap-0 sm:rounded-full sm:border sm:px-3.5 sm:py-2 sm:text-sm sm:whitespace-nowrap ${active ? 'bg-lime-400 text-navy-950 font-semibold sm:border-lime-400 sm:bg-lime-400/15 sm:text-lime-200' : 'text-gray-300 sm:border-navy-600 sm:text-gray-200 hover:text-white sm:hover:border-lime-400'}`}
+              className={`flex min-h-[3.5rem] flex-col items-center justify-start gap-0.5 rounded-lg px-1 pt-1.5 pb-1 text-center text-xs leading-tight transition-colors active:bg-navy-700 sm:min-h-0 sm:flex-row sm:items-center sm:gap-0 sm:rounded-full sm:border sm:px-3.5 sm:py-2 sm:text-sm sm:whitespace-nowrap ${active ? 'bg-lime-400 text-navy-950 font-semibold sm:border-lime-400 sm:bg-lime-400/15 sm:text-lime-200' : 'text-gray-300 sm:border-navy-600 sm:text-gray-200 hover:text-white sm:hover:border-lime-400'}`}
             >
               <UiIcon name={tab.icon} className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-1.5" />
-              <span>{t(key)}</span>
+              <span className="h-8 sm:h-auto flex items-start sm:items-center justify-center">{t(key)}</span>
             </Link>
           );
         })}

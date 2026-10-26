@@ -70,8 +70,7 @@ export default function AccountDetails() {
         ))}
       </div>
       {msg && <p className={`text-sm ${msg.ok ? 'text-lime-300' : 'text-red-300'}`}>{msg.text}</p>}
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn-primary text-sm" disabled={busy || !changed.length}>{t('common.save')}</button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           className="text-sm text-gray-400 hover:text-lime-300 underline"
@@ -82,6 +81,7 @@ export default function AccountDetails() {
         >
           {t('auth.changePassword')}
         </button>
+        <button type="submit" className="btn-primary text-sm ml-auto" disabled={busy || !changed.length}>{t('common.save')}</button>
       </div>
     </form>
   );

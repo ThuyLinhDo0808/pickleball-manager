@@ -2484,7 +2484,7 @@ export const vi = {
     pairKeep: "Giữ nguyên",
     pairDecide: "Hãy chọn Chọn lại hoặc Giữ nguyên cho cặp đã đứng cùng nhau.",
     title: 'Trận đấu',
-    add: 'Nhập trận',
+    add: 'Thêm trận',
     type: 'Thể thức',
     singles: 'Đơn',
     doubles: 'Đôi',

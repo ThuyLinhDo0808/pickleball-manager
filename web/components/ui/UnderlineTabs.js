@@ -1,13 +1,26 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import UiIcon from '@/components/ui/UiIcon';
 
 // In-page sub-tabs: one row of tabs with an underline under the chosen one (icon + word +
 // optional count). Quieter than the page's main tabs (lime cells), so the two levels never
 // look alike. On a phone the row scrolls sideways (the chosen tab is brought into view; a tab
-// cut at the edge shows there is more); nothing wraps onto a second line.
+// cut at the edge shows there is more, and a soft fade with a chevron at that edge says so
+// plainly); nothing wraps onto a second line.
 export default function UnderlineTabs({ tabs, value, onChange, className = 'mb-4' }) {
   const row = useRef(null);
+  // Which edges hide more tabs (phone): drawn as a fade + chevron so a cut word reads as "scroll".
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const box = row.current;
+    if (!box) return;
+    const measure = () => setEdges({ left: box.scrollLeft > 4, right: box.scrollLeft + box.clientWidth < box.scrollWidth - 4 });
+    measure();
+    box.addEventListener('scroll', measure, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(box);
+    return () => { box.removeEventListener('scroll', measure); ro?.disconnect(); };
+  }, [tabs.length]);
   useEffect(() => {
     // Sideways only (scrollIntoView could also move the page up or down).
     const box = row.current;
@@ -41,6 +54,16 @@ export default function UnderlineTabs({ tabs, value, onChange, className = 'mb-4
           );
         })}
       </div>
+      {edges.left && (
+        <button type="button" aria-label="←" onClick={() => row.current?.scrollBy({ left: -160, behavior: 'smooth' })} className="absolute inset-y-0 left-0 flex w-10 items-center justify-start bg-gradient-to-r from-navy-950 via-navy-950/80 to-transparent text-lime-300">
+          <UiIcon name="chevronLeft" className="w-4 h-4" />
+        </button>
+      )}
+      {edges.right && (
+        <button type="button" aria-label="→" onClick={() => row.current?.scrollBy({ left: 160, behavior: 'smooth' })} className="absolute inset-y-0 right-0 flex w-10 items-center justify-end bg-gradient-to-l from-navy-950 via-navy-950/80 to-transparent text-lime-300">
+          <UiIcon name="chevronRight" className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
