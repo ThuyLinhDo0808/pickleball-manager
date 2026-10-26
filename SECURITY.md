@@ -69,12 +69,10 @@ Bộ test tự động (chạy với backend ở chế độ production) kiểm 
 
 Code chỉ chống được tấn công nhỏ (một vài IP, gửi chậm, spam form). Tấn công lớn (hàng nghìn IP) phải chặn **trước khi tới server**:
 
-1. **Đưa tên miền qua Cloudflare** (gói Free đủ dùng): Cloudflare → *Add site* → đổi nameserver ở nơi mua tên miền sang 2 nameserver Cloudflare đưa → bản ghi DNS của web để **Proxied** (đám mây cam).
-   - Bật *Security → Bots → Bot Fight Mode*; *SSL/TLS* = **Full (strict)**; *Always Use HTTPS*.
-   - *Security → WAF → Rate limiting rules*: vd `/api/public/auth/*` quá 20 request / 10 giây / IP → Block 1 giờ.
-   - Khi đang bị tấn công: bật **Under Attack Mode** (Overview → Quick Actions).
-2. **API trên Render**: đặt tên miền con `api.<tên-miền>` (Render → Settings → Custom Domain) và cũng để Proxied qua Cloudflare, rồi đổi `NEXT_PUBLIC_API_URL` sang địa chỉ mới.
-3. **Vercel** đã có chống DDoS sẵn; bật thêm *Firewall → Attack Challenge Mode* khi cần.
+1. **Đưa tên miền qua Cloudflare** (gói Free đủ dùng) — hướng dẫn từng bước: **[docs/cloudflare-setup.md](docs/cloudflare-setup.md)**. Tóm tắt: web (Vercel) để *DNS only*, API ở `api.<tên-miền>` để *Proxied*, bản ghi email luôn *DNS only*; SSL **Full (strict)**; Bot Fight Mode; 1 luật rate limit cho `/api/public/auth/*`; trên Render đặt `TRUST_CLOUDFLARE=true` (và `CLOUDFLARE_ONLY=true` để chặn ai gọi thẳng `*.onrender.com`).
+   - **Không bật *Under Attack Mode* cho API**: nó bắt giải thử thách JavaScript nên web không gọi được API. Khi bị tấn công dùng luật chặn IP / quốc gia (WAF → Custom rules) hoặc `BLOCKED_IPS`.
+2. **Vercel** đã có chống DDoS sẵn; khi cần bật thêm *Firewall → Attack Challenge Mode* (chỉ ảnh hưởng trang web, không ảnh hưởng API).
+3. Sau khi API chạy qua `api.<tên-miền>`: đổi `NEXT_PUBLIC_API_URL` trên Vercel và Redeploy.
 4. **Sao lưu dữ liệu**: Supabase → Database → Backups (gói Pro: sao lưu hằng ngày + PITR). Gói Free: định kỳ tải bản sao (`supabase db dump`) cất ở nơi riêng.
 5. **Theo dõi**: đặt một dịch vụ báo khi web chết (vd UptimeRobot, gọi `https://api.<tên-miền>/health` mỗi 5 phút) để biết ngay khi có sự cố.
 

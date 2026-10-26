@@ -106,6 +106,43 @@ const limits = {
   slow: rateLimit({ name: 'slow', windowMs: 10 * 60_000, max: 10, message: 'Too many messages. Please try again later.' }),
 };
 
+// ---- Behind Cloudflare -------------------------------------------------------------
+// With the API's domain proxied by Cloudflare, Render sees a Cloudflare address, so every
+// visitor would share one rate-limit bucket. TRUST_CLOUDFLARE=true: when the request
+// really comes from Cloudflare (its published ranges), use the visitor address Cloudflare
+// sends in CF-Connecting-IP. A request that does not come from Cloudflare keeps its own
+// address, so nobody can fake one by sending that header straight to *.onrender.com.
+// CLOUDFLARE_ONLY=true also refuses those direct requests (except /health), so every call
+// passes Cloudflare's firewall.
+const net = require('net');
+const CF_RANGES = [
+  '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
+  '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+  '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+  '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
+];
+const cfList = new net.BlockList();
+for (const r of CF_RANGES) {
+  const [addr, bits] = r.split('/');
+  cfList.addSubnet(addr, Number(bits), addr.includes(':') ? 'ipv6' : 'ipv4');
+}
+const plainIp = (ip) => String(ip || '').replace(/^::ffff:/, '');
+function fromCloudflare(ip) {
+  const v = plainIp(ip);
+  const type = net.isIP(v);
+  return type ? cfList.check(v, type === 6 ? 'ipv6' : 'ipv4') : false;
+}
+function cloudflareIp(req, res, next) {
+  if (process.env.TRUST_CLOUDFLARE !== 'true') return next();
+  if (fromCloudflare(req.ip)) {
+    const real = plainIp(req.get('cf-connecting-ip'));
+    if (net.isIP(real)) Object.defineProperty(req, 'ip', { value: real, configurable: true });
+  } else if (process.env.CLOUDFLARE_ONLY === 'true' && !req.path.startsWith('/health')) {
+    return res.status(403).json({ error: 'Forbidden.', code: 'direct_access' });
+  }
+  next();
+}
+
 // ---- Blocked addresses ------------------------------------------------------------
 // BLOCKED_IPS on the server (comma-separated IPs or IPv4 /24 /16 prefixes such as
 // "203.0.113.7, 198.51.100."): those addresses get 403 at once. For stopping one attacker
@@ -146,4 +183,4 @@ function shedLoad(req, res, next) {
 }
 const currentLag = () => lag;
 
-module.exports = { securityHeaders, requestId, corsOptions, rateLimit, limits, isProd, blockIps, blockList, shedLoad, currentLag };
+module.exports = { securityHeaders, requestId, corsOptions, rateLimit, limits, isProd, blockIps, blockList, shedLoad, currentLag, cloudflareIp, fromCloudflare };
