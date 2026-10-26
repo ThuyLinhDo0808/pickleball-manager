@@ -257,7 +257,9 @@ export default function EventsPage() {
     const inMonth = games.filter((e) => e.event_date.slice(0, 7) === today.slice(0, 7));
     const week = addDays(today, 7);
     const soon = games.filter((e) => e.event_date >= today && e.event_date <= week).sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.start_time || '').localeCompare(b.start_time || ''));
-    const ahead = games.filter((e) => e.event_date >= today && e.slots);
+    // Fill rate: the same 7 days as the tile next to it (a long weekly series made ahead of
+    // time would otherwise read as 0%).
+    const ahead = soon.filter((e) => e.slots);
     const main = ahead.reduce((n, e) => n + (e.main_count || 0), 0);
     const slots = ahead.reduce((n, e) => n + (e.slots || 0), 0);
     return {
@@ -269,6 +271,7 @@ export default function EventsPage() {
       main,
       slots,
       fill: slots ? Math.round((100 * main) / slots) : null,
+      fillEvents: ahead.length,
     };
   }, [all, today]);
 
@@ -318,7 +321,7 @@ export default function EventsPage() {
         {isClub && !community && SHOW_TOURNAMENTS ? (
           <StatTile icon="trophy" label={t('calx.tournaments')} value={kpi.tours} tone="text-amber-300" sub={t('calx.upcomingSub')} />
         ) : (
-          <StatTile icon="users" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={t('calx.fillSub', { main: kpi.main, slots: kpi.slots })} />
+          <StatTile icon="users" label={t('calx.fill')} value={kpi.fill == null ? '—' : `${kpi.fill}%`} tone="text-sky-300" sub={kpi.slots ? t('calx.fillSub', { main: kpi.main, slots: kpi.slots, n: kpi.fillEvents }) : t('cal.noUpcoming')} hint={t('calx.fillHint')} />
         )}
       </KpiRow>
       </div>

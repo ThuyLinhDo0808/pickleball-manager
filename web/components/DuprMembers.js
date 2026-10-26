@@ -53,7 +53,6 @@ export default function DuprMembers({ club }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [showFree, setShowFree] = useState(false);
-  const [score, setScore] = useState(null); // { id, doubles, rel, singles } typed by hand
   const [guide, setGuide] = useState(null); // 'image' | 'video'
 
   if (error?.payload?.code === 'not_pickleball') return <p className="card text-gray-300 text-sm">{t('dupr.onlyPickleball')}</p>;
@@ -114,17 +113,6 @@ export default function DuprMembers({ club }) {
     }
   };
 
-  const saveScore = async () => {
-    setErr('');
-    try {
-      await api.patch(`/api/clubs/${club.id}/members/${score.id}/dupr-score`, { doubles: score.doubles, doubles_rel: score.rel, singles: score.singles });
-      setScore(null);
-      await reload();
-    } catch (e) {
-      setErr(e.message);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4">
       {/* Update from DUPR: the round trip, step by step */}
@@ -146,7 +134,6 @@ export default function DuprMembers({ club }) {
           steps={[
             { title: t('duprm.importTitle'), body: t('duprm.flowIntro') },
             ...[1, 2, 3, 4].map((n) => ({ title: `${t(`duprm.step${n}Title`)} · ${t(`duprm.step${n}Where`)}`, body: t(`duprm.step${n}Body`), image: `/guides/dupr/step-${n}.png` })),
-            { title: t('duprm.manualTitle'), body: t('duprm.manualTip') },
           ]}
         />
         <Modal open={guide === 'video'} title={t('duprm.guideVideo')} onClose={() => setGuide(null)}>
@@ -220,40 +207,19 @@ export default function DuprMembers({ club }) {
                     <span className="text-gray-300">{m.dupr_name || '—'}</span>
                     {m.name_fits === false && <span className="block text-[11px] text-amber-200" title={t('duprm.nameDiffHint')}>{t('dupr.nameMismatch')}</span>}
                   </td>
-                  {score?.id === m.id ? (
-                    <>
-                      <td className="py-2 pr-3 text-right">
-                        <input className="input !py-1 !w-20 text-right" type="number" step="0.001" min="1" max="8" autoFocus placeholder={t('dupr.col_doubles')} aria-label={t('dupr.col_doubles')} value={score.doubles} onChange={(e) => setScore({ ...score, doubles: e.target.value })} />
-                      </td>
-                      <td className="py-2 pr-3 text-right">
-                        <input className="input !py-1 !w-20 text-right" type="number" step="0.001" min="1" max="8" placeholder={t('dupr.col_singles')} aria-label={t('dupr.col_singles')} value={score.singles} onChange={(e) => setScore({ ...score, singles: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && saveScore()} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <span className="flex flex-wrap items-center gap-1">
-                          <input className="input !py-1 !w-16 text-right" type="number" step="1" min="0" max="100" placeholder="%" aria-label={t('duprm.relLabel')} value={score.rel} onChange={(e) => setScore({ ...score, rel: e.target.value })} />
-                          <button type="button" className="text-lime-300 text-xs" onClick={saveScore}>{t('common.save')}</button>
-                          <button type="button" className="text-gray-400 text-xs" onClick={() => setScore(null)} aria-label={t('common.cancel')}>✕</button>
-                        </span>
-                      </td>
-                    </>
-                  ) : (
                     <>
                       {['doubles', 'singles'].map((k) => {
                         const has = ['linked', 'manual'].includes(m.status);
                         const val = has ? m[k] : null;
                         const cell = (
                           <>
-                            <span className={val != null ? 'text-white font-semibold' : 'text-gray-500'}>{has ? fmtRating(val) : `+ ${t('duprm.typeScoreShort')}`}</span>
+                            <span className={val != null ? 'text-white font-semibold' : 'text-gray-500'}>{has ? fmtRating(val) : 'NR'}</span>
                             {k === 'doubles' && m.status === 'linked' && <span className="block leading-tight"><Change v={m.change} /></span>}
                           </>
                         );
                         return (
                           <td key={k} className="py-2 pr-3 text-right tabular-nums align-top">
-                            {m.status === 'linked' ? cell : (
-                              <button type="button" className="text-right hover:underline" title={t('duprm.typeScoreHint')} onClick={() => setScore({ id: m.id, doubles: m.doubles ?? '', rel: m.doubles_rel ?? '', singles: m.singles ?? '' })}>
-                                {cell}
-                              </button>
-                            )}
+                            {cell}
                           </td>
                         );
                       })}
@@ -264,12 +230,9 @@ export default function DuprMembers({ club }) {
                             {m.status === 'linked' && m.synced_at && <span className="block whitespace-nowrap">{t('dupr.updatedOn', { date: fmtDate(m.synced_at) })}</span>}
                             {m.doubles_rel == null && !(m.status === 'linked' && m.synced_at) && '—'}
                           </>
-                        ) : m.self_level != null ? (
-                          <span className="block whitespace-nowrap">{t('duprm.selfLevel', { v: m.self_level })}</span>
                         ) : '—'}
                       </td>
                     </>
-                  )}
                   <td className="py-2 pr-3">
                     <span className={`text-[11px] rounded border px-1.5 py-0.5 whitespace-nowrap ${STATUS_TONE[m.status]}`}>{t(`duprm.status_${m.status}`)}</span>
                   </td>
