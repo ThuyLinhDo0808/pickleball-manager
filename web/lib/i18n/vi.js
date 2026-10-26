@@ -1749,6 +1749,9 @@ export const vi = {
     created: 'Tạo ngày {date}',
   },
   auth: {
+    err_password_leaked: "Mật khẩu này đã bị lộ trên mạng hoặc quá dễ đoán. Hãy chọn mật khẩu khác.",
+    err_password_like_name: "Mật khẩu không được chứa tên đăng nhập hoặc email.",
+    err_captcha_failed: "Chưa xác minh được bạn không phải robot. Vui lòng thử lại.",
     duprId: "DUPR ID",
     duprIdNote: "Dùng để cập nhật điểm DUPR và gửi kết quả trận đấu của bạn lên DUPR.",
     err_bad_dupr_id: "DUPR ID gồm 4–10 chữ hoặc số.",

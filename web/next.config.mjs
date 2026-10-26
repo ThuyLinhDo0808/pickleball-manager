@@ -11,6 +11,8 @@ const origin = (u) => {
 const apiOrigin = origin(process.env.NEXT_PUBLIC_API_URL);
 const supabaseOrigin = origin(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const isDev = process.env.NODE_ENV !== 'production';
+// Cloudflare Turnstile (bot check on sign-in) only when its site key is set.
+const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? ' https://challenges.cloudflare.com' : '';
 
 // Content-Security-Policy: only our own scripts, no framing, no plugins, and network calls
 // only to the API + Supabase. 'unsafe-inline' is needed for Next's inline bootstrap script
@@ -18,16 +20,16 @@ const isDev = process.env.NODE_ENV !== 'production';
 // https (VietQR images).
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' 'unsafe-inline'${turnstile}${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   // Club pictures come from the API; VietQR codes from img.vietqr.io (https).
   `img-src 'self' data: blob: https: ${apiOrigin}`.trim(),
   "font-src 'self' data:",
-  `connect-src 'self' ${apiOrigin} ${supabaseOrigin}${isDev ? ' ws: http://localhost:*' : ''}`.replace(/\s+/g, ' ').trim(),
+  `connect-src 'self' ${apiOrigin} ${supabaseOrigin}${turnstile}${isDev ? ' ws: http://localhost:*' : ''}`.replace(/\s+/g, ' ').trim(),
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
   // Only the Google Maps preview in the event form may be framed.
-  "frame-src https://maps.google.com https://www.google.com",
+  `frame-src https://maps.google.com https://www.google.com${turnstile}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

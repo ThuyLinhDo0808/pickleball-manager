@@ -9,6 +9,8 @@ const security = require('../services/accountSecurity');
 const { LEGAL_VERSION } = require('../services/privacy');
 const emailVerify = require('../services/emailVerify');
 const dupr = require('../services/dupr');
+const { requireCaptcha } = require('../services/captcha');
+const { weakReason } = require('../services/passwordCheck');
 
 const announcements = require('./announcements.routes');
 const { isOwner } = require('../services/owner');
@@ -64,7 +66,7 @@ router.get('/username', tooMany, async (req, res) => {
 });
 
 // { login: username or email, password } -> { session }
-router.post('/login', tooMany, perLogin, async (req, res) => {
+router.post('/login', tooMany, perLogin, requireCaptcha, async (req, res) => {
   const login = cleanLogin(req.body?.login);
   const password = String(req.body?.password || '');
   const bad = () => res.status(401).json({ error: 'Wrong username or password.', code: 'invalid_login' });
@@ -106,7 +108,7 @@ router.post('/login', tooMany, perLogin, async (req, res) => {
 // later, when they are needed). The account works at once — the person is signed in
 // and can hold one place — and the email is confirmed with a 6-digit code
 // (services/emailVerify.js).
-router.post('/signup', tooMany, mails, async (req, res) => {
+router.post('/signup', tooMany, mails, requireCaptcha, async (req, res) => {
   const b = req.body || {};
   const username = cleanLogin(b.username);
   const email = cleanLogin(b.email);
@@ -129,6 +131,9 @@ router.post('/signup', tooMany, mails, async (req, res) => {
     return fail('bad_dupr_id', err.message);
   }
   if (b.accept_terms !== true) return fail('terms_required', 'Accept the Terms and the Privacy Policy to sign up.');
+  const weak = await weakReason(password, { username, email });
+  if (weak === 'password_like_name') return fail('password_like_name', 'The password must not contain your username or email.');
+  if (weak === 'password_leaked') return fail('password_leaked', 'This password appears in leaked password lists. Choose another one.');
   try {
     const { data: taken } = await supabase.from('users').select('id').eq('username', username).maybeSingle();
     if (taken) return fail('username_taken', 'This username is taken.', 409);
@@ -197,7 +202,7 @@ async function sendResetLink(email, origin) {
 
 // Forgot password: email a reset link. Always answers ok (never says whether the
 // account exists).
-router.post('/forgot', tooMany, mails, async (req, res) => {
+router.post('/forgot', tooMany, mails, requireCaptcha, async (req, res) => {
   try {
     const email = await emailFor(cleanLogin(req.body?.login));
     const origin = webOrigin(req);

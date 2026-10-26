@@ -33,13 +33,16 @@ const analyticsRoutes = require('./routes/analytics.routes');
 const liveRoutes = require('./routes/live.routes');
 const { schemaStatus } = require('./services/schemaCheck');
 const { startSurveySweeper } = require('./services/survey');
-const { securityHeaders, requestId, corsOptions, limits } = require('./middleware/security');
+const { securityHeaders, requestId, corsOptions, limits, blockIps, shedLoad, cloudflareIp } = require('./middleware/security');
 
 const app = express();
 app.disable('x-powered-by');
 // Render / Vercel sit behind one proxy: trust it so req.ip is the real client (rate limits).
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
 app.use(requestId);
+app.use(cloudflareIp);
+app.use(blockIps());
+app.use(shedLoad);
 app.use(securityHeaders);
 app.use(cors(corsOptions()));
 // Payment screenshots / QR images are sent as small data URLs (≤ 400 KB); nothing needs more.
@@ -129,7 +132,26 @@ app.use((err, req, res, next) => {
 });
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`Pickleball API listening on :${port}`));
+// Slow-client attacks (slowloris: headers or body sent one byte at a time) must not hold
+// connections open: unfinished headers are cut after 20 s, a whole request after 30 s
+// (checked every 5 s). Keep-alive stays a little longer than the load balancer's.
+const server = require('http').createServer(
+  {
+    connectionsCheckingInterval: 5_000,
+    headersTimeout: Number(process.env.HEADERS_TIMEOUT_MS || 20_000),
+    requestTimeout: Number(process.env.REQUEST_TIMEOUT_MS || 30_000),
+    keepAliveTimeout: Number(process.env.KEEPALIVE_TIMEOUT_MS || 65_000),
+  },
+  app
+);
+server.listen(port, () => console.log(`Pickleball API listening on :${port}`));
+server.maxHeadersCount = 100;
+// One failed background task must not take the whole API down; a real crash restarts it.
+process.on('unhandledRejection', (err) => console.error('unhandledRejection', err));
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException', err);
+  process.exit(1);
+});
 // Thank-you + survey link to guests once their session is over.
 if (process.env.SURVEY_SWEEP_DISABLED !== 'true') startSurveySweeper();
 // Top-month race: close last month and give the winners their vouchers.

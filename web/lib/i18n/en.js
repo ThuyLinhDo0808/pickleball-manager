@@ -1749,6 +1749,9 @@ export const en = {
     created: 'Created {date}',
   },
   auth: {
+    err_password_leaked: "This password has been leaked online or is too easy to guess. Choose another one.",
+    err_password_like_name: "The password must not contain your username or email.",
+    err_captcha_failed: "We could not confirm you are not a robot. Please try again.",
     duprId: "DUPR ID",
     duprIdNote: "Used to update your DUPR rating and send your match results to DUPR.",
     err_bad_dupr_id: "A DUPR ID is 4–10 letters or digits.",
