@@ -1,5 +1,6 @@
 'use client';
 import DuprIdGuide from '@/components/DuprIdGuide';
+import Captcha from '@/components/Captcha';
 import { peekReturn, rememberReturn } from '@/lib/returnTo';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
@@ -29,7 +30,7 @@ function errorText(err, t) {
   if (err?.status === 429) return t('auth.rateLimit');
   if (code === 'terms_required') return t('legal.termsRequired');
   if (code === 'maintenance') return t('auth.err_maintenance', { time: err.payload.maintenance?.ends_at ? localDate(new Date(err.payload.maintenance.ends_at), 'vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true) : '—' });
-  const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'bad_dupr_id', 'email_rate_limit', 'auth_unavailable'];
+  const known = ['invalid_login', 'email_not_confirmed', 'username_taken', 'email_taken', 'bad_username', 'weak_password', 'bad_email', 'bad_birth_date', 'bad_gender', 'bad_region', 'bad_dupr_id', 'captcha_failed', 'password_leaked', 'password_like_name', 'email_rate_limit', 'auth_unavailable'];
   return known.includes(code) ? t(`auth.err_${code}`) : err?.message || t('common.error');
 }
 
@@ -91,6 +92,9 @@ export default function SignInPage() {
   // sign up
   const [f, setF] = useState({ username: '', password: '', password2: '', email: '', gender: '', dupr_id: '' });
   const [agree, setAgree] = useState(false);
+  // Bot check token (components/Captcha.js; only when Turnstile is set up). One use each.
+  const [captcha, setCaptcha] = useState('');
+  const capRef = useRef(null);
   const [nameState, setNameState] = useState(null); // null | 'checking' | 'free' | 'taken' | 'invalid'
   const set = (k) => (e) => setF({ ...f, [k]: typeof e === 'string' ? e : e.target.value });
 
@@ -186,13 +190,14 @@ export default function SignInPage() {
     setError('');
     setUnconfirmed(false);
     try {
-      const r = await api.publicPost('/api/public/auth/login', { login, password, device_id: deviceId() });
+      const r = await api.publicPost('/api/public/auth/login', { login, password, device_id: deviceId(), captcha_token: captcha });
       const { error: err } = await adoptSession(r.session);
       if (err) throw err;
       router.replace(nextPath());
     } catch (err) {
       if (err?.payload?.code === 'email_not_confirmed') setUnconfirmed(true);
       setError(errorText(err, t));
+      capRef.current?.reset();
     } finally {
       setBusy(false);
     }
@@ -207,7 +212,7 @@ export default function SignInPage() {
     setBusy(true);
     try {
       const { password2, dupr_id, ...body } = f;
-      const r = await api.publicPost('/api/public/auth/signup', { ...body, ...(dupr_id ? { dupr_id } : {}), username: f.username.trim().toLowerCase(), origin: window.location.origin, accept_terms: agree, device_id: deviceId() });
+      const r = await api.publicPost('/api/public/auth/signup', { ...body, ...(dupr_id ? { dupr_id } : {}), username: f.username.trim().toLowerCase(), origin: window.location.origin, accept_terms: agree, device_id: deviceId(), captcha_token: captcha });
       if (r.session) {
         // Signed in at once; next: the 6-digit code (it can be skipped to hold a place first).
         setJustSignedUp(true);
@@ -219,6 +224,7 @@ export default function SignInPage() {
       go('sent', t('auth.checkEmailTo', { email: f.email }));
     } catch (err) {
       setError(errorText(err, t));
+      capRef.current?.reset();
     } finally {
       setBusy(false);
     }
@@ -229,11 +235,12 @@ export default function SignInPage() {
     setBusy(true);
     setError('');
     try {
-      await api.publicPost('/api/public/auth/forgot', { login, origin: window.location.origin });
+      await api.publicPost('/api/public/auth/forgot', { login, origin: window.location.origin, captcha_token: captcha });
       setInfo(t('auth.resetSent'));
     } catch (err) {
       setError(errorText(err, t));
     } finally {
+      capRef.current?.reset();
       setBusy(false);
     }
   }
@@ -319,6 +326,7 @@ export default function SignInPage() {
               <div className="mb-5">
                 <PasswordInput id="pw" value={password} onChange={setPassword} autoComplete="current-password" />
               </div>
+              <Captcha key={mode} ref={capRef} onToken={setCaptcha} className="mb-3 flex justify-center" />
               <button type="submit" disabled={busy} className="btn-primary w-full">{busy ? t('auth.working') : t('auth.signIn')}</button>
               <p className="text-sm text-gray-400 text-center mt-5">
                 {t('auth.noAccountQ')}{' '}
@@ -371,6 +379,7 @@ export default function SignInPage() {
                   <a href="/privacy" target="_blank" rel="noopener" className="text-lime-300 underline underline-offset-2">{t('legal.privacyTitle')}</a>.
                 </span>
               </label>
+              <Captcha key={mode} ref={capRef} onToken={setCaptcha} className="mb-3 flex justify-center" />
               <button type="submit" disabled={busy || nameState === 'taken' || !agree} className="btn-primary w-full">{busy ? t('auth.working') : t('auth.createAccount')}</button>
               <p className="text-sm text-gray-400 text-center mt-5">
                 {t('auth.haveAccountQ')}{' '}
@@ -384,6 +393,7 @@ export default function SignInPage() {
               <Field label={t('auth.username')} htmlFor="fg-login">
                 <input id="fg-login" className="input" required autoCapitalize="none" placeholder={t('auth.usernamePh')} value={login} onChange={(e) => setLogin(e.target.value)} />
               </Field>
+              <Captcha key={mode} ref={capRef} onToken={setCaptcha} className="mb-3 flex justify-center" />
               <button type="submit" disabled={busy} className="btn-primary w-full mt-2">{busy ? t('auth.working') : t('auth.sendReset')}</button>
               <p className="text-sm text-center mt-5">
                 <button type="button" className="text-lime-400 hover:underline" onClick={() => go('signIn')}>← {t('auth.backToSignIn')}</button>

@@ -31,6 +31,11 @@ Trình duyệt ──HTTPS──> Web (Vercel, Next.js)        chỉ giữ anon 
 | Thư viện | Next.js 15.5.27 + React 19 (đã vá các lỗ hổng critical của Next 14). `npm audit` backend: 0 lỗ hổng. Web: còn cảnh báo `xlsx` (bản npm 0.18.x, chưa có bản vá trên npm) — `xlsx` giờ **chỉ dùng để xuất** Excel; file người dùng tải lên (Nhập thành viên) được đọc bằng `read-excel-file`, nên lỗ hổng khi đọc file độc hại không áp dụng. |
 | Tài khoản | **Xác thực 2 lớp** (mã TOTP 6 số, kiểm tra ở server, gắn với từng phiên đăng nhập Supabase), bắt buộc cho Owner / nhân viên hỗ trợ và hỏi lại mỗi 12 giờ ở Trang Owner; khoá bí mật mã hoá AES-256-GCM, mã khôi phục lưu băm, mỗi mã dùng một lần, tối đa 10 lần thử / 10 phút. **Email báo đăng nhập từ thiết bị mới.** **Đăng xuất khỏi mọi thiết bị** (API từ chối token phát hành trước thời điểm đó). Trang Owner tự đăng xuất sau 30 phút không thao tác. |
 | Dữ liệu cá nhân | Chính sách bảo mật (`/privacy`) + Điều khoản (`/terms`), đồng ý khi đăng ký và khi đổi phiên bản (lưu `terms_version`, `terms_accepted_at`). Người dùng tự tải dữ liệu (JSON, không chứa bí mật) và tự xoá tài khoản. Ảnh chuyển khoản tự xoá sau `PROOF_RETENTION_DAYS` (90) ngày, thiết bị đăng nhập sau 1 năm. |
+| Chống bot (v2) | **Cloudflare Turnstile** ở đăng nhập / đăng ký / quên mật khẩu (bật khi đặt `TURNSTILE_SECRET_KEY` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; thường không hiện gì, chỉ hỏi khi nghi là bot). Cloudflare không trả lời thì vẫn cho qua (không khoá người thật), các giới hạn số lần vẫn áp dụng. |
+| Mật khẩu (v2) | Đăng ký: từ chối mật khẩu đã lộ trong các vụ rò rỉ (Have I Been Pwned, k-anonymity: chỉ 5 ký tự đầu của mã SHA-1 rời server), mật khẩu phổ biến, hoặc chứa tên đăng nhập / email. Sai mật khẩu bị giới hạn 30 lần / 10 phút / IP và 10 lần / 10 phút / tài khoản. |
+| Chống sập (v2) | Ngắt kết nối gửi chậm (slowloris: header 20 s, cả request 30 s); khi quá tải (event loop trễ > 1 s) trả nhanh `503 overloaded` + `Retry-After` thay vì treo cả server; bộ đếm rate limit giới hạn 100 000 khoá (một cuộc tấn công từ nhiều IP không làm tràn bộ nhớ); `BLOCKED_IPS` chặn ngay IP / dải IP; lỗi bất ngờ trong tác vụ nền chỉ ghi log, lỗi nghiêm trọng thì tiến trình tự khởi động lại (Render). |
+| Database (v2) | Migration `20261220090000_function_search_path.sql`: cố định `search_path` cho các hàm trigger (cảnh báo *Function Search Path Mutable* của Supabase). Các bảng "RLS bật nhưng không có policy" là **cố ý**: không ai đọc trực tiếp được, chỉ backend (service role). |
+| Thư viện (v2, 26/10/2026) | Next.js **15.5.28** (vá RCE qua Image Optimizer + DoS Server Actions), `body-parser` bản vá DoS, `uuid` ≥ 11.1.1 (qua `overrides`). `npm audit` backend + web: **0 lỗ hổng**. |
 | Secret | `.env*` bị git bỏ qua; đã quét repo + lịch sử git: không có key nào bị commit. |
 
 ## 3. Checklist khi deploy (bắt buộc)
@@ -50,9 +55,28 @@ Trình duyệt ──HTTPS──> Web (Vercel, Next.js)        chỉ giữ anon 
 6. Bật **2FA** cho tài khoản GitHub, Supabase, Render, Vercel.
 7. **Xác thực 2 lớp trong app:** đặt `MFA_ENC_KEY` trên Render (`openssl rand -hex 32`, giữ cố định, không đổi). Chạy migration `20261113090000_account_security.sql`. Sau khi deploy, mỗi email trong `OWNER_EMAILS` và mỗi nhân viên hỗ trợ vào **Hồ sơ → Bảo mật** bật xác thực 2 lớp (Trang Owner sẽ yêu cầu), cất **mã khôi phục** ở nơi an toàn.
 
+8. **Tên miền riêng (mới):**
+   - Thêm tên miền vào `CORS_ORIGIN` (Render), vd `CORS_ORIGIN=https://nexuszone.vn,https://www.nexuszone.vn` — chỉ các địa chỉ này gọi được API.
+   - Supabase → Authentication → URL Configuration: *Site URL* = `https://nexuszone.vn`, *Redirect URLs* chỉ gồm tên miền của bạn.
+   - Supabase → Authentication → Providers → Email: bật **Leaked password protection** (nếu gói Pro), *Minimum password length* = 8.
+9. **Cloudflare Turnstile (chống bot):** Cloudflare → Turnstile → *Add widget* (tên miền của bạn, chế độ *Managed*) → đặt `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (Vercel) và `TURNSTILE_SECRET_KEY` (Render) → deploy lại cả hai.
+
 ## 4. Kiểm thử bảo mật
 
 Bộ test tự động (chạy với backend ở chế độ production) kiểm tra: header bảo mật, CORS, token giả, body quá lớn / JSON hỏng, SSRF webhook, ẩn lỗi DB, **anon key không đọc được bảng & view**, và rate limit (429).
+
+## 6. Chống DDoS / làm sập web (hạ tầng)
+
+Code chỉ chống được tấn công nhỏ (một vài IP, gửi chậm, spam form). Tấn công lớn (hàng nghìn IP) phải chặn **trước khi tới server**:
+
+1. **Đưa tên miền qua Cloudflare** (gói Free đủ dùng): Cloudflare → *Add site* → đổi nameserver ở nơi mua tên miền sang 2 nameserver Cloudflare đưa → bản ghi DNS của web để **Proxied** (đám mây cam).
+   - Bật *Security → Bots → Bot Fight Mode*; *SSL/TLS* = **Full (strict)**; *Always Use HTTPS*.
+   - *Security → WAF → Rate limiting rules*: vd `/api/public/auth/*` quá 20 request / 10 giây / IP → Block 1 giờ.
+   - Khi đang bị tấn công: bật **Under Attack Mode** (Overview → Quick Actions).
+2. **API trên Render**: đặt tên miền con `api.<tên-miền>` (Render → Settings → Custom Domain) và cũng để Proxied qua Cloudflare, rồi đổi `NEXT_PUBLIC_API_URL` sang địa chỉ mới.
+3. **Vercel** đã có chống DDoS sẵn; bật thêm *Firewall → Attack Challenge Mode* khi cần.
+4. **Sao lưu dữ liệu**: Supabase → Database → Backups (gói Pro: sao lưu hằng ngày + PITR). Gói Free: định kỳ tải bản sao (`supabase db dump`) cất ở nơi riêng.
+5. **Theo dõi**: đặt một dịch vụ báo khi web chết (vd UptimeRobot, gọi `https://api.<tên-miền>/health` mỗi 5 phút) để biết ngay khi có sự cố.
 
 ## 5. Báo lỗ hổng
 

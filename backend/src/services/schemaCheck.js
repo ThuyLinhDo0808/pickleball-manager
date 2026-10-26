@@ -87,6 +87,7 @@ const PROBES = [
   { table: 'events', column: 'schedule_changed_at', migration: '20261217090000_event_schedule_changed.sql' },
   { table: 'users', column: 'host_bell_hidden', migration: '20261218090000_host_bell_dismiss.sql' },
   { table: 'users', column: 'pending_email', migration: '20261219090000_email_change.sql' },
+  { table: 'security_revisions', column: 'name', migration: '20261220090000_function_search_path.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },
