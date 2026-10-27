@@ -1,6 +1,6 @@
 'use client';
 import Hint from '@/components/ui/Hint';
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
 import FundCalculator from '@/components/FundCalculator';
@@ -262,14 +262,11 @@ export default function LedgerPage() {
   const [month, setMonth] = useState('all');
   const [category, setCategory] = useState('all');
   const [showVoided, setShowVoided] = useState(false);
-  const [showBefore, setShowBefore] = useState(false); // entries before "Tính tài chính từ ngày"
   const [openAll, setOpenAll] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
 
-  const from = data?.finance_from || null;
-  const beforeCount = from ? (data?.transactions || []).filter((r) => r.occurred_on < from).length : 0;
-  const rows = (data?.transactions || []).filter((r) => showBefore || !from || r.occurred_on >= from);
+  const rows = data?.transactions || [];
   const months = useMemo(() => [...new Set(rows.map((r) => r.occurred_on.slice(0, 7)))].sort().reverse(), [rows]);
   const categories = useMemo(() => [...new Set(rows.map((r) => r.category || 'other'))], [rows]);
   const shown = rows.filter(
@@ -332,9 +329,27 @@ export default function LedgerPage() {
         <button className="text-red-400/80 hover:text-red-300 px-1" title={t('fin.void')} aria-label={t('fin.void')} onClick={() => voidEntry(r)}>✕</button>
       </span>
     ) : null;
+  // One table per side: money in on the left, money out on the right. Rows are grouped by
+  // session (one header per kèo: date · name · its subtotal, then every entry of that
+  // session — who paid, what the Host paid for), the club fund's own entries last.
   const side = (ty) => {
     const list = shown.filter((r) => r.type === ty);
     const income = ty === 'income';
+    const groups = [];
+    const byKey = new Map();
+    for (const r of list) {
+      const key = r.event_id || 'club';
+      if (!byKey.has(key)) {
+        const g = { key, ev: r.event_id ? r.events : null, rows: [], total: 0, latest: r.occurred_on };
+        byKey.set(key, g);
+        groups.push(g);
+      }
+      const g = byKey.get(key);
+      g.rows.push(r);
+      if (!r.is_voided) g.total += Number(r.amount);
+      if (r.occurred_on > g.latest) g.latest = r.occurred_on;
+    }
+    groups.sort((x, y) => (x.key === 'club') - (y.key === 'club') || String(y.ev?.event_date || y.latest).localeCompare(String(x.ev?.event_date || x.latest)));
     return (
       <div className="card !p-4 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-3">
@@ -355,26 +370,38 @@ export default function LedgerPage() {
                 </tr>
               </thead>
               <tbody>
-                {list.map((r) => (
-                  <tr key={r.id} className={r.is_voided ? 'opacity-40 line-through' : ''}>
-                    <td className="text-gray-300 whitespace-nowrap">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</td>
-                    <td className="first text-gray-200 whitespace-nowrap">
-                      {categoryLabel(r.category, t)}
-                      {(AUTO.has(r.category) || r.event_cost) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
-                    </td>
-                    <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${income ? '!text-lime-400' : '!text-orange-300'}`}>{formatVnd(r.amount)}</td>
-                    <td className="text-gray-400 !whitespace-normal break-words text-xs max-sm:basis-full">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="min-w-0">
-                          {r.events && (
-                            <Link href={`/events/${r.event_id}`} className="text-sky-300 hover:text-lime-400 block">{sessionLabel(r.events, t)}</Link>
+                {groups.map((g) => (
+                  <Fragment key={g.key}>
+                    <tr className="bg-navy-900/70">
+                      <td colSpan={4} className="!py-2">
+                        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                          {g.ev ? (
+                            <Link href={`/events/${g.key}`} className="text-sky-300 hover:text-lime-400 font-medium">{sessionLabel(g.ev, t)}</Link>
+                          ) : (
+                            <span className="text-gray-200 font-medium">{t('ledger.noSession')}</span>
                           )}
-                          <span className="text-gray-300">{r.is_voided ? `${t('fin.voided')}${r.void_reason ? `: ${r.void_reason}` : ''}` : describeEntry(r, t) || (r.events ? '' : '—')}</span>
+                          <span className="text-gray-500 text-xs">{t('ledger.entriesN', { n: g.rows.length })}</span>
+                          <span className={`ml-auto tabular-nums text-xs font-semibold ${income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(g.total)}</span>
                         </span>
-                        {ROW_ACTIONS(r)}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {g.rows.map((r) => (
+                      <tr key={r.id} className={r.is_voided ? 'opacity-40 line-through' : ''}>
+                        <td className="text-gray-300 whitespace-nowrap">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</td>
+                        <td className="first text-gray-200 whitespace-nowrap">
+                          {categoryLabel(r.category, t)}
+                          {(AUTO.has(r.category) || r.event_cost) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
+                        </td>
+                        <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${income ? '!text-lime-400' : '!text-orange-300'}`}>{formatVnd(r.amount)}</td>
+                        <td className="text-gray-400 !whitespace-normal break-words text-xs max-sm:basis-full">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="min-w-0 text-gray-300">{r.is_voided ? `${t('fin.voided')}${r.void_reason ? `: ${r.void_reason}` : ''}` : describeEntry(r, t) || '—'}</span>
+                            {ROW_ACTIONS(r)}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -403,18 +430,6 @@ export default function LedgerPage() {
       {isClub && data && (
         <p className="text-gray-400 text-xs -mt-2 mb-4">
           {t('ledger.fundBalance', { v: formatVnd(data.balance), club: formatVnd(data.balance_club || 0), sessions: formatVnd(data.balance_sessions || 0) })}
-          {from && (
-            <>
-              {' · '}
-              {t('fin.countedFrom', { d: from.split('-').reverse().join('/') })}
-              {beforeCount > 0 && (
-                <>
-                  {' · '}
-                  <button type="button" className="underline hover:text-white" onClick={() => setShowBefore((v) => !v)}>{t(showBefore ? 'ledger.hideBefore' : 'ledger.showBefore', { n: beforeCount })}</button>
-                </>
-              )}
-            </>
-          )}
         </p>
       )}
 

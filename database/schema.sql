@@ -3447,8 +3447,3 @@ revoke all on public.dupr_export_batches from anon, authenticated;
 -- chơi. Safe to run more than once.
 alter table public.club_members add column if not exists hold_reason text
   check (hold_reason is null or hold_reason in ('injury', 'away', 'busy', 'other'));
-
--- không được cộng vào số dư, biểu đồ hay sổ thu chi (vẫn giữ trong cơ sở dữ liệu, xem được
--- khi bấm "Hiện khoản trước ngày bắt đầu"). Dùng khi chạy thử xong và muốn bắt đầu sổ sạch.
--- Safe to run more than once.
-alter table public.clubs add column if not exists finance_from date;

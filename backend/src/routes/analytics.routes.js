@@ -62,7 +62,7 @@ const cleanYear = (v) => {
 async function resolveScope(req) {
   if (req.query.scope === 'standalone') return { clubId: null, hostId: req.hostId };
   const access = await clubAccess(req, req.query.club_id);
-  return access ? { clubId: access.club.id, hostId: access.club.host_id, kind: access.club.kind === 'community' ? 'community' : 'club', financeFrom: access.club.finance_from || null } : null;
+  return access ? { clubId: access.club.id, hostId: access.club.host_id, kind: access.club.kind === 'community' ? 'community' : 'club' } : null;
 }
 
 async function scopeEvents(hostId, clubId, fields) {
@@ -81,8 +81,7 @@ router.get('/finance', async (req, res) => {
     if (!(await gate(res, scope, 'stats'))) return;
     const year = cleanYear(req.query.year);
     const months = year ? yearMonths(year) : lastMonths(Math.min(Math.max(parseInt(req.query.months, 10) || 12, 3), 36));
-    // Nothing before the club's "Tính tài chính từ ngày".
-    const from = scope.financeFrom && scope.financeFrom > `${months[0]}-01` ? scope.financeFrom : `${months[0]}-01`;
+    const from = `${months[0]}-01`;
     const events = await scopeEvents(scope.hostId, scope.clubId, 'id');
     const filters = [];
     if (scope.clubId) filters.push(`and(owner_type.eq.club,club_id.eq.${scope.clubId})`);
@@ -148,8 +147,7 @@ router.get('/events-pnl', async (req, res) => {
     const year = cleanYear(req.query.year);
     const months = Math.min(Math.max(parseInt(req.query.months, 10) || 12, 1), 36);
     const [y, m] = todayYmd().split('-').map(Number);
-    let since = year ? `${year}-01-01` : new Date(Date.UTC(y, m - 1 - months, 1)).toISOString().slice(0, 10);
-    if (scope.financeFrom && scope.financeFrom > since) since = scope.financeFrom; // "Tính tài chính từ ngày"
+    const since = year ? `${year}-01-01` : new Date(Date.UTC(y, m - 1 - months, 1)).toISOString().slice(0, 10);
     const until = year ? `${year}-12-31` : '9999-12-31';
     const events = (await scopeEvents(scope.hostId, scope.clubId, 'id, title, event_date, start_time, status')).filter((e) => e.event_date >= since && e.event_date <= until);
     if (!events.length) return res.json([]);

@@ -16,7 +16,6 @@ import { todayYmd, localDate } from '@/lib/dates';
 import { categoryLabel, EXPENSE_COLOR, INCOME_COLOR } from '@/lib/finance';
 import LockedFeature from '@/components/LockedFeature';
 import Hint from '@/components/ui/Hint';
-import { useClubs } from '@/context/ClubContext';
 
 function Tile({ icon, label, value, tone = 'text-white', sub }) {
   return (
@@ -131,7 +130,7 @@ export default function FinanceOverview() {
   const { data: finYear } = useLoad(() => (scope && year !== thisYear ? api.get(`/api/analytics/finance?${scope}&year=${year}`) : Promise.resolve(null)), [scope, year, thisYear]);
   const fin = year === thisYear ? finNow : finYear;
   const { data: pnl } = useLoad(() => (scope ? api.get(`/api/analytics/events-pnl?${scope}&year=${year}`).catch((e) => (e.status === 402 ? 'locked' : Promise.reject(e))) : Promise.resolve(null)), [scope, year]);
-  const { data: fund } = useLoad(() => (isClub && club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null)), [isClub, club?.id, club?.finance_from]);
+  const { data: fund } = useLoad(() => (isClub && club ? api.get(`/api/clubs/${club.id}/fund`) : Promise.resolve(null)), [isClub, club?.id]);
   // Social Manager (communities and one-off kèo): the money day by day, and the profit to expect.
   const social = workspace === 'xeve';
   const { data: daily } = useLoad(() => (social && scope ? api.get(`/api/analytics/daily?${scope}&month=${ymPick}`).catch(() => null) : Promise.resolve(null)), [social, scope, ymPick]);
@@ -164,25 +163,6 @@ export default function FinanceOverview() {
     }
   }
   const bal = Number(fund?.balance || 0);
-  // "Tính tài chính từ ngày": owner / co-admin set it here; everything before is not counted.
-  const { reload: reloadClubs } = useClubs();
-  const canSetFrom = isClub && club && ['owner', 'co_admin'].includes(club.role || 'owner');
-  const [fromDraft, setFromDraft] = useState(null); // null = not editing
-  const [fromBusy, setFromBusy] = useState(false);
-  const [fromErr, setFromErr] = useState('');
-  async function saveFrom(value) {
-    setFromBusy(true);
-    setFromErr('');
-    try {
-      await api.patch(`/api/clubs/${club.id}`, { finance_from: value || null });
-      await reloadClubs?.();
-      setFromDraft(null);
-    } catch (e) {
-      setFromErr(e.message);
-    } finally {
-      setFromBusy(false);
-    }
-  }
 
   // Thu / Chi for the month or year picked above (the fund balance sits beside them).
   const picked = isYear ? fin?.totals : fin?.months.find((m) => m.month === ymPick);
@@ -203,26 +183,7 @@ export default function FinanceOverview() {
             </button>
           ))}
         </div>
-        {canSetFrom && (
-          <div className="flex flex-wrap items-center gap-2 text-sm sm:ml-auto">
-            <span className="text-gray-400">{t('fin.financeFrom')}</span>
-            <Hint text={t('fin.financeFromHint')} inline />
-            {fromDraft == null ? (
-              <button type="button" className="btn-secondary !py-1 text-sm" onClick={() => setFromDraft(club.finance_from || '')}>
-                {club.finance_from ? club.finance_from.split('-').reverse().join('/') : t('fin.financeFromNone')}
-              </button>
-            ) : (
-              <>
-                <input type="date" className="input !w-auto !py-1 text-sm" value={fromDraft} onChange={(e) => setFromDraft(e.target.value)} />
-                <button type="button" className="btn-primary !py-1 text-sm" disabled={fromBusy} onClick={() => saveFrom(fromDraft)}>{t('common.save')}</button>
-                {club.finance_from && <button type="button" className="text-xs text-gray-400 underline" disabled={fromBusy} onClick={() => saveFrom('')}>{t('fin.financeFromClear')}</button>}
-                <button type="button" className="text-xs text-gray-400 underline" onClick={() => setFromDraft(null)}>{t('common.cancel')}</button>
-              </>
-            )}
-            {fromErr && <span className="text-red-300 text-xs">{fromErr}</span>}
-          </div>
-        )}
-        <Link href="/finance/ledger" className={`btn-primary text-sm ${canSetFrom ? '' : 'sm:ml-auto'}`}>+ {t('finX.addEntry')}</Link>
+        <Link href="/finance/ledger" className="btn-primary text-sm sm:ml-auto">+ {t('finX.addEntry')}</Link>
       </div>
 
       <div className={`grid gap-4 mb-4 ${isClub || social ? 'lg:grid-cols-[1fr_2.4fr]' : ''}`}>
@@ -245,7 +206,6 @@ export default function FinanceOverview() {
             <div className={`text-3xl sm:text-4xl font-bold tabular-nums mt-1 ${bal < 0 ? 'text-red-400' : 'text-lime-400'}`}>{fund ? formatVnd(bal) : '—'}</div>
             {/* One number = club fund + the sessions' money; the two parts under it. */}
             {fund && <p className="text-gray-400 text-xs mt-1 tabular-nums">{t('fin.balanceParts', { club: formatVnd(fund.balance_club || 0), sessions: formatVnd(fund.balance_sessions || 0) })}</p>}
-            {fund?.finance_from && <p className="text-amber-200/90 text-xs mt-1">{t('fin.countedFrom', { d: fund.finance_from.split('-').reverse().join('/') })}</p>}
           </div>
         )}
 
