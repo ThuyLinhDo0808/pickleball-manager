@@ -204,6 +204,8 @@ export default function FinanceOverview() {
           <div className="rounded-2xl border border-navy-700 bg-navy-800 p-5 sm:p-6 flex flex-col justify-center">
             <p className="text-gray-400 text-xs font-semibold">{t('fin.balance')}</p>
             <div className={`text-3xl sm:text-4xl font-bold tabular-nums mt-1 ${bal < 0 ? 'text-red-400' : 'text-lime-400'}`}>{fund ? formatVnd(bal) : '—'}</div>
+            {/* One number = club fund + the sessions' money; the two parts under it. */}
+            {fund && <p className="text-gray-400 text-xs mt-1 tabular-nums">{t('fin.balanceParts', { club: formatVnd(fund.balance_club || 0), sessions: formatVnd(fund.balance_sessions || 0) })}</p>}
           </div>
         )}
 

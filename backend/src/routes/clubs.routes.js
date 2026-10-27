@@ -1464,13 +1464,6 @@ router.get('/:clubId/community-settings/suggestions', async (req, res) => {
 });
 
 router.get('/:clubId/fund', async (req, res) => {
-  const { data: balanceRow, error: balErr } = await supabase
-    .from('v_club_fund_balance')
-    .select('*')
-    .eq('club_id', req.club.id)
-    .maybeSingle();
-  if (balErr) return dbError(res, balErr);
-
   // The ledger is everything the Host takes in and pays out: the club fund's own entries
   // and the money of every session (fees players paid, court hire…), with the session.
   const [{ data: txns, error: txnErr }, { data: evTxns, error: evErr }] = await Promise.all([
@@ -1485,9 +1478,14 @@ router.get('/:clubId/fund', async (req, res) => {
   ]);
   if (txnErr) return dbError(res, txnErr);
   if (evErr) return dbError(res, evErr);
+  const counts = (t) => !t.is_voided;
+  const sum = (list) => list.filter(counts).reduce((s, t) => s + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
+  const balanceClub = sum(txns);
+  const balanceSessions = sum(evTxns);
   const all = [...txns, ...evTxns.map(({ events, ...t }) => ({ ...t, events: { title: events.title, event_date: events.event_date, start_time: events.start_time, kind: events.kind } }))]
     .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || String(b.created_at).localeCompare(String(a.created_at)));
-  res.json({ balance: balanceRow?.balance || 0, transactions: all });
+  // balance = everything (club fund + the sessions' money); the two parts beside it.
+  res.json({ balance: balanceClub + balanceSessions, balance_club: balanceClub, balance_sessions: balanceSessions, transactions: all });
 });
 
 // ---- Club events (schedule list scoped to a club) -------------------------

@@ -119,7 +119,7 @@ function ClubHome({ community = false }) {
   const thisMonth = fin?.months
     ? fin.months.find((r) => r.month === month) || { income: 0, expense: 0 }
     : (fund?.transactions || [])
-        .filter((x) => String(x.occurred_on || '').startsWith(month))
+        .filter((x) => String(x.occurred_on || '').startsWith(month) && !x.is_voided)
         .reduce((acc, x) => ({ ...acc, [x.type]: (acc[x.type] || 0) + Number(x.amount || 0) }), { income: 0, expense: 0 });
   const debtors = fixed.filter((m) => Number(m.debt) > 0).sort((a, b) => Number(b.debt) - Number(a.debt));
   const owed = debtors.reduce((s, m) => s + Number(m.debt || 0), 0);
