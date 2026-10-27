@@ -12,7 +12,6 @@ import ContextSwitcher from '@/components/ContextSwitcher';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import SignupBell from '@/components/SignupBell';
 import SchemaBanner from '@/components/SchemaBanner';
-import BirthdayBanner from '@/components/BirthdayBanner';
 import { api } from '@/lib/api';
 import LockedFeature from '@/components/LockedFeature';
 import PlanLimitNotice from '@/components/PlanLimitNotice';
@@ -117,7 +116,10 @@ const NAV_BY_WORKSPACE = {
   // The old one-off kèo space (no community) is gone — every kèo belongs to a community.
   xeve: [{ href: '/account', key: 'nav.account', icon: 'account' }],
   // Referees / coordinators: only their assigned events. No finance, no members.
-  staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
+  staff: [
+    { href: '/staff', key: 'nav.staffEvents', icon: 'whistle' },
+    { href: '/account', key: 'nav.account', icon: 'account' },
+  ],
 };
 // Social Manager with a community (cụm sân) picked: every Club Manager page, for the
 // community (no meetings / round robin), plus the app-wide leaderboard.
@@ -141,7 +143,6 @@ NAV_BY_WORKSPACE.community = [
     icon: 'chart',
     children: [
       { href: '/club/business', key: 'nav.bizPlayers', icon: 'members', exact: true },
-      { href: '/club/race', key: 'nav.race', icon: 'trophy' },
       { href: '/club/dupr', key: 'nav.dupr', icon: 'rankings', sport: 'pickleball' },
       { href: '/club/reviews', key: 'nav.reviews', icon: 'chat' },
     ],
@@ -438,6 +439,9 @@ export default function AppShell({ children, back }) {
     .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
   const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
+  // Staff / finance see one or two pages: put their account beside them, so the bar is not
+  // one lonely icon next to "Thêm".
+  if (tabs.length < 3 && !tabs.some((tab) => tab.href === '/account')) tabs.push({ href: '/account', key: 'nav.account', icon: 'account' });
   const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
@@ -624,6 +628,8 @@ export default function AppShell({ children, back }) {
           <div className="max-w-md mx-auto card mt-4">
             <h1 className="text-white text-xl font-bold mb-1">{t('clubs.createFirst')}</h1>
             <p className="text-gray-400 text-sm mb-4">{t('clubs.createFirstHint')}</p>
+            {/* Invited as Co-Admin / staff but the email is not confirmed yet: the grant waits for that. */}
+            {user && !user.email_confirmed_at && <p className="mb-4 rounded-lg border border-amber-400/40 bg-amber-400/5 px-3 py-2 text-sm text-amber-200">{t('staffView.unverified')}</p>}
             <CreateClubForm autoFocus />
           </div>
         ) : (
@@ -646,7 +652,6 @@ export default function AppShell({ children, back }) {
               </div>
             )}
             <UpgradeModal open={renewOpen} onClose={() => setRenewOpen(false)} product={mode === 'community' ? 'social_manager' : 'tier'} />
-            {scoped && <BirthdayBanner clubId={club?.id} />}
             {back !== false && !TOP_LEVEL.has(pathname) && <BackButton fallback={typeof back === 'string' ? back : backFallback(pathname)} />}
             {children}
           </>
@@ -721,7 +726,7 @@ export default function AppShell({ children, back }) {
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${
+                className={`flex flex-col items-center justify-start gap-0.5 min-h-[4rem] pt-2 pb-1 text-xs leading-tight ${
                   navActive(item) ? 'text-lime-300' : 'text-gray-400'
                 }`}
               >
@@ -729,18 +734,19 @@ export default function AppShell({ children, back }) {
                   <Icon name={item.icon} />
                   <Badge n={badges[item.badge]} className="absolute -top-2 -right-3" />
                 </span>
-                <span className="max-w-full px-0.5 text-center break-words hyphens-auto">{t(item.key)}</span>
+                {/* Two lines of room for every label, so "Lịch hoạt động" never pushes its icon up. */}
+                <span className="max-w-full px-0.5 h-8 flex items-start justify-center text-center break-words hyphens-auto">{t(item.key)}</span>
               </Link>
             );
           })}
           <button
             onClick={() => setMoreOpen((o) => !o)}
-            className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${
+            className={`flex flex-col items-center justify-start gap-0.5 min-h-[4rem] pt-2 pb-1 text-xs leading-tight ${
               moreOpen || moreActive ? 'text-lime-300' : 'text-gray-400'
             }`}
           >
             <Icon name="more" />
-            <span>{t('nav.more')}</span>
+            <span className="h-8 flex items-start justify-center">{t('nav.more')}</span>
           </button>
         </div>
       </nav>

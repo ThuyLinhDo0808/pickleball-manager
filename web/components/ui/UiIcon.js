@@ -70,6 +70,7 @@ const PATHS = {
   box: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
   filter: 'M3 5h18l-7 8v6l-4 2v-8z',
   chevronRight: 'M9 6l6 6-6 6',
+  chevronLeft: 'M15 6l-6 6 6 6',
   chevronDown: 'M6 9l6 6 6-6',
   image: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15 9h.01',
   camera: 'M3 8h4l2-3h6l2 3h4v12H3zM12 17a4 4 0 100-8 4 4 0 000 8z',

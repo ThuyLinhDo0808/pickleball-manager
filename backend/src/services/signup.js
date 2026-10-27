@@ -255,13 +255,6 @@ async function registerOnline(event, userId, profile, opts = {}) {
     if (perks.priority) row.priority = true;
     if (perks.fee_amount != null) row.fee_amount = perks.fee_amount;
   }
-  // Top-month voucher (communities): free kèo / 50% off, taken off the fee now. Members
-  // whose pass covers the session pay nothing, so they keep their voucher.
-  let claimed = null;
-  if (opts.useVoucher !== false && !(isMember && standing.pass)) {
-    claimed = await require('./race').claimVoucher(event, userId, feeFor(event, row)).catch(() => null);
-    if (claimed) Object.assign(row, { fee_amount: claimed.fee, voucher_id: claimed.voucher.id, voucher_discount: claimed.discount });
-  }
   if (!approval && hasPlace && (await needsOnlinePayment(event, row))) {
     Object.assign(row, {
       status: 'pending',
@@ -273,15 +266,11 @@ async function registerOnline(event, userId, profile, opts = {}) {
     if (later) Object.assign(row, { hold_expires_at: later, pay_later: true });
   }
   let { data, error } = await supabase.from('event_participants').insert(row).select().single();
-  if (error) {
-    if (claimed) await require('./race').releaseVoucher(claimed.voucher.id);
-    throw error;
-  }
+  if (error) throw error;
   // Many people tapping "Đăng ký" at the same moment can all see the last place free.
   // Settle it after the insert: in sign-up order, whoever is past the number of places
   // goes to the waitlist (and pays nothing yet).
   if (HOLDS_PLACE.includes(data.status)) data = (await settleOverbooking(ev, data, group)) || data;
-  if (claimed) await require('./race').attachVoucher(claimed.voucher.id, data.id);
   if (data.status === 'registered' && !isMember) await ensureGuestMember(event, data);
   if (data.status === 'requested') notifySignupRequest(event, data); // Host webhook, in the background
   return registrationView(event, data);

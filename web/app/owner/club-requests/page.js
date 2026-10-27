@@ -9,6 +9,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
+import ChipRow from '@/components/ui/ChipRow';
 
 const STATUSES = ['pending', 'approved', 'rejected', 'all'];
 const BADGE = { pending: 'bg-amber-300/20 text-amber-200', approved: 'bg-lime-400/20 text-lime-200', rejected: 'bg-red-500/20 text-red-200', cancelled: 'bg-navy-700 text-gray-400' };
@@ -86,14 +87,14 @@ export default function OwnerClubRequestsPage() {
   return (
     <OwnerShell title={t('owner.tabClubRequests')} description={t('owner.desc_requests')}>
       <Hint className="mb-3" text={t('ownerReq.intro')} />
-      <div className="flex flex-wrap gap-1.5 mb-3">
+      <ChipRow gap="gap-1.5" className="mb-3">
         {STATUSES.map((s) => (
           <button key={s} type="button" onClick={() => { setStatus(s); setPage(1); }} className={`rounded-full px-3 py-1 text-sm border ${status === s ? 'border-amber-300 bg-amber-300 text-navy-950 font-semibold' : 'border-navy-600 text-gray-300'}`}>
             {t(`ownerReq.f_${s}`)}
             {s === 'pending' && data ? <span className="ml-1 tabular-nums opacity-80">({data.pending})</span> : null}
           </button>
         ))}
-      </div>
+      </ChipRow>
       {(error || err) && <p className="card text-red-300 text-sm mb-3">{error?.message || err}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {data && rows.length === 0 && <p className="card text-gray-500 text-sm">{t('ownerReq.empty')}</p>}

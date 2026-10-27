@@ -8,6 +8,7 @@ import Hint from '@/components/ui/Hint';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
 import Modal from '@/components/Modal';
 import GuideModal from '@/components/ui/GuideModal';
+import ChipRow from '@/components/ui/ChipRow';
 
 // Optional: a video guide (e.g. YouTube link) shown in the "Hướng dẫn bằng video" pop-up.
 const GUIDE_VIDEO = process.env.NEXT_PUBLIC_DUPR_GUIDE_VIDEO_URL || '';
@@ -156,13 +157,13 @@ export default function DuprMembers({ club }) {
           <input className="input sm:!w-56 text-sm" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
           {/* Groups: thường xuyên · vãng lai · người mới · đặt nhanh */}
           <UnderlineTabs className="w-full" value={group} onChange={(g) => { setGroup(g); setFilter('all'); }} tabs={groups.map((g) => ({ key: g, label: groupLabel(g), count: g === 'all' ? members.length : g === 'quick' ? (data.quick || []).length : kindCount[g] || 0 }))} />
-          {group !== 'quick' && <div className="flex flex-wrap gap-1.5">
+          {group !== 'quick' && <ChipRow gap="gap-1.5">
             {FILTERS.filter((f) => f !== 'conflict' || counts.conflict).map((f) => (
               <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={`text-xs rounded-full border px-3 py-1 ${filter === f ? 'border-lime-400 bg-lime-400/10 text-lime-300' : 'border-navy-600 text-gray-300'}`}>
                 {t(`duprm.filter_${f}`)} <span className="tabular-nums">{f === 'all' ? inGroup.length : counts[f] || 0}</span>
               </button>
             ))}
-          </div>}
+          </ChipRow>}
         </div>
         {group === 'quick' ? (
           <QuickTable rows={quick} edit={qEdit} setEdit={setQEdit} onSave={saveQuick} />

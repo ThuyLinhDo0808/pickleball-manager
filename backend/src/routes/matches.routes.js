@@ -1,13 +1,13 @@
 const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
-const { PLAYER_SELECT, createMatch, updateMatch } = require('../services/matches');
+const { PLAYER_SELECT, createMatch, updateMatch, duprLocked } = require('../services/matches');
 const { actingHost, eventAccess } = require('../services/clubAccess');
 
 const router = express.Router();
 
 function fail(res, err) {
-  return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+  return err.status ? res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) }) : dbError(res, err);
 }
 
 // Confirms the club / event is the signed-in host's, or belongs to a club they co-administer.
@@ -97,6 +97,7 @@ router.patch('/:matchId', async (req, res) => {
 router.delete('/:matchId', async (req, res) => {
   const match = await loadOwnedMatch(req, res);
   if (!match) return;
+  if (match.dupr_exported_at) return fail(res, duprLocked());
   const { error } = await supabase.from('matches').delete().eq('id', match.id);
   if (error) return dbError(res, error);
   res.status(204).end();

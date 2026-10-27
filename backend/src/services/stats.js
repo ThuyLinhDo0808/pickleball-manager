@@ -39,12 +39,15 @@ function winnerTeam(match) {
 }
 
 // matches: [{ team1_score, team2_score, match_players: [{ team, club_member_id }] }]
-// members: [{ id, full_name, gender }]
+// members: [{ id, full_name, gender, kind }] — `kind`: 'member' (on the club's member list)
+// or 'guest' (a quick sign-up / a name the Host typed into a match, not on the list).
 function aggregate(matches, members) {
   const byId = new Map(members.map((m) => [m.id, {
     club_member_id: m.id,
     full_name: m.full_name,
     gender: m.gender || null,
+    kind: m.kind || 'member',
+    member_type: m.member_type || null,
     matches_played: 0,
     wins: 0,
     losses: 0,
@@ -73,7 +76,7 @@ function aggregate(matches, members) {
     .map((r) => ({
       ...r,
       point_diff: r.points_scored - r.points_lost,
-      win_rate: r.matches_played ? Math.round((1000 * r.wins) / r.matches_played) / 10 : 0,
+      win_rate: r.matches_played ? Math.round((100 * r.wins) / r.matches_played) : 0,
     }))
     .sort((a, b) => b.wins - a.wins || b.win_rate - a.win_rate || b.point_diff - a.point_diff || a.full_name.localeCompare(b.full_name));
 }
@@ -116,8 +119,11 @@ function weekStart(ymd) {
 // whoever tops it holds No. 1 that week (equal wins, win rate and point diff = shared).
 // matches carry `day` (local date). -> [{ club_member_id, full_name, weeks, streak,
 // current, last_week }] most weeks first; `streak` = their longest run of weeks in a row
-// at No. 1, `current` = they top the latest week.
-function weeksAtTop(matches, members) {
+// at No. 1, `current` = they top the latest week. A week's No. 1 follows the same rule as
+// the ranking table: best win rate among those with at least `minMatches` matches THAT
+// week (then more matches, then point difference). A week where nobody reaches the
+// minimum has no No. 1.
+function weeksAtTop(matches, members, minMatches = 1) {
   const byWeek = new Map();
   for (const m of matches) {
     if (!isScored(m) || !m.day) continue;
@@ -130,9 +136,11 @@ function weeksAtTop(matches, members) {
   let prevTop = new Set();
   const run = new Map();
   for (const k of weeks) {
-    const board = aggregate(byWeek.get(k), members);
+    const board = aggregate(byWeek.get(k), members)
+      .filter((r) => r.matches_played >= minMatches)
+      .sort((a, b) => b.win_rate - a.win_rate || b.matches_played - a.matches_played || b.point_diff - a.point_diff || a.full_name.localeCompare(b.full_name, 'vi'));
     const lead = board[0];
-    const tops = lead ? board.filter((r) => r.wins === lead.wins && r.win_rate === lead.win_rate && r.point_diff === lead.point_diff) : [];
+    const tops = lead ? board.filter((r) => r.win_rate === lead.win_rate && r.matches_played === lead.matches_played && r.point_diff === lead.point_diff) : [];
     const now = new Set();
     for (const r of tops) {
       const o = out.get(r.club_member_id) || { club_member_id: r.club_member_id, full_name: r.full_name, weeks: 0, streak: 0, current: false, last_week: null };

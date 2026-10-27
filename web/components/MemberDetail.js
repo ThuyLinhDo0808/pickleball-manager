@@ -18,6 +18,7 @@ import { todayYmd } from '@/lib/dates';
 import MemberLink from '@/components/MemberLink';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 export const FLAGS = ['unpaid', 'late', 'attitude'];
 export const FLAG_STYLE = {
@@ -180,6 +181,7 @@ const fromMember = (m) => ({
   birth: birthFromMember(m),
   joined: m.joined_on ? m.joined_on.slice(0, 7) : '',
   is_active: m.is_active !== false,
+  hold_reason: m.hold_reason || '',
   district: m.district || '',
 });
 
@@ -233,6 +235,7 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
       ...birthPayload(f.birth),
       joined_on: f.joined ? `${f.joined}-01` : null,
       is_active: f.is_active,
+      hold_reason: f.hold_reason || null,
       district: f.district,
     });
     if (ok !== false) setOpen(false);
@@ -353,6 +356,15 @@ function MemberEdit({ member, busy, onSave, onSaveDupr, autoEdit = false, commun
         <input type="checkbox" checked={f.is_active} onChange={(e) => set({ is_active: e.target.checked })} />
         {t('members.active')}
       </label>
+      {/* On a break (injury, away…): never moved down to drop-in by the auto rule. */}
+      <div className="col-span-2 min-w-0">
+        <label className="text-xs text-gray-400" htmlFor="edit-hold">{t('members.hold')}</label>
+        <select id="edit-hold" className="input" value={f.hold_reason} onChange={(e) => set({ hold_reason: e.target.value })}>
+          <option value="">{t('members.holdNone')}</option>
+          {['injury', 'away', 'busy', 'other'].map((k) => <option key={k} value={k}>{t(`members.hold_${k}`)}</option>)}
+        </select>
+        <p className="text-gray-500 text-xs mt-1">{t('members.holdHint')}</p>
+      </div>
       <div className="col-span-2 flex gap-2">
         <button type="button" className="btn-secondary flex-1" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
         <button className="btn-primary flex-1" disabled={busy || !f.full_name.trim()}>{t('common.save')}</button>
@@ -469,7 +481,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
 
         <section>
           <h3 className="text-white font-semibold text-sm mb-2">{t('flags.title')}</h3>
-          <div className="flex flex-wrap gap-2 mb-3">
+          <ChipRow gap="gap-2" className="mb-3">
             {FLAGS.map((f) => (
               <button
                 key={f}
@@ -484,7 +496,7 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
                 {t(`flags.${f}`)}
               </button>
             ))}
-          </div>
+          </ChipRow>
           <div className="flex gap-2">
             <input className="input text-sm" placeholder={t('flags.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
             <button

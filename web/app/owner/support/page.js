@@ -5,6 +5,7 @@ import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import ChipRow from '@/components/ui/ChipRow';
 
 const PERMS = ['stats', 'hosts', 'payments', 'plans', 'feedback', 'announcements', 'promos', 'view_as'];
 const PRESETS = {
@@ -17,13 +18,13 @@ function PermPicker({ value, onChange }) {
   const toggle = (p) => onChange(value.includes(p) ? value.filter((x) => x !== p) : [...value, p]);
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap gap-1.5 mb-1">
+      <ChipRow gap="gap-1.5" className="mb-1">
         {Object.entries(PRESETS).map(([k, v]) => (
           <button key={k} type="button" className="rounded-full border border-navy-600 px-3 py-1 text-xs text-gray-300 hover:border-amber-300" onClick={() => onChange(v)}>
             {t(`owner.preset_${k}`)}
           </button>
         ))}
-      </div>
+      </ChipRow>
       {PERMS.map((p) => (
         <label key={p} className="flex items-start gap-2 rounded-lg border border-navy-700 px-3 py-2 cursor-pointer hover:border-navy-500">
           <input type="checkbox" className="mt-1" checked={value.includes(p)} onChange={() => toggle(p)} />

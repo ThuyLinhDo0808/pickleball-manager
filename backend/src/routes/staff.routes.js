@@ -58,7 +58,7 @@ const CAN = {
 };
 
 function fail(res, err) {
-  return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+  return err.status ? res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) }) : dbError(res, err);
 }
 
 const SCOPES = ['all', 'clubs', 'xeve'];

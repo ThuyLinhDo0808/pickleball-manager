@@ -183,13 +183,11 @@ export default function PublicEventPage() {
             role="tab"
             aria-selected={pageTab === k}
             onClick={() => setPageTab(k)}
-            className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:flex-row sm:gap-1.5 sm:text-sm leading-tight transition-colors ${pageTab === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800 active:bg-navy-700'}`}
+            className={`flex min-h-[3.5rem] sm:min-h-0 flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg text-xs sm:flex-row sm:gap-1.5 sm:text-sm leading-tight transition-colors ${pageTab === k ? 'bg-lime-400 text-navy-950 font-semibold' : 'text-gray-300 hover:bg-navy-800 active:bg-navy-700'}`}
           >
             <UiIcon name={{ ticket: 'ticket', live: 'calendar', list: 'users' }[k]} className="w-5 h-5 sm:w-4 sm:h-4" />
-            <span>
-              {{ ticket: t('public.tabTicket'), live: t('elive.title'), list: t('public.playerList') }[k]}
-              {k === 'list' && ` (${main.length})`}
-            </span>
+            <span className="whitespace-nowrap">{{ ticket: t('public.tabTicket'), live: t('elive.title'), list: t('public.playerList') }[k]}</span>
+            {k === 'list' && <span className={`rounded-full px-1.5 min-w-[1.25rem] text-[11px] leading-4 tabular-nums ${pageTab === k ? 'bg-navy-950/15 text-navy-950' : 'bg-navy-700 text-gray-200'}`}>{main.length}</span>}
           </button>
         ))}
       </div>

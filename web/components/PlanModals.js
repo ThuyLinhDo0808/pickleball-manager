@@ -10,6 +10,7 @@ import { formatVnd } from '@/lib/format';
 import { HIGHLIGHTS } from '@/lib/planFeatures';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 // Fallback before the plan has loaded; the real catalog comes from GET /api/host/plan.
 // Every plan is paid ('free' only means the account has no plan).
@@ -164,7 +165,7 @@ function Checkout({ kind, tier, req, onBack, scroll = false }) {
     <div ref={ref} className="rounded-xl border border-lime-400/40 bg-lime-400/5 p-3 scroll-mt-4">
       <p className="text-white font-semibold text-sm">{t('plan.checkoutTitle', { what })}</p>
       <p className="text-gray-400 text-xs mb-2">{t('plan.perMonth', { price: formatVnd(price) })}</p>
-      <div className="flex flex-wrap gap-1.5 mb-3" role="radiogroup" aria-label={t('plan.months')}>
+      <ChipRow gap="gap-1.5" className="mb-3" role="radiogroup" aria-label={t('plan.months')}>
         {choices.map((m) => (
           <button
             key={m}
@@ -177,7 +178,7 @@ function Checkout({ kind, tier, req, onBack, scroll = false }) {
             {t('plan.nMonths', { n: m })}
           </button>
         ))}
-      </div>
+      </ChipRow>
       <div className="flex gap-2 mb-1">
         <input
           className="input !py-1.5 text-sm font-mono flex-1 min-w-0"

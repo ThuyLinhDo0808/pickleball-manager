@@ -37,7 +37,7 @@ export default function SessionStandings({ participants, matches }) {
   if (!rows.length) return <p className="card text-gray-400 text-sm">{t('staffX.boardEmpty')}</p>;
   return (
     <div className="card !p-0 overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm rank-table">
         <thead>
           <tr className="text-gray-400 text-xs border-b border-navy-700">
             <th className="text-left font-medium px-3 py-2 w-8">#</th>

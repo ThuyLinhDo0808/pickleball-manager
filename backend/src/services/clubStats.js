@@ -3,6 +3,7 @@
 const { supabase } = require('../supabase');
 const { todayYmd } = require('./memberships');
 const { guestsReady } = require('./guests');
+const cleanId = (v) => (v ? String(v).trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '');
 const { PERIODS, DEFAULT_MIN_MATCHES, localDate, periodBounds, aggregate, awards, weeksAtTop, isScored } = require('./stats');
 
 // Supabase caps a response at 1000 rows, so page through.
@@ -52,7 +53,7 @@ async function clubMatches(clubId, bounds, personOf, { mainOnly = false } = {}) 
     await fetchAll(() => {
       let q = supabase
         .from('matches')
-        .select(`id, played_at, team1_score, team2_score, events!inner(club_id, kind, series_id), match_players(team, event_participants(source_club_member_id${linkGuests ? ', guest_member_id' : ''}))`)
+        .select(`id, played_at, team1_score, team2_score, events!inner(club_id, kind, series_id), match_players(team, event_participants(id, full_name, gender, dupr_id, source_club_member_id${linkGuests ? ', guest_member_id' : ''}))`)
         .eq('events.club_id', clubId)
         .order('id');
       if (bounds) q = q.gte('played_at', `${shiftDay(bounds.from, -1)}T00:00:00Z`).lte('played_at', `${shiftDay(bounds.to, 1)}T23:59:59Z`);
@@ -79,19 +80,36 @@ async function clubStats(club, query = {}) {
 
   // Two leaderboards: the club community (fixed members) and the guests. No group = all.
   const group = ['club', 'guest'].includes(query.group) ? query.group : null;
-  const allMembers = await fetchAll(() =>
-    supabase.from('club_members').select('id, full_name, gender, member_type, dupr_level, user_id').eq('club_id', club.id).order('id')
-  );
-  const members = allMembers.filter((m) => !group || (group === 'club' ? m.member_type === 'fixed' : m.member_type !== 'fixed'));
+  const allMembers = (await fetchAll(() =>
+    supabase.from('club_members').select('id, full_name, gender, member_type, dupr_level, dupr_id, user_id').eq('club_id', club.id).order('id')
+  )).map((m) => ({ ...m, kind: 'member' }));
   const linkGuests = await guestsReady(); // guests in sessions are linked by guest_member_id
-  const personOf = (p) => p?.source_club_member_id || (linkGuests ? p?.guest_member_id : null) || null;
+  // People in a match who are not on the member list (quick sign-ups, names the Host typed
+  // in): they play on the board too, as "Khách". One person across sessions = one DUPR ID
+  // (else the same name); a DUPR ID that belongs to a member counts for that member.
+  const memberByDupr = new Map(allMembers.filter((m) => m.dupr_id).map((m) => [cleanId(m.dupr_id), m.id]));
+  const guests = new Map(); // key -> { id, full_name, gender, kind: 'guest' }
+  const personOf = (p) => {
+    if (!p) return null;
+    const linked = p.source_club_member_id || (linkGuests ? p.guest_member_id : null);
+    if (linked) return linked;
+    const dupr = cleanId(p.dupr_id);
+    if (dupr && memberByDupr.has(dupr)) return memberByDupr.get(dupr);
+    const key = dupr ? `dupr:${dupr}` : p.full_name ? `name:${String(p.full_name).trim().toLowerCase().replace(/\s+/g, ' ')}` : p.id ? `p:${p.id}` : null;
+    if (!key) return null;
+    if (!guests.has(key)) guests.set(key, { id: key, full_name: String(p.full_name || '').trim() || '—', gender: p.gender || null, member_type: 'guest', kind: 'guest', dupr_id: dupr || null });
+    return key;
+  };
 
   const matches = await clubMatches(club.id, bounds, personOf, { mainOnly });
+  // Everyone with a place to play for: members, then the guests found in the matches.
+  const everyone = [...allMembers, ...guests.values()];
+  const members = everyone.filter((m) => !group || (group === 'club' ? m.member_type === 'fixed' : m.member_type !== 'fixed'));
 
   const checkIns = await fetchAll(() => {
     let q = supabase
       .from('event_participants')
-      .select(`source_club_member_id${linkGuests ? ', guest_member_id' : ''}, event_id, events!inner(club_id, event_date)`)
+      .select(`id, full_name, gender, dupr_id, source_club_member_id${linkGuests ? ', guest_member_id' : ''}, event_id, events!inner(club_id, event_date)`)
       .eq('status', 'checked_in')
       .eq('events.club_id', club.id)
       .order('id');
@@ -114,7 +132,7 @@ async function clubStats(club, query = {}) {
   const levelOf = new Map(members.map((m) => [m.id, m.dupr_level == null ? null : Number(m.dupr_level)]));
   const rankings = rankByWinRate(aggregate(matches, members).map((r) => ({ ...r, level: levelOf.get(r.club_member_id) ?? null })), minMatches);
   const ids = new Set(members.map((m) => m.id));
-  const weeks = weeksAtTop(bounds ? await clubMatches(club.id, null, personOf, { mainOnly }) : matches, members);
+  const weeks = weeksAtTop(bounds ? await clubMatches(club.id, null, personOf, { mainOnly }) : matches, members, minMatches);
   // The players' own photos (latest version) on the rows.
   const userOf = new Map(allMembers.map((m) => [m.id, m.user_id || null]));
   const photoV = await require('./playerAvatars').versions([...userOf.values()]).catch(() => new Map());

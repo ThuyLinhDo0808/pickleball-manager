@@ -17,6 +17,7 @@ import { useEnter } from '@/lib/useEnter';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 const PAID = ['basic', 'standard', 'advanced', 'pro'];
 const FALLBACK_LIMITS = { basic: { clubs: 3, fixed: 16, guest: 20 }, standard: { clubs: 5, fixed: 50, guest: 100 }, advanced: { clubs: 10, fixed: 100, guest: 200 }, pro: { clubs: 20, fixed: null, guest: null } };
@@ -338,13 +339,13 @@ export default function ClubRequestPage() {
                 ) : (
                 <div className="card">
                   <p className="text-white text-sm font-semibold mb-2">{t('creq.months')}</p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <ChipRow gap="gap-1.5">
                     {months.map((m) => (
                       <button key={m} type="button" onClick={() => set('plan_months', m)} className={`rounded-lg px-3 py-1.5 text-sm border ${form.plan_months === m ? 'border-lime-400 bg-lime-400 text-navy-950 font-bold' : 'border-navy-600 text-gray-200'}`}>
                         {t('plan.nMonths', { n: m })}
                       </button>
                     ))}
-                  </div>
+                  </ChipRow>
                   <p className="text-gray-300 text-sm mt-2">{t('plan.total')}: <b className="text-white">{formatVnd(amount)}</b></p>
                 </div>
                 )}

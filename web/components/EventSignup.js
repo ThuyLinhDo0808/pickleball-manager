@@ -235,7 +235,6 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [payLater, setPayLater] = useState(false);
-  const [useVoucher, setUseVoucher] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelErr, setCancelErr] = useState('');
@@ -514,7 +513,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
     setBusy(true);
     setError('');
     try {
-      await api.post(`/api/events/public/${token}/register`, { ...(payLater && paysNow ? { pay_later: true } : {}), ...(me.voucher ? { use_voucher: useVoucher } : {}), ...(gSel ? { group_id: gSel.id } : {}) });
+      await api.post(`/api/events/public/${token}/register`, { ...(payLater && paysNow ? { pay_later: true } : {}), ...(gSel ? { group_id: gSel.id } : {}) });
       // Friends too: straight on to their slots (same time group), one transfer for them.
       if (extra > 0 && friendsOk) return window.location.assign(`${quickHref}?friends=${extra}${gSel ? `&group=${gSel.id}` : ''}`);
       onChanged();
@@ -532,10 +531,7 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
   }
 
   const full = gSel ? gSel.left <= 0 || ev.main_count >= ev.slots : ev.main_count >= ev.slots;
-  // Top-month voucher: what this sign-up would cost with it.
-  const v = me.voucher && !memberFree && myFee > 0 ? me.voucher : null;
-  const withVoucher = v ? (v.kind === 'free' ? 0 : myFee - Math.round(myFee / 2)) : myFee;
-  const paysNow = guestPays && !(v && useVoucher && withVoucher === 0); // a free-kèo voucher skips payment
+  const paysNow = guestPays;
   return (
     <div className="flex flex-col">
       <Steps current="confirm" guestPays={paysNow} approval={approval} />
@@ -573,15 +569,6 @@ export default function EventSignup({ ev, me, meError, user, token, onChanged })
           </div>
           {extra > 0 && <p className="text-sky-200 text-xs mt-2">{t('signup.slotsNext', { n: extra })}</p>}
         </div>
-      )}
-      {v && (
-        <label className="flex items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-sm text-gray-100 mb-3 cursor-pointer">
-          <input type="checkbox" className="mt-1" checked={useVoucher} onChange={(e) => setUseVoucher(e.target.checked)} />
-          <span>
-            {t('race.useVoucher', { rank: v.rank, m: `${Number(v.month.slice(5))}/${v.month.slice(0, 4)}`, what: t(`race.reward_${v.kind}`) })}
-            {useVoucher && <span className="block text-xs text-amber-200 mt-0.5">{t('race.youPayNow', { amount: withVoucher > 0 ? formatVnd(withVoucher) : t('public.free') })}</span>}
-          </span>
-        </label>
       )}
       {/* Pay now (place held 30 minutes) or register now and transfer later (held until the deadline). */}
       {paysNow && !approval && !full && me.member.pay_later_until && (

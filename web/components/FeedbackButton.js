@@ -5,6 +5,7 @@ import Modal from '@/components/Modal';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import ChipRow from '@/components/ui/ChipRow';
 
 export const FEEDBACK_CATEGORIES = ['bug', 'ux', 'idea', 'billing', 'privacy'];
 const MIN = 10;
@@ -73,7 +74,7 @@ export function FeedbackForm({ onClose = null }) {
       <p className="text-gray-400 text-sm">{t('feedback.hint')}</p>
       <fieldset>
         <legend className="text-xs text-gray-400 mb-1">{t('feedback.category')} <span className="text-lime-400">*</span></legend>
-        <div className="flex flex-wrap gap-1.5" role="radiogroup">
+        <ChipRow gap="gap-1.5" role="radiogroup">
           {FEEDBACK_CATEGORIES.map((c) => (
             <button
               key={c}
@@ -86,7 +87,7 @@ export function FeedbackForm({ onClose = null }) {
               {t(`feedback.cat_${c}`)}
             </button>
           ))}
-        </div>
+        </ChipRow>
       </fieldset>
       <div>
         <label htmlFor="feedback-message" className="text-xs text-gray-400">{t('feedback.message')}</label>

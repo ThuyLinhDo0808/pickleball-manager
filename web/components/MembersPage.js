@@ -15,7 +15,9 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
+import ChipRow from '@/components/ui/ChipRow';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import BirthdayBanner from '@/components/BirthdayBanner';
 import { useI18n } from '@/context/I18nContext';
 import { useDefaultClub } from '@/lib/useDefaultClub';
 import { useLoad } from '@/lib/useLoad';
@@ -187,6 +189,8 @@ export default function MembersPage({ tab = 'fixed' }) {
 
   return (
     <AppShell>
+      {/* Birthdays today / soon: only here, where the Host works with the member list. */}
+      <BirthdayBanner clubId={club?.id} />
       <PageHeader
         icon="users"
         title={t('nav.members')}
@@ -258,11 +262,12 @@ export default function MembersPage({ tab = 'fixed' }) {
 
       {!['waiting', 'dupr'].includes(tab) && (
         <section className={`card !p-0 overflow-hidden ${tab === 'review' ? 'mb-4 border-amber-300/30' : ''}`}>
-          <div className="flex flex-wrap items-center gap-2 p-3 border-b border-navy-700 bg-navy-900/40">
-            <div className="relative flex-1 min-w-[12rem]">
+          <div className="p-3 border-b border-navy-700 bg-navy-900/40 space-y-2">
+            <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" aria-hidden="true"><UiIcon name="search" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></span>
               <input className="input !pl-9" type="search" placeholder={t('memx.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('memx.search')} />
             </div>
+            <ChipRow gap="gap-2" innerClass="items-center" dark="from-navy-800 via-navy-800/80">
             <Segmented items={['all', 'male', 'female']} value={gender} onChange={setGender} label={(k) => (k === 'all' ? t('memx.allGenders') : t(`members.${k}`))} />
             <Segmented items={vipFilters} value={vipF} onChange={setVipF} label={(k) => t(`memx.vipF_${k}`)} />
             <select className="input !w-auto text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t('memx.sort')}>
@@ -284,6 +289,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                 {t('memx.showInactive', { n: inactiveCount })}
               </label>
             )}
+            </ChipRow>
           </div>
 
           {selected.length > 0 && (
@@ -333,6 +339,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                                   show('dupr') ? (m.dupr_linked != null ? `${t('members.colDuprLinked')} ${m.dupr_linked.toFixed(2)}` : m.dupr_manual != null ? `DUPR ${m.dupr_manual.toFixed(2)} ${t('members.duprManual')}` : null) : null,
                                 ]
                               : [show('score') ? levelText(m.dupr_level, sport, t) : null]),
+                            m.hold_reason ? t('members.holdShort', { r: t(`members.hold_${m.hold_reason}`) }) : null,
                             isCommunity && show('skill') && m.skill_score != null ? `${t('members.colSkill')} ${Number(m.skill_score).toFixed(2)}` : null,
                             levelCfg && show('level') && m.level?.label ? `${t('members.colLevel')}: ${m.level.label}` : null,
                             !isGuestTab && show('tier') && m.tier && !(m.vip_tier || m.vip_stars > 0) ? t(`members.${m.tier}`) : null,
@@ -429,6 +436,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                                 {m.full_name}
                               </button>
                               <RoleBadges roles={m.club_roles} />
+                              {m.hold_reason && <span className="text-[10px] leading-4 rounded border border-sky-400/50 text-sky-200 px-1 whitespace-nowrap">{t('members.holdShort', { r: t(`members.hold_${m.hold_reason}`) })}</span>}
                               {isCommunity && !isGuestTab && m.guest_perk && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
                               {m.account_email && !m.account_verified && (
                                 <span className="text-[10px] leading-4 rounded border border-yellow-400/60 text-yellow-300 px-1 whitespace-nowrap">{t('verify.pending')}</span>

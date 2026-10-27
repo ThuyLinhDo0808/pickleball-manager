@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { categoryLabel, describeEntry, sessionLabel, COMMUNITY_MANUAL_INCOME, MANUAL_EXPENSE, MANUAL_INCOME } from '@/lib/finance';
 import UiIcon from '@/components/ui/UiIcon';
+import ChipRow from '@/components/ui/ChipRow';
 
 const LABEL = 'block text-xs text-gray-400 mb-1.5';
 const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
@@ -394,7 +395,8 @@ export default function LedgerPage() {
 
       {isClub ? club && <AddEntry club={club} community={community} events={sessions} onDone={reload} /> : <AddEntry club={null} events={sessions} onDone={reload} />}
 
-      <div className="card !p-3 flex flex-wrap items-center gap-2 mb-3">
+      <div className="card !p-3 mb-3">
+        <ChipRow gap="gap-2" innerClass="items-center" dark="from-navy-800 via-navy-800/80">
         <span className="text-gray-400 text-sm px-1">{t('finX.filter')}</span>
         <select className="input !w-auto text-sm" value={month} onChange={(e) => setMonth(e.target.value)}>
           <option value="all">{t('fin.allMonths')}</option>
@@ -420,6 +422,7 @@ export default function LedgerPage() {
             </button>
           ))}
         </div>
+        </ChipRow>
       </div>
 
       {error && <p className="card text-yellow-300 text-sm mb-3">{error}</p>}

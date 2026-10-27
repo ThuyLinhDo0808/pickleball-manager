@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import UnderlineTabs from '@/components/ui/UnderlineTabs';
+import ChipRow from '@/components/ui/ChipRow';
 
 const chip = (on) => `rounded-full px-3 py-1 text-sm border ${on ? 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold' : 'border-navy-600 text-gray-300'}`;
 
@@ -80,9 +81,9 @@ export default function OwnerClubsPage() {
       <UnderlineTabs value={kind} onChange={(k) => { setKind(k); setPage(1); }} tabs={['all', 'club', 'community'].map((k) => ({ key: k, label: t(`owner.clubsKind_${k}`), count: tot ? tot[k] : null }))} />
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
         <input className="input text-sm sm:max-w-sm" type="search" placeholder={t('owner.searchClubs')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('owner.searchClubs')} />
-        <div className="flex flex-wrap gap-1.5">
+        <ChipRow gap="gap-1.5">
           {['new', 'members', 'events', 'name'].map((s) => <button key={s} type="button" className={chip(sort === s)} onClick={() => { setSort(s); setPage(1); }}>{t(`owner.sort_${s}`)}</button>)}
-        </div>
+        </ChipRow>
       </div>
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!data && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}

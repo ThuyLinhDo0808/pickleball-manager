@@ -18,6 +18,7 @@ import { standings } from '@/components/SessionStandings';
 import StatTile from '@/components/ui/StatTile';
 import KpiRow from '@/components/ui/KpiRow';
 import Segmented from '@/components/ui/Segmented';
+import UiIcon from '@/components/ui/UiIcon';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
@@ -126,7 +127,7 @@ export default function StaffEventPage() {
   const lastMatch = ev.matches[0]?.played_at ? new Date(ev.matches[0].played_at) : null;
 
   return (
-    <AppShell>
+    <AppShell back={false}>
       <Link href="/staff" className="text-gray-400 text-sm hover:text-white">{t('staffView.back')}</Link>
       <div className="relative overflow-hidden rounded-2xl border border-navy-700 bg-navy-800 p-4 sm:p-5 mt-2 mb-4">
         <div className="flex items-start justify-between gap-3">
@@ -188,11 +189,21 @@ export default function StaffEventPage() {
       {current === 'checkin' && ev.can.checkIn && (
         <>
           <div className="flex flex-col sm:flex-row gap-2 mb-3">
-            <input className="input flex-1" type="search" placeholder={t('staffView.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <div className="relative flex-1">
+              <input className="input !pl-10 !pr-11 !min-h-[48px] text-base" type="search" placeholder={t('staffView.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('staffView.search')} />
+              <UiIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+              {query && (
+                <button type="button" aria-label={t('common.clear')} onClick={() => setQuery('')} className="absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full text-gray-300 hover:text-white">
+                  <UiIcon name="x" className="w-5 h-5" />
+                </button>
+              )}
+            </div>
             <button className="btn-primary shrink-0 text-sm" onClick={() => setShowQr(true)}>{t('qr.scan')}</button>
           </div>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="mb-3">
             <Segmented
+              phoneCols={2}
+              className="w-full sm:w-auto"
               items={FILTERS}
               value={filter}
               onChange={setFilter}

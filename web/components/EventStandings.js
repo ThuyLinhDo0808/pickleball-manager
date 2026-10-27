@@ -77,7 +77,7 @@ export default function EventStandings({ matches, onChallenge, event = null }) {
           </ol>
           <div className="hidden md:block rounded-xl border border-navy-600 overflow-hidden">
             <div className="table-wrap">
-              <table className="w-full text-sm !min-w-[30rem] border-collapse">
+              <table className="w-full text-sm !min-w-[30rem] rank-table">
                 <thead>
                   <tr className="bg-navy-900/80 text-gray-400 text-xs uppercase tracking-wide">
                     <th className="w-12 text-center py-2.5 font-semibold">#</th>
@@ -89,7 +89,7 @@ export default function EventStandings({ matches, onChallenge, event = null }) {
                     <th className="text-right py-2.5 px-3 font-semibold">{t('estand.rate')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-navy-700">
+                <tbody>
                   {rest.map((r, i) => (
                     <tr key={r.id} className={`${i % 2 ? 'bg-navy-800/40' : ''} ${r.rank === rows.length ? 'bg-red-400/5' : ''}`}>
                       <td className="text-center py-2.5">

@@ -23,6 +23,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { SocialManagerPanel, UpgradeModal } from '@/components/PlanModals';
 import { localDate } from '@/lib/dates';
 import UiIcon from '@/components/ui/UiIcon';
+import UnderlineTabs from '@/components/ui/UnderlineTabs';
 
 const SECTIONS = [
   ['login', 'key'],
@@ -132,21 +133,14 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Section links */}
-      <nav aria-label={t('acct.jump')} role="tablist" className="flex flex-wrap gap-2 mb-1">
-        {SECTIONS.map(([id, icon]) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={`min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm whitespace-nowrap ${tab === id ? (id === 'danger' ? 'border-bad-line bg-bad-bg text-bad-fg font-semibold' : 'border-lime-400/60 bg-lime-400/10 text-lime-300 font-semibold') : id === 'danger' ? 'border-bad-line text-bad-fg hover:bg-bad-bg sm:ml-auto' : 'border-navy-600 text-gray-200 hover:border-lime-400'}`}
-          >
-            <UiIcon name={icon} className="w-4 h-4 shrink-0" /> {id === 'login' ? t('auth.detailsTitle') : t(`acct.s_${id}`)}
-          </a>
-        ))}
-      </nav>
+      {/* Section tabs: one row that scrolls sideways on a phone (fade + arrow at the edge
+          that hides more), wrapping pills would take four lines. */}
+      <UnderlineTabs
+        className="mb-1"
+        value={tab}
+        onChange={(id) => { setTab(id); try { window.history.replaceState(null, '', `#${id}`); } catch {} }}
+        tabs={SECTIONS.map(([id, icon]) => ({ key: id, icon, label: id === 'login' ? t('auth.detailsTitle') : t(`acct.s_${id}`), tone: id === 'danger' ? 'danger' : undefined }))}
+      />
 
       <div className="flex flex-col">
         <SettingsSection id="login" hidden={tab !== 'login'} icon="key" tone="lime" title={t('auth.detailsTitle')} description={t('auth.detailsHint')}>

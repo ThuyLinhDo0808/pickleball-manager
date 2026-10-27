@@ -8,7 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 
-// Level groups (same bands as the Top tháng race).
+// Level groups (the community's level bands).
 const BANDS = {
   pickleball: [
     { key: 'low', max: 2.99 },
@@ -71,14 +71,14 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
   // One player per row: place in a circle · name (+ "Bạn") and level · record on a second line ·
   // the number the list is ordered by, big on the right.
   const RankList = ({ rows: list, muted = false }) => (
-    <ol className={`rounded-xl border border-navy-600 divide-y divide-navy-700 overflow-hidden ${muted ? 'opacity-70' : ''}`}>
-      <li className="flex items-center gap-3 px-3 py-2 bg-navy-900/80 text-gray-400 text-xs font-semibold uppercase tracking-wide" aria-hidden="true">
+    <ol className={`rounded-xl border border-navy-600 divide-y divide-navy-600 overflow-hidden ${muted ? 'opacity-70' : ''}`}>
+      <li className="flex items-stretch divide-x divide-navy-600 bg-navy-900 text-gray-300 text-xs font-semibold uppercase tracking-wide [&>*]:px-2 [&>*]:py-2" aria-hidden="true">
         <span className="w-8 text-center">#</span>
         <span className="flex-1">{t('common.name')}</span>
         <span>{order === 'level' ? levelName : t('homeRank.byRate')}</span>
       </li>
       {list.map((r, i) => (
-        <li key={keyOf(r)} className={`flex items-center gap-3 px-3 py-2.5 ${isMe(r) ? 'bg-lime-400/10' : i % 2 ? 'bg-navy-800/40' : ''}`}>
+        <li key={keyOf(r)} className={`flex items-stretch divide-x divide-navy-600 [&>*]:px-2 [&>*]:py-2 [&>*]:flex [&>*]:items-center ${isMe(r) ? 'bg-lime-400/10' : i % 2 ? 'bg-navy-800/40' : ''}`}>
           <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold tabular-nums ${isMe(r) ? 'border-lime-400/70 text-lime-300' : 'border-navy-600 text-gray-300'}`}>{r.place ?? '—'}</span>
           <span className="min-w-0 flex-1">
             <span className="block text-white text-sm font-semibold break-words">

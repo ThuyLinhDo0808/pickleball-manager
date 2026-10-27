@@ -596,7 +596,14 @@ router.post('/:clubId/members/bulk', accountOnly, async (req, res) => {
 });
 
 router.patch('/:clubId/members/:memberId', async (req, res) => {
-  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags', 'guest_perk', 'guest_discount_pct']);
+  const fields = pick(req.body, ['full_name', 'phone', 'dupr_level', 'member_type', 'is_active', 'tier', 'notes', 'gender', 'birth_year', 'flags', 'guest_perk', 'guest_discount_pct', 'hold_reason']);
+  // "Tạm nghỉ": a reason from the list, or null = playing as usual.
+  if ('hold_reason' in fields) {
+    const CS = require('../services/communitySettings');
+    fields.hold_reason = fields.hold_reason || null;
+    if (fields.hold_reason && !CS.HOLD_REASONS.includes(fields.hold_reason)) return res.status(400).json({ error: 'Unknown hold reason.', code: 'hold_reason' });
+    if (!(await CS.holdReady())) delete fields.hold_reason; // migration not run yet
+  }
   // Community "Hình thức": Vãng lai · Thường xuyên · Người chơi mới (a drop-in for 30 days).
   let asNewcomer = null;
   if ((req.club.kind || 'club') === 'community' && ['new', 'guest'].includes(fields.member_type)) {
@@ -1703,8 +1710,7 @@ router.get('/:clubId/birthdays', async (req, res) => {
   res.json(birthdays.upcoming(data, within));
 });
 
-// Cuộc đua Top tháng (communities): this month's / a past month's table, settings, vouchers.
-const race = require('../services/race');
+// Rankings settings (owner / co-admin).
 const raceManager = (req) => ['owner', 'co_admin'].includes(req.clubRole || 'owner');
 
 // Rankings: matches a player needs in the period to get a place (owner / co-admin).
@@ -1718,35 +1724,6 @@ router.put('/:clubId/rank-settings', async (req, res) => {
     return dbError(res, error);
   }
   res.json({ rank_min_matches: n });
-});
-router.get('/:clubId/race', async (req, res) => {
-  try {
-    if (!(await race.ready())) return res.status(409).json({ error: `Run migration ${race.MIGRATION} first.`, code: 'migration_required' });
-    res.json(await race.hostView(req.club, req.query.month));
-  } catch (err) {
-    dbError(res, err);
-  }
-});
-router.patch('/:clubId/race', async (req, res) => {
-  try {
-    if (!raceManager(req)) return res.status(403).json(ROLE_FORBIDDEN);
-    // Top tháng is in the top Social Manager plan only (402 feature_locked otherwise).
-    if (req.body?.enabled) await require('../services/plan').assertFeature(req.club.host_id, 'monthly_race', require('../services/plan').kindOf(req.club));
-    res.json(await race.updateSettings(req.club, req.body || {}));
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code, feature: err.feature, min_tier: err.min_tier, kind: err.kind });
-    dbError(res, err);
-  }
-});
-router.post('/:clubId/race/vouchers/:voucherId', async (req, res) => {
-  try {
-    if (!raceManager(req)) return res.status(403).json(ROLE_FORBIDDEN);
-    if (!isUuid(req.params.voucherId)) return notFound(res, 'Voucher');
-    res.json(await race.voucherAction(req.club, req.params.voucherId, req.body || {}));
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
-    dbError(res, err);
-  }
 });
 
 // ---- DUPR (no partner API): member list import, members' DUPR IDs, match export --------

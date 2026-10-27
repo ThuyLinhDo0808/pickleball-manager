@@ -34,3 +34,11 @@ test('an exact tie at the top is shared', () => {
   assert.deepEqual(rows.map((r) => r.club_member_id).sort(), ['a', 'b']);
   assert.ok(rows.every((r) => r.weeks === 1 && r.current));
 });
+
+test('a week counts only players with the minimum matches (same rule as the table)', () => {
+  // Week of 2026-10-05: a 2 wins / 2 (100%), b 1 win / 1 (100%, too few with min 2), c 0.
+  const rows = weeksAtTop([m('2026-10-05', 'a', 'c'), m('2026-10-06', 'a', 'c'), m('2026-10-07', 'b', 'c')], members, 2);
+  assert.deepEqual(rows.map((r) => [r.club_member_id, r.weeks]), [['a', 1]]);
+  // Nobody reaches the minimum: the week has no No. 1.
+  assert.deepEqual(weeksAtTop([m('2026-10-05', 'a', 'c')], members, 2), []);
+});

@@ -27,7 +27,7 @@ const PLAYED = ['registered', 'checked_in'];
 const REGULAR_DAYS = 30; // "a month"
 const NEW_GRACE_DAYS = 30; // someone just added is not moved down before they had a month
 const NEWCOMER_DAYS = 30; // "Người mới": the first 30 days after joining
-const AWAY_DAYS = 21; // no session for 3 weeks -> vãng lai
+// Away = no session for the Host's "không hoạt động" limit (active_days, 30 by default).
 const MAX_LEVELS = 12;
 
 // signup.auto_dupr: kèo sign-ups with a verified DUPR inside the kèo's range skip the
@@ -58,6 +58,12 @@ const fail = (message, code) => Object.assign(new Error(message), { status: 400,
 async function newcomersReady() {
   const s = await schemaStatus();
   return !s.missing_migrations.includes('20261206090000_newcomers.sql');
+}
+// "Tạm nghỉ" (hold_reason): a member on a break is never moved down to drop-in.
+const HOLD_REASONS = ['injury', 'away', 'busy', 'other'];
+async function holdReady() {
+  const s = await schemaStatus();
+  return !s.missing_migrations.includes('20261222090000_member_hold_reason.sql');
 }
 const newcomerUntil = (from) => addDays(from || todayYmd(), NEWCOMER_DAYS - 1);
 
@@ -307,12 +313,13 @@ async function proposals(club) {
   const today = todayYmd();
   const graceFrom = addDays(today, -NEW_GRACE_DAYS);
   const newCol = (await newcomersReady()) ? ', newcomer_until' : '';
+  const holdCol = (await holdReady()) ? ', hold_reason' : '';
   const [members, counts] = await Promise.all([
-    all(() => supabase.from('club_members').select(`id, full_name, member_type, is_active, join_requested, review_started_at, created_at${newCol}`).eq('club_id', club.id).order('id')),
+    all(() => supabase.from('club_members').select(`id, full_name, member_type, is_active, join_requested, review_started_at, created_at${newCol}${holdCol}`).eq('club_id', club.id).order('id')),
     recentCounts(club.id),
   ]);
   const roster = members.filter((m) => m.is_active && !m.join_requested && !m.review_started_at);
-  const awaySince = addDays(today, -AWAY_DAYS);
+  const awaySince = addDays(today, -(Number(settings.active_days) || DEFAULTS.active_days));
   const up = [];
   const down = [];
   // "Người mới" whose 30 days are over and who did not come back often enough: they are
@@ -324,10 +331,10 @@ async function proposals(club) {
     const n = counts.get(m.id) || 0;
     const last = counts.last?.get(m.id) || null;
     const regular = n > settings.regular.min;
-    const away = !last || last < awaySince; // no session for 3 weeks
+    const away = !last || last < awaySince; // no session for the Host's limit
     const wasNew = !!m.newcomer_until;
     if (regular && m.member_type === 'guest') up.push({ id: m.id, full_name: m.full_name, sessions: n, newcomer: wasNew });
-    else if (!regular && away && m.member_type === 'fixed' && String(m.created_at).slice(0, 10) < graceFrom) down.push({ id: m.id, full_name: m.full_name, sessions: n, newcomer: wasNew });
+    else if (!regular && away && m.member_type === 'fixed' && !m.hold_reason && String(m.created_at).slice(0, 10) < graceFrom) down.push({ id: m.id, full_name: m.full_name, sessions: n, newcomer: wasNew });
     else if (wasNew) settle.push(m.id);
   }
   if (down.length) {
@@ -370,4 +377,4 @@ async function reclassify(club, { force = false } = {}) {
   return { checked: roster.length, to_regular: up.length, to_dropin: down.length, min: settings.regular.min };
 }
 
-module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, RANK_SPLITS, NEWCOMER_DAYS, newcomersReady, newcomerUntil, ready, resolve, clean, levelOf, rankGroups, rankGroupOf, forClub, save, reclassify, proposals, recentCounts, forget };
+module.exports = { MIGRATION, MODES, DURATIONS, DEFAULTS, RANK_SPLITS, NEWCOMER_DAYS, HOLD_REASONS, holdReady, newcomersReady, newcomerUntil, ready, resolve, clean, levelOf, rankGroups, rankGroupOf, forClub, save, reclassify, proposals, recentCounts, forget };

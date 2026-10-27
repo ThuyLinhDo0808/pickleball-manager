@@ -86,7 +86,7 @@ function badRequest(message, status = 400) {
 }
 
 function fail(res, err) {
-  return err.status ? res.status(err.status).json({ error: err.message }) : dbError(res, err);
+  return err.status ? res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) }) : dbError(res, err);
 }
 
 // The club, when the signed-in account owns or co-administers it. A co-admin then acts
@@ -554,6 +554,7 @@ async function recordSub(t, subId, result, lineups = {}) {
   if (error) throw error;
   if (!sub) throw badRequest('Sub-match not found.', 404);
   const fixture = sub.tournament_matches;
+  if (sub.dupr_exported_at) throw require('../services/matches').duprLocked();
 
   let patch;
   if (result.clear) {
@@ -732,6 +733,7 @@ async function recordMatch(t, matchId, result) {
   if (error) throw error;
   if (!m) throw badRequest('Match not found.', 404);
   if (t.kind === 'team') throw badRequest('Enter team results per sub-match.');
+  if (m.dupr_exported_at) throw require('../services/matches').duprLocked();
   if (m.is_bye || !m.team1_id || !m.team2_id) throw badRequest('This match has no opponent yet.');
   if (m.stage === 'group' && t.status !== 'groups' && !isRoundRobin(t)) throw badRequest('The knockout has started; reset it to change group results.', 409);
 

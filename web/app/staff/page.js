@@ -12,6 +12,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { addDays, formatDay, hhmm, todayYmd, localDate } from '@/lib/dates';
 import UiIcon from '@/components/ui/UiIcon';
+import GuideModal from '@/components/ui/GuideModal';
 
 const ROLE_TONE = {
   coordinator: 'bg-lime-400/15 text-lime-300 border-lime-400/40',
@@ -73,6 +74,7 @@ export default function StaffEventsPage() {
   const { t, lang } = useI18n();
   const { staffInfo } = useWorkspace();
   const { data: events, loading } = useLoad(() => api.get('/api/staff/events'), []);
+  const [guide, setGuide] = useState(false);
   const { data: tours } = useLoad(() => api.get('/api/live/tournaments').catch(() => []), []);
   const [view, setView] = useState('upcoming');
   const [role, setRole] = useState('all');
@@ -98,7 +100,15 @@ export default function StaffEventsPage() {
         icon="shield"
         title={t('staffView.title')}
         subtitle={staffInfo?.role ? t(`staffX.youAre_${staffInfo.role}`) : null}
+        actions={
+          <button type="button" className="btn-secondary text-sm" onClick={() => setGuide(true)}>
+            <UiIcon name="info" className="w-4 h-4" />
+            {t('staffX.guideBtn')}
+          </button>
+        }
       />
+      {/* New staff: what to do, in three steps (a pop-up, so the page itself stays short). */}
+      <GuideModal open={guide} onClose={() => setGuide(false)} title={t('staffX.guideTitle')} steps={[1, 2, 3].map((n) => ({ title: t(`staffX.guide${n}t`), body: t(`staffX.guide${n}`) }))} />
       {staffInfo && staffInfo.email_verified === false && <p className="card text-yellow-300 text-sm mb-4">{t('staffView.unverified')}</p>}
 
       <KpiRow cols={4}>

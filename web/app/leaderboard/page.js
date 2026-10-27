@@ -66,7 +66,7 @@ export default function LeaderboardPage() {
         {!loading && rows.length === 0 && <p className="text-gray-400 text-sm">{t('leaderboard.none')}</p>}
         {!loading && rows.length > 0 && (
           <div className="table-wrap">
-            <table className="w-full text-sm grid-table">
+            <table className="w-full text-sm rank-table">
               <thead>
                 <tr className="text-left">
                   <th className="w-12 text-center">#</th>

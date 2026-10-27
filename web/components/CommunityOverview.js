@@ -17,6 +17,7 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import UiIcon from '@/components/ui/UiIcon';
+import ActionRow from '@/components/ui/ActionRow';
 
 function Section({ icon, title, hint, href, children }) {
   const { t } = useI18n();
@@ -66,17 +67,14 @@ export default function CommunityOverview({ children }) {
         subtitle={t('social.overviewSub', { n: clubs.length })}
         actions={
           // The things a Host opens every day, on the right of the title.
-          <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-            {[
-              ['/events/create', 'plus', t('nav.createGame'), true],
-              [canWeekly ? '/events/create/weekly' : '/events', canWeekly ? 'repeat' : 'calendar', canWeekly ? t('nav.createWeekly') : t('nav.schedule')],
-              ['/club/members/all', 'users', t('nav.members')],
-            ].map(([href, icon, label, main]) => (
-              <Link key={href} href={href} className={`${main ? 'btn-primary' : 'btn-secondary'} justify-center text-center text-xs sm:text-sm !px-2 sm:!px-3.5`}>
-                <UiIcon name={icon} className="w-4 h-4" />{label}
-              </Link>
-            ))}
-          </div>
+          <ActionRow
+            className="w-full sm:w-auto"
+            actions={[
+              { key: 'members', href: '/club/members/all', icon: 'users', label: t('nav.members') },
+              canWeekly ? { key: 'weekly', href: '/events/create/weekly', icon: 'repeat', label: t('nav.createWeekly') } : { key: 'schedule', href: '/events', icon: 'calendar', label: t('nav.schedule') },
+              { key: 'create', href: '/events/create', icon: 'plus', label: t('nav.createGame'), primary: true },
+            ]}
+          />
         }
       />
 

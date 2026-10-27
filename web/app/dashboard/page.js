@@ -16,6 +16,7 @@ import { todayYmd, hhmm, localDate } from '@/lib/dates';
 import { isBirthdayMonth } from '@/lib/memberDates';
 import { levelText } from '@/lib/levels';
 import UiIcon from '@/components/ui/UiIcon';
+import ActionRow from '@/components/ui/ActionRow';
 
 const safe = (p) => p.catch(() => null);
 
@@ -188,17 +189,14 @@ function ClubHome({ community = false }) {
             </div>
           </div>
           {/* The three things a Host opens every day, on the right. */}
-          <div className="flex flex-wrap justify-end gap-2 mt-4">
-            {[
-              ['/events/create', 'plus', t('nav.createGame'), true],
-              ['/events', 'calendar', t('nav.schedule')],
-              ['/club/members/all', 'users', t('nav.members')],
-            ].map(([href, icon, label, main]) => (
-              <Link key={href} href={href} className={main ? 'btn-primary' : 'btn-secondary'}>
-                <UiIcon name={icon} className="w-4 h-4" />{label}
-              </Link>
-            ))}
-          </div>
+          <ActionRow
+            className="mt-4"
+            actions={[
+              { key: 'schedule', href: '/events', icon: 'calendar', label: t('nav.schedule') },
+              { key: 'members', href: '/club/members/all', icon: 'users', label: t('nav.members') },
+              { key: 'create', href: '/events/create', icon: 'plus', label: t('nav.createGame'), primary: true },
+            ]}
+          />
         </div>
       )}
 

@@ -16,7 +16,7 @@ export default function ChallengeRankings({ clubId }) {
         <p className="text-gray-400 text-sm px-2 sm:px-0">{t('chrank.none')}</p>
       ) : (
         <div className="table-wrap">
-          <table className="w-full text-sm grid-table !min-w-[30rem]">
+          <table className="w-full text-sm rank-table !min-w-[30rem]">
             <thead>
               <tr className="text-left">
                 <th className="w-10 text-center">#</th>
