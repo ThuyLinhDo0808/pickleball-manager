@@ -3420,6 +3420,7 @@ export const vi = {
     players: '{n} người',
     auto: 'tự động',
     autoHint: "Khoản tự động (gói hội viên, kho bóng, phí kèo hoặc chi phí buổi) — hãy sửa ở nơi đã tạo ra khoản này.",
+    autoEditHint: "Khoản này do web tự ghi. Sửa số tiền, ghi chú, ngày ở đây chỉ đổi dòng trong sổ; người chơi ở kèo vẫn là đã thu, gói / kho bóng giữ nguyên. Muốn bỏ hẳn khoản tiền này thì bấm Hủy (✕) ở dòng đó.",
     fromEvent: 'Kèo: {title}',
     cat_court: 'Thuê sân',
     cat_balls: 'Mua bóng',

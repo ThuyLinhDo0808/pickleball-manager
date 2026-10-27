@@ -175,6 +175,8 @@ function AddEntry({ club, events = [], onDone, community = false }) {
 // so the ledger keeps its history); category, date and note change in place.
 function EditEntry({ entry, onClose, onSaved, community = false }) {
   const { t } = useI18n();
+  // Written by the app (kèo fee, membership, ball stock, session cost): type and category stay.
+  const auto = AUTO.has(entry.category) || !!entry.event_cost;
   const [f, setF] = useState(() => ({ type: entry.type, category: entry.category || '', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '' }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -193,17 +195,23 @@ function EditEntry({ entry, onClose, onSaved, community = false }) {
   return (
     <Modal open title={`${t('fin.editTitle')}`} onClose={onClose}>
       <form onSubmit={save} className="grid grid-cols-2 gap-3">
-        <div className="col-span-2 grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
+        {auto && (
+          <div className="col-span-2 rounded-lg border border-sky-400/40 bg-sky-400/5 px-3 py-2 text-sm text-gray-200">
+            <span className="text-white font-semibold">{t(`analytics.${entry.type}`)} · {categoryLabel(entry.category, t)}</span>
+            <span className="block text-gray-400 text-xs mt-0.5">{t('fin.autoEditHint')}</span>
+          </div>
+        )}
+        {!auto && <div className="col-span-2 grid grid-cols-2 bg-navy-950 rounded-lg p-1 text-sm">
           {['income', 'expense'].map((ty) => (
             <button key={ty} type="button" onClick={() => setF({ ...f, type: ty, category: ty === entry.type ? entry.category || 'other' : ty === 'income' ? (community ? 'ticket' : 'monthly_fund') : 'court' })} className={`rounded-md py-1.5 ${f.type === ty ? (ty === 'income' ? 'bg-lime-400 text-navy-950 font-semibold' : 'bg-orange-500 text-white font-semibold') : 'text-gray-400'}`}>
               {t(`analytics.${ty}`)}
             </button>
           ))}
-        </div>
-        <div className="col-span-2 sm:col-span-1">
+        </div>}
+        {!auto && <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-gray-400">{t('fin.category')}</label>
           <CategorySelect type={f.type} value={f.category} community={community} onChange={(category) => setF({ ...f, category })} />
-        </div>
+        </div>}
         <div className="col-span-2 sm:col-span-1">
           <label className="text-xs text-gray-400">{t('fin.amount')}</label>
           <input className="input" type="number" inputMode="numeric" min="0" step="1" required value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
@@ -216,7 +224,7 @@ function EditEntry({ entry, onClose, onSaved, community = false }) {
           <label className="text-xs text-gray-400">{t('fin.note')}</label>
           <input className="input" required={f.category === 'other'} placeholder={f.category === 'other' ? t('fin.otherNotePh') : ''} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         </div>
-        <p className="col-span-2 text-gray-500 text-xs">{t('fin.editHint')}</p>
+        {!auto && <p className="col-span-2 text-gray-500 text-xs">{t('fin.editHint')}</p>}
         {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
         <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
         <button className="btn-primary" disabled={busy}>{t('common.save')}</button>
@@ -318,9 +326,9 @@ export default function LedgerPage() {
 
   // One table per side: money in on the left, money out on the right.
   const ROW_ACTIONS = (r) =>
-    !r.is_voided && !AUTO.has(r.category) ? (
+    !r.is_voided ? (
       <span className="inline-flex gap-1 whitespace-nowrap">
-        {!r.event_cost && <button className="text-gray-300 hover:text-white px-1" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></button>}
+        {<button className="text-gray-300 hover:text-white px-1" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></button>}
         <button className="text-red-400/80 hover:text-red-300 px-1" title={t('fin.void')} aria-label={t('fin.void')} onClick={() => voidEntry(r)}>✕</button>
       </span>
     ) : null;

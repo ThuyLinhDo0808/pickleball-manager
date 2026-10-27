@@ -3420,6 +3420,7 @@ export const en = {
     players: '{n} players',
     auto: 'auto',
     autoHint: "Automatic entry (membership, ball store, fees or a session's costs) — change it where it comes from.",
+    autoEditHint: "The web wrote this entry itself. Changing amount, note or date here only changes the book; the player stays paid at the kèo, the pass / stock stays. To drop the money entirely, void the line (✕).",
     fromEvent: 'Event: {title}',
     cat_court: 'Court rent',
     cat_balls: 'Balls',

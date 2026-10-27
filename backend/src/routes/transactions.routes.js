@@ -104,6 +104,9 @@ const linkedError = (res, source) =>
 
 // Fix an entry. Category, note and date change in place; a new amount or type voids the
 // entry and writes the corrected one (the ledger only grows, so the history stays).
+// An entry the app wrote itself (a kèo fee, a membership, ball stock, a session cost) keeps
+// its type and category, but its amount, note and date can be changed in place: that only
+// changes the book, never the player's "đã thu" / the pass / the stock behind it.
 router.patch('/:id', async (req, res) => {
   let txn;
   try {
@@ -114,15 +117,14 @@ router.patch('/:id', async (req, res) => {
   if (!txn) return notFound(res, 'Transaction');
   if (txn.is_voided) return res.status(400).json({ error: 'This entry was voided.' });
   const source = await linkedSource(txn);
-  if (source) return linkedError(res, source);
   const b = req.body || {};
-  const type = b.type ?? txn.type;
+  const type = source ? txn.type : b.type ?? txn.type;
   const amount = b.amount != null && b.amount !== '' ? Number(b.amount) : Number(txn.amount);
   if (!['income', 'expense'].includes(type)) return res.status(400).json({ error: 'type must be income or expense.' });
   if (!(amount >= 0)) return res.status(400).json({ error: 'amount must be >= 0.' });
   if (b.occurred_on && !/^\d{4}-\d{2}-\d{2}$/.test(b.occurred_on)) return res.status(400).json({ error: 'occurred_on must be YYYY-MM-DD.' });
   const soft = {
-    category: 'category' in b ? b.category || null : txn.category,
+    category: source || !('category' in b) ? txn.category : b.category || null,
     note: 'note' in b ? (b.note ? String(b.note).slice(0, 500) : null) : txn.note,
     occurred_on: b.occurred_on || txn.occurred_on,
   };
@@ -139,6 +141,9 @@ router.patch('/:id', async (req, res) => {
     .update({ is_voided: true, voided_at: new Date().toISOString(), void_reason: 'edited', replaced_by: next.id })
     .eq('id', txn.id);
   if (vErr) return dbError(res, vErr);
+  // A membership / ball-stock move points at its ledger line: move the pointer to the new one.
+  if (source === 'membership') await supabase.from('memberships').update({ transaction_id: next.id }).eq('transaction_id', txn.id);
+  if (source === 'inventory') await supabase.from('inventory_moves').update({ transaction_id: next.id }).eq('transaction_id', txn.id);
   res.json(next);
 });
 
@@ -151,8 +156,8 @@ router.post('/:id/void', async (req, res) => {
   }
   if (!txn) return notFound(res, 'Transaction');
   if (txn.is_voided) return res.status(400).json({ error: 'Already voided.' });
-  const source = await linkedSource(txn, { voiding: true });
-  if (source) return linkedError(res, source);
+  // Any entry can be voided, the ones the app wrote too: the player stays "đã thu", the
+  // pass / stock stays; only the money stops counting.
 
   const { data, error } = await supabase
     .from('transactions')
