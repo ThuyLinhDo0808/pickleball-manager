@@ -254,11 +254,14 @@ export default function LedgerPage() {
   const [month, setMonth] = useState('all');
   const [category, setCategory] = useState('all');
   const [showVoided, setShowVoided] = useState(false);
+  const [showBefore, setShowBefore] = useState(false); // entries before "Tính tài chính từ ngày"
   const [openAll, setOpenAll] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
 
-  const rows = data?.transactions || [];
+  const from = data?.finance_from || null;
+  const beforeCount = from ? (data?.transactions || []).filter((r) => r.occurred_on < from).length : 0;
+  const rows = (data?.transactions || []).filter((r) => showBefore || !from || r.occurred_on >= from);
   const months = useMemo(() => [...new Set(rows.map((r) => r.occurred_on.slice(0, 7)))].sort().reverse(), [rows]);
   const categories = useMemo(() => [...new Set(rows.map((r) => r.category || 'other'))], [rows]);
   const shown = rows.filter(
@@ -390,7 +393,21 @@ export default function LedgerPage() {
       </div>
 
       {isClub && data && (
-        <p className="text-gray-400 text-xs -mt-2 mb-4">{t('ledger.fundBalance', { v: formatVnd(data.balance) })}</p>
+        <p className="text-gray-400 text-xs -mt-2 mb-4">
+          {t('ledger.fundBalance', { v: formatVnd(data.balance), club: formatVnd(data.balance_club || 0), sessions: formatVnd(data.balance_sessions || 0) })}
+          {from && (
+            <>
+              {' · '}
+              {t('fin.countedFrom', { d: from.split('-').reverse().join('/') })}
+              {beforeCount > 0 && (
+                <>
+                  {' · '}
+                  <button type="button" className="underline hover:text-white" onClick={() => setShowBefore((v) => !v)}>{t(showBefore ? 'ledger.hideBefore' : 'ledger.showBefore', { n: beforeCount })}</button>
+                </>
+              )}
+            </>
+          )}
+        </p>
       )}
 
       {isClub ? club && <AddEntry club={club} community={community} events={sessions} onDone={reload} /> : <AddEntry club={null} events={sessions} onDone={reload} />}

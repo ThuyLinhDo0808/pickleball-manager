@@ -46,7 +46,10 @@ export default function AccountPage() {
   const { data: me } = useLoad(() => api.get('/api/host/me').catch(() => null), []);
   const { data: requests } = useLoad(() => api.get('/api/host/club-requests').catch(() => null), []);
   const lastRequest = requests?.items?.[0] || null;
-  const { plan } = useWorkspace();
+  const { plan, staffInfo } = useWorkspace();
+  // Referees / coordinators with no club of their own: no Host sections (manage, plan, payout).
+  const staffOnly = clubs.length === 0 && !!staffInfo?.is_staff;
+  const sections = SECTIONS.filter(([id]) => !staffOnly || !['manage', 'plan', 'payout'].includes(id));
   const [upgrading, setUpgrading] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [sent, setSent] = useState(false);
@@ -139,7 +142,7 @@ export default function AccountPage() {
         className="mb-1"
         value={tab}
         onChange={(id) => { setTab(id); try { window.history.replaceState(null, '', `#${id}`); } catch {} }}
-        tabs={SECTIONS.map(([id, icon]) => ({ key: id, icon, label: id === 'login' ? t('auth.detailsTitle') : t(`acct.s_${id}`), tone: id === 'danger' ? 'danger' : undefined }))}
+        tabs={sections.map(([id, icon]) => ({ key: id, icon, label: id === 'login' ? t('auth.detailsTitle') : t(`acct.s_${id}`), tone: id === 'danger' ? 'danger' : undefined }))}
       />
 
       <div className="flex flex-col">

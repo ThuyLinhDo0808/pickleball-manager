@@ -220,8 +220,15 @@ function cleanFundCalc(v) {
 }
 
 router.patch('/:clubId', async (req, res) => {
-  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc', 'invite_enabled']);
+  const fields = pick(req.body, ['name', 'description', 'allow_join', 'join_note', 'bank_code', 'bank_account', 'bank_holder', 'guest_vip_discount', 'fund_calc', 'invite_enabled', 'finance_from']);
   if ('invite_enabled' in fields) fields.invite_enabled = !!fields.invite_enabled;
+  // "Tính tài chính từ ngày": a date, or null = count everything.
+  if ('finance_from' in fields) {
+    fields.finance_from = fields.finance_from || null;
+    if (fields.finance_from && !/^\d{4}-\d{2}-\d{2}$/.test(String(fields.finance_from))) return res.status(400).json({ error: 'finance_from must be YYYY-MM-DD.', code: 'finance_from' });
+    const { error: probe } = await supabase.from('clubs').select('finance_from').limit(1);
+    if (probe) return res.status(409).json({ error: 'Run migration 20261223090000_finance_from.sql first.', code: 'migration_required' });
+  }
   // The club's profile in the club search (where, when, how big, listed or not).
   const PROFILE = ['country', 'province', 'district', 'address', 'map_url', 'schedule', 'contact_email', 'member_count', 'is_listed'];
   if (PROFILE.some((k) => k in (req.body || {}))) {
@@ -1464,13 +1471,6 @@ router.get('/:clubId/community-settings/suggestions', async (req, res) => {
 });
 
 router.get('/:clubId/fund', async (req, res) => {
-  const { data: balanceRow, error: balErr } = await supabase
-    .from('v_club_fund_balance')
-    .select('*')
-    .eq('club_id', req.club.id)
-    .maybeSingle();
-  if (balErr) return dbError(res, balErr);
-
   // The ledger is everything the Host takes in and pays out: the club fund's own entries
   // and the money of every session (fees players paid, court hire…), with the session.
   const [{ data: txns, error: txnErr }, { data: evTxns, error: evErr }] = await Promise.all([
@@ -1485,9 +1485,16 @@ router.get('/:clubId/fund', async (req, res) => {
   ]);
   if (txnErr) return dbError(res, txnErr);
   if (evErr) return dbError(res, evErr);
+  // "Tính tài chính từ ngày": entries before it are kept but not counted.
+  const from = req.club.finance_from || null;
+  const counts = (t) => !t.is_voided && (!from || t.occurred_on >= from);
+  const sum = (list) => list.filter(counts).reduce((s, t) => s + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
+  const balanceClub = sum(txns);
+  const balanceSessions = sum(evTxns);
   const all = [...txns, ...evTxns.map(({ events, ...t }) => ({ ...t, events: { title: events.title, event_date: events.event_date, start_time: events.start_time, kind: events.kind } }))]
     .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || String(b.created_at).localeCompare(String(a.created_at)));
-  res.json({ balance: balanceRow?.balance || 0, transactions: all });
+  // balance = everything (club fund + the sessions' money); the two parts beside it.
+  res.json({ balance: balanceClub + balanceSessions, balance_club: balanceClub, balance_sessions: balanceSessions, finance_from: from, transactions: all });
 });
 
 // ---- Club events (schedule list scoped to a club) -------------------------

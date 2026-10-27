@@ -202,7 +202,8 @@ async function overview(club) {
 // Day by day for one month (YYYY-MM): money in / out, profit, sessions, players, still owed.
 async function daily(scope, month) {
   const [y, m] = month.split('-').map(Number);
-  const first = `${month}-01`;
+  // Nothing before the club's "Tính tài chính từ ngày".
+  const first = scope.financeFrom && scope.financeFrom > `${month}-01` ? scope.financeFrom : `${month}-01`;
   const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   let q = supabase.from('events').select('id, event_date, fee_amount, status').eq('host_id', scope.hostId).gte('event_date', first).lte('event_date', last);
   q = scope.clubId ? q.eq('club_id', scope.clubId) : q.is('club_id', null);
