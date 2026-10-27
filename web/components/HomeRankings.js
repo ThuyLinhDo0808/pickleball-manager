@@ -71,31 +71,37 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
   // One player per row: place in a circle · name (+ "Bạn") and level · record on a second line ·
   // the number the list is ordered by, big on the right.
   const RankList = ({ rows: list, muted = false }) => (
-    <ol className={`rounded-xl border border-navy-600 divide-y divide-navy-600 overflow-hidden ${muted ? 'opacity-70' : ''}`}>
-      <li className="flex items-stretch divide-x divide-navy-600 bg-navy-900 text-gray-300 text-xs font-semibold uppercase tracking-wide [&>*]:px-2 [&>*]:py-2" aria-hidden="true">
-        <span className="w-8 text-center">#</span>
-        <span className="flex-1">{t('common.name')}</span>
-        <span>{order === 'level' ? levelName : t('homeRank.byRate')}</span>
-      </li>
-      {list.map((r, i) => (
-        <li key={keyOf(r)} className={`flex items-stretch divide-x divide-navy-600 [&>*]:px-2 [&>*]:py-2 [&>*]:flex [&>*]:items-center ${isMe(r) ? 'bg-lime-400/10' : i % 2 ? 'bg-navy-800/40' : ''}`}>
-          <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold tabular-nums ${isMe(r) ? 'border-lime-400/70 text-lime-300' : 'border-navy-600 text-gray-300'}`}>{r.place ?? '—'}</span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-white text-sm font-semibold break-words">
-              {r.full_name}
-              {isMe(r) && <span className="ml-1.5 align-middle text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
-            </span>
-            <span className="block text-gray-400 text-xs tabular-nums">
-              {levelName} {fmtLevel(r.level, sport) || '—'} · {t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses })}
-            </span>
-          </span>
-          <span className="shrink-0 text-right">
-            <span className="block text-white font-bold tabular-nums">{order === 'level' ? fmtLevel(r.level, sport) || '—' : `${r.win_rate}%`}</span>
-            {order === 'level' && <span className="block text-gray-400 text-xs tabular-nums">{r.win_rate}%</span>}
-          </span>
-        </li>
-      ))}
-    </ol>
+    <table className={`rank-table text-sm ${muted ? 'opacity-70' : ''}`}>
+      <thead>
+        <tr>
+          <th className="w-10 text-center">#</th>
+          <th>{t('common.name')}</th>
+          <th className="w-20 text-right whitespace-nowrap">{order === 'level' ? levelName : t('homeRank.byRate')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {list.map((r) => (
+          <tr key={keyOf(r)} className={isMe(r) ? '!bg-lime-400/10' : ''}>
+            <td className="text-center">
+              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-bold tabular-nums ${isMe(r) ? 'border-lime-400/70 text-lime-300' : 'border-navy-600 text-gray-300'}`}>{r.place ?? '—'}</span>
+            </td>
+            <td>
+              <span className="block text-white text-sm font-semibold break-words">
+                {r.full_name}
+                {isMe(r) && <span className="ml-1.5 align-middle text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
+              </span>
+              <span className="block text-gray-400 text-xs tabular-nums">
+                {levelName} {fmtLevel(r.level, sport) || '—'} · {t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses })}
+              </span>
+            </td>
+            <td className="text-right">
+              <span className="block text-white font-bold tabular-nums">{order === 'level' ? fmtLevel(r.level, sport) || '—' : `${r.win_rate}%`}</span>
+              {order === 'level' && <span className="block text-gray-400 text-xs tabular-nums">{r.win_rate}%</span>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
   const small = (on) => `rounded-md px-2.5 py-2 sm:px-2 sm:py-0.5 text-xs sm:text-[11px] transition-colors ${on ? 'bg-navy-600 text-white' : 'text-gray-400 hover:text-gray-200'}`;
 
