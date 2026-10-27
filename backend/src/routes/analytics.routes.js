@@ -5,6 +5,7 @@ const { todayYmd } = require('../services/memberships');
 const { localDate, winnerTeam, isScored } = require('../services/stats');
 const { clubAccess } = require('../services/clubAccess');
 const { assertFeature } = require('../services/plan');
+const { countedFilter } = require('../services/ledgerFilter');
 
 // Club analytics follow the club's plan (Xé Vé numbers come with Social Manager).
 async function gate(res, scope, feature) {
@@ -88,11 +89,8 @@ router.get('/finance', async (req, res) => {
     if (events.length) filters.push(`and(owner_type.eq.event,event_id.in.(${events.map((e) => e.id).join(',')}))`);
     let txns = [];
     if (filters.length) {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('type, category, amount, occurred_on, owner_type')
-        .eq('host_id', scope.hostId)
-        .eq('is_voided', false)
+      const cf = await countedFilter();
+      const { data, error } = await cf(supabase.from('transactions').select('type, category, amount, occurred_on, owner_type').eq('host_id', scope.hostId))
         .gte('occurred_on', from)
         .lt('occurred_on', nextMonthStart(months[months.length - 1]))
         .or(filters.join(','));

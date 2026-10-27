@@ -22,7 +22,7 @@ export function exportEventFinance(event, participants, transactions, t) {
     rows: participants.map((p, i) => [i + 1, p.full_name, p.phone || '', t(`xlsx.st_${p.status}`), fee(p), paidText(p)]),
     totals: { label: t('xlsx.total'), cols: { 4: 'sum' } },
   });
-  const live = transactions.filter((x) => !x.is_voided);
+  const live = transactions.filter((x) => !x.is_voided && !x.excluded);
   const tx = live.map((x) => [x.occurred_on, x.type === 'income' ? t('xlsx.income') : t('xlsx.expense'), x.category || '', Number(x.amount), x.note || '']);
   const money = sheet({
     title: `${event.title} — ${t('xlsx.finance')}`,

@@ -3,6 +3,7 @@
 // how regularly members come. Also a day-by-day money view for the finance overview.
 const { supabase } = require('../supabase');
 const { todayYmd } = require('./memberships');
+const { countedFilter } = require('./ledgerFilter');
 
 const ACTIVE_DAYS = 30; // inactive = no activity in the community for a month or more
 const REGULAR_MIN = 3; // "thường xuyên" = more than this many sessions in those 30 days
@@ -44,7 +45,8 @@ function unpaidOf(events, parts) {
 async function moneyOf(clubId, eventIds) {
   const filters = [`and(owner_type.eq.club,club_id.eq.${clubId})`];
   if (eventIds.length) filters.push(`and(owner_type.eq.event,event_id.in.(${eventIds.join(',')}))`);
-  return all(() => supabase.from('transactions').select('type, amount, occurred_on, event_id').eq('is_voided', false).or(filters.join(',')).order('id'));
+  const cf = await countedFilter();
+  return all(() => cf(supabase.from('transactions').select('type, amount, occurred_on, event_id')).or(filters.join(',')).order('id'));
 }
 
 async function overview(club) {
@@ -213,12 +215,13 @@ async function daily(scope, month) {
   const parts = ids.length ? await all(() => supabase.from('event_participants').select('event_id, status, kind, fee_paid, fee_amount, is_organizer').in('event_id', ids).order('id')) : [];
   // A kèo's money counts on the kèo's day (fees often arrive days before); the
   // community's own entries (fund, plans…) on the day they were written.
+  const cf = await countedFilter();
   const evTx = events.length
-    ? await all(() => supabase.from('transactions').select('type, amount, event_id').eq('is_voided', false).in('event_id', events.map((e) => e.id)).order('id'))
+    ? await all(() => cf(supabase.from('transactions').select('type, amount, event_id')).in('event_id', events.map((e) => e.id)).order('id'))
     : [];
   const dateOf = new Map(events.map((e) => [e.id, e.event_date]));
   const clubTx = scope.clubId
-    ? await all(() => supabase.from('transactions').select('type, amount, occurred_on').eq('is_voided', false).eq('owner_type', 'club').eq('club_id', scope.clubId).gte('occurred_on', first).lte('occurred_on', last).order('id'))
+    ? await all(() => cf(supabase.from('transactions').select('type, amount, occurred_on')).eq('owner_type', 'club').eq('club_id', scope.clubId).gte('occurred_on', first).lte('occurred_on', last).order('id'))
     : [];
   const txns = [...evTx.map((t) => ({ ...t, occurred_on: dateOf.get(t.event_id) })), ...clubTx];
   const days = new Map();

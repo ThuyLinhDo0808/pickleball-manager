@@ -177,7 +177,7 @@ function EditEntry({ entry, onClose, onSaved, community = false }) {
   const { t } = useI18n();
   // Written by the app (kèo fee, membership, ball stock, session cost): type and category stay.
   const auto = AUTO.has(entry.category) || !!entry.event_cost;
-  const [f, setF] = useState(() => ({ type: entry.type, category: entry.category || '', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '' }));
+  const [f, setF] = useState(() => ({ type: entry.type, category: entry.category || '', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '', excluded: !!entry.excluded }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function save(e) {
@@ -185,7 +185,7 @@ function EditEntry({ entry, onClose, onSaved, community = false }) {
     setBusy(true);
     setError('');
     try {
-      await api.patch(`/api/transactions/${entry.id}`, { type: f.type, category: f.category.trim() || null, amount: Number(f.amount), occurred_on: f.occurred_on, note: f.note.trim() || null });
+      await api.patch(`/api/transactions/${entry.id}`, { type: f.type, category: f.category.trim() || null, amount: Number(f.amount), occurred_on: f.occurred_on, note: f.note.trim() || null, excluded: f.excluded });
       onSaved();
     } catch (err) {
       setError(err.payload?.code?.startsWith('linked_') ? t('fin.autoHint') : err.message);
@@ -224,6 +224,10 @@ function EditEntry({ entry, onClose, onSaved, community = false }) {
           <label className="text-xs text-gray-400">{t('fin.note')}</label>
           <input className="input" required={f.category === 'other'} placeholder={f.category === 'other' ? t('fin.otherNotePh') : ''} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         </div>
+        <label className={`col-span-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${f.excluded ? 'border-yellow-400/50 bg-yellow-400/5' : 'border-navy-700'}`}>
+          <input type="checkbox" className="mt-1" checked={f.excluded} onChange={(e) => setF({ ...f, excluded: e.target.checked })} />
+          <span><span className="text-gray-100 font-medium">{t('fin.excluded')}</span><span className="block text-gray-400 text-xs">{t('fin.excludedHint')}</span></span>
+        </label>
         {!auto && <p className="col-span-2 text-gray-500 text-xs">{t('fin.editHint')}</p>}
         {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
         <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
@@ -276,7 +280,7 @@ export default function LedgerPage() {
       (source === 'all' || (source === 'session') === !!r.event_id) &&
       (category === 'all' || (r.category || 'other') === category)
   );
-  const live = shown.filter((r) => !r.is_voided);
+  const live = shown.filter((r) => !r.is_voided && !r.excluded);
   const tin = live.filter((r) => r.type === 'income').reduce((s, r) => s + Number(r.amount), 0);
   const tout = live.filter((r) => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0);
   // "Theo buổi": what each session took in and paid out.
@@ -321,12 +325,27 @@ export default function LedgerPage() {
     }
   }
 
-  // One table per side: money in on the left, money out on the right.
+  // "Không tính": the line stays in the book, only its money stops counting.
+  async function toggleExcluded(r) {
+    setError('');
+    try {
+      await api.patch(`/api/transactions/${r.id}`, { excluded: !r.excluded });
+      reload();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+  // Every live row: tick "Không tính" + edit; only an entry typed by hand can still be voided
+  // (the ones the web wrote — fees, plans, stock, session costs — are ticked off instead).
   const ROW_ACTIONS = (r) =>
     !r.is_voided ? (
-      <span className="inline-flex gap-1 whitespace-nowrap">
-        {<button className="text-gray-300 hover:text-white px-1" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></button>}
-        <button className="text-red-400/80 hover:text-red-300 px-1" title={t('fin.void')} aria-label={t('fin.void')} onClick={() => voidEntry(r)}>✕</button>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <label className={`inline-flex items-center gap-1 text-[11px] cursor-pointer no-underline ${r.excluded ? 'text-yellow-300' : 'text-gray-500 hover:text-gray-300'}`} title={t('fin.excluded')}>
+          <input type="checkbox" className="h-3.5 w-3.5" checked={!!r.excluded} onChange={() => toggleExcluded(r)} />
+          {t('fin.excludedShort')}
+        </label>
+        <button className="text-gray-300 hover:text-white px-1" title={t('fin.edit')} aria-label={t('fin.edit')} onClick={() => setEditing(r)}><UiIcon name="edit" className="inline-block w-[1em] h-[1em] align-[-0.125em]" /></button>
+        {!(AUTO.has(r.category) || r.event_cost) && <button className="text-red-400/80 hover:text-red-300 px-1" title={t('fin.void')} aria-label={t('fin.void')} onClick={() => voidEntry(r)}>✕</button>}
       </span>
     ) : null;
   // One ledger: every session is a header row that spans both columns, then the money
@@ -345,7 +364,7 @@ export default function LedgerPage() {
       }
       const g = byKey.get(key);
       g[r.type === 'income' ? 'income' : 'expense'].push(r);
-      if (!r.is_voided) g[r.type === 'income' ? 'tin' : 'tout'] += Number(r.amount);
+      if (!r.is_voided && !r.excluded) g[r.type === 'income' ? 'tin' : 'tout'] += Number(r.amount);
       if (r.occurred_on > g.latest) g.latest = r.occurred_on;
     }
     out.sort((x, y) => (x.key === 'club') - (y.key === 'club') || String(y.ev?.event_date || y.latest).localeCompare(String(x.ev?.event_date || x.latest)));
@@ -355,14 +374,15 @@ export default function LedgerPage() {
   const nOut = shown.length - nIn;
 
   const entryRow = (r, income) => (
-    <div key={r.id} className={`px-2 py-1.5 border-t border-navy-700/70 text-sm ${r.is_voided ? 'opacity-40 line-through' : ''}`}>
+    <div key={r.id} className={`px-2 py-1.5 border-t border-navy-700/70 text-sm ${r.is_voided ? 'opacity-40 line-through' : r.excluded ? 'opacity-60' : ''}`}>
       <div className="flex items-baseline gap-2 min-w-0">
         <span className="text-gray-400 tabular-nums whitespace-nowrap text-xs w-11 shrink-0">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</span>
         <span className="text-gray-100 min-w-0 truncate">
           {categoryLabel(r.category, t)}
           {(AUTO.has(r.category) || r.event_cost) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1 no-underline">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
+          {r.excluded && !r.is_voided && <span className="ml-2 text-[10px] rounded border border-yellow-400/50 text-yellow-300 px-1">{t('fin.excludedTag')}</span>}
         </span>
-        <span className={`ml-auto tabular-nums font-semibold whitespace-nowrap ${income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(r.amount)}</span>
+        <span className={`ml-auto tabular-nums font-semibold whitespace-nowrap ${r.excluded ? 'text-gray-500 line-through' : income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(r.amount)}</span>
       </div>
       <div className="flex items-start justify-between gap-2 pl-[3.25rem] mt-0.5">
         <span className="min-w-0 text-gray-400 text-xs break-words">{r.is_voided ? `${t('fin.voided')}${r.void_reason ? `: ${r.void_reason}` : ''}` : describeEntry(r, t) || '—'}</span>
@@ -401,8 +421,8 @@ export default function LedgerPage() {
             )}
             <span className="text-gray-500 text-xs">{t('ledger.entriesN', { n: g.income.length + g.expense.length })}</span>
             <span className="ml-auto hidden lg:inline-flex gap-3 tabular-nums text-xs font-semibold">
-              <span className="text-lime-400">{g.income.length ? `+${formatVnd(g.tin)}` : ''}</span>
-              <span className="text-orange-300">{g.expense.length ? `−${formatVnd(g.tout)}` : ''}</span>
+              <span className="text-lime-400">{g.tin ? `+${formatVnd(g.tin)}` : ''}</span>
+              <span className="text-orange-300">{g.tout ? `−${formatVnd(g.tout)}` : ''}</span>
             </span>
           </div>
           <div className="grid lg:grid-cols-2 lg:divide-x divide-navy-700 max-lg:divide-y">

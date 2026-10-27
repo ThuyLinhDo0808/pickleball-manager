@@ -9,6 +9,7 @@ const { requireFeature } = require('../services/plan');
 const { fetchAll } = require('../services/clubStats');
 const { todayYmd } = require('../services/memberships');
 const { insights } = require('../services/insights');
+const { countedFilter } = require('../services/ledgerFilter');
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const HM = /^\d{2}:\d{2}(:\d{2})?$/;
@@ -202,10 +203,11 @@ function mount(router) {
         memberships.push(...data);
       }
       const money = [];
-      const clubMoney = await fetchAll(() => supabase.from('transactions').select('type, amount, occurred_on').eq('club_id', clubId).eq('is_voided', false).gte('occurred_on', start).lte('occurred_on', end).order('occurred_on'));
+      const cf = await countedFilter();
+      const clubMoney = await fetchAll(() => cf(supabase.from('transactions').select('type, amount, occurred_on').eq('club_id', clubId)).gte('occurred_on', start).lte('occurred_on', end).order('occurred_on'));
       money.push(...clubMoney.map((t) => ({ ...t, event_id: null })));
       for (const ids of chunks(eventIds)) {
-        const { data, error } = await supabase.from('transactions').select('type, amount, occurred_on, event_id').in('event_id', ids).eq('is_voided', false).limit(10000);
+        const { data, error } = await cf(supabase.from('transactions').select('type, amount, occurred_on, event_id').in('event_id', ids)).limit(10000);
         if (error) throw error;
         money.push(...data);
       }

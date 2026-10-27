@@ -26,7 +26,7 @@ const notePh = (f, t) => (f.type === 'income' ? t('evfin.incomeNotePh') : f.cate
 // so the ledger keeps its history); category, date and note change in place.
 function EditEntry({ entry, social, onClose, onSaved }) {
   const { t } = useI18n();
-  const [f, setF] = useState({ type: entry.type, category: entry.category || 'other', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '' });
+  const [f, setF] = useState({ type: entry.type, category: entry.category || 'other', amount: String(Number(entry.amount)), occurred_on: entry.occurred_on, note: entry.note || '', excluded: !!entry.excluded });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const cats = f.type === 'income' ? EVENT_INCOME : expenseCats(social);
@@ -36,7 +36,7 @@ function EditEntry({ entry, social, onClose, onSaved }) {
     setBusy(true);
     setError('');
     try {
-      await api.patch(`/api/transactions/${entry.id}`, { type: f.type, category: f.category, amount: Number(f.amount), occurred_on: f.occurred_on, note: f.note.trim() || null });
+      await api.patch(`/api/transactions/${entry.id}`, { type: f.type, category: f.category, amount: Number(f.amount), occurred_on: f.occurred_on, note: f.note.trim() || null, excluded: f.excluded });
       onSaved();
     } catch (err) {
       setError(err.payload?.code?.startsWith('linked_') ? t('fin.autoHint') : err.message);
@@ -68,6 +68,10 @@ function EditEntry({ entry, social, onClose, onSaved }) {
           <input className="input mt-1" required={f.category === 'other'} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         </label>
         <p className="col-span-2 text-gray-500 text-xs">{t('fin.editHint')}</p>
+        <label className={`col-span-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${f.excluded ? 'border-yellow-400/50 bg-yellow-400/5' : 'border-navy-700'}`}>
+          <input type="checkbox" className="mt-1" checked={f.excluded} onChange={(e) => setF({ ...f, excluded: e.target.checked })} />
+          <span><span className="text-gray-100 font-medium">{t('fin.excluded')}</span><span className="block text-gray-400 text-xs">{t('fin.excludedHint')}</span></span>
+        </label>
         {error && <p className="col-span-2 text-red-400 text-sm">{error}</p>}
         <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
         <button className="btn-primary" disabled={busy}>{t('common.save')}</button>
@@ -114,6 +118,16 @@ export default function EventFinance({ event, finance, onChanged }) {
     }
   }
 
+  // "Không tính": kept in the book, left out of the totals (the player stays paid).
+  async function toggleExcluded(r) {
+    setError('');
+    try {
+      await api.patch(`/api/transactions/${r.id}`, { excluded: !r.excluded });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
   // "Xoá": the ledger only grows, so a deleted entry is voided (kept, struck out, with why).
   async function voidEntry(r) {
     const reason = window.prompt(t('evfin.deleteAsk', { what: describeEntry(r, t) || categoryLabel(r.category, t), amount: formatVnd(r.amount) }));
@@ -189,12 +203,17 @@ export default function EventFinance({ event, finance, onChanged }) {
                     <td className="first text-gray-200 whitespace-nowrap">
                       {r.event_cost ? categoryLabel(r.category, t) : catName(r.category, t, social)}
                       {(AUTO.has(r.category) || r.event_cost) && <span className="ml-1.5 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
+                      {r.excluded && <span className="ml-1.5 text-[10px] rounded border border-yellow-400/50 text-yellow-300 px-1">{t('fin.excludedTag')}</span>}
                     </td>
                     <td className="text-gray-300 !whitespace-normal break-words">{(social && !r.event_cost && r.type === 'expense' && r.category === 'court' ? ((r.note || '').trim() ? t('fin.d_costNote', { what: t('evfin.courtExtra'), note: r.note.trim() }) : t('fin.d_cost', { what: t('evfin.courtExtra') })) : describeEntry(r, t)) || '—'}</td>
-                    <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${r.type === 'income' ? '!text-lime-400' : '!text-orange-300'}`}>
+                    <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${r.excluded ? '!text-gray-500 line-through' : r.type === 'income' ? '!text-lime-400' : '!text-orange-300'}`}>
                       {r.type === 'income' ? '+' : '−'}{formatVnd(r.amount)}
                     </td>
                     <td className="text-right whitespace-nowrap">
+                      <label className={`inline-flex items-center gap-1 text-[11px] cursor-pointer px-1.5 ${r.excluded ? 'text-yellow-300' : 'text-gray-500 hover:text-gray-300'}`} title={t('fin.excluded')}>
+                        <input type="checkbox" className="h-3.5 w-3.5" checked={!!r.excluded} onChange={() => toggleExcluded(r)} />
+                        {t('fin.excludedShort')}
+                      </label>
                       {!AUTO.has(r.category) && (
                         <>
                           {!r.event_cost && (
