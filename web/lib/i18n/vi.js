@@ -2101,7 +2101,7 @@ export const vi = {
     regularUnit: "buổi trong 30 ngày gần nhất",
     dropinBelow: "Từ {n} buổi trở xuống = khách vãng lai. Khách VIP (có vé) và khách ưu tiên được đánh dấu riêng.",
     auto: "Tự chuyển thường xuyên ↔ vãng lai",
-    autoHint: "Bật: ai không chơi quá số ngày ở mục Hoạt động ({days} ngày) tự chuyển sang vãng lai; chơi đủ ngưỡng thì tự lên thường xuyên. Tắt: web chỉ gợi ý ở trang Thành viên, bạn bấm chuyển. Người bạn đánh dấu *Tạm nghỉ* (chấn thương, đi xa…) không bị chuyển xuống.",
+    autoHint: "Bật: không chơi quá {days} ngày → vãng lai. Chơi đủ ngưỡng → thường xuyên.\nTắt: web chỉ gợi ý, bạn bấm chuyển.\nNgười đang Tạm nghỉ không bị chuyển.",
     runNow: "Xếp lại ngay",
     movedNow: "Đã xét {n} người: {up} lên thường xuyên, {down} xuống vãng lai.",
     activeTitle: "Hoạt động",

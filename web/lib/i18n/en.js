@@ -2101,7 +2101,7 @@ export const en = {
     regularUnit: "sessions in the last 30 days",
     dropinBelow: "{n} sessions or fewer = drop-in. VIP (pass holders) and priority players are marked on their own.",
     auto: "Move regular ↔ drop-in by itself",
-    autoHint: "On: anyone away longer than the Activity limit ({days} days) becomes a drop-in; reaching the threshold makes them regular again. Off: the Members page only suggests moves for you to apply. Players you mark *On a break* (injury, travel…) are never moved down.",
+    autoHint: "On: away more than {days} days → drop-in. Enough sessions → regular.\nOff: the web only suggests, you tap to move.\nPlayers on a break are never moved.",
     runNow: "Re-sort now",
     movedNow: "Checked {n} people: {up} up to regular, {down} down to drop-in.",
     activeTitle: "Activity",

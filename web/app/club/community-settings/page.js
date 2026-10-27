@@ -47,7 +47,7 @@ function Row({ title, hint, desc, children, wide = false }) {
     <div className={`px-4 py-4 sm:px-5 ${wide ? '' : 'sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6'}`}>
       <div className="min-w-0">
         <h3 className="text-white text-sm font-semibold flex items-center gap-1.5">{title}{hint && <Hint inline text={hint} />}</h3>
-        {desc && <p className="text-gray-400 text-xs mt-0.5">{desc}</p>}
+        {desc && <p className="text-gray-400 text-xs mt-0.5 whitespace-pre-line leading-relaxed">{desc}</p>}
       </div>
       <div className={wide ? 'mt-3' : 'mt-3 sm:mt-0'}>{children}</div>
     </div>
