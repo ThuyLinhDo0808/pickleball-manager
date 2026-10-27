@@ -7,6 +7,7 @@
 const { supabase } = require('../supabase');
 const { todayYmd } = require('./memberships');
 const inventoryStore = require('./inventoryStore');
+const { counted, excludedCol } = require('./ledgerFilter');
 
 const PLAYED = ['registered', 'checked_in'];
 const OWES = ['registered', 'checked_in', 'no_show'];
@@ -92,11 +93,12 @@ async function business(club, rawPeriod) {
   const cameBack = players.filter((s) => s.size >= 2).length;
 
   // ---- Money (transactions of the community and of its kèo)
+  const exCol = await excludedCol();
   const [clubTx, evTx] = await Promise.all([
-    all(() => supabase.from('transactions').select('id, type, category, amount, occurred_on, is_voided, event_id').eq('owner_type', 'club').eq('club_id', club.id).order('id')),
-    all(() => supabase.from('transactions').select('id, type, category, amount, occurred_on, is_voided, event_id, events!inner(club_id, event_date)').eq('owner_type', 'event').eq('events.club_id', club.id).order('id')),
+    all(() => supabase.from('transactions').select(`id, type, category, amount, occurred_on, is_voided, event_id${exCol}`).eq('owner_type', 'club').eq('club_id', club.id).order('id')),
+    all(() => supabase.from('transactions').select(`id, type, category, amount, occurred_on, is_voided, event_id${exCol}, events!inner(club_id, event_date)`).eq('owner_type', 'event').eq('events.club_id', club.id).order('id')),
   ]);
-  const tx = [...clubTx, ...evTx.map(({ events: ev, ...t }) => ({ ...t, day: ev?.event_date }))].filter((t) => !t.is_voided && inPeriod(t.day || t.occurred_on, period));
+  const tx = [...clubTx, ...evTx.map(({ events: ev, ...t }) => ({ ...t, day: ev?.event_date }))].filter((t) => counted(t) && inPeriod(t.day || t.occurred_on, period));
   const income = tx.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
   const byCat = { court: 0, water: 0, balls: 0, other: 0 };
   for (const t of tx.filter((x) => x.type === 'expense')) byCat[EXPENSES.includes(t.category) ? t.category : 'other'] += Number(t.amount);

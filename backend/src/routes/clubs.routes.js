@@ -1478,7 +1478,7 @@ router.get('/:clubId/fund', async (req, res) => {
   ]);
   if (txnErr) return dbError(res, txnErr);
   if (evErr) return dbError(res, evErr);
-  const counts = (t) => !t.is_voided;
+  const counts = require('../services/ledgerFilter').counted;
   const sum = (list) => list.filter(counts).reduce((s, t) => s + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
   const balanceClub = sum(txns);
   const balanceSessions = sum(evTxns);

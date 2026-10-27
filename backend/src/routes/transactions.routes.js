@@ -2,6 +2,7 @@ const express = require('express');
 const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const { clubAccess, eventAccess } = require('../services/clubAccess');
+const { excludedReady } = require('../services/ledgerFilter');
 
 const router = express.Router();
 
@@ -128,6 +129,8 @@ router.patch('/:id', async (req, res) => {
     note: 'note' in b ? (b.note ? String(b.note).slice(0, 500) : null) : txn.note,
     occurred_on: b.occurred_on || txn.occurred_on,
   };
+  // "Không tính vào sổ thu chi": the line stays, its money is left out of every total.
+  if ('excluded' in b && (await excludedReady())) soft.excluded = !!b.excluded;
   if (type === txn.type && amount === Number(txn.amount)) {
     const { data, error } = await supabase.from('transactions').update(soft).eq('id', txn.id).select().single();
     if (error) return dbError(res, error);
