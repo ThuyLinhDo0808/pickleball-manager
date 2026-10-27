@@ -1,6 +1,6 @@
 'use client';
 import Hint from '@/components/ui/Hint';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/Modal';
 import FundCalculator from '@/components/FundCalculator';
@@ -329,87 +329,90 @@ export default function LedgerPage() {
         <button className="text-red-400/80 hover:text-red-300 px-1" title={t('fin.void')} aria-label={t('fin.void')} onClick={() => voidEntry(r)}>✕</button>
       </span>
     ) : null;
-  // One table per side: money in on the left, money out on the right. Rows are grouped by
-  // session (one header per kèo: date · name · its subtotal, then every entry of that
-  // session — who paid, what the Host paid for), the club fund's own entries last.
-  const side = (ty) => {
-    const list = shown.filter((r) => r.type === ty);
-    const income = ty === 'income';
-    const groups = [];
+  // One ledger: every session is a header row that spans both columns, then the money
+  // that came in for that session on the left and what was paid out for it on the right,
+  // so the same date always sits on the same row. The club fund's own entries come last.
+  // Phones stack the two columns under each session header.
+  const groups = (() => {
+    const out = [];
     const byKey = new Map();
-    for (const r of list) {
+    for (const r of shown) {
       const key = r.event_id || 'club';
       if (!byKey.has(key)) {
-        const g = { key, ev: r.event_id ? r.events : null, rows: [], total: 0, latest: r.occurred_on };
+        const g = { key, ev: r.event_id ? r.events : null, income: [], expense: [], tin: 0, tout: 0, latest: r.occurred_on };
         byKey.set(key, g);
-        groups.push(g);
+        out.push(g);
       }
       const g = byKey.get(key);
-      g.rows.push(r);
-      if (!r.is_voided) g.total += Number(r.amount);
+      g[r.type === 'income' ? 'income' : 'expense'].push(r);
+      if (!r.is_voided) g[r.type === 'income' ? 'tin' : 'tout'] += Number(r.amount);
       if (r.occurred_on > g.latest) g.latest = r.occurred_on;
     }
-    groups.sort((x, y) => (x.key === 'club') - (y.key === 'club') || String(y.ev?.event_date || y.latest).localeCompare(String(x.ev?.event_date || x.latest)));
-    return (
-      <div className="card !p-4 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <h2 className="text-white font-semibold">{t(`analytics.${ty}`)} <span className="text-gray-500 font-normal text-sm">({list.length})</span></h2>
-          <span className={`font-bold tabular-nums ${income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(income ? tin : tout)}</span>
-        </div>
-        {loading && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
-        {!loading && list.length === 0 && <p className="text-gray-500 text-sm">{t('fin.noEntries')}</p>}
-        {list.length > 0 && (
-          <div className="table-wrap">
-            <table className="w-full text-sm grid-table mobile-list !min-w-[26rem]">
-              <thead>
-                <tr className="text-left">
-                  <th>{t('fin.date')}</th>
-                  <th>{t('fin.category')}</th>
-                  <th className="text-right">{t('fin.amount')}</th>
-                  <th>{t('fin.note')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((g) => (
-                  <Fragment key={g.key}>
-                    <tr className="bg-navy-900/70">
-                      <td colSpan={4} className="!py-2">
-                        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                          {g.ev ? (
-                            <Link href={`/events/${g.key}`} className="text-sky-300 hover:text-lime-400 font-medium">{sessionLabel(g.ev, t)}</Link>
-                          ) : (
-                            <span className="text-gray-200 font-medium">{t('ledger.noSession')}</span>
-                          )}
-                          <span className="text-gray-500 text-xs">{t('ledger.entriesN', { n: g.rows.length })}</span>
-                          <span className={`ml-auto tabular-nums text-xs font-semibold ${income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(g.total)}</span>
-                        </span>
-                      </td>
-                    </tr>
-                    {g.rows.map((r) => (
-                      <tr key={r.id} className={r.is_voided ? 'opacity-40 line-through' : ''}>
-                        <td className="text-gray-300 whitespace-nowrap">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</td>
-                        <td className="first text-gray-200 whitespace-nowrap">
-                          {categoryLabel(r.category, t)}
-                          {(AUTO.has(r.category) || r.event_cost) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
-                        </td>
-                        <td className={`key text-right tabular-nums font-semibold whitespace-nowrap ${income ? '!text-lime-400' : '!text-orange-300'}`}>{formatVnd(r.amount)}</td>
-                        <td className="text-gray-400 !whitespace-normal break-words text-xs max-sm:basis-full">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="min-w-0 text-gray-300">{r.is_voided ? `${t('fin.voided')}${r.void_reason ? `: ${r.void_reason}` : ''}` : describeEntry(r, t) || '—'}</span>
-                            {ROW_ACTIONS(r)}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+    out.sort((x, y) => (x.key === 'club') - (y.key === 'club') || String(y.ev?.event_date || y.latest).localeCompare(String(x.ev?.event_date || x.latest)));
+    return out;
+  })();
+  const nIn = shown.filter((r) => r.type === 'income').length;
+  const nOut = shown.length - nIn;
+
+  const entryRow = (r, income) => (
+    <div key={r.id} className={`px-2 py-1.5 border-t border-navy-700/70 text-sm ${r.is_voided ? 'opacity-40 line-through' : ''}`}>
+      <div className="flex items-baseline gap-2 min-w-0">
+        <span className="text-gray-400 tabular-nums whitespace-nowrap text-xs w-11 shrink-0">{`${r.occurred_on.slice(8, 10)}/${r.occurred_on.slice(5, 7)}`}</span>
+        <span className="text-gray-100 min-w-0 truncate">
+          {categoryLabel(r.category, t)}
+          {(AUTO.has(r.category) || r.event_cost) && <span className="ml-2 text-[10px] rounded border border-navy-600 text-gray-400 px-1 no-underline">{r.event_cost ? t('evfin.fromForm') : t('fin.auto')}</span>}
+        </span>
+        <span className={`ml-auto tabular-nums font-semibold whitespace-nowrap ${income ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(r.amount)}</span>
       </div>
-    );
-  };
+      <div className="flex items-start justify-between gap-2 pl-[3.25rem] mt-0.5">
+        <span className="min-w-0 text-gray-400 text-xs break-words">{r.is_voided ? `${t('fin.voided')}${r.void_reason ? `: ${r.void_reason}` : ''}` : describeEntry(r, t) || '—'}</span>
+        {ROW_ACTIONS(r)}
+      </div>
+    </div>
+  );
+  const column = (rows, income, total) => (
+    <div className="min-w-0">
+      <div className="flex items-center justify-between gap-2 px-2 py-1 text-xs lg:hidden">
+        <span className="text-gray-400 font-medium">{t(`analytics.${income ? 'income' : 'expense'}`)} <span className="text-gray-500">({rows.length})</span></span>
+        <span className={`tabular-nums font-semibold ${income ? 'text-lime-400' : 'text-orange-300'}`}>{rows.length ? formatVnd(total) : '—'}</span>
+      </div>
+      {rows.length === 0 ? <div className="px-2 py-1.5 border-t border-navy-700/70 text-gray-600 text-sm">—</div> : rows.map((r) => entryRow(r, income))}
+    </div>
+  );
+  const ledger = (
+    <div className="card !p-0 overflow-hidden">
+      <div className="hidden lg:grid grid-cols-2 divide-x divide-navy-700 bg-navy-900/60 border-b border-navy-700">
+        {[['income', nIn, tin], ['expense', nOut, tout]].map(([k, n, v]) => (
+          <div key={k} className="flex items-center justify-between gap-2 px-3 py-2.5">
+            <h2 className="text-white font-semibold">{t(`analytics.${k}`)} <span className="text-gray-500 font-normal text-sm">({n})</span></h2>
+            <span className={`font-bold tabular-nums ${k === 'income' ? 'text-lime-400' : 'text-orange-300'}`}>{formatVnd(v)}</span>
+          </div>
+        ))}
+      </div>
+      {loading && <p className="text-gray-400 text-sm p-4">{t('common.loading')}</p>}
+      {!loading && shown.length === 0 && <p className="text-gray-500 text-sm p-4">{t('fin.noEntries')}</p>}
+      {groups.map((g) => (
+        <div key={g.key} className="border-b border-navy-700 last:border-b-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2 bg-navy-900/80">
+            {g.ev ? (
+              <Link href={`/events/${g.key}`} className="text-sky-300 hover:text-lime-400 font-medium">{sessionLabel(g.ev, t)}</Link>
+            ) : (
+              <span className="text-gray-200 font-medium">{t('ledger.noSession')}</span>
+            )}
+            <span className="text-gray-500 text-xs">{t('ledger.entriesN', { n: g.income.length + g.expense.length })}</span>
+            <span className="ml-auto hidden lg:inline-flex gap-3 tabular-nums text-xs font-semibold">
+              <span className="text-lime-400">{g.income.length ? `+${formatVnd(g.tin)}` : ''}</span>
+              <span className="text-orange-300">{g.expense.length ? `−${formatVnd(g.tout)}` : ''}</span>
+            </span>
+          </div>
+          <div className="grid lg:grid-cols-2 lg:divide-x divide-navy-700 max-lg:divide-y">
+            {column(g.income, true, g.tin)}
+            {column(g.expense, false, g.tout)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -468,10 +471,7 @@ export default function LedgerPage() {
       {error && <p className="card text-yellow-300 text-sm mb-3">{error}</p>}
 
       {view === 'entries' ? (
-        <div className="grid gap-4 2xl:grid-cols-2 items-start">
-          {side('income')}
-          {side('expense')}
-        </div>
+        ledger
       ) : view === 'days' ? (
         <div className="card !p-4">
           <h2 className="text-white font-semibold mb-3">{t('ledger.byDay')} <span className="text-gray-500 font-normal text-sm">({byDay.length})</span></h2>
