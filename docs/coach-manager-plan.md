@@ -54,16 +54,17 @@ Tất cả bảng tiền tố `coach_`, chủ sở hữu là `user_id` của coa
 ```
 coach_profiles        id, user_id (unique), slug (unique), display_name, sport, bio, level_text,
                       dupr_id, area, court_name, map_url, price_note, status (active|paused|blocked),
-                      cancel_hours (hạn huỷ), public (bool), created_at, updated_at
+                      cancel_hours (hạn huỷ), deduct_mode (present_or_noshow|present_only|always),
+                      public (bool, mặc định true), created_at, updated_at
 coach_packages        id, coach_id → coach_profiles, name, sessions int, price int, valid_months int,
                       active bool, sort int
 coach_classes         id, coach_id, title, kind (group|private|single), court_name, map_url,
                       start_time, duration_min, weekdays int[], date_from, date_to,
-                      capacity int, fee int (phí buổi lẻ, 0 = chỉ dùng gói), signup_deadline_hours,
+                      capacity int, fee int (phí buổi lẻ, 0 = chỉ dùng gói), signup_deadline_hours, deduct_mode (nullable, ghi đè),
                       waitlist bool, note, status (open|closed|archived)
 coach_sessions        id, class_id, coach_id, session_date, start_time, duration_min, court_name,
                       status (scheduled|done|cancelled), note
-coach_students        id, coach_id, user_id, full_name (snapshot), phone (snapshot, chỉ coach thấy),
+coach_students        id, coach_id, user_id (nullable: đăng ký nhanh), full_name, phone (chỉ coach thấy; dùng để nối tài khoản),
                       level_text, note (riêng coach), first_seen, status (active|left|blocked)
                       unique (coach_id, user_id)
 coach_enrollments     id, class_id, student_id, status (requested|confirmed|waitlist|cancelled|removed),
@@ -73,6 +74,7 @@ coach_attendance      id, session_id, student_id, status (present|absent|excused
 coach_package_purchases
                       id, coach_id, student_id, package_id, sessions_total, sessions_used,
                       price, starts_on, expires_on, status (pending|active|expired|refunded),
+                      refund_amount, refund_reason, refunded_at,
                       payment_proof (ảnh, giới hạn 400 KB như event_participants), paid_at,
                       transaction_id → transactions
 coach_session_fees    id, session_id, student_id, amount, status (unpaid|paid|free),
@@ -135,6 +137,7 @@ POST   /api/player/coach/fees/:id/proof
 ### Public (không đăng nhập)
 ```
 GET    /api/public/coach/:slug             hồ sơ + lớp đang mở (không có sđt, không có học viên)
+POST   /api/public/coach/:slug/quick       đăng ký nhanh không tài khoản {name, phone, class_id|session_id, package_id?} → mã vé (Turnstile, rate limit như quick booking)
 GET    /api/public/coach?sport&area&q      (giai đoạn 2) tìm coach
 ```
 
@@ -195,9 +198,9 @@ Khối `coach.*` trong `web/lib/i18n/vi.js` và `en.js` (nhãn menu, form, trạ
 |---|---|---|
 | C1 | Migration + schemaCheck + `coachAccess` + hồ sơ coach (API, trang `/coach/profile`, trang công khai `/coach/[slug]`), không gian `coach` trong shell / home / chuyển ngữ cảnh, mục *Mở hồ sơ Coach* | 2–3 ngày |
 | C2 | Gói buổi, lớp, sinh buổi, lịch dạy, trang buổi | 3 ngày |
-| C3 | Học viên: đăng ký từ `/p/coach` và trang công khai, xác nhận / chờ, huỷ theo hạn, danh sách học viên, thêm tay | 2–3 ngày |
+| C3 | Học viên: đăng ký từ `/p/coach` và trang công khai (có tài khoản + đăng ký nhanh, nối theo sđt), xác nhận / chờ, huỷ theo hạn, danh sách học viên, thêm tay | 3 ngày |
 | C4 | Điểm danh + QR, trừ gói, phí buổi lẻ | 2 ngày |
-| C5 | Thanh toán gói + chứng từ, sổ thu chi coach (`transactions.owner_type='coach'`), Excel, thông báo + email | 3 ngày |
+| C5 | Thanh toán gói + chứng từ, hoàn tiền một phần, sổ thu chi coach (`transactions.owner_type='coach'`), Excel, thông báo + email | 3 ngày |
 | C6 | Owner: danh sách coach, khoá; README §4 mục mới, §11.2, §12, §15, §16, §17; `docs/ui-plan.md`; test backend | 1–2 ngày |
 | C7 (GĐ2) | Lịch rảnh và đặt 1-1, ghi chú tiến bộ, đánh giá, tìm coach ở `/discover` | sau khi dùng thử |
 
@@ -210,10 +213,19 @@ Khối `coach.*` trong `web/lib/i18n/vi.js` và `en.js` (nhãn menu, form, trạ
 - Không secret mới; tài khoản nhận tiền là của chính coach (`users.bank_*`), coach tự nhập ở *Nhận tiền*.
 - Audit: Owner khoá / mở ghi `owner_audit_logs`; coach sửa hồ sơ / huỷ buổi ghi `activity_log` riêng (giai đoạn 2).
 
-## 10. Câu hỏi cần bạn chốt trước đợt C1
+## 10. Quyết định đã chốt (29/10)
 
-1. **Tên hiển thị** trong web: *Coach* hay *Huấn luyện viên*? (đề xuất: menu "Coach", mô tả "huấn luyện viên").
-2. Học viên **phải có tài khoản** để đăng ký (như kèo), hay cho đăng ký nhanh không tài khoản (tên + sđt) rồi nối sau? Đề xuất: giai đoạn 1 bắt buộc tài khoản, coach vẫn thêm tay được.
-3. Gói buổi **trừ khi có mặt** hay trừ khi đăng ký buổi (vắng không báo vẫn trừ)? Đề xuất: trừ khi có mặt hoặc vắng không báo trước hạn; *báo nghỉ* đúng hạn không trừ.
-4. Có cần **hoàn tiền một phần** khi học viên bỏ ngang? Đề xuất: giai đoạn 1 chỉ ghi "đã hoàn" thủ công vào sổ.
-5. Hồ sơ coach **công khai mặc định** hay chỉ ai có link mới xem?
+1. **Tên**: menu ghi **Coach**, mô tả / câu chữ dùng *huấn luyện viên*.
+2. **Đăng ký**: cả hai cách như CLB / Social Manager — có tài khoản (đăng ký đầy đủ, xem lịch, gói, báo nghỉ) **và** đăng ký nhanh không tài khoản (tên + số điện thoại + gói / buổi → mã vé). Người đăng ký nhanh được **nối tự động** vào hồ sơ khi sau này tạo tài khoản bằng cùng số điện thoại (giống "---" chờ nối). Bảng `coach_students` vì thế có `user_id` cho phép trống + `phone` để nối; `coach_enrollments` / `coach_package_purchases` trỏ `student_id`, không trỏ `user_id`.
+3. **Trừ buổi của gói**: mặc định trừ khi *có mặt* **hoặc** *vắng không báo trước hạn* (`cancel_hours`); *báo nghỉ đúng hạn* không trừ. Coach chỉnh được trong *Hồ sơ Coach → Quy định lớp*: cột `coach_profiles.deduct_mode` (`present_or_noshow` mặc định | `present_only` | `always`), có thể ghi đè theo lớp (`coach_classes.deduct_mode` nullable).
+4. **Hoàn tiền một phần** khi học viên bỏ ngang: có. Trên gói đang dùng, coach bấm *Hoàn tiền* → nhập số tiền (gợi ý = giá × buổi còn lại / tổng buổi, làm tròn 1.000 đ) + lý do → gói chuyển `refunded`, `refund_amount`, `refunded_at`, ghi một khoản **chi** hạng mục *Hoàn tiền* vào sổ (có thể tick *Không tính*). Bảng `coach_package_purchases` thêm `refund_amount`, `refund_reason`, `refunded_at`.
+5. **Hồ sơ công khai mặc định** (`public = true`); coach tắt được trong *Hồ sơ Coach* → chỉ ai có link mới xem (trang công khai vẫn mở bằng link, không xuất hiện ở tìm kiếm / `/discover`).
+
+## 11. Điểm vào (ai bắt đầu từ đâu)
+
+- **Đăng nhập xong vẫn về `/home`** như hiện nay; không có trang chủ riêng cho coach.
+- **Coach đã có hồ sơ**: ô **Coach** trong dải *Không gian của bạn* ở `/home` → vào không gian coach. Trong không gian CLB / Social Manager, bộ chuyển ngữ cảnh (`ContextSwitcher`) có thêm mục *Coach*.
+- **Chưa có hồ sơ**: thẻ *Bạn là huấn luyện viên? Mở hồ sơ Coach* trên `/home` (ẩn được, nhớ bằng localStorage) và lựa chọn **Mở hồ sơ Coach** trong màn *Tạo CLB / Cộng đồng mới* (`/clubs`). Không duyệt, không thanh toán; cần email đã xác nhận.
+- **Học viên có tài khoản**: cùng `/home`; buổi học sắp tới nằm chung danh sách *Sắp tới theo ngày* với các kèo; `/p` thêm tab **Lớp học**.
+- **Học viên mới**: vào qua link `/coach/<slug>` coach gửi (mở được khi chưa đăng nhập; chọn *Đăng ký nhanh* hoặc *Đăng nhập để đăng ký*), hoặc (giai đoạn 2) qua *Tìm kèo / CLB* → tab Coach.
+- **Owner**: `/owner/coaches` trong Owner Console.
