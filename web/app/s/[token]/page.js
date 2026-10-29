@@ -64,7 +64,23 @@ export default function SurveyPage() {
 
       {!data.open && <p className="card text-gray-300 text-sm">{t('survey.notYet')}</p>}
 
-      {data.open && !data.answer && <SurveyForm token={token} data={data} onDone={(v) => { update(v); if (v.answer?.wants_join) setShowJoin(true); }} />}
+      {data.open && !data.answer && !data.skipped && <SurveyForm token={token} data={data} onDone={(v) => { update(v); if (v.answer?.wants_join) setShowJoin(true); }} />}
+      {data.open && !data.answer && !data.skipped && (
+        <button
+          type="button"
+          className="w-full text-center text-gray-400 hover:text-gray-200 text-sm py-3 mb-4"
+          onClick={() => api.publicPost(`/api/public/surveys/${token}/skip`, {}).then(update).catch(() => {})}
+        >
+          ✕ {t('survey.skip')}
+        </button>
+      )}
+      {data.open && !data.answer && data.skipped && (
+        <section className="card mb-4 text-center">
+          <p className="text-white font-semibold">{t('survey.skipped')}</p>
+          <p className="text-gray-400 text-sm mt-1">{t('survey.skippedHint')}</p>
+          <button type="button" className="btn-secondary mt-3" onClick={() => update({ ...data, skipped: false })}>{t('survey.rateAnyway')}</button>
+        </section>
+      )}
 
       {data.answer && (
         <section className="card mb-4 text-center">

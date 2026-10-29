@@ -262,7 +262,8 @@ function TimeGrid({ days, events, onPickDay }) {
 function DayActions({ e, onChanged }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
-  if (e.kind === 'tournament') return null;
+  // Coach sessions (and anything else managed elsewhere) carry no event actions here.
+  if (e.kind === 'tournament' || e.noActions) return null;
   const people = Number(e.main_count || 0) + Number(e.waitlist_count || 0);
   // Past sessions (done, cancelled or dated before today) can always be deleted — after a
   // second confirmation listing what goes with them. Upcoming ones with sign-ups: cancel.
@@ -330,7 +331,7 @@ function DayActions({ e, onChanged }) {
 }
 
 // ---- Day: time grid + the day's events as a detailed timeline ----------------
-function DayView({ date, events, onPickDay, onChanged }) {
+function DayView({ date, events, onPickDay, onChanged, labels = {} }) {
   const { t } = useI18n();
   const list = byDay(events)[date] || [];
   return (
@@ -338,7 +339,7 @@ function DayView({ date, events, onPickDay, onChanged }) {
       <TimeGrid days={[date]} events={events} onPickDay={onPickDay} />
       <div className="card order-first lg:order-none">
         <h3 className="text-white font-semibold mb-3">{t('cal.dayTimeline')}</h3>
-        {list.length === 0 && <p className="text-gray-400 text-sm">{t('cal.freeDay')}</p>}
+        {list.length === 0 && <p className="text-gray-400 text-sm">{labels.freeDay || t('cal.freeDay')}</p>}
         <ol className="relative border-l border-navy-600 ml-2 space-y-4">
           {list.map((e) => (
             <li key={e.id} className="pl-4">
@@ -367,7 +368,8 @@ function DayView({ date, events, onPickDay, onChanged }) {
 }
 
 // ---- Year: 12 small months; a day with kèo is filled (number = how many) ------
-function YearView({ date, events, onPickDay, onPickMonth }) {
+function YearView({ date, events, onPickDay, onPickMonth, labels = {} }) {
+  const count = (n) => (labels.yearCount ? labels.yearCount(n) : t('cal.yearCount', { n }));
   const { t, lang } = useI18n();
   const map = byDay(events.filter((e) => e.status !== 'cancelled'));
   const y = date.slice(0, 4);
@@ -382,7 +384,7 @@ function YearView({ date, events, onPickDay, onPickMonth }) {
           <div key={month} className="card !p-3">
             <button type="button" onClick={() => onPickMonth(first)} className="w-full flex items-center justify-between gap-2 min-h-[44px] -mt-1 mb-1 rounded-lg px-1 hover:bg-navy-800 text-left">
               <span className="text-white font-semibold capitalize">{new Date(`${first}T00:00:00Z`).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { month: 'long', timeZone: 'UTC' })}</span>
-              <span className={`text-xs tabular-nums ${total ? 'text-lime-300' : 'text-gray-500'}`}>{total ? t('cal.yearCount', { n: total }) : '—'}</span>
+              <span className={`text-xs tabular-nums ${total ? 'text-lime-300' : 'text-gray-500'}`}>{total ? count(total) : '—'}</span>
             </button>
             <div className="grid grid-cols-7 text-center text-[11px] text-gray-500 mb-0.5">
               {heads.map((d) => <div key={d}>{d}</div>)}
@@ -396,7 +398,7 @@ function YearView({ date, events, onPickDay, onPickMonth }) {
                     type="button"
                     key={d}
                     onClick={() => onPickDay(d)}
-                    title={n ? t('cal.yearCount', { n }) : undefined}
+                    title={n ? count(n) : undefined}
                     className={`relative h-9 sm:h-8 rounded-md text-xs tabular-nums flex items-center justify-center ${n ? 'bg-lime-400/20 text-lime-200 font-semibold hover:bg-lime-400/30' : 'text-gray-400 hover:bg-navy-800'} ${d === today ? 'ring-1 ring-lime-400' : ''}`}
                   >
                     {Number(d.slice(8))}
@@ -412,9 +414,10 @@ function YearView({ date, events, onPickDay, onPickMonth }) {
   );
 }
 
-export default function EventCalendar({ view, date, events, onPickDay, onPickMonth, onChanged }) {
-  if (view === 'year') return <YearView date={date} events={events} onPickDay={onPickDay} onPickMonth={onPickMonth || onPickDay} />;
+// `labels` lets another product (Coach) say "buổi" instead of "kèo": { yearCount(n), freeDay }.
+export default function EventCalendar({ view, date, events, onPickDay, onPickMonth, onChanged, labels }) {
+  if (view === 'year') return <YearView date={date} events={events} onPickDay={onPickDay} onPickMonth={onPickMonth || onPickDay} labels={labels} />;
   if (view === 'month') return <MonthView date={date} events={events} onPickDay={onPickDay} />;
   if (view === 'week') return <TimeGrid days={weekDays(date)} events={events} onPickDay={onPickDay} />;
-  return <DayView date={date} events={events} onPickDay={onPickDay} onChanged={onChanged} />;
+  return <DayView date={date} events={events} onPickDay={onPickDay} onChanged={onChanged} labels={labels} />;
 }

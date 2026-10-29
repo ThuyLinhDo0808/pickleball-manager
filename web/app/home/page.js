@@ -66,11 +66,25 @@ const STATUS_TONE = {
 export default function HomeHub() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
-  const { staffInfo } = useWorkspace();
+  const { staffInfo, coachInfo } = useWorkspace();
   const { manageClub, space, memberClub } = useEnter();
   const { data, loading, reload } = useLoad(() => (user ? api.get('/api/player/home') : Promise.resolve(null)), [user?.id]);
   const [filter, setFilter] = useState('all');
   const [fixOpen, setFixOpen] = useState(null); // 'profile' | 'birth': missing info pop-up
+  // "Bạn là huấn luyện viên?": shown while the product is on and there is no profile yet; × hides it on this device.
+  const [coachAskHidden, setCoachAskHidden] = useState(() => {
+    try {
+      return !!window.localStorage.getItem('pb_coach_ask_hidden');
+    } catch {
+      return false;
+    }
+  });
+  const hideCoachAsk = () => {
+    setCoachAskHidden(true);
+    try {
+      window.localStorage.setItem('pb_coach_ask_hidden', '1');
+    } catch {}
+  };
   const router = useRouter();
   // New accounts first say which sports they play and whether they run a club.
   useEffect(() => {
@@ -121,7 +135,8 @@ export default function HomeHub() {
   const managed = data.managed_clubs;
   const member = data.member_clubs;
   const isStaff = !!staffInfo?.is_staff;
-  const hasAnything = managed.length || member.length;
+  const isCoach = !!coachInfo?.has_profile;
+  const hasAnything = managed.length || member.length || isCoach;
   const today = todayYmd();
   const clubFilters = [...new Map((data.upcoming || []).filter((e) => e.club_id).map((e) => [e.club_id, e.club_name])).entries()];
   const hasXeveUpcoming = (data.upcoming || []).some((e) => !e.club_id);
@@ -179,11 +194,22 @@ export default function HomeHub() {
       )}
 
       {data.surveys_due?.length > 0 && (
-        <Link href={`/s/${data.surveys_due[0].token}`} className="card block mb-4 border-lime-400/40 text-sm">
-          <span className="text-lime-300 font-semibold">{t('survey.portalTitle')}</span>
-          <span className="text-gray-300"> · {data.surveys_due[0].title}</span>
-          <span className="text-lime-400 ml-1">→</span>
-        </Link>
+        <div className="card flex items-center gap-2 mb-4 border-lime-400/40 text-sm !py-2 !pr-2">
+          <Link href={`/s/${data.surveys_due[0].token}`} className="flex-1 min-w-0 py-1">
+            <span className="text-lime-300 font-semibold">{t('survey.portalTitle')}</span>
+            <span className="text-gray-300"> · {data.surveys_due[0].title}</span>
+            <span className="text-lime-400 ml-1">→</span>
+          </Link>
+          <button
+            type="button"
+            className="shrink-0 h-11 w-11 inline-flex items-center justify-center text-gray-200 text-xl leading-none hover:text-white"
+            aria-label={t('survey.skip')}
+            title={t('survey.skip')}
+            onClick={() => api.publicPost(`/api/public/surveys/${data.surveys_due[0].token}/skip`, {}).then(() => reload()).catch(() => {})}
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* Spaces */}
@@ -213,6 +239,16 @@ export default function HomeHub() {
               badgeTone={ROLE_TONE.member}
             />
           ))}
+          {isCoach && (
+            <SpaceTile
+              key="coach"
+              onClick={() => space('coach')}
+              avatar={<ClubAvatar icon="user" size={36} />}
+              label={coachInfo.display_name || t('hub.coach')}
+              badge={t('hub.roleCoach')}
+              badgeTone="bg-amber-300 text-navy-950"
+            />
+          )}
           {/* Club or play community (Social Manager): the request form asks which one first. */}
           <SpaceTile
             href="/club-request"
@@ -225,6 +261,15 @@ export default function HomeHub() {
           <p className="card text-gray-300 text-sm mt-2">
             {t('hub.emptySpaces')} <Link href="/discover" className="text-lime-300 underline">{t('disc.findLink')}</Link>
           </p>
+        )}
+        {coachInfo?.enabled && !isCoach && !coachAskHidden && (
+          <div className="mt-3 card !py-3 flex items-center gap-3 text-sm border-amber-300/40">
+            <span className="text-gray-400"><UiIcon name="user" className="w-5 h-5" /></span>
+            <Link href="/coach/profile?new=1" className="flex-1 min-w-0 text-gray-200 hover:text-white">
+              {t('hub.coachAsk')} <span className="text-lime-400">{t('hub.coachAskCta')} →</span>
+            </Link>
+            <button type="button" className="shrink-0 h-11 w-11 inline-flex items-center justify-center text-gray-200 text-xl leading-none hover:text-white" aria-label={t('common.close')} onClick={hideCoachAsk}>✕</button>
+          </div>
         )}
         {isStaff && (
           <button type="button" onClick={() => space('staff')} className="mt-3 w-full card !py-3 flex items-center gap-3 text-left text-sm hover:border-orange-400/60">

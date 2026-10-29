@@ -39,6 +39,7 @@ const ACTIONS = [
   r('POST', '/api/events/:id/participants/:id/(fee|waive|confirm-payment|reject-payment)', 'participant.payment'),
   r('(POST|DELETE)', '/api/events/:id/participants/:id/.*', 'participant.update'),
   r('(PUT|POST|PATCH|DELETE)', '/api/events/:id/meeting/.*', 'meeting.money'),
+  r('POST', '/api/clubs/:id/dupr/replace', 'dupr.replace'),
   r('(POST|PATCH|DELETE)', '/api/(matches|live)(/.*)?', 'match.save'),
   r('(POST|PATCH|DELETE)', '/api/tournaments(/.*)?', 'tournament.update'),
 ];

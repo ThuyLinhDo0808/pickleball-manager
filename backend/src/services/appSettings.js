@@ -8,6 +8,8 @@ const KEYS = {
   tier_self_serve: { env: 'ALLOW_TIER_SELF_SERVE', fallback: false, type: 'boolean' },
   // New clubs are asked for and created only once the app owner approves them.
   club_approval: { env: 'CLUB_APPROVAL', fallback: true, type: 'boolean' },
+  // Coach Manager for everyone. Off: only the accounts in COACH_BETA_EMAILS see it.
+  coach_enabled: { env: 'COACH_ENABLED', fallback: false, type: 'boolean' },
 };
 
 const TTL_MS = 15 * 1000;

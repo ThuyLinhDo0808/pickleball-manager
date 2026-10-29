@@ -651,6 +651,97 @@ function matchesCsv(club, list, defaultScoring = 'SIDEOUT', allowMissing = false
   return toCsv(rows);
 }
 
+// Members the Host can put in someone's place (name + DUPR ID only).
+async function replaceCandidates(club) {
+  const list = await clubMembers(club);
+  return list
+    .filter((m) => m.is_active !== false)
+    .map((m) => ({ id: m.id, full_name: m.full_name, dupr_id: m.claimed }))
+    .sort((a, b) => String(a.full_name).localeCompare(String(b.full_name), 'vi'));
+}
+
+// "Thay người": someone cannot get a DUPR account, so the Host puts another member in their
+// place in every match of `scope` that is not sent yet and not waiting in a lượt tải — the
+// other three players' matches can then go to DUPR. Sent matches are never touched.
+// from: { member_id } or { part_id } (a quick-booking row); to: a club member id.
+async function replacePlayer(club, from, toMemberId, scope = {}) {
+  const fromMember = from?.member_id || null;
+  const fromPart = from?.part_id || null;
+  if (!fromMember && !fromPart) throw httpError('Chọn người cần thay.', 400, 'bad_from');
+  if (fromMember && fromMember === toMemberId) throw httpError('Hai người phải khác nhau.', 400, 'same_person');
+  const { data: to } = await supabase.from('club_members').select('id, full_name').eq('club_id', club.id).eq('id', toMemberId).maybeSingle();
+  if (!to) throw httpError('Không tìm thấy thành viên này trong CLB.', 404, 'not_found');
+  const list = await withBatches(club, await clubMatches(club, scope));
+  const hits = (p) => (fromMember ? p.member_id === fromMember : p.part_id === fromPart);
+  const todo = list.filter((m) => !m.exported_at && !m.batch && [...m.a, ...m.b].some(hits));
+  const name = [...todo.flatMap((m) => [...m.a, ...m.b])].find(hits)?.name || null;
+  let replaced = 0;
+  const skipped = { already_in: 0, team_sent: 0 };
+  // Club / event matches: the match_players rows of that person.
+  const ms = todo.filter((m) => m.kind === 'match');
+  if (ms.length) {
+    const { data: rows } = await supabase.from('match_players').select('id, match_id, club_member_id, event_participant_id').in('match_id', ms.map((m) => m.id));
+    const pids = [...new Set((rows || []).map((r) => r.event_participant_id).filter(Boolean))];
+    const { data: parts } = pids.length ? await supabase.from('event_participants').select('id, source_club_member_id, guest_member_id').in('id', pids) : { data: [] };
+    const memberOfPart = new Map((parts || []).map((p) => [p.id, p.source_club_member_id || p.guest_member_id || null]));
+    const who = (r) => r.club_member_id || memberOfPart.get(r.event_participant_id) || null;
+    for (const m of ms) {
+      const mine = (rows || []).filter((r) => r.match_id === m.id);
+      if (mine.some((r) => who(r) === to.id)) {
+        skipped.already_in += 1;
+        continue;
+      }
+      const target = mine.filter((r) => (fromMember ? who(r) === fromMember : r.event_participant_id === fromPart));
+      for (const r of target) {
+        const { error } = await supabase.from('match_players').update({ club_member_id: to.id, event_participant_id: null }).eq('id', r.id);
+        if (error) throw error;
+      }
+      if (target.length) replaced += 1;
+    }
+  }
+  // League sub-matches: the player columns of that row.
+  for (const m of todo.filter((x) => x.kind === 'sub')) {
+    const ids = [...m.a, ...m.b].map((p) => p.member_id);
+    if (ids.includes(to.id)) {
+      skipped.already_in += 1;
+      continue;
+    }
+    const { data: s } = await supabase.from('tournament_sub_matches').select('team1_p1, team1_p2, team2_p1, team2_p2').eq('id', m.id).single();
+    const patch = {};
+    for (const c of ['team1_p1', 'team1_p2', 'team2_p1', 'team2_p2']) if (s && s[c] === fromMember) patch[c] = to.id;
+    if (!Object.keys(patch).length) continue;
+    const { error } = await supabase.from('tournament_sub_matches').update(patch).eq('id', m.id).is('dupr_exported_at', null);
+    if (error) throw error;
+    replaced += 1;
+  }
+  // Tournament pairs: the player sits on a team, which every match of that team shares — the
+  // team changes only when none of its matches was sent yet (else history would change).
+  const tms = todo.filter((x) => x.kind === 'tournament');
+  if (tms.length && fromMember) {
+    const { data: tm } = await supabase.from('tournament_matches').select('id, tournament_id, team1_id, team2_id').in('id', tms.map((m) => m.id));
+    const teamIds = [...new Set((tm || []).flatMap((x) => [x.team1_id, x.team2_id]).filter(Boolean))];
+    const { data: teams } = teamIds.length ? await supabase.from('tournament_teams').select('id, player1_id, player2_id').in('id', teamIds) : { data: [] };
+    const done = new Set();
+    for (const t of (teams || []).filter((x) => x.player1_id === fromMember || x.player2_id === fromMember)) {
+      if (t.player1_id === to.id || t.player2_id === to.id) {
+        skipped.already_in += 1;
+        continue;
+      }
+      const { count } = await supabase.from('tournament_matches').select('id', { count: 'exact', head: true }).or(`team1_id.eq.${t.id},team2_id.eq.${t.id}`).not('dupr_exported_at', 'is', null);
+      if (count) {
+        skipped.team_sent += 1;
+        continue;
+      }
+      const patch = t.player1_id === fromMember ? { player1_id: to.id } : { player2_id: to.id };
+      const { error } = await supabase.from('tournament_teams').update(patch).eq('id', t.id);
+      if (error) throw error;
+      done.add(t.id);
+    }
+    replaced += (tm || []).filter((x) => done.has(x.team1_id) || done.has(x.team2_id)).length;
+  }
+  return { replaced, skipped, from_name: name, to_name: to.full_name };
+}
+
 const TABLE = { match: 'matches', tournament: 'tournament_matches', sub: 'tournament_sub_matches' };
 async function markExported(club, items, exported) {
   const list = await clubMatches(club, { all: true });
@@ -900,4 +991,4 @@ async function playerDupr(userId) {
 
 module.exports = {
   latestRatings,
-  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, quickPlayers, setQuickId, clubMatches, matchesCsv, markExported, stats, batchesReady, withBatches, createBatch, listBatches, batchCsv, decideBatch, reopenBatch, cleanItems, BATCH_MIGRATION, playerDupr, TEMPLATE };
+  setMemberScore, MIGRATION, ready, cleanId, parseCsv, parseMembersCsv, nameFits, importRoster, attachFromRoster, setMemberId, applyProfileId, memberBoard, quickPlayers, setQuickId, clubMatches, matchesCsv, markExported, replaceCandidates, replacePlayer, stats, batchesReady, withBatches, createBatch, listBatches, batchCsv, decideBatch, reopenBatch, cleanItems, BATCH_MIGRATION, playerDupr, TEMPLATE };

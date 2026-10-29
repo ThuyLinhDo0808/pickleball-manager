@@ -3471,3 +3471,390 @@ select
 from public.transactions
 where owner_type = 'event' and is_voided = false and excluded = false
 group by event_id;
+
+-- ---- 20261229090000_survey_skip.sql ----
+-- "Không đánh giá": a player can dismiss the after-session survey. The prompt (home card,
+-- player page, event page) stops showing; the link itself keeps working until it closes.
+alter table public.event_participants add column if not exists survey_skipped_at timestamptz;
+
+-- ---- 20261230090000_coach_manager.sql ----
+-- Coach Manager (đợt C1): a coach's profile. A product of its own, beside the club /
+-- community manager — not part of any plan. One profile per account; the public page
+-- lives at /coach/<slug>. Students, classes, packages come in later migrations.
+create table if not exists public.coach_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references public.users(id) on delete cascade,
+  slug text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{2,39}$'),
+  display_name text not null check (length(display_name) between 2 and 80),
+  sport text not null default 'pickleball' check (sport in ('pickleball','badminton')),
+  bio text check (bio is null or length(bio) <= 2000),
+  level_text text check (level_text is null or length(level_text) <= 80),
+  dupr_id text check (dupr_id is null or length(dupr_id) <= 20),
+  area text check (area is null or length(area) <= 120),
+  court_name text check (court_name is null or length(court_name) <= 160),
+  map_url text check (map_url is null or length(map_url) <= 500),
+  price_note text check (price_note is null or length(price_note) <= 300),
+  phone text check (phone is null or length(phone) <= 20),
+  status text not null default 'active' check (status in ('active','paused','blocked')),
+  public boolean not null default true,
+  cancel_hours int not null default 12 check (cancel_hours between 0 and 168),
+  deduct_mode text not null default 'present_or_noshow' check (deduct_mode in ('present_or_noshow','present_only','always')),
+  blocked_reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists ix_coach_profiles_public on public.coach_profiles (public, status) where public and status = 'active';
+alter table public.coach_profiles enable row level security;
+-- Only the backend (service key) reads / writes; no policy for anon / authenticated.
+revoke all on public.coach_profiles from anon, authenticated;
+
+-- ---- 20261231090000_coach_classes.sql ----
+-- Coach Manager (đợt C2): session packages, classes and their sessions.
+create table if not exists public.coach_packages (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  name text not null check (length(name) between 1 and 80),
+  sessions int not null check (sessions between 1 and 200),
+  price int not null check (price >= 0),
+  valid_months int not null default 2 check (valid_months between 1 and 24),
+  note text check (note is null or length(note) <= 300),
+  active boolean not null default true,
+  sort int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_coach_packages_coach on public.coach_packages (coach_id);
+
+create table if not exists public.coach_classes (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  title text not null check (length(title) between 1 and 120),
+  kind text not null default 'group' check (kind in ('group','private','single')),
+  court_name text check (court_name is null or length(court_name) <= 160),
+  map_url text check (map_url is null or length(map_url) <= 500),
+  start_time time not null,
+  duration_min int not null default 90 check (duration_min between 15 and 480),
+  weekdays int[] not null default '{}',             -- 0 = Monday … 6 = Sunday
+  date_from date,
+  date_to date,
+  capacity int not null default 8 check (capacity between 1 and 100),
+  fee int not null default 0 check (fee >= 0),      -- per session, 0 = package only
+  signup_deadline_hours int not null default 2 check (signup_deadline_hours between 0 and 168),
+  waitlist boolean not null default true,
+  deduct_mode text check (deduct_mode is null or deduct_mode in ('present_or_noshow','present_only','always')),
+  note text check (note is null or length(note) <= 1000),
+  status text not null default 'open' check (status in ('open','closed','archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists ix_coach_classes_coach on public.coach_classes (coach_id, status);
+
+create table if not exists public.coach_sessions (
+  id uuid primary key default gen_random_uuid(),
+  class_id uuid not null references public.coach_classes(id) on delete cascade,
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  session_date date not null,
+  start_time time not null,
+  duration_min int not null check (duration_min between 15 and 480),
+  court_name text,
+  status text not null default 'scheduled' check (status in ('scheduled','done','cancelled')),
+  note text check (note is null or length(note) <= 1000),
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_coach_sessions_coach_date on public.coach_sessions (coach_id, session_date);
+create index if not exists ix_coach_sessions_class on public.coach_sessions (class_id, session_date);
+
+alter table public.coach_packages enable row level security;
+alter table public.coach_classes enable row level security;
+alter table public.coach_sessions enable row level security;
+revoke all on public.coach_packages, public.coach_classes, public.coach_sessions from anon, authenticated;
+
+-- ---- 20270101090000_coach_students.sql ----
+-- Coach Manager (đợt C3): students and class enrolments.
+-- A student is a person the coach teaches: an account (user_id) or, for a quick sign-up
+-- without one, a name + phone; the account is linked later by the same phone.
+create table if not exists public.coach_students (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  user_id uuid references public.users(id) on delete set null,
+  full_name text not null check (length(full_name) between 1 and 120),
+  phone text check (phone is null or length(phone) <= 20),
+  phone_key text,                               -- digits only, last 9, for matching
+  level_text text check (level_text is null or length(level_text) <= 80),
+  note text check (note is null or length(note) <= 2000),   -- coach's own notes, never shown to the student
+  status text not null default 'active' check (status in ('active','left','blocked')),
+  first_seen timestamptz not null default now()
+);
+create unique index if not exists ux_coach_students_user on public.coach_students (coach_id, user_id) where user_id is not null;
+create index if not exists ix_coach_students_coach on public.coach_students (coach_id, status);
+create index if not exists ix_coach_students_phone on public.coach_students (coach_id, phone_key);
+
+create table if not exists public.coach_enrollments (
+  id uuid primary key default gen_random_uuid(),
+  class_id uuid not null references public.coach_classes(id) on delete cascade,
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  student_id uuid not null references public.coach_students(id) on delete cascade,
+  status text not null default 'requested' check (status in ('requested','confirmed','waitlist','cancelled','removed')),
+  pay_mode text not null default 'package' check (pay_mode in ('package','per_session','free')),
+  source text not null default 'account' check (source in ('account','quick','coach')),
+  token uuid not null default gen_random_uuid(),   -- the quick sign-up's own link
+  note text check (note is null or length(note) <= 500),
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  cancelled_at timestamptz
+);
+create unique index if not exists ux_coach_enrollments_token on public.coach_enrollments (token);
+create unique index if not exists ux_coach_enrollments_live on public.coach_enrollments (class_id, student_id) where status in ('requested','confirmed','waitlist');
+create index if not exists ix_coach_enrollments_class on public.coach_enrollments (class_id, status);
+create index if not exists ix_coach_enrollments_coach on public.coach_enrollments (coach_id, status);
+
+alter table public.coach_students enable row level security;
+alter table public.coach_enrollments enable row level security;
+revoke all on public.coach_students, public.coach_enrollments from anon, authenticated;
+
+-- ---- 20270102090000_coach_attendance.sql ----
+-- Coach Manager (đợt C4): attendance, package purchases and per-session fees.
+-- A purchase is a package a student bought (the coach records it by hand in C4; C5 adds
+-- the student's own purchase with a transfer proof). Attendance deducts a session from
+-- the student's live purchase, or raises a per-session fee, by the class / coach rule.
+create table if not exists public.coach_package_purchases (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  student_id uuid not null references public.coach_students(id) on delete cascade,
+  package_id uuid references public.coach_packages(id) on delete set null,
+  name text not null check (length(name) between 1 and 80),
+  sessions_total int not null check (sessions_total between 1 and 200),
+  sessions_used int not null default 0 check (sessions_used >= 0),
+  price int not null default 0 check (price >= 0),
+  starts_on date not null default current_date,
+  expires_on date,
+  status text not null default 'active' check (status in ('pending','active','expired','refunded','cancelled')),
+  paid_at timestamptz,
+  note text check (note is null or length(note) <= 300),
+  refund_amount int check (refund_amount is null or refund_amount >= 0),
+  refund_reason text check (refund_reason is null or length(refund_reason) <= 300),
+  refunded_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_coach_purchases_student on public.coach_package_purchases (student_id, status);
+create index if not exists ix_coach_purchases_coach on public.coach_package_purchases (coach_id, status);
+
+create table if not exists public.coach_attendance (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.coach_sessions(id) on delete cascade,
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  student_id uuid not null references public.coach_students(id) on delete cascade,
+  status text not null check (status in ('present','absent','excused')),
+  late boolean not null default false,          -- excused after the cancel deadline: counts as absent
+  by_student boolean not null default false,    -- the student reported it (Tôi không đi được)
+  purchase_id uuid references public.coach_package_purchases(id) on delete set null,  -- the package a session was taken from
+  checked_at timestamptz not null default now(),
+  note text check (note is null or length(note) <= 300)
+);
+create unique index if not exists ux_coach_attendance on public.coach_attendance (session_id, student_id);
+create index if not exists ix_coach_attendance_student on public.coach_attendance (student_id, checked_at desc);
+create index if not exists ix_coach_attendance_coach on public.coach_attendance (coach_id, checked_at desc);
+
+create table if not exists public.coach_session_fees (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.coach_sessions(id) on delete cascade,
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  student_id uuid not null references public.coach_students(id) on delete cascade,
+  amount int not null check (amount >= 0),
+  status text not null default 'unpaid' check (status in ('unpaid','paid','free')),
+  paid_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists ux_coach_session_fees on public.coach_session_fees (session_id, student_id);
+create index if not exists ix_coach_session_fees_coach on public.coach_session_fees (coach_id, status);
+
+alter table public.coach_package_purchases enable row level security;
+alter table public.coach_attendance enable row level security;
+alter table public.coach_session_fees enable row level security;
+revoke all on public.coach_package_purchases, public.coach_attendance, public.coach_session_fees from anon, authenticated;
+
+-- ---- 20270103090000_coach_money.sql ----
+-- Coach Manager (đợt C5): students buy packages themselves (transfer + screenshot, the
+-- coach confirms), partial refunds, and the coach's own ledger.
+--
+-- The coach's ledger is its own table (not public.transactions): transactions is tied to a
+-- club or an event by an enum + check constraint and is read by every club view; a coach
+-- book beside it keeps the club money untouched. Same rules: entries are never edited in
+-- amount / type, a mistake is voided; "excluded" leaves an entry out of the totals.
+alter table public.coach_package_purchases add column if not exists source text not null default 'coach' check (source in ('coach','student'));
+alter table public.coach_package_purchases add column if not exists payment_ref text;
+alter table public.coach_package_purchases add column if not exists payment_proof text;          -- data URL, ≤ 400 KB, deleted after the retention period
+alter table public.coach_package_purchases add column if not exists proof_submitted_at timestamptz;
+alter table public.coach_package_purchases add column if not exists proof_purged_at timestamptz;
+alter table public.coach_package_purchases add column if not exists reject_note text check (reject_note is null or length(reject_note) <= 300);
+alter table public.coach_package_purchases add column if not exists decided_at timestamptz;
+
+alter table public.coach_session_fees add column if not exists ledger_id uuid;
+alter table public.coach_package_purchases add column if not exists ledger_id uuid;
+alter table public.coach_package_purchases add column if not exists refund_ledger_id uuid;
+
+create table if not exists public.coach_ledger (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  type text not null check (type in ('income','expense')),
+  category text not null default 'other' check (category in ('package','session_fee','refund','court','equipment','other')),
+  amount int not null check (amount >= 0),
+  note text check (note is null or length(note) <= 300),
+  occurred_on date not null default current_date,
+  student_id uuid references public.coach_students(id) on delete set null,
+  purchase_id uuid references public.coach_package_purchases(id) on delete set null,
+  fee_id uuid references public.coach_session_fees(id) on delete set null,
+  auto boolean not null default false,          -- written by the app (package paid, fee paid, refund)
+  excluded boolean not null default false,      -- "không tính vào sổ thu chi"
+  is_voided boolean not null default false,
+  voided_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_coach_ledger_coach on public.coach_ledger (coach_id, occurred_on desc);
+
+create or replace function public.block_coach_ledger_mutation() returns trigger
+language plpgsql as $$
+begin
+  if (old.amount, old.type, old.coach_id) is distinct from (new.amount, new.type, new.coach_id) then
+    raise exception 'coach_ledger is append-only: amount/type cannot be changed, void instead';
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_block_coach_ledger_mutation on public.coach_ledger;
+create trigger trg_block_coach_ledger_mutation before update on public.coach_ledger
+  for each row execute function public.block_coach_ledger_mutation();
+
+alter table public.coach_ledger enable row level security;
+revoke all on public.coach_ledger from anon, authenticated;
+
+-- ---- 20270104090000_coach_more.sql ----
+-- Coach Manager (đợt C6 – C8): Owner moderation, progress notes, reviews, open hours with
+-- 1-1 booking, reports, assistants.
+
+-- C6: why the Ban quản trị blocked a profile (status = 'blocked' already exists).
+alter table public.coach_profiles add column if not exists blocked_at timestamptz;
+alter table public.coach_profiles add column if not exists block_reason text check (block_reason is null or length(block_reason) <= 500);
+
+-- C6: a signed-in person reports a coach profile; the Ban quản trị reads them.
+create table if not exists public.coach_reports (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  user_id uuid references public.users(id) on delete set null,
+  reason text not null check (length(reason) between 3 and 1000),
+  status text not null default 'open' check (status in ('open','closed')),
+  created_at timestamptz not null default now(),
+  closed_at timestamptz
+);
+create index if not exists ix_coach_reports_coach on public.coach_reports (coach_id, status);
+
+-- C7: notes on a student's progress (optionally tied to a session, optionally a video link);
+-- "shared" notes are shown to the student, the others stay the coach's own.
+create table if not exists public.coach_notes (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  student_id uuid not null references public.coach_students(id) on delete cascade,
+  session_id uuid references public.coach_sessions(id) on delete set null,
+  body text not null check (length(body) between 1 and 2000),
+  video_url text check (video_url is null or (length(video_url) <= 500 and video_url ~ '^https://')),
+  shared boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_coach_notes_student on public.coach_notes (student_id, created_at desc);
+
+-- C7: a student's review of the coach (one per student; editable). Only someone who was
+-- present at least once may write one. The Ban quản trị can hide a review.
+create table if not exists public.coach_reviews (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  student_id uuid not null references public.coach_students(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  stars int not null check (stars between 1 and 5),
+  body text check (body is null or length(body) <= 1000),
+  hidden boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists ux_coach_reviews on public.coach_reviews (coach_id, student_id);
+
+-- C7: open hours for 1-1 lessons (weekly) and the bookings students ask for in them.
+create table if not exists public.coach_slots (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  weekday int not null check (weekday between 0 and 6),           -- 0 = Monday … 6 = Sunday
+  start_time time not null,
+  end_time time not null,
+  lesson_min int not null default 60 check (lesson_min between 30 and 240),
+  price int not null default 0 check (price >= 0),                 -- per lesson; 0 = package only
+  court_name text check (court_name is null or length(court_name) <= 160),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  check (end_time > start_time)
+);
+create index if not exists ix_coach_slots_coach on public.coach_slots (coach_id, weekday);
+
+create table if not exists public.coach_bookings (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  student_id uuid not null references public.coach_students(id) on delete cascade,
+  slot_id uuid references public.coach_slots(id) on delete set null,
+  session_date date not null,
+  start_time time not null,
+  duration_min int not null check (duration_min between 30 and 240),
+  pay_mode text not null default 'package' check (pay_mode in ('package','per_session','free')),
+  note text check (note is null or length(note) <= 500),
+  status text not null default 'requested' check (status in ('requested','accepted','declined','cancelled')),
+  decline_note text check (decline_note is null or length(decline_note) <= 300),
+  class_id uuid references public.coach_classes(id) on delete set null,
+  session_id uuid references public.coach_sessions(id) on delete set null,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz
+);
+create index if not exists ix_coach_bookings_coach on public.coach_bookings (coach_id, status, session_date);
+create unique index if not exists ux_coach_bookings_live on public.coach_bookings (coach_id, session_date, start_time) where status in ('requested','accepted');
+
+-- C8: assistants the coach invites by email; they take attendance (no money, no phones).
+create table if not exists public.coach_assistants (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  email text not null check (length(email) between 3 and 200),
+  user_id uuid references public.users(id) on delete set null,
+  status text not null default 'active' check (status in ('active','removed')),
+  created_at timestamptz not null default now()
+);
+create unique index if not exists ux_coach_assistants on public.coach_assistants (coach_id, lower(email)) where status = 'active';
+
+alter table public.coach_attendance add column if not exists by_assistant uuid references public.users(id) on delete set null;
+
+alter table public.coach_reports enable row level security;
+alter table public.coach_notes enable row level security;
+alter table public.coach_reviews enable row level security;
+alter table public.coach_slots enable row level security;
+alter table public.coach_bookings enable row level security;
+alter table public.coach_assistants enable row level security;
+revoke all on public.coach_reports, public.coach_notes, public.coach_reviews, public.coach_slots, public.coach_bookings, public.coach_assistants from anon, authenticated;
+
+-- ---- 20270105090000_coach_clubs.sql ----
+-- Coach Manager: liên kết Coach ↔ CLB / cộng đồng. Coach xin liên kết (hoặc Host mời),
+-- bên kia đồng ý. Khi đã liên kết: Host xem học viên của Coach là thành viên CLB (tên,
+-- trình, số buổi đi học, số buổi còn trong gói — không số điện thoại, không ghi chú của
+-- Coach); Coach xem danh sách thành viên CLB (tên, giới tính, trình / DUPR — không số
+-- điện thoại) và thêm một thành viên làm học viên.
+create table if not exists public.coach_club_links (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.coach_profiles(id) on delete cascade,
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  status text not null default 'requested' check (status in ('requested','active','declined')),
+  requested_by text not null check (requested_by in ('coach','host')),
+  note text check (note is null or length(note) <= 500),
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  unique (coach_id, club_id)
+);
+create index if not exists ix_coach_club_links_club on public.coach_club_links (club_id, status);
+alter table public.coach_club_links enable row level security;
+-- Only the backend (service key) reads / writes; no policy for anon / authenticated.
+revoke all on public.coach_club_links from anon, authenticated;
+
+-- A student added from a club's member list keeps the member it came from (so the Host
+-- sees them even without an account).
+alter table public.coach_students add column if not exists club_member_id uuid references public.club_members(id) on delete set null;
+create index if not exists ix_coach_students_member on public.coach_students (club_member_id) where club_member_id is not null;

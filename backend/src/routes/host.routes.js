@@ -290,7 +290,8 @@ router.post('/plan/cancel', async (req, res) => {
   }
 });
 
-// ---- Email check (quick sign-up): status, type the 6-digit code, send a new code ----
+// ---- Email check (quick sign-up): status, confirm (opened the Supabase link / an old
+// code), send a new link ----
 const emailVerify = require('../services/emailVerify');
 const { rateLimit: limiter } = require('../services/rateLimit');
 const codeTries = limiter({ windowMs: 10 * 60 * 1000, max: 10, key: (req) => `vcode:${req.userId}`, code: 'rate_limited' });
@@ -320,7 +321,7 @@ router.post('/account/verify-email', codeTries, async (req, res) => {
 router.post('/account/verify-email/send', codeSends, async (req, res) => {
   try {
     if (!(await emailVerify.unverifiedSince(req.userId))) return res.json({ verified: true });
-    await emailVerify.sendCode(req.accountEmail, require('./auth.routes').webOrigin(req));
+    await emailVerify.sendLink(req.userId, req.accountEmail, require('./auth.routes').webOrigin(req));
     res.json({ sent: true });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });

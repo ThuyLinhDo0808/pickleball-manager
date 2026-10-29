@@ -12,6 +12,8 @@ import Hint from '@/components/ui/Hint';
 import Segmented from '@/components/ui/Segmented';
 import UiIcon from '@/components/ui/UiIcon';
 import HomeFind from '@/components/HomeFind';
+import CoachFind from '@/components/coach/CoachFind';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const EMPTY = { q: '', country: VIETNAM, province: '', district: '' };
 
@@ -50,7 +52,14 @@ function ClubCard({ c }) {
 // everyone; asking to join needs an account.
 export default function DiscoverPage() {
   const { t } = useI18n();
-  const [tab, setTab] = useState('events'); // Tìm kèo | Tìm CLB / cộng đồng
+  const [tab, setTab] = useState('events'); // Tìm kèo | Tìm CLB / cộng đồng | Coach
+  // Coach tab: once Coach Manager is on for everyone, or for its beta testers.
+  const { coachInfo } = useWorkspace();
+  const [coachOpen, setCoachOpen] = useState(false);
+  useEffect(() => {
+    api.publicGet('/api/public/coach/enabled').then((r) => setCoachOpen(!!r?.enabled)).catch(() => {});
+  }, []);
+  const coachTab = coachOpen || !!coachInfo?.enabled;
   const [f, setF] = useState(EMPTY);
   const [applied, setApplied] = useState(null);
   const [items, setItems] = useState([]);
@@ -82,7 +91,8 @@ export default function DiscoverPage() {
     const start = { ...EMPTY, ...Object.fromEntries(Object.keys(EMPTY).map((k) => [k, sp.get(k) || ''])) };
     setF(start);
     // A search from the home page (?q=…) or ?tab=clubs opens the club tab.
-    if (sp.get('tab') === 'clubs' || Object.keys(EMPTY).some((k) => k !== 'country' && sp.get(k))) setTab('clubs');
+    if (sp.get('tab') === 'coach') setTab('coach');
+    else if (sp.get('tab') === 'clubs' || Object.keys(EMPTY).some((k) => k !== 'country' && sp.get(k))) setTab('clubs');
     run(start);
   }, [run]);
 
@@ -100,8 +110,8 @@ export default function DiscoverPage() {
     <PlayerShell requireAuth={false}>
       <h1 className="text-white text-2xl font-bold">{t('findx.pageTitle')}</h1>
       <p className="text-gray-400 text-sm mb-3">{t('disc.lead')}</p>
-      <Segmented full items={['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? t('findx.tabEvents') : t('findx.tabClubs'))} className="mb-4 w-full" />
-      {tab === 'events' ? <HomeFind eventsOnly /> : (
+      <Segmented full items={coachTab ? ['events', 'clubs', 'coach'] : ['events', 'clubs']} value={tab} onChange={setTab} label={(k) => (k === 'events' ? t('findx.tabEvents') : k === 'coach' ? t('cfind.tab') : t('findx.tabClubs'))} className="mb-4 w-full" />
+      {tab === 'coach' && coachTab ? <CoachFind /> : tab === 'events' ? <HomeFind eventsOnly /> : (
       <>
       {!filtered && <TopCommunities className="mb-4" />}
 

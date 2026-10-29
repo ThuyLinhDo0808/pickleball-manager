@@ -29,8 +29,9 @@ function requestId(req, res, next) {
 }
 
 // ---- CORS ------------------------------------------------------------------------
-// CORS_ORIGIN: comma-separated list of web origins (e.g. https://my-app.vercel.app).
-// Falls back to PUBLIC_WEB_URL. Outside production, none set = any origin (local dev).
+// CORS_ORIGIN: comma-separated list of web origins (e.g. https://my-app.vercel.app). An
+// entry may hold one '*' for Vercel preview deployments (https://my-app-git-*-team.vercel.app);
+// it never matches a dot, so it cannot widen to another domain. Falls back to PUBLIC_WEB_URL. Outside production, none set = any origin (local dev).
 // In production the API refuses to start without a real list: a missing variable must
 // never silently open the API to every website.
 function corsOptions() {
@@ -44,10 +45,12 @@ function corsOptions() {
     }
     return { origin: '*', maxAge: 600 };
   }
+  const patterns = list.filter((s) => s.includes('*')).map((s) => new RegExp(`^${s.split('*').map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[a-z0-9-]+')}$`, 'i'));
   return {
     origin(origin, cb) {
       // Server-to-server calls (Telegram webhook, health checks) send no Origin header.
-      if (!origin || list.includes(origin.replace(/\/+$/, ''))) return cb(null, true);
+      const o = origin ? origin.replace(/\/+$/, '') : '';
+      if (!origin || list.includes(o) || patterns.some((re) => re.test(o))) return cb(null, true);
       return cb(null, false);
     },
     maxAge: 600,

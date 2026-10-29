@@ -60,6 +60,7 @@ const membersGroup = (key) => ({
     { href: '/club/members/requests', key: 'nav.memRequests', icon: 'members', badge: 'memberRequests' },
     { href: '/club/members/review', key: 'nav.memReview', icon: 'members' },
     { href: '/club/members/dupr', key: 'nav.memDupr', icon: 'rankings', sport: 'pickleball' },
+    { href: '/club/coaches', key: 'nav.clubCoaches', icon: 'users', coachLink: true },
   ],
 });
 
@@ -120,6 +121,21 @@ const NAV_BY_WORKSPACE = {
     { href: '/staff', key: 'nav.staffEvents', icon: 'whistle' },
     { href: '/account', key: 'nav.account', icon: 'account' },
   ],
+  // Coach Manager: its own product (no plan, no club). Classes, students and money come
+  // in later batches; the menu grows with them.
+  coach: [
+    { href: '/coach', key: 'nav.coachOverview', icon: 'dashboard', exact: true },
+    { href: '/coach/schedule', key: 'nav.coachSchedule', icon: 'schedule' },
+    { href: '/coach/classes', key: 'nav.coachClasses', icon: 'plans', also: ['/coach/sessions'] },
+    { href: '/coach/students', key: 'nav.coachStudents', icon: 'users' },
+    { href: '/coach/hours', key: 'nav.coachHours', icon: 'clock' },
+    { href: '/coach/packages', key: 'nav.coachPackages', icon: 'ticket' },
+    { href: '/coach/money', key: 'nav.coachMoney', icon: 'wallet' },
+    { href: '/coach/stats', key: 'nav.coachStats', icon: 'chart' },
+    { href: '/coach/clubs', key: 'nav.coachClubs', icon: 'clubs' },
+    { href: '/coach/profile', key: 'nav.coachProfile', icon: 'user' },
+    { href: '/account', key: 'nav.account', icon: 'account' },
+  ],
 };
 // Social Manager with a community (cụm sân) picked: every Club Manager page, for the
 // community (no meetings / round robin), plus the app-wide leaderboard.
@@ -172,6 +188,12 @@ const TABS_BY_WORKSPACE = {
   ],
   xeve: [{ href: '/account', key: 'nav.account', icon: 'account' }],
   staff: [{ href: '/staff', key: 'nav.staffEvents', icon: 'whistle' }],
+  coach: [
+    { href: '/coach', key: 'nav.coachOverview', icon: 'dashboard', exact: true },
+    { href: '/coach/schedule', key: 'nav.coachSchedule', icon: 'schedule' },
+    { href: '/coach/classes', key: 'nav.coachClasses', icon: 'plans', also: ['/coach/sessions'] },
+    { href: '/coach/students', key: 'nav.coachStudents', icon: 'users' },
+  ],
   community: [
     { href: '/dashboard', key: 'nav.commOverview', icon: 'dashboard' },
     { href: '/club/members', key: 'nav.commMembers', icon: 'members', badge: 'memberRequests' },
@@ -322,7 +344,7 @@ export default function AppShell({ children, back }) {
       if (y) sideRef.current.scrollTop = y;
     } catch {}
   });
-  const { workspace, ready: wsReady, plan } = useWorkspace();
+  const { workspace, ready: wsReady, plan, setWorkspace, coachInfo } = useWorkspace();
   // 'community' = Social Manager with a community picked (club pages for that community);
   // 'xeve' alone = the older one-off kèo. `scoped`: the pages work on a club / community.
   const pathname = usePathname() || '';
@@ -332,6 +354,12 @@ export default function AppShell({ children, back }) {
   const [openGroups, setOpenGroups] = useState({});
   const requestCount = useMemberRequestCount(club?.id, !!user && (workspace === 'club' || (workspace === 'xeve' && !!club)), pathname);
   const badges = { memberRequests: requestCount };
+
+  // A coach page opened by its address (bookmark, link) switches the space to Coach, so the
+  // switcher and the menu say where you are.
+  useEffect(() => {
+    if (user && coachInfo?.has_profile && workspace !== 'coach' && (pathname === '/coach' || pathname.startsWith('/coach/'))) setWorkspace('coach');
+  }, [user, coachInfo?.has_profile, workspace, pathname, setWorkspace]);
 
   // No space chosen yet (first visit, or the saved one is gone): the home hub lists them.
   useEffect(() => {
@@ -425,7 +453,10 @@ export default function AppShell({ children, back }) {
     (isActive(item.href, item.exact) && !(item.exclude || []).some((p) => isActive(p))) ||
     (item.also || []).some((p) => isActive(p));
   const itemActive = (item) => (item.children ? item.children.some(navActive) : navActive(item));
-  const mode = workspace === 'xeve' && club ? 'community' : workspace;
+  // Coach Manager pages carry their own menu whatever space was open (the profile is
+  // created from the club / community side, before the coach space exists).
+  const onCoachPage = pathname === '/coach' || pathname.startsWith('/coach/');
+  const mode = onCoachPage ? 'coach' : workspace === 'xeve' && club ? 'community' : workspace;
   const scoped = workspace === 'club' || mode === 'community';
   const coAdmin = scoped && isCoAdmin;
   // A co-admin works on the owner's club with the full menu, except granting access to
@@ -436,13 +467,13 @@ export default function AppShell({ children, back }) {
   const roleOk = (href) => !rolePages || rolePages.some((p) => href === p || (p !== '/finance' && href.startsWith(`${p}/`)));
   const NAV = (NAV_BY_WORKSPACE[mode] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
-    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
+    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.coachLink || !!coachInfo?.enabled || coachInfo?.host_links > 0) && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
   const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
   // Staff / finance see one or two pages: put their account beside them, so the bar is not
   // one lonely icon next to "Thêm".
   if (tabs.length < 3 && !tabs.some((tab) => tab.href === '/account')) tabs.push({ href: '/account', key: 'nav.account', icon: 'account' });
-  const needsClub = workspace === 'club' && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
+  const needsClub = workspace === 'club' && !onCoachPage && !clubsLoading && clubs.length === 0 && !NO_CLUB_OK.some((p) => isActive(p)) && clubsChecked;
   const moreActive = !tabs.some((tab) => navActive(tab));
   // A group is open if the Host opened it, or (until they close it) when it holds the current page.
   const groupOpen = (g) => openGroups[g.key] ?? itemActive(g);

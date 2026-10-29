@@ -67,18 +67,19 @@ router.get('/me', wrap(async (req, res) => {
     const { count: n, error } = await supabase.from(table).select('id', { count: 'exact', head: true }).eq('status', status);
     return error ? null : n || 0;
   };
-  const [payments, clubRequests, handovers, feedback] = await Promise.all([
+  const [payments, clubRequests, handovers, feedback, coachReports] = await Promise.all([
     can('payments') ? count('plan_payments', 'pending') : null,
     can('hosts') ? count('club_requests', 'pending') : null,
     req.console.owner ? count('account_handovers', 'pending') : null,
     can('feedback') ? count('feedback', 'new') : null,
+    req.console.owner ? count('coach_reports', 'open') : null,
   ]);
   res.json({
     owner: !!req.console.owner,
     support: !!req.console.support,
     permissions: req.console.permissions,
     email: req.hostEmail,
-    todo: { payments, club_requests: clubRequests, handovers, feedback },
+    todo: { payments, club_requests: clubRequests, handovers, feedback, coach_reports: coachReports },
   });
 }));
 
@@ -246,6 +247,13 @@ router.get('/overview', wrap(async (req, res) => {
     usage: {
       xeve: { today: todayCount(all.xeve), ...S.weekly(all.xeve.map((e) => e.created_at), today) },
       tournaments: { today: todayCount(tournaments), ...S.weekly(tournaments.map((t) => t.created_at), today) },
+      coaches: await (async () => {
+        if (!(await require('../services/coachAccess').ready())) return null;
+        const { data } = await supabase.from('coach_profiles').select('status, created_at').limit(10000);
+        const rows = data || [];
+        const { count: reports } = await supabase.from('coach_reports').select('id', { count: 'exact', head: true }).eq('status', 'open').then((r) => r, () => ({ count: 0 }));
+        return { total: rows.length, blocked: rows.filter((r) => r.status === 'blocked').length, ...S.weekly(rows.map((r) => r.created_at), today), open_reports: reports || 0 };
+      })().catch(() => null),
     },
     revenue: {
       month,
@@ -1319,6 +1327,100 @@ router.post('/audit/:id/undo', wrap(async (req, res) => {
   const u = await loadHost(entry.target_host_id).catch(() => ({ id: entry.target_host_id, email: entry.target_email }));
   const back = await owner.audit(req, { action: 'undo', host: u, oldValue: entry.new_value, newValue: entry.old_value, note: entry.action, undoOf: entry.id });
   res.json({ restored: entry.old_value, audit_id: back?.id || null });
+}));
+
+// ---- Coach Manager (C6): every coach profile, block / unblock, reports, reviews ----------
+// Owners only (no support permission). Reads only what the Ban quản trị needs to judge a
+// profile: never students' phones, never money details beyond totals.
+async function coachReady() {
+  const C = require('../services/coachAccess');
+  return C.ready();
+}
+router.get('/coaches', wrap(async (req, res) => {
+  if (!(await coachReady())) return res.json({ ready: false, rows: [] });
+  const { data: profiles, error } = await supabase.from('coach_profiles').select('id, user_id, slug, display_name, sport, area, status, public, created_at, blocked_at, block_reason').order('created_at', { ascending: false }).limit(2000);
+  if (error) throw error;
+  const ids = (profiles || []).map((p) => p.id);
+  const count = async (table, filter) => {
+    const m = new Map();
+    if (!ids.length) return m;
+    let q = supabase.from(table).select('coach_id').in('coach_id', ids).limit(100000);
+    if (filter) q = filter(q);
+    const { data } = await q.then((r) => r, () => ({ data: [] }));
+    for (const r of data || []) m.set(r.coach_id, (m.get(r.coach_id) || 0) + 1);
+    return m;
+  };
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const [students, classes, sessions, reports] = await Promise.all([
+    count('coach_students', (q) => q.eq('status', 'active')),
+    count('coach_classes', (q) => q.eq('status', 'open')),
+    count('coach_sessions', (q) => q.gte('session_date', since).neq('status', 'cancelled')),
+    count('coach_reports', (q) => q.eq('status', 'open')),
+  ]);
+  const ratings = new Map();
+  if (ids.length) {
+    const { data: rv } = await supabase.from('coach_reviews').select('coach_id, stars').in('coach_id', ids).eq('hidden', false).then((r) => r, () => ({ data: [] }));
+    for (const r of rv || []) {
+      const x = ratings.get(r.coach_id) || { n: 0, sum: 0 };
+      x.n += 1;
+      x.sum += r.stars;
+      ratings.set(r.coach_id, x);
+    }
+  }
+  const userIds = [...new Set((profiles || []).map((p) => p.user_id))];
+  const { data: users } = userIds.length ? await supabase.from('users').select('id, email').in('id', userIds) : { data: [] };
+  const emailOf = new Map((users || []).map((u) => [u.id, u.email]));
+  res.json({
+    ready: true,
+    rows: (profiles || []).map((p) => {
+      const r = ratings.get(p.id);
+      return { ...p, email: emailOf.get(p.user_id) || null, students: students.get(p.id) || 0, classes: classes.get(p.id) || 0, sessions_30d: sessions.get(p.id) || 0, open_reports: reports.get(p.id) || 0, rating: r ? Math.round((r.sum / r.n) * 10) / 10 : null, reviews: r?.n || 0 };
+    }),
+  });
+}));
+router.get('/coaches/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id) || !(await coachReady())) throw fail(404, 'Not found.', 'not_found');
+  const { data: p } = await supabase.from('coach_profiles').select('id, user_id, slug, display_name, sport, area, court_name, bio, level_text, status, public, created_at, blocked_at, block_reason').eq('id', req.params.id).maybeSingle();
+  if (!p) throw fail(404, 'Not found.', 'not_found');
+  const [{ data: u }, { data: reports }, { data: reviews }] = await Promise.all([
+    supabase.from('users').select('email').eq('id', p.user_id).maybeSingle(),
+    supabase.from('coach_reports').select('id, reason, status, created_at, closed_at').eq('coach_id', p.id).order('created_at', { ascending: false }).limit(100).then((r) => r, () => ({ data: [] })),
+    supabase.from('coach_reviews').select('id, stars, body, hidden, created_at').eq('coach_id', p.id).order('created_at', { ascending: false }).limit(100).then((r) => r, () => ({ data: [] })),
+  ]);
+  res.json({ ...p, email: u?.email || null, reports: reports || [], reviews: reviews || [] });
+}));
+router.patch('/coaches/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id) || !(await coachReady())) throw fail(404, 'Not found.', 'not_found');
+  const action = req.body?.action;
+  if (!['block', 'unblock'].includes(action)) throw fail(400, 'action must be block or unblock.', 'bad_action');
+  const { data: before } = await supabase.from('coach_profiles').select('id, user_id, display_name, status, blocked_at, block_reason').eq('id', req.params.id).maybeSingle();
+  if (!before) throw fail(404, 'Not found.', 'not_found');
+  const reason = String(req.body?.reason || '').trim().slice(0, 500) || null;
+  if (action === 'block' && !reason) throw fail(400, 'Say why the profile is blocked.', 'reason_required');
+  const patch = action === 'block' ? { status: 'blocked', blocked_at: new Date().toISOString(), block_reason: reason } : { status: 'active', blocked_at: null, block_reason: null };
+  const { data: after, error } = await supabase.from('coach_profiles').update(patch).eq('id', before.id).select('id, status, blocked_at, block_reason').single();
+  if (error) throw error;
+  const { data: u } = await supabase.from('users').select('id, email').eq('id', before.user_id).maybeSingle();
+  await owner.audit(req, { action: `coach.${action}`, host: u, oldValue: { status: before.status, block_reason: before.block_reason }, newValue: { status: after.status, block_reason: after.block_reason }, note: [before.display_name, reason].filter(Boolean).join(' — ') });
+  res.json(after);
+}));
+router.patch('/coach-reports/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Not found.', 'not_found');
+  const status = req.body?.status === 'open' ? 'open' : 'closed';
+  const { data, error } = await supabase.from('coach_reports').update({ status, closed_at: status === 'closed' ? new Date().toISOString() : null }).eq('id', req.params.id).select('*').maybeSingle();
+  if (error) throw error;
+  if (!data) throw fail(404, 'Not found.', 'not_found');
+  await owner.audit(req, { action: `coach.report_${status}`, newValue: { report: data.id, coach_id: data.coach_id } });
+  res.json(data);
+}));
+router.patch('/coach-reviews/:id', wrap(async (req, res) => {
+  if (!isUuid(req.params.id)) throw fail(404, 'Not found.', 'not_found');
+  const hidden = req.body?.hidden === true;
+  const { data, error } = await supabase.from('coach_reviews').update({ hidden }).eq('id', req.params.id).select('id, coach_id, hidden').maybeSingle();
+  if (error) throw error;
+  if (!data) throw fail(404, 'Not found.', 'not_found');
+  await owner.audit(req, { action: hidden ? 'coach.review_hide' : 'coach.review_show', newValue: { review: data.id, coach_id: data.coach_id } });
+  res.json(data);
 }));
 
 module.exports = router;

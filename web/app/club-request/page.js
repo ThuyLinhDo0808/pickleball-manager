@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
 import { ClubProfileFields, ClubImagesPicker } from '@/components/ClubProfileFields';
 import { useI18n, I18nSpace } from '@/context/I18nContext';
@@ -78,13 +79,18 @@ function RequestCard({ r, onCancel, onRenew, busy }) {
 // Club or community: what the Host is about to open. Same steps after this choice.
 function KindChooser({ onPick }) {
   const { t } = useI18n();
+  const { coachInfo } = useWorkspace();
+  const router = useRouter();
+  const cards = [
+    ['club', 'court', 'border-lime-400/50 hover:border-lime-400'],
+    ['community', 'ticket', 'border-amber-300/50 hover:border-amber-300'],
+    // Coach Manager: no request, no plan — the profile opens at once.
+    ...(coachInfo?.enabled && !coachInfo?.has_profile ? [['coach', 'user', 'border-sky-400/50 hover:border-sky-400']] : []),
+  ];
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {[
-        ['club', 'court', 'border-lime-400/50 hover:border-lime-400'],
-        ['community', 'ticket', 'border-amber-300/50 hover:border-amber-300'],
-      ].map(([k, icon, tone]) => (
-        <button key={k} type="button" onClick={() => onPick(k)} className={`card text-left border-2 ${tone} transition`}>
+    <div className={`grid gap-3 ${cards.length > 2 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+      {cards.map(([k, icon, tone]) => (
+        <button key={k} type="button" onClick={() => (k === 'coach' ? router.push('/coach/profile?new=1') : onPick(k))} className={`card text-left border-2 ${tone} transition`}>
           <UiIcon name={icon} className="w-7 h-7 text-gray-300" />
           <span className="block text-white text-lg font-bold mt-2">{t(`creq.pick_${k}`)}</span>
           <span className="block text-gray-300 text-sm mt-1">{t(`creq.pickHint_${k}`)}</span>
