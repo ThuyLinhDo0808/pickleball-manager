@@ -47,6 +47,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const [fixErr, setFixErr] = useState('');
   const [showItems, setShowItems] = useState(null); // batch id whose matches are listed
   const [showHistory, setShowHistory] = useState(false);
+  const [showDone, setShowDone] = useState(false); // "Lượt đã tải" (confirmed lượt tải) under the sent matches
   const [tab, setTab] = useState(null); // ready | waiting | sent | ineligible (null = the first with matches)
   const [unpicked, setUnpicked] = useState({}); // ready matches the Host took out of the file
   const [justConfirmed, setJustConfirmed] = useState(null); // the lượt tải just confirmed → "Hoàn tác" right there
@@ -412,22 +413,6 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
 
       {current === 'sent' && (
         <div role="tabpanel">
-          {confirmedBatches.length > 0 && (
-            <ul className="mt-3 flex flex-col gap-2">
-              {confirmedBatches.map((b) => (
-                <li key={b.id} className="rounded-xl border border-lime-400/30 bg-lime-400/5 p-3 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm text-gray-100">
-                    {t('duprx.batchLine', { time: when(b.created_at) })} · <span className="tabular-nums">{t('duprx.batchN', { n: b.count })}</span>
-                    <span className="block text-xs text-lime-300">{t('duprx.statusConfirmed', { time: b.decided_at ? when(b.decided_at) : '—' })} · {t('duprx.lockedNote')}</span>
-                  </span>
-                  <span className="flex flex-wrap gap-2 ml-auto">
-                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => again(b)}>{t('duprx.againBtn')}</button>
-                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => reopen(b)}>{b.count > 1 ? t('duprx.undoAllBtn', { n: b.count }) : t('duprx.undoBtn')}</button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
           {!sent.length ? <Empty text={t('duprx.emptySent')} /> : (
             <Grid>
               {sent.map((m) => (
@@ -443,6 +428,34 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
                 />
               ))}
             </Grid>
+          )}
+          {confirmedBatches.length > 0 && (
+            <div className="mt-4">
+              <button type="button" className="text-sm font-semibold text-white underline underline-offset-2 min-h-[44px] sm:min-h-0" onClick={() => setShowDone((v) => !v)} aria-expanded={showDone}>
+                {showDone ? t('duprx.doneHide') : t('duprx.doneShow', { n: confirmedBatches.length })}
+              </button>{' '}
+              <Hint inline text={t('duprx.doneHint')} />
+              {showDone && (
+                <ul className="mt-2 flex flex-col gap-2">
+                  {confirmedBatches.map((b) => (
+                    <li key={b.id} className="rounded-xl border border-lime-400/30 bg-lime-400/5 p-3">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                        <span className="text-gray-100 text-sm">
+                          {t('duprx.batchLine', { time: when(b.created_at) })} · <span className="tabular-nums">{t('duprx.batchN', { n: b.count })}</span>
+                        </span>
+                        <span className="text-xs text-lime-300">{t('duprx.statusConfirmed', { time: b.decided_at ? when(b.decided_at) : '—' })} · {t('duprx.lockedNote')}</span>
+                      </div>
+                      <button type="button" className="text-sm text-gray-300 underline underline-offset-2 mt-1 min-h-[44px] sm:min-h-0" onClick={() => setShowItems(showItems === b.id ? null : b.id)}>{showItems === b.id ? t('duprx.hideItems') : t('duprx.showItems', { n: b.count })}</button>
+                      {showItems === b.id && <BatchMatches b={b} />}
+                      <div className="flex flex-wrap items-center justify-end gap-2 mt-2">
+                        <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => again(b)}>{t('duprx.againBtn')}</button>
+                        <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => reopen(b)}>{b.count > 1 ? t('duprx.undoAllBtn', { n: b.count }) : t('duprx.undoBtn')}</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           {cancelledBatches.length > 0 && (
             <div className="mt-4">
