@@ -373,7 +373,7 @@ function ClubHome({ community = false }) {
           </Section>
             </div>
             <div className="flex flex-col gap-4">
-          <Section title={`${t('home.birthdays')}`}>
+          <Section title={`${t('home.birthdays')}${birthdays.length ? ` (${birthdays.length})` : ''}`} action={['owner', 'co_admin'].includes(club?.role || 'owner') ? <Link href="/club/birthdays" className="text-lime-400 text-sm whitespace-nowrap min-h-[44px] inline-flex items-center">{t('bdays.seeAll')} »</Link> : null}>
             {birthdays.length === 0 ? (
               <p className="text-gray-400 text-sm">{t('home.noBirthdays')}</p>
             ) : (
@@ -388,6 +388,7 @@ function ClubHome({ community = false }) {
                 ))}
               </ul>
             )}
+            {birthdays.length > 6 && ['owner', 'co_admin'].includes(club?.role || 'owner') && <Link href="/club/birthdays" className="block text-right text-lime-400 text-sm mt-2">{t('bdays.more', { n: birthdays.length - 6 })} »</Link>}
           </Section>
 
           {usage && (

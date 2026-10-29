@@ -40,6 +40,7 @@ const ACTIONS = [
   r('(POST|DELETE)', '/api/events/:id/participants/:id/.*', 'participant.update'),
   r('(PUT|POST|PATCH|DELETE)', '/api/events/:id/meeting/.*', 'meeting.money'),
   r('POST', '/api/clubs/:id/dupr/replace', 'dupr.replace'),
+  r('(POST|PATCH|DELETE)', '/api/clubs/:id/gifts(/:id)?', 'gift.update'),
   r('(POST|PATCH|DELETE)', '/api/(matches|live)(/.*)?', 'match.save'),
   r('(POST|PATCH|DELETE)', '/api/tournaments(/.*)?', 'tournament.update'),
 ];

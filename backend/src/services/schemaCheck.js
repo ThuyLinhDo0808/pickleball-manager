@@ -97,6 +97,7 @@ const PROBES = [
   { table: 'coach_ledger', column: 'excluded', migration: '20270103090000_coach_money.sql' },
   { table: 'coach_bookings', column: 'pay_mode', migration: '20270104090000_coach_more.sql' },
   { table: 'coach_club_links', column: 'requested_by', migration: '20270105090000_coach_clubs.sql' },
+  { table: 'member_gifts', column: 'occasion', migration: '20270106090000_member_gifts.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },

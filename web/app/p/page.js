@@ -129,6 +129,22 @@ export default function PlayerHome() {
         </section>
       )}
 
+      {me.gifts?.length > 0 && (
+        <section className="card mb-4 border-pink-300/40">
+          <h2 className="text-pink-200 font-semibold mb-1 flex items-center gap-2"><UiIcon name="gift" className="w-5 h-5" />{t('bdays.myGifts')}</h2>
+          <ul className="divide-y divide-navy-700">
+            {me.gifts.map((g) => (
+              <li key={g.id} className="py-2 text-sm">
+                <div className="text-white font-medium">{g.kind === 'free_session' ? t('bdays.g_free') : g.kind === 'percent' ? t('bdays.g_percentN', { n: g.percent }) : g.item}</div>
+                {g.message && <p className="text-gray-200 whitespace-pre-line break-words">{g.message}</p>}
+                <div className="text-gray-400 text-xs">{[g.club_name, g.expires_on ? t('bdays.until', { d: g.expires_on.split('-').reverse().join('/') }) : null].filter(Boolean).join(' · ')}</div>
+              </li>
+            ))}
+          </ul>
+          <p className="text-gray-500 text-xs mt-1">{t('bdays.showHost')}</p>
+        </section>
+      )}
+
       {pending.length > 0 && (
         <section className="card mb-4 border-yellow-500/40">
           <h2 className="text-yellow-300 font-semibold mb-2">{t('player.waitingPayment')}</h2>

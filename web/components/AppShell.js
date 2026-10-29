@@ -592,10 +592,11 @@ export default function AppShell({ children, back }) {
               {t('contact.nav')}
             </Link>
           )}
+          {!collapsed && <LangSelect className="w-full" />}
           <div className={`flex gap-2 ${collapsed ? 'flex-col items-center' : 'items-center'}`}>
             {['club', 'xeve'].includes(workspace) && <SignupBell side={collapsed ? 'rail' : 'sidebar'} className="shrink-0" />}
-            {!collapsed && <LangSelect className="flex-1 min-w-0" />}
             <ThemeToggle className="shrink-0" />
+            {!collapsed && <span className="flex-1" />}
             <button
               onClick={() => signOut()}
               title={t('nav.signOut')}

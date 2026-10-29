@@ -532,6 +532,10 @@ player.get('/updates', async (req, res) => {
         else if (x.status === 'pending' && x.reject_note && x.decided_at) items.push({ id: `cp:${x.id}:rej:${x.decided_at}`, kind: 'coach_pay_rejected', at: x.decided_at, title: x.name, href: '/p/activity' });
       }
     })().catch(() => {});
+    // Quà sinh nhật from a club / community.
+    for (const g of await require('../services/gifts').forUser(uid).catch(() => [])) {
+      if (g.created_at >= since) items.push({ id: `gift:${g.id}`, kind: 'gift', at: g.created_at, title: g.club_name || '', href: '/p' });
+    }
     for (const n of await moderation.noticesFor(uid).catch(() => [])) {
       if (n.created_at < since && n.read_at) continue;
       items.push({ id: `n:${n.id}`, kind: `notice_${n.kind}`, at: n.created_at, title: n.club_name || '', href: '/home', notice_id: n.id });
@@ -900,6 +904,7 @@ player.get('/me', async (req, res) => {
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      gifts: await require('../services/gifts').forUser(uid).catch(() => []),
       notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
       // DUPR ratings from the clubs' DUPR imports (null before the migration).
