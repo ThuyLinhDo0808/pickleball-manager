@@ -107,7 +107,7 @@ router.post('/login', tooMany, perLogin, requireCaptcha, async (req, res) => {
 
 // Quick sign-up: username, password, email and gender (birth date and region are asked
 // later, when they are needed). The account works at once — the person is signed in
-// and can hold one place — and the email is confirmed with a 6-digit code
+// and can hold one place — and the email is confirmed with a link sent to it
 // (services/emailVerify.js).
 router.post('/signup', tooMany, mails, requireCaptcha, async (req, res) => {
   const b = req.body || {};
@@ -165,20 +165,34 @@ router.post('/signup', tooMany, mails, requireCaptcha, async (req, res) => {
       /* not migrated yet */
     }
     let codeSent = true;
-    await emailVerify.sendCode(email, webOrigin(req)).catch((err) => {
+    await emailVerify.sendLink(userId, email, webOrigin(req)).catch((err) => {
       codeSent = false;
-      console.error('signup code', err.message);
+      console.error('signup verify link', err.message);
     });
     const s = signed.session;
     res.status(201).json({
       needs_confirmation: false,
       verify_email: true,
       code_sent: codeSent,
+      link_sent: codeSent,
       session: { access_token: s.access_token, refresh_token: s.refresh_token, expires_in: s.expires_in, expires_at: s.expires_at, token_type: s.token_type },
     });
   } catch (err) {
     console.error('signup', err.message);
     res.status(502).json({ error: 'Sign-up is unavailable right now.', code: 'auth_unavailable' });
+  }
+});
+
+// The "Xác nhận email" link from the sign-up email: { t }. No sign-in needed (it may be
+// opened on another device); the signed link names the account and its email.
+const verifyTries = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, key: (req) => `verify-link:${req.ip}` });
+router.post('/verify-link', tooMany, verifyTries, async (req, res) => {
+  try {
+    res.json(await emailVerify.verifyLink(req.body?.t));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+    console.error('verify link', err.message);
+    res.status(502).json({ error: 'Email check is unavailable right now.', code: 'auth_unavailable' });
   }
 });
 

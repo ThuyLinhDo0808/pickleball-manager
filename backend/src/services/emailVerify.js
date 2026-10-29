@@ -1,11 +1,13 @@
-// Email check with a 6-digit code. Sign-up makes the account right away (no wait for a
-// link), then emails a code (Supabase's email OTP, "Magic Link" template with
-// {{ .Token }}); the player types it on the same screen. Until then the account is
+// Email check with a link. Sign-up makes the account right away, then emails a button
+// ("Xác nhận email") whose link is signed by this server (account id + email + expiry;
+// nothing to store, no Supabase OTP and its per-minute limit). Opening it on any device —
+// signed in or not — confirms the email (/verify-email?t=…). Until then the account is
 // "unverified" (users.email_unverified_since):
 //   - it can hold ONE upcoming sign-up, and only for EMAIL_VERIFY_GRACE_HOURS (48 h);
 //   - after that, no new sign-ups until the email is confirmed;
 //   - its email gives no rights (owner, support staff, club roles given by email).
 // Accounts made before this change (column null) count as verified.
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { supabase } = require('../supabase');
 
@@ -94,6 +96,15 @@ const KINDS = {
 
 // Emails with a button instead of a code.
 const LINK_KINDS = {
+  verify: {
+    subject: 'Xác nhận email NexusZone của bạn',
+    title: 'Xác nhận email NexusZone',
+    use: 'Bấm nút bên dưới để xác nhận email cho tài khoản NexusZone của bạn. Link dùng được trên mọi thiết bị và hết hạn sau 3 ngày.',
+    button: 'Xác nhận email',
+    plain: 'Nút không bấm được? Chép đường dẫn này vào trình duyệt:',
+    notYou: 'Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này.',
+    why: 'Email được gửi vì địa chỉ này vừa được dùng để đăng ký trên NexusZone.',
+  },
   reset: {
     subject: 'Đặt lại mật khẩu NexusZone',
     title: 'Đặt lại mật khẩu NexusZone',
@@ -166,50 +177,67 @@ function linkEmail(url, kind = 'reset', { logo = logoUrl() } = {}) {
   return { subject, text, html };
 }
 
-// Our own email (Resend) that shows only the code: Supabase makes the one-time code
-// (generateLink, the same code verifyOtp checks), we send it. Returns 'sent', 'off' (no
-// mail sender), 'no_code' (Supabase made no usable code) or 'mail_failed' (code made, the
-// email did not go out). Supabase allows an OTP of 6–10 digits; 6 is the default.
-const OTP = /^\d{6,10}$/;
-async function mailCode(email) {
-  if (!process.env.RESEND_API_KEY) {
-    console.error('verify code mail off: RESEND_API_KEY is not set, falling back to the Supabase mailer (a few emails per hour)');
-    return 'off';
-  }
-  const { data, error } = await supabase.auth.admin.generateLink({ type: 'magiclink', email });
-  const code = String(data?.properties?.email_otp || '');
-  if (error || !OTP.test(code)) {
-    console.error('verify code link', error?.message || `no usable otp in generateLink (length ${code.length}; check Auth → Email → OTP length, 6–10)`);
-    return 'no_code';
-  }
-  const { subject, text, html } = codeEmail(code);
-  const r = await require('./accountSecurity').sendMail(email, subject, text, html);
-  if (r !== 'sent') console.error('verify code mail', r);
-  return r === 'sent' ? 'sent' : 'mail_failed';
+// The link: base64url(account id).expiry.signature over (id, email, expiry). Changing the
+// email makes old links useless.
+const LINK_HOURS = Number(process.env.EMAIL_VERIFY_LINK_HOURS || 72);
+const linkKey = () => crypto.createHash('sha256').update(`pbm-verify-link:${process.env.MFA_ENC_KEY || ''}:${process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`).digest();
+const linkSig = (uid, email, exp) => crypto.createHmac('sha256', linkKey()).update(`${uid}.${String(email || '').toLowerCase()}.${exp}`).digest('base64url');
+function makeToken(uid, email, now = Date.now()) {
+  const exp = Math.floor(now / 1000) + LINK_HOURS * 3600;
+  return `${Buffer.from(uid).toString('base64url')}.${exp}.${linkSig(uid, email, exp)}`;
+}
+// → { uid, exp } when the signature is right (the email is checked by the caller).
+function readToken(t) {
+  const [u, exp, sig] = String(t || '').split('.');
+  if (!u || !/^\d+$/.test(exp || '') || !sig || sig.length > 100) return null;
+  return { uid: Buffer.from(u, 'base64url').toString(), exp: Number(exp), sig };
 }
 
-// Email the code. With our own mail sender the email shows only the code; without it,
-// Supabase's "Magic Link" template is used (it must contain {{ .Token }}). Once
-// generateLink has made a code, Supabase refuses signInWithOtp for 60 s (it counts as a
-// send), so after a failed Resend send there is no fallback: say so instead.
-async function sendCode(email, origin) {
-  const own = await mailCode(email).catch((err) => {
-    console.error('verify code mail', err.message);
-    return 'mail_failed';
-  });
-  if (own === 'sent') return;
-  if (own === 'mail_failed') throw httpError('The verification email could not be sent. Try again in a minute.', 502, 'mail_failed');
+// Email the link (our own mail sender, Resend). Without one: Supabase's own "Magic Link"
+// email, whose link ({{ .ConfirmationURL }}) signs in and comes back to /verify-email.
+async function sendLink(userId, email, origin) {
+  if (process.env.RESEND_API_KEY && origin) {
+    const url = `${origin}/verify-email?t=${encodeURIComponent(makeToken(userId, email))}`;
+    const { subject, text, html } = linkEmail(url, 'verify');
+    const r = await require('./accountSecurity').sendMail(email, subject, text, html).catch((err) => {
+      console.error('verify link mail', err.message);
+      return 'failed';
+    });
+    if (r === 'sent') return;
+    console.error('verify link mail', r);
+    throw httpError('The verification email could not be sent. Try again in a minute.', 502, 'mail_failed');
+  }
+  if (!process.env.RESEND_API_KEY) console.error('verify link mail off: RESEND_API_KEY is not set, falling back to the Supabase mailer (a few emails per hour)');
   const { error } = await authClient().auth.signInWithOtp({
     email,
     options: { shouldCreateUser: false, ...(origin ? { emailRedirectTo: `${origin}/verify-email` } : {}) },
   });
   if (error) {
-    console.error('verify code supabase', error.status, error.code || '', error.message);
-    if (/rate limit|seconds/i.test(error.message || '') || error.status === 429) throw httpError('Please wait a moment before asking for a new code.', 429, 'code_rate_limit');
+    console.error('verify link supabase', error.status, error.code || '', error.message);
+    if (/rate limit|seconds/i.test(error.message || '') || error.status === 429) throw httpError('Please wait a moment before asking for a new email.', 429, 'code_rate_limit');
     throw error;
   }
 }
+// Older name kept for callers.
+const sendCode = (email, origin, userId) => sendLink(userId, email, origin);
 
+// The link was opened: confirm the account it names, if it is still that account's email.
+async function verifyLink(t) {
+  const tok = readToken(t);
+  const bad = () => httpError('This link is wrong or has expired.', 400, 'bad_link');
+  if (!tok || !/^[0-9a-f-]{36}$/i.test(tok.uid)) throw bad();
+  if (tok.exp < Date.now() / 1000) throw httpError('This link has expired. Ask for a new one.', 400, 'link_expired');
+  const { data: u } = await supabase.from('users').select('id, email, email_unverified_since').eq('id', tok.uid).maybeSingle();
+  if (!u) throw bad();
+  const want = Buffer.from(linkSig(u.id, u.email, tok.exp));
+  const got = Buffer.from(tok.sig);
+  if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) throw bad();
+  if (u.email_unverified_since) await markVerified(u.id);
+  return { verified: true };
+}
+
+const OTP = /^\d{6,10}$/;
+// Codes emailed before the switch to links still work for a while (typed on the old screen).
 async function verifyCode(userId, email, code) {
   const token = String(code || '').replace(/\s+/g, '');
   if (!OTP.test(token)) throw httpError('Enter the 6-digit code.', 400, 'bad_code');
@@ -234,4 +262,4 @@ function signedInByEmail(accessToken) {
   }
 }
 
-module.exports = { MIGRATION, GRACE_HOURS, authClient, unverifiedSince, status, assertCanRegister, assertVerified, markVerified, sendCode, verifyCode, signedInByEmail, forget, codeEmail, linkEmail };
+module.exports = { MIGRATION, GRACE_HOURS, authClient, unverifiedSince, status, assertCanRegister, assertVerified, markVerified, sendCode, sendLink, verifyLink, makeToken, verifyCode, signedInByEmail, forget, codeEmail, linkEmail };
