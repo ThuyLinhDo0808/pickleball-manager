@@ -4375,6 +4375,9 @@ export const vi = {
     freeHint: "Khi người chơi khai DUPR ID trong hồ sơ (hoặc bạn nhập ID cho thành viên), tài khoản được liên kết ngay.",
   },
   duprx: {
+    undoOne: "Hoàn tác trận này",
+    undoOneAsk: "Đưa riêng trận này về chờ gửi? Các trận khác trong lượt tải vẫn giữ là đã gửi. Nếu trận đã có trên DUPR, hãy xoá nó trên DUPR trước khi gửi lại để không bị trùng.",
+    undoAllBtn: "Hoàn tác cả lượt ({n} trận)",
     repBtn: "Thay người",
     repTitle: "Thay người trong các trận chưa gửi",
     repHint: "Dùng khi một người không tạo được tài khoản DUPR: chọn thành viên khác thay vào chỗ của họ. Chỉ đổi trong các trận chưa gửi và chưa nằm trong lượt tải; trận đã gửi giữ nguyên. Những người chơi cùng vẫn được gửi trận.",
