@@ -91,6 +91,7 @@ const PROBES = [
   { table: 'transactions', column: 'excluded', migration: '20261224090000_txn_excluded.sql' },
   { table: 'event_participants', column: 'survey_skipped_at', migration: '20261229090000_survey_skip.sql' },
   { table: 'coach_profiles', column: 'deduct_mode', migration: '20261230090000_coach_manager.sql' },
+  { table: 'coach_sessions', column: 'duration_min', migration: '20261231090000_coach_classes.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },

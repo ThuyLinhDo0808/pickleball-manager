@@ -248,7 +248,9 @@ export default function SignInPage() {
       await api.publicPost('/api/public/auth/forgot', { login, origin: window.location.origin, captcha_token: captcha });
       setResetStep('sent');
       setResendIn(60);
-      setInfo(t('auth.resetLinkSent'));
+      // Say where the link went so a typo in the address is caught at once: the email itself
+      // when one was typed; for a username only that name (the account's email stays private).
+      setInfo(login.includes('@') ? t('auth.resetLinkSentTo', { email: login.trim() }) : t('auth.resetLinkSentUser', { user: login.trim() }));
     } catch (err) {
       if (err?.payload?.code === 'code_wait') setResendIn(Number(err.payload.retry_after) || 60);
       setError(errorText(err, t));

@@ -11,11 +11,12 @@ import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { CoachGate, publicCoachUrl } from '@/components/coach/CoachGate';
+import { SessionRow } from '@/components/coach/SessionRow';
 
 // Coach Manager → Tổng quan: the profile's state and what to do next. Classes, students
 // and money arrive in the next batches; until then the tiles say so instead of showing 0.
 export default function CoachOverviewPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data, loading, error, reload } = useLoad(() => api.get('/api/coach/overview'), []);
   return (
     <AppShell>
@@ -26,9 +27,9 @@ export default function CoachOverviewPage() {
         {data && (
           <>
             <KpiRow cols={4}>
-              <StatTile label={t('coach.kpiClasses')} value="—" sub={t('coach.comingSoon')} />
+              <StatTile label={t('coach.kpiClasses')} value={String(data.classes)} onClick={() => (window.location.href = '/coach/classes')} />
               <StatTile label={t('coach.kpiStudents')} value="—" sub={t('coach.comingSoon')} />
-              <StatTile label={t('coach.kpiWeek')} value="—" sub={t('coach.comingSoon')} />
+              <StatTile label={t('coach.kpiWeek')} value={String(data.sessions_week)} onClick={() => (window.location.href = '/coach/schedule')} />
               <StatTile label={t('coach.kpiPending')} value="—" sub={t('coach.comingSoon')} />
             </KpiRow>
 
@@ -58,19 +59,30 @@ export default function CoachOverviewPage() {
               </div>
             </section>
 
+            <section className="card !p-0 overflow-hidden mb-4">
+              <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-navy-700">
+                <h2 className="text-white font-semibold">{t('coach.nextSessions')}</h2>
+                <Link href="/coach/schedule" className="text-lime-400 text-sm hover:underline">{t('coach.schedule')} →</Link>
+              </div>
+              {data.next?.length ? data.next.map((s) => <SessionRow key={s.id} s={s} lang={lang} onChanged={reload} withClass />) : (
+                <p className="text-gray-400 text-sm px-4 py-3">{t('coach.noNextSessions')} <Link href="/coach/classes/new" className="text-lime-300 underline">{t('coach.classNew')}</Link></p>
+              )}
+            </section>
+
             <section className="card">
               <h2 className="text-white font-semibold mb-2">{t('coach.nextSteps')}</h2>
               <ol className="grid gap-2 text-sm">
                 {[
                   ['check', t('coach.step1'), true],
                   ['share', t('coach.step2'), false],
-                  ['plans', t('coach.step3'), false],
+                  ['plans', t('coach.step3'), data.classes > 0],
                   ['users', t('coach.step4'), false],
                 ].map(([icon, label, done], i) => (
                   <li key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${done ? 'border-lime-400/40 bg-lime-400/5 text-gray-200' : 'border-navy-700 text-gray-300'}`}>
                     <span className={done ? 'text-lime-400' : 'text-gray-500'}><UiIcon name={icon} className="w-5 h-5" /></span>
                     <span className="flex-1">{label}</span>
-                    {!done && i > 1 && <span className="text-[11px] text-gray-500 whitespace-nowrap">{t('coach.comingSoon')}</span>}
+                    {!done && i === 2 && <Link href="/coach/classes/new" className="text-lime-300 text-xs whitespace-nowrap hover:underline">{t('coach.classNew')} →</Link>}
+                    {!done && i === 3 && <span className="text-[11px] text-gray-500 whitespace-nowrap">{t('coach.comingSoon')}</span>}
                   </li>
                 ))}
               </ol>

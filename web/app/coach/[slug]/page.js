@@ -10,12 +10,15 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { formatVnd } from '@/lib/format';
+import { formatDay, hhmm } from '@/lib/dates';
+import { scheduleText, endTime, dmy } from '@/lib/coach';
 
 // A coach's public page (/coach/<slug>): who they are, where and what they teach.
 // Classes and sign-up arrive in the next batches. No phone number here.
 export default function CoachPublicPage() {
   const { slug } = useParams();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user } = useAuth();
   const { data, error, loading } = useLoad(() => api.publicGet(`/api/public/coach/${slug}`), [slug]);
 
@@ -60,9 +63,47 @@ export default function CoachPublicPage() {
         {!c.area && !c.court_name && !c.price_note && <p className="text-gray-500">—</p>}
       </section>
 
+      {c.packages?.length > 0 && (
+        <section className="card mb-4">
+          <h2 className="text-white font-semibold mb-2">{t('coach.packages')}</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {c.packages.map((p) => (
+              <div key={p.id} className="rounded-lg border border-navy-700 px-3 py-2">
+                <p className="text-white font-medium break-words">{p.name}</p>
+                <p className="text-lime-400 font-bold tabular-nums">{formatVnd(p.price)}</p>
+                <p className="text-gray-400 text-xs">{t('coach.pkgLine', { n: p.sessions, m: p.valid_months })}{p.note ? ` · ${p.note}` : ''}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="card">
         <h2 className="text-white font-semibold mb-2">{t('coach.classesTitle')}</h2>
-        <EmptyState title={t('coach.noClassesYet')}>{t('coach.noClassesHint')}</EmptyState>
+        {!c.classes?.length ? (
+          <EmptyState title={t('coach.noClassesYet')}>{t('coach.noClassesHint')}</EmptyState>
+        ) : (
+          <div className="grid gap-3">
+            {c.classes.map((k) => (
+              <div key={k.id} className="rounded-lg border border-navy-700 px-3 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-white font-semibold break-words">{k.title}</p>
+                    <p className="text-gray-300 text-sm">{t(`coach.kind_${k.kind}`)} · {scheduleText(k, t)}</p>
+                    <p className="text-gray-400 text-xs">{[k.court_name, k.kind !== 'single' ? `${dmy(k.date_from)} → ${dmy(k.date_to)}` : null, t('coach.cCap', { n: k.capacity }), k.fee > 0 ? t('coach.cFeeN', { v: formatVnd(k.fee) }) : t('coach.cFeePackage')].filter(Boolean).join(' · ')}</p>
+                    {k.note && <p className="text-gray-400 text-xs mt-1 whitespace-pre-line break-words">{k.note}</p>}
+                  </div>
+                  <span className="text-[11px] rounded-full bg-navy-800 text-gray-400 px-2 py-0.5 whitespace-nowrap">{t('coach.signupSoon')}</span>
+                </div>
+                {k.next_sessions?.length > 0 && (
+                  <p className="text-gray-300 text-xs mt-2 tabular-nums">
+                    {t('coach.nextSessionsShort')}: {k.next_sessions.map((s) => `${formatDay(s.session_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit' })} ${hhmm(s.start_time)}`).join(' · ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </PlayerShell>
   );
