@@ -743,7 +743,7 @@ async function replacePlayer(club, from, toMemberId, scope = {}) {
 }
 
 const TABLE = { match: 'matches', tournament: 'tournament_matches', sub: 'tournament_sub_matches' };
-async function markExported(club, items, exported) {
+async function markExported(club, items, exported, { keepBatches = false } = {}) {
   const list = await clubMatches(club, { all: true });
   const allowed = new Set(list.map((m) => `${m.kind}:${m.id}`));
   let n = 0;
@@ -753,6 +753,19 @@ async function markExported(club, items, exported) {
     const { error } = await supabase.from(TABLE[kind]).update({ dupr_exported_at: exported ? new Date().toISOString() : null }).in('id', ids);
     if (error) throw error;
     n += ids.length;
+  }
+  // "Hoàn tác trận này": the match leaves its confirmed lượt tải too, so that lượt's count
+  // and "Tải lại file" only cover what is still sent (a lượt left empty is cancelled).
+  if (!exported && n && !keepBatches && (await batchesReady())) {
+    const back = new Set(cleanItems(items).map(itemKey));
+    const { data: done } = await supabase.from('dupr_export_batches').select('id, items').eq('club_id', club.id).eq('status', 'confirmed');
+    for (const b of done || []) {
+      const keep = cleanItems(b.items).filter((i) => !back.has(itemKey(i)));
+      if (keep.length === cleanItems(b.items).length) continue;
+      const patch = keep.length ? { items: keep, match_count: keep.length } : { items: keep, match_count: 0, status: 'cancelled' };
+      const { error } = await supabase.from('dupr_export_batches').update(patch).eq('id', b.id);
+      if (error) throw error;
+    }
   }
   return { updated: n };
 }
@@ -865,7 +878,7 @@ async function reopenBatch(club, id, userId) {
     clash.push(...sent.map(itemKey));
   }
   if (clash.length) throw Object.assign(httpError('Some of these matches are in another download or were sent since.', 409, 'batch_conflict'), { count: new Set(clash).size });
-  if (b.status === 'confirmed') await markExported(club, items, false);
+  if (b.status === 'confirmed') await markExported(club, items, false, { keepBatches: true });
   const { error } = await supabase
     .from('dupr_export_batches')
     .update({ status: 'pending', decided_at: null, decided_by: userId || null })

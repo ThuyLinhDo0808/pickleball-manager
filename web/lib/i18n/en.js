@@ -4375,6 +4375,9 @@ export const en = {
     freeHint: "When a player adds their DUPR ID to their profile (or you add it for a member), they are linked at once.",
   },
   duprx: {
+    undoOne: "Undo this match",
+    undoOneAsk: "Move only this match back to waiting? The other matches of the download stay sent. If the match is already on DUPR, delete it there before sending it again so it is not counted twice.",
+    undoAllBtn: "Undo the whole download ({n} matches)",
     repBtn: "Replace player",
     repTitle: "Replace a player in unsent matches",
     repHint: "Use this when someone cannot create a DUPR account: pick another member to take their place. Only matches not sent yet and not in a download batch change; sent matches stay as they are. The other players' matches can still be sent.",

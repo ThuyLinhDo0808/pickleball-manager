@@ -224,6 +224,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   );
   const mark = async (items, exported) => {
     if (exported && items.length === 1 && !window.confirm(t('duprx.markOneAsk'))) return;
+    if (!exported && items.length === 1 && !window.confirm(t('duprx.undoOneAsk'))) return;
     setBusy(true);
     setErr('');
     try {
@@ -421,7 +422,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
                   </span>
                   <span className="flex flex-wrap gap-2 ml-auto">
                     <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => again(b)}>{t('duprx.againBtn')}</button>
-                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => reopen(b)}>{t('duprx.undoBtn')}</button>
+                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => reopen(b)}>{b.count > 1 ? t('duprx.undoAllBtn', { n: b.count }) : t('duprx.undoBtn')}</button>
                   </span>
                 </li>
               ))}
@@ -436,7 +437,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
                   footer={
                     <p className="text-xs text-lime-300 mt-1">
                       {t('dupr.exportedOn', { date: localDate(new Date(m.exported_at), 'vi-VN') })}{' '}
-                      <button type="button" className="underline text-gray-400 ml-1" disabled={busy} onClick={() => mark([{ kind: m.kind, id: m.id }], false)}>{t('dupr.unmark')}</button>
+                      <button type="button" className="underline text-gray-300 hover:text-white ml-1 min-h-[44px] sm:min-h-0" disabled={busy} onClick={() => mark([{ kind: m.kind, id: m.id }], false)}>{t('duprx.undoOne')}</button>
                     </p>
                   }
                 />
