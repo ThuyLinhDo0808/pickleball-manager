@@ -257,7 +257,7 @@ function mailStudent(studentId, subject, text) {
   safe(
     (async () => {
       const { data: st } = await supabase.from('coach_students').select('user_id').eq('id', studentId).maybeSingle();
-      return st?.user_id ? mailTo(st.user_id, subject, text, '/p') : 'no_account';
+      return st?.user_id ? mailTo(st.user_id, subject, text, '/p/activity') : 'no_account';
     })(),
   );
 }

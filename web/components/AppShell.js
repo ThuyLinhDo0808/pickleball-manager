@@ -18,6 +18,7 @@ import PlanLimitNotice from '@/components/PlanLimitNotice';
 import { featureForPath, planFor, hasFeature } from '@/lib/planFeatures';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import LangSelect from '@/components/LangSelect';
+import ThemeToggle from '@/components/ThemeToggle';
 import UiIcon from '@/components/ui/UiIcon';
 import { NAV_ACTIVE } from '@/lib/nav';
 import BrandLogo from '@/components/BrandLogo';
@@ -594,6 +595,7 @@ export default function AppShell({ children, back }) {
           <div className={`flex gap-2 ${collapsed ? 'flex-col items-center' : 'items-center'}`}>
             {['club', 'xeve'].includes(workspace) && <SignupBell side={collapsed ? 'rail' : 'sidebar'} className="shrink-0" />}
             {!collapsed && <LangSelect className="flex-1 min-w-0" />}
+            <ThemeToggle className="shrink-0" />
             <button
               onClick={() => signOut()}
               title={t('nav.signOut')}
@@ -613,6 +615,7 @@ export default function AppShell({ children, back }) {
             <Icon name="dashboard" className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">{workspace && <ContextSwitcher compact />}</div>
+          <ThemeToggle className="shrink-0" />
           {['club', 'xeve'].includes(workspace) && <SignupBell className="shrink-0" />}
         </div>
       </header>

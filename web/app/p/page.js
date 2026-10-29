@@ -1,13 +1,10 @@
 'use client';
 import { QuickProfileModal, QuickBirthModal } from '@/components/QuickProfileModal';
 import DuprCard from '@/components/DuprCard';
-import MyBookings from '@/components/MyBookings';
 import PlayerNotices from '@/components/PlayerNotices';
 import LinkRequests from '@/components/LinkRequests';
 import { levelText } from '@/lib/levels';
-import { useEffect, useState } from 'react';
-import { CancelDialog, CancelLine } from '@/components/CancelHistory';
-import { refundIfCancelNow } from '@/lib/cancelPolicy';
+import { useState } from 'react';
 import Link from 'next/link';
 import PlayerShell from '@/components/PlayerShell';
 import PaymentCard from '@/components/PaymentCard';
@@ -19,7 +16,6 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import MyCoachClasses, { AssistEntry } from '@/components/coach/MyCoachClasses';
 import { formatVnd } from '@/lib/format';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
@@ -43,30 +39,6 @@ export default function PlayerHome() {
   const [qr, setQr] = useState(null);
   const [flash, setFlash] = useState('');
   const [fixOpen, setFixOpen] = useState(null); // 'profile' | 'birth': missing info pop-up
-  const [cancelling, setCancelling] = useState(null); // history row being cancelled
-  const [cancelBusy, setCancelBusy] = useState(false);
-  const [cancelErr, setCancelErr] = useState('');
-
-  function cancelEvent(h) {
-    setCancelErr('');
-    setCancelling(h);
-  }
-  async function doCancel(reason) {
-    const h = cancelling;
-    setCancelBusy(true);
-    setCancelErr('');
-    try {
-      const r = await api.post(`/api/player/participations/${h.participant_id}/cancel`, { reason });
-      setCancelling(null);
-      const pct = r.refund_percent ?? (r.late ? 0 : 100);
-      setFlash(pct === 100 ? t('pp.cancelled') : pct === 50 ? t(h.fee_paid ? 'cancelx.doneHalf' : 'cancelx.doneHalfOwe') : t('pp.cancelledLate'));
-      reload();
-    } catch (err) {
-      setCancelErr(err.message);
-    } finally {
-      setCancelBusy(false);
-    }
-  }
 
   async function cancel(ref) {
     if (!window.confirm(t('player.cancelConfirm'))) return;
@@ -119,9 +91,12 @@ export default function PlayerHome() {
         </div>
       )}
 
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
+      {/* Left: my activity — check-in code, sessions left, debt, sessions played, win rate, reviews. */}
+      <div className="min-w-0">
       <PlayerQrCard code={me.checkin_code} onRotated={reload} />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <Stat label={t('player.sessionsLeft')} value={sessionsValue} tone="text-lime-400" />
         <Stat label={t('player.debt')} value={me.totals.debt ? formatVnd(me.totals.debt) : t('player.noDebt')} tone={me.totals.debt ? 'text-yellow-300' : 'text-gray-300'} />
         <Stat label={t('player.eventsPlayed')} value={me.totals.events} />
@@ -188,11 +163,6 @@ export default function PlayerHome() {
         </section>
       )}
 
-      {/* Updates reach players on the bell (no e-mail setting any more). */}
-      <MyBookings signedIn />
-      <AssistEntry />
-      <MyCoachClasses />
-
       <section className="mb-4">
         <h2 className="text-white font-semibold mb-2">{t('player.myClubs')}</h2>
         {me.clubs.length === 0 && <p className="card text-gray-400 text-sm">{t('player.noClubs')}</p>}
@@ -230,6 +200,9 @@ export default function PlayerHome() {
         </div>
       </section>
 
+      </div>
+      {/* Right: DUPR rating and form. */}
+      <div className="min-w-0 lg:sticky lg:top-20">
       <section className="card mb-4">
         <h2 className="text-white font-semibold mb-2">{t('player.dupr')}</h2>
         {me.dupr && (
@@ -246,86 +219,14 @@ export default function PlayerHome() {
         )}
       </section>
 
-      <section className="card mb-4">
+      <section className="card">
         <h2 className="text-white font-semibold mb-1">{t('player.form')}</h2>
         {me.form.length ? <FormChart data={me.form} /> : <p className="text-gray-400 text-sm">{t('player.noForm')}</p>}
       </section>
+        <Link href="/p/activity" className="block text-right text-lime-300 text-sm font-semibold hover:underline mt-1 min-h-[44px] leading-[44px]">{t('pp2.seeMatches')} →</Link>
+      </div>
+      </div>
 
-      <section className="card">
-        <h2 className="text-white font-semibold mb-2">{t('player.history')}</h2>
-        {me.history.length === 0 && <p className="text-gray-400 text-sm">{t('player.noHistory')}</p>}
-        {cancelling && (
-          <CancelDialog
-            open
-            percent={refundIfCancelNow({ deadline: cancelling.cancel_deadline, halfDeadline: cancelling.half_deadline, status: cancelling.status })}
-            fee={cancelling.fee}
-            paid={!!cancelling.fee_paid}
-            busy={cancelBusy}
-            error={cancelErr}
-            onClose={() => setCancelling(null)}
-            onConfirm={doCancel}
-          />
-        )}
-        <div className="flex flex-col divide-y divide-navy-700">
-          {me.history.map((h) => {
-            const deadline = h.cancel_deadline && new Date(h.cancel_deadline);
-            const fmtAt = (d) => localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
-            const info = (
-              <div className="min-w-0">
-                <div className="text-white text-sm break-words">{h.title}</div>
-                <div className="text-gray-400 text-xs">
-                  {localDate(new Date(`${h.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}
-                  {h.start_time ? ` · ${h.start_time.slice(0, 5)}` : ''}
-                  {h.club_name ? ` · ${h.club_name}` : ''}
-                </div>
-                {h.can_cancel && h.status === 'registered' && deadline && (
-                  <div className={`text-[11px] ${new Date() > deadline ? 'text-orange-300' : 'text-gray-500'}`}>
-                    {new Date() <= deadline
-                      ? t('pp.freeUntil', { at: fmtAt(deadline) })
-                      : h.half_deadline && new Date() <= new Date(h.half_deadline)
-                        ? t('cancelx.halfUntil', { at: fmtAt(new Date(h.half_deadline)) })
-                        : t('pp.pastDeadline')}
-                  </div>
-                )}
-                {h.status === 'cancelled' && (h.cancelled_at || h.cancel_reason) && (
-                  <div className="text-[11px] text-gray-500">
-                    {h.cancelled_at && `${t('cancelx.cancelledAt', { at: fmtAt(new Date(h.cancelled_at)) })} · `}
-                    <CancelLine item={{ refund_percent: h.refund_percent, by: h.cancelled_by, reason: h.cancel_reason }} fee={h.fee} paid={!!h.fee_paid} />
-                  </div>
-                )}
-              </div>
-            );
-            return (
-              <div key={h.event_id} className="flex items-center justify-between gap-3 py-2">
-                <div className="min-w-0">
-                  {h.link ? <Link href={`/e/${h.link}`}>{info}</Link> : info}
-                  {h.ticket_code && (
-                    <Link href={`/t/${h.ticket_code}`} className="text-lime-400 text-xs font-semibold">{t('pp.ticket')}</Link>
-                  )}
-                  {h.status === 'pending' && h.link && (
-                    <Link href={`/e/${h.link}`} className="text-yellow-300 text-xs font-semibold">
-                      {h.payment_status === 'proof_submitted' ? t('signup.hostChecking') : t('pp.payNow')}
-                    </Link>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={`text-xs ${h.status === 'checked_in' ? 'text-lime-400' : h.status === 'no_show' ? 'text-red-300' : 'text-gray-400'}`}>
-                    {t(`player.status_${h.status}`)}
-                    {h.late_cancel && h.refund_percent == null && ` · ${t('policy.lateBadge')}`}
-                  </span>
-                  {h.can_cancel && (
-                    <button className="text-red-400 text-xs" onClick={() => cancelEvent(h)}>{t('events.cancel')}</button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <p className="text-center mt-6">
-        <Link href="/home" className="text-gray-500 text-xs underline">← {t('hub.navHome')}</Link>
-      </p>
 
       <Modal open={!!qr} title={t('join.payTitle')} onClose={() => setQr(null)}>
         {qr && <PaymentCard payment={qr} />}

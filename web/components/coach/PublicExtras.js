@@ -78,7 +78,7 @@ export function BookOneOnOne({ slug }) {
             <div className="grid gap-3">
               <p className="text-lime-300">{t('cbook.sent')}</p>
               <div className="flex justify-end gap-2">
-                <Link href="/p#my-coach" className="btn-secondary">{t('cbook.seeMine')}</Link>
+                <Link href="/p/activity#my-coach" className="btn-secondary">{t('cbook.seeMine')}</Link>
                 <button type="button" className="btn-primary" onClick={() => setPick(null)}>{t('common.close')}</button>
               </div>
             </div>
