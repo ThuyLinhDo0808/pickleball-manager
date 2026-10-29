@@ -1906,12 +1906,90 @@ router.post('/:clubId/dupr/batches/:batchId/reopen', async (req, res) => {
     duprErr(res, err);
   }
 });
+// Thay người: put another member in place of someone who cannot get a DUPR ID, in the
+// matches of this scope not sent yet. GET lists who can step in (name + DUPR ID).
+router.get('/:clubId/dupr/replace', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    res.json(await dupr.replaceCandidates(req.club));
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
+router.post('/:clubId/dupr/replace', async (req, res) => {
+  try {
+    if (!(await duprGate(req, res))) return;
+    const b = req.body || {};
+    if (!isUuid(b.to_member_id) || (b.from_member_id && !isUuid(b.from_member_id)) || (b.from_part_id && !isUuid(b.from_part_id))) return res.status(400).json({ error: 'Chọn người thay.', code: 'bad_input' });
+    const out = await dupr.replacePlayer(req.club, { member_id: b.from_member_id || null, part_id: b.from_part_id || null }, b.to_member_id, duprScope(b));
+    // The activity log line names who was replaced by whom.
+    req.body = { name: `${out.from_name || '?'} → ${out.to_name}` };
+    res.json(out);
+  } catch (err) {
+    duprErr(res, err);
+  }
+});
 router.post('/:clubId/dupr/matches/mark', async (req, res) => {
   try {
     if (!(await duprGate(req, res))) return;
     res.json(await dupr.markExported(req.club, req.body?.items, req.body?.exported !== false));
   } catch (err) {
     duprErr(res, err);
+  }
+});
+
+// Coach liên kết: coaches who asked to link / were invited / are linked; invite one by
+// their page address; accept / decline / unlink; a linked coach's students who are members
+// here (name, level, sessions attended, sessions left — no phone, no coach notes, no money).
+// The Host and co-admins only.
+const CL = require('../services/coachClubs');
+const coachErr = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code, ...(err.migration ? { migration: err.migration } : {}) }) : dbError(res, err));
+const coachManager = (req, res) => {
+  if (['owner', 'co_admin'].includes(req.clubRole || 'owner')) return true;
+  res.status(403).json(ROLE_FORBIDDEN);
+  return false;
+};
+router.get('/:clubId/coaches', async (req, res) => {
+  try {
+    if (!coachManager(req, res)) return;
+    res.json(await CL.linksOfClub(req.club.id));
+  } catch (err) {
+    coachErr(res, err);
+  }
+});
+router.post('/:clubId/coaches/invite', async (req, res) => {
+  try {
+    if (!coachManager(req, res)) return;
+    res.status(201).json(await CL.hostInvite(req.club.id, req.body?.slug, req.body || {}));
+  } catch (err) {
+    coachErr(res, err);
+  }
+});
+router.post('/:clubId/coaches/:linkId/:act(accept|decline)', async (req, res) => {
+  try {
+    if (!coachManager(req, res)) return;
+    if (!isUuid(req.params.linkId)) return notFound(res, 'Link');
+    res.json(await CL.hostAnswer(req.club.id, req.params.linkId, req.params.act === 'accept'));
+  } catch (err) {
+    coachErr(res, err);
+  }
+});
+router.delete('/:clubId/coaches/:linkId', async (req, res) => {
+  try {
+    if (!coachManager(req, res)) return;
+    if (!isUuid(req.params.linkId)) return notFound(res, 'Link');
+    res.json(await CL.hostRemove(req.club.id, req.params.linkId));
+  } catch (err) {
+    coachErr(res, err);
+  }
+});
+router.get('/:clubId/coaches/:linkId/students', async (req, res) => {
+  try {
+    if (!coachManager(req, res)) return;
+    if (!isUuid(req.params.linkId)) return notFound(res, 'Link');
+    res.json(await CL.studentsForHost(req.club.id, req.params.linkId));
+  } catch (err) {
+    coachErr(res, err);
   }
 });
 

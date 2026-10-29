@@ -10,12 +10,22 @@ const ST = require('../services/coachStudents');
 const AT = require('../services/coachAttendance');
 const M = require('../services/coachMoney');
 const X = require('../services/coachExtra');
+const CL = require('../services/coachClubs');
 const { requireCaptcha } = require('../services/captcha');
 const { todayYmd } = require('../services/memberships');
 const S_fail = (m, code) => C.fail(m, 400, code);
 
 const router = express.Router();
 const publicRoutes = express.Router();
+
+async function hostLinkCount(userId) {
+  if (!(await CL.ready())) return 0;
+  const { data: clubs } = await supabase.from('clubs').select('id').eq('host_id', userId);
+  const ids = (clubs || []).map((c) => c.id);
+  if (!ids.length) return 0;
+  const { count } = await supabase.from('coach_club_links').select('id', { count: 'exact', head: true }).in('club_id', ids).neq('status', 'declined');
+  return count || 0;
+}
 
 const send = (res, err) => res.status(err.status || 500).json({ error: err.message, code: err.code, ...(err.migration ? { migration: err.migration } : {}) });
 
@@ -24,7 +34,10 @@ const send = (res, err) => res.status(err.status || 500).json({ error: err.messa
 router.get('/status', async (req, res) => {
   try {
     const enabled = await C.enabledFor(req);
-    if (!enabled) return res.json({ enabled: false, has_profile: false });
+    // A Host sees "Coach" in the club menu once a coach asked to link (even before the
+    // product is on for them).
+    const hostLinks = await hostLinkCount(req.userId).catch(() => 0);
+    if (!enabled) return res.json({ enabled: false, has_profile: false, host_links: hostLinks });
     const ready = await C.ready();
     const me = ready ? await C.profileOf(req.userId) : null;
     res.json({
@@ -35,6 +48,7 @@ router.get('/status', async (req, res) => {
       slug: me?.slug || null,
       display_name: me?.display_name || null,
       status: me?.status || null,
+      host_links: hostLinks,
     });
   } catch (err) {
     res.json({ enabled: false, has_profile: false, error: err.message });
@@ -744,6 +758,66 @@ router.get('/reviews', async (req, res) => {
     send(res, err);
   }
 });
+// Liên kết CLB: the clubs I am linked with / asked to link with, a club search, ask to
+// link, answer a Host's invitation, unlink; the member list of a linked club (no phone),
+// and "Thêm làm học viên".
+router.get('/clubs', async (req, res) => {
+  try {
+    res.json(await CL.linksOfCoach(req.coach));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/clubs/search', async (req, res) => {
+  try {
+    const sport = req.coach.sport || 'pickleball';
+    const out = await require('../services/discover').search({ q: req.query.q, sport });
+    res.json(out.items.map((c) => ({ id: c.id, name: c.name, kind: c.kind, address: c.address, district: c.district, province: c.province })));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/clubs/:clubId/link', async (req, res) => {
+  try {
+    if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+    res.status(201).json(await CL.coachRequest(req.coach, req.params.clubId, req.body || {}));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/club-links/:id/:act(accept|decline)', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Link');
+    res.json(await CL.coachAnswer(req.coach, req.params.id, req.params.act === 'accept'));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.delete('/club-links/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Link');
+    res.json(await CL.coachRemove(req.coach, req.params.id));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/clubs/:clubId/members', async (req, res) => {
+  try {
+    if (!isUuid(req.params.clubId)) return notFound(res, 'Club');
+    res.json(await CL.membersForCoach(req.coach, req.params.clubId));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/clubs/:clubId/members/:memberId/student', async (req, res) => {
+  try {
+    if (!isUuid(req.params.clubId) || !isUuid(req.params.memberId)) return notFound(res, 'Member');
+    res.status(201).json(ST.studentView(await CL.addMemberAsStudent(req.coach, req.params.clubId, req.params.memberId)));
+  } catch (err) {
+    send(res, err);
+  }
+});
+
 router.get('/assistants', async (req, res) => {
   try {
     const { data, error } = await supabase.from('coach_assistants').select('id, email, user_id, status, created_at').eq('coach_id', req.coach.id).eq('status', 'active').order('created_at');

@@ -60,6 +60,7 @@ const membersGroup = (key) => ({
     { href: '/club/members/requests', key: 'nav.memRequests', icon: 'members', badge: 'memberRequests' },
     { href: '/club/members/review', key: 'nav.memReview', icon: 'members' },
     { href: '/club/members/dupr', key: 'nav.memDupr', icon: 'rankings', sport: 'pickleball' },
+    { href: '/club/coaches', key: 'nav.clubCoaches', icon: 'users', coachLink: true },
   ],
 });
 
@@ -131,6 +132,7 @@ const NAV_BY_WORKSPACE = {
     { href: '/coach/packages', key: 'nav.coachPackages', icon: 'ticket' },
     { href: '/coach/money', key: 'nav.coachMoney', icon: 'wallet' },
     { href: '/coach/stats', key: 'nav.coachStats', icon: 'chart' },
+    { href: '/coach/clubs', key: 'nav.coachClubs', icon: 'clubs' },
     { href: '/coach/profile', key: 'nav.coachProfile', icon: 'user' },
     { href: '/account', key: 'nav.account', icon: 'account' },
   ],
@@ -465,7 +467,7 @@ export default function AppShell({ children, back }) {
   const roleOk = (href) => !rolePages || rolePages.some((p) => href === p || (p !== '/finance' && href.startsWith(`${p}/`)));
   const NAV = (NAV_BY_WORKSPACE[mode] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
-    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
+    .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.coachLink || !!coachInfo?.enabled || coachInfo?.host_links > 0) && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
   const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
   // Staff / finance see one or two pages: put their account beside them, so the bar is not

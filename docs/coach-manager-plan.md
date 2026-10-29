@@ -203,7 +203,8 @@ Khối `coach.*` trong `web/lib/i18n/vi.js` và `en.js` (nhãn menu, form, trạ
 | C5 ✅ (30/10) | Migration `20270103090000_coach_money.sql`; `coachMoney` (học viên mua gói → VietQR + mã `NZC…` → ảnh chuyển khoản → coach xác nhận / từ chối; ghi / huỷ khoản thu khi gói / phí đã thu; hoàn tiền một phần; sổ thu chi; email Resend; xoá ảnh sau 90 ngày); trang **Tiền** (`/coach/money`), Mua gói ở trang công khai / `/p` / `/coach/r/<token>`, Hoàn tiền trong popup học viên, chuông học viên. **Đổi so với kế hoạch:** sổ coach là bảng riêng `coach_ledger` thay vì `transactions.owner_type='coach'` (không phải sửa enum + ràng buộc của sổ CLB, không đụng các view tiền CLB) | xong |
 | C6 ✅ (30/10) | Owner → Coach (`/owner/coaches`): danh sách, khoá có lý do / mở khoá, báo cáo, ẩn đánh giá, ô số ở Tổng quan, nhật ký `coach.*` | xong |
 | C7 ✅ (30/10) | Migration `20270104090000_coach_more.sql`; `coachExtra` (giờ trống — có test, đặt / nhận / từ chối / huỷ 1-1, ghi chú, đánh giá, tìm coach); trang Lịch rảnh, Đặt kèm 1-1 + Đánh giá + Báo cáo trên trang công khai, ghi chú trong popup học viên, tab Coach ở `/discover` | xong |
-| C8 ✅ (30/10, GĐ3 một phần) | Trợ giảng (mời bằng email, `/assist`, điểm danh không thấy tiền / sđt / ghi chú), Thống kê (`/coach/stats`). **Chưa làm:** liên kết coach với CLB — cần chốt quyền xem dữ liệu giữa coach và Host | xong |
+| C8 ✅ (30/10, GĐ3 một phần) | Trợ giảng (mời bằng email, `/assist`, điểm danh không thấy tiền / sđt / ghi chú), Thống kê (`/coach/stats`). Liên kết coach với CLB làm ở đợt C9 | xong |
+| C9 ✅ (30/10) | Liên kết Coach ↔ CLB (`coach_club_links`): Coach xin / Host mời, bên kia đồng ý. Host xem học viên của Coach là thành viên CLB (trình, số buổi, gói còn lại — không sđt, ghi chú, tiền); Coach xem danh sách thành viên (tên, giới tính, trình — không sđt) và thêm làm học viên | xong |
 
 ## 9. Bảo mật và quy tắc
 

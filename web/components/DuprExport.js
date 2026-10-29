@@ -50,6 +50,11 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const [tab, setTab] = useState(null); // ready | waiting | sent | ineligible (null = the first with matches)
   const [unpicked, setUnpicked] = useState({}); // ready matches the Host took out of the file
   const [justConfirmed, setJustConfirmed] = useState(null); // the lượt tải just confirmed → "Hoàn tác" right there
+  // "Thay người": someone cannot get a DUPR ID → another member takes their place in the
+  // matches not sent yet, so the other players' matches can still go to DUPR.
+  const [rep, setRep] = useState(null); // { from: key, to: member id }
+  const [repErr, setRepErr] = useState('');
+  const { data: cands } = useLoad(() => (clubId && rep ? api.get(`/api/clubs/${clubId}/dupr/replace`).catch(() => []) : Promise.resolve(null)), [clubId, !!rep]);
   if (bare && error) return <p className="text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
   if (bare && !data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
   if (!clubId || error || !data) return null;
@@ -83,6 +88,23 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
     await reload();
     reloadBatches?.();
   };
+  async function replace() {
+    const p = missingPeople.find((x) => keyOf(x) === rep.from);
+    if (!p || !rep.to) return;
+    setBusy(true);
+    setRepErr('');
+    try {
+      const r = await api.post(`/api/clubs/${clubId}/dupr/replace`, { ...scope, from_member_id: p.member_id || undefined, from_part_id: p.member_id ? undefined : p.part_id, to_member_id: rep.to });
+      const skipped = (r.skipped?.already_in || 0) + (r.skipped?.team_sent || 0);
+      setDone(t('duprx.repDone', { from: r.from_name || p.name, to: r.to_name, n: r.replaced }) + (skipped ? ` ${t('duprx.repSkipped', { n: skipped })}` : ''));
+      setRep(null);
+      await refresh();
+    } catch (e) {
+      setRepErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function saveIds() {
     setBusy(true);
     setFixErr('');
@@ -462,6 +484,7 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
                 <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
                   {t('duprx.missing', { names: missingNames.join(', ') })}{' '}
                   {missingPeople.some(keyOf) && <button type="button" className="underline text-lime-300 font-semibold" onClick={() => setFixOpen(true)}>{t('quickfix.addDupr')}</button>}
+                  {missingPeople.some(keyOf) && <>{' · '}<button type="button" className="underline text-lime-300 font-semibold" onClick={() => { setRepErr(''); setRep({ from: keyOf(missingPeople.find(keyOf)), to: '' }); }}>{t('duprx.repBtn')}</button></>}
                 </div>
               )}
               <Grid>
@@ -493,6 +516,40 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
           )}
         </div>
       )}
+
+      <Modal open={!!rep} title={t('duprx.repTitle')} onClose={() => setRep(null)}>
+        {rep && (() => {
+          const p = missingPeople.find((x) => keyOf(x) === rep.from);
+          const n = blocked.filter((m) => [...m.a, ...m.b].some((x) => keyOf(x) === rep.from)).length;
+          const options = (cands || []).filter((c) => c.id !== p?.member_id);
+          return (
+            <div className="grid gap-3">
+              <p className="text-gray-400 text-sm">{t('duprx.repHint')}</p>
+              <div>
+                <label className="text-xs text-gray-400" htmlFor="rep-from">{t('duprx.repFrom')}</label>
+                <select id="rep-from" className="input" value={rep.from} onChange={(e) => setRep({ ...rep, from: e.target.value })}>
+                  {missingPeople.filter(keyOf).map((x) => <option key={keyOf(x)} value={keyOf(x)}>{x.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400" htmlFor="rep-to">{t('duprx.repTo')}</label>
+                {!cands ? <p className="text-gray-500 text-sm">{t('common.loading')}</p> : (
+                  <select id="rep-to" className="input" value={rep.to} onChange={(e) => setRep({ ...rep, to: e.target.value })}>
+                    <option value="">{t('duprx.repPick')}</option>
+                    {options.map((c) => <option key={c.id} value={c.id}>{c.full_name}{c.dupr_id ? ` · ${c.dupr_id}` : ` · ${t('duprx.repNoId')}`}</option>)}
+                  </select>
+                )}
+              </div>
+              <p className="text-amber-200 text-sm">{t('duprx.repCount', { name: p?.name || '—', n })}</p>
+              {repErr && <p className="text-red-400 text-sm">{repErr}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" className="btn-secondary" onClick={() => setRep(null)}>{t('common.cancel')}</button>
+                <button type="button" className="btn-primary" disabled={busy || !rep.to} onClick={replace}>{t('duprx.repSave')}</button>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
 
       <Modal open={fixOpen} title={`${t('quickfix.duprTitle')}`} onClose={() => setFixOpen(false)}>
         <p className="text-gray-400 text-sm mb-3">{t('quickfix.duprHint')}</p>
