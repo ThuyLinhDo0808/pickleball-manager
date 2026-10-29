@@ -8,15 +8,18 @@ import { formatDay, hhmm } from '@/lib/dates';
 import { scheduleText } from '@/lib/coach';
 import { ENROLL_TONE } from '@/components/coach/StudentRow';
 import { MySessions } from '@/components/coach/Balance';
+import CoachBuy from '@/components/coach/CoachBuy';
 
 // "Lớp học của tôi" on the player's activity page: every class signed up for, its status,
 // the next sessions, and the way out.
 export default function MyCoachClasses() {
   const { t, lang } = useI18n();
   const { data, reload } = useLoad(() => api.get('/api/player/coach').catch(() => []), []);
+  const { data: money, reload: reloadMoney } = useLoad(() => api.get('/api/player/coach/purchases').catch(() => []), []);
   const [busy, setBusy] = useState(false);
   const list = (data || []).filter((e) => e.class);
-  if (!list.length) return null;
+  const shops = (money || []).filter((m) => m.mine.length || m.for_sale.length);
+  if (!list.length && !shops.length) return null;
   async function cancel(e) {
     if (!window.confirm(t('coach.myCancelAsk'))) return;
     setBusy(true);
@@ -30,7 +33,7 @@ export default function MyCoachClasses() {
     }
   }
   return (
-    <section className="card mb-4">
+    <section id="my-coach" className="card mb-4 scroll-mt-20">
       <h2 className="text-white font-semibold mb-2">{t('coach.myClasses')}</h2>
       <div className="grid gap-2">
         {list.map((e) => {
@@ -57,6 +60,17 @@ export default function MyCoachClasses() {
           );
         })}
       </div>
+      {shops.map((m) => (
+        <div key={m.coach.slug} className="mt-4">
+          <CoachBuy
+            title={t('coach.myPackages', { coach: m.coach.display_name })}
+            forSale={m.for_sale}
+            mine={m.mine}
+            buy={(pid) => api.post(`/api/player/coach/coaches/${m.coach.slug}/packages/${pid}/buy`, {}).then(() => { reloadMoney(); reload(); })}
+            proof={(id, image) => api.post(`/api/player/coach/purchases/${id}/proof`, { image }).then(reloadMoney)}
+          />
+        </div>
+      ))}
     </section>
   );
 }

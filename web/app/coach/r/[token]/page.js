@@ -12,6 +12,7 @@ import { formatDay, hhmm } from '@/lib/dates';
 import { scheduleText } from '@/lib/coach';
 import { ENROLL_TONE } from '@/components/coach/StudentRow';
 import { MySessions } from '@/components/coach/Balance';
+import CoachBuy from '@/components/coach/CoachBuy';
 
 // A quick sign-up's own page (secret link): the class, the status, cancel. The link is
 // the only way back to it, so the page says to keep it.
@@ -20,6 +21,7 @@ export default function CoachEnrollmentPage() {
   const { t, lang } = useI18n();
   const { data, error, loading, setData } = useLoad(() => api.publicGet(`/api/public/coach/r/${token}`), [token]);
   const [busy, setBusy] = useState(false);
+  const { data: money, setData: setMoney } = useLoad(() => api.publicGet(`/api/public/coach/r/${token}/packages`).catch(() => null), [token]);
   async function cancel() {
     if (!window.confirm(t('coach.myCancelAsk'))) return;
     setBusy(true);
@@ -61,6 +63,17 @@ export default function CoachEnrollmentPage() {
               ))}
             </ul>
           )}
+        </section>
+      )}
+      {money && (money.mine.length > 0 || (money.for_sale.length > 0 && e.status === 'confirmed')) && (
+        <section className="card mb-4">
+          <CoachBuy
+            title={t('coach.packages')}
+            forSale={e.status === 'confirmed' ? money.for_sale : []}
+            mine={money.mine}
+            buy={(pid) => api.publicPost(`/api/public/coach/r/${token}/packages/${pid}/buy`, {}).then(setMoney)}
+            proof={(id, image) => api.publicPost(`/api/public/coach/r/${token}/purchases/${id}/proof`, { image }).then(setMoney)}
+          />
         </section>
       )}
       <section className="card">

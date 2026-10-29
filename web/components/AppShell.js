@@ -128,6 +128,7 @@ const NAV_BY_WORKSPACE = {
     { href: '/coach/classes', key: 'nav.coachClasses', icon: 'plans', also: ['/coach/sessions'] },
     { href: '/coach/students', key: 'nav.coachStudents', icon: 'users' },
     { href: '/coach/packages', key: 'nav.coachPackages', icon: 'ticket' },
+    { href: '/coach/money', key: 'nav.coachMoney', icon: 'wallet' },
     { href: '/coach/profile', key: 'nav.coachProfile', icon: 'user' },
     { href: '/account', key: 'nav.account', icon: 'account' },
   ],

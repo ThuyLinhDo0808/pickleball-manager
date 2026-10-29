@@ -10,6 +10,7 @@ import LoadingBlock from '@/components/ui/LoadingBlock';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { formatVnd } from '@/lib/format';
 import { CoachGate, publicCoachUrl } from '@/components/coach/CoachGate';
 import { SessionRow } from '@/components/coach/SessionRow';
 
@@ -32,6 +33,15 @@ export default function CoachOverviewPage() {
               <StatTile label={t('coach.kpiWeek')} value={String(data.sessions_week)} onClick={() => (window.location.href = '/coach/schedule')} />
               <StatTile label={t('coach.kpiPending')} value={String(data.pending)} tone={data.pending ? 'text-amber-300' : 'text-white'} onClick={() => (window.location.href = '/coach/students?tab=pending')} />
             </KpiRow>
+            {data.month && (
+              <Link href="/coach/money?tab=ledger" className="card !py-3 mb-4 mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm hover:border-lime-400/40">
+                <span className="text-white font-semibold">{t('coach.monthMoney')}</span>
+                <span className="text-gray-300 tabular-nums">{t('coach.ledIncome')} <span className="text-lime-300">{formatVnd(data.month.income)}</span></span>
+                <span className="text-gray-300 tabular-nums">{t('coach.ledExpense')} <span className="text-red-300">{formatVnd(data.month.expense)}</span></span>
+                <span className="text-gray-300 tabular-nums">{t('coach.ledNet')} <span className="text-white font-semibold">{formatVnd(data.month.net)}</span></span>
+                <span className="ml-auto text-lime-300 text-xs">{t('coach.money')} →</span>
+              </Link>
+            )}
 
             <section className="card mb-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -69,12 +79,13 @@ export default function CoachOverviewPage() {
               )}
             </section>
 
-            {(data.to_mark > 0 || data.unpaid_fees > 0) && (
+            {(data.to_mark > 0 || data.unpaid_fees > 0 || data.pending_proofs > 0) && (
               <section className="card mb-4 border border-amber-300/30">
                 <h2 className="text-white font-semibold mb-2">{t('coach.todo')}</h2>
                 <ul className="grid gap-1.5 text-sm">
                   {data.to_mark > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoMark', { n: data.to_mark })}</span><Link href="/coach/schedule" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('coach.schedule')} →</Link></li>}
-                  {data.unpaid_fees > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoFees', { n: data.unpaid_fees })}</span><span className="text-[11px] text-gray-500">{t('coach.comingSoonC5')}</span></li>}
+                  {data.pending_proofs > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoProofs', { n: data.pending_proofs })}</span><Link href="/coach/money" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('coach.money')} →</Link></li>}
+                  {data.unpaid_fees > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoFees', { n: data.unpaid_fees })}</span><Link href="/coach/money" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('coach.money')} →</Link></li>}
                 </ul>
               </section>
             )}

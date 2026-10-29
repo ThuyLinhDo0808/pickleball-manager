@@ -8,6 +8,7 @@ const C = require('../services/coachAccess');
 const S = require('../services/coachSchedule');
 const ST = require('../services/coachStudents');
 const AT = require('../services/coachAttendance');
+const M = require('../services/coachMoney');
 const { requireCaptcha } = require('../services/captcha');
 const { todayYmd } = require('../services/memberships');
 const S_fail = (m, code) => C.fail(m, 400, code);
@@ -114,6 +115,14 @@ router.get('/overview', async (req, res) => {
       sessions_week: week.filter((x) => x.status === 'scheduled').length,
       pending: pending || 0,
       unpaid_fees: unpaid || 0,
+      ...(await (async () => {
+        if (!(await M.ready())) return { pending_proofs: 0, month: null };
+        const [{ count }, book] = await Promise.all([
+          supabase.from('coach_package_purchases').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'pending').not('proof_submitted_at', 'is', null),
+          M.ledger(req.coach, { from: `${today.slice(0, 7)}-01`, to: today }),
+        ]);
+        return { pending_proofs: count || 0, month: { income: book.income, expense: book.expense, net: book.net } };
+      })()),
       to_mark: (pastOpen || []).filter((x) => S.endMs(x) < Date.now()).length,
       next: next.filter((x) => x.status === 'scheduled' && S.endMs(x) > Date.now()).slice(0, 5),
     });
@@ -334,7 +343,7 @@ router.get('/students/:id', async (req, res) => {
         AT.history(st.id, 40),
         AT.balances([st.id]),
       ]);
-      Object.assign(out, { purchases: purchases || [], history, tally: AT.tally(history), balance: bal[st.id] });
+      Object.assign(out, { purchases: (purchases || []).map(({ payment_proof, ...p }) => ({ ...p, has_proof: !!payment_proof, suggest_refund: M.suggestRefund(p) })), history, tally: AT.tally(history), balance: bal[st.id] });
     }
     res.json(out);
   } catch (err) {
@@ -386,6 +395,10 @@ router.patch('/enrollments/:id', async (req, res) => {
     const { data: enr } = await supabase.from('coach_enrollments').select('*').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
     if (!enr) return notFound(res, 'Enrollment');
     const out = await ST.decide(req.coach, enr, req.body?.status);
+    if (out.status === 'confirmed' && enr.status !== 'confirmed') {
+      const { data: c } = await supabase.from('coach_classes').select('title').eq('id', enr.class_id).maybeSingle();
+      M.mailStudent(enr.student_id, `Đã được nhận vào lớp "${c?.title || ''}"`, `Huấn luyện viên ${req.coach.display_name} đã nhận bạn vào lớp "${c?.title || ''}". Xem lịch và báo nghỉ trong mục Lớp học của tôi.`);
+    }
     // A removed confirmed student frees a seat for the waiting list.
     if (enr.status === 'confirmed' && out.status !== 'confirmed') {
       const { data: cls } = await supabase.from('coach_classes').select('*').eq('id', enr.class_id).maybeSingle();
@@ -406,18 +419,38 @@ router.post('/students/:id/purchases', async (req, res) => {
   try {
     const st = await ownStudent(req);
     if (!st) return notFound(res, 'Student');
-    res.status(201).json(await AT.addPurchase(req.coach, st, req.body));
+    let p = await AT.addPurchase(req.coach, st, req.body);
+    // Paid at once → the income goes into the coach's book (C5).
+    if (p.paid_at && (await M.ready())) p = await M.confirm(req.coach, { ...p, paid_at: null });
+    res.status(201).json(p);
   } catch (err) {
     send(res, err);
   }
 });
+async function ownPurchase(req) {
+  if (!isUuid(req.params.id)) return null;
+  const { data } = await supabase.from('coach_package_purchases').select('*').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+  return data || null;
+}
 router.patch('/purchases/:id', async (req, res) => {
   try {
-    if (!isUuid(req.params.id)) return notFound(res, 'Purchase');
-    const { data, error } = await supabase.from('coach_package_purchases').update(AT.cleanPurchase(req.body)).eq('id', req.params.id).eq('coach_id', req.coach.id).select('*').maybeSingle();
-    if (error) return dbError(res, error);
-    if (!data) return notFound(res, 'Purchase');
-    res.json(data);
+    const p = await ownPurchase(req);
+    if (!p) return notFound(res, 'Purchase');
+    const { paid, ...rest } = req.body || {};
+    let out = p;
+    if (Object.keys(rest).length) {
+      const { data, error } = await supabase.from('coach_package_purchases').update(AT.cleanPurchase(rest)).eq('id', p.id).select('*').single();
+      if (error) return dbError(res, error);
+      out = data;
+    }
+    if (paid !== undefined) {
+      if (await M.ready()) out = paid ? await M.confirm(req.coach, out) : await M.unpay(req.coach, out);
+      else {
+        const { data } = await supabase.from('coach_package_purchases').update(AT.cleanPurchase({ paid })).eq('id', p.id).select('*').single();
+        out = data;
+      }
+    }
+    res.json(out);
   } catch (err) {
     send(res, err);
   }
@@ -428,6 +461,10 @@ router.delete('/purchases/:id', async (req, res) => {
     const { data: p } = await supabase.from('coach_package_purchases').select('id, sessions_used').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
     if (!p) return notFound(res, 'Purchase');
     if (p.sessions_used > 0) return res.status(409).json({ error: 'Sessions were already taken from this package; cancel it instead.', code: 'purchase_used' });
+    if (await M.ready()) {
+      const { data: full } = await supabase.from('coach_package_purchases').select('ledger_id').eq('id', p.id).maybeSingle();
+      await M.voidEntry(req.coach.id, full?.ledger_id);
+    }
     const { error } = await supabase.from('coach_package_purchases').delete().eq('id', p.id);
     if (error) return dbError(res, error);
     res.json({ deleted: true });
@@ -450,10 +487,126 @@ router.patch('/fees/:id', async (req, res) => {
     if (!isUuid(req.params.id)) return notFound(res, 'Fee');
     const status = req.body?.status;
     if (!['unpaid', 'paid', 'free'].includes(status)) return send(res, S_fail('Unknown status.', 'bad_status'));
+    if (await M.ready()) {
+      const { data: fee } = await supabase.from('coach_session_fees').select('*').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+      if (!fee) return notFound(res, 'Fee');
+      return res.json(await M.setFee(req.coach, fee, status));
+    }
     const { data, error } = await supabase.from('coach_session_fees').update({ status, paid_at: status === 'paid' ? new Date().toISOString() : null }).eq('id', req.params.id).eq('coach_id', req.coach.id).select('*').maybeSingle();
     if (error) return dbError(res, error);
     if (!data) return notFound(res, 'Fee');
     res.json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+
+// ---- Money (C5) --------------------------------------------------------------------------
+router.use(['/bank', '/money', '/ledger', '/purchases/:id/proof', '/purchases/:id/reject', '/purchases/:id/refund'], async (req, res, next) => {
+  if (await M.ready()) return next();
+  return res.status(503).json({ error: 'Coach Manager needs a database update.', code: 'migration_missing', migration: M.MIGRATION });
+});
+router.get('/bank', async (req, res) => {
+  try {
+    res.json(await M.bankOf(req.coach));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/bank', async (req, res) => {
+  try {
+    res.json(await M.setBank(req.coach, req.body));
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Orders waiting for the coach (students' purchases not confirmed yet), newest first.
+router.get('/money', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('coach_package_purchases').select('*, coach_students(id, full_name, phone, user_id)').eq('coach_id', req.coach.id).eq('status', 'pending').order('created_at', { ascending: false }).limit(300);
+    if (error) return dbError(res, error);
+    const { data: fees } = await supabase.from('coach_session_fees').select('*, coach_students(id, full_name, phone), coach_sessions(id, session_date, start_time, coach_classes(title))').eq('coach_id', req.coach.id).eq('status', 'unpaid').order('created_at', { ascending: false }).limit(500);
+    res.json({
+      pending: (data || []).map(({ coach_students: st, payment_proof, ...p }) => ({ ...p, has_proof: !!payment_proof, student: st })),
+      fees: (fees || []).map(({ coach_students: st, coach_sessions: ss, ...f }) => ({ ...f, student: st, session: ss && { id: ss.id, session_date: ss.session_date, start_time: ss.start_time, class_title: ss.coach_classes?.title } })),
+    });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/purchases/:id/proof', async (req, res) => {
+  try {
+    const p = await ownPurchase(req);
+    if (!p) return notFound(res, 'Purchase');
+    if (!p.payment_proof) return res.status(404).json({ error: p.proof_purged_at ? 'The screenshot was deleted after the retention period.' : 'No screenshot.', code: p.proof_purged_at ? 'proof_purged' : 'not_found' });
+    res.json({ image: p.payment_proof, submitted_at: p.proof_submitted_at, ref: p.payment_ref });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/purchases/:id/reject', async (req, res) => {
+  try {
+    const p = await ownPurchase(req);
+    if (!p) return notFound(res, 'Purchase');
+    res.json(await M.reject(req.coach, p, req.body?.note));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/purchases/:id/refund', async (req, res) => {
+  try {
+    const p = await ownPurchase(req);
+    if (!p) return notFound(res, 'Purchase');
+    res.json(await M.refund(req.coach, p, req.body || {}));
+  } catch (err) {
+    send(res, err);
+  }
+});
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+router.get('/ledger', async (req, res) => {
+  try {
+    const from = YMD_RE.test(req.query.from || '') ? req.query.from : null;
+    const to = YMD_RE.test(req.query.to || '') ? req.query.to : null;
+    res.json(await M.ledger(req.coach, { from, to }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/ledger', async (req, res) => {
+  try {
+    const row = { ...M.cleanEntry(req.body), coach_id: req.coach.id };
+    const { data, error } = await supabase.from('coach_ledger').insert(row).select('*').single();
+    if (error) return dbError(res, error);
+    res.status(201).json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/ledger/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Entry');
+    const patch = {};
+    if (typeof req.body?.excluded === 'boolean') patch.excluded = req.body.excluded;
+    if ('note' in (req.body || {})) patch.note = req.body.note == null ? null : String(req.body.note).trim().slice(0, 300) || null;
+    if (YMD_RE.test(req.body?.occurred_on || '')) patch.occurred_on = req.body.occurred_on;
+    const { data, error } = await supabase.from('coach_ledger').update(patch).eq('id', req.params.id).eq('coach_id', req.coach.id).select('*').maybeSingle();
+    if (error) return dbError(res, error);
+    if (!data) return notFound(res, 'Entry');
+    res.json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Void a typed-in entry. Entries the app wrote (package paid, fee paid, refund) follow their
+// source: change the package / fee instead, or tick "không tính".
+router.post('/ledger/:id/void', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Entry');
+    const { data: e } = await supabase.from('coach_ledger').select('*').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+    if (!e) return notFound(res, 'Entry');
+    if (e.auto) return res.status(409).json({ error: 'This entry follows its package / fee; change it there or tick "không tính".', code: 'auto_entry' });
+    await M.voidEntry(req.coach.id, e.id);
+    res.json({ voided: true });
   } catch (err) {
     send(res, err);
   }
@@ -612,6 +765,7 @@ publicRoutes.post('/:slug/quick', requireCaptcha, async (req, res) => {
     if (!cls) return notFound(res, 'Class');
     const student = await ST.studentForQuick(c, { full_name: req.body.full_name, phone: req.body.phone });
     const enr = await ST.enroll(c, cls, student, { pay_mode: req.body.pay_mode || 'package', source: 'quick', note: req.body.note });
+    if (!enr.already) M.mailCoach(c, `Đăng ký mới — ${cls.title}`, `${student.full_name} vừa đăng ký lớp "${cls.title}" (${enr.status === 'waitlist' ? 'danh sách chờ' : 'chờ bạn xác nhận'}).`, '/coach/students?tab=pending');
     res.status(enr.already ? 200 : 201).json({ token: enr.token, status: enr.status, already: !!enr.already, linked_account: !!student.user_id });
   } catch (err) {
     send(res, err);
@@ -620,7 +774,7 @@ publicRoutes.post('/:slug/quick', requireCaptcha, async (req, res) => {
 // The quick sign-up's status page (by its secret link): class, coach, status, cancel.
 async function byToken(token) {
   if (!isUuid(token) || !(await ST.ready())) return null;
-  const { data } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(id, slug, display_name, sport, status, cancel_hours, deduct_mode)').eq('token', token).maybeSingle();
+  const { data } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(id, user_id, slug, display_name, sport, status, cancel_hours, deduct_mode)').eq('token', token).maybeSingle();
   if (!data) return null;
   const { coach_students: st, coach_classes: cls, coach_profiles: coach, ...e } = data;
   return { e, st, cls, coach };
@@ -650,6 +804,19 @@ async function enrollmentView(x) {
     next_sessions: next.map((s) => ({ id: s.id, session_date: s.session_date, start_time: s.start_time, duration_min: s.duration_min, court_name: s.court_name, mine: mine.get(s.id) || null, can_excuse: deadlineOk(s), started: AT.startMs(s) < Date.now() })),
   };
 }
+// A student's packages with one coach, for the student (pending ones carry the transfer).
+async function studentPurchases(coach, studentId) {
+  if (!(await M.ready())) return [];
+  const { data } = await supabase.from('coach_package_purchases').select('*').eq('student_id', studentId).in('status', ['pending', 'active', 'refunded', 'expired']).order('created_at', { ascending: false }).limit(20);
+  const out = [];
+  for (const p of data || []) out.push({ ...M.purchaseView(p), payment: p.status === 'pending' ? await M.paymentFor(coach, p) : null });
+  return out;
+}
+async function coachPackages(coachId) {
+  const { data } = await supabase.from('coach_packages').select('id, name, sessions, price, valid_months, note, active').eq('coach_id', coachId).eq('active', true).order('sort').order('price');
+  return data || [];
+}
+
 // The student says "I can't come" (or takes it back) for one upcoming session.
 async function excuseFor(x, sessionId, undo) {
   if (!isUuid(sessionId)) throw C.fail('Session not found.', 404, 'not_found');
@@ -674,6 +841,39 @@ publicRoutes.post('/r/:token/sessions/:sid/excuse', async (req, res) => {
     if (!x) return res.status(404).json({ error: 'Sign-up not found.', code: 'not_found' });
     await excuseFor(x, req.params.sid, req.body?.undo);
     res.json(await enrollmentView(x));
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Packages on the quick sign-up's page: what the coach sells, what this student bought.
+publicRoutes.get('/r/:token/packages', async (req, res) => {
+  try {
+    const x = await byToken(req.params.token);
+    if (!x) return res.status(404).json({ error: 'Sign-up not found.', code: 'not_found' });
+    res.json({ for_sale: await coachPackages(x.coach.id), mine: await studentPurchases(x.coach, x.st.id) });
+  } catch (err) {
+    send(res, err);
+  }
+});
+publicRoutes.post('/r/:token/packages/:pid/buy', async (req, res) => {
+  try {
+    const x = await byToken(req.params.token);
+    if (!x) return res.status(404).json({ error: 'Sign-up not found.', code: 'not_found' });
+    if (!(await M.ready()) || !isUuid(req.params.pid)) return res.status(404).json({ error: 'Not available.', code: 'not_found' });
+    await M.buy(x.coach, x.st, req.params.pid);
+    res.status(201).json({ for_sale: await coachPackages(x.coach.id), mine: await studentPurchases(x.coach, x.st.id) });
+  } catch (err) {
+    send(res, err);
+  }
+});
+publicRoutes.post('/r/:token/purchases/:id/proof', async (req, res) => {
+  try {
+    const x = await byToken(req.params.token);
+    if (!x || !isUuid(req.params.id) || !(await M.ready())) return res.status(404).json({ error: 'Not found.', code: 'not_found' });
+    const { data: p } = await supabase.from('coach_package_purchases').select('*').eq('id', req.params.id).eq('coach_id', x.coach.id).maybeSingle();
+    if (!p) return notFound(res, 'Purchase');
+    await M.submitProof(x.coach, x.st, p, req.body?.image);
+    res.json({ for_sale: await coachPackages(x.coach.id), mine: await studentPurchases(x.coach, x.st.id) });
   } catch (err) {
     send(res, err);
   }
@@ -722,6 +922,7 @@ studentRoutes.post('/classes/:id/enroll', async (req, res) => {
     const { coach_profiles: coach, ...klass } = cls;
     const student = await ST.studentForUser(coach, req.userId, {});
     const enr = await ST.enroll(coach, klass, student, { pay_mode: req.body?.pay_mode || 'package', source: 'account', note: req.body?.note });
+    if (!enr.already) M.mailCoach(coach, `Đăng ký mới — ${klass.title}`, `${student.full_name} vừa đăng ký lớp "${klass.title}" (${enr.status === 'waitlist' ? 'danh sách chờ' : 'chờ bạn xác nhận'}).`, '/coach/students?tab=pending');
     res.status(enr.already ? 200 : 201).json(await enrollmentView({ e: enr, st: student, cls: klass, coach }));
   } catch (err) {
     send(res, err);
@@ -735,6 +936,46 @@ studentRoutes.post('/enrollments/:id/sessions/:sid/excuse', async (req, res) => 
     const { coach_students: st, coach_classes: cls, coach_profiles: coach, ...e } = data;
     await excuseFor({ e, st, cls, coach }, req.params.sid, req.body?.undo);
     res.json(await enrollmentView({ e, st, cls, coach }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+// My packages with every coach I learn with (pending ones carry the transfer).
+studentRoutes.get('/purchases', async (req, res) => {
+  try {
+    const { data: students } = await supabase.from('coach_students').select('id, coach_id, coach_profiles(id, user_id, slug, display_name, status)').eq('user_id', req.userId);
+    const out = [];
+    for (const st of students || []) {
+      const coach = st.coach_profiles;
+      if (!coach) continue;
+      out.push({ coach: { slug: coach.slug, display_name: coach.display_name }, for_sale: await coachPackages(coach.id), mine: await studentPurchases(coach, st.id) });
+    }
+    res.json(out);
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Buy a package of a coach (from their public page or my classes).
+studentRoutes.post('/coaches/:slug/packages/:pid/buy', async (req, res) => {
+  try {
+    if (!(await M.ready()) || !isUuid(req.params.pid)) return res.status(503).json({ error: 'Not available yet.', code: 'migration_missing' });
+    const coach = await C.profileBySlug(req.params.slug);
+    if (!coach || coach.status === 'blocked') return notFound(res, 'Coach');
+    const student = await ST.studentForUser(coach, req.userId, {});
+    const p = await M.buy(coach, student, req.params.pid);
+    res.status(p.already ? 200 : 201).json({ ...M.purchaseView(p), payment: p.status === 'pending' ? await M.paymentFor(coach, p) : null });
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/purchases/:id/proof', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id) || !(await M.ready())) return notFound(res, 'Purchase');
+    const { data: p } = await supabase.from('coach_package_purchases').select('*, coach_students(*), coach_profiles(id, user_id, slug, display_name, status)').eq('id', req.params.id).maybeSingle();
+    if (!p || p.coach_students?.user_id !== req.userId) return notFound(res, 'Purchase');
+    const { coach_students: st, coach_profiles: coach, ...row } = p;
+    const out = await M.submitProof(coach, st, row, req.body?.image);
+    res.json({ ...M.purchaseView(out), payment: await M.paymentFor(coach, out) });
   } catch (err) {
     send(res, err);
   }

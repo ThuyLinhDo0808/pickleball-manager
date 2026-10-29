@@ -176,22 +176,6 @@ export default function PlayerProfile() {
           <ThemePicker />
         </Section>
 
-        <Section icon="mail" title={t('prof.account')} hint={t('prof.accountHint')}>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-gray-400 text-xs">{t('player.email')}</p>
-              <p className="text-white text-sm break-all">{user?.email || email}</p>
-            </div>
-            <div className="flex flex-wrap justify-end gap-2">
-              <EmailChange />
-              <button type="button" className="btn-secondary text-sm" onClick={() => signOut()}>
-                <UiIcon name="logout" className="w-4 h-4" />
-                {t('nav.signOut')}
-              </button>
-            </div>
-          </div>
-        </Section>
-
         {/* Two-step sign-in, devices, sign out everywhere — for every account (players too). */}
         <Section id="security" icon="shield" title={t('acct.s_security')} hint={t('sec.sectionHint')}>
           <AccountSecurity />
@@ -211,6 +195,23 @@ export default function PlayerProfile() {
 
         <Section icon="trash" title={t('deleteAccount.title')} danger>
           <DeleteAccount bare />
+        </Section>
+
+        {/* Email + sign out: last on the page (asked 30/10). */}
+        <Section icon="mail" title={t('prof.account')} hint={t('prof.accountHint')}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-gray-400 text-xs">{t('player.email')}</p>
+              <p className="text-white text-sm break-all">{user?.email || email}</p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <EmailChange />
+              <button type="button" className="btn-secondary text-sm" onClick={() => signOut()}>
+                <UiIcon name="logout" className="w-4 h-4" />
+                {t('nav.signOut')}
+              </button>
+            </div>
+          </div>
         </Section>
       </div>
     </PlayerShell>

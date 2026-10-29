@@ -116,6 +116,21 @@ export function PurchasesPanel({ student, packages, onChanged }) {
       setBusy(false);
     }
   }
+  async function refund(p) {
+    const raw = window.prompt(t('coach.refundAsk', { left: p.sessions_total - p.sessions_used, total: p.sessions_total }), String(p.suggest_refund ?? 0));
+    if (raw == null) return;
+    const amount = Math.round(Number(String(raw).replace(/[^\d]/g, '')) || 0);
+    const reason = window.prompt(t('coach.refundReason'), '') ?? '';
+    setBusy(true);
+    try {
+      await api.post(`/api/coach/purchases/${p.id}/refund`, { amount, reason });
+      onChanged();
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function remove(p) {
     if (!window.confirm(t('coach.purchaseDeleteAsk'))) return;
     setBusy(true);
@@ -148,7 +163,7 @@ export function PurchasesPanel({ student, packages, onChanged }) {
               <span className="text-white">{p.name}</span>
               <span className="block text-gray-400 text-xs tabular-nums">
                 {t('coach.purchaseUsed', { used: p.sessions_used, total: p.sessions_total })} · {Number(p.price).toLocaleString('vi-VN')} ₫ · {dmy(p.starts_on)}{p.expires_on ? ` → ${dmy(p.expires_on)}` : ''}
-                {dead ? ` · ${t(`coach.pstatus_${p.status}`)}` : left <= 0 ? ` · ${t('coach.purchaseEmpty')}` : ''}
+                {dead ? ` · ${t(`coach.pstatus_${p.status}`)}${p.status === 'refunded' && p.refund_amount != null ? ` ${Number(p.refund_amount).toLocaleString('vi-VN')} ₫` : ''}` : p.status === 'pending' ? ` · ${t('coach.pstatus_pending')}${p.has_proof ? ` · ${t('coach.orderProof')}` : ''}` : left <= 0 ? ` · ${t('coach.purchaseEmpty')}` : ''}
               </span>
             </span>
             {!dead && (
@@ -157,6 +172,7 @@ export function PurchasesPanel({ student, packages, onChanged }) {
               </button>
             )}
             {!dead && p.sessions_used === 0 && <button type="button" disabled={busy} className="text-red-300 hover:text-red-200 text-xs px-2 min-h-[32px]" onClick={() => remove(p)}>{t('common.delete')}</button>}
+            {p.status === 'active' && p.paid_at && p.price > 0 && <button type="button" disabled={busy} className="text-sky-200 hover:text-white text-xs px-2 min-h-[32px]" onClick={() => refund(p)}>{t('coach.refund')}</button>}
             {!dead && p.sessions_used > 0 && <button type="button" disabled={busy} className="text-gray-400 hover:text-white text-xs px-2 min-h-[32px]" onClick={() => window.confirm(t('coach.purchaseCancelAsk')) && patch(p, { status: 'cancelled' })}>{t('coach.purchaseCancel')}</button>}
           </div>
         );
@@ -174,19 +190,19 @@ export function PurchasesPanel({ student, packages, onChanged }) {
           )}
           <div className="grid grid-cols-2 gap-2">
             <div className="col-span-2">
-              <label className="text-xs text-gray-400">{t('coach.p_name')}</label>
+              <label className="text-xs text-gray-400">{t('coach.pkgName')}</label>
               <input className="input" required maxLength={80} value={f.name} onChange={(ev) => setF({ ...f, name: ev.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-gray-400">{t('coach.p_sessions')}</label>
+              <label className="text-xs text-gray-400">{t('coach.pkgSessions')}</label>
               <input className="input" type="number" min="1" max="200" required value={f.sessions_total} onChange={(ev) => setF({ ...f, sessions_total: ev.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-gray-400">{t('coach.p_price')}</label>
+              <label className="text-xs text-gray-400">{t('coach.pkgPrice')}</label>
               <input className="input" type="number" min="0" step="1000" required value={f.price} onChange={(ev) => setF({ ...f, price: ev.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-gray-400">{t('coach.p_valid_months')}</label>
+              <label className="text-xs text-gray-400">{t('coach.pkgMonths')}</label>
               <input className="input" type="number" min="0" max="24" value={f.valid_months} onChange={(ev) => setF({ ...f, valid_months: ev.target.value })} />
             </div>
             <label className="flex items-center gap-2 text-sm text-gray-200 self-end min-h-[44px]">

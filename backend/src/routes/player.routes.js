@@ -509,6 +509,24 @@ player.get('/updates', async (req, res) => {
       const time = [e.start_time, e.end_time].filter(Boolean).map((x) => String(x).slice(0, 5)).join('–');
       items.push({ id: `c:${e.id}:${e.schedule_changed_at}`, kind, at: e.schedule_changed_at, title: e.title, event_date: e.event_date, time, href: e.public_token ? `/e/${e.public_token}` : '/p' });
     }
+    // Coach classes (Coach Manager): the coach decided a sign-up, confirmed / refused a
+    // package payment, refunded a package. Before the migrations: nothing.
+    await (async () => {
+      const { data: sts } = await supabase.from('coach_students').select('id').eq('user_id', uid);
+      const ids = (sts || []).map((x) => x.id);
+      if (!ids.length) return;
+      const { data: ens } = await supabase.from('coach_enrollments').select('id, status, decided_at, source, coach_classes(title)').in('student_id', ids).gte('decided_at', since).limit(50);
+      for (const e of ens || []) {
+        if (!['confirmed', 'waitlist', 'removed'].includes(e.status) || e.source === 'coach') continue;
+        items.push({ id: `ce:${e.id}:${e.status}`, kind: `coach_${e.status}`, at: e.decided_at, title: e.coach_classes?.title || '', href: '/p' });
+      }
+      const { data: ps } = await supabase.from('coach_package_purchases').select('id, status, name, decided_at, refunded_at, reject_note, source').in('student_id', ids).or(`decided_at.gte.${since},refunded_at.gte.${since}`).limit(50);
+      for (const x of ps || []) {
+        if (x.status === 'refunded' && x.refunded_at) items.push({ id: `cp:${x.id}:refunded`, kind: 'coach_refunded', at: x.refunded_at, title: x.name, href: '/p' });
+        else if (x.source === 'student' && x.status === 'active' && x.decided_at) items.push({ id: `cp:${x.id}:paid`, kind: 'coach_paid', at: x.decided_at, title: x.name, href: '/p' });
+        else if (x.status === 'pending' && x.reject_note && x.decided_at) items.push({ id: `cp:${x.id}:rej:${x.decided_at}`, kind: 'coach_pay_rejected', at: x.decided_at, title: x.name, href: '/p' });
+      }
+    })().catch(() => {});
     for (const n of await moderation.noticesFor(uid).catch(() => [])) {
       if (n.created_at < since && n.read_at) continue;
       items.push({ id: `n:${n.id}`, kind: `notice_${n.kind}`, at: n.created_at, title: n.club_name || '', href: '/home', notice_id: n.id });

@@ -19,7 +19,7 @@ import { formatDay, hhmm } from '@/lib/dates';
 import { scheduleText, endTime, dmy } from '@/lib/coach';
 
 // A coach's public page (/coach/<slug>): who they are, where and what they teach.
-// Classes and sign-up arrive in the next batches. No phone number here.
+// Packages (buy when signed in), classes with sign-up. No phone number here.
 export default function CoachPublicPage() {
   const { slug } = useParams();
   const { t, lang } = useI18n();
@@ -35,6 +35,18 @@ export default function CoachPublicPage() {
   const [done, setDone] = useState(null); // { token?, status, already }
   const [msg, setMsg] = useState('');
   const liveOf = (classId) => (mine || []).find((e) => e.class?.id === classId && ['requested', 'confirmed', 'waitlist'].includes(e.status));
+  async function buyPackage(p) {
+    if (!window.confirm(t('coach.buyAsk', { name: p.name, price: formatVnd(p.price) }))) return;
+    setBusy(true);
+    try {
+      await api.post(`/api/player/coach/coaches/${slug}/packages/${p.id}/buy`, {});
+      window.location.href = '/p#my-coach';
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   function openSignup(k) {
     setSignup(k);
     setDone(null);
@@ -113,6 +125,13 @@ export default function CoachPublicPage() {
                 <p className="text-white font-medium break-words">{p.name}</p>
                 <p className="text-lime-400 font-bold tabular-nums">{formatVnd(p.price)}</p>
                 <p className="text-gray-400 text-xs">{t('coach.pkgLine', { n: p.sessions, m: p.valid_months })}{p.note ? ` · ${p.note}` : ''}</p>
+                <div className="flex justify-end mt-1">
+                  {user ? (
+                    <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => buyPackage(p)}>{t('coach.buy')}</button>
+                  ) : (
+                    <Link href={`/sign-in?next=${encodeURIComponent(`/coach/${slug}`)}`} className="text-lime-300 text-sm underline min-h-[44px] inline-flex items-center">{t('coach.buySignIn')}</Link>
+                  )}
+                </div>
               </div>
             ))}
           </div>

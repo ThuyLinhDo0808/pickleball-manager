@@ -6,7 +6,7 @@ import { resizeImage } from '@/lib/image';
 
 // Host: where guests transfer event fees — bank details (for the auto VietQR) and/or
 // the Host's own bank QR image. Club sessions use the club's account first when it has one.
-export default function HostPaymentSettings({ bare = false, onSaved = null } = {}) {
+export default function HostPaymentSettings({ bare = false, onSaved = null, endpoint = '/api/host/payment-settings' } = {}) {
   const { t } = useI18n();
   const file = useRef(null);
   const [f, setF] = useState(null);
@@ -15,12 +15,12 @@ export default function HostPaymentSettings({ bare = false, onSaved = null } = {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.get('/api/host/payment-settings').then((r) => {
+    api.get(endpoint).then((r) => {
       const v = { bank_code: r.bank_code || '', bank_account: r.bank_account || '', bank_holder: r.bank_holder || '', payment_qr_image: r.payment_qr_image || null };
       setF(v);
       setSaved(v);
     });
-  }, []);
+  }, [endpoint]);
 
   async function pick(e) {
     const picked = e.target.files?.[0];
@@ -38,7 +38,7 @@ export default function HostPaymentSettings({ bare = false, onSaved = null } = {
     setBusy(true);
     setMsg('');
     try {
-      const r = await api.patch('/api/host/payment-settings', f);
+      const r = await api.patch(endpoint, f);
       const v = { bank_code: r.bank_code || '', bank_account: r.bank_account || '', bank_holder: r.bank_holder || '', payment_qr_image: r.payment_qr_image || null };
       setF(v);
       setSaved(v);

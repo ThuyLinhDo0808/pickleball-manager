@@ -124,7 +124,8 @@ async function purgeOldDevices(today = new Date()) {
 
 async function runRetention() {
   const out = {};
-  for (const [k, fn] of [['proofs', purgeOldProofs], ['devices', purgeOldDevices]]) {
+  const coachProofs = () => require('./coachMoney').purgeOldProofs(PROOF_DAYS());
+  for (const [k, fn] of [['proofs', purgeOldProofs], ['coach_proofs', coachProofs], ['devices', purgeOldDevices]]) {
     try {
       out[k] = await fn();
     } catch (err) {

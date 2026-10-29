@@ -72,6 +72,8 @@ app.post(
     '/api/public/coach/:slug/quick',
     '/api/public/coach/r/:token/cancel',
     '/api/public/coach/r/:token/sessions/:sid/excuse',
+    '/api/public/coach/r/:token/packages/:pid/buy',
+    '/api/public/coach/r/:token/purchases/:id/proof',
     '/api/public/quick/:eventId/open',
     '/api/public/quick/:eventId/book',
     '/api/public/quick/booking/:token/proof',
