@@ -17,6 +17,7 @@ import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { formatDay, hhmm } from '@/lib/dates';
 import { scheduleText, endTime, dmy } from '@/lib/coach';
+import { RatingLine, BookOneOnOne, Reviews } from '@/components/coach/PublicExtras';
 
 // A coach's public page (/coach/<slug>): who they are, where and what they teach.
 // Packages (buy when signed in), classes with sign-up. No phone number here.
@@ -93,6 +94,7 @@ export default function CoachPublicPage() {
           <div className="min-w-0 flex-1">
             <p className="text-gray-400 text-xs">{t('coach.publicKicker')}</p>
             <h1 className="text-white text-2xl font-bold break-words">{c.display_name}</h1>
+            <RatingLine rating={c.rating} count={c.reviews_count} />
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               <span className="text-[11px] rounded-full border border-navy-500 text-gray-300 px-2 py-0.5">{t(`clubs.sport_${c.sport}`)}</span>
               {c.level_text && <span className="text-[11px] rounded-full border border-lime-400/40 text-lime-200 px-2 py-0.5">{c.level_text}</span>}
@@ -171,6 +173,9 @@ export default function CoachPublicPage() {
           </div>
         )}
       </section>
+
+      {c.one_on_one && c.status === 'active' && <BookOneOnOne slug={slug} />}
+      <Reviews slug={slug} reviews={c.reviews || []} rating={c.rating} count={c.reviews_count} />
 
       <Modal open={!!signup} title={signup ? `${t('coach.signUp')} · ${signup.title}` : ''} onClose={() => setSignup(null)}>
         {signup && done && (

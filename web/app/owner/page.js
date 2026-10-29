@@ -169,6 +169,14 @@ export default function OwnerOverview() {
               <Tile label={t('owner.tourToday')} value={d.usage.tournaments.today} />
               <Tile label={t('owner.tourWeek')} value={d.usage.tournaments.this} sub={<Change w={d.usage.tournaments} />} />
             </div>
+            {d.usage.coaches && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+                <Link href="/owner/coaches" className="contents"><Tile label={t('ocoach.tileTotal')} value={d.usage.coaches.total} /></Link>
+                <Tile label={t('ocoach.tileWeek')} value={d.usage.coaches.this} sub={<Change w={d.usage.coaches} />} />
+                <Tile label={t('ocoach.tileBlocked')} value={d.usage.coaches.blocked} />
+                <Tile label={t('ocoach.tileReports')} value={d.usage.coaches.open_reports} />
+              </div>
+            )}
           </OwnerSection>
 
           <div className="grid lg:grid-cols-2 gap-3">

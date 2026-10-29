@@ -520,6 +520,11 @@ player.get('/updates', async (req, res) => {
         if (!['confirmed', 'waitlist', 'removed'].includes(e.status) || e.source === 'coach') continue;
         items.push({ id: `ce:${e.id}:${e.status}`, kind: `coach_${e.status}`, at: e.decided_at, title: e.coach_classes?.title || '', href: '/p' });
       }
+      const { data: bks } = await supabase.from('coach_bookings').select('id, status, session_date, start_time, decided_at').in('student_id', ids).gte('decided_at', since).limit(50).then((r) => r, () => ({ data: [] }));
+      for (const x of bks || []) {
+        if (!['accepted', 'declined'].includes(x.status)) continue;
+        items.push({ id: `cb:${x.id}:${x.status}`, kind: `coach_booking_${x.status}`, at: x.decided_at, title: String(x.start_time).slice(0, 5), event_date: x.session_date, href: '/p#my-coach' });
+      }
       const { data: ps } = await supabase.from('coach_package_purchases').select('id, status, name, decided_at, refunded_at, reject_note, source').in('student_id', ids).or(`decided_at.gte.${since},refunded_at.gte.${since}`).limit(50);
       for (const x of ps || []) {
         if (x.status === 'refunded' && x.refunded_at) items.push({ id: `cp:${x.id}:refunded`, kind: 'coach_refunded', at: x.refunded_at, title: x.name, href: '/p' });

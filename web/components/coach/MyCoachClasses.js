@@ -9,6 +9,7 @@ import { scheduleText } from '@/lib/coach';
 import { ENROLL_TONE } from '@/components/coach/StudentRow';
 import { MySessions } from '@/components/coach/Balance';
 import CoachBuy from '@/components/coach/CoachBuy';
+import { MyCoachNotes } from '@/components/coach/Notes';
 
 // "Lớp học của tôi" on the player's activity page: every class signed up for, its status,
 // the next sessions, and the way out.
@@ -60,6 +61,7 @@ export default function MyCoachClasses() {
           );
         })}
       </div>
+      <MyCoachNotes />
       {shops.map((m) => (
         <div key={m.coach.slug} className="mt-4">
           <CoachBuy
@@ -72,5 +74,21 @@ export default function MyCoachClasses() {
         </div>
       ))}
     </section>
+  );
+}
+
+// "Bạn là trợ giảng của …" on the activity page: a link to take attendance.
+export function AssistEntry() {
+  const { t } = useI18n();
+  const { data } = useLoad(() => api.get('/api/coach-assist').catch(() => []), []);
+  if (!data?.length) return null;
+  return (
+    <Link href="/assist" className="card mb-4 flex items-center gap-3 hover:border-lime-400/40">
+      <span className="flex-1 min-w-0">
+        <span className="block text-white font-semibold">{t('cassist.entryTitle')}</span>
+        <span className="block text-gray-400 text-sm break-words">{data.map((c) => c.display_name).join(', ')}</span>
+      </span>
+      <span className="text-lime-300 text-sm whitespace-nowrap">{t('cassist.entryGo')} →</span>
+    </Link>
   );
 }

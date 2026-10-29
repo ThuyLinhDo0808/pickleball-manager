@@ -19,7 +19,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import MyCoachClasses from '@/components/coach/MyCoachClasses';
+import MyCoachClasses, { AssistEntry } from '@/components/coach/MyCoachClasses';
 import { formatVnd } from '@/lib/format';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
@@ -190,6 +190,7 @@ export default function PlayerHome() {
 
       {/* Updates reach players on the bell (no e-mail setting any more). */}
       <MyBookings signedIn />
+      <AssistEntry />
       <MyCoachClasses />
 
       <section className="mb-4">

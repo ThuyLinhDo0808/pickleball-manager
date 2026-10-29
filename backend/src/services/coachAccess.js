@@ -55,7 +55,10 @@ async function requireCoach(req, res, next) {
     if (!(await ready())) return res.status(503).json({ error: 'Coach Manager needs a database update.', code: 'migration_missing', migration: MIGRATION });
     const coach = await profileOf(req.userId);
     if (!coach) return res.status(404).json({ error: 'No coach profile yet.', code: 'no_profile' });
-    if (coach.status === 'blocked') return res.status(403).json({ error: 'This coach profile was blocked by the administrators.', code: 'coach_blocked' });
+    if (coach.status === 'blocked') {
+      const { data: why } = await supabase.from('coach_profiles').select('block_reason').eq('id', coach.id).maybeSingle().then((r) => r, () => ({ data: null }));
+      return res.status(403).json({ error: 'This coach profile was blocked by the administrators.', code: 'coach_blocked', reason: why?.block_reason || null });
+    }
     req.coach = coach;
     return next();
   } catch (err) {
@@ -66,7 +69,7 @@ async function requireCoach(req, res, next) {
 // ---- Profile fields --------------------------------------------------------------------
 const SPORTS = ['pickleball', 'badminton'];
 // Pages under /coach/… that are not a coach's address.
-const RESERVED = ['profile', 'classes', 'students', 'schedule', 'sessions', 'finance', 'new', 'settings', 'me', 'status'];
+const RESERVED = ['profile', 'classes', 'students', 'schedule', 'sessions', 'finance', 'new', 'settings', 'me', 'status', 'enabled', 'money', 'packages', 'hours', 'stats', 'r', 'assist'];
 const DEDUCT = ['present_or_noshow', 'present_only', 'always'];
 const text = (v, max) => {
   if (v == null) return null;

@@ -79,11 +79,12 @@ export default function CoachOverviewPage() {
               )}
             </section>
 
-            {(data.to_mark > 0 || data.unpaid_fees > 0 || data.pending_proofs > 0) && (
+            {(data.to_mark > 0 || data.unpaid_fees > 0 || data.pending_proofs > 0 || data.pending_bookings > 0) && (
               <section className="card mb-4 border border-amber-300/30">
                 <h2 className="text-white font-semibold mb-2">{t('coach.todo')}</h2>
                 <ul className="grid gap-1.5 text-sm">
                   {data.to_mark > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoMark', { n: data.to_mark })}</span><Link href="/coach/schedule" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('coach.schedule')} →</Link></li>}
+                  {data.pending_bookings > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoBookings', { n: data.pending_bookings })}</span><Link href="/coach/hours" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('chours.title')} →</Link></li>}
                   {data.pending_proofs > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoProofs', { n: data.pending_proofs })}</span><Link href="/coach/money" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('coach.money')} →</Link></li>}
                   {data.unpaid_fees > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoFees', { n: data.unpaid_fees })}</span><Link href="/coach/money" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('coach.money')} →</Link></li>}
                 </ul>

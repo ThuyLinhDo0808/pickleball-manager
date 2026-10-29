@@ -16,6 +16,7 @@ import { CoachGate } from '@/components/coach/CoachGate';
 import { StudentLine, EnrollActions, ENROLL_TONE } from '@/components/coach/StudentRow';
 import { scheduleText, dmy } from '@/lib/coach';
 import { BalanceChip, PurchasesPanel, HistoryList } from '@/components/coach/Balance';
+import { NotesPanel } from '@/components/coach/Notes';
 
 const EMPTY = { full_name: '', phone: '', level_text: '', note: '' };
 
@@ -221,6 +222,7 @@ function StudentModal({ id, onClose, onChanged }) {
             </h3>
             <HistoryList history={(s.history || []).slice(0, 12)} />
           </section>
+          <NotesPanel studentId={s.id} />
           <form onSubmit={save} className="grid gap-3">
             <h3 className="text-gray-300 text-sm font-semibold">{t('coach.stDetails')}</h3>
             <div className="grid grid-cols-2 gap-3">

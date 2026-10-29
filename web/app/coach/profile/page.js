@@ -11,6 +11,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
+import { AssistantsPanel, MyReviewsPanel } from '@/components/coach/ProfileExtras';
 import { CoachGate, publicCoachUrl } from '@/components/coach/CoachGate';
 
 const EMPTY = {
@@ -224,6 +225,12 @@ export default function CoachProfilePage() {
               <button className="btn-primary" disabled={busy || (creating && unverified)}>{creating ? t('coach.openCta') : t('common.save')}</button>
             </div>
           </form>
+        )}
+        {!loading && !creating && me && (
+          <div className="grid gap-4 mt-4">
+            <MyReviewsPanel />
+            <AssistantsPanel />
+          </div>
         )}
       </CoachGate>
     </AppShell>

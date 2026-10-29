@@ -9,6 +9,7 @@ const S = require('../services/coachSchedule');
 const ST = require('../services/coachStudents');
 const AT = require('../services/coachAttendance');
 const M = require('../services/coachMoney');
+const X = require('../services/coachExtra');
 const { requireCaptcha } = require('../services/captcha');
 const { todayYmd } = require('../services/memberships');
 const S_fail = (m, code) => C.fail(m, 400, code);
@@ -121,7 +122,8 @@ router.get('/overview', async (req, res) => {
           supabase.from('coach_package_purchases').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'pending').not('proof_submitted_at', 'is', null),
           M.ledger(req.coach, { from: `${today.slice(0, 7)}-01`, to: today }),
         ]);
-        return { pending_proofs: count || 0, month: { income: book.income, expense: book.expense, net: book.net } };
+        const { count: bookings } = (await X.ready()) ? await supabase.from('coach_bookings').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'requested') : { count: 0 };
+        return { pending_proofs: count || 0, pending_bookings: bookings || 0, month: { income: book.income, expense: book.expense, net: book.net } };
       })()),
       to_mark: (pastOpen || []).filter((x) => S.endMs(x) < Date.now()).length,
       next: next.filter((x) => x.status === 'scheduled' && S.endMs(x) > Date.now()).slice(0, 5),
@@ -612,6 +614,181 @@ router.post('/ledger/:id/void', async (req, res) => {
   }
 });
 
+// ---- C7: notes, open hours / 1-1 bookings, reviews; C8: assistants, stats -------------
+router.use(['/notes', '/students/:id/notes', '/slots', '/bookings', '/reviews', '/assistants', '/stats'], async (req, res, next) => {
+  if (await X.ready()) return next();
+  return res.status(503).json({ error: 'Coach Manager needs a database update.', code: 'migration_missing', migration: X.MIGRATION });
+});
+router.get('/students/:id/notes', async (req, res) => {
+  try {
+    const st = await ownStudent(req);
+    if (!st) return notFound(res, 'Student');
+    res.json(await X.notesFor(req.coach.id, st.id));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/students/:id/notes', async (req, res) => {
+  try {
+    const st = await ownStudent(req);
+    if (!st) return notFound(res, 'Student');
+    const row = { ...X.cleanNote(req.body), coach_id: req.coach.id, student_id: st.id };
+    if (isUuid(req.body?.session_id)) {
+      const { data: s } = await supabase.from('coach_sessions').select('id').eq('id', req.body.session_id).eq('coach_id', req.coach.id).maybeSingle();
+      if (s) row.session_id = s.id;
+    }
+    const { data, error } = await supabase.from('coach_notes').insert(row).select('*').single();
+    if (error) return dbError(res, error);
+    res.status(201).json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/notes/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Note');
+    const patch = {};
+    if (typeof req.body?.shared === 'boolean') patch.shared = req.body.shared;
+    if ('body' in (req.body || {})) Object.assign(patch, { body: X.cleanNote({ body: req.body.body }).body });
+    const { data, error } = await supabase.from('coach_notes').update(patch).eq('id', req.params.id).eq('coach_id', req.coach.id).select('*').maybeSingle();
+    if (error) return dbError(res, error);
+    if (!data) return notFound(res, 'Note');
+    res.json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.delete('/notes/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Note');
+    const { error } = await supabase.from('coach_notes').delete().eq('id', req.params.id).eq('coach_id', req.coach.id);
+    if (error) return dbError(res, error);
+    res.json({ deleted: true });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/slots', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('coach_slots').select('*').eq('coach_id', req.coach.id).order('weekday').order('start_time');
+    if (error) return dbError(res, error);
+    res.json({ slots: data || [], free: await X.openTimes(req.coach, 14) });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/slots', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('coach_slots').insert({ ...X.cleanSlot(req.body, { creating: true }), coach_id: req.coach.id }).select('*').single();
+    if (error) return dbError(res, error);
+    res.status(201).json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/slots/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Slot');
+    const { data, error } = await supabase.from('coach_slots').update(X.cleanSlot(req.body)).eq('id', req.params.id).eq('coach_id', req.coach.id).select('*').maybeSingle();
+    if (error) return dbError(res, error);
+    if (!data) return notFound(res, 'Slot');
+    res.json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.delete('/slots/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Slot');
+    const { error } = await supabase.from('coach_slots').delete().eq('id', req.params.id).eq('coach_id', req.coach.id);
+    if (error) return dbError(res, error);
+    res.json({ deleted: true });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/bookings', async (req, res) => {
+  try {
+    const status = ['requested', 'accepted', 'declined', 'cancelled'].includes(req.query.status) ? req.query.status : null;
+    let q = supabase.from('coach_bookings').select('*, coach_students(id, full_name, phone, user_id)').eq('coach_id', req.coach.id).order('session_date').order('start_time').limit(500);
+    if (status) q = q.eq('status', status);
+    else q = q.gte('session_date', todayYmd());
+    const { data, error } = await q;
+    if (error) return dbError(res, error);
+    res.json((data || []).map(({ coach_students: st, ...b }) => ({ ...b, student: st })));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/bookings/:id/:action(accept|decline)', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Booking');
+    const { data: bk } = await supabase.from('coach_bookings').select('*').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+    if (!bk) return notFound(res, 'Booking');
+    const out = req.params.action === 'accept' ? await X.acceptBooking(req.coach, bk) : await X.declineBooking(req.coach, bk, req.body?.note);
+    const when = `${String(bk.session_date).split('-').reverse().join('/')} ${String(bk.start_time).slice(0, 5)}`;
+    M.mailStudent(bk.student_id, req.params.action === 'accept' ? `Đã nhận buổi kèm 1-1 lúc ${when}` : `Huấn luyện viên chưa nhận được buổi ${when}`, req.params.action === 'accept' ? `Huấn luyện viên ${req.coach.display_name} đã nhận buổi kèm 1-1 lúc ${when}. Xem trong mục Lớp học của tôi.` : `Huấn luyện viên ${req.coach.display_name} chưa nhận được buổi kèm 1-1 lúc ${when}${out.decline_note ? `: ${out.decline_note}` : ''}. Bạn có thể chọn giờ khác.`);
+    res.json(out);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/reviews', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('coach_reviews').select('id, stars, body, hidden, created_at, coach_students(full_name)').eq('coach_id', req.coach.id).order('created_at', { ascending: false }).limit(200);
+    if (error) return dbError(res, error);
+    const rows = (data || []).map(({ coach_students: s, ...r }) => ({ ...r, name: s?.full_name || '' }));
+    const shown = rows.filter((r) => !r.hidden);
+    res.json({ rows, rating: shown.length ? Math.round((shown.reduce((a, r) => a + r.stars, 0) / shown.length) * 10) / 10 : null, count: shown.length });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/assistants', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('coach_assistants').select('id, email, user_id, status, created_at').eq('coach_id', req.coach.id).eq('status', 'active').order('created_at');
+    if (error) return dbError(res, error);
+    res.json(data || []);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/assistants', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return send(res, S_fail('Enter a valid email.', 'bad_email'));
+    if (email === String(req.hostEmail || '').toLowerCase()) return send(res, S_fail('That is your own email.', 'self'));
+    const { data: n } = await supabase.from('coach_assistants').select('id').eq('coach_id', req.coach.id).eq('status', 'active');
+    if ((n || []).length >= 10) return send(res, S_fail('Up to 10 assistants.', 'too_many'));
+    const { data: u } = await supabase.from('users').select('id').ilike('email', email).maybeSingle();
+    const { data, error } = await supabase.from('coach_assistants').insert({ coach_id: req.coach.id, email, user_id: u?.id || null }).select('id, email, user_id, status, created_at').single();
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'Already an assistant.', code: 'exists' });
+      return dbError(res, error);
+    }
+    res.status(201).json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.delete('/assistants/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Assistant');
+    const { error } = await supabase.from('coach_assistants').update({ status: 'removed' }).eq('id', req.params.id).eq('coach_id', req.coach.id);
+    if (error) return dbError(res, error);
+    res.json({ removed: true });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/stats', async (req, res) => {
+  try {
+    res.json(await X.stats(req.coach, Math.min(12, Math.max(3, Number(req.query.months) || 6))));
+  } catch (err) {
+    send(res, err);
+  }
+});
+
 // ---- Attendance (C4) -------------------------------------------------------------------
 async function ownSession(req) {
   if (!isUuid(req.params.id)) return null;
@@ -725,6 +902,40 @@ router.delete('/sessions/:id', async (req, res) => {
 });
 
 // ---- Public -----------------------------------------------------------------------------
+// Is Coach Manager on for everyone? (The web shows the Coach tab in Tìm only then, or for
+// beta testers.) 'enabled' is a reserved slug, so it never clashes with a coach page.
+publicRoutes.get('/enabled', async (req, res) => {
+  try {
+    res.json({ enabled: !!(await require('../services/appSettings').get('coach_enabled')) });
+  } catch {
+    res.json({ enabled: false });
+  }
+});
+// Find a coach (/discover → Coach): public, active profiles only.
+publicRoutes.get('/', async (req, res) => {
+  try {
+    // Before the product is switched on for everyone, nobody finds coaches here (beta
+    // testers search through /api/player/coach/search).
+    if (!(await C.ready()) || !(await require('../services/appSettings').get('coach_enabled'))) return res.json([]);
+    if (!(await X.ready())) {
+      const { data } = await supabase.from('coach_profiles').select('id, slug, display_name, sport, area, court_name, level_text, price_note').eq('status', 'active').eq('public', true).limit(200);
+      return res.json((data || []).map((c) => ({ ...c, rating: null, reviews: 0, open_classes: 0, one_on_one: false })));
+    }
+    res.json(await X.search({ sport: req.query.sport, q: String(req.query.q || '').slice(0, 80), area: String(req.query.area || '').slice(0, 80) }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Free 1-1 times of a coach (the next 3 weeks).
+publicRoutes.get('/:slug/times', async (req, res) => {
+  try {
+    const c = await C.profileBySlug(req.params.slug);
+    if (!c || c.status !== 'active' || !(await X.ready())) return res.json([]);
+    res.json(await X.openTimes(c));
+  } catch (err) {
+    send(res, err);
+  }
+});
 publicRoutes.get('/:slug', async (req, res) => {
   try {
     const c = await C.profileBySlug(req.params.slug);
@@ -746,6 +957,22 @@ publicRoutes.get('/:slug', async (req, res) => {
       for (const x of sessions) if (x.status === 'scheduled') (byClass.get(x.class_id) || byClass.set(x.class_id, []).get(x.class_id)).push({ id: x.id, session_date: x.session_date, start_time: x.start_time, duration_min: x.duration_min, court_name: x.court_name });
       view.classes = (classes || []).map((k) => ({ ...k, next_sessions: (byClass.get(k.id) || []).slice(0, 4) }));
       view.packages = packages.filter((p) => p.active).map((p) => ({ id: p.id, name: p.name, sessions: p.sessions, price: p.price, valid_months: p.valid_months, note: p.note }));
+    }
+    view.rating = null;
+    view.reviews = [];
+    view.reviews_count = 0;
+    view.one_on_one = false;
+    if (await X.ready()) {
+      const [r, list, { count: slots }] = await Promise.all([
+        X.ratingOf([c.id]),
+        X.publicReviews(c.id),
+        supabase.from('coach_slots').select('id', { count: 'exact', head: true }).eq('coach_id', c.id).eq('active', true),
+      ]);
+      const x = r.get(c.id);
+      view.rating = x?.rating ?? null;
+      view.reviews_count = x?.reviews || 0;
+      view.reviews = list;
+      view.one_on_one = (slots || 0) > 0;
     }
     res.json(view);
   } catch (err) {
@@ -980,6 +1207,117 @@ studentRoutes.post('/purchases/:id/proof', async (req, res) => {
     send(res, err);
   }
 });
+// C7 for the student: notes the coach shared, my review, book a 1-1 time, my bookings,
+// report a profile.
+async function meWith(req, slug) {
+  const coach = await C.profileBySlug(slug);
+  if (!coach || coach.status === 'blocked') return null;
+  const { data: st } = await supabase.from('coach_students').select('*').eq('coach_id', coach.id).eq('user_id', req.userId).maybeSingle();
+  return { coach, st };
+}
+studentRoutes.get('/search', async (req, res) => {
+  try {
+    if (!(await C.enabledFor(req)) || !(await X.ready())) return res.json([]);
+    res.json(await X.search({ sport: req.query.sport, q: String(req.query.q || '').slice(0, 80), area: String(req.query.area || '').slice(0, 80) }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.get('/bookings', async (req, res) => {
+  try {
+    if (!(await X.ready())) return res.json([]);
+    const { data: sts } = await supabase.from('coach_students').select('id').eq('user_id', req.userId);
+    const ids = (sts || []).map((x) => x.id);
+    if (!ids.length) return res.json([]);
+    const { data } = await supabase.from('coach_bookings').select('id, session_date, start_time, duration_min, status, pay_mode, decline_note, note, coach_profiles(slug, display_name)').in('student_id', ids).gte('session_date', todayYmd()).order('session_date').order('start_time').limit(50);
+    res.json((data || []).map(({ coach_profiles: c, ...b }) => ({ ...b, coach: c })));
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.get('/notes', async (req, res) => {
+  try {
+    if (!(await X.ready())) return res.json([]);
+    const { data: sts } = await supabase.from('coach_students').select('id, coach_id, coach_profiles(slug, display_name)').eq('user_id', req.userId);
+    const out = [];
+    for (const st of sts || []) {
+      const notes = await X.notesFor(st.coach_id, st.id, { sharedOnly: true });
+      for (const n of notes) out.push({ id: n.id, body: n.body, video_url: n.video_url, created_at: n.created_at, session: n.session, coach: st.coach_profiles });
+    }
+    out.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    res.json(out.slice(0, 50));
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.get('/coaches/:slug/me', async (req, res) => {
+  try {
+    const x = await meWith(req, req.params.slug);
+    if (!x) return notFound(res, 'Coach');
+    if (!x.st || !(await X.ready())) return res.json({ student: !!x.st, can_review: false, review: null, bookings: [] });
+    const [can, { data: review }, { data: bookings }] = await Promise.all([
+      X.canReview(x.st.id),
+      supabase.from('coach_reviews').select('id, stars, body, hidden, updated_at').eq('coach_id', x.coach.id).eq('student_id', x.st.id).maybeSingle(),
+      supabase.from('coach_bookings').select('id, session_date, start_time, duration_min, status, pay_mode, decline_note').eq('coach_id', x.coach.id).eq('student_id', x.st.id).gte('session_date', todayYmd()).order('session_date').limit(20),
+    ]);
+    res.json({ student: true, can_review: can, review: review || null, bookings: bookings || [] });
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/coaches/:slug/review', async (req, res) => {
+  try {
+    if (!(await X.ready())) return res.status(503).json({ error: 'Not available yet.', code: 'migration_missing' });
+    const x = await meWith(req, req.params.slug);
+    if (!x) return notFound(res, 'Coach');
+    if (!x.st) return res.status(403).json({ error: 'You can review a coach after your first session with them.', code: 'review_not_allowed' });
+    res.json(await X.upsertReview(x.coach, x.st, req.userId, req.body));
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/coaches/:slug/book', async (req, res) => {
+  try {
+    if (!(await X.ready())) return res.status(503).json({ error: 'Not available yet.', code: 'migration_missing' });
+    const coach = await C.profileBySlug(req.params.slug);
+    if (!coach || coach.status === 'blocked') return notFound(res, 'Coach');
+    const st = await ST.studentForUser(coach, req.userId, {});
+    const bk = await X.requestBooking(coach, st, req.body || {});
+    const when = `${String(bk.session_date).split('-').reverse().join('/')} ${String(bk.start_time).slice(0, 5)}`;
+    M.mailCoach(coach, `Yêu cầu kèm 1-1 — ${st.full_name}`, `${st.full_name} muốn đặt buổi kèm 1-1 lúc ${when}. Mở Coach → Lịch rảnh để nhận hoặc từ chối.`, '/coach/hours');
+    res.status(201).json(bk);
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/bookings/:id/cancel', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id) || !(await X.ready())) return notFound(res, 'Booking');
+    const { data: bk } = await supabase.from('coach_bookings').select('*, coach_students(user_id)').eq('id', req.params.id).maybeSingle();
+    if (!bk || bk.coach_students?.user_id !== req.userId) return notFound(res, 'Booking');
+    const { coach_students: _s, ...row } = bk;
+    res.json(await X.cancelBooking(row));
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/coaches/:slug/report', async (req, res) => {
+  try {
+    if (!(await X.ready())) return res.status(503).json({ error: 'Not available yet.', code: 'migration_missing' });
+    const coach = await C.profileBySlug(req.params.slug);
+    if (!coach) return notFound(res, 'Coach');
+    const reason = String(req.body?.reason || '').trim();
+    if (reason.length < 3 || reason.length > 1000) return res.status(400).json({ error: 'Say what is wrong (3 to 1000 characters).', code: 'bad_reason' });
+    const since = new Date(Date.now() - 86400000).toISOString();
+    const { count } = await supabase.from('coach_reports').select('id', { count: 'exact', head: true }).eq('user_id', req.userId).gte('created_at', since);
+    if ((count || 0) >= 5) return res.status(429).json({ error: 'Too many reports today.', code: 'too_many' });
+    const { error } = await supabase.from('coach_reports').insert({ coach_id: coach.id, user_id: req.userId, reason });
+    if (error) return dbError(res, error);
+    res.status(201).json({ reported: true });
+  } catch (err) {
+    send(res, err);
+  }
+});
 studentRoutes.post('/enrollments/:id/cancel', async (req, res) => {
   try {
     if (!isUuid(req.params.id)) return notFound(res, 'Enrollment');
@@ -993,4 +1331,70 @@ studentRoutes.post('/enrollments/:id/cancel', async (req, res) => {
   }
 });
 
-module.exports = { router, publicRoutes, studentRoutes };
+// ---- Assistants (C8): take attendance for a coach, no money, no phones -----------------
+const assistRoutes = express.Router();
+assistRoutes.get('/', async (req, res) => {
+  try {
+    res.json((await X.assistingFor(req.userId, req.hostEmail)).map((c) => ({ id: c.id, slug: c.slug, display_name: c.display_name, sport: c.sport })));
+  } catch (err) {
+    send(res, err);
+  }
+});
+assistRoutes.use('/:coachId', async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.coachId)) return notFound(res, 'Coach');
+    const coach = (await X.assistingFor(req.userId, req.hostEmail)).find((c) => c.id === req.params.coachId);
+    if (!coach) return res.status(403).json({ error: 'You are not an assistant of this coach.', code: 'not_assistant' });
+    req.coach = coach;
+    next();
+  } catch (err) {
+    send(res, err);
+  }
+});
+assistRoutes.get('/:coachId/sessions', async (req, res) => {
+  try {
+    const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from : S.addDays(todayYmd(), -7);
+    const to = /^\d{4}-\d{2}-\d{2}$/.test(req.query.to || '') ? req.query.to : S.addDays(todayYmd(), 14);
+    res.json((await S.listSessions(req.coach.id, { from, to })).map(({ fee, ...s }) => s));
+  } catch (err) {
+    send(res, err);
+  }
+});
+async function assistSession(req) {
+  if (!isUuid(req.params.sid)) return null;
+  const { data } = await supabase.from('coach_sessions').select('*, coach_classes(*)').eq('id', req.params.sid).eq('coach_id', req.coach.id).maybeSingle();
+  if (!data) return null;
+  const { coach_classes: cls, ...s } = data;
+  return { s, cls };
+}
+const noPrivate = (st) => st && { id: st.id, full_name: st.full_name, user_id: st.user_id, level_text: st.level_text, avatar_uid: st.avatar_uid, avatar_v: st.avatar_v };
+assistRoutes.get('/:coachId/sessions/:sid', async (req, res) => {
+  try {
+    const x = await assistSession(req);
+    if (!x) return notFound(res, 'Session');
+    const rows = await AT.people(req.coach, x.cls, x.s);
+    res.json({ session: { ...x.s, class: { id: x.cls.id, title: x.cls.title, court_name: x.cls.court_name } }, coach: { display_name: req.coach.display_name }, rows: rows.map((r) => ({ student: noPrivate(r.student), pay_mode: r.pay_mode, left: r.left, attendance: r.attendance, balance: r.balance ? { remaining: r.balance.remaining, has_package: r.balance.has_package } : null })) });
+  } catch (err) {
+    send(res, err);
+  }
+});
+assistRoutes.post('/:coachId/sessions/:sid/attendance', async (req, res) => {
+  try {
+    const x = await assistSession(req);
+    if (!x) return notFound(res, 'Session');
+    if (!isUuid(req.body?.student_id)) return notFound(res, 'Student');
+    const { data: st } = await supabase.from('coach_students').select('id').eq('id', req.body.student_id).eq('coach_id', req.coach.id).maybeSingle();
+    if (!st) return notFound(res, 'Student');
+    if (req.body.status === null) {
+      await AT.unmark(x.s, st.id);
+      return res.json({ cleared: true });
+    }
+    const a = await AT.mark(req.coach, x.cls, x.s, st.id, req.body.status);
+    await supabase.from('coach_attendance').update({ by_assistant: req.userId }).eq('id', a.id);
+    res.json(a);
+  } catch (err) {
+    send(res, err);
+  }
+});
+
+module.exports = { router, publicRoutes, studentRoutes, assistRoutes };

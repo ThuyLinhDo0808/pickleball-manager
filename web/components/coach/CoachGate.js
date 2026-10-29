@@ -20,7 +20,7 @@ export function CoachGate({ error, reload, needProfile = true, children }) {
   }
   if (code === 'coach_off') return <p className="card text-gray-300 text-sm">{t('coach.offHint')}</p>;
   if (code === 'migration_missing') return <p className="card text-amber-200 text-sm">{t('coach.migrationHint', { file: error.payload?.migration || '' })}</p>;
-  if (code === 'coach_blocked') return <p className="card text-red-200 text-sm">{t('coach.blockedHint')}</p>;
+  if (code === 'coach_blocked') return <p className="card text-red-200 text-sm">{t('coach.blockedHint')}{error?.payload?.reason ? ` ${t('coach.blockedReason', { reason: error.payload.reason })}` : ''}</p>;
   if (needProfile && (code === 'no_profile' || (coachInfo && coachInfo.enabled && !coachInfo.has_profile))) {
     return (
       <div className="card text-sm">
