@@ -93,7 +93,7 @@ router.get('/public/:publicToken', async (req, res) => {
   // The organiser's account is suspended by the app owner: no new sign-ups.
   if (await suspensionOf(event.host_id)) closedCode = 'suspended';
   else if (!event.allow_public_registration) closedCode = 'disabled';
-  else if (!['draft', 'open'].includes(event.status)) closedCode = 'not_open';
+  else if (!['draft', 'open'].includes(event.status) || event.approval === 'pending') closedCode = 'not_open';
   else if (event.registration_deadline && new Date(event.registration_deadline) < new Date()) closedCode = 'deadline';
 
   res.json({
@@ -432,6 +432,7 @@ router.param('eventId', async (req, res, next, eventId) => {
   if (!access) return req.roleForbidden ? res.status(403).json(ROLE_FORBIDDEN) : notFound(res, 'Event');
   req.hostId = access.hostId;
   req.coAdmin = access.coAdmin;
+  req.eventRole = access.role || 'owner';
   req.event = await completeIfFinished(data);
   next();
 });
@@ -457,6 +458,12 @@ async function hostForClub(req, clubId) {
   if (!clubId) return req.userId || req.hostId; // standalone (Xé Vé) event
   if (!isUuid(clubId)) return null;
   return actingHost(req, clubId);
+}
+
+// Co-host kèo wait for the owner's approval (20270107090000_event_approval.sql).
+async function approvalReady() {
+  const st = await require('../services/schemaCheck').schemaStatus();
+  return !st.missing_migrations.includes('20270107090000_event_approval.sql');
 }
 
 const EVENT_KINDS = ['weekly', 'game', 'training', 'meeting', 'challenge'];
@@ -816,6 +823,9 @@ router.post('/', async (req, res) => {
     // Members first: opens to everyone at the same distance before each session.
     ...(fields.public_from ? { public_from: new Date(new Date(fields.public_from).getTime() + dayMs(d) - dayMs(event_date)).toISOString() } : {}),
   }));
+  // A co-host's kèo waits for the owner: a draft (nobody can sign up) until approved.
+  const byCoHost = hostId !== (req.userId || req.hostId) && (await approvalReady());
+  if (byCoHost) for (const r of rows) Object.assign(r, { requested_status: r.status, status: 'draft', approval: 'pending', requested_by: req.userId || null });
   const { data, error } = await supabase.from('events').insert(rows).select();
   if (error) return dbError(res, error);
   // Each session's costs (court, water…) go into the ledger on its day.
@@ -825,7 +835,7 @@ router.post('/', async (req, res) => {
     return dbError(res, err);
   }
   data.sort((a, b) => a.event_date.localeCompare(b.event_date));
-  res.status(201).json({ ...data[0], created_count: data.length });
+  res.status(201).json({ ...data[0], created_count: data.length, needs_approval: byCoHost });
 });
 
 // With `series_upcoming`: how many other sessions of the same weekly schedule an edit can
@@ -1036,6 +1046,10 @@ router.patch('/:eventId', async (req, res) => {
     if (!(await noRefundReady())) delete fields.no_refund;
     else fields.no_refund = fields.no_refund === true;
   }
+  // Waiting for the owner: a co-host edits the details but cannot open it.
+  if (req.event.approval === 'pending' && req.coAdmin && ('status' in fields || 'allow_public_registration' in fields)) {
+    return res.status(403).json({ error: 'The Host has to approve this kèo first.', code: 'needs_approval' });
+  }
   if (req.event.status === 'cancelled' && fields.status && fields.status !== 'cancelled') {
     return res.status(409).json({ error: 'A cancelled event stays cancelled.', code: 'cancelled' });
   }
@@ -1117,6 +1131,25 @@ async function applyToSeries(ev, fields) {
 // A past session (completed / cancelled / its date gone) can be deleted to tidy up the
 // history, but only once the Host confirmed (?force=1) after seeing what goes with it.
 // Otherwise money records alone also need ?force=1.
+// The owner approves (it opens as the co-host asked) or rejects (it is deleted) a kèo a
+// co-host made — the whole weekly series at once.
+router.post('/:eventId/approval', async (req, res) => {
+  if (req.coAdmin) return res.status(403).json({ error: 'Only the Host approves kèo.', code: 'owner_only' });
+  if (req.event.approval !== 'pending') return res.status(409).json({ error: 'Nothing to approve.', code: 'not_pending' });
+  const approve = req.body?.decision !== 'reject';
+  let q = supabase.from('events').select('id, requested_status').eq('approval', 'pending');
+  q = req.event.series_id ? q.eq('series_id', req.event.series_id) : q.eq('id', req.event.id);
+  const { data: evs, error } = await q;
+  if (error) return dbError(res, error);
+  for (const e of evs || []) {
+    const r = approve
+      ? await supabase.from('events').update({ approval: null, status: ['draft', 'open', 'closed'].includes(e.requested_status) ? e.requested_status : 'open' }).eq('id', e.id)
+      : await supabase.from('events').delete().eq('id', e.id);
+    if (r.error) return dbError(res, r.error);
+  }
+  res.json({ ok: true, decision: approve ? 'approved' : 'rejected', count: (evs || []).length });
+});
+
 router.delete('/:eventId', async (req, res) => {
   const [{ count: people }, { count: money }, { count: matches }] = await Promise.all([
     // (organizers who don't play, e.g. the Host's own row, are not sign-ups)

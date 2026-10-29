@@ -218,6 +218,9 @@ const GROUP_PAGES = {
   finance_view: ['/finance', '/finance/ledger', '/finance/plans'],
   finance_edit: ['/finance', '/finance/ledger', '/finance/plans'],
 };
+// A co-host (đồng quản trị) never sees money (overview, ledger, plans / debts — the ball
+// stock stays), the club / community settings or staff access.
+const COHOST_HIDDEN = ['/finance', '/finance/ledger', '/finance/plans', '/club/community-settings', '/staff-access', '/club/business/finance'];
 function pagesFor(club) {
   if (!club || !['finance', 'operator'].includes(club.role)) return null;
   if (!Array.isArray(club.groups)) return ROLE_PAGES[club.role] || null;
@@ -465,12 +468,12 @@ export default function AppShell({ children, back }) {
   const clubRole = scoped ? club?.role : null;
   const rolePages = clubRole ? pagesFor(club) : null;
   // A listed page also allows its sub-pages (e.g. /club/members → /club/members/guests).
-  const roleOk = (href) => !rolePages || rolePages.some((p) => href === p || (p !== '/finance' && href.startsWith(`${p}/`)));
+  const roleOk = (href) => !(coAdmin && COHOST_HIDDEN.includes(href)) && (!rolePages || rolePages.some((p) => href === p || (p !== '/finance' && href.startsWith(`${p}/`))));
   const NAV = (NAV_BY_WORKSPACE[mode] || [])
     .map((g) => (coAdmin && g.children ? { ...g, children: g.children.filter((c) => c.href !== '/staff-access') } : g))
     .map((g) => (g.children ? { ...g, children: g.children.filter((c) => roleOk(c.href) && (!c.sport || (club?.sport || 'pickleball') === c.sport) && (!c.community || mode === 'community') && (!c.coachLink || !!coachInfo?.enabled || coachInfo?.host_links > 0) && (!c.addon || c.showLocked || !!planFor(scoped ? club : null, plan)?.addons?.[c.addon])) } : g))
     .filter((g) => (g.children ? g.children.length > 0 : roleOk(g.href)));
-  const tabs = (TABS_BY_WORKSPACE[mode] || []).filter((tab) => roleOk(tab.href));
+  const tabs = (TABS_BY_WORKSPACE[mode] || []).map((tab) => (coAdmin && tab.href === '/finance' ? { href: '/finance/inventory', key: 'nav.inventory', icon: 'box' } : tab)).filter((tab) => roleOk(tab.href));
   // Staff / finance see one or two pages: put their account beside them, so the bar is not
   // one lonely icon next to "Thêm".
   if (tabs.length < 3 && !tabs.some((tab) => tab.href === '/account')) tabs.push({ href: '/account', key: 'nav.account', icon: 'account' });
@@ -643,6 +646,12 @@ export default function AppShell({ children, back }) {
             <div className="flex justify-end mt-4">
               <Link href="/contact#dev" className="btn-primary text-sm">{t('contact.addonLockedCta')}</Link>
             </div>
+          </div>
+        ) : coAdmin && COHOST_HIDDEN.includes(pathname) ? (
+          <div className="max-w-lg mx-auto card mt-4">
+            <h1 className="text-white text-lg font-bold mb-1">{t('cohost.hiddenTitle')}</h1>
+            <p className="text-gray-300 text-sm">{t('cohost.hiddenBody')}</p>
+            <div className="flex justify-end mt-4"><Link href="/dashboard" className="btn-primary text-sm">{t('cohost.back')}</Link></div>
           </div>
         ) : pageLocked && wsReady ? (
           <LockedFeature feature={pageFeature} owner={!coAdmin} product={mode === 'community' ? 'social_manager' : 'tier'} />

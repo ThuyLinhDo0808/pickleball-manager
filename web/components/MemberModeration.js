@@ -206,7 +206,7 @@ export function ReviewTab({ club, members, onChanged }) {
                   </select>
                 </label>
                 <button className="btn-primary !py-1.5 text-sm" disabled={busy === m.id} onClick={() => restore(m)}>↩ {t('mod.restore')}</button>
-                <button className="rounded-lg px-3 py-1.5 text-sm border border-red-500/60 text-red-300 hover:bg-red-500/10" onClick={() => setRemoving(m)}>{t('mod.remove')}</button>
+                {club?.role !== 'co_admin' && <button className="rounded-lg px-3 py-1.5 text-sm border border-red-500/60 text-red-300 hover:bg-red-500/10" onClick={() => setRemoving(m)}>{t('mod.remove')}</button>}
               </div>
             </div>
           </div>

@@ -158,10 +158,14 @@ function ClubHome({ community = false }) {
         }
       : null,
     requests?.length ? { href: '/club/members', icon: 'edit', text: t('home.todoRequests', { n: requests.length }) } : null,
+    // Kèo a co-host made, waiting for the Host to approve.
+    (club?.role || 'owner') === 'owner' && (events || []).some((e) => e.approval === 'pending')
+      ? { href: `/events/${(events || []).find((e) => e.approval === 'pending').id}`, icon: 'schedule', text: t('cohost.todo', { n: (events || []).filter((e) => e.approval === 'pending').length }) }
+      : null,
     refunds?.length
       ? { href: `/events/${refunds[0].event_id}`, icon: 'money', text: t('home.todoRefunds', { n: refunds.length, amount: formatVnd(refunds.reduce((s, r) => s + r.amount, 0)), names: refunds.slice(0, 3).map((r) => r.full_name).join(', ') }) }
       : null,
-    debtors.length
+    debtors.length && club?.role !== 'co_admin'
       ? { href: '/club/members', icon: 'money', text: t('home.todoDebtNames', { names: debtors.slice(0, 4).map((m) => m.full_name).join(', '), more: debtors.length > 4 ? ` +${debtors.length - 4}` : '' }) }
       : null,
     upcoming.some((e) => e.pending_count > 0) ? { href: `/events/${upcoming.find((e) => e.pending_count > 0).id}`, icon: 'receipt', text: t('home.todoTransfers') } : null,
@@ -283,7 +287,9 @@ function ClubHome({ community = false }) {
 
       </div>
 
-      {/* Money this month: one block. Phone: a list (label left, amount right); wider: four columns. */}
+      {/* Money this month: one block (never for a co-host). Phone: a list (label left, amount right); wider: four columns. */}
+      {club?.role !== 'co_admin' && (
+        <>
       <h2 className="text-white font-semibold mb-2">{t('home.rowMoney')}</h2>
       <div className="card !p-0 mb-5 grid grid-cols-1 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-navy-700">
         {[
@@ -298,6 +304,8 @@ function ClubHome({ community = false }) {
           </Link>
         ))}
       </div>
+        </>
+      )}
 
       {/* The club in numbers: shown, not folded away. */}
       <div>

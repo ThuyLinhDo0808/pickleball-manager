@@ -30,6 +30,7 @@ const ACTIONS = [
   r('POST', '/api/transactions', 'money.add'),
   r('PATCH', '/api/transactions/:id', 'money.edit'),
   r('POST', '/api/transactions/:id/void', 'money.void'),
+  r('POST', '/api/events/:id/approval', 'event.approval'),
   r('POST', '/api/events', 'event.create'),
   r('POST', '/api/events/weekly', 'event.weekly'),
   r('PATCH', '/api/events/:id', 'event.edit'),

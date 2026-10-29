@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
+import { useDefaultClub } from '@/lib/useDefaultClub';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
 import Hint from '@/components/ui/Hint';
@@ -56,6 +57,9 @@ export default function DuprExport({ clubId, scope, fileName = 'dupr-matches', r
   const [rep, setRep] = useState(null); // { from: key, to: member id }
   const [repErr, setRepErr] = useState('');
   const { data: cands } = useLoad(() => (clubId && rep ? api.get(`/api/clubs/${clubId}/dupr/replace`).catch(() => []) : Promise.resolve(null)), [clubId, !!rep]);
+  // A co-host never sends matches to DUPR (the Host does).
+  const { club: cur } = useDefaultClub();
+  if (cur?.id === clubId && cur?.role === 'co_admin') return bare ? <p className="text-gray-400 text-sm">{t('cohost.noDupr')}</p> : null;
   if (bare && error) return <p className="text-red-300 text-sm">{error.payload?.code === 'migration_required' ? t('dupr.needMigration') : error.message}</p>;
   if (bare && !data) return <p className="text-gray-400 text-sm">{t('common.loading')}</p>;
   if (!clubId || error || !data) return null;

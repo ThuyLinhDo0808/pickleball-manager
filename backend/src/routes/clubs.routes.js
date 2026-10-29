@@ -1333,7 +1333,13 @@ router.get('/:clubId/rankings', requireFeature('rankings'), async (req, res) => 
 // active / inactive, regular / irregular, money in / out / balance / still owed.
 router.get('/:clubId/community-overview', async (req, res) => {
   try {
-    res.json(await require('../services/community').overview(req.club));
+    const ov = await require('../services/community').overview(req.club);
+    // A co-host sees no money: no finance block, no money in the monthly trend.
+    if (req.clubRole === 'co_admin') {
+      ov.finance = null;
+      ov.monthly = (ov.monthly || []).map(({ income, expense, profit, ...x }) => x);
+    }
+    res.json(ov);
   } catch (err) {
     dbError(res, err);
   }
@@ -1445,7 +1451,7 @@ router.get('/:clubId/business', async (req, res) => {
   try {
     const biz = require('../services/communityBusiness');
     const [b, reputation] = await Promise.all([biz.business(req.club, req.query.period), biz.reputation(req.club)]);
-    res.json({ ...b, reputation });
+    res.json({ ...b, reputation, ...(req.clubRole === 'co_admin' ? { money: null } : {}) });
   } catch (err) {
     dbError(res, err);
   }

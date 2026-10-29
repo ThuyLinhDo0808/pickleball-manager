@@ -189,6 +189,7 @@ async function myRegistration(event, userId) {
 function assertOpen(event) {
   if (!event.allow_public_registration) throw httpError('This event does not take sign-ups via the link.', 403, 'disabled');
   if (!['draft', 'open'].includes(event.status)) throw httpError('Registration is not open for this event.', 403, 'not_open');
+  if (event.approval === 'pending') throw httpError('This kèo is waiting for the Host to approve it.', 403, 'not_open');
   if (event.registration_deadline && new Date(event.registration_deadline) < new Date()) {
     throw httpError('The registration deadline has passed.', 403, 'deadline');
   }

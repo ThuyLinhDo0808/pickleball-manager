@@ -6,6 +6,10 @@
 // FINANCE   — finance overview, income/expenses, membership plans, confirm payments,
 //             debts, revenue, profit, reports, Excel. Not: club settings, staff,
 //             deleting members, creating/editing activities, match results, rankings.
+// CO-HOST (co_admin) — everything except what COHOST_DENY lists: no money pages (fund,
+//             income/expenses, membership plans, debts, reports), no sending matches to DUPR,
+//             no club / community settings or join link, no deleting members. Kèo they
+//             create wait for the owner's approval (routes/events.routes.js).
 // OPERATOR  — members (list, basic info), attendance, check-in/out; calendar, open /
 //             close activities, participants; matches (create, players, scores, finish);
 //             balls (log use, counts); rankings (view). Not: finance details, editing
@@ -120,6 +124,34 @@ const GROUPS = {
 };
 const GROUP_NAMES = Object.keys(GROUPS);
 
+// What a co-host may NOT do (everything else is open to them). Collecting a kèo's fees
+// (confirm / reject a transfer, waive) stays open: that is running the session.
+const COHOST_DENY = [
+  // Money pages: fund, income / expenses, membership plans and passes, reports, debts.
+  ['GET POST PATCH DELETE', '/api/transactions(/.*)?'],
+  ['GET', '/api/clubs/:id/fund'],
+  ['GET', '/api/clubs/:id/refunds-due'],
+  ['GET POST', '/api/clubs/:id/plans'],
+  ['PATCH DELETE', '/api/clubs/:id/plans/:id'],
+  ['GET POST', '/api/clubs/:id/members/:id/memberships'],
+  ['PATCH DELETE', '/api/clubs/:id/memberships/:id'],
+  ['GET', '/api/clubs/:id/pending-payments'],
+  ['POST', '/api/clubs/:id/pending-payments/[^/]+/confirm'],
+  ['GET', '/api/analytics/(finance|events-pnl|daily)'],
+  ['GET', '/api/events/:id/finance'],
+  ['GET PUT POST PATCH DELETE', '/api/events/:id/meeting/(money|expenses|settle)(/.*)?'],
+  // DUPR: no sending matches (downloading the file, marking sent, lượt tải).
+  ['POST', '/api/clubs/:id/dupr/matches/(csv|mark)'],
+  ['GET POST', '/api/clubs/:id/dupr/batches(/.*)?'],
+  // Club / community settings and its join / invite links.
+  ['PATCH', '/api/clubs/:id'],
+  ['PUT POST', '/api/clubs/:id/community-settings(/.*)?'],
+  ['POST', '/api/clubs/:id/(invite|join)-token/rotate'],
+  // Members: edit, never delete or remove.
+  ['DELETE', '/api/clubs/:id/members/:id'],
+  ['POST', '/api/clubs/:id/members/:id/remove'],
+];
+
 // Each role's groups when the owner hasn't customised them.
 const ROLE_GROUPS = {
   finance: ['finance_view', 'finance_edit'],
@@ -127,7 +159,7 @@ const ROLE_GROUPS = {
 };
 
 const compile = (rules) => rules.map(([methods, path, check]) => ({ methods: methods.split(' '), path: re(path), check }));
-const TABLE = Object.fromEntries([...GROUP_NAMES.map((g) => [g, compile(GROUPS[g])]), ['shared', compile(SHARED)]]);
+const TABLE = Object.fromEntries([...GROUP_NAMES.map((g) => [g, compile(GROUPS[g])]), ['shared', compile(SHARED)], ['cohost_deny', compile(COHOST_DENY)]]);
 
 // The groups a grant gives: its custom list (Pro only — `custom` says the owner's plan
 // allows it), else its role's defaults.
@@ -140,13 +172,13 @@ function groupsOf(grant, custom) {
 // May a holder of these grants make this request? `grants` = [{ role, permissions }].
 function permitsGrants(grants, method, url, body, { custom = false } = {}) {
   const groups = new Set();
-  for (const g of grants) {
-    const gs = groupsOf(g, custom);
-    if (gs === null) return true;
-    gs.forEach((x) => groups.add(x));
-  }
   const path = String(url || '').split('?')[0].replace(/\/+$/, '');
   const ok = (rules) => rules.some((rule) => rule.methods.includes(method) && rule.path.test(path) && (!rule.check || rule.check(body)));
+  for (const g of grants) {
+    const gs = groupsOf(g, custom);
+    if (gs === null) return !ok(TABLE.cohost_deny); // co-host: all but the deny list
+    gs.forEach((x) => groups.add(x));
+  }
   return ok(TABLE.shared) || [...groups].some((g) => ok(TABLE[g]));
 }
 
@@ -164,4 +196,4 @@ function effectiveGroups(grants, custom) {
   return [...out];
 }
 
-module.exports = { CLUB_ROLES, LIMITED_ROLES, GROUPS, GROUP_NAMES, ROLE_GROUPS, permits, permitsGrants, groupsOf, effectiveGroups };
+module.exports = { CLUB_ROLES, LIMITED_ROLES, GROUPS, GROUP_NAMES, ROLE_GROUPS, COHOST_DENY, permits, permitsGrants, groupsOf, effectiveGroups };

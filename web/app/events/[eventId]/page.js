@@ -336,8 +336,12 @@ export default function EventDetailPage() {
       {/* Sign-ups waiting for the Host: on top of every tab, impossible to miss. */}
       {event.kind !== 'meeting' && <RequestsSection rows={requested} community={ownerKind === 'community'} onPlace={placeTo} onOpen={(p) => openSheet(p)} onDecline={declineGroup} />}
 
-      <div role="tablist" className="grid grid-cols-4 gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4">
-        {['participants', 'finance', 'matches', 'details'].map((tb) => (
+      {event.approval === 'pending' && (
+        <ApprovalBanner event={event} isOwner={!club?.role || club.role === 'owner'} onDone={(d) => (d === 'rejected' ? window.location.assign('/events') : reloadEvent())} />
+      )}
+      <div role="tablist" className={`grid ${club?.role === 'co_admin' ? 'grid-cols-3' : 'grid-cols-4'} gap-1 bg-navy-900 border border-navy-700 rounded-xl p-1 mb-4`}>
+        {/* A co-host collects the fees on the Người chơi tab; the money tab is the Host's. */}
+        {['participants', 'finance', 'matches', 'details'].filter((tb) => tb !== 'finance' || club?.role !== 'co_admin').map((tb) => (
           <button
             key={tb}
             role="tab"
@@ -756,5 +760,35 @@ function ParticipantTable({ kind, title, rows, t, sport, fee, hostName, groups, 
         })}
       </ul>
     </section>
+  );
+}
+
+// A kèo a co-host made waits for the Host: the Host approves (it opens as asked) or rejects
+// it (deleted, with the rest of its weekly series); the co-host sees that it is waiting.
+function ApprovalBanner({ event, isOwner, onDone }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  async function decide(decision) {
+    if (decision === 'reject' && !window.confirm(t('cohost.rejectAsk'))) return;
+    setBusy(true);
+    try {
+      const r = await api.post(`/api/events/${event.id}/approval`, { decision });
+      onDone(r.decision);
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="card mb-4 border-amber-400/50 bg-amber-400/5 flex flex-wrap items-center gap-3" role="status">
+      <p className="flex-1 min-w-[14rem] text-sm text-amber-100">{isOwner ? t('cohost.ownerAsk', { n: event.series_id ? t('cohost.series') : '' }) : t('cohost.waitingLong')}</p>
+      {isOwner && (
+        <span className="inline-flex gap-2 ml-auto">
+          <button type="button" disabled={busy} className="btn-secondary text-sm text-red-300" onClick={() => decide('reject')}>{t('cohost.reject')}</button>
+          <button type="button" disabled={busy} className="btn-primary text-sm" onClick={() => decide('approve')}>{t('cohost.approve')}</button>
+        </span>
+      )}
+    </div>
   );
 }
