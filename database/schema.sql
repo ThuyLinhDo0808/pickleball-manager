@@ -3858,3 +3858,97 @@ revoke all on public.coach_club_links from anon, authenticated;
 -- sees them even without an account).
 alter table public.coach_students add column if not exists club_member_id uuid references public.club_members(id) on delete set null;
 create index if not exists ix_coach_students_member on public.coach_students (club_member_id) where club_member_id is not null;
+
+-- ---- 20270106090000_member_gifts.sql ----
+-- Quà sinh nhật (Host tặng thành viên): miễn phí 1 buổi, giảm %, hoặc một món quà tại sân,
+-- kèm lời chúc và hạn dùng. Người chơi thấy trên chuông và trang Tổng quan; Host đánh dấu
+-- "Đã dùng" khi người chơi nhận quà / dùng ưu đãi. Một thành viên một quà sinh nhật mỗi năm.
+create table if not exists public.member_gifts (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  club_member_id uuid not null references public.club_members(id) on delete cascade,
+  user_id uuid references public.users(id) on delete set null,
+  occasion text not null default 'birthday' check (occasion in ('birthday')),
+  year int not null check (year between 2000 and 2100),
+  kind text not null check (kind in ('free_session','percent','item')),
+  percent int check (percent is null or percent between 1 and 100),
+  item text check (item is null or length(item) <= 120),
+  message text check (message is null or length(message) <= 500),
+  expires_on date,
+  used_at timestamptz,
+  created_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (club_member_id, occasion, year)
+);
+create index if not exists ix_member_gifts_club on public.member_gifts (club_id, year);
+create index if not exists ix_member_gifts_user on public.member_gifts (user_id) where user_id is not null;
+alter table public.member_gifts enable row level security;
+-- Only the backend (service key) reads / writes; no policy for anon / authenticated.
+revoke all on public.member_gifts from anon, authenticated;
+
+-- ---- 20270107090000_event_approval.sql ----
+-- Co-host (đồng quản trị) tạo kèo → chờ Host duyệt. Kèo chờ duyệt ở trạng thái nháp (không
+-- ai đăng ký được); Host bấm Duyệt thì kèo mở theo trạng thái co-host đã chọn, Từ chối thì
+-- kèo bị xoá.
+alter table public.events add column if not exists approval text check (approval is null or approval in ('pending'));
+alter table public.events add column if not exists requested_by uuid references public.users(id) on delete set null;
+alter table public.events add column if not exists requested_status text;
+create index if not exists ix_events_approval on public.events (club_id) where approval = 'pending';
+
+-- v_event_summary lists e.*: rebuild it so the new columns show up.
+drop view if exists public.v_event_summary;
+create view public.v_event_summary with (security_invoker = true) as
+select
+  e.*,
+  c.name as club_name,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text in ('registered','checked_in','pending')) as main_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status = 'waitlisted') as waitlist_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'pending') as pending_count,
+  (select count(*) from public.event_participants p
+     where p.event_id = e.id and p.status::text = 'requested') as requested_count
+from public.events e
+left join public.clubs c on c.id = e.club_id;
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke all on public.v_event_summary from %I', r);
+    end if;
+  end loop;
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- ---- 20270108090000_fee_adjustments.sql ----
+-- Điều chỉnh tiền thực tế & hoàn phí trong kèo. Tiền theo bảng giá (fee_amount / giá kèo)
+-- giữ nguyên; Host nhập "tiền thực tế" của từng người (trước, trong hoặc sau buổi) vào
+-- actual_fee. paid_amount ghi số tiền đã thu lúc xác nhận thanh toán ban đầu. Mỗi lần
+-- điều chỉnh, thu thêm hay hoàn phí là một dòng riêng trong participant_fee_changes (chỉ
+-- thêm, không sửa / xoá; hoàn tác thì đánh dấu undone_at) — khoản thu thêm / hoàn phí
+-- còn có một dòng thu / chi riêng trong sổ quỹ (txn_id) để đối soát.
+alter table public.event_participants add column if not exists actual_fee numeric(12,0) check (actual_fee is null or actual_fee >= 0);
+alter table public.event_participants add column if not exists paid_amount numeric(12,0) check (paid_amount is null or paid_amount >= 0);
+
+create table if not exists public.participant_fee_changes (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  participant_id uuid not null references public.event_participants(id) on delete cascade,
+  kind text not null check (kind in ('adjust','collect','refund')),
+  amount numeric(12,0) check (amount is null or amount >= 0),
+  old_amount numeric(12,0),
+  note text check (note is null or length(note) <= 300),
+  txn_id uuid references public.transactions(id) on delete set null,
+  created_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  undone_at timestamptz,
+  undone_by uuid references public.users(id) on delete set null
+);
+create index if not exists ix_fee_changes_event on public.participant_fee_changes (event_id, created_at);
+create index if not exists ix_fee_changes_participant on public.participant_fee_changes (participant_id);
+alter table public.participant_fee_changes enable row level security;
+-- Only the backend (service key) reads / writes; no policy for anon / authenticated.
+revoke all on public.participant_fee_changes from anon, authenticated;

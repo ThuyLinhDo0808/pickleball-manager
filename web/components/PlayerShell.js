@@ -8,18 +8,22 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import BackButton from '@/components/BackButton';
 import LangSelect from '@/components/LangSelect';
+import ThemeToggle from '@/components/ThemeToggle';
 import { NAV_ACTIVE } from '@/lib/nav';
 import BrandLogo from '@/components/BrandLogo';
 
 // The personal side of the app: the home hub (all clubs and roles), my activity
 // (QR, history, form) and my profile. Club management lives in AppShell; a club the
 // account only plays in opens its member page (/c/<id>) inside this shell.
+// Tổng quan (my numbers + DUPR) → Xếp hạng → Không gian (every club / role, the old home)
+// → Tìm → Hoạt động (matches and sessions) → Cài đặt (profile, account, theme).
 const NAV = [
-  { href: '/home', key: 'hub.navHome', icon: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10', match: (p) => p === '/home' || p.startsWith('/c/') },
+  { href: '/p', key: 'hub.navOverview', icon: 'M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z', match: (p) => p === '/p' },
   { href: '/rankings', key: 'hub.navRankings', icon: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3', match: (p) => p.startsWith('/rankings') },
+  { href: '/home', key: 'hub.navHome', icon: 'M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10', match: (p) => p === '/home' || p.startsWith('/c/') },
   { href: '/discover', key: 'hub.navDiscover', icon: 'M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35', match: (p) => p.startsWith('/discover') },
-  { href: '/p', key: 'hub.navActivity', icon: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', match: (p) => p === '/p' },
-  { href: '/p/profile', key: 'hub.navProfile', icon: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0', match: (p) => p.startsWith('/p/profile') },
+  { href: '/p/activity', key: 'hub.navActivity', icon: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', match: (p) => p.startsWith('/p/activity') },
+  { href: '/p/profile', key: 'hub.navProfile', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z', match: (p) => p.startsWith('/p/profile') },
 ];
 
 function Icon({ d, className = 'w-5 h-5' }) {
@@ -31,7 +35,7 @@ function Icon({ d, className = 'w-5 h-5' }) {
 }
 
 // back: false = page has its own way back (or is a step-by-step flow); a string = where to go
-// when there is no history. Tab pages (Trang chủ, Tìm CLB, Xếp hạng, Hoạt động, Hồ sơ) have none.
+// when there is no history. Tab pages (Tổng quan, Xếp hạng, Không gian, Tìm, Hoạt động, Cài đặt) have none.
 export default function PlayerShell({ children, requireAuth = true, sport = 'pickleball', back }) {
   const { user, loading } = useAuth();
   const { t, setSport } = useI18n();
@@ -67,6 +71,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
           <LangSelect className="shrink-0" />
           {/* Bell last, at the right edge, so its panel opens inside the screen. Sign out is
               on Hồ sơ (/p/profile). */}
+          <ThemeToggle className="shrink-0" />
           {user && <PlayerBell className="shrink-0" />}
         </div>
       </header>
@@ -79,7 +84,7 @@ export default function PlayerShell({ children, requireAuth = true, sport = 'pic
       {/* Phone tab bar */}
       {user && (
         <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-navy-900 border-t border-navy-700 pb-safe">
-          <div className="grid grid-cols-5">
+          <div className="grid grid-cols-6">
             {NAV.map((n) => (
               <Link key={n.href} href={n.href} className={`flex flex-col items-center justify-center gap-0.5 min-h-[4rem] py-1.5 text-xs leading-tight ${n.match(pathname) ? 'text-lime-300' : 'text-gray-400'}`}>
                 <Icon d={n.icon} />

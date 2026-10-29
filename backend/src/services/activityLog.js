@@ -30,6 +30,7 @@ const ACTIONS = [
   r('POST', '/api/transactions', 'money.add'),
   r('PATCH', '/api/transactions/:id', 'money.edit'),
   r('POST', '/api/transactions/:id/void', 'money.void'),
+  r('POST', '/api/events/:id/approval', 'event.approval'),
   r('POST', '/api/events', 'event.create'),
   r('POST', '/api/events/weekly', 'event.weekly'),
   r('PATCH', '/api/events/:id', 'event.edit'),
@@ -40,6 +41,7 @@ const ACTIONS = [
   r('(POST|DELETE)', '/api/events/:id/participants/:id/.*', 'participant.update'),
   r('(PUT|POST|PATCH|DELETE)', '/api/events/:id/meeting/.*', 'meeting.money'),
   r('POST', '/api/clubs/:id/dupr/replace', 'dupr.replace'),
+  r('(POST|PATCH|DELETE)', '/api/clubs/:id/gifts(/:id)?', 'gift.update'),
   r('(POST|PATCH|DELETE)', '/api/(matches|live)(/.*)?', 'match.save'),
   r('(POST|PATCH|DELETE)', '/api/tournaments(/.*)?', 'tournament.update'),
 ];

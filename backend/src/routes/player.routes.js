@@ -491,7 +491,7 @@ player.get('/updates', async (req, res) => {
       const at = [p.joined_at, p.payment_submitted_at, p.cancelled_at, p.checked_in_at].filter(Boolean).sort().pop();
       if (at < since) continue;
       const ev = p.events;
-      items.push({ id: `p:${p.id}:${kind}`, kind, at, title: ev.title, event_date: ev.event_date, href: kind === 'confirmed' && p.ticket_code ? `/t/${p.ticket_code}` : ev.public_token ? `/e/${ev.public_token}` : '/p' });
+      items.push({ id: `p:${p.id}:${kind}`, kind, at, title: ev.title, event_date: ev.event_date, href: kind === 'confirmed' && p.ticket_code ? `/t/${p.ticket_code}` : ev.public_token ? `/e/${ev.public_token}` : '/p/activity' });
     }
     // A kèo I have a place in changed its date / time, or was cancelled by the Host. (Court
     // moves before the kèo are the Host's arranging: no notification.)
@@ -507,7 +507,7 @@ player.get('/updates', async (req, res) => {
       const e = p.events;
       const kind = e.status === 'cancelled' ? 'event_cancelled' : 'event_changed';
       const time = [e.start_time, e.end_time].filter(Boolean).map((x) => String(x).slice(0, 5)).join('–');
-      items.push({ id: `c:${e.id}:${e.schedule_changed_at}`, kind, at: e.schedule_changed_at, title: e.title, event_date: e.event_date, time, href: e.public_token ? `/e/${e.public_token}` : '/p' });
+      items.push({ id: `c:${e.id}:${e.schedule_changed_at}`, kind, at: e.schedule_changed_at, title: e.title, event_date: e.event_date, time, href: e.public_token ? `/e/${e.public_token}` : '/p/activity' });
     }
     // Coach classes (Coach Manager): the coach decided a sign-up, confirmed / refused a
     // package payment, refunded a package. Before the migrations: nothing.
@@ -518,20 +518,24 @@ player.get('/updates', async (req, res) => {
       const { data: ens } = await supabase.from('coach_enrollments').select('id, status, decided_at, source, coach_classes(title)').in('student_id', ids).gte('decided_at', since).limit(50);
       for (const e of ens || []) {
         if (!['confirmed', 'waitlist', 'removed'].includes(e.status) || e.source === 'coach') continue;
-        items.push({ id: `ce:${e.id}:${e.status}`, kind: `coach_${e.status}`, at: e.decided_at, title: e.coach_classes?.title || '', href: '/p' });
+        items.push({ id: `ce:${e.id}:${e.status}`, kind: `coach_${e.status}`, at: e.decided_at, title: e.coach_classes?.title || '', href: '/p/activity' });
       }
       const { data: bks } = await supabase.from('coach_bookings').select('id, status, session_date, start_time, decided_at').in('student_id', ids).gte('decided_at', since).limit(50).then((r) => r, () => ({ data: [] }));
       for (const x of bks || []) {
         if (!['accepted', 'declined'].includes(x.status)) continue;
-        items.push({ id: `cb:${x.id}:${x.status}`, kind: `coach_booking_${x.status}`, at: x.decided_at, title: String(x.start_time).slice(0, 5), event_date: x.session_date, href: '/p#my-coach' });
+        items.push({ id: `cb:${x.id}:${x.status}`, kind: `coach_booking_${x.status}`, at: x.decided_at, title: String(x.start_time).slice(0, 5), event_date: x.session_date, href: '/p/activity#my-coach' });
       }
       const { data: ps } = await supabase.from('coach_package_purchases').select('id, status, name, decided_at, refunded_at, reject_note, source').in('student_id', ids).or(`decided_at.gte.${since},refunded_at.gte.${since}`).limit(50);
       for (const x of ps || []) {
-        if (x.status === 'refunded' && x.refunded_at) items.push({ id: `cp:${x.id}:refunded`, kind: 'coach_refunded', at: x.refunded_at, title: x.name, href: '/p' });
-        else if (x.source === 'student' && x.status === 'active' && x.decided_at) items.push({ id: `cp:${x.id}:paid`, kind: 'coach_paid', at: x.decided_at, title: x.name, href: '/p' });
-        else if (x.status === 'pending' && x.reject_note && x.decided_at) items.push({ id: `cp:${x.id}:rej:${x.decided_at}`, kind: 'coach_pay_rejected', at: x.decided_at, title: x.name, href: '/p' });
+        if (x.status === 'refunded' && x.refunded_at) items.push({ id: `cp:${x.id}:refunded`, kind: 'coach_refunded', at: x.refunded_at, title: x.name, href: '/p/activity' });
+        else if (x.source === 'student' && x.status === 'active' && x.decided_at) items.push({ id: `cp:${x.id}:paid`, kind: 'coach_paid', at: x.decided_at, title: x.name, href: '/p/activity' });
+        else if (x.status === 'pending' && x.reject_note && x.decided_at) items.push({ id: `cp:${x.id}:rej:${x.decided_at}`, kind: 'coach_pay_rejected', at: x.decided_at, title: x.name, href: '/p/activity' });
       }
     })().catch(() => {});
+    // Quà sinh nhật from a club / community.
+    for (const g of await require('../services/gifts').forUser(uid).catch(() => [])) {
+      if (g.created_at >= since) items.push({ id: `gift:${g.id}`, kind: 'gift', at: g.created_at, title: g.club_name || '', href: '/p' });
+    }
     for (const n of await moderation.noticesFor(uid).catch(() => [])) {
       if (n.created_at < since && n.read_at) continue;
       items.push({ id: `n:${n.id}`, kind: `notice_${n.kind}`, at: n.created_at, title: n.club_name || '', href: '/home', notice_id: n.id });
@@ -723,6 +727,18 @@ player.delete('/payments/:ref', async (req, res) => {
 });
 
 // Everything on the player dashboard in one request.
+// Hoạt động: every match I played (with partner, opponents, games, result, club /
+// community) and the coach sessions I was marked at.
+player.get('/activity', async (req, res) => {
+  try {
+    const PM = require('../services/playerMatches');
+    const [matches, coach] = await Promise.all([PM.forUser(req.hostId), PM.coachHistory(req.hostId).catch(() => [])]);
+    res.json({ matches, coach });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 player.get('/me', async (req, res) => {
   try {
     const uid = req.hostId;
@@ -767,10 +783,12 @@ player.get('/me', async (req, res) => {
     const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
     const tiers = await tiersReady();
     const noRefund = await noRefundReady();
+    const feeAdjust = require('../services/feeAdjust');
+    const adj = await feeAdjust.ready();
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
       .select(
-        `id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, cancelled_at${tiers ? ', refund_percent, cancel_reason, cancelled_by' : ''}, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours${tiers ? ', cancel_half_hours' : ''}${noRefund ? ', no_refund' : ''}, clubs(name))`
+        `id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, cancelled_at${tiers ? ', refund_percent, cancel_reason, cancelled_by' : ''}${adj ? ', actual_fee, paid_amount' : ''}, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, club_id${tiers ? ', cancel_half_hours' : ''}${noRefund ? ', no_refund' : ''}, clubs(name, kind))`
       )
       .or(orFilter)
       .limit(500);
@@ -807,6 +825,8 @@ player.get('/me', async (req, res) => {
         location: r.events.location,
         map_url: r.events.map_url,
         club_name: r.events.clubs?.name || null,
+        club_id: r.events.club_id || null,
+        club_kind: r.events.clubs?.kind || 'club',
         status: r.status,
         link: r.events.allow_public_registration ? r.events.public_token : null,
       });
@@ -820,8 +840,12 @@ player.get('/me', async (req, res) => {
       ? await supabase.from('membership_sessions').select('event_id').in('membership_id', membershipIds).not('event_id', 'is', null)
       : { data: [] };
     const coveredByPass = new Set((usedSessions || []).map((u) => u.event_id));
+    // Played: the real amount (tiền thực tế) minus what was paid, so an extra the Host
+    // set after the kèo shows here too.
+    const played = regs.filter((r) => r.events && r.status === 'checked_in');
+    const lines = await feeAdjust.owedMap(played.map((r) => ({ ...r, event: r.events })));
     const eventDebts = regs
-      .filter((r) => r.events && !r.fee_paid && (r.status === 'checked_in' || (r.status === 'cancelled' && r.late_cancel)))
+      .filter((r) => r.events && ((r.status === 'checked_in' && lines.get(r.id)?.diff > 0) || (!r.fee_paid && r.status === 'cancelled' && r.late_cancel)))
       .filter((r) => !(r.source_club_member_id && coveredByPass.has(r.event_id)))
       .map((r) => ({
         event_id: r.event_id,
@@ -829,7 +853,8 @@ player.get('/me', async (req, res) => {
         event_date: r.events.event_date,
         club_name: r.events.clubs?.name || null,
         // A late cancel owes the part of the fee that is not refunded (50% tier: half).
-        amount: Math.round((Number(r.fee_amount ?? r.events.fee_amount ?? 0) * (r.status === 'cancelled' ? 100 - refundShare(r) : 100)) / 100),
+        amount: r.status === 'cancelled' ? Math.round((Number(r.fee_amount ?? r.events.fee_amount ?? 0) * (100 - refundShare(r))) / 100) : lines.get(r.id).diff,
+        extra: r.status === 'checked_in' && !!r.fee_paid,
         late_cancel: r.status === 'cancelled',
       }))
       .filter((d) => d.amount > 0)
@@ -886,6 +911,7 @@ player.get('/me', async (req, res) => {
       email_notices: { available: emailReady(), enabled: profile?.email_notices !== false },
       event_debts: eventDebts,
       surveys_due: await survey.surveysDueFor(uid).catch(() => []),
+      gifts: await require('../services/gifts').forUser(uid).catch(() => []),
       notices: await moderation.noticesFor(uid, { unreadOnly: true }).catch(() => []),
       dupr_history: duprHistory,
       // DUPR ratings from the clubs' DUPR imports (null before the migration).

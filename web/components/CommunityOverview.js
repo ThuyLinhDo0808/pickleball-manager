@@ -161,6 +161,7 @@ export default function CommunityOverview({ children }) {
             )}
           </Section>
 
+          {f && (
           <Section icon="money" title={t('social.secFinance')} hint={t('social.secFinanceHint')} href="/finance">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatTile icon="trendUp" label={t('analytics.income')} value={formatVnd(f.income)} tone="text-lime-400" />
@@ -169,6 +170,7 @@ export default function CommunityOverview({ children }) {
               <StatTile icon="hourglass" label={t('social.unpaid')} value={formatVnd(f.unpaid)} tone="text-amber-200" sub={t('social.unpaidSub', { n: f.unpaid_fee_count, fees: formatVnd(f.unpaid_fees), plans: formatVnd(f.unpaid_plans) })} />
             </div>
           </Section>
+          )}
 
           <Section icon="repeat" title={t('social.secRegular')} hint={t('social.secRegularHint', { n: rules.regular_min, d: 30 })} href="/club/attendance">
             <div className="grid grid-cols-3 gap-3 mb-3">
@@ -184,7 +186,7 @@ export default function CommunityOverview({ children }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <TrendBars title={t('social.trSessions')} series={data.monthly.map((x) => ({ month: x.month, value: x.sessions }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
                 <TrendBars title={t('social.trPlayers')} series={data.monthly.map((x) => ({ month: x.month, value: x.players, extra: t('social.trTurns', { n: x.turns }) }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
-                <TrendBars title={t('social.trProfit')} signed format={(v) => formatVnd(v)} series={data.monthly.map((x) => ({ month: x.month, value: x.profit, extra: `${t('analytics.income')} ${formatVnd(x.income)} · ${t('analytics.expense')} ${formatVnd(x.expense)}` }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />
+                {f && <TrendBars title={t('social.trProfit')} signed format={(v) => formatVnd(v)} series={data.monthly.map((x) => ({ month: x.month, value: x.profit, extra: `${t('analytics.income')} ${formatVnd(x.income)} · ${t('analytics.expense')} ${formatVnd(x.expense)}` }))} deltaLabel={t('social.trVsLast')} noPrevLabel={t('social.trNoPrev')} />}
               </div>
               <div className="mt-2"><Hint inline text={t('social.trNote', { n: data.monthly[data.monthly.length - 1].players })} /></div>
             </Section>

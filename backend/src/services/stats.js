@@ -115,47 +115,66 @@ function weekStart(ymd) {
   return d.toISOString().slice(0, 10);
 }
 
-// "Weeks at No. 1": every week (Mon–Sun) with scored matches has its own leaderboard;
-// whoever tops it holds No. 1 that week (equal wins, win rate and point diff = shared).
-// matches carry `day` (local date). -> [{ club_member_id, full_name, weeks, streak,
-// current, last_week }] most weeks first; `streak` = their longest run of weeks in a row
-// at No. 1, `current` = they top the latest week. A week's No. 1 follows the same rule as
-// the ranking table: best win rate among those with at least `minMatches` matches THAT
-// week (then more matches, then point difference). A week where nobody reaches the
-// minimum has no No. 1.
-function weeksAtTop(matches, members, minMatches = 1) {
-  const byWeek = new Map();
+// "Weeks at No. 1" — a reign on the all-time leaderboard (every match from the first one).
+// Matches are replayed day by day; after each day the cumulative table is ranked with the
+// same rule as the ranking table (win rate among players with at least `minMatches`
+// matches, then more matches, then point difference). The holder keeps No. 1 until someone
+// ranks strictly above them (an exact tie does not take it); the day that happens their
+// reign ends and the new leader's starts. Weeks of a reign = ceil(days held / 7), at least 1
+// (taking No. 1 today = 1 week); the current holder's reign runs to `today`.
+// matches carry `day` (local date). -> [{ club_member_id, full_name, weeks, days, streak,
+// current, since, last_week }] most weeks first; `streak` = their longest single reign in
+// weeks, `since` = start of the current reign (holder only).
+const DAY_MS = 86400000;
+const daysBetween = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS);
+const weeksOfDays = (d) => Math.max(1, Math.ceil(d / 7));
+function weeksAtTop(matches, members, minMatches = 1, today = localDate(Date.now())) {
+  const byDay = new Map();
   for (const m of matches) {
     if (!isScored(m) || !m.day) continue;
-    const k = weekStart(m.day);
-    if (!byWeek.has(k)) byWeek.set(k, []);
-    byWeek.get(k).push(m);
+    if (!byDay.has(m.day)) byDay.set(m.day, []);
+    byDay.get(m.day).push(m);
   }
-  const weeks = [...byWeek.keys()].sort();
-  const out = new Map();
-  let prevTop = new Set();
-  const run = new Map();
-  for (const k of weeks) {
-    const board = aggregate(byWeek.get(k), members)
+  const days = [...byDay.keys()].sort();
+  const key = (r) => [r.win_rate, r.matches_played, r.point_diff];
+  const better = (a, b) => {
+    const x = key(a);
+    const y = key(b);
+    for (let i = 0; i < 3; i += 1) if (x[i] !== y[i]) return x[i] > y[i];
+    return false;
+  };
+  const reigns = []; // { id, name, from, to }
+  let holder = null;
+  const played = [];
+  for (const d of days) {
+    played.push(...byDay.get(d));
+    const board = aggregate(played, members)
       .filter((r) => r.matches_played >= minMatches)
       .sort((a, b) => b.win_rate - a.win_rate || b.matches_played - a.matches_played || b.point_diff - a.point_diff || a.full_name.localeCompare(b.full_name, 'vi'));
+    if (!board.length) continue;
     const lead = board[0];
-    const tops = lead ? board.filter((r) => r.win_rate === lead.win_rate && r.matches_played === lead.matches_played && r.point_diff === lead.point_diff) : [];
-    const now = new Set();
-    for (const r of tops) {
-      const o = out.get(r.club_member_id) || { club_member_id: r.club_member_id, full_name: r.full_name, weeks: 0, streak: 0, current: false, last_week: null };
-      o.weeks += 1;
-      o.last_week = k;
-      const n = (prevTop.has(r.club_member_id) ? run.get(r.club_member_id) || 0 : 0) + 1;
-      run.set(r.club_member_id, n);
-      o.streak = Math.max(o.streak, n);
-      out.set(r.club_member_id, o);
-      now.add(r.club_member_id);
-    }
-    prevTop = now;
+    const mine = holder && board.find((r) => r.club_member_id === holder.id);
+    if (mine && !better(lead, mine)) continue; // still No. 1 (or tied with the leader)
+    if (holder) holder.to = d;
+    holder = { id: lead.club_member_id, name: lead.full_name, from: d, to: null };
+    reigns.push(holder);
   }
-  for (const id of prevTop) out.get(id).current = true;
-  return [...out.values()].sort((a, b) => b.weeks - a.weeks || b.streak - a.streak || (b.last_week || '').localeCompare(a.last_week || '') || a.full_name.localeCompare(b.full_name));
+  const end = holder && today > holder.from ? today : holder?.from;
+  const out = new Map();
+  for (const r of reigns) {
+    const held = r.to ? daysBetween(r.from, r.to) : daysBetween(r.from, end) + 1;
+    const o = out.get(r.id) || { club_member_id: r.id, full_name: r.name, weeks: 0, days: 0, streak: 0, current: false, since: null, last_week: null };
+    o.days += held;
+    o.streak = Math.max(o.streak, weeksOfDays(held));
+    o.last_week = weekStart(r.to || end);
+    if (r === holder) {
+      o.current = true;
+      o.since = r.from;
+    }
+    out.set(r.id, o);
+  }
+  for (const o of out.values()) o.weeks = weeksOfDays(o.days);
+  return [...out.values()].sort((a, b) => b.weeks - a.weeks || b.days - a.days || Number(b.current) - Number(a.current) || a.full_name.localeCompare(b.full_name));
 }
 
 module.exports = { weekStart, weeksAtTop, isScored, APP_TZ, PERIODS, DEFAULT_MIN_MATCHES, localDate, periodBounds, aggregate, awards, winnerTeam };

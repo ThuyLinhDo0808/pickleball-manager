@@ -48,9 +48,10 @@ async function business(club, rawPeriod) {
   const held = live.filter((e) => e.event_date <= today);
   const evById = new Map(events.map((e) => [e.id, e]));
   const parts = [];
+  const adj = await require('./feeAdjust').ready();
   const ids = live.map((e) => e.id);
   for (let i = 0; i < ids.length; i += 150) {
-    parts.push(...(await all(() => supabase.from('event_participants').select('id, event_id, full_name, phone, status, fee_amount, fee_paid, is_organizer, source_club_member_id, guest_member_id, user_id').in('event_id', ids.slice(i, i + 150)).order('id'))));
+    parts.push(...(await all(() => supabase.from('event_participants').select(`id, event_id, full_name, phone, status, fee_amount, fee_paid, is_organizer, source_club_member_id, guest_member_id, user_id${adj ? ', actual_fee, paid_amount' : ''}`).in('event_id', ids.slice(i, i + 150)).order('id'))));
   }
 
   // ---- Players
@@ -105,7 +106,10 @@ async function business(club, rawPeriod) {
   const expense = Object.values(byCat).reduce((a, b) => a + b, 0);
 
   // Still owed: on the list of a kèo of the period, a fee, not paid, no pass used for it.
-  const owing = parts.filter((p) => OWES.includes(p.status) && !p.fee_paid && !p.is_organizer && inPeriod(evById.get(p.event_id)?.event_date, period));
+  // …or paid less than the real amount the Host set (tiền thực tế: cần thu thêm).
+  const lines = adj ? await require('./feeAdjust').owedMap(parts.filter((p) => OWES.includes(p.status) && !p.is_organizer && (p.actual_fee != null || !p.fee_paid)).map((p) => ({ ...p, event: evById.get(p.event_id) || {} }))) : new Map();
+  const owedOf = (p) => (lines.has(p.id) ? lines.get(p.id).diff : p.fee_paid ? 0 : Number(p.fee_amount ?? evById.get(p.event_id)?.fee_amount ?? 0));
+  const owing = parts.filter((p) => OWES.includes(p.status) && owedOf(p) > 0 && !p.is_organizer && inPeriod(evById.get(p.event_id)?.event_date, period));
   const passUsed = new Set();
   if (owing.length) {
     const evIds = [...new Set(owing.map((p) => p.event_id))];
@@ -117,7 +121,7 @@ async function business(club, rawPeriod) {
   const debts = owing
     .map((p) => {
       const ev = evById.get(p.event_id);
-      const amount = Number(p.fee_amount ?? ev?.fee_amount ?? 0);
+      const amount = owedOf(p);
       const mid = p.source_club_member_id || p.guest_member_id;
       return { id: p.id, full_name: p.full_name, event_id: p.event_id, title: ev?.title || '', event_date: ev?.event_date || null, amount, pass: mid && passUsed.has(`${p.event_id}:${mid}`) };
     })

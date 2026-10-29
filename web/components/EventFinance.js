@@ -7,6 +7,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { api } from '@/lib/api';
 import { formatVnd } from '@/lib/format';
 import { categoryLabel, describeEntry, EVENT_EXPENSE, EVENT_EXPENSE_SOCIAL, EVENT_INCOME } from '@/lib/finance';
+import { FeeDiffs } from '@/components/FeeAdjust';
 
 const AUTO = new Set(['membership', 'event_fee', 'tournament_fee', 'meeting']);
 const today = () => {
@@ -82,7 +83,7 @@ function EditEntry({ entry, social, onClose, onSaved }) {
 
 // The money tab of a session / kèo. Every entry here is also in the Host's ledger
 // (Tài chính → Sổ thu chi): fees players paid, the session's costs, anything added here.
-export default function EventFinance({ event, finance, onChanged }) {
+export default function EventFinance({ event, finance, onChanged, onOpenPlayer }) {
   const { t } = useI18n();
   const [f, setF] = useState({ type: 'expense', category: 'court', amount: '', note: '', occurred_on: event.event_date || today() });
   const [busy, setBusy] = useState(false);
@@ -159,6 +160,8 @@ export default function EventFinance({ event, finance, onChanged }) {
         {t('evfin.linked')}{' '}
         <Link href="/finance/ledger" className="text-lime-400 hover:underline">{t('evfin.openLedger')} →</Link>
       </p>
+
+      <FeeDiffs key={finance?.income ?? 0} event={event} onOpen={onOpenPlayer} />
 
       <form onSubmit={add} className="card mb-4 grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
         <div className="col-span-2 md:col-span-3 grid grid-cols-2 bg-navy-900 border border-navy-700 rounded-lg p-1 text-sm h-[42px]">

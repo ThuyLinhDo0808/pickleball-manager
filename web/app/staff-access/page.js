@@ -35,13 +35,16 @@ const ROLE_STYLE = {
 const CAN = [
   ['checkIn', { coordinator: true, referee: false, co_admin: true, finance: false, operator: true }],
   ['scores', { coordinator: true, referee: true, co_admin: true, finance: false, operator: true }],
+  ['eventOps', { coordinator: false, referee: false, co_admin: true, finance: false, operator: false }],
   ['openClose', { coordinator: false, referee: false, co_admin: true, finance: false, operator: true }],
   ['balls', { coordinator: false, referee: false, co_admin: true, finance: false, operator: true }],
   ['schedule', { coordinator: false, referee: false, co_admin: true, finance: false, operator: false }],
   ['members', { coordinator: false, referee: false, co_admin: true, finance: false, operator: false }],
-  ['finance', { coordinator: false, referee: false, co_admin: true, finance: true, operator: false }],
-  ['plans', { coordinator: false, referee: false, co_admin: true, finance: true, operator: false }],
-  ['settings', { coordinator: false, referee: false, co_admin: true, finance: false, operator: false }],
+  ['deleteMembers', { coordinator: false, referee: false, co_admin: false, finance: false, operator: false }],
+  ['finance', { coordinator: false, referee: false, co_admin: false, finance: true, operator: false }],
+  ['plans', { coordinator: false, referee: false, co_admin: false, finance: true, operator: false }],
+  ['dupr', { coordinator: false, referee: false, co_admin: false, finance: false, operator: false }],
+  ['settings', { coordinator: false, referee: false, co_admin: false, finance: false, operator: false }],
   ['deleteClub', { coordinator: false, referee: false, co_admin: false, finance: false, operator: false }],
 ];
 // Where the access applies.

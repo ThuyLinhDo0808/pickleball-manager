@@ -130,6 +130,7 @@ function EventCard({ e, phase = 'open' }) {
                 {KIND_ICON[e.kind] && <UiIcon name={e.kind === 'game' && e.sport === 'badminton' ? 'shuttle' : KIND_ICON[e.kind]} className="inline-block w-4 h-4 mr-1 -mt-0.5 text-gray-400" />}
                 {e.title}
               </span>
+              {e.approval === 'pending' && <span className="text-[11px] rounded-full border border-amber-400/60 bg-amber-400/10 text-amber-200 px-2 py-0.5 shrink-0">{t('cohost.waiting')}</span>}
               {/* Kèo show their state on the line below (colour + words); tournaments keep their stage here. */}
               {e.kind === 'tournament' && (
                 <span className={`text-[11px] rounded-full border px-2 py-0.5 shrink-0 ${STATUS_STYLE[e.status] || 'border-navy-600 text-gray-300'}`}>

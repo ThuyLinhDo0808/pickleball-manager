@@ -1333,7 +1333,13 @@ router.get('/:clubId/rankings', requireFeature('rankings'), async (req, res) => 
 // active / inactive, regular / irregular, money in / out / balance / still owed.
 router.get('/:clubId/community-overview', async (req, res) => {
   try {
-    res.json(await require('../services/community').overview(req.club));
+    const ov = await require('../services/community').overview(req.club);
+    // A co-host sees no money: no finance block, no money in the monthly trend.
+    if (req.clubRole === 'co_admin') {
+      ov.finance = null;
+      ov.monthly = (ov.monthly || []).map(({ income, expense, profit, ...x }) => x);
+    }
+    res.json(ov);
   } catch (err) {
     dbError(res, err);
   }
@@ -1445,7 +1451,7 @@ router.get('/:clubId/business', async (req, res) => {
   try {
     const biz = require('../services/communityBusiness');
     const [b, reputation] = await Promise.all([biz.business(req.club, req.query.period), biz.reputation(req.club)]);
-    res.json({ ...b, reputation });
+    res.json({ ...b, reputation, ...(req.clubRole === 'co_admin' ? { money: null } : {}) });
   } catch (err) {
     dbError(res, err);
   }
@@ -1706,6 +1712,53 @@ router.get('/:clubId/birthdays', async (req, res) => {
     .not('birth_date', 'is', null);
   if (error) return dbError(res, error);
   res.json(birthdays.upcoming(data, within));
+});
+
+// Sinh nhật trong tháng (Xem tất cả) + Tặng quà. Host / co-admin; the phone shows to them only.
+const Gifts = require('../services/gifts');
+const giftErr = (res, err) => (err.status ? res.status(err.status).json({ error: err.message, code: err.code, ...(err.migration ? { migration: err.migration } : {}) }) : dbError(res, err));
+const giftManager = (req, res) => {
+  if (['owner', 'co_admin'].includes(req.clubRole || 'owner')) return true;
+  res.status(403).json(ROLE_FORBIDDEN);
+  return false;
+};
+router.get('/:clubId/birthdays/month', async (req, res) => {
+  try {
+    if (!giftManager(req, res)) return;
+    const today = todayYmd();
+    const m = /^(0?[1-9]|1[0-2])$/.test(String(req.query.month || '')) ? String(req.query.month) : today.slice(5, 7);
+    res.json({ month: m.padStart(2, '0'), year: Number(today.slice(0, 4)), gifts_ready: await Gifts.ready(), default_expiry: Gifts.lastDayOfNextMonth(today), members: await Gifts.monthList(req.club, m, { today }) });
+  } catch (err) {
+    giftErr(res, err);
+  }
+});
+router.post('/:clubId/gifts', async (req, res) => {
+  try {
+    if (!giftManager(req, res)) return;
+    const out = await Gifts.give(req.club, req.body?.member_ids, req.body || {}, req.userId);
+    req.body = { name: out.names.slice(0, 5).join(', ') };
+    res.status(201).json(out);
+  } catch (err) {
+    giftErr(res, err);
+  }
+});
+router.patch('/:clubId/gifts/:giftId', async (req, res) => {
+  try {
+    if (!giftManager(req, res)) return;
+    if (!isUuid(req.params.giftId)) return notFound(res, 'Gift');
+    res.json(await Gifts.setUsed(req.club, req.params.giftId, req.body?.used === true));
+  } catch (err) {
+    giftErr(res, err);
+  }
+});
+router.delete('/:clubId/gifts/:giftId', async (req, res) => {
+  try {
+    if (!giftManager(req, res)) return;
+    if (!isUuid(req.params.giftId)) return notFound(res, 'Gift');
+    res.json(await Gifts.remove(req.club, req.params.giftId));
+  } catch (err) {
+    giftErr(res, err);
+  }
 });
 
 // Rankings settings (owner / co-admin).

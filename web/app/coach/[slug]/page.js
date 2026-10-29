@@ -41,7 +41,7 @@ export default function CoachPublicPage() {
     setBusy(true);
     try {
       await api.post(`/api/player/coach/coaches/${slug}/packages/${p.id}/buy`, {});
-      window.location.href = '/p#my-coach';
+      window.location.href = '/p/activity#my-coach';
     } catch (err) {
       window.alert(err.message);
     } finally {
@@ -190,7 +190,7 @@ export default function CoachPublicPage() {
               </div>
             )}
             <div className="flex justify-end gap-2">
-              {user && <Link href="/p" className="btn-secondary">{t('hub.navActivity')}</Link>}
+              {user && <Link href="/p/activity" className="btn-secondary">{t('hub.navActivity')}</Link>}
               <button type="button" className="btn-primary" onClick={() => setSignup(null)}>{t('common.close')}</button>
             </div>
           </div>

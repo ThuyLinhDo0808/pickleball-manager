@@ -10,7 +10,7 @@ for (const key of Object.keys(DARK)) {
 }
 palette.white = v('white');
 module.exports = {
-  content: ['./app/**/*.{js,jsx}', './components/**/*.{js,jsx}', './context/**/*.{js,jsx}'],
+  content: ['./app/**/*.{js,jsx}', './components/**/*.{js,jsx}', './context/**/*.{js,jsx}', './lib/**/*.{js,jsx}'],
   theme: {
     extend: {
       // The app font comes from --font-app (globals.css): system face on computers, Plus

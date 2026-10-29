@@ -4,7 +4,10 @@ const { supabase } = require('../supabase');
 // Places on the main list: confirmed players plus guests whose payment is being checked.
 const HOLDS_PLACE = ['registered', 'checked_in', 'pending'];
 
+// What the player pays: the Host's real amount for them (tiền thực tế, feeAdjust.js) when
+// set, else the price list (their time group's fee, else the kèo's).
 function feeFor(event, participant) {
+  if (participant?.actual_fee != null) return Number(participant.actual_fee);
   return Number(participant?.fee_amount ?? event.fee_amount ?? 0);
 }
 

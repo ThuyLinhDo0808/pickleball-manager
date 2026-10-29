@@ -125,6 +125,8 @@ export default function MembersPage({ tab = 'fixed' }) {
   const vipFilters = isCommunity ? ['all', 'vip', 'priority'] : ['all', 'vip', 'standard'];
   const vipOk = (m) => vipF === 'all' || (vipF === 'vip' ? isVip(m) : vipF === 'priority' ? !!m.guest_perk : !isVip(m));
   const canManage = !club?.role || ['owner', 'co_admin'].includes(club.role);
+  // A co-host edits members but never deletes them.
+  const canDelete = !club?.role || club.role === 'owner';
 
   // Everyone in the club with their details, in one Excel sheet.
   function exportAll() {
@@ -296,9 +298,11 @@ export default function MembersPage({ tab = 'fixed' }) {
             <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-red-500/30 bg-red-500/10 text-sm">
               <span className="text-red-200 font-semibold">{t('memx.selectedN', { n: selected.length })}</span>
               <button type="button" className="text-gray-300 hover:text-white underline underline-offset-2" onClick={() => setSelected([])}>{t('memx.clearSel')}</button>
+{canDelete && (
               <button type="button" className="ml-auto rounded-lg px-3 py-1.5 font-semibold border border-red-500/60 text-red-300 hover:bg-red-500/15 disabled:opacity-40" disabled={busy} onClick={deleteSelected}>
                 {t('members.deleteSelected', { count: selected.length })}
               </button>
+              )}
             </div>
           )}
 

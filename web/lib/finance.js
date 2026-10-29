@@ -34,6 +34,9 @@ export function sessionLabel(ev, t) {
 // A sentence for one ledger line: who paid what, or what the Host paid for.
 export function describeEntry(r, t) {
   const note = (r.note || '').trim();
+  if (r.category === 'event_fee' && /^Extra fee from\s+/i.test(note)) return t('fin.d_extraFee', { name: note.replace(/^Extra fee from\s+/i, '') });
+  if (r.category === 'refund' && /^Fee refund to\s+/i.test(note)) return t('fin.d_feeRefund', { name: note.replace(/^Fee refund to\s+/i, '') });
+  if (r.category === 'refund' && /^Refund to\s+/i.test(note)) return t('fin.d_cancelRefund', { name: note.replace(/^Refund to\s+/i, '') });
   if (r.category === 'event_fee') {
     const name = note.replace(/^Fee from\s+/i, '');
     return name ? t('fin.d_fee', { name }) : categoryLabel(r.category, t);
