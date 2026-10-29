@@ -144,7 +144,7 @@ export default function VerifyEmailPage() {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 autoFocus
-                maxLength={7}
+                maxLength={11}
                 placeholder="••••••"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ''))}

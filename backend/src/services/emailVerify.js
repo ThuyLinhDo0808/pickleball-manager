@@ -167,29 +167,38 @@ function linkEmail(url, kind = 'reset', { logo = logoUrl() } = {}) {
 }
 
 // Our own email (Resend) that shows only the code: Supabase makes the one-time code
-// (generateLink, the same code verifyOtp checks), we send it. Returns false when there is
-// no mail sender or it failed, so Supabase's own email is used instead.
+// (generateLink, the same code verifyOtp checks), we send it. Returns 'sent', 'off' (no
+// mail sender), 'no_code' (Supabase made no usable code) or 'mail_failed' (code made, the
+// email did not go out). Supabase allows an OTP of 6–10 digits; 6 is the default.
+const OTP = /^\d{6,10}$/;
 async function mailCode(email) {
   if (!process.env.RESEND_API_KEY) {
     console.error('verify code mail off: RESEND_API_KEY is not set, falling back to the Supabase mailer (a few emails per hour)');
-    return false;
+    return 'off';
   }
   const { data, error } = await supabase.auth.admin.generateLink({ type: 'magiclink', email });
-  const code = data?.properties?.email_otp;
-  if (error || !/^\d{6}$/.test(String(code || ''))) {
-    console.error('verify code link', error?.message || `otp is not 6 digits (length ${String(code || '').length}; check Auth → Email OTP length)`);
-    return false;
+  const code = String(data?.properties?.email_otp || '');
+  if (error || !OTP.test(code)) {
+    console.error('verify code link', error?.message || `no usable otp in generateLink (length ${code.length}; check Auth → Email → OTP length, 6–10)`);
+    return 'no_code';
   }
   const { subject, text, html } = codeEmail(code);
   const r = await require('./accountSecurity').sendMail(email, subject, text, html);
   if (r !== 'sent') console.error('verify code mail', r);
-  return r === 'sent';
+  return r === 'sent' ? 'sent' : 'mail_failed';
 }
 
-// Email the 6-digit code. With our own mail sender the email shows only the code; without
-// it, Supabase's "Magic Link" template is used (it must contain {{ .Token }}).
+// Email the code. With our own mail sender the email shows only the code; without it,
+// Supabase's "Magic Link" template is used (it must contain {{ .Token }}). Once
+// generateLink has made a code, Supabase refuses signInWithOtp for 60 s (it counts as a
+// send), so after a failed Resend send there is no fallback: say so instead.
 async function sendCode(email, origin) {
-  if (await mailCode(email).catch(() => false)) return;
+  const own = await mailCode(email).catch((err) => {
+    console.error('verify code mail', err.message);
+    return 'mail_failed';
+  });
+  if (own === 'sent') return;
+  if (own === 'mail_failed') throw httpError('The verification email could not be sent. Try again in a minute.', 502, 'mail_failed');
   const { error } = await authClient().auth.signInWithOtp({
     email,
     options: { shouldCreateUser: false, ...(origin ? { emailRedirectTo: `${origin}/verify-email` } : {}) },
@@ -203,7 +212,7 @@ async function sendCode(email, origin) {
 
 async function verifyCode(userId, email, code) {
   const token = String(code || '').replace(/\s+/g, '');
-  if (!/^\d{6}$/.test(token)) throw httpError('Enter the 6-digit code.', 400, 'bad_code');
+  if (!OTP.test(token)) throw httpError('Enter the 6-digit code.', 400, 'bad_code');
   const { data, error } = await authClient().auth.verifyOtp({ email, token, type: 'email' });
   if (error || !data?.user || data.user.id !== userId) {
     // Supabase answers the same for a wrong and an expired code.
