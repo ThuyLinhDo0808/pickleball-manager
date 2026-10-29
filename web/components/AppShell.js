@@ -126,6 +126,7 @@ const NAV_BY_WORKSPACE = {
     { href: '/coach', key: 'nav.coachOverview', icon: 'dashboard', exact: true },
     { href: '/coach/schedule', key: 'nav.coachSchedule', icon: 'schedule' },
     { href: '/coach/classes', key: 'nav.coachClasses', icon: 'plans', also: ['/coach/sessions'] },
+    { href: '/coach/students', key: 'nav.coachStudents', icon: 'users' },
     { href: '/coach/packages', key: 'nav.coachPackages', icon: 'ticket' },
     { href: '/coach/profile', key: 'nav.coachProfile', icon: 'user' },
     { href: '/account', key: 'nav.account', icon: 'account' },
@@ -186,7 +187,7 @@ const TABS_BY_WORKSPACE = {
     { href: '/coach', key: 'nav.coachOverview', icon: 'dashboard', exact: true },
     { href: '/coach/schedule', key: 'nav.coachSchedule', icon: 'schedule' },
     { href: '/coach/classes', key: 'nav.coachClasses', icon: 'plans', also: ['/coach/sessions'] },
-    { href: '/coach/packages', key: 'nav.coachPackages', icon: 'ticket' },
+    { href: '/coach/students', key: 'nav.coachStudents', icon: 'users' },
   ],
   community: [
     { href: '/dashboard', key: 'nav.commOverview', icon: 'dashboard' },

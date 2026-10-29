@@ -6,6 +6,8 @@ const { supabase } = require('../supabase');
 const { dbError, notFound, isUuid } = require('../utils/respond');
 const C = require('../services/coachAccess');
 const S = require('../services/coachSchedule');
+const ST = require('../services/coachStudents');
+const { requireCaptcha } = require('../services/captcha');
 const { todayYmd } = require('../services/memberships');
 const S_fail = (m, code) => C.fail(m, 400, code);
 
@@ -91,17 +93,20 @@ router.get('/overview', async (req, res) => {
   try {
     if (!(await S.ready())) return res.json({ profile: req.coach, classes: 0, students: 0, sessions_week: 0, pending: 0, next: [] });
     const today = todayYmd();
-    const [{ count: classes }, week, next] = await Promise.all([
+    const stReady = await ST.ready();
+    const [{ count: classes }, week, next, { count: students }, { count: pending }] = await Promise.all([
       supabase.from('coach_classes').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'open'),
       S.listSessions(req.coach.id, { from: today, to: S.addDays(today, 6) }),
       S.listSessions(req.coach.id, { from: today, to: S.addDays(today, 30) }),
+      stReady ? supabase.from('coach_students').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'active') : { count: 0 },
+      stReady ? supabase.from('coach_enrollments').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'requested') : { count: 0 },
     ]);
     res.json({
       profile: req.coach,
       classes: classes || 0,
-      students: 0,
+      students: students || 0,
       sessions_week: week.filter((x) => x.status === 'scheduled').length,
-      pending: 0,
+      pending: pending || 0,
       next: next.filter((x) => x.status === 'scheduled' && S.endMs(x) > Date.now()).slice(0, 5),
     });
   } catch (err) {
@@ -190,7 +195,16 @@ router.get('/classes', async (req, res) => {
         counts.set(x.class_id, c);
       }
     }
-    res.json((data || []).map((c) => ({ ...c, ...(counts.get(c.id) || { total: 0, upcoming: 0, next: null }) })));
+    const people = new Map();
+    if (ids.length && (await ST.ready())) {
+      const { data: en } = await supabase.from('coach_enrollments').select('class_id, status').in('class_id', ids).in('status', ST.LIVE).limit(10000);
+      for (const e of en || []) {
+        const c = people.get(e.class_id) || { requested: 0, confirmed: 0, waitlist: 0 };
+        c[e.status] += 1;
+        people.set(e.class_id, c);
+      }
+    }
+    res.json((data || []).map((c) => ({ ...c, ...(counts.get(c.id) || { total: 0, upcoming: 0, next: null }), ...(people.get(c.id) || { requested: 0, confirmed: 0, waitlist: 0 }) })));
   } catch (err) {
     send(res, err);
   }
@@ -207,7 +221,8 @@ router.get('/classes/:id', async (req, res) => {
     const cls = await ownClass(req, res);
     if (!cls) return notFound(res, 'Class');
     const sessions = await S.listSessions(req.coach.id, { classId: cls.id });
-    res.json({ ...cls, sessions });
+    const roster = (await ST.ready()) ? await ST.classRoster(req.coach.id, cls.id) : [];
+    res.json({ ...cls, sessions, roster });
   } catch (err) {
     send(res, err);
   }
@@ -251,6 +266,110 @@ router.post('/classes/:id/sessions', async (req, res) => {
     const { data, error } = await supabase.from('coach_sessions').insert(row).select('*').single();
     if (error) return dbError(res, error);
     res.status(201).json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+
+// ---- Students (C3) ----------------------------------------------------------------------
+router.use(['/students', '/enrollments', '/classes/:id/enroll'], async (req, res, next) => {
+  if (await ST.ready()) return next();
+  return res.status(503).json({ error: 'Coach Manager needs a database update.', code: 'migration_missing', migration: ST.MIGRATION });
+});
+router.get('/students', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('coach_students').select('*').eq('coach_id', req.coach.id).order('full_name');
+    if (error) return dbError(res, error);
+    const ids = (data || []).map((s) => s.id);
+    const live = new Map();
+    if (ids.length) {
+      const { data: en } = await supabase.from('coach_enrollments').select('student_id, status, class_id').in('student_id', ids).in('status', ST.LIVE).limit(10000);
+      for (const e of en || []) {
+        const c = live.get(e.student_id) || { classes: 0, requested: 0 };
+        c.classes += 1;
+        if (e.status === 'requested') c.requested += 1;
+        live.set(e.student_id, c);
+      }
+    }
+    await require('../services/playerAvatars').attach(data || []);
+    res.json((data || []).map((s) => ({ ...s, ...(live.get(s.id) || { classes: 0, requested: 0 }), ...(s.avatar_v ? { avatar_uid: s.user_id } : {}) })));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/students', async (req, res) => {
+  try {
+    res.status(201).json(await ST.studentByCoach(req.coach, req.body));
+  } catch (err) {
+    send(res, err);
+  }
+});
+async function ownStudent(req) {
+  if (!isUuid(req.params.id)) return null;
+  const { data, error } = await supabase.from('coach_students').select('*').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+router.get('/students/:id', async (req, res) => {
+  try {
+    const st = await ownStudent(req);
+    if (!st) return notFound(res, 'Student');
+    res.json({ ...st, enrollments: await ST.studentEnrollments(req.coach.id, st.id) });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/students/:id', async (req, res) => {
+  try {
+    const st = await ownStudent(req);
+    if (!st) return notFound(res, 'Student');
+    const { data, error } = await supabase.from('coach_students').update(ST.cleanStudent(req.body)).eq('id', st.id).select('*').single();
+    if (error) return dbError(res, error);
+    res.json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Put a student on a class by hand (confirmed at once; the coach decided).
+router.post('/classes/:id/enroll', async (req, res) => {
+  try {
+    const cls = await ownClass(req, res);
+    if (!cls) return notFound(res, 'Class');
+    let student = null;
+    if (isUuid(req.body?.student_id)) {
+      const { data } = await supabase.from('coach_students').select('*').eq('id', req.body.student_id).eq('coach_id', req.coach.id).maybeSingle();
+      student = data;
+    } else student = await ST.studentByCoach(req.coach, req.body);
+    if (!student) return notFound(res, 'Student');
+    const enr = await ST.enroll(req.coach, cls, student, { pay_mode: req.body?.pay_mode || 'package', source: 'coach', confirm: true });
+    res.status(201).json({ ...enr, student });
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Sign-ups waiting for the coach (across classes), newest first.
+router.get('/enrollments', async (req, res) => {
+  try {
+    const status = ['requested', 'confirmed', 'waitlist', 'cancelled', 'removed'].includes(req.query.status) ? req.query.status : 'requested';
+    const { data, error } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(id, title, kind, capacity)').eq('coach_id', req.coach.id).eq('status', status).order('created_at', { ascending: false }).limit(500);
+    if (error) return dbError(res, error);
+    res.json((data || []).map(({ coach_students: st, coach_classes: c, ...e }) => ({ ...e, student: st, class: c })));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/enrollments/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Enrollment');
+    const { data: enr } = await supabase.from('coach_enrollments').select('*').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+    if (!enr) return notFound(res, 'Enrollment');
+    const out = await ST.decide(req.coach, enr, req.body?.status);
+    // A removed confirmed student frees a seat for the waiting list.
+    if (enr.status === 'confirmed' && out.status !== 'confirmed') {
+      const { data: cls } = await supabase.from('coach_classes').select('*').eq('id', enr.class_id).maybeSingle();
+      if (cls) await ST.promoteWaitlist(cls);
+    }
+    res.json(out);
   } catch (err) {
     send(res, err);
   }
@@ -330,4 +449,113 @@ publicRoutes.get('/:slug', async (req, res) => {
   }
 });
 
-module.exports = { router, publicRoutes };
+// Quick sign-up without an account: name + phone + the class. The answer carries the
+// sign-up's own link (/coach/r/<token>) to see its status later.
+publicRoutes.post('/:slug/quick', requireCaptcha, async (req, res) => {
+  try {
+    const c = await C.profileBySlug(req.params.slug);
+    if (!c || c.status !== 'active') return res.status(404).json({ error: 'Coach not found.', code: 'not_found' });
+    if (!(await S.ready()) || !(await ST.ready())) return res.status(503).json({ error: 'Not available yet.', code: 'migration_missing' });
+    if (!isUuid(req.body?.class_id)) return res.status(400).json({ error: 'class_id is required.', code: 'bad_class' });
+    const { data: cls } = await supabase.from('coach_classes').select('*').eq('id', req.body.class_id).eq('coach_id', c.id).maybeSingle();
+    if (!cls) return notFound(res, 'Class');
+    const student = await ST.studentForQuick(c, { full_name: req.body.full_name, phone: req.body.phone });
+    const enr = await ST.enroll(c, cls, student, { pay_mode: req.body.pay_mode || 'package', source: 'quick', note: req.body.note });
+    res.status(enr.already ? 200 : 201).json({ token: enr.token, status: enr.status, already: !!enr.already, linked_account: !!student.user_id });
+  } catch (err) {
+    send(res, err);
+  }
+});
+// The quick sign-up's status page (by its secret link): class, coach, status, cancel.
+async function byToken(token) {
+  if (!isUuid(token) || !(await ST.ready())) return null;
+  const { data } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(slug, display_name, sport, status, cancel_hours)').eq('token', token).maybeSingle();
+  if (!data) return null;
+  const { coach_students: st, coach_classes: cls, coach_profiles: coach, ...e } = data;
+  return { e, st, cls, coach };
+}
+async function enrollmentView(x) {
+  const next = x.cls ? (await S.listSessions(x.cls.coach_id, { classId: x.cls.id, from: todayYmd(), to: S.addDays(todayYmd(), 60) })).filter((s) => s.status === 'scheduled').slice(0, 6) : [];
+  return {
+    id: x.e.id,
+    status: x.e.status,
+    pay_mode: x.e.pay_mode,
+    created_at: x.e.created_at,
+    student: { full_name: x.st.full_name, linked_account: !!x.st.user_id },
+    class: x.cls && { id: x.cls.id, title: x.cls.title, kind: x.cls.kind, start_time: x.cls.start_time, duration_min: x.cls.duration_min, weekdays: x.cls.weekdays, date_from: x.cls.date_from, date_to: x.cls.date_to, court_name: x.cls.court_name, map_url: x.cls.map_url, capacity: x.cls.capacity, fee: x.cls.fee, status: x.cls.status },
+    coach: x.coach && { slug: x.coach.slug, display_name: x.coach.display_name, sport: x.coach.sport, cancel_hours: x.coach.cancel_hours },
+    next_sessions: next.map((s) => ({ id: s.id, session_date: s.session_date, start_time: s.start_time, duration_min: s.duration_min, court_name: s.court_name })),
+  };
+}
+publicRoutes.get('/r/:token', async (req, res) => {
+  try {
+    const x = await byToken(req.params.token);
+    if (!x) return res.status(404).json({ error: 'Sign-up not found.', code: 'not_found' });
+    res.json(await enrollmentView(x));
+  } catch (err) {
+    send(res, err);
+  }
+});
+publicRoutes.post('/r/:token/cancel', async (req, res) => {
+  try {
+    const x = await byToken(req.params.token);
+    if (!x) return res.status(404).json({ error: 'Sign-up not found.', code: 'not_found' });
+    await ST.cancelByStudent(x.e, x.cls, x.coach);
+    res.json(await enrollmentView({ ...x, e: { ...x.e, status: 'cancelled' } }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+
+// ---- The student's side (signed in) ----------------------------------------------------
+const studentRoutes = express.Router();
+studentRoutes.use(async (req, res, next) => {
+  if (await ST.ready()) return next();
+  return res.status(503).json({ error: 'Coach Manager needs a database update.', code: 'migration_missing', migration: ST.MIGRATION });
+});
+// My classes: every live (and recently ended) enrolment with its coach and next sessions.
+studentRoutes.get('/', async (req, res) => {
+  try {
+    const { data: students } = await supabase.from('coach_students').select('id, coach_id').eq('user_id', req.userId);
+    const ids = (students || []).map((s) => s.id);
+    if (!ids.length) return res.json([]);
+    const { data, error } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(slug, display_name, sport, status, cancel_hours)').in('student_id', ids).order('created_at', { ascending: false }).limit(100);
+    if (error) return dbError(res, error);
+    const out = [];
+    for (const row of data || []) {
+      const { coach_students: st, coach_classes: cls, coach_profiles: coach, ...e } = row;
+      if (['cancelled', 'removed'].includes(e.status) && e.created_at < new Date(Date.now() - 30 * 86400000).toISOString()) continue;
+      out.push(await enrollmentView({ e, st, cls, coach }));
+    }
+    res.json(out);
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/classes/:id/enroll', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Class');
+    const { data: cls } = await supabase.from('coach_classes').select('*, coach_profiles(*)').eq('id', req.params.id).maybeSingle();
+    if (!cls || cls.coach_profiles?.status !== 'active') return notFound(res, 'Class');
+    const { coach_profiles: coach, ...klass } = cls;
+    const student = await ST.studentForUser(coach, req.userId, {});
+    const enr = await ST.enroll(coach, klass, student, { pay_mode: req.body?.pay_mode || 'package', source: 'account', note: req.body?.note });
+    res.status(enr.already ? 200 : 201).json(await enrollmentView({ e: enr, st: student, cls: klass, coach }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/enrollments/:id/cancel', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Enrollment');
+    const { data } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(slug, display_name, sport, status, cancel_hours)').eq('id', req.params.id).maybeSingle();
+    if (!data || data.coach_students?.user_id !== req.userId) return notFound(res, 'Enrollment');
+    const { coach_students: st, coach_classes: cls, coach_profiles: coach, ...e } = data;
+    const out = await ST.cancelByStudent(e, cls, coach);
+    res.json(await enrollmentView({ e: out, st, cls, coach }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+
+module.exports = { router, publicRoutes, studentRoutes };

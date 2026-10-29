@@ -1,5 +1,9 @@
 'use client';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
+import Modal from '@/components/Modal';
+import Captcha from '@/components/Captcha';
+import { ENROLL_TONE } from '@/components/coach/StudentRow';
 import { useParams } from 'next/navigation';
 import PlayerShell from '@/components/PlayerShell';
 import MapLink from '@/components/MapLink';
@@ -21,6 +25,43 @@ export default function CoachPublicPage() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const { data, error, loading } = useLoad(() => api.publicGet(`/api/public/coach/${slug}`), [slug]);
+  // Signed in: which of these classes am I already on?
+  const { data: mine, reload: reloadMine } = useLoad(() => (user ? api.get('/api/player/coach').catch(() => []) : Promise.resolve([])), [user?.id]);
+  const [signup, setSignup] = useState(null); // the class being signed up for
+  const [q, setQ] = useState({ full_name: '', phone: '', pay_mode: 'package' });
+  const [captcha, setCaptcha] = useState('');
+  const capRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(null); // { token?, status, already }
+  const [msg, setMsg] = useState('');
+  const liveOf = (classId) => (mine || []).find((e) => e.class?.id === classId && ['requested', 'confirmed', 'waitlist'].includes(e.status));
+  function openSignup(k) {
+    setSignup(k);
+    setDone(null);
+    setMsg('');
+    setQ({ full_name: '', phone: '', pay_mode: k.fee > 0 ? 'per_session' : 'package' });
+  }
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg('');
+    try {
+      if (user) {
+        const r = await api.post(`/api/player/coach/classes/${signup.id}/enroll`, { pay_mode: q.pay_mode });
+        setDone({ status: r.status });
+        reloadMine();
+      } else {
+        const r = await api.publicPost(`/api/public/coach/${slug}/quick`, { class_id: signup.id, full_name: q.full_name.trim(), phone: q.phone.trim(), pay_mode: q.pay_mode, captcha_token: captcha });
+        setDone(r);
+      }
+    } catch (err) {
+      const code = err.payload?.code;
+      setMsg(t(`coach.err_${code}`) === `coach.err_${code}` ? err.message : t(`coach.err_${code}`));
+      capRef.current?.reset();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (loading && !data) return <PlayerShell requireAuth={false}><LoadingBlock rows={3} className="card" /></PlayerShell>;
   if (error || !data) {
@@ -93,7 +134,13 @@ export default function CoachPublicPage() {
                     <p className="text-gray-400 text-xs">{[k.court_name, k.kind !== 'single' ? `${dmy(k.date_from)} → ${dmy(k.date_to)}` : null, t('coach.cCap', { n: k.capacity }), k.fee > 0 ? t('coach.cFeeN', { v: formatVnd(k.fee) }) : t('coach.cFeePackage')].filter(Boolean).join(' · ')}</p>
                     {k.note && <p className="text-gray-400 text-xs mt-1 whitespace-pre-line break-words">{k.note}</p>}
                   </div>
-                  <span className="text-[11px] rounded-full bg-navy-800 text-gray-400 px-2 py-0.5 whitespace-nowrap">{t('coach.signupSoon')}</span>
+                  {liveOf(k.id) ? (
+                    <span className={`text-[11px] rounded-full px-2 py-0.5 whitespace-nowrap ${ENROLL_TONE[liveOf(k.id).status]}`}>{t(`coach.en_${liveOf(k.id).status}`)}</span>
+                  ) : k.status === 'open' && c.status === 'active' ? (
+                    <button type="button" className="btn-primary text-sm" onClick={() => openSignup(k)}>{t('coach.signUp')}</button>
+                  ) : (
+                    <span className="text-[11px] rounded-full bg-navy-800 text-gray-400 px-2 py-0.5 whitespace-nowrap">{t('coach.signupClosed')}</span>
+                  )}
                 </div>
                 {k.next_sessions?.length > 0 && (
                   <p className="text-gray-300 text-xs mt-2 tabular-nums">
@@ -105,6 +152,62 @@ export default function CoachPublicPage() {
           </div>
         )}
       </section>
+
+      <Modal open={!!signup} title={signup ? `${t('coach.signUp')} · ${signup.title}` : ''} onClose={() => setSignup(null)}>
+        {signup && done && (
+          <div className="grid gap-3 text-sm">
+            <p className="text-white font-semibold">{done.already ? t('coach.suAlready') : t(`coach.suDone_${done.status}`)}</p>
+            <p className="text-gray-300">{t(`coach.enHint_${done.status}`)}</p>
+            {done.token && (
+              <div className="rounded-lg border border-lime-400/40 bg-lime-400/5 px-3 py-2">
+                <p className="text-gray-200">{t('coach.suKeepLink')}</p>
+                <Link href={`/coach/r/${done.token}`} className="text-lime-300 underline break-all">{typeof window !== 'undefined' ? `${window.location.origin}/coach/r/${done.token}` : `/coach/r/${done.token}`}</Link>
+                {!done.linked_account && <p className="text-gray-400 text-xs mt-2">{t('coach.suMakeAccount')}</p>}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              {user && <Link href="/p" className="btn-secondary">{t('hub.navActivity')}</Link>}
+              <button type="button" className="btn-primary" onClick={() => setSignup(null)}>{t('common.close')}</button>
+            </div>
+          </div>
+        )}
+        {signup && !done && (
+          <form onSubmit={submit} className="grid gap-3">
+            <p className="text-gray-300 text-sm">{scheduleText(signup, t)}{signup.court_name ? ` · ${signup.court_name}` : ''} · {t('coach.cCap', { n: signup.capacity })}</p>
+            {!user && (
+              <>
+                <p className="text-gray-400 text-xs">{t('coach.suQuickHint')} <Link href={`/sign-in?next=${encodeURIComponent(`/coach/${slug}`)}`} className="text-lime-300 underline">{t('coach.suSignIn')}</Link></p>
+                <div>
+                  <label className="text-xs text-gray-400">{t('coach.st_full_name')}</label>
+                  <input className="input" required maxLength={120} value={q.full_name} onChange={(e) => setQ({ ...q, full_name: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400">{t('coach.st_phone')}</label>
+                  <input className="input" type="tel" required minLength={9} maxLength={20} value={q.phone} onChange={(e) => setQ({ ...q, phone: e.target.value })} />
+                </div>
+              </>
+            )}
+            {signup.fee > 0 && (
+              <div>
+                <label className="text-xs text-gray-400">{t('coach.suPay')}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['per_session', 'package'].map((k) => (
+                    <button key={k} type="button" aria-pressed={q.pay_mode === k} onClick={() => setQ({ ...q, pay_mode: k })} className={`min-h-[44px] rounded-lg border text-sm px-2 ${q.pay_mode === k ? 'border-lime-400 bg-lime-400/10 text-white' : 'border-navy-600 text-gray-300'}`}>
+                      {t(`coach.pay_${k}`)}{k === 'per_session' ? ` · ${formatVnd(signup.fee)}` : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!user && <Captcha ref={capRef} onToken={setCaptcha} className="flex justify-center" />}
+            {msg && <p className="text-red-300 text-sm">{msg}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setSignup(null)}>{t('common.cancel')}</button>
+              <button className="btn-primary" disabled={busy}>{t('coach.suCta')}</button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </PlayerShell>
   );
 }

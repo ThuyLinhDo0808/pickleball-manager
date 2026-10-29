@@ -28,9 +28,9 @@ export default function CoachOverviewPage() {
           <>
             <KpiRow cols={4}>
               <StatTile label={t('coach.kpiClasses')} value={String(data.classes)} onClick={() => (window.location.href = '/coach/classes')} />
-              <StatTile label={t('coach.kpiStudents')} value="—" sub={t('coach.comingSoon')} />
+              <StatTile label={t('coach.kpiStudents')} value={String(data.students)} onClick={() => (window.location.href = '/coach/students')} />
               <StatTile label={t('coach.kpiWeek')} value={String(data.sessions_week)} onClick={() => (window.location.href = '/coach/schedule')} />
-              <StatTile label={t('coach.kpiPending')} value="—" sub={t('coach.comingSoon')} />
+              <StatTile label={t('coach.kpiPending')} value={String(data.pending)} tone={data.pending ? 'text-amber-300' : 'text-white'} onClick={() => (window.location.href = '/coach/students?tab=pending')} />
             </KpiRow>
 
             <section className="card mb-4">
@@ -76,7 +76,7 @@ export default function CoachOverviewPage() {
                   ['check', t('coach.step1'), true],
                   ['share', t('coach.step2'), false],
                   ['plans', t('coach.step3'), data.classes > 0],
-                  ['users', t('coach.step4'), false],
+                  ['users', t('coach.step4'), data.students > 0],
                 ].map(([icon, label, done], i) => (
                   <li key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${done ? 'border-lime-400/40 bg-lime-400/5 text-gray-200' : 'border-navy-700 text-gray-300'}`}>
                     <span className={done ? 'text-lime-400' : 'text-gray-500'}><UiIcon name={icon} className="w-5 h-5" /></span>

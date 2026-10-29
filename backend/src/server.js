@@ -69,6 +69,8 @@ app.post(
     '/api/public/surveys/:token',
     '/api/public/surveys/:token/join',
     '/api/public/surveys/:token/skip',
+    '/api/public/coach/:slug/quick',
+    '/api/public/coach/r/:token/cancel',
     '/api/public/quick/:eventId/open',
     '/api/public/quick/:eventId/book',
     '/api/public/quick/booking/:token/proof',
@@ -114,7 +116,8 @@ app.use('/api/inventory', requireAuth, inventoryRoutes);
 app.use('/api/owner', requireAuth, ownerRoutes);
 const coachRoutes = require('./routes/coach.routes'); // Coach Manager: its own product, switched on by app setting coach_enabled
 app.use('/api/coach', requireAuth, coachRoutes.router);
-app.use('/api/public/coach', coachRoutes.publicRoutes); // no login: a coach's public page
+app.use('/api/player/coach', requireAuth, coachRoutes.studentRoutes); // a student's classes
+app.use('/api/public/coach', coachRoutes.publicRoutes); // no login: a coach's public page + quick sign-up
 app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
 app.use('/api/public/auth', require('./routes/auth.routes')); // no login: sign in / sign up / forgot password
 app.get('/api/public/announcements', require('./routes/announcements.routes').current); // no login: owner's banner

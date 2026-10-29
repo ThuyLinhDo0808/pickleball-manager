@@ -198,7 +198,7 @@ Khối `coach.*` trong `web/lib/i18n/vi.js` và `en.js` (nhãn menu, form, trạ
 |---|---|---|
 | C1 ✅ (29/10) | Migration `20261230090000_coach_manager.sql` + probe + `coachAccess` + hồ sơ coach (API, `/coach/profile`, `/coach/[slug]`), không gian `coach` trong shell / home / chuyển ngữ cảnh, thẻ thứ ba ở màn chọn, công tắc `coach_enabled` + `COACH_BETA_EMAILS`, CORS cho preview Vercel | xong |
 | C2 ✅ (29/10) | Migration `20261231090000_coach_classes.sql`, `coachSchedule` (sinh buổi theo thứ, tối đa 200), API gói / lớp / buổi, trang Gói buổi, Lớp học, Tạo lớp, trang lớp (Buổi · Cài đặt, áp dụng cho buổi sắp tới), Lịch dạy theo tuần, trang buổi, trang công khai hiện gói + lớp | xong |
-| C3 | Học viên: đăng ký từ `/p/coach` và trang công khai (có tài khoản + đăng ký nhanh, nối theo sđt), xác nhận / chờ, huỷ theo hạn, danh sách học viên, thêm tay | 3 ngày |
+| C3 ✅ (29/10) | Migration `20270101090000_coach_students.sql`, `coachStudents` (học viên nối tài khoản theo sđt, đăng ký chờ / nhận / danh sách chờ, tự nhận người chờ khi có chỗ), API coach / player / public (đăng ký nhanh + link `/coach/r/<token>`), trang Học viên, tab Học viên của lớp, nút Đăng ký trên trang công khai, *Lớp học của tôi* ở `/p`; Lịch dạy thêm Danh sách · Năm · Tháng · Tuần · Ngày (dùng lại `EventCalendar`) | xong |
 | C4 | Điểm danh + QR, trừ gói, phí buổi lẻ | 2 ngày |
 | C5 | Thanh toán gói + chứng từ, hoàn tiền một phần, sổ thu chi coach (`transactions.owner_type='coach'`), Excel, thông báo + email | 3 ngày |
 | C6 | Owner: danh sách coach, khoá; README §4 mục mới, §11.2, §12, §15, §16, §17; `docs/ui-plan.md`; test backend | 1–2 ngày |

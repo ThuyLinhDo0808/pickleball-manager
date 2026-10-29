@@ -1,8 +1,11 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
+import EventCalendar from '@/components/EventCalendar';
+import DatePopover from '@/components/DatePopover';
 import PageHeader from '@/components/ui/PageHeader';
+import Segmented from '@/components/ui/Segmented';
 import Hint from '@/components/ui/Hint';
 import LoadingBlock from '@/components/ui/LoadingBlock';
 import ErrorBlock from '@/components/ui/ErrorBlock';
@@ -10,27 +13,85 @@ import EmptyState from '@/components/ui/EmptyState';
 import { useI18n } from '@/context/I18nContext';
 import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
-import { addDays, formatDay, todayYmd } from '@/lib/dates';
+import { addDays, addMonths, formatDay, monthTitle, todayYmd, weekDays } from '@/lib/dates';
 import { CoachGate } from '@/components/coach/CoachGate';
-import { weekStart, dmy } from '@/lib/coach';
+import { endTime } from '@/lib/coach';
 import { SessionRow } from '@/components/coach/SessionRow';
 
-// Lịch dạy: one week at a time, every session of every class, grouped by day.
+const VIEWS = ['list', 'year', 'month', 'week', 'day'];
+// A coach session drawn like a club event on the shared calendar.
+const STATUS = { scheduled: 'open', done: 'completed', cancelled: 'cancelled' };
+const asEvent = (s) => ({
+  id: s.id,
+  title: s.class_title || '',
+  event_date: s.session_date,
+  start_time: s.start_time,
+  end_time: `${endTime(s.start_time, s.duration_min)}:00`,
+  status: STATUS[s.status] || 'open',
+  location: s.court_name,
+  href: `/coach/sessions/${s.id}`,
+  noActions: true,
+});
+
+// Lịch dạy: the same views as the club's Lịch hoạt động — list (upcoming, by day), year,
+// month, week, day — over every session of every class.
 export default function CoachSchedulePage() {
   const { t, lang } = useI18n();
   const today = todayYmd();
-  const [start, setStart] = useState(() => weekStart(today));
-  const end = addDays(start, 6);
-  const { data, loading, error, reload } = useLoad(() => api.get(`/api/coach/sessions?from=${start}&to=${end}`), [start]);
+  const [view, setView] = useState('list');
+  const [date, setDate] = useState(today);
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const on = () => setPhone(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  useEffect(() => {
+    if (phone && view === 'week') setView('month');
+  }, [phone, view]);
+
+  // What to load: the whole year for the year view, a wide month otherwise, the next 90
+  // days for the list.
+  const range = useMemo(() => {
+    if (view === 'list') return [today, addDays(today, 90)];
+    if (view === 'year') return [`${date.slice(0, 4)}-01-01`, `${date.slice(0, 4)}-12-31`];
+    if (view === 'month') return [addDays(`${date.slice(0, 7)}-01`, -7), addDays(addMonths(`${date.slice(0, 7)}-01`, 1), 7)];
+    const w = weekDays(date);
+    return [w[0], w[6]];
+  }, [view, date, today]);
+  const { data, loading, error, reload } = useLoad(() => api.get(`/api/coach/sessions?from=${range[0]}&to=${range[1]}`), [range[0], range[1]]);
+  const sessions = data || [];
+  const events = useMemo(() => sessions.map(asEvent), [sessions]);
+  const marks = useMemo(() => events.reduce((m, e) => ({ ...m, [e.event_date]: (m[e.event_date] || 0) + 1 }), {}), [events]);
+
+  const step = { year: (n) => addMonths(date, 12 * n), month: (n) => addMonths(date, n), week: (n) => addDays(date, 7 * n), day: (n) => addDays(date, n) }[view];
+  const week = weekDays(date);
+  const title =
+    view === 'year'
+      ? t('cal.yearTitle', { y: date.slice(0, 4) })
+      : view === 'month'
+        ? monthTitle(date, lang)
+        : view === 'week'
+          ? `${formatDay(week[0], lang, { day: 'numeric', month: 'numeric' })} – ${formatDay(week[6], lang, { day: 'numeric', month: 'numeric', year: 'numeric' })}`
+          : formatDay(date, lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  function openDay(d) {
+    setDate(d);
+    setView('day');
+  }
+
+  // List: upcoming sessions grouped by day (cancelled ones stay, struck out).
   const days = useMemo(() => {
     const out = [];
-    for (let i = 0; i < 7; i += 1) {
-      const d = addDays(start, i);
-      out.push({ date: d, items: (data || []).filter((s) => s.session_date === d) });
+    for (const s of sessions) {
+      const last = out[out.length - 1];
+      if (last && last.date === s.session_date) last.items.push(s);
+      else out.push({ date: s.session_date, items: [s] });
     }
     return out;
-  }, [data, start]);
-  const total = (data || []).filter((s) => s.status !== 'cancelled').length;
+  }, [sessions]);
+
   return (
     <AppShell>
       <CoachGate error={error} reload={reload}>
@@ -41,33 +102,37 @@ export default function CoachSchedulePage() {
           hint={<Hint inline text={t('coach.scheduleHint')} />}
           actions={<Link href="/coach/classes/new" className="btn-primary">+ {t('coach.classNew')}</Link>}
         />
-        <div className="card !p-2 mb-3 flex items-center justify-between gap-2">
-          <button type="button" className="btn-secondary !px-3" aria-label={t('rankings.prev')} onClick={() => setStart(addDays(start, -7))}>‹</button>
-          <div className="text-center min-w-0">
-            <span className="text-white font-semibold tabular-nums">{dmy(start)} – {dmy(end)}</span>
-            <span className="block text-gray-400 text-xs">{t('coach.weekN', { n: total })}</span>
-          </div>
-          <div className="flex gap-1">
-            {start !== weekStart(today) && <button type="button" className="btn-secondary !px-3 text-sm" onClick={() => setStart(weekStart(today))}>{t('hub.today')}</button>}
-            <button type="button" className="btn-secondary !px-3" aria-label={t('rankings.next')} onClick={() => setStart(addDays(start, 7))}>›</button>
-          </div>
+        <div className="card !p-3 mb-4 flex flex-wrap items-center gap-2">
+          <Segmented items={phone ? VIEWS.filter((v) => v !== 'week') : VIEWS} value={view} onChange={setView} label={(v) => t(`cal.${v}`)} />
+          {view !== 'list' && (
+            <>
+              <div className="flex items-center gap-1">
+                <button type="button" className="btn-secondary !px-3" onClick={() => setDate(step(-1))} aria-label={t('cal.prev')}>‹</button>
+                <button type="button" className="btn-secondary !px-3 text-sm" onClick={() => setDate(today)}>{t('cal.today')}</button>
+                <button type="button" className="btn-secondary !px-3" onClick={() => setDate(step(1))} aria-label={t('cal.next')}>›</button>
+              </div>
+              <span className="text-white font-semibold capitalize">{title}</span>
+              <DatePopover className="ml-auto" align="right" value={date} marks={marks} onChange={openDay} />
+            </>
+          )}
         </div>
         {loading && !data && <LoadingBlock rows={4} className="card" />}
         {error && <ErrorBlock message={error.message} onRetry={reload} />}
-        {data && total === 0 && (
-          <EmptyState title={t('coach.weekEmpty')} action={<Link href="/coach/classes/new" className="btn-primary">+ {t('coach.classNew')}</Link>}>
-            {t('coach.weekEmptyHint')}
+        {data && view !== 'list' && <EventCalendar view={view} date={date} events={events} onPickDay={openDay} onPickMonth={(d) => { setDate(d); setView('month'); }} onChanged={reload} labels={{ yearCount: (n) => t('coach.calCount', { n }), freeDay: t('coach.calFreeDay') }} />}
+        {data && view === 'list' && days.length === 0 && (
+          <EmptyState title={t('coach.listEmpty')} action={<Link href="/coach/classes/new" className="btn-primary">+ {t('coach.classNew')}</Link>}>
+            {t('coach.listEmptyHint')}
           </EmptyState>
         )}
-        {data && total > 0 && (
+        {data && view === 'list' && days.length > 0 && (
           <div className="grid gap-3">
             {days.map((d) => (
-              <section key={d.date} className={`card !p-0 overflow-hidden ${d.date === today ? 'border-lime-400/50' : ''} ${d.items.length === 0 ? 'opacity-60' : ''}`}>
+              <section key={d.date} className={`card !p-0 overflow-hidden ${d.date === today ? 'border-lime-400/50' : ''}`}>
                 <h2 className={`px-4 py-2 border-b border-navy-700 text-sm font-semibold capitalize ${d.date === today ? 'text-lime-300' : 'text-white'}`}>
                   {formatDay(d.date, lang, { weekday: 'long', day: '2-digit', month: '2-digit' })}
-                  {d.date === today && <span className="ml-2 text-[11px] rounded-full bg-lime-400/15 px-2 py-0.5">{t('hub.today')}</span>}
+                  {d.date === today && <span className="ml-2 text-[11px] rounded-full bg-lime-400/15 px-2 py-0.5">{t('cal.today')}</span>}
                 </h2>
-                {d.items.length === 0 ? <p className="text-gray-500 text-xs px-4 py-2">—</p> : d.items.map((s) => <SessionRow key={s.id} s={s} lang={lang} onChanged={reload} withClass past={d.date < today} />)}
+                {d.items.map((s) => <SessionRow key={s.id} s={s} lang={lang} onChanged={reload} withClass />)}
               </section>
             ))}
           </div>
