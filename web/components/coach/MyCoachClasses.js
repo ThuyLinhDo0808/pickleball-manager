@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { formatDay, hhmm } from '@/lib/dates';
 import { scheduleText } from '@/lib/coach';
 import { ENROLL_TONE } from '@/components/coach/StudentRow';
+import { MySessions } from '@/components/coach/Balance';
 
 // "Lớp học của tôi" on the player's activity page: every class signed up for, its status,
 // the next sessions, and the way out.
@@ -43,9 +44,10 @@ export default function MyCoachClasses() {
                 </div>
                 <span className={`text-[11px] rounded-full px-2 py-0.5 whitespace-nowrap ${ENROLL_TONE[e.status]}`}>{t(`coach.en_${e.status}`)}</span>
               </div>
-              {live && e.next_sessions?.length > 0 && (
+              {live && e.status !== 'confirmed' && e.next_sessions?.length > 0 && (
                 <p className="text-gray-300 text-xs mt-1 tabular-nums">{t('coach.nextSessionsShort')}: {e.next_sessions.slice(0, 3).map((s) => `${formatDay(s.session_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit' })} ${hhmm(s.start_time)}`).join(' · ')}</p>
               )}
+              {e.status === 'confirmed' && <MySessions e={e} excuse={(sid, undo) => api.post(`/api/player/coach/enrollments/${e.id}/sessions/${sid}/excuse`, { undo: !!undo }).then(reload)} />}
               {live && (
                 <div className="flex justify-end mt-1">
                   <button type="button" className="text-red-300 hover:text-red-200 text-xs px-2 min-h-[44px]" disabled={busy} onClick={() => cancel(e)}>{t('coach.myCancel')}</button>

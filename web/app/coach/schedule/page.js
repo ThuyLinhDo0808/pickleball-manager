@@ -55,7 +55,7 @@ export default function CoachSchedulePage() {
   // What to load: the whole year for the year view, a wide month otherwise, the next 90
   // days for the list.
   const range = useMemo(() => {
-    if (view === 'list') return [today, addDays(today, 90)];
+    if (view === 'list') return [addDays(today, -30), addDays(today, 90)];
     if (view === 'year') return [`${date.slice(0, 4)}-01-01`, `${date.slice(0, 4)}-12-31`];
     if (view === 'month') return [addDays(`${date.slice(0, 7)}-01`, -7), addDays(addMonths(`${date.slice(0, 7)}-01`, 1), 7)];
     const w = weekDays(date);
@@ -82,9 +82,13 @@ export default function CoachSchedulePage() {
   }
 
   // List: upcoming sessions grouped by day (cancelled ones stay, struck out).
+  const endedMs = (s) => Date.parse(`${s.session_date}T${String(s.start_time).slice(0, 8)}`) + Number(s.duration_min || 0) * 60000;
+  // Past sessions still "scheduled" = not taken attendance yet.
+  const toMark = useMemo(() => sessions.filter((s) => s.status === 'scheduled' && endedMs(s) < Date.now()), [sessions]);
   const days = useMemo(() => {
     const out = [];
     for (const s of sessions) {
+      if (s.session_date < today) continue;
       const last = out[out.length - 1];
       if (last && last.date === s.session_date) last.items.push(s);
       else out.push({ date: s.session_date, items: [s] });
@@ -119,6 +123,12 @@ export default function CoachSchedulePage() {
         {loading && !data && <LoadingBlock rows={4} className="card" />}
         {error && <ErrorBlock message={error.message} onRetry={reload} />}
         {data && view !== 'list' && <EventCalendar view={view} date={date} events={events} onPickDay={openDay} onPickMonth={(d) => { setDate(d); setView('month'); }} onChanged={reload} labels={{ yearCount: (n) => t('coach.calCount', { n }), freeDay: t('coach.calFreeDay') }} />}
+        {data && view === 'list' && toMark.length > 0 && (
+          <section className="card !p-0 overflow-hidden mb-3 border border-amber-300/40">
+            <h2 className="px-4 py-2 border-b border-navy-700 text-sm font-semibold text-amber-200">{t('coach.toMark')} <span className="text-gray-500 font-normal">({toMark.length})</span></h2>
+            {toMark.map((s) => <SessionRow key={s.id} s={s} lang={lang} onChanged={reload} withClass past />)}
+          </section>
+        )}
         {data && view === 'list' && days.length === 0 && (
           <EmptyState title={t('coach.listEmpty')} action={<Link href="/coach/classes/new" className="btn-primary">+ {t('coach.classNew')}</Link>}>
             {t('coach.listEmptyHint')}

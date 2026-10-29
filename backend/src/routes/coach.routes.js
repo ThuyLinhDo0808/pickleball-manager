@@ -7,6 +7,7 @@ const { dbError, notFound, isUuid } = require('../utils/respond');
 const C = require('../services/coachAccess');
 const S = require('../services/coachSchedule');
 const ST = require('../services/coachStudents');
+const AT = require('../services/coachAttendance');
 const { requireCaptcha } = require('../services/captcha');
 const { todayYmd } = require('../services/memberships');
 const S_fail = (m, code) => C.fail(m, 400, code);
@@ -101,12 +102,19 @@ router.get('/overview', async (req, res) => {
       stReady ? supabase.from('coach_students').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'active') : { count: 0 },
       stReady ? supabase.from('coach_enrollments').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'requested') : { count: 0 },
     ]);
+    const atReady = await AT.ready();
+    const [{ count: unpaid }, { data: pastOpen }] = await Promise.all([
+      atReady ? supabase.from('coach_session_fees').select('id', { count: 'exact', head: true }).eq('coach_id', req.coach.id).eq('status', 'unpaid') : { count: 0 },
+      supabase.from('coach_sessions').select('id, session_date, start_time, duration_min').eq('coach_id', req.coach.id).eq('status', 'scheduled').lte('session_date', today).order('session_date', { ascending: false }).limit(200),
+    ]);
     res.json({
       profile: req.coach,
       classes: classes || 0,
       students: students || 0,
       sessions_week: week.filter((x) => x.status === 'scheduled').length,
       pending: pending || 0,
+      unpaid_fees: unpaid || 0,
+      to_mark: (pastOpen || []).filter((x) => S.endMs(x) < Date.now()).length,
       next: next.filter((x) => x.status === 'scheduled' && S.endMs(x) > Date.now()).slice(0, 5),
     });
   } catch (err) {
@@ -222,6 +230,10 @@ router.get('/classes/:id', async (req, res) => {
     if (!cls) return notFound(res, 'Class');
     const sessions = await S.listSessions(req.coach.id, { classId: cls.id });
     const roster = (await ST.ready()) ? await ST.classRoster(req.coach.id, cls.id) : [];
+    if (roster.length && (await AT.ready())) {
+      const bal = await AT.balances(roster.map((r) => r.student_id));
+      for (const r of roster) r.balance = bal[r.student_id] || null;
+    }
     res.json({ ...cls, sessions, roster });
   } catch (err) {
     send(res, err);
@@ -292,7 +304,8 @@ router.get('/students', async (req, res) => {
       }
     }
     await require('../services/playerAvatars').attach(data || []);
-    res.json((data || []).map((s) => ({ ...s, ...(live.get(s.id) || { classes: 0, requested: 0 }), ...(s.avatar_v ? { avatar_uid: s.user_id } : {}) })));
+    const bal = (await AT.ready()) ? await AT.balances(ids) : {};
+    res.json((data || []).map((s) => ({ ...s, ...(live.get(s.id) || { classes: 0, requested: 0 }), balance: bal[s.id] || null, ...(s.avatar_v ? { avatar_uid: s.user_id } : {}) })));
   } catch (err) {
     send(res, err);
   }
@@ -314,7 +327,16 @@ router.get('/students/:id', async (req, res) => {
   try {
     const st = await ownStudent(req);
     if (!st) return notFound(res, 'Student');
-    res.json({ ...st, enrollments: await ST.studentEnrollments(req.coach.id, st.id) });
+    const out = { ...st, enrollments: await ST.studentEnrollments(req.coach.id, st.id), purchases: [], history: [], tally: null, balance: null };
+    if (await AT.ready()) {
+      const [{ data: purchases }, history, bal] = await Promise.all([
+        supabase.from('coach_package_purchases').select('*').eq('student_id', st.id).order('created_at', { ascending: false }),
+        AT.history(st.id, 40),
+        AT.balances([st.id]),
+      ]);
+      Object.assign(out, { purchases: purchases || [], history, tally: AT.tally(history), balance: bal[st.id] });
+    }
+    res.json(out);
   } catch (err) {
     send(res, err);
   }
@@ -370,6 +392,135 @@ router.patch('/enrollments/:id', async (req, res) => {
       if (cls) await ST.promoteWaitlist(cls);
     }
     res.json(out);
+  } catch (err) {
+    send(res, err);
+  }
+});
+
+// ---- Purchases and fees (C4) ---------------------------------------------------------
+router.use(['/students/:id/purchases', '/purchases', '/fees', '/sessions/:id/people', '/sessions/:id/attendance', '/sessions/:id/scan', '/sessions/:id/finish'], async (req, res, next) => {
+  if (await AT.ready()) return next();
+  return res.status(503).json({ error: 'Coach Manager needs a database update.', code: 'migration_missing', migration: AT.MIGRATION });
+});
+router.post('/students/:id/purchases', async (req, res) => {
+  try {
+    const st = await ownStudent(req);
+    if (!st) return notFound(res, 'Student');
+    res.status(201).json(await AT.addPurchase(req.coach, st, req.body));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/purchases/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Purchase');
+    const { data, error } = await supabase.from('coach_package_purchases').update(AT.cleanPurchase(req.body)).eq('id', req.params.id).eq('coach_id', req.coach.id).select('*').maybeSingle();
+    if (error) return dbError(res, error);
+    if (!data) return notFound(res, 'Purchase');
+    res.json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.delete('/purchases/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Purchase');
+    const { data: p } = await supabase.from('coach_package_purchases').select('id, sessions_used').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+    if (!p) return notFound(res, 'Purchase');
+    if (p.sessions_used > 0) return res.status(409).json({ error: 'Sessions were already taken from this package; cancel it instead.', code: 'purchase_used' });
+    const { error } = await supabase.from('coach_package_purchases').delete().eq('id', p.id);
+    if (error) return dbError(res, error);
+    res.json({ deleted: true });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.get('/fees', async (req, res) => {
+  try {
+    const status = ['unpaid', 'paid', 'free'].includes(req.query.status) ? req.query.status : 'unpaid';
+    const { data, error } = await supabase.from('coach_session_fees').select('*, coach_students(id, full_name, phone, user_id), coach_sessions(id, session_date, start_time, class_id, coach_classes(title))').eq('coach_id', req.coach.id).eq('status', status).order('created_at', { ascending: false }).limit(500);
+    if (error) return dbError(res, error);
+    res.json((data || []).map(({ coach_students: st, coach_sessions: ss, ...f }) => ({ ...f, student: st, session: ss && { id: ss.id, session_date: ss.session_date, start_time: ss.start_time, class_id: ss.class_id, class_title: ss.coach_classes?.title } })));
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.patch('/fees/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Fee');
+    const status = req.body?.status;
+    if (!['unpaid', 'paid', 'free'].includes(status)) return send(res, S_fail('Unknown status.', 'bad_status'));
+    const { data, error } = await supabase.from('coach_session_fees').update({ status, paid_at: status === 'paid' ? new Date().toISOString() : null }).eq('id', req.params.id).eq('coach_id', req.coach.id).select('*').maybeSingle();
+    if (error) return dbError(res, error);
+    if (!data) return notFound(res, 'Fee');
+    res.json(data);
+  } catch (err) {
+    send(res, err);
+  }
+});
+
+// ---- Attendance (C4) -------------------------------------------------------------------
+async function ownSession(req) {
+  if (!isUuid(req.params.id)) return null;
+  const { data, error } = await supabase.from('coach_sessions').select('*, coach_classes(*)').eq('id', req.params.id).eq('coach_id', req.coach.id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const { coach_classes: cls, ...s } = data;
+  return { s, cls };
+}
+router.get('/sessions/:id/people', async (req, res) => {
+  try {
+    const x = await ownSession(req);
+    if (!x) return notFound(res, 'Session');
+    res.json({ deduct_mode: AT.deductMode(req.coach, x.cls), rows: await AT.people(req.coach, x.cls, x.s) });
+  } catch (err) {
+    send(res, err);
+  }
+});
+// One mark: { student_id, status } (status null = clear).
+router.post('/sessions/:id/attendance', async (req, res) => {
+  try {
+    const x = await ownSession(req);
+    if (!x) return notFound(res, 'Session');
+    if (!isUuid(req.body?.student_id)) return notFound(res, 'Student');
+    const { data: st } = await supabase.from('coach_students').select('id').eq('id', req.body.student_id).eq('coach_id', req.coach.id).maybeSingle();
+    if (!st) return notFound(res, 'Student');
+    if (req.body.status === null) {
+      await AT.unmark(x.s, st.id);
+      return res.json({ cleared: true });
+    }
+    res.json(await AT.mark(req.coach, x.cls, x.s, st.id, req.body.status, { note: req.body.note }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+// Scan the player's own QR (the code from their activity page): present at once.
+router.post('/sessions/:id/scan', async (req, res) => {
+  try {
+    const x = await ownSession(req);
+    if (!x) return notFound(res, 'Session');
+    const m = String(req.body?.code || '').trim().match(/^(?:PBP:)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+    if (!m) return res.status(400).json({ error: 'This is not a player QR code.', code: 'bad_code' });
+    const { data: prof } = await supabase.from('player_profiles').select('user_id, full_name').eq('checkin_token', m[1].toLowerCase()).maybeSingle();
+    if (!prof) return res.status(404).json({ error: 'Unknown or expired QR code.', code: 'unknown_code' });
+    const { data: st } = await supabase.from('coach_students').select('*').eq('coach_id', req.coach.id).eq('user_id', prof.user_id).maybeSingle();
+    if (!st) return res.status(404).json({ error: `${prof.full_name || 'This player'} is not your student.`, code: 'not_student' });
+    const { data: enr } = await supabase.from('coach_enrollments').select('id, status').eq('class_id', x.cls.id).eq('student_id', st.id).in('status', ST.LIVE).maybeSingle();
+    if (!enr || enr.status !== 'confirmed') return res.status(409).json({ error: `${st.full_name} is not confirmed in this class.`, code: 'not_confirmed', full_name: st.full_name });
+    const { data: prior } = await supabase.from('coach_attendance').select('status').eq('session_id', x.s.id).eq('student_id', st.id).maybeSingle();
+    if (prior?.status === 'present') return res.json({ already: true, full_name: st.full_name });
+    const att = await AT.mark(req.coach, x.cls, x.s, st.id, 'present');
+    const bal = (await AT.balances([st.id]))[st.id];
+    res.json({ already: false, full_name: st.full_name, attendance: att, balance: bal });
+  } catch (err) {
+    send(res, err);
+  }
+});
+router.post('/sessions/:id/finish', async (req, res) => {
+  try {
+    const x = await ownSession(req);
+    if (!x) return notFound(res, 'Session');
+    res.json(await AT.finish(req.coach, x.cls, x.s));
   } catch (err) {
     send(res, err);
   }
@@ -469,14 +620,26 @@ publicRoutes.post('/:slug/quick', requireCaptcha, async (req, res) => {
 // The quick sign-up's status page (by its secret link): class, coach, status, cancel.
 async function byToken(token) {
   if (!isUuid(token) || !(await ST.ready())) return null;
-  const { data } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(slug, display_name, sport, status, cancel_hours)').eq('token', token).maybeSingle();
+  const { data } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(id, slug, display_name, sport, status, cancel_hours, deduct_mode)').eq('token', token).maybeSingle();
   if (!data) return null;
   const { coach_students: st, coach_classes: cls, coach_profiles: coach, ...e } = data;
   return { e, st, cls, coach };
 }
 async function enrollmentView(x) {
   const next = x.cls ? (await S.listSessions(x.cls.coach_id, { classId: x.cls.id, from: todayYmd(), to: S.addDays(todayYmd(), 60) })).filter((s) => s.status === 'scheduled').slice(0, 6) : [];
+  let balance = null;
+  let mine = new Map();
+  let tally = null;
+  if (await AT.ready()) {
+    const [bal, hist] = await Promise.all([AT.balances([x.st.id]), AT.history(x.st.id, 60)]);
+    balance = bal[x.st.id];
+    tally = AT.tally(hist.filter((h) => h.session?.class_id === x.cls?.id));
+    for (const h of hist) if (h.session) mine.set(h.session.id, { status: h.status, late: h.late, by_student: h.by_student });
+  }
+  const deadlineOk = (s) => Date.now() < AT.excuseDeadlineMs(s, x.coach);
   return {
+    balance,
+    tally,
     id: x.e.id,
     status: x.e.status,
     pay_mode: x.e.pay_mode,
@@ -484,13 +647,32 @@ async function enrollmentView(x) {
     student: { full_name: x.st.full_name, linked_account: !!x.st.user_id },
     class: x.cls && { id: x.cls.id, title: x.cls.title, kind: x.cls.kind, start_time: x.cls.start_time, duration_min: x.cls.duration_min, weekdays: x.cls.weekdays, date_from: x.cls.date_from, date_to: x.cls.date_to, court_name: x.cls.court_name, map_url: x.cls.map_url, capacity: x.cls.capacity, fee: x.cls.fee, status: x.cls.status },
     coach: x.coach && { slug: x.coach.slug, display_name: x.coach.display_name, sport: x.coach.sport, cancel_hours: x.coach.cancel_hours },
-    next_sessions: next.map((s) => ({ id: s.id, session_date: s.session_date, start_time: s.start_time, duration_min: s.duration_min, court_name: s.court_name })),
+    next_sessions: next.map((s) => ({ id: s.id, session_date: s.session_date, start_time: s.start_time, duration_min: s.duration_min, court_name: s.court_name, mine: mine.get(s.id) || null, can_excuse: deadlineOk(s), started: AT.startMs(s) < Date.now() })),
   };
+}
+// The student says "I can't come" (or takes it back) for one upcoming session.
+async function excuseFor(x, sessionId, undo) {
+  if (!isUuid(sessionId)) throw C.fail('Session not found.', 404, 'not_found');
+  if (x.e.status !== 'confirmed') throw C.fail('Only a confirmed sign-up can report an absence.', 409, 'not_confirmed');
+  if (!(await AT.ready())) throw Object.assign(C.fail('Coach Manager needs a database update.', 503, 'migration_missing'), { migration: AT.MIGRATION });
+  const { data: s } = await supabase.from('coach_sessions').select('*').eq('id', sessionId).eq('class_id', x.cls.id).maybeSingle();
+  if (!s) throw C.fail('Session not found.', 404, 'not_found');
+  return AT.excuse(x.coach, x.cls, s, x.st.id, !!undo);
 }
 publicRoutes.get('/r/:token', async (req, res) => {
   try {
     const x = await byToken(req.params.token);
     if (!x) return res.status(404).json({ error: 'Sign-up not found.', code: 'not_found' });
+    res.json(await enrollmentView(x));
+  } catch (err) {
+    send(res, err);
+  }
+});
+publicRoutes.post('/r/:token/sessions/:sid/excuse', async (req, res) => {
+  try {
+    const x = await byToken(req.params.token);
+    if (!x) return res.status(404).json({ error: 'Sign-up not found.', code: 'not_found' });
+    await excuseFor(x, req.params.sid, req.body?.undo);
     res.json(await enrollmentView(x));
   } catch (err) {
     send(res, err);
@@ -541,6 +723,18 @@ studentRoutes.post('/classes/:id/enroll', async (req, res) => {
     const student = await ST.studentForUser(coach, req.userId, {});
     const enr = await ST.enroll(coach, klass, student, { pay_mode: req.body?.pay_mode || 'package', source: 'account', note: req.body?.note });
     res.status(enr.already ? 200 : 201).json(await enrollmentView({ e: enr, st: student, cls: klass, coach }));
+  } catch (err) {
+    send(res, err);
+  }
+});
+studentRoutes.post('/enrollments/:id/sessions/:sid/excuse', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return notFound(res, 'Enrollment');
+    const { data } = await supabase.from('coach_enrollments').select('*, coach_students(*), coach_classes(*), coach_profiles(id, slug, display_name, sport, status, cancel_hours, deduct_mode)').eq('id', req.params.id).maybeSingle();
+    if (!data || data.coach_students?.user_id !== req.userId) return notFound(res, 'Enrollment');
+    const { coach_students: st, coach_classes: cls, coach_profiles: coach, ...e } = data;
+    await excuseFor({ e, st, cls, coach }, req.params.sid, req.body?.undo);
+    res.json(await enrollmentView({ e, st, cls, coach }));
   } catch (err) {
     send(res, err);
   }

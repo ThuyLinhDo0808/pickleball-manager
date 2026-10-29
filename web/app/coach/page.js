@@ -69,6 +69,15 @@ export default function CoachOverviewPage() {
               )}
             </section>
 
+            {(data.to_mark > 0 || data.unpaid_fees > 0) && (
+              <section className="card mb-4 border border-amber-300/30">
+                <h2 className="text-white font-semibold mb-2">{t('coach.todo')}</h2>
+                <ul className="grid gap-1.5 text-sm">
+                  {data.to_mark > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoMark', { n: data.to_mark })}</span><Link href="/coach/schedule" className="text-lime-300 text-xs hover:underline whitespace-nowrap">{t('coach.schedule')} →</Link></li>}
+                  {data.unpaid_fees > 0 && <li className="flex items-center justify-between gap-2"><span className="text-gray-200">{t('coach.todoFees', { n: data.unpaid_fees })}</span><span className="text-[11px] text-gray-500">{t('coach.comingSoonC5')}</span></li>}
+                </ul>
+              </section>
+            )}
             <section className="card">
               <h2 className="text-white font-semibold mb-2">{t('coach.nextSteps')}</h2>
               <ol className="grid gap-2 text-sm">

@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import { CoachGate } from '@/components/coach/CoachGate';
 import { StudentLine, EnrollActions, ENROLL_TONE } from '@/components/coach/StudentRow';
 import { scheduleText, dmy } from '@/lib/coach';
+import { BalanceChip, PurchasesPanel, HistoryList } from '@/components/coach/Balance';
 
 const EMPTY = { full_name: '', phone: '', level_text: '', note: '' };
 
@@ -115,6 +116,7 @@ export default function CoachStudentsPage() {
                   <StudentLine s={s} sub={s.classes ? t('coach.stClassesN', { n: s.classes }) : null} />
                 </div>
                 {s.requested > 0 && <span className={`text-[11px] rounded-full px-2 py-0.5 ${ENROLL_TONE.requested}`}>{t('coach.stRequestedN', { n: s.requested })}</span>}
+                {s.balance?.has_package && <BalanceChip b={s.balance} />}
                 <span className="text-gray-500">›</span>
               </button>
             ))}
@@ -161,6 +163,7 @@ export default function CoachStudentsPage() {
 function StudentModal({ id, onClose, onChanged }) {
   const { t } = useI18n();
   const { data: s, loading, reload } = useLoad(() => api.get(`/api/coach/students/${id}`), [id]);
+  const { data: packages } = useLoad(() => api.get('/api/coach/packages').catch(() => []), []);
   const [f, setF] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -209,6 +212,14 @@ function StudentModal({ id, onClose, onChanged }) {
                 <EnrollActions e={e} onDecide={decide} busy={busy} />
               </div>
             ))}
+          </section>
+          <PurchasesPanel student={s} packages={packages || []} onChanged={() => { reload(); onChanged(); }} />
+          <section>
+            <h3 className="text-gray-300 text-sm font-semibold mb-2">
+              {t('coach.history')}
+              {s.tally && (s.tally.present + s.tally.absent + s.tally.excused > 0) && <span className="ml-2 text-gray-400 font-normal text-xs tabular-nums">{t('coach.att_present')} {s.tally.present} · {t('coach.att_absent')} {s.tally.absent} · {t('coach.att_excused')} {s.tally.excused}</span>}
+            </h3>
+            <HistoryList history={(s.history || []).slice(0, 12)} />
           </section>
           <form onSubmit={save} className="grid gap-3">
             <h3 className="text-gray-300 text-sm font-semibold">{t('coach.stDetails')}</h3>

@@ -20,6 +20,7 @@ import ClassForm, { classBody } from '@/components/coach/ClassForm';
 import { scheduleText, endTime } from '@/lib/coach';
 import { SessionRow } from '@/components/coach/SessionRow';
 import { StudentLine, EnrollActions } from '@/components/coach/StudentRow';
+import { BalanceChip } from '@/components/coach/Balance';
 
 // One class: its sessions (move, cancel, add) and its settings. Students come in C3.
 export default function CoachClassPage() {
@@ -162,6 +163,7 @@ export default function CoachClassPage() {
                   {['requested', 'confirmed', 'waitlist'].flatMap((k) => live.filter((e) => e.status === k)).map((e) => (
                     <div key={e.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-navy-700 last:border-b-0">
                       <div className="flex-1 min-w-[12rem]"><StudentLine s={e.student} sub={`${t(`coach.pay_${e.pay_mode}`)} · ${t(`coach.src_${e.source}`)}`} /></div>
+                      {e.pay_mode === 'package' && e.status === 'confirmed' && <BalanceChip b={e.balance} />}
                       <EnrollActions e={e} onDecide={decide} busy={busy} />
                     </div>
                   ))}

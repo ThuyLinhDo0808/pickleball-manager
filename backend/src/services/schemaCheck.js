@@ -93,6 +93,7 @@ const PROBES = [
   { table: 'coach_profiles', column: 'deduct_mode', migration: '20261230090000_coach_manager.sql' },
   { table: 'coach_sessions', column: 'duration_min', migration: '20261231090000_coach_classes.sql' },
   { table: 'coach_enrollments', column: 'pay_mode', migration: '20270101090000_coach_students.sql' },
+  { table: 'coach_attendance', column: 'purchase_id', migration: '20270102090000_coach_attendance.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },

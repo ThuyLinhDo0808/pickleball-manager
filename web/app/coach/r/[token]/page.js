@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { formatDay, hhmm } from '@/lib/dates';
 import { scheduleText } from '@/lib/coach';
 import { ENROLL_TONE } from '@/components/coach/StudentRow';
+import { MySessions } from '@/components/coach/Balance';
 
 // A quick sign-up's own page (secret link): the class, the status, cancel. The link is
 // the only way back to it, so the page says to keep it.
@@ -50,12 +51,16 @@ export default function CoachEnrollmentPage() {
       </section>
       {e.next_sessions?.length > 0 && (
         <section className="card mb-4">
-          <h2 className="text-white font-semibold mb-2">{t('coach.nextSessionsShort')}</h2>
-          <ul className="text-sm text-gray-200 grid gap-1 tabular-nums">
-            {e.next_sessions.map((s) => (
-              <li key={s.id} className="capitalize">{formatDay(s.session_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit' })} · {hhmm(s.start_time)}{s.court_name ? ` · ${s.court_name}` : ''}</li>
-            ))}
-          </ul>
+          <h2 className="text-white font-semibold">{t('coach.nextSessionsShort')}</h2>
+          {e.status === 'confirmed' ? (
+            <MySessions e={e} excuse={(sid, undo) => api.publicPost(`/api/public/coach/r/${token}/sessions/${sid}/excuse`, { undo: !!undo }).then(setData)} />
+          ) : (
+            <ul className="text-sm text-gray-200 grid gap-1 tabular-nums mt-2">
+              {e.next_sessions.map((s) => (
+                <li key={s.id} className="capitalize">{formatDay(s.session_date, lang, { weekday: 'short', day: '2-digit', month: '2-digit' })} · {hhmm(s.start_time)}{s.court_name ? ` · ${s.court_name}` : ''}</li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
       <section className="card">
