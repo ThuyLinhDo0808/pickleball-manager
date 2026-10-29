@@ -170,10 +170,16 @@ function linkEmail(url, kind = 'reset', { logo = logoUrl() } = {}) {
 // (generateLink, the same code verifyOtp checks), we send it. Returns false when there is
 // no mail sender or it failed, so Supabase's own email is used instead.
 async function mailCode(email) {
-  if (!process.env.RESEND_API_KEY) return false;
+  if (!process.env.RESEND_API_KEY) {
+    console.error('verify code mail off: RESEND_API_KEY is not set, falling back to the Supabase mailer (a few emails per hour)');
+    return false;
+  }
   const { data, error } = await supabase.auth.admin.generateLink({ type: 'magiclink', email });
   const code = data?.properties?.email_otp;
-  if (error || !/^\d{6}$/.test(String(code || ''))) return false;
+  if (error || !/^\d{6}$/.test(String(code || ''))) {
+    console.error('verify code link', error?.message || `otp is not 6 digits (length ${String(code || '').length}; check Auth → Email OTP length)`);
+    return false;
+  }
   const { subject, text, html } = codeEmail(code);
   const r = await require('./accountSecurity').sendMail(email, subject, text, html);
   if (r !== 'sent') console.error('verify code mail', r);
@@ -189,6 +195,7 @@ async function sendCode(email, origin) {
     options: { shouldCreateUser: false, ...(origin ? { emailRedirectTo: `${origin}/verify-email` } : {}) },
   });
   if (error) {
+    console.error('verify code supabase', error.status, error.code || '', error.message);
     if (/rate limit|seconds/i.test(error.message || '') || error.status === 429) throw httpError('Please wait a moment before asking for a new code.', 429, 'code_rate_limit');
     throw error;
   }
