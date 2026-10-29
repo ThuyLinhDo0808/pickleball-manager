@@ -20,10 +20,10 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
   const { allClubs, club } = useClubs();
   const clubs = allClubs.filter((c) => c.kind !== 'community');
   const communities = allClubs.filter((c) => c.kind === 'community');
-  const { workspace, staffInfo } = useWorkspace();
+  const { workspace, staffInfo, coachInfo } = useWorkspace();
   // Coordinator or referee: the strongest role this account holds.
   const staffRole = t(staffInfo?.role === 'coordinator' ? 'staff.coordinator' : 'staff.referee');
-  const { manageClub } = useEnter();
+  const { manageClub, space } = useEnter();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
@@ -71,6 +71,8 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
       ? { avatar: <ClubAvatar icon="ticket" size={compact ? 32 : 40} />, name: t('ux.noCommunity'), role: t('hub.roleOrganizer') }
       : workspace === 'staff'
         ? { avatar: <ClubAvatar icon="shield" size={compact ? 32 : 40} />, name: t('hub.staff'), role: staffRole }
+      : workspace === 'coach'
+        ? { avatar: <ClubAvatar icon="user" size={compact ? 32 : 40} />, name: coachInfo?.display_name || t('hub.coach'), role: t('hub.roleCoach') }
         : club
           ? { avatar: <ClubAvatar id={club.id} name={club.name} sport={club.sport} size={compact ? 32 : 40} />, name: club.name, role: t(ROLE_LABEL[club.role] || 'hub.roleOwner') }
           : { avatar: <ClubAvatar icon="home" size={compact ? 32 : 40} />, name: t('hub.noClubYet'), role: '' };
@@ -146,6 +148,12 @@ export default function ContextSwitcher({ compact = false, iconOnly = false, cla
                   )}
                 </div>
               ))}
+            </>
+          )}
+          {coachInfo?.has_profile && (
+            <>
+              <p className="px-2 pt-2 pb-1 text-gray-400 text-xs font-semibold">{t('hub.coach')}</p>
+              {row(workspace === 'coach', () => { setOpen(false); space('coach'); }, <ClubAvatar icon="user" size={32} />, coachInfo.display_name || t('hub.coach'), t('hub.roleCoach'))}
             </>
           )}
           <div className="border-t border-navy-700 mt-2 pt-2 grid gap-1">

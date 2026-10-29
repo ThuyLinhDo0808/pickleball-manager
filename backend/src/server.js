@@ -112,6 +112,9 @@ app.use('/api/analytics', requireAuth, analyticsRoutes);
 app.use('/api/live', requireAuth, liveRoutes);
 app.use('/api/inventory', requireAuth, inventoryRoutes);
 app.use('/api/owner', requireAuth, ownerRoutes);
+const coachRoutes = require('./routes/coach.routes'); // Coach Manager: its own product, switched on by app setting coach_enabled
+app.use('/api/coach', requireAuth, coachRoutes.router);
+app.use('/api/public/coach', coachRoutes.publicRoutes); // no login: a coach's public page
 app.get('/api/public/live/:token', liveRoutes.publicBoard); // no login: live scoreboard
 app.use('/api/public/auth', require('./routes/auth.routes')); // no login: sign in / sign up / forgot password
 app.get('/api/public/announcements', require('./routes/announcements.routes').current); // no login: owner's banner

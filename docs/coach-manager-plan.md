@@ -196,7 +196,7 @@ Khối `coach.*` trong `web/lib/i18n/vi.js` và `en.js` (nhãn menu, form, trạ
 
 | Đợt | Nội dung | Ước lượng |
 |---|---|---|
-| C1 | Migration + schemaCheck + `coachAccess` + hồ sơ coach (API, trang `/coach/profile`, trang công khai `/coach/[slug]`), không gian `coach` trong shell / home / chuyển ngữ cảnh, mục *Mở hồ sơ Coach* | 2–3 ngày |
+| C1 ✅ (29/10) | Migration `20261230090000_coach_manager.sql` + probe + `coachAccess` + hồ sơ coach (API, `/coach/profile`, `/coach/[slug]`), không gian `coach` trong shell / home / chuyển ngữ cảnh, thẻ thứ ba ở màn chọn, công tắc `coach_enabled` + `COACH_BETA_EMAILS`, CORS cho preview Vercel | xong |
 | C2 | Gói buổi, lớp, sinh buổi, lịch dạy, trang buổi | 3 ngày |
 | C3 | Học viên: đăng ký từ `/p/coach` và trang công khai (có tài khoản + đăng ký nhanh, nối theo sđt), xác nhận / chờ, huỷ theo hạn, danh sách học viên, thêm tay | 3 ngày |
 | C4 | Điểm danh + QR, trừ gói, phí buổi lẻ | 2 ngày |

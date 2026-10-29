@@ -44,6 +44,7 @@ export default function OwnerSystemPage() {
   const SWITCHES = [
     ['club_approval', 'bg-lime-400'],
     ['tier_self_serve', 'bg-amber-300'],
+    ['coach_enabled', 'bg-sky-400'],
   ];
   return (
     <OwnerShell title={t('owner.tabSystem')} description={t('owner.desc_system')}>
@@ -117,6 +118,8 @@ export default function OwnerSystemPage() {
                 <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.approvalOnQ' : 'owner.approvalOffQ')}</p>
                 {!confirm.value && <p className="text-amber-200 text-xs mb-3">{t('owner.approvalWarn')}</p>}
               </>
+            ) : confirm.key === 'coach_enabled' ? (
+              <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.coachOnQ' : 'owner.coachOffQ')}</p>
             ) : (
               <>
                 <p className="text-gray-200 text-sm mb-2">{t(confirm.value ? 'owner.selfServeOnQ' : 'owner.selfServeOffQ')}</p>
