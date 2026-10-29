@@ -187,7 +187,7 @@ export default function HomeHub() {
           </Link>
           <button
             type="button"
-            className="shrink-0 h-11 w-11 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-navy-700"
+            className="shrink-0 h-11 w-11 inline-flex items-center justify-center rounded-lg border border-navy-600 bg-navy-900/60 text-gray-200 text-lg leading-none hover:text-white hover:border-gray-400"
             aria-label={t('survey.skip')}
             title={t('survey.skip')}
             onClick={() => api.publicPost(`/api/public/surveys/${data.surveys_due[0].token}/skip`, {}).then(() => reload()).catch(() => {})}
