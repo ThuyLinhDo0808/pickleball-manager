@@ -185,7 +185,7 @@ export default function ClubLeaderboard({ statsUrl, clubName = '', me = null, se
                     {w.full_name}
                     {w.current && <span className="ml-1.5 text-[10px] rounded-full bg-amber-300/20 text-amber-200 px-1.5 py-0.5 align-middle">{t('rankings.weeksCurrent')}</span>}
                   </div>
-                  <div className="text-gray-400 text-xs">{t('rankings.weeksStreak', { n: w.streak })}</div>
+                  <div className="text-gray-400 text-xs">{w.current && w.since ? t('rankings.weeksSince', { d: `${w.since.slice(8, 10)}/${w.since.slice(5, 7)}/${w.since.slice(0, 4)}` }) : t('rankings.weeksStreak', { n: w.streak })}</div>
                 </div>
                 <span className="text-amber-300 font-bold tabular-nums shrink-0">{t('rankings.weeksN', { n: w.weeks })}</span>
               </li>
