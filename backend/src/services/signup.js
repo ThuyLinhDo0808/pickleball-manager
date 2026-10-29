@@ -341,6 +341,8 @@ async function confirmPayment(event, participant, hostId) {
   }
   const patch = { payment_status: 'confirmed', payment_note: null, hold_expires_at: null, fee_paid: true };
   if (participant.status === 'pending') patch.status = 'registered';
+  // Keep what the first payment was, so a later "tiền thực tế" shows the difference.
+  if (!participant.fee_paid && (await require('./feeAdjust').ready())) patch.paid_amount = feeFor(event, participant);
   const { data, error } = await supabase.from('event_participants').update(patch).eq('id', participant.id).select().single();
   if (error) throw error;
   const amount = feeFor(event, participant);

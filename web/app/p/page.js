@@ -171,6 +171,7 @@ export default function PlayerHome() {
               <span className="text-gray-200 min-w-0 break-words">
                 {d.title} · {localDate(new Date(`${d.event_date}T00:00:00`), lang === 'vi' ? 'vi-VN' : 'en-GB')}
                 {d.late_cancel && <span className="ml-2 text-[10px] rounded border border-orange-400/60 text-orange-300 px-1">{t('policy.lateBadge')}</span>}
+                {d.extra && <span className="ml-2 text-[10px] rounded border border-amber-300/60 text-amber-200 px-1">{t('feeadj.extraBadge')}</span>}
               </span>
               <span className="text-yellow-300 tabular-nums shrink-0">{formatVnd(d.amount)}</span>
             </div>

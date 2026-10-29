@@ -9,6 +9,7 @@ import { levelText } from '@/lib/levels';
 import { formatVnd } from '@/lib/format';
 import Hint from '@/components/ui/Hint';
 import UiIcon from '@/components/ui/UiIcon';
+import { FeeBlock } from '@/components/FeeAdjust';
 
 // Where someone stands on the list, as the sheet's buttons name it.
 export const PLACE_OF = { requested: 'requested', waitlisted: 'waitlist', not_playing: 'not_playing', registered: 'main', pending: 'main', checked_in: 'main', no_show: 'main' };
@@ -291,7 +292,7 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
   const name = row?.full_name || event.host_name || 'Host';
   const c = row?.card || {};
   const level = levelText(c.level ?? row?.dupr_level, sport, t);
-  const fee = Number(row?.fee_amount ?? event.fee_amount ?? 0);
+  const fee = Number(row?.actual_fee ?? row?.fee_amount ?? event.fee_amount ?? 0);
   const share = row ? (row.refund_percent != null ? row.refund_percent : row.late_cancel ? 0 : 100) : 0;
   const chip = 'rounded-full border px-3 py-1.5 text-sm disabled:opacity-40';
   return (
@@ -478,6 +479,10 @@ export function PlaceSheet({ event, person, isHost, onClose, onChanged, actions 
               </button>
             )}
           </div>
+        )}
+        {/* Tiền thực tế / thu thêm / hoàn phí: not for free places, passes or organizers who don't pay. */}
+        {row && actions && !cancelled && !isHost && !(row.tags || []).includes('free') && !row.paid_by_plan && !(row.is_organizer && row.fee_amount != null && Number(row.fee_amount) === 0) && (
+          <FeeBlock event={event} row={row} onChanged={onChanged} />
         )}
         {cancelled && row.fee_paid && !row.refunded_at && <p className="text-xs text-gray-400 text-center">{t('people.deleteHistoryPaid')}</p>}
         {error && <p className="text-red-400 text-sm">{error}</p>}

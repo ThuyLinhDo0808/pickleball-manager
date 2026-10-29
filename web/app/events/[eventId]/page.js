@@ -621,7 +621,7 @@ export default function EventDetailPage() {
         </>
       )}
 
-      {tab === 'finance' && <EventFinance event={event} finance={finance} onChanged={reloadFinance} />}
+      {tab === 'finance' && <EventFinance event={event} finance={finance} onChanged={reloadFinance} onOpenPlayer={(id) => { const p = (participants || []).find((x) => x.id === id); if (p) { setTab('participants'); openSheet(p); } }} />}
     </AppShell>
   );
 }

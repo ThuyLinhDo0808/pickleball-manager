@@ -98,6 +98,11 @@ async function linkedSource(txn, { voiding = false } = {}) {
     supabase.from('inventory_moves').select('id').eq('transaction_id', txn.id).limit(1),
   ]);
   if (txn.event_cost) return voiding ? null : 'event_cost';
+  // Thu thêm / hoàn phí of a player (feeAdjust.js): undo it on the player's sheet.
+  if (txn.event_id && ['event_fee', 'refund'].includes(txn.category) && (await require('../services/feeAdjust').ready())) {
+    const { data: fc } = await supabase.from('participant_fee_changes').select('id').eq('txn_id', txn.id).limit(1);
+    if (fc?.length) return 'fee_change';
+  }
   return ms?.length ? 'membership' : moves?.length ? 'inventory' : txn.category === 'event_fee' ? 'event_fee' : txn.category === 'meeting' ? 'meeting' : null;
 }
 const linkedError = (res, source) =>

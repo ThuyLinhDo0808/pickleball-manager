@@ -783,10 +783,12 @@ player.get('/me', async (req, res) => {
     const orFilter = [`user_id.eq.${uid}`, memberIds.length ? `source_club_member_id.in.(${memberIds.join(',')})` : null].filter(Boolean).join(',');
     const tiers = await tiersReady();
     const noRefund = await noRefundReady();
+    const feeAdjust = require('../services/feeAdjust');
+    const adj = await feeAdjust.ready();
     const { data: regs, error: rErr } = await supabase
       .from('event_participants')
       .select(
-        `id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, cancelled_at${tiers ? ', refund_percent, cancel_reason, cancelled_by' : ''}, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, club_id${tiers ? ', cancel_half_hours' : ''}${noRefund ? ', no_refund' : ''}, clubs(name, kind))`
+        `id, status, event_id, source_club_member_id, fee_amount, fee_paid, late_cancel, kind, payment_status, ticket_code, cancelled_at${tiers ? ', refund_percent, cancel_reason, cancelled_by' : ''}${adj ? ', actual_fee, paid_amount' : ''}, events(title, event_date, start_time, location, map_url, public_token, allow_public_registration, status, fee_amount, cancel_deadline_hours, club_id${tiers ? ', cancel_half_hours' : ''}${noRefund ? ', no_refund' : ''}, clubs(name, kind))`
       )
       .or(orFilter)
       .limit(500);
@@ -838,8 +840,12 @@ player.get('/me', async (req, res) => {
       ? await supabase.from('membership_sessions').select('event_id').in('membership_id', membershipIds).not('event_id', 'is', null)
       : { data: [] };
     const coveredByPass = new Set((usedSessions || []).map((u) => u.event_id));
+    // Played: the real amount (tiền thực tế) minus what was paid, so an extra the Host
+    // set after the kèo shows here too.
+    const played = regs.filter((r) => r.events && r.status === 'checked_in');
+    const lines = await feeAdjust.owedMap(played.map((r) => ({ ...r, event: r.events })));
     const eventDebts = regs
-      .filter((r) => r.events && !r.fee_paid && (r.status === 'checked_in' || (r.status === 'cancelled' && r.late_cancel)))
+      .filter((r) => r.events && ((r.status === 'checked_in' && lines.get(r.id)?.diff > 0) || (!r.fee_paid && r.status === 'cancelled' && r.late_cancel)))
       .filter((r) => !(r.source_club_member_id && coveredByPass.has(r.event_id)))
       .map((r) => ({
         event_id: r.event_id,
@@ -847,7 +853,8 @@ player.get('/me', async (req, res) => {
         event_date: r.events.event_date,
         club_name: r.events.clubs?.name || null,
         // A late cancel owes the part of the fee that is not refunded (50% tier: half).
-        amount: Math.round((Number(r.fee_amount ?? r.events.fee_amount ?? 0) * (r.status === 'cancelled' ? 100 - refundShare(r) : 100)) / 100),
+        amount: r.status === 'cancelled' ? Math.round((Number(r.fee_amount ?? r.events.fee_amount ?? 0) * (100 - refundShare(r))) / 100) : lines.get(r.id).diff,
+        extra: r.status === 'checked_in' && !!r.fee_paid,
         late_cancel: r.status === 'cancelled',
       }))
       .filter((d) => d.amount > 0)
