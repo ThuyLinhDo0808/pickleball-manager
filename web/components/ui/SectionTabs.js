@@ -1,10 +1,12 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useI18n } from '@/context/I18nContext';
 import { useScope } from '@/lib/useScope';
 import { SHOW_TOURNAMENTS } from '@/lib/hidden';
 import UiIcon from '@/components/ui/UiIcon';
+import { useScrollEdges, EdgeArrow } from '@/lib/useScrollEdges';
 
 // The pages of one menu group as tabs, so the Host can move between them in one tap.
 // Club and community (Social Manager) only: in one-off Xé Vé these pages stand alone.
@@ -40,16 +42,24 @@ export default function SectionTabs({ group }) {
   const { t } = useI18n();
   const { scoped, community, club } = useScope();
   const pathname = usePathname() || '';
+  const row = useRef(null);
+  const edges = useScrollEdges(row, [scoped, community, pathname]);
+  // Phone: the page's own tab is in view even when it sits far right in the row.
+  useEffect(() => {
+    const box = row.current;
+    const on = box?.querySelector('[aria-current="page"]');
+    if (box && on && box.scrollWidth > box.clientWidth) box.scrollLeft = Math.max(0, on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2);
+  }, [pathname, scoped, community]);
   if (!scoped) return null;
   const rankingsPage = pathname.startsWith('/club/rankings') || pathname.startsWith('/leaderboard');
   const tabsOf = community ? COMMUNITY_GROUPS[rankingsPage ? 'rankings' : group] || GROUPS[group] : GROUPS[group];
   const shown = tabsOf.filter((tab) => !tab.hidden && (!tab.community || community) && (!tab.sport || (club?.sport || 'pickleball') === tab.sport));
   if (shown.length < 2) return null; // one page alone needs no tabs
   return (
-    // Phone: one row of equal cells (icon over the word), like a segmented control; up to 3
-    // tabs per row, more wrap to a second row. Wider screens: pills.
-    <nav className="mb-4 sm:mb-5">
-      <div className={`grid gap-1 rounded-xl border border-navy-700 bg-navy-900 p-1 sm:flex sm:flex-wrap sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0 ${shown.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+    // Phone: ONE row of equal cells (icon over the word) that scrolls sideways when there are
+    // more than fit, with an arrow at the edge that hides more. Wider screens: pills.
+    <nav className="relative mb-4 sm:mb-5">
+      <div ref={row} className="flex gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl border border-navy-700 bg-navy-900 p-1 sm:flex-wrap sm:overflow-visible sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0">
         {shown.map((tab) => {
           const active = tab.match(pathname);
           // Social Manager: the schedule tab reads like its menu entry ("Lịch xé vé").
@@ -59,7 +69,7 @@ export default function SectionTabs({ group }) {
               key={tab.href}
               href={tab.href}
               aria-current={active ? 'page' : undefined}
-              className={`flex min-h-[3.5rem] flex-col items-center justify-start gap-0.5 rounded-lg px-1 pt-1.5 pb-1 text-center text-xs leading-tight transition-colors active:bg-navy-700 sm:min-h-0 sm:flex-row sm:items-center sm:gap-0 sm:rounded-full sm:border sm:px-3.5 sm:py-2 sm:text-sm sm:whitespace-nowrap ${active ? 'bg-lime-400 text-navy-950 font-semibold sm:border-lime-400 sm:bg-lime-400/15 sm:text-lime-200' : 'text-gray-300 sm:border-navy-600 sm:text-gray-200 hover:text-white sm:hover:border-lime-400'}`}
+              className={`flex min-h-[3.5rem] ${shown.length <= 3 ? 'flex-1 min-w-0' : 'w-[6.75rem]'} shrink-0 sm:w-auto sm:min-w-0 sm:flex-none flex-col items-center justify-start gap-0.5 rounded-lg px-1 pt-1.5 pb-1 text-center text-xs leading-tight transition-colors active:bg-navy-700 sm:min-h-0 sm:flex-row sm:items-center sm:gap-0 sm:rounded-full sm:border sm:px-3.5 sm:py-2 sm:text-sm sm:whitespace-nowrap ${active ? 'bg-lime-400 text-navy-950 font-semibold sm:border-lime-400 sm:bg-lime-400/15 sm:text-lime-200' : 'text-gray-300 sm:border-navy-600 sm:text-gray-200 hover:text-white sm:hover:border-lime-400'}`}
             >
               <UiIcon name={tab.icon} className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-1.5" />
               <span className="h-8 sm:h-auto flex items-start sm:items-center justify-center">{t(key)}</span>
@@ -67,6 +77,8 @@ export default function SectionTabs({ group }) {
           );
         })}
       </div>
+      {edges.left && <EdgeArrow side="left" boxRef={row} dark="from-navy-900 via-navy-900/80 rounded-l-xl" />}
+      {edges.right && <EdgeArrow side="right" boxRef={row} dark="from-navy-900 via-navy-900/80 rounded-r-xl" />}
     </nav>
   );
 }
