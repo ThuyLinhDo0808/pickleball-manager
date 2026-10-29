@@ -179,11 +179,22 @@ export default function HomeHub() {
       )}
 
       {data.surveys_due?.length > 0 && (
-        <Link href={`/s/${data.surveys_due[0].token}`} className="card block mb-4 border-lime-400/40 text-sm">
-          <span className="text-lime-300 font-semibold">{t('survey.portalTitle')}</span>
-          <span className="text-gray-300"> · {data.surveys_due[0].title}</span>
-          <span className="text-lime-400 ml-1">→</span>
-        </Link>
+        <div className="card flex items-center gap-2 mb-4 border-lime-400/40 text-sm !py-2 !pr-2">
+          <Link href={`/s/${data.surveys_due[0].token}`} className="flex-1 min-w-0 py-1">
+            <span className="text-lime-300 font-semibold">{t('survey.portalTitle')}</span>
+            <span className="text-gray-300"> · {data.surveys_due[0].title}</span>
+            <span className="text-lime-400 ml-1">→</span>
+          </Link>
+          <button
+            type="button"
+            className="shrink-0 h-11 w-11 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-navy-700"
+            aria-label={t('survey.skip')}
+            title={t('survey.skip')}
+            onClick={() => api.publicPost(`/api/public/surveys/${data.surveys_due[0].token}/skip`, {}).then(() => reload()).catch(() => {})}
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* Spaces */}

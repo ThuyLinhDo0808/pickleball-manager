@@ -15,6 +15,12 @@ const { notifySurvey, notifyJoinFromSurvey, webUrl } = require('./notify');
 const { clubSport, profileLevel, cleanLevel } = require('./sport');
 
 const OPEN_DAYS = 30; // how long the link keeps working after the session
+// "Không đánh giá": the player dismissed the prompt (event_participants.survey_skipped_at).
+const SKIP_MIGRATION = '20261229090000_survey_skip.sql';
+async function skipReady() {
+  const s = await require('./schemaCheck').schemaStatus();
+  return !s.missing_migrations.includes(SKIP_MIGRATION);
+}
 const SEND_WINDOW_DAYS = 3; // sessions older than this are not swept (e.g. right after deploying)
 const LEVEL_FIT = ['easy', 'right', 'hard'];
 const COME_BACK = ['yes', 'maybe', 'no'];
@@ -128,6 +134,7 @@ async function surveyView(token) {
     player_name: p.full_name,
     open: started,
     answer: answer || null,
+    skipped: !!p.survey_skipped_at,
     is_fixed: member?.member_type === 'fixed',
     join_requested: !!member?.join_requested,
     prefill: {
@@ -341,13 +348,13 @@ async function surveysDueFor(userId) {
   if (!(await guestsReady())) return [];
   const { data } = await supabase
     .from('event_participants')
-    .select('id, survey_token, guest_member_id, source_club_member_id, events(title, event_date, start_time, end_time, club_id, status, clubs(name))')
+    .select(`id, survey_token, guest_member_id, source_club_member_id${(await skipReady()) ? ', survey_skipped_at' : ''}, events(title, event_date, start_time, end_time, club_id, status, clubs(name))`)
     .eq('user_id', userId)
     .in('status', PLAYED)
     .limit(100);
   // Once play is over (no need to wait for the email sweep).
   const now = Date.now();
-  const rows = (data || []).filter((r) => r.events?.club_id && r.survey_token && r.events.status !== 'cancelled' && r.events.event_date >= daysAgo(OPEN_DAYS) && eventEndMs(r.events) <= now);
+  const rows = (data || []).filter((r) => r.events?.club_id && r.survey_token && !r.survey_skipped_at && r.events.status !== 'cancelled' && r.events.event_date >= daysAgo(OPEN_DAYS) && eventEndMs(r.events) <= now);
   if (!rows.length) return [];
   const { data: answered } = await supabase.from('event_surveys').select('participant_id').in('participant_id', rows.map((r) => r.id));
   const done = new Set((answered || []).map((a) => a.participant_id));
@@ -357,14 +364,23 @@ async function surveysDueFor(userId) {
     .sort((a, b) => b.event_date.localeCompare(a.event_date));
 }
 
+// The player does not want to rate this session: remember it so no page asks again.
+async function skipSurvey(token) {
+  const { p } = await participantByToken(token);
+  if (!(await skipReady())) throw httpError('Not available yet.', 503, 'migration_missing');
+  if (!p.survey_skipped_at) await supabase.from('event_participants').update({ survey_skipped_at: new Date().toISOString() }).eq('id', p.id);
+  return surveyView(token);
+}
+
 // The survey link of one registration, shown on the event page once play is over
 // (so a player does not have to wait for the email or the sweeper).
 async function surveyFor(event, p, now = Date.now()) {
   if (!p || !PLAYED.includes(p.status) || !event?.club_id || !p.survey_token) return null;
   if (now < eventEndMs(event) || event.event_date < daysAgo(OPEN_DAYS)) return null;
   if (!(await guestsReady())) return null;
+  if (p.survey_skipped_at) return null;
   const { data } = await supabase.from('event_surveys').select('participant_id').eq('participant_id', p.id).maybeSingle();
   return { token: p.survey_token, answered: !!data };
 }
 
-module.exports = { PLAYED, sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, eventSurveys, clubSurveys, surveysDueFor, surveyFor, summarizeAnswers };
+module.exports = { PLAYED, sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, skipSurvey, eventSurveys, clubSurveys, surveysDueFor, surveyFor, summarizeAnswers };

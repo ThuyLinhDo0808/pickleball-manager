@@ -68,6 +68,7 @@ app.post(
     '/api/player/invite/:token/join',
     '/api/public/surveys/:token',
     '/api/public/surveys/:token/join',
+    '/api/public/surveys/:token/skip',
     '/api/public/quick/:eventId/open',
     '/api/public/quick/:eventId/book',
     '/api/public/quick/booking/:token/proof',

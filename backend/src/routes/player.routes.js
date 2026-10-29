@@ -80,6 +80,14 @@ publicRoutes.post('/surveys/:token', async (req, res) => {
     fail(res, err);
   }
 });
+// "Không đánh giá": dismiss the survey prompt for this session.
+publicRoutes.post('/surveys/:token/skip', async (req, res) => {
+  try {
+    res.json(await survey.skipSurvey(req.params.token));
+  } catch (err) {
+    fail(res, err);
+  }
+});
 // "I want to join the fixed team" member form -> the club's waiting list.
 publicRoutes.post('/surveys/:token/join', async (req, res) => {
   try {

@@ -221,7 +221,15 @@ Khối `coach.*` trong `web/lib/i18n/vi.js` và `en.js` (nhãn menu, form, trạ
 4. **Hoàn tiền một phần** khi học viên bỏ ngang: có. Trên gói đang dùng, coach bấm *Hoàn tiền* → nhập số tiền (gợi ý = giá × buổi còn lại / tổng buổi, làm tròn 1.000 đ) + lý do → gói chuyển `refunded`, `refund_amount`, `refunded_at`, ghi một khoản **chi** hạng mục *Hoàn tiền* vào sổ (có thể tick *Không tính*). Bảng `coach_package_purchases` thêm `refund_amount`, `refund_reason`, `refunded_at`.
 5. **Hồ sơ công khai mặc định** (`public = true`); coach tắt được trong *Hồ sơ Coach* → chỉ ai có link mới xem (trang công khai vẫn mở bằng link, không xuất hiện ở tìm kiếm / `/discover`).
 
-## 11. Điểm vào (ai bắt đầu từ đâu)
+## 11. Phát hành an toàn: công tắc `coach_enabled` (đã chốt 29/10)
+
+- Khoá `coach_enabled` (mặc định **tắt**) trong `app_settings`, Owner bật / tắt ở Owner Console → Hệ thống; kèm `COACH_BETA_EMAILS` (danh sách email thử, phân cách bằng dấu phẩy, đặt ở biến môi trường backend).
+- Khi tắt: không có ô Coach ở `/home`, không có mục trong bộ chuyển ngữ cảnh, không có lựa chọn *Mở hồ sơ Coach*; `/coach/...` trả 404; API coach trả 403 — **trừ** tài khoản có email trong danh sách thử. Người dùng thật không thấy gì khác.
+- Migration chỉ thêm bảng / cột mới nên chạy lên production an toàn. Làm xong C1–C5, thử thật với vài coach, rồi bật cho mọi người.
+- Cùng cơ chế sẽ dùng cho **Tournament Manager** sau này (`tournament_enabled`, `TOURNAMENT_BETA_EMAILS`).
+- Bổ trợ: `corsOptions` nhận mẫu tên miền preview của Vercel (`https://<project>-git-*-<team>.vercel.app`) để xem giao diện trước khi gộp; biến môi trường Preview trên Vercel, Redirect URL trên Supabase Auth, hostname trên Turnstile do bạn tự cấu hình (README §12 sẽ ghi hướng dẫn, không gửi giá trị vào chat).
+
+## 12. Điểm vào (ai bắt đầu từ đâu)
 
 - **Đăng nhập xong vẫn về `/home`** như hiện nay; không có trang chủ riêng cho coach.
 - **Coach đã có hồ sơ**: ô **Coach** trong dải *Không gian của bạn* ở `/home` → vào không gian coach. Trong không gian CLB / Social Manager, bộ chuyển ngữ cảnh (`ContextSwitcher`) có thêm mục *Coach*.

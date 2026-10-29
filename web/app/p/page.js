@@ -131,13 +131,24 @@ export default function PlayerHome() {
         <section className="card mb-4 border-lime-400/40">
           <h2 className="text-lime-300 font-semibold mb-1">{t('survey.portalTitle')}</h2>
           {me.surveys_due.map((x) => (
-            <Link key={x.token} href={`/s/${x.token}`} className="flex items-center justify-between gap-2 py-2 border-b border-navy-700 last:border-0 text-sm">
-              <span className="text-white min-w-0">
-                {x.title}
-                <span className="text-gray-400 text-xs"> · {x.event_date.split('-').reverse().join('/')}{x.club_name ? ` · ${x.club_name}` : ''}</span>
-              </span>
-              <span className="text-lime-400 whitespace-nowrap">{t('survey.portalCta')} →</span>
-            </Link>
+            <div key={x.token} className="flex items-center gap-2 py-1 border-b border-navy-700 last:border-0 text-sm">
+              <Link href={`/s/${x.token}`} className="flex-1 min-w-0 flex items-center justify-between gap-2 py-1">
+                <span className="text-white min-w-0">
+                  {x.title}
+                  <span className="text-gray-400 text-xs"> · {x.event_date.split('-').reverse().join('/')}{x.club_name ? ` · ${x.club_name}` : ''}</span>
+                </span>
+                <span className="text-lime-400 whitespace-nowrap">{t('survey.portalCta')} →</span>
+              </Link>
+              <button
+                type="button"
+                className="shrink-0 h-11 w-11 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-navy-700"
+                aria-label={t('survey.skip')}
+                title={t('survey.skip')}
+                onClick={() => api.publicPost(`/api/public/surveys/${x.token}/skip`, {}).then(() => reload()).catch(() => {})}
+              >
+                ✕
+              </button>
+            </div>
           ))}
         </section>
       )}
