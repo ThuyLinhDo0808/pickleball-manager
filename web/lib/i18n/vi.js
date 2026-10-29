@@ -695,7 +695,7 @@ export const vi = {
     communities: "Cộng đồng",
     oneOffKeo: "Kèo lẻ (không thuộc cộng đồng)",
     oneOffKeoHint: "Kèo Xé Vé tạo trước khi có cộng đồng",
-    navDiscover: "Tìm kèo / CLB",
+    navDiscover: "Tìm",
     smEnter: "Quản lý kèo xé vé, bán vé, soát vé",
     upgrade: "Nâng cấp",
     staffCard: "Sự kiện của tôi — điều phối viên / trọng tài",

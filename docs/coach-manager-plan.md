@@ -42,7 +42,7 @@ Một người có thể vừa là Host CLB vừa là Coach vừa là học viê
 8. Thông báo chuông + email: đăng ký mới, chứng từ mới, học viên huỷ, gói sắp hết.
 
 ### Học viên
-1. Vào từ link coach gửi (`/coach/<slug>`), từ *Tìm kèo / CLB* (giai đoạn 2) hoặc từ tab **Lớp học** trong phần người chơi `/p`.
+1. Vào từ link coach gửi (`/coach/<slug>`), từ tab **Coach** trong mục *Tìm* (giai đoạn 2) hoặc từ tab **Lớp học** trong phần người chơi `/p`.
 2. Xem hồ sơ, lịch lớp, giá. Bấm *Đăng ký* một lớp (hoặc một buổi lẻ) → chọn gói hoặc trả theo buổi → chuyển khoản theo VietQR → nộp chứng từ (như đăng ký kèo hiện nay).
 3. Trang *Lớp học của tôi*: buổi sắp tới, còn N buổi trong gói, lịch sử điểm danh, nút *Tôi không đi được* (trước hạn huỷ do coach đặt).
 4. QR check-in dùng lại mã của người chơi (coach quét bằng màn quét đã có).

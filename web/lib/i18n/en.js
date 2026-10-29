@@ -695,7 +695,7 @@ export const en = {
     communities: "Communities",
     oneOffKeo: "One-off event (no community)",
     oneOffKeoHint: "Xé Vé events made before communities",
-    navDiscover: "Find games / clubs",
+    navDiscover: "Find",
     smEnter: "Run one-off events, tickets and check-in",
     upgrade: "Upgrade",
     staffCard: "My events — coordinator / referee",
