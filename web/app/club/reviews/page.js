@@ -67,6 +67,41 @@ function Split({ title, parts }) {
   );
 }
 
+// How long a session's survey stays open: until the next session starts, or 12 hours.
+function SurveyWindow({ clubId, value }) {
+  const { t } = useI18n();
+  const [v, setV] = useState(value || 'next_session');
+  const [msg, setMsg] = useState('');
+  async function pick(next) {
+    const before = v;
+    setV(next);
+    setMsg('');
+    try {
+      await api.put(`/api/clubs/${clubId}/survey-settings`, { survey_window: next });
+      setMsg(t('reviews.windowSaved'));
+    } catch (err) {
+      setV(before);
+      setMsg(err.message);
+    }
+  }
+  return (
+    <section className="card !p-4 mb-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h2 className="text-white text-sm font-semibold">{t('reviews.windowTitle')}</h2>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('reviews.windowTitle')}>
+          {['next_session', '12h'].map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={v === k} onClick={() => v !== k && pick(k)} className={`min-h-[44px] rounded-full px-4 text-sm border ${v === k ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-300'}`}>
+              {t(`survey.win_${k}`)}
+            </button>
+          ))}
+        </div>
+        {msg && <span className="text-gray-400 text-xs" aria-live="polite">{msg}</span>}
+      </div>
+      <p className="text-gray-500 text-xs mt-2">{t('reviews.windowHint')}</p>
+    </section>
+  );
+}
+
 // After-session reviews of the club: totals, trend by month, every session, the private
 // notes players left for the Host, and who wants to join the fixed team.
 export default function ReviewsPage() {
@@ -93,6 +128,7 @@ export default function ReviewsPage() {
       />
       <SectionTabs group="stats" />
       <p className="text-gray-400 text-sm mb-4">{t('reviews.subtitle')}</p>
+      {d && club && <SurveyWindow clubId={club.id} value={d.survey_window} />}
       {error && <p className="card text-red-300 text-sm">{error.message}</p>}
       {!d && !error && <p className="text-gray-400 text-sm">{t('common.loading')}</p>}
       {d && s.count === 0 && <p className="card text-gray-500 text-sm">{t('reviews.empty')}</p>}
@@ -101,23 +137,31 @@ export default function ReviewsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             <Tile label={t('reviews.answers')} value={s.count} />
             <Tile label={t('reviews.overall')} value={`★ ${num(s.average)}`} tone="text-amber-300" />
-            <Tile label={`${t('reviews.court')}`} value={num(s.court)} />
-            <Tile label={`${t('reviews.org')}`} value={num(s.organization)} />
+            <Tile label={t('reviews.orgHappy')} value={pct(s.org_happy_rate)} sub={s.org ? t('reviews.orgHappyHint', s.org) : null} />
+            <Tile label={t('reviews.balance')} value={pct(s.balance_rate)} sub={s.balance ? t('reviews.balanceHint', s.balance) : null} />
             <Tile label={`↩︎ ${t('reviews.comeBack')}`} value={pct(s.come_back_rate)} tone="text-lime-300" sub={t('reviews.comeBackHint', s.come_back)} />
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <StarBars rows={d.by_month} label={t('reviews.chartLabel')} />
             <Split
-              title={t('reviews.levelTitle')}
+              title={t('reviews.orgTitle')}
               parts={[
-                { label: t('survey.level_easy'), n: s.level.easy, color: 'bg-sky-300' },
-                { label: t('survey.level_right'), n: s.level.right, color: 'bg-lime-400' },
-                { label: t('survey.level_hard'), n: s.level.hard, color: 'bg-amber-300' },
+                { label: t('survey.org_very'), n: s.org?.very || 0, color: 'bg-lime-400' },
+                { label: t('survey.org_yes'), n: s.org?.yes || 0, color: 'bg-sky-300' },
+                { label: t('survey.org_no'), n: s.org?.no || 0, color: 'bg-red-400' },
               ]}
             />
             <Split
-              title={t('survey.qComeBack')}
+              title={t('reviews.balanceTitle')}
+              parts={[
+                { label: t('survey.bal_yes'), n: s.balance?.yes || 0, color: 'bg-lime-400' },
+                { label: t('survey.bal_some'), n: s.balance?.some || 0, color: 'bg-amber-300' },
+                { label: t('survey.bal_no'), n: s.balance?.no || 0, color: 'bg-red-400' },
+              ]}
+            />
+            <Split
+              title={t('reviews.comeBackTitle')}
               parts={[
                 { label: t('survey.back_yes'), n: s.come_back.yes, color: 'bg-lime-400' },
                 { label: t('survey.back_maybe'), n: s.come_back.maybe, color: 'bg-gray-400' },
@@ -131,7 +175,7 @@ export default function ReviewsPage() {
             <table className="w-full text-sm">
               <thead className="text-gray-400 text-xs text-left">
                 <tr className="border-b border-navy-700">
-                  {['col_month', 'col_answers', 'overall', 'court', 'org', 'comeBack', 'wantJoin'].map((k) => <th key={k} className="px-3 py-2 font-medium whitespace-nowrap">{t(`reviews.${k}`)}</th>)}
+                  {['col_month', 'col_answers', 'overall', 'orgHappy', 'balance', 'comeBack', 'wantJoin'].map((k) => <th key={k} className="px-3 py-2 font-medium whitespace-nowrap">{t(`reviews.${k}`)}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -140,8 +184,8 @@ export default function ReviewsPage() {
                     <td className="px-3 py-2 text-white">{fmtMonth(m.month)}</td>
                     <td className="px-3 py-2">{m.count}</td>
                     <td className="px-3 py-2 text-amber-300">★ {num(m.average)}</td>
-                    <td className="px-3 py-2">{num(m.court)}</td>
-                    <td className="px-3 py-2">{num(m.organization)}</td>
+                    <td className="px-3 py-2 tabular-nums">{pct(m.org_happy_rate)}</td>
+                    <td className="px-3 py-2 tabular-nums">{pct(m.balance_rate)}</td>
                     <td className="px-3 py-2">{pct(m.come_back_rate)}</td>
                     <td className="px-3 py-2">{m.wants_join}</td>
                   </tr>
@@ -155,7 +199,7 @@ export default function ReviewsPage() {
             <table className="w-full text-sm">
               <thead className="text-gray-400 text-xs text-left">
                 <tr className="border-b border-navy-700">
-                  {['col_date', 'col_session', 'col_answers', 'overall', 'court', 'org', 'comeBack'].map((k) => <th key={k} className="px-3 py-2 font-medium whitespace-nowrap">{t(`reviews.${k}`)}</th>)}
+                  {['col_date', 'col_session', 'col_answers', 'overall', 'orgHappy', 'balance', 'comeBack'].map((k) => <th key={k} className="px-3 py-2 font-medium whitespace-nowrap">{t(`reviews.${k}`)}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -165,8 +209,8 @@ export default function ReviewsPage() {
                     <td className="px-3 py-2 max-w-[220px] break-words"><Link href={`/events/${x.event_id}`} className="text-white hover:underline">{x.title}</Link></td>
                     <td className="px-3 py-2">{x.count}</td>
                     <td className="px-3 py-2 text-amber-300">★ {num(x.average)}</td>
-                    <td className="px-3 py-2">{num(x.court)}</td>
-                    <td className="px-3 py-2">{num(x.organization)}</td>
+                    <td className="px-3 py-2 tabular-nums">{pct(x.org_happy_rate)}</td>
+                    <td className="px-3 py-2 tabular-nums">{pct(x.balance_rate)}</td>
                     <td className={`px-3 py-2 ${x.come_back_rate != null && x.come_back_rate < 50 ? 'text-red-300' : ''}`}>{pct(x.come_back_rate)}</td>
                   </tr>
                 ))}

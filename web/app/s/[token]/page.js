@@ -9,10 +9,11 @@ import { useLoad } from '@/lib/useLoad';
 import { api } from '@/lib/api';
 import { formatDay, hhmm } from '@/lib/dates';
 import UiIcon from '@/components/ui/UiIcon';
+import { whenText } from '@/lib/surveyTime';
 
-// After-session review everyone checked in gets by email / the player portal (no login).
-// Overall stars, stars for the court and the organisation, did the level suit you, would
-// you come back, a private note to the Host, and — guests only — "Do you want to join our
+// After-session review everyone checked in gets by email / the player portal / the
+// session's shared link (no login). Overall stars, happy with the organisation, were the
+// matches balanced, would you come back, a private note to the Host, and — guests only — "Do you want to join our
 // fixed team?": yes leads to a short member form that lands in the club's waiting list.
 export default function SurveyPage() {
   const { token } = useParams();
@@ -63,6 +64,7 @@ export default function SurveyPage() {
       </section>
 
       {!data.open && <p className="card text-gray-300 text-sm">{t('survey.notYet')}</p>}
+      {data.open && !data.answer && data.closes_at && <p className="text-gray-400 text-sm mb-3">{t('survey.openUntil', { when: whenText(data.closes_at, lang) })}</p>}
 
       {data.open && !data.answer && !data.skipped && <SurveyForm token={token} data={data} onDone={(v) => { update(v); if (v.answer?.wants_join) setShowJoin(true); }} />}
       {data.open && !data.answer && !data.skipped && (
@@ -161,7 +163,7 @@ function Choice({ on, onClick, children }) {
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`rounded-lg border px-3 py-2 text-sm font-semibold ${on ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
+      className={`min-h-[44px] rounded-lg border px-3 py-2 text-sm font-semibold ${on ? 'border-lime-400 bg-lime-400 text-navy-950' : 'border-navy-600 text-gray-300 hover:border-navy-500'}`}
     >
       {children}
     </button>
@@ -191,15 +193,16 @@ function Stars({ value, onChange, size = 'text-3xl', label, optional }) {
 
 function SurveyForm({ token, data, onDone }) {
   const { t } = useI18n();
+  const club = data.club_name || 'CLB';
   const [rating, setRating] = useState(0);
-  const [court, setCourt] = useState(0);
-  const [org, setOrg] = useState(0);
+  const [org, setOrg] = useState('');
+  const [balance, setBalance] = useState('');
   const [back, setBack] = useState('');
-  const [fit, setFit] = useState('');
   const [comment, setComment] = useState('');
   const [join, setJoin] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const toggle = (set, cur) => (k) => set(cur === k ? '' : k);
 
   async function submit(e) {
     e.preventDefault();
@@ -207,7 +210,7 @@ function SurveyForm({ token, data, onDone }) {
     setBusy(true);
     setErr('');
     try {
-      onDone(await api.publicPost(`/api/public/surveys/${token}`, { rating, court_rating: court || null, organization_rating: org || null, come_back: back || null, level_fit: fit || null, comment, wants_join: join === true }));
+      onDone(await api.publicPost(`/api/public/surveys/${token}`, { rating, org_satisfaction: org || null, match_balance: balance || null, come_back: back || null, comment, wants_join: join === true }));
     } catch (x) {
       setErr(x.message);
     } finally {
@@ -216,52 +219,47 @@ function SurveyForm({ token, data, onDone }) {
   }
 
   return (
-    <form onSubmit={submit} className="card mb-4 flex flex-col gap-4">
+    <form onSubmit={submit} className="card mb-4 flex flex-col gap-5">
       <div>
-        <p className="text-white font-semibold">1. {t('survey.qStars')}</p>
-        <div className="mt-2"><Stars value={rating} onChange={setRating} label={t('survey.qStars')} /></div>
+        <p className="text-white font-semibold">1. {t('survey.q1')}</p>
+        <p className="text-gray-400 text-sm mt-0.5">{t('survey.q1Hint')}</p>
+        <div className="mt-2"><Stars value={rating} onChange={setRating} label={t('survey.q1')} /></div>
       </div>
       <div>
-        <p className="text-white font-semibold">2. {t('survey.qDetail')}</p>
-        <div className="mt-2 flex flex-col gap-2 text-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-gray-300">{t('survey.qCourt')}</span>
-            <Stars value={court} onChange={setCourt} size="text-2xl" label={t('survey.qCourt')} optional />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-gray-300">{t('survey.qOrg')} <span className="text-gray-500 text-xs">({t('survey.qOrgHint')})</span></span>
-            <Stars value={org} onChange={setOrg} size="text-2xl" label={t('survey.qOrg')} optional />
-          </div>
-        </div>
-      </div>
-      <div>
-        <p className="text-white font-semibold">3. {t('survey.qLevel')}</p>
+        <p className="text-white font-semibold">2. {t('survey.q2', { club })}</p>
         <div className="grid grid-cols-3 gap-2 mt-2">
-          {['easy', 'right', 'hard'].map((k) => (
-            <Choice key={k} on={fit === k} onClick={() => setFit(fit === k ? '' : k)}>
-              {t(`survey.level_${k}`)}
-            </Choice>
+          {['no', 'yes', 'very'].map((k) => (
+            <Choice key={k} on={org === k} onClick={() => toggle(setOrg, org)(k)}>{t(`survey.org_${k}`)}</Choice>
           ))}
         </div>
       </div>
       <div>
-        <p className="text-white font-semibold">4. {t('survey.qComeBack')}</p>
+        <p className="text-white font-semibold">3. {t('survey.q3')}</p>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {['yes', 'no'].map((k) => (
+            <Choice key={k} on={balance === k} onClick={() => toggle(setBalance, balance)(k)}>{t(`survey.bal_${k}`)}</Choice>
+          ))}
+          <span className="col-span-2 grid">
+            <Choice on={balance === 'some'} onClick={() => toggle(setBalance, balance)('some')}>{t('survey.bal_some')}</Choice>
+          </span>
+        </div>
+      </div>
+      <div>
+        <p className="text-white font-semibold">4. {t('survey.q4', { club })}</p>
         <div className="grid grid-cols-3 gap-2 mt-2">
-          {['yes', 'maybe', 'no'].map((k) => (
-            <Choice key={k} on={back === k} onClick={() => setBack(back === k ? '' : k)}>
-              {t(`survey.back_${k}`)}
-            </Choice>
+          {['no', 'maybe', 'yes'].map((k) => (
+            <Choice key={k} on={back === k} onClick={() => toggle(setBack, back)(k)}>{t(`survey.back_${k}`)}</Choice>
           ))}
         </div>
       </div>
       <div>
-        <label htmlFor="survey-comment" className="text-white font-semibold">5. {t('survey.qComment')}</label>
-        <p className="text-gray-500 text-xs mt-0.5">{t('survey.commentHint')}</p>
+        <label htmlFor="survey-comment" className="text-white font-semibold">5. {t('survey.q5', { club })}</label>
+        <p className="text-gray-400 text-sm mt-0.5">{t('survey.commentHint')}</p>
         <textarea id="survey-comment" className="input mt-2 min-h-[5rem]" maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t('survey.commentPlaceholder')} />
       </div>
       {!data.is_fixed && (
         <div>
-          <p className="text-white font-semibold">6. {t(data.community ? 'survey.joinCommunity' : 'survey.joinQuestion', { club: data.club_name || 'CLB' })}</p>
+          <p className="text-white font-semibold">6. {t(data.community ? 'survey.joinCommunity' : 'survey.joinQuestion', { club })}</p>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <Choice on={join === true} onClick={() => setJoin(true)}>{t('survey.joinYes')}</Choice>
             <Choice on={join === false} onClick={() => setJoin(false)}>{t('survey.joinLater')}</Choice>

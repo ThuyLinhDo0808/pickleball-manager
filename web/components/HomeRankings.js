@@ -51,7 +51,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
     if (order === 'level') {
       list = [...list].sort((a, b) => (b.level ?? -1) - (a.level ?? -1) || b.win_rate - a.win_rate || a.full_name.localeCompare(b.full_name, 'vi'));
       let n = 0;
-      return list.map((r) => ({ ...r, place: r.level == null ? null : ++n }));
+      // Pickleball: only a verified DUPR gets a place; a number the player / Host typed in
+      // is listed apart, without a place (it never outranks a real rating).
+      return list.map((r) => ({ ...r, place: r.level == null || r.level_source === 'self' ? null : ++n }));
     }
     let n = 0; // rows come ranked by win rate; re-number inside the level group
     return list.map((r) => ({ ...r, place: r.eligible === false ? null : ++n }));
@@ -67,6 +69,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
   const top = ranked.slice(0, 3);
   const rest = ranked.slice(3);
   const unranked = rows.filter((r) => r.place == null);
+  // Ordered by level: the typed-in levels (not verified) and the players with no level.
+  const selfLevel = order === 'level' ? unranked.filter((r) => r.level != null && r.level_source === 'self') : [];
+  const noLevel = order === 'level' ? unranked.filter((r) => !selfLevel.includes(r)) : unranked;
   const levelName = sport === 'badminton' ? t('homeRank.levelLabel') : 'DUPR';
   // One player per row: place in a circle · name (+ "Bạn") and level · record on a second line ·
   // the number the list is ordered by, big on the right.
@@ -91,7 +96,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                 {isMe(r) && <span className="ml-1.5 align-middle text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
               </span>
               <span className="block text-gray-400 text-xs tabular-nums">
-                {levelName} {fmtLevel(r.level, sport) || '—'} · {t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses })}
+                {levelName} {fmtLevel(r.level, sport) || '—'}
+                {r.level_source === 'self' && <span className="ml-1 rounded border border-navy-500 px-1 text-[10px] text-gray-300">{t('homeRank.selfTag')}</span>}
+                {' · '}{t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses })}
               </span>
             </td>
             <td className="text-right">
@@ -155,7 +162,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                   <span className="block text-white text-sm mt-0.5">
                     {mine.place == null
                       ? order === 'level'
-                        ? t('homeRank.mineNoLevel')
+                        ? t(mine.level_source === 'self' ? 'homeRank.mineSelfLevel' : 'homeRank.mineNoLevel')
                         : t('homeRank.mineNotYet', { n: data.min_matches - mine.matches_played, m: mine.matches_played })
                       : t('homeRank.mine', { rank: mine.place, total: placed })}
                     <span className="block text-gray-400 text-xs tabular-nums">{t('homeRank.mineStats', { w: mine.wins, l: mine.losses, p: mine.win_rate })}</span>
@@ -186,10 +193,16 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                   />
                 )}
                 {rest.length > 0 && <RankList rows={rest} />}
-                {unranked.length > 0 && (
+                {selfLevel.length > 0 && (
+                  <div>
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1.5 px-1 inline-flex items-center gap-1">{t('homeRank.selfLevels')} <Hint inline text={t('homeRank.selfLevelsHint')} /></p>
+                    <RankList rows={selfLevel} muted />
+                  </div>
+                )}
+                {noLevel.length > 0 && (
                   <div>
                     <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1.5 px-1">{order === 'level' ? t('homeRank.noLevelYet') : t('homeRank.notRanked', { n: data.min_matches })}</p>
-                    <RankList rows={unranked} muted />
+                    <RankList rows={noLevel} muted />
                   </div>
                 )}
               </div>

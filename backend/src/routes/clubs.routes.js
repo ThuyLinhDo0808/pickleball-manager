@@ -2056,6 +2056,15 @@ router.get('/:clubId/surveys', async (req, res) => {
   }
 });
 
+// How long the after-session survey stays open: until the next session, or 12 hours.
+router.put('/:clubId/survey-settings', async (req, res) => {
+  try {
+    res.json(await require('../services/survey').setWindow(req.club.id, req.body?.survey_window));
+  } catch (err) {
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
+});
+
 // Pro tools: activity log, duty roster, advanced analytics.
 require('./clubPro').mount(router);
 

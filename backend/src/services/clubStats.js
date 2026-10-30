@@ -129,8 +129,18 @@ async function clubStats(club, query = {}) {
 
   // Ranked by win rate (wins / matches) among players with enough matches; then more
   // matches, then point difference. The rest are listed after, without a place.
-  const levelOf = new Map(members.map((m) => [m.id, m.dupr_level == null ? null : Number(m.dupr_level)]));
-  const rankings = rankByWinRate(aggregate(matches, members).map((r) => ({ ...r, level: levelOf.get(r.club_member_id) ?? null })), minMatches);
+  // Level of each row and where it comes from (pickleball): 'verified' = the DUPR rating
+  // linked from the club's DUPR list / the DUPR app (club_members.dupr_doubles with
+  // dupr_synced_at); 'self' = a number typed in by the player or the Host, not checked.
+  // Ranking by level keeps the two apart (an unchecked number never outranks a real one).
+  const pickleball = (cfg?.sport || 'pickleball') === 'pickleball';
+  const duprRows = pickleball
+    ? await fetchAll(() => supabase.from('club_members').select('id, dupr_doubles, dupr_synced_at').eq('club_id', club.id).order('id')).catch(() => [])
+    : [];
+  const verified = new Map(duprRows.filter((m) => m.dupr_synced_at && m.dupr_doubles != null).map((m) => [m.id, Number(m.dupr_doubles)]));
+  const levelOf = new Map(members.map((m) => [m.id, verified.has(m.id) ? verified.get(m.id) : m.dupr_level == null ? null : Number(m.dupr_level)]));
+  const sourceOf = (id) => (!pickleball ? null : verified.has(id) ? 'verified' : levelOf.get(id) != null ? 'self' : null);
+  const rankings = rankByWinRate(aggregate(matches, members).map((r) => ({ ...r, level: levelOf.get(r.club_member_id) ?? null, level_source: sourceOf(r.club_member_id) })), minMatches);
   const ids = new Set(members.map((m) => m.id));
   const weeks = weeksAtTop(bounds ? await clubMatches(club.id, null, personOf, { mainOnly }) : matches, members, minMatches);
   // The players' own photos (latest version) on the rows.

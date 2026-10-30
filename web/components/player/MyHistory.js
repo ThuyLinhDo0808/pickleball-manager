@@ -7,8 +7,12 @@ import { useI18n } from '@/context/I18nContext';
 import { api } from '@/lib/api';
 import { localDate } from '@/lib/dates';
 
-// My sign-ups (kèo / sessions) newest first, with the ticket, "pay now", the cancel
-// deadline and "Huỷ" (refund tiers). `history` comes from /api/player/me.
+// My sign-ups (kèo / sessions) in two lists — "Sắp diễn ra" (soonest first) and "Đã diễn ra"
+// (newest first) — with the ticket, "pay now", the cancel deadline and "Huỷ" (refund tiers).
+// `history` comes from /api/player/me.
+const startMs = (h) => new Date(`${h.event_date}T${(h.start_time || '00:00').slice(0, 5)}:00`).getTime();
+// Still to come until about 3 hours after it starts (a session in progress stays on top).
+const isUpcoming = (h, now = Date.now()) => startMs(h) + 3 * 3600000 > now;
 export default function MyHistory({ history, onChanged, onFlash }) {
   const { t, lang } = useI18n();
   const [cancelling, setCancelling] = useState(null);
@@ -51,8 +55,17 @@ export default function MyHistory({ history, onChanged, onFlash }) {
             onConfirm={doCancel}
           />
         )}
+        {me.history.length > 0 && [
+          ['upcoming', me.history.filter((h) => isUpcoming(h)).sort((a, b) => startMs(a) - startMs(b))],
+          ['past', me.history.filter((h) => !isUpcoming(h)).sort((a, b) => startMs(b) - startMs(a))],
+        ].map(([part, rows]) => (
+        <div key={part} className="mt-3 first-of-type:mt-0">
+          <h3 className="text-gray-300 text-xs font-semibold uppercase tracking-wide border-b border-navy-700 pb-1.5">
+            {t(`player.hist_${part}`)} <span className="text-gray-500 font-normal tabular-nums">({rows.length})</span>
+          </h3>
+          {rows.length === 0 && <p className="text-gray-500 text-sm py-2">{t(`player.hist_${part}Empty`)}</p>}
         <div className="flex flex-col divide-y divide-navy-700">
-          {me.history.map((h) => {
+          {rows.map((h) => {
             const deadline = h.cancel_deadline && new Date(h.cancel_deadline);
             const fmtAt = (d) => localDate(d, lang === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }, true);
             const info = (
@@ -106,6 +119,8 @@ export default function MyHistory({ history, onChanged, onFlash }) {
             );
           })}
         </div>
+        </div>
+        ))}
       </section>
 
   );
