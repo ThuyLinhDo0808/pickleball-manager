@@ -33,6 +33,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
   const [pick, setPick] = useState(null);
   const [band, setBand] = useState('all');
   const [order, setOrder] = useState('rate');
+  // "Chia theo nhóm": one board per group of the Host's control panel (Series A · B · C…),
+  // each still ordered by win rate or by DUPR level (the order above), numbered from 1.
+  const [split, setSplit] = useState(false);
   const club = clubs.find((c) => c.club_id === pick) || clubs[0] || null;
   const sport = club?.sport || 'pickleball';
   const { data, error, loading } = useLoad(
@@ -48,26 +51,19 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
 
   const rows = useMemo(() => {
     let list = (data?.rankings || []).filter(inBand);
-    if (order === 'level') {
-      list = [...list].sort((a, b) => (b.level ?? -1) - (a.level ?? -1) || b.win_rate - a.win_rate || a.full_name.localeCompare(b.full_name, 'vi'));
-      let n = 0;
-      // Pickleball: only a verified DUPR gets a place; a number the player / Host typed in
-      // is listed apart, without a place (it never outranks a real rating).
-      return list.map((r) => ({ ...r, place: r.level == null || r.level_source === 'self' ? null : ++n }));
-    }
-    if (order === 'group') {
-      // By the Host's groups (Bảng điều khiển: Series A · B · C…): numbered again inside each.
-      const count = new Map();
-      return list.map((r) => {
-        if (r.eligible === false) return { ...r, place: null };
-        const k = r.rank_group || '';
-        count.set(k, (count.get(k) || 0) + 1);
-        return { ...r, place: count.get(k) };
-      });
-    }
-    let n = 0; // rows come ranked by win rate; re-number inside the level group
-    return list.map((r) => ({ ...r, place: r.eligible === false ? null : ++n }));
-  }, [data, band, order, sport]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (order === 'level') list = [...list].sort((a, b) => (b.level ?? -1) - (a.level ?? -1) || b.win_rate - a.win_rate || a.full_name.localeCompare(b.full_name, 'vi'));
+    // Rows come ranked by win rate. By level (pickleball) only a verified DUPR gets a place: a
+    // number the player / Host typed in is listed apart (it never outranks a real rating).
+    // Split by group: numbered again inside each group.
+    const count = new Map();
+    return list.map((r) => {
+      const placed = order === 'level' ? !(r.level == null || r.level_source === 'self') : r.eligible !== false;
+      if (!placed) return { ...r, place: null };
+      const k = split ? r.rank_group || '' : '';
+      count.set(k, (count.get(k) || 0) + 1);
+      return { ...r, place: count.get(k) };
+    });
+  }, [data, band, order, split, sport]); // eslint-disable-line react-hooks/exhaustive-deps
   const placed = rows.filter((r) => r.place != null).length;
   const mine = rows.find(isMe);
   const scopeLabel = club?.kind === 'community' ? t('homeRank.community') : t('homeRank.club');
@@ -151,10 +147,12 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
             <span className="mr-1">{t('homeRank.orderLabel')}:</span>
             <button type="button" aria-pressed={order === 'rate'} onClick={() => setOrder('rate')} className={small(order === 'rate')}>{t('homeRank.byRate')}</button>
             <button type="button" aria-pressed={order === 'level'} onClick={() => setOrder('level')} className={small(order === 'level')}>{t('homeRank.byLevel')}</button>
-            {useGroups && groups.length > 0 && (
-              <button type="button" aria-pressed={order === 'group'} onClick={() => { setOrder('group'); setBand('all'); }} className={small(order === 'group')}>{t('homeRank.byGroup')}</button>
-            )}
           </span>
+          {useGroups && groups.length > 0 && (
+            <span className="flex items-center gap-0.5">
+              <button type="button" aria-pressed={split} onClick={() => { setSplit(!split); setBand('all'); }} className={small(split)}>{split ? '✓ ' : ''}{t('homeRank.byGroup')}</button>
+            </span>
+          )}
         </div>
         {loading && !data && <p className="p-4 text-gray-400 text-sm">{t('common.loading')}</p>}
         {error?.status === 402 && <p className="p-4 text-gray-400 text-sm">{t('plan.rankingsOff')}</p>}
@@ -174,7 +172,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                       ? order === 'level'
                         ? t(mine.level_source === 'self' ? 'homeRank.mineSelfLevel' : 'homeRank.mineNoLevel')
                         : t('homeRank.mineNotYet', { n: data.min_matches - mine.matches_played, m: mine.matches_played })
-                      : order === 'group'
+                      : split
                         ? t('homeRank.mineGroup', { rank: mine.place, group: groups.find((g) => g.key === mine.rank_group)?.label || t('homeRank.noGroup'), total: rows.filter((r) => r.place != null && (r.rank_group || '') === (mine.rank_group || '')).length })
                         : t('homeRank.mine', { rank: mine.place, total: placed })}
                     <span className="block text-gray-400 text-xs tabular-nums">{t('homeRank.mineStats', { w: mine.wins, l: mine.losses, p: mine.win_rate })}</span>
@@ -188,13 +186,14 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
             </div>
             {rows.length === 0 ? (
               <p className="p-4 text-gray-400 text-sm">{t('rankings.noData')}</p>
-            ) : order === 'group' ? (
+            ) : split ? (
               <div className="p-3 sm:p-4 flex flex-col gap-4">
                 {[...groups, { key: '', label: t('homeRank.noGroup') }].map((g) => {
                   const inG = rows.filter((r) => (r.rank_group || '') === g.key);
                   if (!inG.length) return null;
                   const ranked = inG.filter((r) => r.place != null);
                   const rest = inG.filter((r) => r.place == null);
+                  // Pickleball by level: typed-in levels after the verified ones, then no level.
                   return (
                     <div key={g.key || 'none'}>
                       <p className="text-white text-sm font-semibold mb-1.5 px-1">{g.label} <span className="text-gray-500 font-normal tabular-nums">({inG.length})</span></p>
@@ -236,7 +235,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
               </div>
             )}
             <div className="px-4 py-2 border-t border-navy-700">
-              <Hint text={order === 'level' ? t('homeRank.ruleLevel') : order === 'group' ? t('homeRank.ruleGroup', { n: data.min_matches }) : t('homeRank.rule', { n: data.min_matches })} />
+              <Hint text={`${order === 'level' ? t('homeRank.ruleLevel') : t('homeRank.rule', { n: data.min_matches })}${split ? `\n${t('homeRank.ruleGroup')}` : ''}`} />
             </div>
           </>
         )}

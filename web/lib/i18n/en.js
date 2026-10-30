@@ -6810,10 +6810,10 @@ export const en = {
     hint: "\"Unknown\" = no gender on the profile.",
   },
   homeRank: {
-    byGroup: "Group",
+    byGroup: "Split by group",
     noGroup: "No group yet",
     mineGroup: "Place {rank}/{total} in {group}",
-    ruleGroup: "By the groups the Host set in the control panel (e.g. Series A · B · C — by level or DUPR band). Inside each group by win rate; {n}+ matches for a place.",
+    ruleGroup: "Split by group: one board per group the Host set in the control panel (e.g. Series A · B · C), numbered from 1; inside each group the order you picked still applies (win rate or DUPR level). Players with no group come last.",
     selfTag: "Self-entered",
     selfLevels: "Self-entered levels — DUPR not verified",
     selfLevelsHint: "Levels typed in by the player or the Host, not linked to DUPR, so they are not ranked with verified DUPR ratings. Link a DUPR ID (the Host imports the club's DUPR member list) to be ranked.",

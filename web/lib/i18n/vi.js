@@ -6810,10 +6810,10 @@ export const vi = {
     hint: "\"Chưa rõ\" = hồ sơ chưa ghi giới tính.",
   },
   homeRank: {
-    byGroup: "Nhóm",
+    byGroup: "Chia theo nhóm",
     noGroup: "Chưa xếp nhóm",
     mineGroup: "Hạng {rank}/{total} trong {group}",
-    ruleGroup: "Xếp theo nhóm Host đặt ở Bảng điều khiển (vd Series A · B · C — theo trình độ hoặc khoảng DUPR). Trong mỗi nhóm xếp theo tỉ lệ thắng, cần ít nhất {n} trận để có hạng.",
+    ruleGroup: "Chia theo nhóm: mỗi nhóm Host đặt ở Bảng điều khiển (vd Series A · B · C) một bảng riêng, đánh số lại từ 1; trong từng nhóm vẫn xếp theo cách đã chọn (tỉ lệ thắng hoặc trình độ DUPR). Người chưa có nhóm ở cuối.",
     selfTag: "Tự nhập",
     selfLevels: "Điểm tự nhập — chưa xác thực DUPR",
     selfLevelsHint: "Điểm trình do người chơi hoặc Host tự nhập, chưa liên kết với DUPR nên không xếp hạng cùng người có DUPR xác thực. Liên kết DUPR ID (Host nhập danh sách thành viên DUPR của CLB) để được xếp hạng.",
