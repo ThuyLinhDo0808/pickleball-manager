@@ -55,6 +55,16 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
       // is listed apart, without a place (it never outranks a real rating).
       return list.map((r) => ({ ...r, place: r.level == null || r.level_source === 'self' ? null : ++n }));
     }
+    if (order === 'group') {
+      // By the Host's groups (Bảng điều khiển: Series A · B · C…): numbered again inside each.
+      const count = new Map();
+      return list.map((r) => {
+        if (r.eligible === false) return { ...r, place: null };
+        const k = r.rank_group || '';
+        count.set(k, (count.get(k) || 0) + 1);
+        return { ...r, place: count.get(k) };
+      });
+    }
     let n = 0; // rows come ranked by win rate; re-number inside the level group
     return list.map((r) => ({ ...r, place: r.eligible === false ? null : ++n }));
   }, [data, band, order, sport]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -94,12 +104,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
               <span className="block text-white text-sm font-semibold break-words">
                 {r.full_name}
                 {isMe(r) && <span className="ml-1.5 align-middle text-[10px] rounded-full bg-lime-400/20 text-lime-300 px-1.5 py-0.5">{t('rankings.you')}</span>}
+                {order === 'level' && r.level_source === 'self' && <span className="ml-1.5 align-middle rounded border border-navy-500 px-1 text-[10px] font-normal text-gray-300">{t('homeRank.selfTag')}</span>}
               </span>
-              <span className="block text-gray-400 text-xs tabular-nums">
-                {levelName} {fmtLevel(r.level, sport) || '—'}
-                {r.level_source === 'self' && <span className="ml-1 rounded border border-navy-500 px-1 text-[10px] text-gray-300">{t('homeRank.selfTag')}</span>}
-                {' · '}{t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses })}
-              </span>
+              <span className="block text-gray-400 text-xs tabular-nums">{t('cpeople.record', { n: r.matches_played, w: r.wins, l: r.losses })}</span>
             </td>
             <td className="text-right">
               <span className="block text-white font-bold tabular-nums">{order === 'level' ? fmtLevel(r.level, sport) || '—' : `${r.win_rate}%`}</span>
@@ -144,6 +151,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
             <span className="mr-1">{t('homeRank.orderLabel')}:</span>
             <button type="button" aria-pressed={order === 'rate'} onClick={() => setOrder('rate')} className={small(order === 'rate')}>{t('homeRank.byRate')}</button>
             <button type="button" aria-pressed={order === 'level'} onClick={() => setOrder('level')} className={small(order === 'level')}>{t('homeRank.byLevel')}</button>
+            {useGroups && groups.length > 0 && (
+              <button type="button" aria-pressed={order === 'group'} onClick={() => { setOrder('group'); setBand('all'); }} className={small(order === 'group')}>{t('homeRank.byGroup')}</button>
+            )}
           </span>
         </div>
         {loading && !data && <p className="p-4 text-gray-400 text-sm">{t('common.loading')}</p>}
@@ -164,7 +174,9 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
                       ? order === 'level'
                         ? t(mine.level_source === 'self' ? 'homeRank.mineSelfLevel' : 'homeRank.mineNoLevel')
                         : t('homeRank.mineNotYet', { n: data.min_matches - mine.matches_played, m: mine.matches_played })
-                      : t('homeRank.mine', { rank: mine.place, total: placed })}
+                      : order === 'group'
+                        ? t('homeRank.mineGroup', { rank: mine.place, group: groups.find((g) => g.key === mine.rank_group)?.label || t('homeRank.noGroup'), total: rows.filter((r) => r.place != null && (r.rank_group || '') === (mine.rank_group || '')).length })
+                        : t('homeRank.mine', { rank: mine.place, total: placed })}
                     <span className="block text-gray-400 text-xs tabular-nums">{t('homeRank.mineStats', { w: mine.wins, l: mine.losses, p: mine.win_rate })}</span>
                   </span>
                 ) : (data.rankings || []).some(isMe) ? (
@@ -176,6 +188,22 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
             </div>
             {rows.length === 0 ? (
               <p className="p-4 text-gray-400 text-sm">{t('rankings.noData')}</p>
+            ) : order === 'group' ? (
+              <div className="p-3 sm:p-4 flex flex-col gap-4">
+                {[...groups, { key: '', label: t('homeRank.noGroup') }].map((g) => {
+                  const inG = rows.filter((r) => (r.rank_group || '') === g.key);
+                  if (!inG.length) return null;
+                  const ranked = inG.filter((r) => r.place != null);
+                  const rest = inG.filter((r) => r.place == null);
+                  return (
+                    <div key={g.key || 'none'}>
+                      <p className="text-white text-sm font-semibold mb-1.5 px-1">{g.label} <span className="text-gray-500 font-normal tabular-nums">({inG.length})</span></p>
+                      {ranked.length > 0 && <RankList rows={ranked} />}
+                      {rest.length > 0 && <div className={ranked.length ? 'mt-2' : ''}><RankList rows={rest} muted /></div>}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="p-3 sm:p-4 flex flex-col gap-3">
                 {/* Top 1 · 2 · 3 on the podium (cups); everyone else in the list below. */}
@@ -208,7 +236,7 @@ export default function HomeRankings({ clubs = [], showTitle = true }) {
               </div>
             )}
             <div className="px-4 py-2 border-t border-navy-700">
-              <Hint text={order === 'level' ? t('homeRank.ruleLevel') : t('homeRank.rule', { n: data.min_matches })} />
+              <Hint text={order === 'level' ? t('homeRank.ruleLevel') : order === 'group' ? t('homeRank.ruleGroup', { n: data.min_matches }) : t('homeRank.rule', { n: data.min_matches })} />
             </div>
           </>
         )}

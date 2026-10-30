@@ -450,9 +450,17 @@ function accountOnly(req, res, next) {
   return res.status(403).json(ACCOUNT_ONLY);
 }
 
-router.post('/:clubId/members', accountOnly, checkCapacity(), async (req, res) => {
+// The Host adds a person by hand (e.g. a regular without an account yet): they join the
+// member list; when that person makes an account later, it links by phone / DUPR ID or by
+// the member's personal link. Same phone or DUPR ID already in the club -> 409 duplicate.
+router.post('/:clubId/members', checkCapacity(), async (req, res) => {
   const { full_name, phone, member_type } = req.body;
   if (!full_name) return res.status(400).json({ error: 'full_name is required.' });
+  const MA = require('../services/memberAdmin');
+  const duprId = MA.cleanDupr(req.body.dupr_id);
+  if (req.body.dupr_id && !duprId) return res.status(400).json({ error: 'DUPR ID looks wrong.', code: 'bad_dupr_id' });
+  const same = await MA.findSame(req.club.id, { phone, dupr_id: duprId });
+  if (same) return res.status(409).json({ error: `${same.full_name} already has this phone / DUPR ID.`, code: 'duplicate', member: { id: same.id, full_name: same.full_name } });
   let dupr_level;
   try {
     dupr_level = cleanLevel(req.body.dupr_level, req.club.sport); // badminton: step 1-6
@@ -498,6 +506,7 @@ router.post('/:clubId/members', accountOnly, checkCapacity(), async (req, res) =
       gender: cleanGender(req.body.gender),
       birth_year: cleanBirthYear(req.body.birth_year),
       notes: req.body.notes || null,
+      ...(duprId && (req.club.sport || 'pickleball') === 'pickleball' ? { dupr_id: duprId } : {}),
       ...dates,
       ...extras,
       ...(waiting ? { join_requested: true, account_verified: false, join_requested_at: new Date().toISOString(), ...((await moderation.ready()) ? { join_source: 'manual' } : {}) } : {}),
@@ -513,6 +522,28 @@ router.post('/:clubId/members', accountOnly, checkCapacity(), async (req, res) =
     }
   }
   res.status(201).json(data);
+});
+
+// Upload the member Excel (same columns as "Xuất Excel"): new rows are added, rows that
+// match a member (member ID column, phone or DUPR ID) are updated. dry_run = preview.
+router.post('/:clubId/members/import', async (req, res) => {
+  try {
+    res.json(await require('../services/memberAdmin').importRows(req.club, req.body?.rows, { dryRun: req.body?.dry_run === true }));
+  } catch (err) {
+    if (err.status === 402) return planError(res, err);
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
+});
+
+// Move a player to another club / community of the same owner (owner only).
+router.post('/:clubId/members/:memberId/transfer', async (req, res) => {
+  if (req.clubRole && req.clubRole !== 'owner') return res.status(403).json({ error: 'Only the owner can move players between communities.', code: 'owner_only' });
+  try {
+    res.json(await require('../services/memberAdmin').transfer(req.club, req.member, req.body?.to_club_id, { member_type: req.body?.member_type, keep_source: req.body?.keep_source === true, actor: req.hostEmail }));
+  } catch (err) {
+    if (err.status === 402) return planError(res, err);
+    err.status ? res.status(err.status).json({ error: err.message, code: err.code }) : dbError(res, err);
+  }
 });
 
 // ---- To review (Xem xét thêm), removal, blocks and their history ------------------------

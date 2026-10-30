@@ -2,7 +2,7 @@
 import Hint from '@/components/ui/Hint';
 import Link from 'next/link';
 import { levelText } from '@/lib/levels';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import MemberDetail, { flagStyle, flagLabel } from '@/components/MemberDetail';
@@ -32,6 +32,7 @@ import CommunitySuggestions from '@/components/CommunitySuggestions';
 import { localDate } from '@/lib/dates';
 import UiIcon from '@/components/ui/UiIcon';
 import Modal from '@/components/Modal';
+import { AddMemberModal, ImportMembersModal } from '@/components/MemberAdminTools';
 
 
 // Each tab of the members section has its own address (menu Thành viên ▸ …).
@@ -54,10 +55,18 @@ export default function MembersPage({ tab = 'fixed' }) {
   const isCommunity = club?.kind === 'community';
   const { data: cs } = useLoad(() => (club && isCommunity ? api.get(`/api/clubs/${club.id}/community-settings`).catch(() => null) : Promise.resolve(null)), [club?.id, isCommunity]);
   const levelCfg = cs?.ready && cs.settings?.levels?.mode !== 'none' ? cs.settings.levels : null;
-  const { data: members, loading, reload } = useLoad(
+  const { data: loaded, loading, reload } = useLoad(
     () => (club ? api.get(`/api/clubs/${club.id}/members`) : Promise.resolve([])),
     [club?.id]
   );
+  // "Xoá" waits a few seconds with "Hoàn tác" before it really deletes: the rows are hidden
+  // meanwhile. Leaving the page deletes them at once.
+  const UNDO_SECONDS = 10;
+  const [gone, setGone] = useState(null); // { ids, names, left }
+  const goneRef = useRef(null);
+  const members = loaded ? loaded.filter((m) => !gone?.ids.includes(m.id)) : loaded;
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   // Official / guest places on the club's plan (GET /api/clubs/:id -> member_room).
   const { data: clubInfo } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}`).catch(() => null) : Promise.resolve(null)), [club?.id, members?.length]);
   const room = clubInfo?.member_room;
@@ -142,20 +151,43 @@ export default function MembersPage({ tab = 'fixed' }) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
-  async function deleteSelected() {
-    const names = all.filter((m) => selected.includes(m.id)).map((m) => m.full_name).join(', ');
-    if (!window.confirm(t('members.deleteConfirm', { count: selected.length, names }))) return;
-    setBusy(true);
+  async function reallyDelete(g) {
+    if (!g) return;
+    clearInterval(g.timer);
+    goneRef.current = null;
     try {
-      await Promise.all(selected.map((id) => api.del(`/api/clubs/${club.id}/members/${id}`)));
-      setSelected([]);
+      await Promise.all(g.ids.map((id) => api.del(`/api/clubs/${g.clubId}/members/${id}`)));
     } catch (err) {
       window.alert(err.message);
-    } finally {
-      setBusy(false);
-      reload();
     }
+    setGone(null);
+    reload();
   }
+  async function deleteSelected() {
+    const names = all.filter((m) => selected.includes(m.id)).map((m) => m.full_name).join(', ');
+    if (!window.confirm(t('members.deleteConfirmUndo', { count: selected.length, names, s: UNDO_SECONDS }))) return;
+    if (goneRef.current) await reallyDelete(goneRef.current); // an earlier delete still waiting
+    const g = { ids: [...selected], names, clubId: club.id, left: UNDO_SECONDS };
+    g.timer = setInterval(() => {
+      g.left -= 1;
+      if (g.left <= 0) reallyDelete(g);
+      else setGone({ ...g });
+    }, 1000);
+    goneRef.current = g;
+    setGone({ ...g });
+    setSelected([]);
+  }
+  function undoDelete() {
+    const g = goneRef.current;
+    if (!g) return;
+    clearInterval(g.timer);
+    goneRef.current = null;
+    setGone(null);
+  }
+  // Leaving the page: the delete goes ahead now.
+  useEffect(() => () => {
+    if (goneRef.current) reallyDelete(goneRef.current);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Search + filters + sort over the current tab.
   const q = query.trim().toLowerCase();
@@ -198,12 +230,15 @@ export default function MembersPage({ tab = 'fixed' }) {
         title={t('nav.members')}
         subtitle={club?.name}
         actions={
-          // Members come in with their own account only (invite link / join request → Danh sách chờ),
-          // so there is no manual add or Excel import: one person, one record.
+          // Members come in with their own account (invite link / join request → Danh sách chờ), or
+          // the Host adds them by hand / uploads the member Excel (a phone or DUPR ID already in
+          // the club is the same person: refused / updated, never a second record).
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary text-sm" disabled={!club || !members?.length} onClick={exportAll}>{t('common.exportExcel')}</button>
             {canManage && (
               <>
+                <button className="btn-secondary text-sm" disabled={!club} onClick={() => setImportOpen(true)}>{t('madmin.importBtnShort')}</button>
+                <button className="btn-secondary text-sm" disabled={!club} onClick={() => setAddOpen(true)}>+ {t('madmin.addShort')}</button>
                 {isCommunity && <Link href="/club/community-settings" className="btn-secondary text-sm">{t('cpanel.short')}</Link>}
                 <button className="btn-primary text-sm" disabled={!club} onClick={() => setInviteOpen(true)}>{t('invite.button')}</button>
               </>
@@ -592,6 +627,14 @@ export default function MembersPage({ tab = 'fixed' }) {
       />
       <ReviewModal club={club} member={reviewing} open={!!reviewing} onClose={() => setReviewing(null)} onDone={() => { setReviewing(null); reload(); pickTab('review'); }} />
       <InviteModal club={club} open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      {club && <AddMemberModal club={club} open={addOpen} onClose={() => setAddOpen(false)} onAdded={() => { setAddOpen(false); reload(); }} onOpenMember={(id) => { setAddOpen(false); setEditing(false); setDetailId(id); }} />}
+      {club && <ImportMembersModal club={club} open={importOpen} onClose={() => setImportOpen(false)} onDone={reload} onTemplate={() => exportMembers(club, [], t, (v) => levelText(v, sport, t))} />}
+      {gone && (
+        <div role="status" className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-6 z-50 w-[calc(100%-2rem)] max-w-md rounded-xl border border-navy-600 bg-navy-800 shadow-xl px-4 py-3 flex items-center gap-3">
+          <span className="flex-1 min-w-0 text-sm text-gray-200 break-words">{t('members.deletedUndo', { count: gone.ids.length, s: gone.left })}</span>
+          <button type="button" className="btn-primary text-sm shrink-0" onClick={undoDelete}>{t('members.undo')}</button>
+        </div>
+      )}
     </AppShell>
   );
 }
