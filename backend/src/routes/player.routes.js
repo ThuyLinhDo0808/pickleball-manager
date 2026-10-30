@@ -65,6 +65,14 @@ publicRoutes.get('/clubs/:token', async (req, res) => {
 
 // A ticket page anyone with the (secret, random) ticket code can open — the link a player
 // saves or forwards to a friend after transferring their place. No phone numbers.
+// The session's shared survey link / QR: who played picks their name.
+publicRoutes.get('/surveys/event/:code', async (req, res) => {
+  try {
+    res.json(await survey.eventLinkView(req.params.code));
+  } catch (err) {
+    fail(res, err);
+  }
+});
 // After-session survey (private link sent to the guest; no login needed).
 publicRoutes.get('/surveys/:token', async (req, res) => {
   try {

@@ -26,6 +26,10 @@ export const FLAG_STYLE = {
   late: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40',
   attitude: 'bg-orange-500/15 text-orange-300 border-orange-500/40',
 };
+// Notes the Host types in are stored as "c:<text>" and look alike everywhere.
+const CUSTOM_STYLE = 'bg-sky-500/15 text-sky-200 border-sky-400/40';
+export const flagStyle = (f) => FLAG_STYLE[f] || CUSTOM_STYLE;
+export const flagLabel = (f, t) => (String(f).startsWith('c:') ? String(f).slice(2) : t(`flags.${f}`));
 const PAY_STYLE = {
   paid: 'bg-lime-400 text-navy-950',
   pending: 'bg-yellow-500/20 text-yellow-300',
@@ -383,12 +387,14 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
   );
   const [flags, setFlags] = useState([]);
   const [notes, setNotes] = useState('');
+  const [tag, setTag] = useState('');
   const [showRegister, setShowRegister] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setFlags(member?.flags || []);
     setNotes(member?.notes || '');
+    setTag('');
     setShowRegister(false);
   }, [member?.id]);
 
@@ -421,6 +427,16 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
     const next = flags.includes(f) ? flags.filter((x) => x !== f) : [...flags, f];
     setFlags(next);
     patchMember({ flags: next });
+  }
+  const custom = flags.filter((f) => f.startsWith('c:'));
+  async function addTag(e) {
+    e.preventDefault();
+    const text = tag.replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (!text) return;
+    if (flags.some((f) => f.toLowerCase() === `c:${text}`.toLowerCase())) return setTag('');
+    const next = [...flags, `c:${text}`];
+    setFlags(next);
+    if (await patchMember({ flags: next })) setTag('');
   }
 
   const base = `/api/clubs/${club.id}/memberships`;
@@ -496,9 +512,27 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
                 {t(`flags.${f}`)}
               </button>
             ))}
+            {custom.map((f) => (
+              <button
+                key={f}
+                type="button"
+                disabled={busy}
+                aria-label={t('flags.removeTag', { tag: flagLabel(f, t) })}
+                onClick={() => toggleFlag(f)}
+                className={`text-sm rounded-full border px-3 py-1 transition ${CUSTOM_STYLE}`}
+              >
+                ✓ {flagLabel(f, t)} <span aria-hidden className="ml-1 opacity-70">×</span>
+              </button>
+            ))}
           </ChipRow>
+          {custom.length < 6 && (
+            <form onSubmit={addTag} className="flex gap-2 mb-3">
+              <input className="input text-sm" maxLength={30} placeholder={t('flags.tagPh')} value={tag} onChange={(e) => setTag(e.target.value)} aria-label={t('flags.tagPh')} />
+              <button type="submit" className="btn-secondary text-sm shrink-0" disabled={busy || !tag.trim()}>+ {t('flags.addTag')}</button>
+            </form>
+          )}
           <div className="flex gap-2">
-            <input className="input text-sm" placeholder={t('flags.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <input className="input text-sm" placeholder={t('flags.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} aria-label={t('flags.notes')} />
             <button
               type="button"
               className="btn-secondary text-sm shrink-0"
@@ -602,8 +636,74 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
           </div>
         </section>
 
+        {(!club?.role || club.role === 'owner') && <TransferMember club={club} member={member} onDone={() => { onChanged(); onClose(); }} />}
+
         <MemberHistory key={member.id} club={club} member={member} />
       </div>
     </Modal>
+  );
+}
+
+// "Chuyển sang cộng đồng khác" (owner only): e.g. a player of Series B moves up to Series A.
+// The new record gets who they are (name, contact, account, DUPR, notes); this one stays,
+// inactive, with its history (sessions, matches, passes).
+function TransferMember({ club, member, onDone }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const { data: clubs } = useLoad(() => (open ? api.get('/api/clubs').catch(() => []) : Promise.resolve(null)), [open]);
+  const targets = (clubs || []).filter((c) => c.id !== club.id && (!c.role || c.role === 'owner') && (c.kind || 'club') === (club.kind || 'club'));
+  const [to, setTo] = useState('');
+  const [type, setType] = useState(member.member_type === 'fixed' ? 'fixed' : 'guest');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const community = club.kind === 'community';
+  async function go() {
+    const target = targets.find((c) => c.id === to);
+    if (!target || !window.confirm(t('madmin.moveAsk', { name: member.full_name, to: target.name, from: club.name }))) return;
+    setBusy(true);
+    setErr('');
+    try {
+      await api.post(`/api/clubs/${club.id}/members/${member.id}/transfer`, { to_club_id: to, member_type: type });
+      window.alert(t('madmin.moved', { name: member.full_name, to: target.name }));
+      onDone();
+    } catch (x) {
+      setErr(x.status === 402 ? t('madmin.overLimit') : x.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="rounded-xl border border-navy-700 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-white font-semibold text-sm inline-flex items-center gap-1">{t(community ? 'madmin.moveTitleC' : 'madmin.moveTitle')} <Hint inline text={t('madmin.moveHint')} /></h3>
+        {!open && <button type="button" className="btn-secondary text-sm" onClick={() => setOpen(true)}>{t('madmin.moveOpen')}</button>}
+      </div>
+      {open && (
+        <div className="mt-3 flex flex-col gap-2">
+          {!clubs && <div className="h-11 rounded-lg bg-navy-800 animate-pulse" aria-hidden />}
+          {clubs && !targets.length && <p className="text-gray-400 text-sm">{t(community ? 'madmin.moveNoneC' : 'madmin.moveNone')}</p>}
+          {targets.length > 0 && (
+            <>
+              <select className="input" value={to} onChange={(e) => setTo(e.target.value)} aria-label={t('madmin.moveTo')}>
+                <option value="">{t('madmin.moveTo')}</option>
+                {targets.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('madmin.type')}>
+                {['fixed', 'guest'].map((k) => (
+                  <button key={k} type="button" role="radio" aria-checked={type === k} onClick={() => setType(k)} className={`min-h-[44px] rounded-lg border px-2 text-sm ${type === k ? 'border-lime-400 bg-lime-400/15 text-lime-200 font-semibold' : 'border-navy-600 text-gray-300'}`}>
+                    {t(`madmin.type_${community ? 'c_' : ''}${k}`)}
+                  </button>
+                ))}
+              </div>
+              {err && <p className="text-red-400 text-sm">{err}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" className="btn-secondary text-sm" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
+                <button type="button" className="btn-primary text-sm" disabled={busy || !to} onClick={go}>{t('madmin.moveBtn')}</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

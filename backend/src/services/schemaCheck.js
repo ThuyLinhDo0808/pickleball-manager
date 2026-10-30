@@ -101,6 +101,8 @@ const PROBES = [
   { table: 'events', column: 'approval', migration: '20270107090000_event_approval.sql' },
   { table: 'participant_fee_changes', column: 'id', migration: '20270108090000_fee_adjustments.sql' },
   { table: 'event_participants', column: 'actual_fee', migration: '20270108090000_fee_adjustments.sql' },
+  { table: 'event_surveys', column: 'match_balance', migration: '20270109090000_survey_v3.sql' },
+  { table: 'club_members_all', column: 'deleted_at', migration: '20270110090000_member_soft_delete.sql' },
   { table: 'feedback', column: 'status', migration: '20261030090000_owner_console_2.sql' },
   { table: 'promo_codes', column: 'trial_days', migration: '20261031090000_promo_codes.sql' },
   { table: 'plan_payments', column: 'discount_amount', migration: '20261031090000_promo_codes.sql' },

@@ -1,6 +1,6 @@
 // Members in Excel ("Xuất Excel" on the members page): one row per person, phone and dates
-// kept as text. Members join with their own account only (invite link / join request), so
-// the file is a report — there is no import.
+// kept as text. The same file is the upload template ("Tải lên DS", lib/memberImport.js):
+// rows with a member ID are updated, new rows are added.
 // [field, header i18n key]
 export const MEMBER_FIELDS = [
   ['stt', null],
@@ -10,6 +10,7 @@ export const MEMBER_FIELDS = [
   ['gender', 'members.gender'],
   ['birth', 'members.birthDate'],
   ['phone', 'common.phone'],
+  ['dupr_id', 'members.xlsDuprId'], // pickleball: the player's DUPR ID
   ['level', 'common.level'], // badminton: the level step
   ['dupr', 'members.colDuprLinked'], // pickleball: DUPR from the DUPR ID (no self-typed score)
   ['skill', 'members.colSkill'], // the Host's own score (not DUPR)
@@ -25,9 +26,10 @@ const headerOf = (t, [f, key]) => (f === 'stt' ? 'STT' : t(key));
 
 // Column specs for lib/xlsxBook.
 // Pickleball shows the DUPR column, badminton its level.
-const fieldsFor = (pickleball) => MEMBER_FIELDS.filter(([f]) => (pickleball ? f !== 'level' : f !== 'dupr'));
+export const fieldsFor = (pickleball) => MEMBER_FIELDS.filter(([f]) => (pickleball ? f !== 'level' : !['dupr', 'dupr_id'].includes(f)));
+export { headerOf };
 
-const WIDTH = { dupr: 10, skill: 11, skill_level: 14, full_name: 26, member_type: 15, tier: 12, gender: 10, birth: 13, phone: 15, level: 12, district: 16, play_duration: 16, joined: 13, active: 12, notes: 32, account: 26, id: 38 };
+const WIDTH = { dupr_id: 11, dupr: 10, skill: 11, skill_level: 14, full_name: 26, member_type: 15, tier: 12, gender: 10, birth: 13, phone: 15, level: 12, district: 16, play_duration: 16, joined: 13, active: 12, notes: 32, account: 26, id: 38 };
 export function memberColumns(t, pickleball = true) {
   return fieldsFor(pickleball).map((fd) => {
     const [f] = fd;
@@ -49,6 +51,7 @@ export function memberRow(m, i, t, levelText, pickleball = true) {
       case 'gender': return m.gender ? t(`members.${m.gender}`) : '';
       case 'birth': return m.birth_date ? dmy(m.birth_date) : m.birth_year ? String(m.birth_year) : '';
       case 'phone': return m.phone || '';
+      case 'dupr_id': return m.dupr_id || '';
       case 'level': return m.dupr_level == null ? '' : levelText ? levelText(m.dupr_level) ?? '' : m.dupr_level;
       case 'dupr': return m.dupr_linked ?? m.dupr_manual ?? '';
       case 'skill': return m.skill_score == null ? '' : Number(m.skill_score);

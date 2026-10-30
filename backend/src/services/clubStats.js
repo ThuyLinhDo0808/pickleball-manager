@@ -129,8 +129,21 @@ async function clubStats(club, query = {}) {
 
   // Ranked by win rate (wins / matches) among players with enough matches; then more
   // matches, then point difference. The rest are listed after, without a place.
-  const levelOf = new Map(members.map((m) => [m.id, m.dupr_level == null ? null : Number(m.dupr_level)]));
-  const rankings = rankByWinRate(aggregate(matches, members).map((r) => ({ ...r, level: levelOf.get(r.club_member_id) ?? null })), minMatches);
+  // Level of each row and where it comes from (pickleball): 'verified' = the DUPR rating
+  // linked from the club's DUPR list / the DUPR app (club_members.dupr_doubles with
+  // dupr_synced_at); 'self' = a number typed in by the player or the Host, not checked.
+  // Ranking by level keeps the two apart (an unchecked number never outranks a real one).
+  const pickleball = (cfg?.sport || 'pickleball') === 'pickleball';
+  const duprRows = pickleball
+    ? await fetchAll(() => supabase.from('club_members').select('id, dupr_doubles, dupr_synced_at').eq('club_id', club.id).order('id')).catch(() => [])
+    : [];
+  const verified = new Map(duprRows.filter((m) => m.dupr_synced_at && m.dupr_doubles != null).map((m) => [m.id, Number(m.dupr_doubles)]));
+  // A DUPR rating on the row (from the DUPR ID, even if not linked to the club's list yet)
+  // is the player's level; the self-typed dupr_level only when there is none.
+  const duprOf = new Map(duprRows.filter((m) => m.dupr_doubles != null).map((m) => [m.id, Number(m.dupr_doubles)]));
+  const levelOf = new Map(members.map((m) => [m.id, verified.has(m.id) ? verified.get(m.id) : duprOf.has(m.id) ? duprOf.get(m.id) : m.dupr_level == null ? null : Number(m.dupr_level)]));
+  const sourceOf = (id) => (!pickleball ? null : verified.has(id) ? 'verified' : levelOf.get(id) != null ? 'self' : null);
+  const rankings = rankByWinRate(aggregate(matches, members).map((r) => ({ ...r, level: levelOf.get(r.club_member_id) ?? null, level_source: sourceOf(r.club_member_id) })), minMatches);
   const ids = new Set(members.map((m) => m.id));
   const weeks = weeksAtTop(bounds ? await clubMatches(club.id, null, personOf, { mainOnly }) : matches, members, minMatches);
   // The players' own photos (latest version) on the rows.
@@ -146,8 +159,14 @@ async function clubStats(club, query = {}) {
   let groupOf = () => null;
   if (community) {
     const CS = require('./communitySettings');
-    const settings = CS.resolve(cfg?.community_settings);
+    let settings = CS.resolve(cfg?.community_settings);
     rankGroups = CS.rankGroups(settings);
+    // No ranking split chosen but the Host has levels (e.g. Series A · B · C) in Bảng điều
+    // khiển: rank by those levels, so the boards follow the control panel.
+    if (!rankGroups.length && settings.levels?.mode && settings.levels.mode !== 'none' && settings.levels.items?.length) {
+      settings = { ...settings, rankings: { split: 'levels', groups: [] } };
+      rankGroups = CS.rankGroups(settings);
+    }
     if (rankGroups.length) {
       // Level fields arrive with later migrations: without them nobody has a level yet.
       const pick = (cols) => supabase.from('club_members').select(cols).eq('club_id', club.id).then((r) => (r.error ? null : r.data), () => null);

@@ -168,3 +168,4 @@ process.on('uncaughtException', (err) => {
 if (process.env.SURVEY_SWEEP_DISABLED !== 'true') startSurveySweeper();
 // Deletes old transfer screenshots / sign-in devices (services/privacy.js).
 if (process.env.RETENTION_SWEEP_DISABLED !== 'true') require('./services/privacy').startRetentionSweeper();
+if (process.env.MEMBER_TRASH_SWEEP_DISABLED !== 'true') require('./services/memberTrash').startTrashSweeper();

@@ -78,7 +78,8 @@ export default function CommunityOverview({ children }) {
         }
       />
 
-      {/* One tab per court cluster (community). */}
+      {/* One tab per court cluster (community); a single community needs no tabs. */}
+      {clubs.length > 1 && (
       <div className="-mx-4 px-4 md:mx-0 md:px-0 mb-4 overflow-x-auto" role="tablist" aria-label={t('hub.communities')}>
         <div className="flex gap-2 min-w-max">
           {clubs.map((c) => (
@@ -94,9 +95,9 @@ export default function CommunityOverview({ children }) {
               {c.name}
             </button>
           ))}
-          <Link href="/club-request?kind=community" className="flex items-center rounded-xl border border-dashed border-navy-600 px-3 py-2 text-sm text-gray-300 hover:border-lime-400">＋ {t('social.newCommunity')}</Link>
         </div>
       </div>
+      )}
 
       {club && <AdoptStandalone club={club} onMoved={reload} />}
 

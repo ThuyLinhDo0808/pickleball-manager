@@ -149,6 +149,7 @@ const COHOST_DENY = [
   ['POST', '/api/clubs/:id/(invite|join)-token/rotate'],
   // Members: edit, never delete or remove.
   ['DELETE', '/api/clubs/:id/members/:id'],
+  ['GET POST DELETE', '/api/clubs/:id/deleted-members(/.*)?'], // recently deleted: the owner's
   ['POST', '/api/clubs/:id/members/:id/remove'],
 ];
 

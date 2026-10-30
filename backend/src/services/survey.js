@@ -24,8 +24,53 @@ async function skipReady() {
 const SEND_WINDOW_DAYS = 3; // sessions older than this are not swept (e.g. right after deploying)
 const LEVEL_FIT = ['easy', 'right', 'hard'];
 const COME_BACK = ['yes', 'maybe', 'no'];
+// Bản 3: "hài lòng với khâu tổ chức?" and "xếp trận cân bằng?".
+const ORG_SAT = ['no', 'yes', 'very'];
+const BALANCE = ['yes', 'no', 'some'];
+const V3_MIGRATION = '20270109090000_survey_v3.sql';
+async function v3Ready() {
+  const s = await require('./schemaCheck').schemaStatus();
+  return !s.missing_migrations.includes(V3_MIGRATION);
+}
 const V2_FIELDS = 'court_rating, organization_rating, come_back';
-const missingColumn = (e) => e && (e.code === '42703' || e.code === 'PGRST204' || /court_rating|come_back|organization_rating/.test(e.message || ''));
+const missingColumn = (e) => e && (e.code === '42703' || e.code === 'PGRST204' || /court_rating|come_back|organization_rating|org_satisfaction|match_balance/.test(e.message || ''));
+
+// How long a session's survey stays open (clubs.survey_window): until the club's next
+// session starts ('next_session', the default; a week when there is none), or 12 hours
+// after the session ends ('12h'). Never longer than OPEN_DAYS.
+const HOUR = 3600000;
+function closesFrom(event, mode, nextStartMs) {
+  const end = eventEndMs(event);
+  const cap = end + OPEN_DAYS * 24 * HOUR;
+  if (mode === '12h') return end + 12 * HOUR;
+  const next = nextStartMs != null && nextStartMs > end ? nextStartMs : end + 7 * 24 * HOUR;
+  return Math.min(next, cap);
+}
+async function windowOf(clubId) {
+  if (!(await v3Ready())) return 'next_session';
+  const { data } = await supabase.from('clubs').select('survey_window').eq('id', clubId).maybeSingle();
+  return data?.survey_window === '12h' ? '12h' : 'next_session';
+}
+// The start of the club's next session after this one ends (null when there is none).
+async function nextStartMs(event) {
+  const { eventStartMs } = require('./attendance');
+  const end = eventEndMs(event);
+  const { data } = await supabase
+    .from('events')
+    .select('id, event_date, start_time')
+    .eq('club_id', event.club_id)
+    .neq('status', 'cancelled')
+    .neq('id', event.id)
+    .gte('event_date', event.event_date)
+    .order('event_date', { ascending: true })
+    .limit(30);
+  const starts = (data || []).map((e) => eventStartMs(e)).filter((ms) => ms > end).sort((a, b) => a - b);
+  return starts[0] ?? null;
+}
+async function closesAt(event, mode) {
+  const m = mode || (await windowOf(event.club_id));
+  return closesFrom(event, m, m === '12h' ? null : await nextStartMs(event));
+}
 
 function httpError(message, status, code) {
   return Object.assign(new Error(message), { status, code });
@@ -37,6 +82,10 @@ const daysAgo = (n) => new Intl.DateTimeFormat('en-CA', { timeZone: APP_TZ }).fo
 
 // Reads the answers with the newer columns, or without them before migration 20261115090000.
 async function selectSurveys(cols, build) {
+  if (await v3Ready()) {
+    const r3 = await build(`${cols}, ${V2_FIELDS}, org_satisfaction, match_balance`);
+    if (!missingColumn(r3.error)) return r3;
+  }
   const r = await build(`${cols}, ${V2_FIELDS}`);
   if (!missingColumn(r.error)) return r;
   return build(cols);
@@ -62,6 +111,7 @@ async function sendDueSurveys(now = Date.now()) {
   let sent = 0;
   for (const event of events || []) {
     if (eventEndMs(event) > now) continue;
+    if ((await closesAt(event)) <= now) continue; // the survey already closed: no late emails
     const { data: people } = await supabase
       .from('event_participants')
       .select('*')
@@ -107,13 +157,14 @@ async function participantByToken(token) {
     .maybeSingle();
   const event = p?.events;
   if (!p || !event?.club_id || !PLAYED.includes(p.status)) throw httpError('Survey not found.', 404, 'not_found');
-  if (event.event_date < daysAgo(OPEN_DAYS)) throw httpError('This survey has closed.', 410, 'closed');
-  return { p, event };
+  const closes = await closesAt(event);
+  if (event.event_date < daysAgo(OPEN_DAYS) || Date.now() >= closes) throw httpError('This survey has closed.', 410, 'closed');
+  return { p, event, closes };
 }
 
 // What the survey page shows: the session, what was answered, and the join form's prefill.
 async function surveyView(token) {
-  const { p, event } = await participantByToken(token);
+  const { p, event, closes } = await participantByToken(token);
   const sport = await clubSport(event.club_id);
   const [{ data: answer }, member] = await Promise.all([
     selectSurveys('rating, level_fit, comment, wants_join', (c) => supabase.from('event_surveys').select(c).eq('participant_id', p.id).maybeSingle()),
@@ -133,6 +184,8 @@ async function surveyView(token) {
     sport,
     player_name: p.full_name,
     open: started,
+    closes_at: new Date(closes).toISOString(),
+    v3: await v3Ready(),
     answer: answer || null,
     skipped: !!p.survey_skipped_at,
     is_fixed: member?.member_type === 'fixed',
@@ -157,6 +210,10 @@ async function answerSurvey(token, body) {
   const comment = String(body.comment || '').trim().slice(0, 1000) || null;
   const row = { participant_id: p.id, event_id: event.id, rating, level_fit, comment, wants_join: !!body.wants_join };
   const extra = { court_rating: stars(body.court_rating), organization_rating: stars(body.organization_rating), come_back: COME_BACK.includes(body.come_back) ? body.come_back : null };
+  if (await v3Ready()) {
+    extra.org_satisfaction = ORG_SAT.includes(body.org_satisfaction) ? body.org_satisfaction : null;
+    extra.match_balance = BALANCE.includes(body.match_balance) ? body.match_balance : null;
+  }
   let { error } = await supabase.from('event_surveys').upsert({ ...row, ...extra }, { onConflict: 'participant_id' });
   if (missingColumn(error)) ({ error } = await supabase.from('event_surveys').upsert(row, { onConflict: 'participant_id' }));
   if (error) throw error;
@@ -239,12 +296,22 @@ function comeBackRate(items) {
   return v.length ? Math.round((100 * v.filter((x) => x.come_back === 'yes').length) / v.length) : null;
 }
 
+// Share (%) of the answers to `field` that are in `good`.
+function rateOf(items, field, good) {
+  const v = items.filter((x) => x[field]);
+  return v.length ? Math.round((100 * v.filter((x) => good.includes(x[field])).length) / v.length) : null;
+}
+
 function summarizeAnswers(items) {
   const level = { easy: 0, right: 0, hard: 0 };
   const back = { yes: 0, maybe: 0, no: 0 };
+  const org = { no: 0, yes: 0, very: 0 };
+  const balance = { yes: 0, no: 0, some: 0 };
   for (const x of items) {
     if (x.level_fit) level[x.level_fit]++;
     if (x.come_back) back[x.come_back]++;
+    if (x.org_satisfaction) org[x.org_satisfaction]++;
+    if (x.match_balance) balance[x.match_balance]++;
   }
   return {
     count: items.length,
@@ -252,8 +319,13 @@ function summarizeAnswers(items) {
     court: avgOf(items, 'court_rating'),
     organization: avgOf(items, 'organization_rating'),
     come_back_rate: comeBackRate(items),
+    // Bản 3: % hài lòng (hài lòng + rất hài lòng) và % "xếp trận cân bằng".
+    org_happy_rate: rateOf(items, 'org_satisfaction', ['yes', 'very']),
+    balance_rate: rateOf(items, 'match_balance', ['yes']),
     level,
     come_back: back,
+    org,
+    balance,
     wants_join: items.filter((x) => x.wants_join).length,
   };
 }
@@ -265,13 +337,13 @@ async function eventSurveys(event) {
   );
   if (error) throw error;
   const items = (data || []).map(({ event_participants, ...s }) => ({ ...s, full_name: event_participants?.full_name || null }));
-  return { ...summarizeAnswers(items), items };
+  return { ...summarizeAnswers(items), items, link: await hostLink(event).catch(() => null) };
 }
 
 // The club's reviews over the last few months: totals, a line per month and per session,
 // the latest private notes, and the people who want to join the fixed team.
 async function clubSurveys(clubId, { months = 6, today } = {}) {
-  const empty = { months, summary: summarizeAnswers([]), by_month: [], sessions: [], notes: [], want_join: [] };
+  const empty = { months, summary: summarizeAnswers([]), by_month: [], sessions: [], notes: [], want_join: [], survey_window: await windowOf(clubId) };
   if (!(await guestsReady())) return empty;
   const [y, m] = (today || daysAgo(0)).split('-').map(Number);
   const from = new Date(Date.UTC(y, m - months, 1)).toISOString().slice(0, 10);
@@ -340,7 +412,7 @@ async function clubSurveys(clubId, { months = 6, today } = {}) {
       state: mem?.member_type === 'fixed' ? 'member' : mem?.join_requested ? 'requested' : 'not_yet',
     });
   }
-  return { months, summary: summarizeAnswers(rows), by_month, sessions, notes, want_join };
+  return { months, summary: summarizeAnswers(rows), by_month, sessions, notes, want_join, survey_window: await windowOf(clubId) };
 }
 
 // Surveys the signed-in player can still answer (sessions they played).
@@ -348,13 +420,22 @@ async function surveysDueFor(userId) {
   if (!(await guestsReady())) return [];
   const { data } = await supabase
     .from('event_participants')
-    .select(`id, survey_token, guest_member_id, source_club_member_id${(await skipReady()) ? ', survey_skipped_at' : ''}, events(title, event_date, start_time, end_time, club_id, status, clubs(name))`)
+    .select(`id, event_id, survey_token, guest_member_id, source_club_member_id${(await skipReady()) ? ', survey_skipped_at' : ''}, events(title, event_date, start_time, end_time, club_id, status, clubs(name))`)
     .eq('user_id', userId)
     .in('status', PLAYED)
     .limit(100);
   // Once play is over (no need to wait for the email sweep).
   const now = Date.now();
   const rows = (data || []).filter((r) => r.events?.club_id && r.survey_token && !r.survey_skipped_at && r.events.status !== 'cancelled' && r.events.event_date >= daysAgo(OPEN_DAYS) && eventEndMs(r.events) <= now);
+  if (!rows.length) return [];
+  const mode = new Map();
+  const open = [];
+  for (const r of rows) {
+    const ev = { ...r.events, id: r.event_id };
+    if (!mode.has(ev.club_id)) mode.set(ev.club_id, await windowOf(ev.club_id));
+    if ((await closesAt(ev, mode.get(ev.club_id))) > now) open.push(r);
+  }
+  rows.splice(0, rows.length, ...open);
   if (!rows.length) return [];
   const { data: answered } = await supabase.from('event_surveys').select('participant_id').in('participant_id', rows.map((r) => r.id));
   const done = new Set((answered || []).map((a) => a.participant_id));
@@ -378,9 +459,56 @@ async function surveyFor(event, p, now = Date.now()) {
   if (!p || !PLAYED.includes(p.status) || !event?.club_id || !p.survey_token) return null;
   if (now < eventEndMs(event) || event.event_date < daysAgo(OPEN_DAYS)) return null;
   if (!(await guestsReady())) return null;
+  if ((await closesAt(event)) <= now) return null;
   if (p.survey_skipped_at) return null;
   const { data } = await supabase.from('event_surveys').select('participant_id').eq('participant_id', p.id).maybeSingle();
   return { token: p.survey_token, answered: !!data };
 }
 
-module.exports = { PLAYED, sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, skipSurvey, eventSurveys, clubSurveys, surveysDueFor, surveyFor, summarizeAnswers };
+// One link / QR for the whole session (the Host shares it in the group): the people who
+// played and have not answered yet pick their name and get their own survey.
+async function eventLinkView(code) {
+  let publicToken = code;
+  // The short code of the kèo's link works too ("nexuszone.vn/s/e/ab12cd").
+  if (!isUuid(code) && /^[0-9a-z]{6,12}$/i.test(String(code || ''))) {
+    const { data } = await supabase.from('events').select('public_token').eq('short_code', String(code).toLowerCase()).maybeSingle();
+    publicToken = data?.public_token;
+  }
+  if (!isUuid(publicToken) || !(await guestsReady())) throw httpError('Survey not found.', 404, 'not_found');
+  const { data: event } = await supabase.from('events').select('*, clubs(name, kind)').eq('public_token', publicToken).maybeSingle();
+  if (!event?.club_id || event.status === 'cancelled') throw httpError('Survey not found.', 404, 'not_found');
+  const now = Date.now();
+  const opens = eventEndMs(event) - HOUR;
+  const closes = await closesAt(event);
+  const head = {
+    event: { title: event.title, event_date: event.event_date, start_time: event.start_time, location: event.location },
+    club_name: event.clubs?.name || null,
+    opens_at: new Date(opens).toISOString(),
+    closes_at: new Date(closes).toISOString(),
+  };
+  if (now >= closes) return { ...head, state: 'closed', people: [] };
+  if (now < opens) return { ...head, state: 'not_yet', people: [] };
+  const { data: parts } = await supabase.from('event_participants').select('id, full_name, survey_token, survey_skipped_at').eq('event_id', event.id).in('status', PLAYED);
+  const ids = (parts || []).map((x) => x.id);
+  const { data: answered } = ids.length ? await supabase.from('event_surveys').select('participant_id').in('participant_id', ids) : { data: [] };
+  const done = new Set((answered || []).map((a) => a.participant_id));
+  const people = (parts || [])
+    .filter((x) => x.survey_token)
+    .map((x) => ({ name: x.full_name, token: x.survey_token, done: done.has(x.id) }))
+    .sort((a, b) => Number(a.done) - Number(b.done) || String(a.name).localeCompare(String(b.name), 'vi'));
+  return { ...head, state: 'open', people };
+}
+
+// Host: the shared link's code and the club's survey window.
+async function hostLink(event) {
+  return { public_token: event.public_token, short_code: event.short_code || null, window: await windowOf(event.club_id), closes_at: event.club_id ? new Date(await closesAt(event)).toISOString() : null };
+}
+async function setWindow(clubId, mode) {
+  if (!['next_session', '12h'].includes(mode)) throw httpError('survey_window: next_session | 12h.', 400, 'bad_window');
+  if (!(await v3Ready())) throw Object.assign(httpError('Run the database update first.', 503, 'migration_missing'), { migration: V3_MIGRATION });
+  const { error } = await supabase.from('clubs').update({ survey_window: mode }).eq('id', clubId);
+  if (error) throw error;
+  return { survey_window: mode };
+}
+
+module.exports = { PLAYED, sendDueSurveys, startSurveySweeper, surveyView, answerSurvey, joinFromSurvey, skipSurvey, eventSurveys, clubSurveys, surveysDueFor, surveyFor, summarizeAnswers, closesFrom, eventLinkView, hostLink, setWindow, windowOf };
