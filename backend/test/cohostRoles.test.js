@@ -16,6 +16,8 @@ test('co-host: runs sessions, members, matches and balls', () => {
   assert.ok(can('POST', `/api/clubs/${C}/inventory/${M}/moves`, { kind: 'buy' }));
   assert.ok(can('PATCH', `/api/matches/${M}`));
   assert.ok(can('GET', `/api/clubs/${C}/dupr/matches`));
+  assert.ok(can('POST', `/api/clubs/${C}/members`));
+  assert.ok(can('POST', `/api/clubs/${C}/members/import`));
 });
 
 test('co-host: no money, no DUPR sending, no settings, no deleting members', () => {
@@ -28,6 +30,9 @@ test('co-host: no money, no DUPR sending, no settings, no deleting members', () 
     ['GET', '/api/analytics/finance'],
     ['GET', `/api/events/${M}/finance`],
     ['POST', `/api/clubs/${C}/dupr/matches/csv`],
+    ['GET', `/api/clubs/${C}/deleted-members`],
+    ['POST', `/api/clubs/${C}/deleted-members/${M}/restore`],
+    ['DELETE', `/api/clubs/${C}/deleted-members/${M}`],
     ['POST', `/api/clubs/${C}/dupr/matches/mark`],
     ['POST', `/api/clubs/${C}/dupr/batches/${M}/confirm`],
     ['PATCH', `/api/clubs/${C}`],

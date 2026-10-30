@@ -66,6 +66,43 @@ export default function MembersPage({ tab = 'fixed' }) {
   const goneRef = useRef(null);
   const members = loaded ? loaded.filter((m) => !gone?.ids.includes(m.id)) : loaded;
   const [addOpen, setAddOpen] = useState(false);
+  // "Đã xoá gần đây" (owner): restore within 30 days. trash.ready = the soft-delete migration ran.
+  const { data: trash, reload: reloadTrash } = useLoad(
+    () => (club && (!club.role || club.role === 'owner') ? api.get(`/api/clubs/${club.id}/deleted-members`).catch(() => null) : Promise.resolve(null)),
+    [club?.id]
+  );
+  const [trashDone, setTrashDone] = useState(null); // { ids } just deleted: "Hoàn tác" restores them
+  useEffect(() => {
+    if (!trashDone) return undefined;
+    const tm = setTimeout(() => setTrashDone(null), 12000);
+    return () => clearTimeout(tm);
+  }, [trashDone]);
+  async function restoreMembers(ids) {
+    setBusy(true);
+    const failed = [];
+    for (const id of ids) {
+      try {
+        await api.post(`/api/clubs/${club.id}/deleted-members/${id}/restore`, {});
+      } catch (err) {
+        failed.push(err.payload?.code === 'clash' ? t('trash.clash', { name: err.payload.member?.full_name || '' }) : err.status === 402 ? t('madmin.overLimit') : err.message);
+      }
+    }
+    setBusy(false);
+    setTrashDone(null);
+    reload();
+    reloadTrash();
+    if (failed.length) window.alert(failed.join('\n'));
+  }
+  async function purgeMember(m) {
+    if (!window.confirm(t('trash.purgeAsk', { name: m.full_name }))) return;
+    try {
+      await api.del(`/api/clubs/${club.id}/deleted-members/${m.id}`);
+    } catch (err) {
+      window.alert(err.message);
+    }
+    reloadTrash();
+  }
+  const [trashOpen, setTrashOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   // Official / guest places on the club's plan (GET /api/clubs/:id -> member_room).
   const { data: clubInfo } = useLoad(() => (club ? api.get(`/api/clubs/${club.id}`).catch(() => null) : Promise.resolve(null)), [club?.id, members?.length]);
@@ -165,6 +202,24 @@ export default function MembersPage({ tab = 'fixed' }) {
   }
   async function deleteSelected() {
     const names = all.filter((m) => selected.includes(m.id)).map((m) => m.full_name).join(', ');
+    // Soft delete (after the migration): into "Đã xoá gần đây" at once, restorable for 30 days.
+    if (trash?.ready) {
+      if (!window.confirm(t('trash.deleteConfirm', { count: selected.length, names, days: trash.keep_days }))) return;
+      setBusy(true);
+      const ids = [...selected];
+      try {
+        await Promise.all(ids.map((id) => api.del(`/api/clubs/${club.id}/members/${id}`)));
+        setSelected([]);
+        setTrashDone({ ids });
+      } catch (err) {
+        window.alert(err.message);
+      } finally {
+        setBusy(false);
+        reload();
+        reloadTrash();
+      }
+      return;
+    }
     if (!window.confirm(t('members.deleteConfirmUndo', { count: selected.length, names, s: UNDO_SECONDS }))) return;
     if (goneRef.current) await reallyDelete(goneRef.current); // an earlier delete still waiting
     const g = { ids: [...selected], names, clubId: club.id, left: UNDO_SECONDS };
@@ -614,6 +669,37 @@ export default function MembersPage({ tab = 'fixed' }) {
         </section>
       )}
 
+      {/* Đã xoá gần đây: restore within 30 days (owner). */}
+      {trash?.ready && trash.items.length > 0 && tab !== 'review' && tab !== 'waiting' && tab !== 'dupr' && (
+        <section className="card !p-0 overflow-hidden mt-4">
+          <button type="button" aria-expanded={trashOpen} onClick={() => setTrashOpen(!trashOpen)} className="w-full flex items-center justify-between gap-2 px-4 min-h-[48px] text-left">
+            <span className="text-white font-semibold inline-flex items-center gap-1">{t('trash.title')} <span className="text-gray-500 font-normal tabular-nums">({trash.items.length})</span></span>
+            <span className="text-gray-400 text-sm">{trashOpen ? '▴' : '▾'}</span>
+          </button>
+          {trashOpen && (
+            <ul className="border-t border-navy-700 divide-y divide-navy-700">
+              <li className="px-4 py-2 text-gray-400 text-xs">{t('trash.lead', { days: trash.keep_days })}</li>
+              {trash.items.map((m) => (
+                <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+                  <span className="flex-1 min-w-[12rem]">
+                    <span className="text-white break-words">{m.full_name}</span>
+                    <span className="block text-gray-400 text-xs">
+                      {t('trash.deletedAt', { at: localDate(new Date(m.deleted_at), 'vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }, true) })}
+                      {m.deleted_by ? ` · ${m.deleted_by}` : ''}
+                    </span>
+                  </span>
+                  <span className={`text-xs tabular-nums ${m.days_left <= 3 ? 'text-amber-200' : 'text-gray-400'}`}>{t('trash.daysLeft', { n: m.days_left })}</span>
+                  <span className="inline-flex items-center gap-1 ml-auto">
+                    <button type="button" disabled={busy} className="text-red-300 hover:text-red-200 text-xs px-2 min-h-[44px]" onClick={() => purgeMember(m)}>{t('trash.purge')}</button>
+                    <button type="button" disabled={busy} className="btn-primary text-sm" onClick={() => restoreMembers([m.id])}>{t('trash.restore')}</button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {/* Danh sách đen: the table above shows who they are; here, why and what to do. */}
       {tab === 'review' && club && <ReviewTab club={club} members={reviewRows} onChanged={() => { reloadRequests(); reload(); }} />}
 
@@ -629,6 +715,12 @@ export default function MembersPage({ tab = 'fixed' }) {
       <InviteModal club={club} open={inviteOpen} onClose={() => setInviteOpen(false)} />
       {club && <AddMemberModal club={club} open={addOpen} onClose={() => setAddOpen(false)} onAdded={() => { setAddOpen(false); reload(); }} onOpenMember={(id) => { setAddOpen(false); setEditing(false); setDetailId(id); }} />}
       {club && <ImportMembersModal club={club} open={importOpen} onClose={() => setImportOpen(false)} onDone={reload} onTemplate={() => exportMembers(club, [], t, (v) => levelText(v, sport, t))} />}
+      {trashDone && (
+        <div role="status" className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-6 z-50 w-[calc(100%-2rem)] max-w-md rounded-xl border border-navy-600 bg-navy-800 shadow-xl px-4 py-3 flex items-center gap-3">
+          <span className="flex-1 min-w-0 text-sm text-gray-200 break-words">{t('trash.done', { count: trashDone.ids.length, days: trash?.keep_days || 30 })}</span>
+          <button type="button" disabled={busy} className="btn-primary text-sm shrink-0" onClick={() => restoreMembers(trashDone.ids)}>{t('members.undo')}</button>
+        </div>
+      )}
       {gone && (
         <div role="status" className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-6 z-50 w-[calc(100%-2rem)] max-w-md rounded-xl border border-navy-600 bg-navy-800 shadow-xl px-4 py-3 flex items-center gap-3">
           <span className="flex-1 min-w-0 text-sm text-gray-200 break-words">{t('members.deletedUndo', { count: gone.ids.length, s: gone.left })}</span>

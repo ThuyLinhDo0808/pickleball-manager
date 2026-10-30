@@ -7342,4 +7342,16 @@ export const vi = {
     moveAsk: "Chuyển {name} từ {from} sang {to}?",
     moved: "Đã chuyển {name} sang {to}.",
   },
+  trash: {
+    title: "Đã xoá gần đây",
+    lead: "Người bị xoá nằm ở đây {days} ngày, cùng toàn bộ lịch sử (buổi, trận, gói, công nợ). Bấm Khôi phục để đưa lại nguyên vẹn; hết hạn thì xoá hẳn.",
+    deletedAt: "Xoá lúc {at}",
+    daysLeft: "Còn {n} ngày",
+    restore: "Khôi phục",
+    purge: "Xoá hẳn",
+    purgeAsk: "Xoá hẳn {name}? Lịch sử trận đấu và gói hội viên của họ cũng bị xoá, không khôi phục được nữa.",
+    deleteConfirm: "Xóa {count} thành viên: {names}?\nHọ chuyển vào mục Đã xoá gần đây và khôi phục được trong {days} ngày.",
+    done: "Đã xoá {count} người — khôi phục được trong {days} ngày",
+    clash: "Không khôi phục được: {name} đang có trong danh sách với cùng tài khoản / DUPR ID.",
+  },
 };

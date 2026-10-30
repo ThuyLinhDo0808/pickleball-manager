@@ -31,5 +31,8 @@ README viết bằng tiếng Việt, mô tả theo góc nhìn người dùng.
 - Trả lời người dùng bằng tiếng Việt.
 - Thay đổi schema: tạo file trong `supabase/migrations/`, chép cùng nội dung vào `database/schema.sql`,
   và thêm kiểm tra vào `backend/src/services/schemaCheck.js`.
+- Bảng thành viên: bảng thật là `club_members_all`; `club_members` là VIEW (chỉ người chưa xoá mềm).
+  Thêm cột: `alter table public.club_members_all …` rồi tạo lại view `public.club_members`
+  (`select * from public.club_members_all where deleted_at is null`), không ALTER `club_members`.
 - Chữ trên giao diện đi qua i18n: thêm khoá vào cả `web/lib/i18n/vi.js` và `web/lib/i18n/en.js`.
 - Không commit secret/key thật; không force push.

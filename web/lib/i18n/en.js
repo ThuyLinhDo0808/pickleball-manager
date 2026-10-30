@@ -7342,4 +7342,16 @@ export const en = {
     moveAsk: "Move {name} from {from} to {to}?",
     moved: "{name} moved to {to}.",
   },
+  trash: {
+    title: "Recently deleted",
+    lead: "Deleted people stay here {days} days with all their history (sessions, matches, passes, debts). Restore brings them back as they were; after that they are deleted for good.",
+    deletedAt: "Deleted {at}",
+    daysLeft: "{n} days left",
+    restore: "Restore",
+    purge: "Delete for good",
+    purgeAsk: "Delete {name} for good? Their match history and passes go too and cannot be restored.",
+    deleteConfirm: "Delete {count} member(s): {names}?\nThey move to Recently deleted and can be restored for {days} days.",
+    done: "{count} deleted — restorable for {days} days",
+    clash: "Cannot restore: {name} is on the list with the same account / DUPR ID.",
+  },
 };

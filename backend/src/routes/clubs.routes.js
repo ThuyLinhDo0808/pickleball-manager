@@ -1012,10 +1012,38 @@ router.post('/:clubId/members/:memberId/merge', async (req, res) => {
   }
 });
 
+// "Xoá": into the recently deleted list for 30 days (restore any time meanwhile), or for
+// good before the soft-delete migration (services/memberTrash.js).
 router.delete('/:clubId/members/:memberId', async (req, res) => {
-  const { error } = await supabase.from('club_members').delete().eq('id', req.member.id);
-  if (error) return dbError(res, error);
-  res.status(204).end();
+  try {
+    res.json(await require('../services/memberTrash').remove(req.club, req.member, req.hostEmail));
+  } catch (err) {
+    dbError(res, err);
+  }
+});
+const trashErr = (res, err) => (err.status === 402 ? planError(res, err) : err.status ? res.status(err.status).json({ error: err.message, code: err.code, ...(err.member ? { member: err.member } : {}) }) : dbError(res, err));
+router.get('/:clubId/deleted-members', async (req, res) => {
+  try {
+    res.json(await require('../services/memberTrash').list(req.club));
+  } catch (err) {
+    trashErr(res, err);
+  }
+});
+router.post('/:clubId/deleted-members/:deletedId/restore', async (req, res) => {
+  if (!isUuid(req.params.deletedId)) return notFound(res, 'Member');
+  try {
+    res.json(await require('../services/memberTrash').restore(req.club, req.params.deletedId));
+  } catch (err) {
+    trashErr(res, err);
+  }
+});
+router.delete('/:clubId/deleted-members/:deletedId', async (req, res) => {
+  if (!isUuid(req.params.deletedId)) return notFound(res, 'Member');
+  try {
+    res.json(await require('../services/memberTrash').purge(req.club, req.params.deletedId));
+  } catch (err) {
+    trashErr(res, err);
+  }
 });
 
 // Change history (SCD Type 2, written by DB triggers): member status/tier/type/DUPR,
