@@ -3,8 +3,9 @@
 // A product of its own, beside the club / community manager: not part of any plan, so
 // nothing here reads host_subscriptions or planFeatures. It is switched on for everyone by
 // the app setting `coach_enabled` (Owner Console → Hệ thống); while that is off, only the
-// accounts listed in COACH_BETA_EMAILS (comma-separated) see it — the way a new product
-// is tried on production without the other users noticing.
+// accounts the Owner switched it on for (Tính năng theo Host), the Owner and the accounts
+// listed in COACH_BETA_EMAILS (comma-separated) see it — the way a new product is tried on
+// production without the other users noticing.
 const { supabase } = require('../supabase');
 const appSettings = require('./appSettings');
 const { schemaStatus } = require('./schemaCheck');
@@ -24,11 +25,16 @@ function betaEmails() {
     .filter(Boolean);
 }
 
-// Switched on for this account? Beta testers are matched on their confirmed email only.
+// Switched on for this account? For everyone (the app setting), for this account by the
+// Owner (Trang quản trị → Tính năng theo Host: "Coach Manager"), for the Owner, or for the
+// beta testers — matched on their confirmed email only.
 async function enabledFor(req) {
   if (await appSettings.get('coach_enabled')) return true;
   const email = String(req.hostEmail || '').toLowerCase();
-  return !!email && betaEmails().includes(email);
+  if (email && (betaEmails().includes(email) || require('./owner').isOwner(email))) return true;
+  if (!req.hostId) return false;
+  const addons = await require('./plan').addonsOf(req.hostId).catch(() => null);
+  return !!addons?.coach_manager;
 }
 
 const SELECT = 'id, user_id, slug, display_name, sport, bio, level_text, dupr_id, area, court_name, map_url, price_note, phone, status, public, cancel_hours, deduct_mode, created_at, updated_at';
