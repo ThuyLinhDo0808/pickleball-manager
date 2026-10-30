@@ -33,6 +33,20 @@ function planError(res, err) {
 }
 const GENDERS = ['male', 'female'];
 const FLAGS = ['unpaid', 'late', 'attitude'];
+// Internal notes on a member: the 3 ready-made ones plus up to 6 the Host types in
+// ("c:<text>", at most 30 characters), shown next to the name like the others.
+function cleanFlags(list) {
+  const out = [];
+  for (const raw of Array.isArray(list) ? list : []) {
+    const f = String(raw || '');
+    if (FLAGS.includes(f)) out.push(f);
+    else if (f.startsWith('c:')) {
+      const text = f.slice(2).replace(/\s+/g, ' ').trim().slice(0, 30);
+      if (text && out.filter((x) => x.startsWith('c:')).length < 6 && !out.some((x) => x.toLowerCase() === `c:${text}`.toLowerCase())) out.push(`c:${text}`);
+    }
+  }
+  return [...new Set(out)];
+}
 const PERIODS = ['month', 'quarter', 'year'];
 const PAY_STATUSES = ['pending', 'paid', 'overdue'];
 
@@ -641,7 +655,7 @@ router.patch('/:clubId/members/:memberId', async (req, res) => {
   } else if ('guest_perk' in fields && !fields.guest_perk && (await discountReady())) {
     fields.guest_discount_pct = null;
   }
-  if ('flags' in fields) fields.flags = (Array.isArray(fields.flags) ? fields.flags : []).filter((f) => FLAGS.includes(f));
+  if ('flags' in fields) fields.flags = cleanFlags(fields.flags);
   // Level picked by hand (communities whose levels are named by the Host).
   if ('level_key' in req.body) {
     const CS = require('../services/communitySettings');
@@ -2069,3 +2083,4 @@ router.put('/:clubId/survey-settings', async (req, res) => {
 require('./clubPro').mount(router);
 
 module.exports = router;
+module.exports.cleanFlags = cleanFlags;

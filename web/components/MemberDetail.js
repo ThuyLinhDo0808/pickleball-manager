@@ -26,6 +26,10 @@ export const FLAG_STYLE = {
   late: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40',
   attitude: 'bg-orange-500/15 text-orange-300 border-orange-500/40',
 };
+// Notes the Host types in are stored as "c:<text>" and look alike everywhere.
+const CUSTOM_STYLE = 'bg-sky-500/15 text-sky-200 border-sky-400/40';
+export const flagStyle = (f) => FLAG_STYLE[f] || CUSTOM_STYLE;
+export const flagLabel = (f, t) => (String(f).startsWith('c:') ? String(f).slice(2) : t(`flags.${f}`));
 const PAY_STYLE = {
   paid: 'bg-lime-400 text-navy-950',
   pending: 'bg-yellow-500/20 text-yellow-300',
@@ -383,12 +387,14 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
   );
   const [flags, setFlags] = useState([]);
   const [notes, setNotes] = useState('');
+  const [tag, setTag] = useState('');
   const [showRegister, setShowRegister] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setFlags(member?.flags || []);
     setNotes(member?.notes || '');
+    setTag('');
     setShowRegister(false);
   }, [member?.id]);
 
@@ -421,6 +427,16 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
     const next = flags.includes(f) ? flags.filter((x) => x !== f) : [...flags, f];
     setFlags(next);
     patchMember({ flags: next });
+  }
+  const custom = flags.filter((f) => f.startsWith('c:'));
+  async function addTag(e) {
+    e.preventDefault();
+    const text = tag.replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (!text) return;
+    if (flags.some((f) => f.toLowerCase() === `c:${text}`.toLowerCase())) return setTag('');
+    const next = [...flags, `c:${text}`];
+    setFlags(next);
+    if (await patchMember({ flags: next })) setTag('');
   }
 
   const base = `/api/clubs/${club.id}/memberships`;
@@ -496,9 +512,27 @@ export default function MemberDetail({ club, member, onClose, onChanged, autoEdi
                 {t(`flags.${f}`)}
               </button>
             ))}
+            {custom.map((f) => (
+              <button
+                key={f}
+                type="button"
+                disabled={busy}
+                aria-label={t('flags.removeTag', { tag: flagLabel(f, t) })}
+                onClick={() => toggleFlag(f)}
+                className={`text-sm rounded-full border px-3 py-1 transition ${CUSTOM_STYLE}`}
+              >
+                ✓ {flagLabel(f, t)} <span aria-hidden className="ml-1 opacity-70">×</span>
+              </button>
+            ))}
           </ChipRow>
+          {custom.length < 6 && (
+            <form onSubmit={addTag} className="flex gap-2 mb-3">
+              <input className="input text-sm" maxLength={30} placeholder={t('flags.tagPh')} value={tag} onChange={(e) => setTag(e.target.value)} aria-label={t('flags.tagPh')} />
+              <button type="submit" className="btn-secondary text-sm shrink-0" disabled={busy || !tag.trim()}>+ {t('flags.addTag')}</button>
+            </form>
+          )}
           <div className="flex gap-2">
-            <input className="input text-sm" placeholder={t('flags.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <input className="input text-sm" placeholder={t('flags.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} aria-label={t('flags.notes')} />
             <button
               type="button"
               className="btn-secondary text-sm shrink-0"

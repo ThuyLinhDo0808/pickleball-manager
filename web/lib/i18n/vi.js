@@ -1746,7 +1746,10 @@ export const vi = {
     unpaid: 'Chưa đóng tiền',
     late: 'Hay đi trễ',
     attitude: 'Ý thức kém',
-    notes: 'Ghi chú thêm',
+    notes: "Ghi chú chi tiết (chỉ hiện ở đây)",
+    tagPh: "Ghi chú nhanh (hiện cạnh tên), vd: Chưa hiểu chuyện",
+    addTag: "Thêm",
+    removeTag: "Bỏ ghi chú {tag}",
   },
   clubs: {
     deleteByOwner: "Muốn xoá? Liên hệ Ban quản trị",

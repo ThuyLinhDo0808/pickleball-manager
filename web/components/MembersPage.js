@@ -5,7 +5,7 @@ import { levelText } from '@/lib/levels';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import MemberDetail, { FLAG_STYLE } from '@/components/MemberDetail';
+import MemberDetail, { flagStyle, flagLabel } from '@/components/MemberDetail';
 import MemberRequests from '@/components/MemberRequests';
 import { GuestPerkBadge, GuestNoteCell, GuestPerkSettings } from '@/components/GuestColumns';
 import VipBadge from '@/components/VipBadge';
@@ -363,7 +363,7 @@ export default function MembersPage({ tab = 'fixed' }) {
                         {(m.flags?.length > 0 || ((isGuestTab || isCommunity) && m.guest_perk)) && (
                           <span className="flex flex-wrap gap-1 mt-1">
                             {(isGuestTab || isCommunity) && (!isGuestTab || show('perk')) && <GuestPerkBadge perk={m.guest_perk} pct={m.guest_discount_pct} />}
-                            {(m.flags || []).map((f) => <span key={f} className={`text-[10px] leading-4 rounded border px-1 ${FLAG_STYLE[f]}`}>{t(`flags.${f}`)}</span>)}
+                            {(m.flags || []).map((f) => <span key={f} className={`text-[10px] leading-4 rounded border px-1 ${flagStyle(f)}`}>{flagLabel(f, t)}</span>)}
                           </span>
                         )}
                       </span>
@@ -448,8 +448,8 @@ export default function MembersPage({ tab = 'fixed' }) {
                               {m.flags?.length > 0 && (
                                 <span className="basis-full flex flex-wrap gap-1">
                                   {m.flags.map((f) => (
-                                    <span key={f} title={t(`flags.${f}`)} className={`text-[10px] leading-4 rounded border px-1 ${FLAG_STYLE[f]}`}>
-                                      {t(`flags.${f}`)}
+                                    <span key={f} title={flagLabel(f, t)} className={`text-[10px] leading-4 rounded border px-1 ${flagStyle(f)}`}>
+                                      {flagLabel(f, t)}
                                     </span>
                                   ))}
                                 </span>

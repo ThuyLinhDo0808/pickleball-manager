@@ -1746,7 +1746,10 @@ export const en = {
     unpaid: 'Not paid',
     late: 'Often late',
     attitude: 'Poor attitude',
-    notes: 'Extra notes',
+    notes: "Longer note (shown only here)",
+    tagPh: "Quick note (shown next to the name), e.g. Needs guidance",
+    addTag: "Add",
+    removeTag: "Remove note {tag}",
   },
   clubs: {
     deleteByOwner: "To delete it, contact the admin team",
